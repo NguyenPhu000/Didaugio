@@ -1,0 +1,457 @@
+{
+  "client": "Thunder Client",
+  "collectionName": "Didaugio - 4 New Features Testing",
+  "dateExported": "2026-01-01",
+  "version": "1.2",
+  "folders": [
+    {
+      "name": "1. Email Verification",
+      "requests": [
+        {
+          "name": "1.1 Create Email Verification",
+          "method": "POST",
+          "url": "http://localhost:8081/api/email-verifications",
+          "headers": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ],
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"userId\": 1,\n  \"email\": \"test@example.com\"\n}"
+          },
+          "tests": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "pm.test('Has token', () => pm.expect(pm.response.json().data.token).to.exist);"
+          ]
+        },
+        {
+          "name": "1.2 Get Email Verifications (All)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/email-verifications?page=1&limit=10",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ],
+          "tests": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Has pagination', () => pm.expect(pm.response.json().pagination).to.exist);",
+            "pm.test('DESC order', () => {",
+            "  const data = pm.response.json().data;",
+            "  if (data.length > 1) {",
+            "    pm.expect(new Date(data[0].createdAt)).to.be.above(new Date(data[1].createdAt));",
+            "  }",
+            "});"
+          ]
+        },
+        {
+          "name": "1.3 Get Email Verifications (Filter by userId)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/email-verifications?userId=1&page=1&limit=10",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ]
+        },
+        {
+          "name": "1.4 Get Email Verifications (Filter by status=pending)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/email-verifications?status=pending&page=1&limit=10",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ]
+        },
+        {
+          "name": "1.5 Verify Email (Public)",
+          "method": "POST",
+          "url": "http://localhost:8081/api/email-verifications/verify",
+          "headers": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"token\": \"{{verificationToken}}\"\n}"
+          },
+          "tests": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('verifiedAt exists', () => pm.expect(pm.response.json().data.verifiedAt).to.exist);"
+          ]
+        },
+        {
+          "name": "1.6 Resend Email Verification",
+          "method": "POST",
+          "url": "http://localhost:8081/api/email-verifications/resend/1",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ],
+          "tests": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('New token created', () => pm.expect(pm.response.json().data.token).to.exist);"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Password Reset",
+      "requests": [
+        {
+          "name": "2.1 Request Password Reset (Public)",
+          "method": "POST",
+          "url": "http://localhost:8081/api/password-resets",
+          "headers": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"email\": \"test@example.com\"\n}"
+          },
+          "tests": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Has token', () => pm.expect(pm.response.json().data.token).to.exist);"
+          ]
+        },
+        {
+          "name": "2.2 Get Password Resets (All)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/password-resets?page=1&limit=10",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ],
+          "tests": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Has pagination', () => pm.expect(pm.response.json().pagination).to.exist);",
+            "pm.test('DESC order', () => {",
+            "  const data = pm.response.json().data;",
+            "  if (data.length > 1) {",
+            "    pm.expect(new Date(data[0].createdAt)).to.be.above(new Date(data[1].createdAt));",
+            "  }",
+            "});"
+          ]
+        },
+        {
+          "name": "2.3 Get Password Resets (Filter by userId)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/password-resets?userId=1",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ]
+        },
+        {
+          "name": "2.4 Get Password Resets (Filter by status=pending)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/password-resets?status=pending",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ]
+        },
+        {
+          "name": "2.5 Reset Password (Public)",
+          "method": "POST",
+          "url": "http://localhost:8081/api/password-resets/reset",
+          "headers": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"NewSecurePassword123\"\n}"
+          },
+          "tests": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Success message', () => pm.expect(pm.response.json().message).to.include('thành công'));"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Audit Logs",
+      "requests": [
+        {
+          "name": "3.1 Get Audit Logs (All)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/audit-logs?page=1&limit=10",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ],
+          "tests": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Has pagination', () => pm.expect(pm.response.json().pagination).to.exist);",
+            "pm.test('DESC order', () => {",
+            "  const data = pm.response.json().data;",
+            "  if (data.length > 1) {",
+            "    pm.expect(new Date(data[0].createdAt)).to.be.above(new Date(data[1].createdAt));",
+            "  }",
+            "});"
+          ]
+        },
+        {
+          "name": "3.2 Get Audit Logs (Filter by userId)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/audit-logs?userId=1",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ]
+        },
+        {
+          "name": "3.3 Get Audit Logs (Filter by action)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/audit-logs?action=CREATE",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ]
+        },
+        {
+          "name": "3.4 Get Audit Logs (Filter by tableName)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/audit-logs?tableName=users",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ]
+        },
+        {
+          "name": "3.5 Get Audit Logs (Filter by date range)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/audit-logs?startDate=2026-01-01&endDate=2026-01-02",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ]
+        },
+        {
+          "name": "3.6 Get Audit Log Detail",
+          "method": "GET",
+          "url": "http://localhost:8081/api/audit-logs/1",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ],
+          "tests": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Has oldData and newData', () => {",
+            "  const data = pm.response.json().data;",
+            "  pm.expect(data).to.have.property('oldData');",
+            "  pm.expect(data).to.have.property('newData');",
+            "});"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Login History",
+      "requests": [
+        {
+          "name": "4.1 Get Login History (All)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/login-history?page=1&limit=10",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ],
+          "tests": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Has pagination', () => pm.expect(pm.response.json().pagination).to.exist);",
+            "pm.test('DESC order by lastUsedAt', () => {",
+            "  const data = pm.response.json().data;",
+            "  if (data.length > 1) {",
+            "    pm.expect(new Date(data[0].lastUsedAt)).to.be.above(new Date(data[1].lastUsedAt));",
+            "  }",
+            "});",
+            "pm.test('Has status field', () => pm.expect(pm.response.json().data[0].status).to.exist);"
+          ]
+        },
+        {
+          "name": "4.2 Get Login History (Filter by userId)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/login-history?userId=1",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ]
+        },
+        {
+          "name": "4.3 Get Login History (Filter by deviceName)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/login-history?deviceName=Chrome",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ]
+        },
+        {
+          "name": "4.4 Get Login History (Filter by isActive)",
+          "method": "GET",
+          "url": "http://localhost:8081/api/login-history?isActive=true",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ]
+        },
+        {
+          "name": "4.5 Get Login History Detail",
+          "method": "GET",
+          "url": "http://localhost:8081/api/login-history/1",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ],
+          "tests": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Has status field', () => pm.expect(pm.response.json().data.status).to.exist);"
+          ]
+        },
+        {
+          "name": "4.6 Revoke Session",
+          "method": "POST",
+          "url": "http://localhost:8081/api/login-history/revoke",
+          "headers": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ],
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"sessionId\": 2\n}"
+          },
+          "tests": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('isActive false', () => pm.expect(pm.response.json().data.isActive).to.be.false);"
+          ]
+        },
+        {
+          "name": "4.7 Revoke All Sessions",
+          "method": "POST",
+          "url": "http://localhost:8081/api/login-history/revoke-all/1",
+          "headers": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ],
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"currentRefreshToken\": \"{{refreshToken}}\"\n}"
+          },
+          "tests": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Has count', () => pm.expect(pm.response.json().message).to.include('sessions'));"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "0. Auth (Get Token First)",
+      "requests": [
+        {
+          "name": "0.1 Login",
+          "method": "POST",
+          "url": "http://localhost:8081/api/auth/login",
+          "headers": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"yourpassword\"\n}"
+          },
+          "tests": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Has accessToken', () => {",
+            "  const token = pm.response.json().data.accessToken;",
+            "  pm.expect(token).to.exist;",
+            "  pm.environment.set('accessToken', token);",
+            "});",
+            "pm.test('Has refreshToken', () => {",
+            "  const token = pm.response.json().data.refreshToken;",
+            "  pm.environment.set('refreshToken', token);",
+            "});"
+          ]
+        },
+        {
+          "name": "0.2 Register (Create Test User)",
+          "method": "POST",
+          "url": "http://localhost:8081/api/auth/register",
+          "headers": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"TestPassword123\",\n  \"fullName\": \"Test User\"\n}"
+          }
+        }
+      ]
+    }
+  ],
+  "notes": "Test collection cho 4 tính năng mới: Email Verification, Password Reset, Audit Logs, Login History. Chạy folder '0. Auth' trước để lấy accessToken."
+}

@@ -8,16 +8,17 @@ const errorHandler = (err, req, res, next) => {
 
   // Zod validation errors
   if (err instanceof ZodError) {
-    const firstError = err.errors[0];
+    const firstError = err.errors?.[0];
     return res.status(400).json({
       success: false,
       data: null,
-      message: firstError.message,
+      message: firstError?.message || "Loi validation",
       errorCode: ERROR_CODES.VALIDATION_ERROR,
-      errors: err.errors.map((e) => ({
-        field: e.path.join("."),
-        message: e.message,
-      })),
+      errors:
+        err.errors?.map((e) => ({
+          field: e.path?.join(".") || "",
+          message: e.message,
+        })) || [],
     });
   }
 

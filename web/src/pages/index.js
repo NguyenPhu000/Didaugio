@@ -1,5 +1,10 @@
 export { default as DashboardPage } from "./DashboardPage";
 export { default as NotFoundPage } from "./NotFoundPage";
 export { default as ProfilePage } from "./ProfilePage";
+export { default as UserManagePage } from "./UserManagePage";
+export { default as EmailVerificationPage } from "./EmailVerificationPage";
+export { default as PasswordResetPage } from "./PasswordResetPage";
+export { default as AuditLogsPage } from "./AuditLogsPage";
+export { default as LoginHistoryPage } from "./LoginHistoryPage";
 export { default as LoginPage } from "./auth/LoginPage";
 export { default as RegisterPage } from "./auth/RegisterPage";

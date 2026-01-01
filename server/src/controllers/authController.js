@@ -1,9 +1,7 @@
 import authService from "../services/authService.js";
 
-// =============================================================================
 // AUTH CONTROLLER
-// Thin controller - chi goi service va tra response
-// =============================================================================
+
 
 /**
  * POST /api/auth/register

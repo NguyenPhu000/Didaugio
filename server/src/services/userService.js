@@ -8,7 +8,7 @@ import {
 } from "../models/index.js";
 
 // =============================================================================
-// CUSTOM ERROR CLASS
+// LỚP LỖI TÙY CHỈNH
 // =============================================================================
 
 export class ServiceError extends Error {
@@ -23,27 +23,45 @@ export class ServiceError extends Error {
   }
 }
 
-// =============================================================================
-// GET ALL USERS
-// =============================================================================
+// LẤY DANH SÁCH NGƯỜI DÙNG
 
 /**
- * Lay danh sach users voi pagination
- * @param {Object} query - Query params tu request
+ * Lấy danh sách users với phân trang
+ * @param {Object} query - Query params từ request
  * @returns {Promise<Object>} - { users, pagination }
  */
 export const getAllUsers = async (query = {}) => {
-  // Validate va parse query params bang Zod
+  // Validate và parse query params bằng Zod
   const { page, limit } = paginationSchema.parse(query);
   const skip = (page - 1) * Math.min(limit, PAGINATION.MAX_LIMIT);
   const take = Math.min(limit, PAGINATION.MAX_LIMIT);
 
-  // Query database
+  // Build where clause for search and filter
+  const where = {
+    deletedAt: null,
+  };
+
+  // Add search condition
+  if (query.search && query.search.trim()) {
+    where.OR = [
+      { email: { contains: query.search.trim(), mode: "insensitive" } },
+      {
+        profile: {
+          fullName: { contains: query.search.trim(), mode: "insensitive" },
+        },
+      },
+    ];
+  }
+
+  // Add role filter
+  if (query.roleId && !isNaN(Number(query.roleId))) {
+    where.roleId = Number(query.roleId);
+  }
+
+  // Truy vấn cơ sở dữ liệu
   const [users, total] = await Promise.all([
     prisma.user.findMany({
-      where: {
-        deletedAt: null,
-      },
+      where,
       select: {
         id: true,
         email: true,
@@ -52,7 +70,16 @@ export const getAllUsers = async (query = {}) => {
         emailVerified: true,
         lastLoginAt: true,
         createdAt: true,
-        // KHONG select password
+        profile: {
+          select: {
+            fullName: true,
+            phone: true,
+            avatar: true,
+            gender: true,
+            address: true,
+          },
+        },
+        // KHÔNG select password
       },
       orderBy: {
         createdAt: "desc",
@@ -61,14 +88,29 @@ export const getAllUsers = async (query = {}) => {
       take,
     }),
     prisma.user.count({
-      where: {
-        deletedAt: null,
-      },
+      where,
     }),
   ]);
 
+  // Transform data to flatten profile
+  const transformedUsers = users.map((user) => ({
+    id: user.id,
+    email: user.email,
+    roleId: user.roleId,
+    status: user.status,
+    isActive: user.status === "active",
+    emailVerified: user.emailVerified,
+    lastLoginAt: user.lastLoginAt,
+    createdAt: user.createdAt,
+    fullName: user.profile?.fullName || null,
+    phone: user.profile?.phone || null,
+    avatar: user.profile?.avatar || null,
+    gender: user.profile?.gender || null,
+    address: user.profile?.address || null,
+  }));
+
   return {
-    users,
+    users: transformedUsers,
     pagination: {
       page,
       limit: take,
@@ -78,21 +120,19 @@ export const getAllUsers = async (query = {}) => {
   };
 };
 
-// =============================================================================
-// GET USER BY ID
-// =============================================================================
+// LẤY NGƯỜI DÙNG THEO ID
 
 /**
- * Lay user theo ID
- * @param {string|number} id - ID cua user
+ * Lấy user theo ID
+ * @param {string|number} id - ID của user
  * @returns {Promise<Object>}
- * @throws {ServiceError} - Neu khong tim thay
+ * @throws {ServiceError} - Nếu không tìm thấy
  */
 export const getUserById = async (id) => {
-  // Validate ID bang Zod
+  // Validate ID bằng Zod
   const userId = idSchema.parse(id);
 
-  // Query database
+  // Truy vấn cơ sở dữ liệu
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -105,33 +145,41 @@ export const getUserById = async (id) => {
       failedLoginCount: true,
       createdAt: true,
       updatedAt: true,
-      // KHONG select password va deletedAt
+      // KHÔNG select password và deletedAt
     },
   });
 
-  // Kiem tra ton tai
+  // Kiểm tra tồn tại
   if (!user) {
-    throw new ServiceError("Khong tim thay user", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      "Không tìm thấy người dùng",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
   }
 
   return user;
 };
 
-// =============================================================================
-// CREATE USER
-// =============================================================================
+// TẠO NGƯỜI DÙNG
 
-/**
- * Tao user moi
- * @param {Object} userData - Du lieu user tu request body
- * @returns {Promise<Object>}
- * @throws {ServiceError} - Neu email da ton tai
- */
 export const createUser = async (userData) => {
-  // Validate input bang Zod (tu dong trim, lowercase email)
-  const { email, password, roleId } = createUserSchema.parse(userData);
+  // Validate input bằng Zod (tự động trim, lowercase email)
+  const validatedData = createUserSchema.parse(userData);
+  const {
+    email,
+    password,
+    roleId,
+    fullName,
+    phone,
+    gender,
+    dateOfBirth,
+    address,
+    provinceCode,
+    districtCode,
+  } = validatedData;
 
-  // Kiem tra email da ton tai
+  // Kiểm tra email đã tồn tại
   const existingUser = await prisma.user.findUnique({
     where: { email },
     select: { id: true },
@@ -139,113 +187,190 @@ export const createUser = async (userData) => {
 
   if (existingUser) {
     throw new ServiceError(
-      "Email da duoc su dung",
+      "Email đã được sử dụng",
       400,
       ERROR_CODES.DUPLICATE_ERROR
     );
   }
 
-  // Hash password truoc khi luu
+  // Hash password trước khi lưu
   const bcrypt = await import("bcrypt");
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  // Tao user
-  const newUser = await prisma.user.create({
-    data: {
-      email,
-      password,
-      roleId,
-      status: USER_STATUS.ACTIVE,
-    },
-    select: {
-      id: true,
-      email: true,
-      roleId: true,
-      status: true,
-      createdAt: true,
-    },
+  // Tạo user và profile trong transaction
+  const newUser = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        roleId,
+        status: USER_STATUS.ACTIVE,
+      },
+      select: {
+        id: true,
+        email: true,
+        roleId: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    // Create profile if profile fields exist
+    const profileData = {
+      fullName,
+      phone,
+      gender,
+      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      address,
+      provinceCode,
+      districtCode,
+    };
+
+    // Remove undefined fields
+    const cleanProfileData = Object.fromEntries(
+      Object.entries(profileData).filter(([_, v]) => v !== undefined)
+    );
+
+    if (Object.keys(cleanProfileData).length > 0) {
+      await tx.userProfile.create({
+        data: {
+          userId: user.id,
+          ...cleanProfileData,
+        },
+      });
+    }
+
+    return user;
   });
 
   return newUser;
 };
 
-// =============================================================================
-// UPDATE USER
-// =============================================================================
+// CẬP NHẬT NGƯỜI DÙNG
 
 /**
- * Cap nhat user
+ * Cập nhật user
  * @param {string|number} id - ID user
- * @param {Object} updateData - Du lieu can cap nhat
+ * @param {Object} updateData - Dữ liệu cần cập nhật
  * @returns {Promise<Object>}
- * @throws {ServiceError} - Neu khong tim thay user
+ * @throws {ServiceError} - Nếu không tìm thấy user
  */
 export const updateUser = async (id, updateData) => {
-  // Validate ID bang Zod
+  // Validate ID bằng Zod
   const userId = idSchema.parse(id);
 
-  // Validate update data bang Zod (strict mode - chi cho phep fields da dinh nghia)
+  // Validate update data bằng Zod
   const validatedData = updateUserSchema.parse(updateData);
 
-  // Kiem tra user ton tai
+  // Kiểm tra user tồn tại
   const existingUser = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, deletedAt: true },
   });
 
   if (!existingUser || existingUser.deletedAt) {
-    throw new ServiceError("Khong tim thay user", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      "Không tìm thấy người dùng",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
   }
 
-  // Cap nhat user
-  const updatedUser = await prisma.user.update({
-    where: { id: userId },
-    data: validatedData,
-    select: {
-      id: true,
-      email: true,
-      roleId: true,
-      status: true,
-      updatedAt: true,
-    },
+  // Tách dữ liệu user và profile
+  const {
+    fullName,
+    phone,
+    gender,
+    dateOfBirth,
+    address,
+    provinceCode,
+    districtCode,
+    password,
+    ...userData
+  } = validatedData;
+
+  // Hash password nếu có
+  if (password) {
+    const bcrypt = await import("bcrypt");
+    userData.password = await bcrypt.hash(password, 10);
+  }
+
+  // Cập nhật user và profile trong transaction
+  const updatedUser = await prisma.$transaction(async (tx) => {
+    // Update user table
+    const user = await tx.user.update({
+      where: { id: userId },
+      data: userData,
+      select: {
+        id: true,
+        email: true,
+        roleId: true,
+        status: true,
+        updatedAt: true,
+      },
+    });
+
+    // Update or create profile if profile fields exist
+    const profileData = {
+      fullName,
+      phone,
+      gender,
+      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      address,
+      provinceCode,
+      districtCode,
+    };
+
+    // Remove undefined fields
+    const cleanProfileData = Object.fromEntries(
+      Object.entries(profileData).filter(([_, v]) => v !== undefined)
+    );
+
+    if (Object.keys(cleanProfileData).length > 0) {
+      await tx.userProfile.upsert({
+        where: { userId },
+        update: cleanProfileData,
+        create: {
+          userId,
+          ...cleanProfileData,
+        },
+      });
+    }
+
+    return user;
   });
 
   return updatedUser;
 };
 
-// =============================================================================
-// DELETE USER (SOFT DELETE)
-// =============================================================================
+// XÓA NGƯỜI DÙNG
 
-/**
- * Xoa mem user (soft delete)
- * @param {string|number} id - ID user
- * @returns {Promise<Object>}
- * @throws {ServiceError} - Neu khong tim thay user
- */
 export const deleteUser = async (id) => {
-  // Validate ID bang Zod
+  // Validate ID bằng Zod
   const userId = idSchema.parse(id);
 
-  // Kiem tra user ton tai
+  // Kiểm tra user tồn tại
   const existingUser = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, deletedAt: true },
   });
 
   if (!existingUser) {
-    throw new ServiceError("Khong tim thay user", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      "Không tìm thấy người dùng",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
   }
 
   if (existingUser.deletedAt) {
     throw new ServiceError(
-      "User da bi xoa truoc do",
+      "Người dùng đã bị xóa trước đó",
       400,
       ERROR_CODES.VALIDATION_ERROR
     );
   }
 
-  // Soft delete
   const deletedUser = await prisma.user.update({
     where: { id: userId },
     data: {

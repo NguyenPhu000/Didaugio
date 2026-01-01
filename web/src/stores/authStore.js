@@ -42,6 +42,8 @@ export const useAuthStore = create(
           isAuthenticated: false,
           isLoading: false,
         });
+        // Clear localStorage explicitly
+        localStorage.removeItem("auth-storage");
       },
 
       // Getters
@@ -69,6 +71,18 @@ export const useAuthStore = create(
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
+      // Skip hydration during SSR
+      skipHydration: false,
+      // Version for migration
+      version: 1,
+      // Migrate function to handle version changes
+      migrate: (persistedState, version) => {
+        // If no version or version 1, return as is
+        if (version === 1) {
+          return persistedState;
+        }
+        return persistedState;
+      },
     }
   )
 );

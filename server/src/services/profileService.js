@@ -1,10 +1,8 @@
 import prisma from "../config/prismaClient.js";
 import { updateProfileSchema } from "../models/schemas/authSchema.js";
 
-// =============================================================================
 // PROFILE SERVICE
 // Quản lý thông tin profile người dùng
-// =============================================================================
 
 class ServiceError extends Error {
   constructor(message, statusCode = 400, errorCode = "SERVICE_ERROR") {

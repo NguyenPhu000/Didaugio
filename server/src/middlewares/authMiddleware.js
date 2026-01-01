@@ -1,11 +1,6 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "didaugio-secret-key-2026";
-
-// =============================================================================
-// AUTH MIDDLEWARE
-// Verify JWT token va attach user info vao request
-// =============================================================================
+const JWT_SECRET = process.env.JWT_SECRET;
 
 /**
  * Middleware xac thuc token
@@ -65,7 +60,7 @@ export const authenticate = (req, res, next) => {
 /**
  * Middleware kiem tra quyen (role)
  * Su dung sau authenticate middleware
- * @param {number[]} allowedRoles - Danh sach roleId duoc phep
+//  * @param {number[]} allowedRoles - Danh sach roleId duoc phep
  */
 export const authorize = (allowedRoles) => {
   return (req, res, next) => {

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { useEffect } from "react";
 import { ProtectedRoute, AdminLayout } from "@/components/layout";
 import { ROLES } from "@/config/constants";
 import {
@@ -7,10 +8,40 @@ import {
   LoginPage,
   RegisterPage,
   ProfilePage,
+  UserManagePage,
+  EmailVerificationPage,
+  PasswordResetPage,
+  AuditLogsPage,
+  LoginHistoryPage,
   NotFoundPage,
 } from "@/pages";
+import { useAuthStore } from "@/stores/authStore";
 
 function App() {
+  // Ensure auth state is restored on app mount
+  useEffect(() => {
+    const storedAuth = localStorage.getItem("auth-storage");
+    if (storedAuth) {
+      try {
+        const { state } = JSON.parse(storedAuth);
+        // Check if we have valid auth data
+        if (
+          state?.accessToken &&
+          state?.user &&
+          !useAuthStore.getState().isAuthenticated
+        ) {
+          useAuthStore.setState({
+            user: state.user,
+            accessToken: state.accessToken,
+            refreshToken: state.refreshToken,
+            isAuthenticated: state.isAuthenticated || true,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to restore auth:", error);
+      }
+    }
+  }, []);
   return (
     <BrowserRouter>
       {/* Toast notifications */}
@@ -83,6 +114,66 @@ function App() {
             <ProtectedRoute>
               <AdminLayout>
                 <ProfilePage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* User Management - Only Admin & Super Admin */}
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <AdminLayout>
+                <UserManagePage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Email Verification Management - Only Admin & Super Admin */}
+        <Route
+          path="/email-verifications"
+          element={
+            <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <AdminLayout>
+                <EmailVerificationPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Password Reset Management - Only Admin & Super Admin */}
+        <Route
+          path="/password-resets"
+          element={
+            <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <AdminLayout>
+                <PasswordResetPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Audit Logs - Only Admin & Super Admin */}
+        <Route
+          path="/audit-logs"
+          element={
+            <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <AdminLayout>
+                <AuditLogsPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Login History - Only Admin & Super Admin */}
+        <Route
+          path="/login-history"
+          element={
+            <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <AdminLayout>
+                <LoginHistoryPage />
               </AdminLayout>
             </ProtectedRoute>
           }

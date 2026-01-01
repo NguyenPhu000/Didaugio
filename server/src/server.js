@@ -5,6 +5,10 @@ import dotenv from "dotenv";
 import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
+import auditLogRoutes from "./routes/auditLogRoutes.js";
+import emailVerificationRoutes from "./routes/emailVerificationRoutes.js";
+import passwordResetRoutes from "./routes/passwordResetRoutes.js";
+import loginHistoryRoutes from "./routes/loginHistoryRoutes.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import prisma from "./config/prismaClient.js";
 
@@ -23,6 +27,10 @@ app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/audit-logs", auditLogRoutes);
+app.use("/api/email-verifications", emailVerificationRoutes);
+app.use("/api/password-resets", passwordResetRoutes);
+app.use("/api/login-history", loginHistoryRoutes);
 app.use("/api", userRoutes);
 
 // Error Handling Middleware

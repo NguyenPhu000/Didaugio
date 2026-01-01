@@ -14,6 +14,10 @@ import {
   ChevronRight,
   ChevronsUpDown,
   ChevronLeft,
+  Mail,
+  Key,
+  FileText,
+  Monitor,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -106,6 +110,26 @@ const menuData = {
         { title: "Roles", url: "/roles" },
         { title: "Permissions", url: "/permissions" },
       ],
+    },
+    {
+      title: "Xác thực Email",
+      icon: Mail,
+      url: "/email-verifications",
+    },
+    {
+      title: "Reset Mật khẩu",
+      icon: Key,
+      url: "/password-resets",
+    },
+    {
+      title: "Lịch sử hoạt động",
+      icon: FileText,
+      url: "/audit-logs",
+    },
+    {
+      title: "Lịch sử đăng nhập",
+      icon: Monitor,
+      url: "/login-history",
     },
   ],
   reports: [

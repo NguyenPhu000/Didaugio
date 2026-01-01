@@ -8,6 +8,10 @@ import {
   MapPin,
   Users,
   Settings,
+  Mail,
+  Key,
+  FileText,
+  Monitor,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -39,6 +43,10 @@ const Navbar = () => {
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Dia diem", path: "/places", icon: MapPin },
     { label: "Nguoi dung", path: "/users", icon: Users },
+    { label: "Email Verif.", path: "/email-verifications", icon: Mail },
+    { label: "Password Reset", path: "/password-resets", icon: Key },
+    { label: "Audit Logs", path: "/audit-logs", icon: FileText },
+    { label: "Login History", path: "/login-history", icon: Monitor },
     { label: "Cai dat", path: "/settings", icon: Settings },
   ];
 

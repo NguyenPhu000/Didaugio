@@ -4,14 +4,9 @@ import { authenticate } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// =============================================================================
 // AUTH ROUTES
-// Hệ thống xác thực JWT hoàn chỉnh
-// =============================================================================
 
-// -----------------------------------------------------------------------------
 // PUBLIC ROUTES (không cần đăng nhập)
-// -----------------------------------------------------------------------------
 
 // Đăng ký
 router.post("/register", authController.register);
@@ -31,9 +26,7 @@ router.post("/reset-password", authController.resetPassword);
 // Xác thực email (từ link email)
 router.post("/verify-email", authController.verifyEmail);
 
-// -----------------------------------------------------------------------------
 // PROTECTED ROUTES (cần đăng nhập)
-// -----------------------------------------------------------------------------
 
 // Lấy thông tin user hiện tại
 router.get("/me", authenticate, authController.getMe);
