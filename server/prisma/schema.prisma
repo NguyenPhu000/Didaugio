@@ -1,0 +1,799 @@
+// =============================================================================
+// PRISMA SCHEMA - DU AN "DI DAU GIO?"
+// Tong so bang: 35
+// Cap nhat: 01/01/2026
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// NHOM 2: BAO MAT & PHAN QUYEN (Security & IAM) - 6 bang
+// =============================================================================
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  displayName String   @map("display_name")
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  displayName String   @map("display_name")
+  module      String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           Int      @id @default(autoincrement())
+  roleId       Int      @map("role_id")
+  permissionId Int      @map("permission_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id               Int       @id @default(autoincrement())
+  email            String    @unique
+  password         String
+  roleId           Int       @default(5) @map("role_id")
+  status           String    @default("active")
+  emailVerified    Boolean   @default(false) @map("email_verified")
+  lastLoginAt      DateTime? @map("last_login_at")
+  failedLoginCount Int       @default(0) @map("failed_login_count")
+  lockedUntil      DateTime? @map("locked_until")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  role     Role          @relation(fields: [roleId], references: [id])
+  profile  UserProfile?
+  sessions UserSession[]
+
+  business           Business?
+  places             Place[]            @relation("CreatedBy")
+  approvedPlaces     Place[]            @relation("ApprovedBy")
+  reviews            Review[]
+  reviewReplies      ReviewReply[]
+  favorites          Favorite[]
+  checkins           UserCheckin[]
+  trips              Trip[]
+  aiPromptHistories  AiPromptHistory[]
+  bookings           Booking[]
+  payments           Payment[]
+  auditLogs          AuditLog[]
+  feedbackReports    FeedbackReport[]   @relation("Reporter")
+  resolvedReports    FeedbackReport[]   @relation("Resolver")
+  banners            BannerMarketing[]
+  notifications      NotificationGlobal[]
+  systemConfigs      SystemConfig[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id                   Int       @id @default(autoincrement())
+  userId               Int       @unique @map("user_id")
+  fullName             String?   @map("full_name")
+  phone                String?
+  avatar               String?   @db.Text
+  dateOfBirth          DateTime? @map("date_of_birth") @db.Date
+  gender               String?
+  address              String?
+  provinceCode         String?   @map("province_code")
+  districtCode         String?   @map("district_code")
+  bio                  String?   @db.Text
+  travelPreferences    Json?     @map("travel_preferences")
+  notificationSettings Json      @default("{}") @map("notification_settings")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model UserSession {
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  refreshToken String    @unique @map("refresh_token")
+  deviceId     String?   @map("device_id")
+  deviceName   String?   @map("device_name")
+  ipAddress    String?   @map("ip_address")
+  pushToken    String?   @map("push_token")
+  isActive     Boolean   @default(true) @map("is_active")
+  lastUsedAt   DateTime  @default(now()) @map("last_used_at")
+  expiresAt    DateTime  @map("expires_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+// =============================================================================
+// NHOM 1: QUAN TRI HE THONG (Admin & System) - 6 bang
+// =============================================================================
+
+model SystemConfig {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       Json
+  description String?
+  updatedBy   Int      @map("updated_by")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  updatedByUser User @relation(fields: [updatedBy], references: [id])
+
+  @@map("system_configs")
+}
+
+model ApiKeyManagement {
+  id           Int       @id @default(autoincrement())
+  serviceName  String    @map("service_name")
+  apiKey       String    @unique @map("api_key")
+  monthlyLimit Int       @default(1000) @map("monthly_limit")
+  currentUsage Int       @default(0) @map("current_usage")
+  resetDay     Int       @default(1) @map("reset_day")
+  status       String    @default("active")
+  expiresAt    DateTime? @map("expires_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@map("api_keys_management")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  action    String
+  tableName String   @map("table_name")
+  recordId  Int      @map("record_id")
+  oldData   Json?    @map("old_data")
+  newData   Json?    @map("new_data")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([tableName, recordId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model FeedbackReport {
+  id         Int       @id @default(autoincrement())
+  reporterId Int?      @map("reporter_id")
+  reportType String    @map("report_type")
+  targetType String?   @map("target_type")
+  targetId   Int?      @map("target_id")
+  title      String
+  content    String    @db.Text
+  screenshot String?   @db.Text
+  status     String    @default("pending")
+  adminNote  String?   @map("admin_note") @db.Text
+  resolvedBy Int?      @map("resolved_by")
+  resolvedAt DateTime? @map("resolved_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  reporter     User? @relation("Reporter", fields: [reporterId], references: [id])
+  resolvedUser User? @relation("Resolver", fields: [resolvedBy], references: [id])
+
+  @@map("feedback_reports")
+}
+
+model BannerMarketing {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  imageData   String   @map("image_data") @db.Text
+  linkType    String   @default("none") @map("link_type")
+  linkValue   String?  @map("link_value")
+  position    String   @default("home")
+  priority    Int      @default(0)
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  isActive    Boolean  @default(true) @map("is_active")
+  clickCount  Int      @default(0) @map("click_count")
+  viewCount   Int      @default(0) @map("view_count")
+  createdBy   Int      @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  createdByUser User @relation(fields: [createdBy], references: [id])
+
+  @@map("banners_marketing")
+}
+
+model NotificationGlobal {
+  id           Int       @id @default(autoincrement())
+  title        String
+  body         String    @db.Text
+  imageUrl     String?   @map("image_url")
+  data         Json?
+  targetType   String    @default("all") @map("target_type")
+  targetValue  Json?     @map("target_value")
+  scheduledAt  DateTime? @map("scheduled_at")
+  sentAt       DateTime? @map("sent_at")
+  status       String    @default("draft")
+  successCount Int       @default(0) @map("success_count")
+  failCount    Int       @default(0) @map("fail_count")
+  createdBy    Int       @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  createdByUser User @relation(fields: [createdBy], references: [id])
+
+  @@map("notifications_global")
+}
+
+// =============================================================================
+// NHOM 3: DIA LY & DANH MUC (Geography & Category) - 4 bang
+// =============================================================================
+
+model DistrictCantho {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  code        String   @unique
+  latitude    Decimal  @db.Decimal(10, 7)
+  longitude   Decimal  @db.Decimal(10, 7)
+  boundary    Json?
+  description String?  @db.Text
+  thumbnail   String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+
+  wards  WardCantho[]
+  places Place[]
+
+  @@map("districts_cantho")
+}
+
+model WardCantho {
+  id         Int      @id @default(autoincrement())
+  districtId Int      @map("district_id")
+  name       String
+  code       String   @unique
+  wardType   String   @map("ward_type")
+  latitude   Decimal? @db.Decimal(10, 7)
+  longitude  Decimal? @db.Decimal(10, 7)
+  isActive   Boolean  @default(true) @map("is_active")
+
+  district DistrictCantho @relation(fields: [districtId], references: [id])
+  places   Place[]
+
+  @@unique([districtId, name])
+  @@map("wards_cantho")
+}
+
+model Category {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  slug        String     @unique
+  icon        String?
+  color       String     @default("#3B82F6")
+  description String?    @db.Text
+  thumbnail   String?    @db.Text
+  parentId    Int?       @map("parent_id")
+  order       Int        @default(0)
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  places   Place[]
+
+  @@index([slug])
+  @@map("categories")
+}
+
+model PlaceTag {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  slug       String   @unique
+  tagType    String   @default("general") @map("tag_type")
+  icon       String?
+  color      String   @default("#6B7280")
+  usageCount Int      @default(0) @map("usage_count")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  placeTagLinks PlaceTagLink[]
+
+  @@map("place_tags")
+}
+
+// =============================================================================
+// NHOM 4: NOI DUNG DIA DIEM (Place Content) - 5 bang
+// =============================================================================
+
+model Place {
+  id               Int       @id @default(autoincrement())
+  businessId       Int?      @map("business_id")
+  categoryId       Int       @map("category_id")
+  districtId       Int       @map("district_id")
+  wardId           Int?      @map("ward_id")
+  name             String
+  slug             String    @unique
+  description      String?   @db.Text
+  shortDescription String?   @map("short_description")
+  address          String
+  latitude         Decimal   @db.Decimal(10, 7)
+  longitude        Decimal   @db.Decimal(10, 7)
+  phone            String?
+  email            String?
+  website          String?
+  facebook         String?
+  priceRange       String?   @map("price_range")
+  priceFrom        Int?      @map("price_from")
+  priceTo          Int?      @map("price_to")
+  thumbnail        String?   @db.Text
+  ratingAvg        Decimal   @default(0.0) @map("rating_avg") @db.Decimal(2, 1)
+  ratingCount      Int       @default(0) @map("rating_count")
+  viewCount        Int       @default(0) @map("view_count")
+  favoriteCount    Int       @default(0) @map("favorite_count")
+  checkinCount     Int       @default(0) @map("checkin_count")
+  isVerified       Boolean   @default(false) @map("is_verified")
+  isFeatured       Boolean   @default(false) @map("is_featured")
+  status           String    @default("pending")
+  rejectionReason  String?   @map("rejection_reason") @db.Text
+  approvedBy       Int?      @map("approved_by")
+  approvedAt       DateTime? @map("approved_at")
+  createdBy        Int       @map("created_by")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  business         Business?          @relation(fields: [businessId], references: [id])
+  category         Category           @relation(fields: [categoryId], references: [id])
+  district         DistrictCantho     @relation(fields: [districtId], references: [id])
+  ward             WardCantho?        @relation(fields: [wardId], references: [id])
+  approvedByUser   User?              @relation("ApprovedBy", fields: [approvedBy], references: [id])
+  createdByUser    User               @relation("CreatedBy", fields: [createdBy], references: [id])
+  images           PlaceImage[]
+  openingHours     PlaceOpeningHour[]
+  amenities        PlaceAmenity[]
+  tagLinks         PlaceTagLink[]
+  reviews          Review[]
+  favorites        Favorite[]
+  checkins         UserCheckin[]
+  tripDestinations TripDestination[]
+  businessServices BusinessService[]
+
+  @@index([categoryId])
+  @@index([districtId])
+  @@index([status])
+  @@index([latitude, longitude])
+  @@index([ratingAvg(sort: Desc)])
+  @@index([slug])
+  @@map("places")
+}
+
+model PlaceImage {
+  id         Int      @id @default(autoincrement())
+  placeId    Int      @map("place_id")
+  imageData  String   @map("image_data") @db.Text
+  caption    String?
+  order      Int      @default(0)
+  isCover    Boolean  @default(false) @map("is_cover")
+  uploadedBy Int      @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@map("place_images")
+}
+
+model PlaceOpeningHour {
+  id         Int     @id @default(autoincrement())
+  placeId    Int     @map("place_id")
+  dayOfWeek  Int     @map("day_of_week")
+  isClosed   Boolean @default(false) @map("is_closed")
+  openTime   String? @map("open_time")
+  closeTime  String? @map("close_time")
+  breakStart String? @map("break_start")
+  breakEnd   String? @map("break_end")
+  note       String?
+
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@unique([placeId, dayOfWeek])
+  @@map("place_opening_hours")
+}
+
+model PlaceAmenity {
+  id           Int     @id @default(autoincrement())
+  placeId      Int     @map("place_id")
+  amenityType  String  @map("amenity_type")
+  amenityValue String? @map("amenity_value")
+  icon         String?
+
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@unique([placeId, amenityType])
+  @@map("place_amenities")
+}
+
+model PlaceTagLink {
+  id        Int      @id @default(autoincrement())
+  placeId   Int      @map("place_id")
+  tagId     Int      @map("tag_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  place Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  tag   PlaceTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([placeId, tagId])
+  @@map("place_tags_link")
+}
+
+// =============================================================================
+// NHOM 5: TUONG TAC XA HOI (Social Interaction) - 5 bang
+// =============================================================================
+
+model Review {
+  id                 Int       @id @default(autoincrement())
+  placeId            Int       @map("place_id")
+  userId             Int       @map("user_id")
+  bookingId          Int?      @map("booking_id")
+  rating             Int
+  title              String?
+  content            String?   @db.Text
+  visitDate          DateTime? @map("visit_date") @db.Date
+  visitType          String?   @map("visit_type")
+  pros               Json?
+  cons               Json?
+  helpfulCount       Int       @default(0) @map("helpful_count")
+  status             String    @default("visible")
+  isVerifiedPurchase Boolean   @default(false) @map("is_verified_purchase")
+  adminNote          String?   @map("admin_note") @db.Text
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
+
+  place   Place         @relation(fields: [placeId], references: [id])
+  user    User          @relation(fields: [userId], references: [id])
+  booking Booking?      @relation(fields: [bookingId], references: [id])
+  media   ReviewMedia[]
+  replies ReviewReply[]
+
+  @@unique([placeId, userId])
+  @@index([placeId])
+  @@index([userId])
+  @@index([rating])
+  @@map("reviews")
+}
+
+model ReviewMedia {
+  id        Int      @id @default(autoincrement())
+  reviewId  Int      @map("review_id")
+  mediaData String   @map("media_data") @db.Text
+  mediaType String   @default("image") @map("media_type")
+  caption   String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@map("review_media")
+}
+
+model ReviewReply {
+  id        Int      @id @default(autoincrement())
+  reviewId  Int      @map("review_id")
+  userId    Int      @map("user_id")
+  content   String   @db.Text
+  status    String   @default("visible")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("review_replies")
+}
+
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  placeId   Int      @map("place_id")
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, placeId])
+  @@map("favorites")
+}
+
+model UserCheckin {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  placeId   Int      @map("place_id")
+  latitude  Decimal  @db.Decimal(10, 7)
+  longitude Decimal  @db.Decimal(10, 7)
+  distance  Int?
+  photo     String?  @db.Text
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@map("user_checkins")
+}
+
+// =============================================================================
+// NHOM 6: HANH TRINH & AI (AI Planning) - 4 bang
+// =============================================================================
+
+model Trip {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @map("user_id")
+  title          String
+  description    String?   @db.Text
+  thumbnail      String?   @db.Text
+  startDate      DateTime? @map("start_date") @db.Date
+  endDate        DateTime? @map("end_date") @db.Date
+  totalDays      Int       @default(1) @map("total_days")
+  totalDistance  Decimal?  @map("total_distance") @db.Decimal(10, 2)
+  estimatedCost  Int?      @map("estimated_cost")
+  travelStyle    String?   @map("travel_style")
+  groupSize      Int       @default(1) @map("group_size")
+  isAiGenerated  Boolean   @default(false) @map("is_ai_generated")
+  aiPrompt       String?   @map("ai_prompt") @db.Text
+  status         String    @default("draft")
+  isPublic       Boolean   @default(false) @map("is_public")
+  viewCount      Int       @default(0) @map("view_count")
+  cloneCount     Int       @default(0) @map("clone_count")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  destinations TripDestination[]
+  shares       TripShare[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("trips")
+}
+
+model TripDestination {
+  id              Int       @id @default(autoincrement())
+  tripId          Int       @map("trip_id")
+  placeId         Int       @map("place_id")
+  dayNumber       Int       @map("day_number")
+  order           Int
+  startTime       String?   @map("start_time")
+  endTime         String?   @map("end_time")
+  durationMinutes Int?      @map("duration_minutes")
+  note            String?   @db.Text
+  transportToNext String?   @map("transport_to_next")
+  distanceToNext  Decimal?  @map("distance_to_next") @db.Decimal(10, 2)
+  estimatedCost   Int?      @map("estimated_cost")
+  status          String    @default("planned")
+  visitedAt       DateTime? @map("visited_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  trip  Trip  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  place Place @relation(fields: [placeId], references: [id])
+
+  @@map("trip_destinations")
+}
+
+model AiPromptHistory {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  promptType     String   @map("prompt_type")
+  promptText     String   @map("prompt_text") @db.Text
+  contextData    Json?    @map("context_data")
+  responseText   String?  @map("response_text") @db.Text
+  responseParsed Json?    @map("response_parsed")
+  modelUsed      String?  @map("model_used")
+  tokensUsed     Int?     @map("tokens_used")
+  responseTimeMs Int?     @map("response_time_ms")
+  isSuccessful   Boolean  @default(true) @map("is_successful")
+  errorMessage   String?  @map("error_message") @db.Text
+  rating         Int?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ai_prompt_history")
+}
+
+model TripShare {
+  id          Int       @id @default(autoincrement())
+  tripId      Int       @map("trip_id")
+  shareCode   String    @unique @map("share_code")
+  shareType   String    @default("view") @map("share_type")
+  password    String?
+  expiresAt   DateTime? @map("expires_at")
+  maxAccess   Int?      @map("max_access")
+  accessCount Int       @default(0) @map("access_count")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("trip_shares")
+}
+
+// =============================================================================
+// NHOM 7: KINH DOANH & THANH TOAN (Commerce) - 5 bang
+// =============================================================================
+
+model Business {
+  id              Int       @id @default(autoincrement())
+  ownerId         Int       @unique @map("owner_id")
+  businessName    String    @map("business_name")
+  businessType    String    @map("business_type")
+  taxCode         String?   @map("tax_code")
+  idCardNumber    String?   @map("id_card_number")
+  idCardFront     String?   @map("id_card_front") @db.Text
+  idCardBack      String?   @map("id_card_back") @db.Text
+  businessLicense String?   @map("business_license") @db.Text
+  bankName        String?   @map("bank_name")
+  bankAccount     String?   @map("bank_account")
+  bankOwner       String?   @map("bank_owner")
+  contractSigned  Boolean   @default(false) @map("contract_signed")
+  commissionRate  Decimal   @default(10.00) @map("commission_rate") @db.Decimal(4, 2)
+  status          String    @default("pending")
+  rejectionReason String?   @map("rejection_reason") @db.Text
+  approvedBy      Int?      @map("approved_by")
+  approvedAt      DateTime? @map("approved_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  owner    User              @relation(fields: [ownerId], references: [id])
+  places   Place[]
+  services BusinessService[]
+  vouchers Voucher[]
+
+  @@map("businesses")
+}
+
+model BusinessService {
+  id              Int      @id @default(autoincrement())
+  businessId      Int      @map("business_id")
+  placeId         Int      @map("place_id")
+  name            String
+  description     String?  @db.Text
+  serviceType     String   @map("service_type")
+  price           Int
+  salePrice       Int?     @map("sale_price")
+  unit            String   @default("luot")
+  durationMinutes Int?     @map("duration_minutes")
+  maxCapacity     Int?     @map("max_capacity")
+  thumbnail       String?  @db.Text
+  images          Json?
+  includes        Json?
+  excludes        Json?
+  terms           String?  @db.Text
+  isActive        Boolean  @default(true) @map("is_active")
+  bookingCount    Int      @default(0) @map("booking_count")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  place    Place     @relation(fields: [placeId], references: [id])
+  bookings Booking[]
+
+  @@map("business_services")
+}
+
+model Voucher {
+  id                 Int       @id @default(autoincrement())
+  businessId         Int?      @map("business_id")
+  code               String    @unique
+  name               String
+  description        String?   @db.Text
+  discountType       String    @map("discount_type")
+  discountValue      Int       @map("discount_value")
+  minOrderValue      Int       @default(0) @map("min_order_value")
+  maxDiscount        Int?      @map("max_discount")
+  usageLimit         Int?      @map("usage_limit")
+  usageCount         Int       @default(0) @map("usage_count")
+  perUserLimit       Int       @default(1) @map("per_user_limit")
+  applicableServices Json?     @map("applicable_services")
+  startDate          DateTime  @map("start_date")
+  endDate            DateTime  @map("end_date")
+  isActive           Boolean   @default(true) @map("is_active")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  business Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@map("vouchers")
+}
+
+model Booking {
+  id               Int       @id @default(autoincrement())
+  bookingCode      String    @unique @map("booking_code")
+  userId           Int       @map("user_id")
+  serviceId        Int       @map("service_id")
+  quantity         Int       @default(1)
+  useDate          DateTime  @map("use_date") @db.Date
+  useTime          String?   @map("use_time")
+  guestName        String    @map("guest_name")
+  guestPhone       String    @map("guest_phone")
+  guestEmail       String?   @map("guest_email")
+  guestNote        String?   @map("guest_note") @db.Text
+  originalPrice    Int       @map("original_price")
+  discountAmount   Int       @default(0) @map("discount_amount")
+  voucherId        Int?      @map("voucher_id")
+  finalPrice       Int       @map("final_price")
+  commissionAmount Int       @default(0) @map("commission_amount")
+  paymentStatus    String    @default("unpaid") @map("payment_status")
+  status           String    @default("pending")
+  cancelReason     String?   @map("cancel_reason") @db.Text
+  cancelledBy      String?   @map("cancelled_by")
+  cancelledAt      DateTime? @map("cancelled_at")
+  confirmedAt      DateTime? @map("confirmed_at")
+  completedAt      DateTime? @map("completed_at")
+  businessNote     String?   @map("business_note") @db.Text
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  user    User            @relation(fields: [userId], references: [id])
+  service BusinessService @relation(fields: [serviceId], references: [id])
+  voucher Voucher?        @relation(fields: [voucherId], references: [id])
+  payment Payment?
+  reviews Review[]
+
+  @@index([userId])
+  @@index([serviceId])
+  @@index([status])
+  @@index([useDate])
+  @@map("bookings")
+}
+
+model Payment {
+  id             Int       @id @default(autoincrement())
+  bookingId      Int       @unique @map("booking_id")
+  userId         Int       @map("user_id")
+  amount         Int
+  currency       String    @default("VND")
+  paymentMethod  String    @map("payment_method")
+  transactionId  String?   @map("transaction_id")
+  transactionRef String?   @map("transaction_ref")
+  bankCode       String?   @map("bank_code")
+  paymentData    Json?     @map("payment_data")
+  status         String    @default("pending")
+  paidAt         DateTime? @map("paid_at")
+  refundAmount   Int?      @map("refund_amount")
+  refundedAt     DateTime? @map("refunded_at")
+  refundReason   String?   @map("refund_reason") @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@map("payments")
+}
