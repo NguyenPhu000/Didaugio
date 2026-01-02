@@ -98,10 +98,7 @@ const menuData = {
     {
       title: "Người dùng",
       icon: Users,
-      items: [
-        { title: "Tất cả người dùng", url: "/users" },
-        { title: "Thêm người dùng", url: "/users/new" },
-      ],
+      items: [{ title: "Tất cả người dùng", url: "/users" }],
     },
     {
       title: "Phân quyền",

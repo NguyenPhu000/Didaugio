@@ -58,6 +58,11 @@ export const getAllUsers = async (query = {}) => {
     where.roleId = Number(query.roleId);
   }
 
+  // Add status filter
+  if (query.status && query.status.trim()) {
+    where.status = query.status.trim();
+  }
+
   // Truy vấn cơ sở dữ liệu
   const [users, total] = await Promise.all([
     prisma.user.findMany({
@@ -77,6 +82,9 @@ export const getAllUsers = async (query = {}) => {
             avatar: true,
             gender: true,
             address: true,
+            dateOfBirth: true,
+            provinceCode: true,
+            districtCode: true,
           },
         },
         // KHÔNG select password
@@ -107,10 +115,15 @@ export const getAllUsers = async (query = {}) => {
     avatar: user.profile?.avatar || null,
     gender: user.profile?.gender || null,
     address: user.profile?.address || null,
+    dateOfBirth: user.profile?.dateOfBirth || null,
+    provinceCode: user.profile?.provinceCode || null,
+    districtCode: user.profile?.districtCode || null,
   }));
 
   return {
     users: transformedUsers,
+    total,
+    totalPages: Math.ceil(total / take),
     pagination: {
       page,
       limit: take,

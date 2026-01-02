@@ -1,12 +1,14 @@
 import api from "@/config/api";
 
 /**
- * Email Verification Service
- * Quản lý xác thực email
+ * Email Verification Service - ADMIN ONLY
+ * Chỉ dùng để admin xem danh sách và quản lý email verifications
+ *
+ * Note: End-user sử dụng authService.verifyEmail() và authService.resendVerification()
  */
 export const emailVerificationService = {
   /**
-   * Lấy danh sách email verifications
+   * Lấy danh sách email verifications (Admin only)
    * @param {Object} params - Query params (page, limit, userId, status)
    * @returns {Promise}
    */
@@ -16,32 +18,12 @@ export const emailVerificationService = {
   },
 
   /**
-   * Tạo email verification token mới
+   * Tạo email verification token mới (Admin manual trigger)
    * @param {Object} data - { userId, email }
    * @returns {Promise}
    */
   create: async (data) => {
     const response = await api.post("/email-verifications", data);
-    return response;
-  },
-
-  /**
-   * Xác thực email với token
-   * @param {string} token - Verification token
-   * @returns {Promise}
-   */
-  verify: async (token) => {
-    const response = await api.post("/email-verifications/verify", { token });
-    return response;
-  },
-
-  /**
-   * Gửi lại email verification
-   * @param {number} userId - User ID
-   * @returns {Promise}
-   */
-  resend: async (userId) => {
-    const response = await api.post(`/email-verifications/resend/${userId}`);
     return response;
   },
 

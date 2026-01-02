@@ -1,7 +1,6 @@
-// Shadcn/ui Components
-export { Button, buttonVariants } from "./Button";
-export { Input } from "./Input";
-export { Spinner } from "./Spinner";
+export { Button, buttonVariants } from "./button";
+export { Input } from "./input";
+export { Spinner } from "./spinner";
 export {
   Card,
   CardHeader,
@@ -9,11 +8,12 @@ export {
   CardTitle,
   CardDescription,
   CardContent,
-} from "./Card";
-export { Label } from "./Label";
-export { Separator } from "./Separator";
-export { Avatar, AvatarImage, AvatarFallback } from "./Avatar";
-export { Tabs, TabsList, TabsTrigger, TabsContent } from "./Tabs";
+} from "./card";
+export { Label } from "./label";
+export { Separator } from "./separator";
+export { Skeleton } from "./skeleton";
+export { Avatar, AvatarImage, AvatarFallback } from "./avatar";
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";
 export {
   Dialog,
   DialogPortal,
@@ -25,7 +25,7 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
-} from "./Dialog";
+} from "./dialog";
 export {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -42,4 +42,4 @@ export {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuRadioGroup,
-} from "./DropdownMenu";
+} from "./dropdown-menu";

@@ -298,7 +298,8 @@ const EmailVerificationPage = () => {
                         <td className="px-4 py-3 text-center">
                           {!verification.verifiedAt ? (
                             <div className="flex gap-2 justify-center">
-                              {new Date(verification.expiresAt) > new Date() && (
+                              {new Date(verification.expiresAt) >
+                                new Date() && (
                                 <Button
                                   size="sm"
                                   variant="outline"

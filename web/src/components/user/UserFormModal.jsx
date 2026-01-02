@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,23 +12,23 @@ import {
   Input,
   Label,
 } from "@/components/ui";
-import { ROLES, ROLE_NAMES } from "@/config/constants";
+import { ROLES } from "@/config/constants";
 import ProvinceDistrictSelect from "@/components/common/ProvinceDistrictSelect";
 
+// Validation schema
 const userFormSchema = z.object({
-  email: z.string().email("Email không hợp lệ"),
-  fullName: z.string().min(2, "Họ tên phải có ít nhất 2 ký tự").optional(),
+  email: z
+    .string()
+    .min(1, "Email không được để trống")
+    .email("Email không hợp lệ"),
+  fullName: z.string().optional(),
   phone: z
     .string()
-    .regex(/^[0-9]{10,11}$/, "Số điện thoại không hợp lệ")
+    .regex(/^[0-9]{10,11}$/, "Số điện thoại phải có 10-11 chữ số")
     .optional()
     .or(z.literal("")),
   roleId: z.coerce.number().int().positive("Vui lòng chọn vai trò"),
-  password: z
-    .string()
-    .min(6, "Mật khẩu phải có ít nhất 6 ký tự")
-    .optional()
-    .or(z.literal("")),
+  password: z.string().optional(),
   gender: z.enum(["male", "female", "other"]).optional(),
   address: z.string().optional(),
   dateOfBirth: z.string().optional(),
@@ -45,7 +44,6 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
     register,
     handleSubmit,
     reset,
-    control,
     watch,
     setValue,
     formState: { errors },
@@ -55,7 +53,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
       email: "",
       fullName: "",
       phone: "",
-      roleId: ROLES.CUSTOMER,
+      roleId: ROLES.GUEST,
       password: "",
       gender: "male",
       address: "",
@@ -68,61 +66,93 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
   const provinceCode = watch("provinceCode");
   const districtCode = watch("districtCode");
 
-  // Reset form when user changes
-  useEffect(() => {
-    if (user) {
-      reset({
-        email: user.email || "",
-        fullName: user.fullName || "",
-        phone: user.phone || "",
-        roleId: user.roleId || ROLES.CUSTOMER,
-        password: "",
-        gender: user.gender || "male",
-        address: user.address || "",
-        dateOfBirth: user.dateOfBirth
-          ? new Date(user.dateOfBirth).toISOString().split("T")[0]
-          : "",
-        provinceCode: user.provinceCode || "",
-        districtCode: user.districtCode || "",
-      });
-    } else {
-      reset({
-        email: "",
-        fullName: "",
-        phone: "",
-        roleId: ROLES.CUSTOMER,
-        password: "",
-        gender: "male",
-        address: "",
-        dateOfBirth: "",
-        provinceCode: "",
-        districtCode: "",
-      });
+  // Helper: Format date from ISO to YYYY-MM-DD for input
+  const formatDateForInput = (dateValue) => {
+    if (!dateValue) return "";
+    try {
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) return "";
+      // Format as YYYY-MM-DD
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    } catch {
+      return "";
     }
-  }, [user, reset]);
+  };
+
+  // Reset form when modal opens/closes or user changes
+  useEffect(() => {
+    if (open) {
+      if (user) {
+        // Edit mode - populate form with user data
+        // Backend returns flattened profile data at root level
+        reset({
+          email: user.email || "",
+          fullName: user.profile?.fullName || user.fullName || "",
+          phone: user.profile?.phone || user.phone || "",
+          roleId: user.roleId || ROLES.GUEST,
+          password: "",
+          gender: user.profile?.gender || user.gender || "male",
+          address: user.profile?.address || user.address || "",
+          dateOfBirth: formatDateForInput(
+            user.profile?.dateOfBirth || user.dateOfBirth
+          ),
+          provinceCode: user.profile?.provinceCode || user.provinceCode || "",
+          districtCode: user.profile?.districtCode || user.districtCode || "",
+        });
+      } else {
+        // Create mode - reset to defaults
+        reset({
+          email: "",
+          fullName: "",
+          phone: "",
+          roleId: ROLES.GUEST,
+          password: "",
+          gender: "male",
+          address: "",
+          dateOfBirth: "",
+          provinceCode: "",
+          districtCode: "",
+        });
+      }
+    }
+  }, [open, user, reset]);
 
   const onSubmit = async (data) => {
     setLoading(true);
     try {
       // Clean data - remove empty strings
-      const cleanData = Object.fromEntries(
-        Object.entries(data).filter(([_, v]) => v !== "")
-      );
+      const cleanData = {};
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== "" && value !== null && value !== undefined) {
+          cleanData[key] = value;
+        }
+      });
 
-      // For edit, password is optional
+      // For edit mode, password is optional - remove if empty
       if (isEdit && !cleanData.password) {
         delete cleanData.password;
       }
 
+      // For create mode, password is required
+      if (!isEdit && !cleanData.password) {
+        throw new Error("Mật khẩu là bắt buộc khi tạo người dùng mới");
+      }
+
       await onSuccess(cleanData, isEdit);
       onClose();
-      reset();
     } catch (error) {
       console.error("Form submit error:", error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Select className
+  const selectClassName =
+    "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -150,6 +180,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
               {...register("email")}
               disabled={isEdit}
               placeholder="example@didaugio.vn"
+              className={errors.email ? "border-red-500" : ""}
             />
             {errors.email && (
               <p className="text-sm text-red-500 mt-1">
@@ -158,7 +189,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
             )}
           </div>
 
-          {/* Password */}
+          {/* Password - only for create */}
           {!isEdit && (
             <div>
               <Label htmlFor="password">
@@ -169,6 +200,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
                 type="password"
                 {...register("password")}
                 placeholder="Tối thiểu 6 ký tự"
+                className={errors.password ? "border-red-500" : ""}
               />
               {errors.password && (
                 <p className="text-sm text-red-500 mt-1">
@@ -196,7 +228,12 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
           {/* Phone */}
           <div>
             <Label htmlFor="phone">Số điện thoại</Label>
-            <Input id="phone" {...register("phone")} placeholder="0123456789" />
+            <Input
+              id="phone"
+              {...register("phone")}
+              placeholder="0123456789"
+              className={errors.phone ? "border-red-500" : ""}
+            />
             {errors.phone && (
               <p className="text-sm text-red-500 mt-1">
                 {errors.phone.message}
@@ -212,11 +249,11 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
             <select
               id="roleId"
               {...register("roleId")}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className={selectClassName}
             >
-              <option value={ROLES.CUSTOMER}>Khách</option>
+              <option value={ROLES.GUEST}>Guest</option>
               <option value={ROLES.STAFF}>Staff</option>
-              <option value={ROLES.BUSINESS}>Business</option>
+              <option value={ROLES.BUSINESS}>Business Owner</option>
               <option value={ROLES.ADMIN}>Admin</option>
               <option value={ROLES.SUPER_ADMIN}>Super Admin</option>
             </select>
@@ -233,7 +270,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
             <select
               id="gender"
               {...register("gender")}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className={selectClassName}
             >
               <option value="male">Nam</option>
               <option value="female">Nữ</option>
@@ -270,8 +307,13 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={loading}
+            >
               Hủy
             </Button>
             <Button type="submit" disabled={loading}>

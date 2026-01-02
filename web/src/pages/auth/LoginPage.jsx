@@ -92,7 +92,7 @@ const LoginPage = () => {
           <div className="mt-4 text-center text-sm">
             <span className="text-muted-foreground">Chưa có tài khoản? </span>
             <Link
-              to="/register"
+              to="/auth/register"
               className="text-primary hover:underline font-medium"
             >
               Đăng ký ngay
@@ -101,8 +101,8 @@ const LoginPage = () => {
 
           <div className="mt-4 text-center">
             <Link
-              to="/forgot-password"
-              className="text-sm text-muted-foreground hover:text-primary"
+              to="/auth/forgot-password"
+              className="text-sm text-muted-foreground hover:text-primary transition-colors"
             >
               Quên mật khẩu?
             </Link>

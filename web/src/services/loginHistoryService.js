@@ -60,17 +60,11 @@ export const loginHistoryService = {
 
     const data = response.data || [];
     const total = response.pagination?.total || data.length;
-    
+
     // Count by status using backend computed status field
-    const active = data.filter(
-      (item) => item.status === "active"
-    ).length;
-    const revoked = data.filter(
-      (item) => item.status === "revoked"
-    ).length;
-    const expired = data.filter(
-      (item) => item.status === "expired"
-    ).length;
+    const active = data.filter((item) => item.status === "active").length;
+    const revoked = data.filter((item) => item.status === "revoked").length;
+    const expired = data.filter((item) => item.status === "expired").length;
 
     // Count by device
     const devices = data.reduce((acc, item) => {

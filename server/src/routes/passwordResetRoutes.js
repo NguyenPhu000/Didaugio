@@ -5,27 +5,18 @@ import { authenticate } from "../middlewares/authMiddleware.js";
 const router = express.Router();
 
 /**
+ * PASSWORD RESET ROUTES - CHỈ CHO ADMIN XEM DANH SÁCH
+ *
+ * Note: End-user sử dụng /auth/forgot-password và /auth/reset-password
+ * Routes này chỉ để admin quản lý và xem danh sách password resets
+ */
+
+/**
  * @route   GET /api/password-resets
- * @desc    Lấy danh sách password resets (sắp xếp DESC - mới nhất lên đầu)
+ * @desc    Lấy danh sách password resets (Admin only)
  * @access  Private (Admin)
  * @query   page, limit, userId, status
  */
 router.get("/", authenticate, passwordResetController.getAll);
-
-/**
- * @route   POST /api/password-resets
- * @desc    Tạo yêu cầu reset password (public route - không cần auth)
- * @access  Public
- * @body    { email }
- */
-router.post("/", passwordResetController.create);
-
-/**
- * @route   POST /api/password-resets/reset
- * @desc    Reset password bằng token (public route - không cần auth)
- * @access  Public
- * @body    { token, newPassword }
- */
-router.post("/reset", passwordResetController.reset);
 
 export default router;

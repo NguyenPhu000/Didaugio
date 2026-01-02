@@ -15,6 +15,7 @@ import {
   Camera,
   Shield,
   Bell,
+  KeyRound,
 } from "lucide-react";
 import {
   Button,
@@ -36,6 +37,7 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { profileService } from "@/services/profileService";
 import { ROLE_NAMES } from "@/config/constants";
+import { ChangePasswordModal } from "@/components/user/ChangePasswordModal";
 
 const profileSchema = z.object({
   fullName: z
@@ -60,6 +62,7 @@ const ProfilePage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [profile, setProfile] = useState(null);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const {
     register,
@@ -206,7 +209,7 @@ const ProfilePage = () => {
                   </Avatar>
                   <button
                     className="absolute bottom-0 right-0 p-1.5 bg-primary text-primary-foreground rounded-full shadow-md hover:bg-primary/90"
-                    onClick={() => toast.info("Chuc nang dang phat trien")}
+                    onClick={() => toast("Chuc nang dang phat trien")}
                   >
                     <Camera className="h-4 w-4" />
                   </button>
@@ -391,16 +394,30 @@ const ProfilePage = () => {
         <TabsContent value="security" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Doi mat khau</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <KeyRound className="h-5 w-5" />
+                Doi mat khau
+              </CardTitle>
               <CardDescription>
-                Thay doi mat khau de bao ve tai khoan
+                Thay doi mat khau de bao ve tai khoan cua ban
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+                <Shield className="h-5 w-5 text-primary mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Bao mat tai khoan</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Mat khau manh bao gom chu hoa, chu thuong, so va ky tu dac
+                    biet. Nen doi mat khau dinh ky de tang cuong bao mat.
+                  </p>
+                </div>
+              </div>
               <Button
-                variant="outline"
-                onClick={() => toast.info("Chuc nang dang phat trien")}
+                onClick={() => setChangePasswordOpen(true)}
+                className="w-full sm:w-auto"
               >
+                <KeyRound className="mr-2 h-4 w-4" />
                 Doi mat khau
               </Button>
             </CardContent>
@@ -416,7 +433,7 @@ const ProfilePage = () => {
             <CardContent>
               <Button
                 variant="outline"
-                onClick={() => toast.info("Chuc nang dang phat trien")}
+                onClick={() => toast("Chuc nang dang phat trien")}
               >
                 Xem tat ca phien
               </Button>
@@ -427,6 +444,11 @@ const ProfilePage = () => {
         {/* Notifications Tab */}
         <TabsContent value="notifications" className="space-y-6">
           <Card>
+            {/* Change Password Modal */}
+            <ChangePasswordModal
+              open={changePasswordOpen}
+              onOpenChange={setChangePasswordOpen}
+            />
             <CardHeader>
               <CardTitle>Cai dat thong bao</CardTitle>
               <CardDescription>

@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "shadcn:add": "npx shadcn@latest add",
+    "shadcn:init": "npx shadcn@latest init"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.16",

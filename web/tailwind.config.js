@@ -54,6 +54,15 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      // Custom transition durations for animate-ui sidebar
+      transitionDuration: {
+        400: "400ms",
+      },
+      // Custom easing functions for animate-ui
+      transitionTimingFunction: {
+        "sidebar-bounce": "cubic-bezier(0.7, -0.15, 0.25, 1.15)",
+        "sidebar-smooth": "cubic-bezier(0.75, 0, 0.25, 1)",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

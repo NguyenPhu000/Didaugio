@@ -1,37 +1,19 @@
 import api from "@/config/api";
 
 /**
- * Password Reset Service
- * Quản lý reset mật khẩu
+ * Password Reset Service - ADMIN ONLY
+ * Chỉ dùng để admin xem danh sách password resets
+ *
+ * Note: End-user sử dụng authService.forgotPassword() và authService.resetPassword()
  */
 export const passwordResetService = {
   /**
-   * Lấy danh sách password resets
+   * Lấy danh sách password resets (Admin only)
    * @param {Object} params - Query params (page, limit, userId, status)
    * @returns {Promise}
    */
   getAll: async (params = {}) => {
     const response = await api.get("/password-resets", { params });
-    return response;
-  },
-
-  /**
-   * Tạo yêu cầu reset password
-   * @param {string} email - User email
-   * @returns {Promise}
-   */
-  create: async (email) => {
-    const response = await api.post("/password-resets", { email });
-    return response;
-  },
-
-  /**
-   * Reset password với token
-   * @param {Object} data - { token, newPassword }
-   * @returns {Promise}
-   */
-  reset: async (data) => {
-    const response = await api.post("/password-resets/reset", data);
     return response;
   },
 
