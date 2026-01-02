@@ -1,6 +1,6 @@
 import express from "express";
 import * as permissionController from "../controllers/permissionController.js";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
+import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
 
 const router = express.Router();
@@ -16,7 +16,7 @@ const router = express.Router();
  */
 router.get(
   "/",
-  authMiddleware,
+  authenticate,
   requirePermission("roles.view"),
   permissionController.getPermissions
 );
@@ -28,7 +28,7 @@ router.get(
  */
 router.get(
   "/by-module",
-  authMiddleware,
+  authenticate,
   requirePermission("roles.view"),
   permissionController.getPermissionsByModule
 );
@@ -39,7 +39,7 @@ router.get(
  */
 router.get(
   "/modules",
-  authMiddleware,
+  authenticate,
   requirePermission("roles.view"),
   permissionController.getModules
 );

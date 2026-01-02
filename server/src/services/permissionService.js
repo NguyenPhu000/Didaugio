@@ -169,12 +169,10 @@ export const getPermissionsByModule = async (query = {}) => {
 
   return {
     success: true,
-    data: {
-      permissions: permissionsByModule,
-      moduleStats,
-      totalModules,
-      totalPermissions,
-    },
+    permissions: permissionsByModule,
+    moduleStats,
+    totalModules,
+    totalPermissions,
   };
 };
 

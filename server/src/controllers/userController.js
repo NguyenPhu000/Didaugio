@@ -89,3 +89,26 @@ export const deleteUser = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * [PATCH] /api/users/:id/role
+ * Cap nhat role cua user (chi Super Admin va Admin)
+ */
+export const updateUserRole = async (req, res, next) => {
+  try {
+    const { roleId } = req.body;
+    const updatedUser = await userService.updateUserRole(
+      req.params.id,
+      roleId,
+      req.user
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: updatedUser,
+      message: "Cap nhat vai tro thanh cong",
+    });
+  } catch (error) {
+    next(error);
+  }
+};

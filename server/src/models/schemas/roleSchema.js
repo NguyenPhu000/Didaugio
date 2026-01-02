@@ -1,20 +1,15 @@
 import { z } from "zod";
+import { paginationSchema } from "./commonSchema.js";
 
 // =============================================================================
-// SHARED SCHEMAS
+// ROLE SCHEMAS
 // =============================================================================
 
-// Schema cho ID (dùng chung)
-export const idSchema = z.object({
+// Schema cho ID validation riêng cho role
+const roleIdSchema = z.object({
   id: z.coerce.number().int().positive({
     message: "ID phải là số nguyên dương",
   }),
-});
-
-// Schema cho pagination
-export const paginationSchema = z.object({
-  page: z.coerce.number().int().positive().optional().default(1),
-  limit: z.coerce.number().int().positive().max(100).optional().default(10),
 });
 
 // =============================================================================
@@ -63,7 +58,7 @@ export const roleUsersQuerySchema = paginationSchema.extend({
  * @throws {ZodError} Nếu ID không hợp lệ
  */
 export const validateRoleId = (id) => {
-  return idSchema.parse({ id }).id;
+  return roleIdSchema.parse({ id }).id;
 };
 
 /**

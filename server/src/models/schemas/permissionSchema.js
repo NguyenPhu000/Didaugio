@@ -1,14 +1,5 @@
 import { z } from "zod";
-
-// =============================================================================
-// SHARED SCHEMAS
-// =============================================================================
-
-// Schema cho pagination
-export const paginationSchema = z.object({
-  page: z.coerce.number().int().positive().optional().default(1),
-  limit: z.coerce.number().int().positive().max(100).optional().default(10),
-});
+import { paginationSchema } from "./commonSchema.js";
 
 // =============================================================================
 // PERMISSION SCHEMAS

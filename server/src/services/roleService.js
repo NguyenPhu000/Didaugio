@@ -50,7 +50,7 @@ export const getRoles = async (query = {}) => {
               permission: true,
             },
           }
-        : false,
+        : true,
       users: includeUserCount
         ? {
             where: { deletedAt: null },
@@ -69,9 +69,10 @@ export const getRoles = async (query = {}) => {
       description: role.description,
       isSystem: role.isSystem,
       createdAt: role.createdAt,
+      permissionCount: role.rolePermissions?.length || 0,
     };
 
-    // Thêm số lượng quyền
+    // Thêm chi tiết quyền nếu được yêu cầu
     if (includePermissions) {
       result.permissions = role.rolePermissions.map((rp) => ({
         id: rp.permission.id,
@@ -80,7 +81,6 @@ export const getRoles = async (query = {}) => {
         module: rp.permission.module,
         description: rp.permission.description,
       }));
-      result.permissionCount = role.rolePermissions.length;
     }
 
     // Thêm số lượng người dùng
@@ -93,15 +93,13 @@ export const getRoles = async (query = {}) => {
 
   return {
     success: true,
-    data: {
-      roles: transformedRoles,
-      total,
-      totalPages,
-      pagination: {
-        currentPage: page,
-        pageSize: limit,
-        totalRecords: total,
-      },
+    roles: transformedRoles,
+    total,
+    totalPages,
+    pagination: {
+      currentPage: page,
+      pageSize: limit,
+      totalRecords: total,
     },
   };
 };
@@ -141,23 +139,21 @@ export const getRoleById = async (roleId) => {
   // Transform data
   return {
     success: true,
-    data: {
-      id: role.id,
-      name: role.name,
-      displayName: role.displayName,
-      description: role.description,
-      isSystem: role.isSystem,
-      createdAt: role.createdAt,
-      permissions: role.rolePermissions.map((rp) => ({
-        id: rp.permission.id,
-        name: rp.permission.name,
-        displayName: rp.permission.displayName,
-        module: rp.permission.module,
-        description: rp.permission.description,
-      })),
-      permissionCount: role.rolePermissions.length,
-      userCount: role._count.users,
-    },
+    id: role.id,
+    name: role.name,
+    displayName: role.displayName,
+    description: role.description,
+    isSystem: role.isSystem,
+    createdAt: role.createdAt,
+    permissions: role.rolePermissions.map((rp) => ({
+      id: rp.permission.id,
+      name: rp.permission.name,
+      displayName: rp.permission.displayName,
+      module: rp.permission.module,
+      description: rp.permission.description,
+    })),
+    permissionCount: role.rolePermissions.length,
+    userCount: role._count.users,
   };
 };
 
@@ -209,11 +205,9 @@ export const getRolePermissions = async (roleId) => {
 
   return {
     success: true,
-    data: {
-      role,
-      permissions: permissionsByModule,
-      totalPermissions: rolePermissions.length,
-    },
+    role,
+    permissions: permissionsByModule,
+    totalPermissions: rolePermissions.length,
   };
 };
 
@@ -292,20 +286,18 @@ export const updateRolePermissions = async (roleId, permissionData) => {
   // Transform data
   return {
     success: true,
-    data: {
-      id: result.id,
-      name: result.name,
-      displayName: result.displayName,
-      description: result.description,
-      isSystem: result.isSystem,
-      permissions: result.rolePermissions.map((rp) => ({
-        id: rp.permission.id,
-        name: rp.permission.name,
-        displayName: rp.permission.displayName,
-        module: rp.permission.module,
-      })),
-      permissionCount: result.rolePermissions.length,
-    },
+    id: result.id,
+    name: result.name,
+    displayName: result.displayName,
+    description: result.description,
+    isSystem: result.isSystem,
+    permissions: result.rolePermissions.map((rp) => ({
+      id: rp.permission.id,
+      name: rp.permission.name,
+      displayName: rp.permission.displayName,
+      module: rp.permission.module,
+    })),
+    permissionCount: result.rolePermissions.length,
     message: "Cập nhật quyền thành công",
   };
 };
@@ -397,16 +389,14 @@ export const getRoleUsers = async (roleId, query = {}) => {
 
   return {
     success: true,
-    data: {
-      role,
-      users: transformedUsers,
-      total,
-      totalPages,
-      pagination: {
-        currentPage: page,
-        pageSize: limit,
-        totalRecords: total,
-      },
+    role,
+    users: transformedUsers,
+    total,
+    totalPages,
+    pagination: {
+      currentPage: page,
+      pageSize: limit,
+      totalRecords: total,
     },
   };
 };

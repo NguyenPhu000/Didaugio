@@ -1,6 +1,6 @@
 import express from "express";
 import * as roleController from "../controllers/roleController.js";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
+import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
 
 const router = express.Router();
@@ -16,7 +16,7 @@ const router = express.Router();
  */
 router.get(
   "/",
-  authMiddleware,
+  authenticate,
   requirePermission("roles.view"),
   roleController.getRoles
 );
@@ -28,7 +28,7 @@ router.get(
  */
 router.get(
   "/:id",
-  authMiddleware,
+  authenticate,
   requirePermission("roles.view_detail"),
   roleController.getRoleById
 );
@@ -40,7 +40,7 @@ router.get(
  */
 router.get(
   "/:id/permissions",
-  authMiddleware,
+  authenticate,
   requirePermission("roles.view_detail"),
   roleController.getRolePermissions
 );
@@ -53,7 +53,7 @@ router.get(
  */
 router.put(
   "/:id/permissions",
-  authMiddleware,
+  authenticate,
   requirePermission("roles.manage_permissions"),
   roleController.updateRolePermissions
 );
@@ -66,7 +66,7 @@ router.put(
  */
 router.get(
   "/:id/users",
-  authMiddleware,
+  authenticate,
   requirePermission("roles.view_users"),
   roleController.getRoleUsers
 );
