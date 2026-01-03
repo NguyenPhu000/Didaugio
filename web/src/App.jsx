@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { Toaster as Sonner } from "sonner";
 import { useEffect } from "react";
 import { ProtectedRoute, AdminLayout } from "@/components/layout";
 import { ROLES } from "@/config/constants";
@@ -17,6 +18,12 @@ import {
 } from "@/pages";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
+import VerifyEmailPublicPage from "@/pages/auth/VerifyEmailPublicPage";
+import ResendVerificationPage from "@/pages/auth/ResendVerificationPage";
+import RoleManagePage from "@/pages/RoleManagePage";
+import PermissionManagePage from "@/pages/PermissionManagePage";
+import CategoryManagementPage from "@/pages/admin/CategoryManagementPage";
+import TagManagementPage from "@/pages/admin/TagManagementPage";
 import { useAuthStore } from "@/stores/authStore";
 
 function App() {
@@ -69,6 +76,7 @@ function App() {
           },
         }}
       />
+      <Sonner richColors position="top-right" />
 
       <Routes>
         {/* Public routes */}
@@ -80,6 +88,16 @@ function App() {
         <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPublicPage />} />
+        <Route path="/auth/verify-email" element={<VerifyEmailPublicPage />} />
+        <Route
+          path="/resend-verification"
+          element={<ResendVerificationPage />}
+        />
+        <Route
+          path="/auth/resend-verification"
+          element={<ResendVerificationPage />}
+        />
 
         {/* Redirect root to dashboard */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -182,6 +200,54 @@ function App() {
             <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
               <AdminLayout>
                 <LoginHistoryPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Role Management - Only Super Admin */}
+        <Route
+          path="/roles"
+          element={
+            <ProtectedRoute roles={[ROLES.SUPER_ADMIN]}>
+              <AdminLayout>
+                <RoleManagePage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Permission Management - Only Super Admin */}
+        <Route
+          path="/permissions"
+          element={
+            <ProtectedRoute roles={[ROLES.SUPER_ADMIN]}>
+              <AdminLayout>
+                <PermissionManagePage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Category Management - Admin & Super Admin */}
+        <Route
+          path="/categories"
+          element={
+            <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <AdminLayout>
+                <CategoryManagementPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Tag Management - Admin & Super Admin */}
+        <Route
+          path="/tags"
+          element={
+            <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <AdminLayout>
+                <TagManagementPage />
               </AdminLayout>
             </ProtectedRoute>
           }

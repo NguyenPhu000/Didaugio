@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Label } from "@/components/ui";
 import { locationService } from "@/services/locationService";
 
 /**
@@ -74,57 +73,91 @@ const ProvinceDistrictSelect = ({
     onDistrictChange("");
   };
 
+  const selectClassName =
+    "w-full py-2.5 pl-10 pr-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 focus:ring-blue-600 focus:border-blue-600 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors appearance-none disabled:opacity-50 disabled:cursor-not-allowed";
+
   return (
     <div className="space-y-4">
       {/* Province Select */}
       <div>
-        <Label htmlFor="provinceCode">Tỉnh/Thành phố</Label>
-        <select
-          id="provinceCode"
-          value={provinceCode || ""}
-          onChange={handleProvinceChange}
-          disabled={loadingProvinces}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <option value="">
-            {loadingProvinces ? "Đang tải..." : "-- Chọn tỉnh/thành phố --"}
-          </option>
-          {provinces.map((province) => (
-            <option key={province.province_code} value={province.province_code}>
-              {province.name}
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+          Tỉnh/Thành phố
+        </label>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10">
+            <span className="material-icons-round text-lg">location_city</span>
+          </span>
+          <select
+            id="provinceCode"
+            value={provinceCode || ""}
+            onChange={handleProvinceChange}
+            disabled={loadingProvinces}
+            className={selectClassName}
+          >
+            <option value="">
+              {loadingProvinces ? "Đang tải..." : "-- Chọn tỉnh/thành phố --"}
             </option>
-          ))}
-        </select>
+            {provinces.map((province) => (
+              <option
+                key={province.province_code}
+                value={province.province_code}
+              >
+                {province.name}
+              </option>
+            ))}
+          </select>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+            <span className="material-icons-round text-lg">expand_more</span>
+          </span>
+        </div>
         {errors.provinceCode && (
-          <p className="text-sm text-red-500 mt-1">{errors.provinceCode}</p>
+          <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+            <span className="material-icons-round text-sm">error</span>
+            {errors.provinceCode}
+          </p>
         )}
       </div>
 
       {/* District Select */}
       <div>
-        <Label htmlFor="districtCode">Quận/Huyện/Phường/Xã</Label>
-        <select
-          id="districtCode"
-          value={districtCode || ""}
-          onChange={(e) => onDistrictChange(e.target.value)}
-          disabled={!provinceCode || loadingDistricts || districts.length === 0}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <option value="">
-            {loadingDistricts
-              ? "Đang tải..."
-              : !provinceCode
-              ? "Vui lòng chọn tỉnh/thành phố trước"
-              : "-- Chọn quận/huyện/phường/xã --"}
-          </option>
-          {districts.map((district) => (
-            <option key={district.ward_code} value={district.ward_code}>
-              {district.ward_name}
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+          Quận/Huyện/Phường/Xã
+        </label>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10">
+            <span className="material-icons-round text-lg">map</span>
+          </span>
+          <select
+            id="districtCode"
+            value={districtCode || ""}
+            onChange={(e) => onDistrictChange(e.target.value)}
+            disabled={
+              !provinceCode || loadingDistricts || districts.length === 0
+            }
+            className={selectClassName}
+          >
+            <option value="">
+              {loadingDistricts
+                ? "Đang tải..."
+                : !provinceCode
+                ? "Vui lòng chọn tỉnh/thành phố trước"
+                : "-- Chọn quận/huyện/phường/xã --"}
             </option>
-          ))}
-        </select>
+            {districts.map((district) => (
+              <option key={district.ward_code} value={district.ward_code}>
+                {district.ward_name}
+              </option>
+            ))}
+          </select>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+            <span className="material-icons-round text-lg">expand_more</span>
+          </span>
+        </div>
         {errors.districtCode && (
-          <p className="text-sm text-red-500 mt-1">{errors.districtCode}</p>
+          <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+            <span className="material-icons-round text-sm">error</span>
+            {errors.districtCode}
+          </p>
         )}
       </div>
     </div>

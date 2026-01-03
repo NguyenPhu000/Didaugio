@@ -56,7 +56,7 @@ export const authService = {
   },
 
   // Xác thực email
-  verifyEmail: async (token) => {
+  verifyEmail: async ({ token }) => {
     const response = await api.post("/auth/verify-email", { token });
     return response;
   },
