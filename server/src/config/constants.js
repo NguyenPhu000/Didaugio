@@ -8,9 +8,19 @@ export const USER_STATUS = {
 export const ROLES = {
   SUPER_ADMIN: 1,
   ADMIN: 2,
-  MODERATOR: 3,
-  BUSINESS_OWNER: 4,
-  USER: 5,
+  BUSINESS: 3,
+  STAFF: 4,
+  GUEST: 5,
+};
+
+// Hierarchy: Số nhỏ hơn = quyền cao hơn
+// Super Admin (1) > Admin (2) > Business (3) > Staff (4) > Guest (5)
+export const ROLE_HIERARCHY = {
+  1: { name: "super_admin", level: 1, canManage: [2, 3, 4, 5] }, // Quản lý được tất cả trừ Super Admin
+  2: { name: "admin", level: 2, canManage: [3, 4, 5] },          // Quản lý được Business, Staff, Guest
+  3: { name: "business", level: 3, canManage: [] },              // Không quản lý ai
+  4: { name: "staff", level: 4, canManage: [] },                 // Không quản lý ai
+  5: { name: "guest", level: 5, canManage: [] },                 // Không quản lý ai
 };
 
 export const BOOKING_STATUS = {
@@ -50,4 +60,23 @@ export const PAGINATION = {
   DEFAULT_PAGE: 1,
   DEFAULT_LIMIT: 10,
   MAX_LIMIT: 100,
+};
+
+// Category levels
+export const CATEGORY_LEVELS = {
+  ROOT: 1,
+  LEVEL_2: 2,
+  LEVEL_3: 3,
+};
+
+export const MAX_CATEGORY_LEVEL = 3;
+
+// Tag types
+export const TAG_TYPES = {
+  GENERAL: "general",
+  FEATURE: "feature",
+  AMENITY: "amenity",
+  CUISINE: "cuisine",
+  ACTIVITY: "activity",
+  ATMOSPHERE: "atmosphere",
 };

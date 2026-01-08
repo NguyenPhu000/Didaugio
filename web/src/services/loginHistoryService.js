@@ -38,13 +38,18 @@ export const loginHistoryService = {
   /**
    * Vô hiệu hóa tất cả sessions của user (trừ session hiện tại)
    * @param {number} userId - User ID
-   * @param {number} currentSessionId - Current session ID to keep
+   * @param {number|null} currentSessionId - Current session ID to keep (optional)
    * @returns {Promise}
    */
-  revokeAll: async (userId, currentSessionId) => {
-    const response = await api.post(`/login-history/revoke-all/${userId}`, {
-      currentSessionId,
-    });
+  revokeAll: async (userId, currentSessionId = null) => {
+    const body = {};
+    if (currentSessionId) {
+      body.currentSessionId = currentSessionId;
+    }
+    const response = await api.post(
+      `/login-history/revoke-all/${userId}`,
+      body
+    );
     return response;
   },
 

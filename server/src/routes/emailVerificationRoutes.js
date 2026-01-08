@@ -1,6 +1,7 @@
 import express from "express";
 import * as emailVerificationController from "../controllers/emailVerificationController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
+import { hasPermission } from "../middlewares/permissionMiddleware.js";
 
 const router = express.Router();
 
@@ -17,7 +18,12 @@ const router = express.Router();
  * @access  Private (Admin)
  * @query   page, limit, userId, status
  */
-router.get("/", authenticate, emailVerificationController.getAll);
+router.get(
+  "/",
+  authenticate,
+  hasPermission("email_verification.view"),
+  emailVerificationController.getAll
+);
 
 /**
  * @route   POST /api/email-verifications
@@ -25,6 +31,35 @@ router.get("/", authenticate, emailVerificationController.getAll);
  * @access  Private (Admin)
  * @body    { userId, email }
  */
-router.post("/", authenticate, emailVerificationController.create);
+router.post(
+  "/",
+  authenticate,
+  hasPermission("email_verification.create"),
+  emailVerificationController.create
+);
+
+/**
+ * @route   POST /api/email-verifications/resend/:userId
+ * @desc    Gửi lại email xác thực cho user (Admin only)
+ * @access  Private (Admin)
+ */
+router.post(
+  "/resend/:userId",
+  authenticate,
+  hasPermission("email_verification.create"),
+  emailVerificationController.resend
+);
+
+/**
+ * @route   POST /api/email-verifications/manual-verify/:userId
+ * @desc    Xác thực email thủ công cho user (Admin only - không cần token)
+ * @access  Private (Admin)
+ */
+router.post(
+  "/manual-verify/:userId",
+  authenticate,
+  hasPermission("email_verification.create"),
+  emailVerificationController.manualVerify
+);
 
 export default router;

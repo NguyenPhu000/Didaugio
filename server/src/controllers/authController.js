@@ -2,7 +2,6 @@ import authService from "../services/authService.js";
 
 // AUTH CONTROLLER
 
-
 /**
  * POST /api/auth/register
  * Đăng ký tài khoản
@@ -100,7 +99,8 @@ export const changePassword = async (req, res, next) => {
  */
 export const forgotPassword = async (req, res, next) => {
   try {
-    const result = await authService.forgotPassword(req.body);
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const result = await authService.forgotPassword(req.body, ipAddress);
     res.json({
       success: true,
       data: result.resetToken ? { resetToken: result.resetToken } : null,

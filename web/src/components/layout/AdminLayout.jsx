@@ -78,10 +78,7 @@ const menuData = {
     {
       title: "Danh mục",
       icon: FolderTree,
-      items: [
-        { title: "Tất cả danh mục", url: "/categories" },
-        { title: "Thêm danh mục", url: "/categories/new" },
-      ],
+      items: [{ title: "Tất cả danh mục", url: "/categories" }],
     },
     {
       title: "Tags",

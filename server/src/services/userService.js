@@ -1,5 +1,5 @@
 import prisma from "../config/prismaClient.js";
-import { USER_STATUS, PAGINATION, ERROR_CODES } from "../config/constants.js";
+import { USER_STATUS, PAGINATION, ERROR_CODES, ROLE_HIERARCHY } from "../config/constants.js";
 import {
   idSchema,
   paginationSchema,
@@ -398,4 +398,97 @@ export const deleteUser = async (id) => {
   });
 
   return deletedUser;
+};
+
+// CẬP NHẬT ROLE CỦA USER
+
+/**
+ * Cập nhật role của user (chỉ Super Admin và Admin)
+ * @param {number} userId - ID của user cần update
+ * @param {number} newRoleId - Role ID mới
+ * @param {Object} currentUser - User đang thực hiện action
+ * @returns {Promise<Object>} - Updated user
+ */
+export const updateUserRole = async (userId, newRoleId, currentUser) => {
+  // Validate
+  const validUserId = idSchema.parse(userId);
+  const validRoleId = idSchema.parse(newRoleId);
+
+  // Kiểm tra user tồn tại
+  const targetUser = await prisma.user.findUnique({
+    where: { id: validUserId },
+    select: {
+      id: true,
+      email: true,
+      roleId: true,
+      status: true,
+      profile: {
+        select: {
+          fullName: true,
+        },
+      },
+    },
+  });
+
+  if (!targetUser) {
+    throw new ServiceError(
+      "Không tìm thấy người dùng",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+  }
+
+  // Kiểm tra role mới có tồn tại không
+  const newRole = await prisma.role.findUnique({
+    where: { id: validRoleId },
+    select: { id: true, name: true, displayName: true },
+  });
+
+  if (!newRole) {
+    throw new ServiceError(
+      "Vai trò không tồn tại",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+  }
+
+  // Kiểm tra hierarchy - đã check ở middleware nhưng double check
+  const currentRole = ROLE_HIERARCHY[currentUser.roleId];
+  if (!currentRole.canManage.includes(validRoleId)) {
+    throw new ServiceError(
+      "Bạn không có quyền gán vai trò này",
+      403,
+      ERROR_CODES.FORBIDDEN
+    );
+  }
+
+  // Update role
+  const updatedUser = await prisma.user.update({
+    where: { id: validUserId },
+    data: {
+      roleId: validRoleId,
+    },
+    select: {
+      id: true,
+      email: true,
+      roleId: true,
+      status: true,
+      role: {
+        select: {
+          id: true,
+          name: true,
+          displayName: true,
+          description: true,
+        },
+      },
+      profile: {
+        select: {
+          fullName: true,
+          avatar: true,
+        },
+      },
+    },
+  });
+
+  return updatedUser;
 };

@@ -28,6 +28,28 @@ export const emailVerificationService = {
   },
 
   /**
+   * Gửi lại email xác thực (Admin trigger cho user cụ thể)
+   * @param {number} userId - User ID
+   * @returns {Promise}
+   */
+  resend: async (userId) => {
+    const response = await api.post(`/email-verifications/resend/${userId}`);
+    return response;
+  },
+
+  /**
+   * Xác thực email thủ công (Admin only - không cần token)
+   * @param {number} userId - User ID
+   * @returns {Promise}
+   */
+  manualVerify: async (userId) => {
+    const response = await api.post(
+      `/email-verifications/manual-verify/${userId}`
+    );
+    return response;
+  },
+
+  /**
    * Lấy thống kê email verifications
    * @returns {Promise}
    */

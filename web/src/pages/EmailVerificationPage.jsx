@@ -6,6 +6,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  ShieldCheck,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -87,27 +88,24 @@ const EmailVerificationPage = () => {
     }
   };
 
-  // Handle manual verify (admin can verify manually)
-  const handleManualVerify = async (verification) => {
+  // Handle manual verify (Admin)
+  const handleManualVerify = async (userId, email) => {
     if (
       !window.confirm(
-        `Xác thực thủ công email ${verification.email} cho user này?`
+        `Xác thực thủ công email ${email}?\n\nLưu ý: Chỉ sử dụng khi user không nhận được email hoặc token đã hết hạn.`
       )
     )
       return;
 
     try {
-      // Use the token to verify (admin action)
-      const response = await emailVerificationService.verify(
-        verification.token
-      );
+      const response = await emailVerificationService.manualVerify(userId);
       if (response.success) {
         toast.success("Đã xác thực email thành công");
         fetchVerifications();
         fetchStats();
       }
     } catch (error) {
-      toast.error("Lỗi khi xác thực email");
+      toast.error(error.response?.data?.message || "Lỗi khi xác thực email");
       console.error(error);
     }
   };
@@ -298,28 +296,32 @@ const EmailVerificationPage = () => {
                         <td className="px-4 py-3 text-center">
                           {!verification.verifiedAt ? (
                             <div className="flex gap-2 justify-center">
-                              {new Date(verification.expiresAt) >
-                                new Date() && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    handleResend(
-                                      verification.userId,
-                                      verification.email
-                                    )
-                                  }
-                                >
-                                  <Send className="w-4 h-4 mr-1" />
-                                  Gửi lại
-                                </Button>
-                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  handleResend(
+                                    verification.userId,
+                                    verification.email
+                                  )
+                                }
+                                title="Gửi lại email xác thực"
+                              >
+                                <Send className="w-4 h-4 mr-1" />
+                                Gửi lại
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="default"
-                                onClick={() => handleManualVerify(verification)}
+                                onClick={() =>
+                                  handleManualVerify(
+                                    verification.userId,
+                                    verification.email
+                                  )
+                                }
+                                title="Xác thực thủ công (không cần token)"
                               >
-                                <CheckCircle className="w-4 h-4 mr-1" />
+                                <ShieldCheck className="w-4 h-4 mr-1" />
                                 Xác thực
                               </Button>
                             </div>

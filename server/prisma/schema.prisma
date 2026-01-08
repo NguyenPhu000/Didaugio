@@ -40,6 +40,7 @@ model Permission {
   createdAt   DateTime @default(now()) @map("created_at")
 
   rolePermissions RolePermission[]
+  userPermissions UserPermission[]
 
   @@map("permissions")
 }
@@ -55,6 +56,21 @@ model RolePermission {
 
   @@unique([roleId, permissionId])
   @@map("role_permissions")
+}
+
+model UserPermission {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  permissionId Int      @map("permission_id")
+  grantedById  Int?     @map("granted_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission  Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  grantedBy   User?      @relation("GrantedPermissions", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, permissionId])
+  @@map("user_permissions")
 }
 
 model User {
@@ -76,6 +92,8 @@ model User {
   sessions UserSession[]
   emailVerifications EmailVerification[]
   passwordResets     PasswordReset[]
+  userPermissions    UserPermission[]
+  grantedPermissions UserPermission[] @relation("GrantedPermissions")
 
   business           Business?
   places             Place[]            @relation("CreatedBy")

@@ -131,6 +131,7 @@ const RegisterPage = () => {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   error={errors.password?.message}
                   {...register("password")}
                 />
@@ -164,6 +165,7 @@ const RegisterPage = () => {
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   error={errors.confirmPassword?.message}
                   {...register("confirmPassword")}
                 />

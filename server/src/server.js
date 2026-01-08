@@ -9,6 +9,11 @@ import auditLogRoutes from "./routes/auditLogRoutes.js";
 import emailVerificationRoutes from "./routes/emailVerificationRoutes.js";
 import passwordResetRoutes from "./routes/passwordResetRoutes.js";
 import loginHistoryRoutes from "./routes/loginHistoryRoutes.js";
+import roleRoutes from "./routes/roleRoutes.js";
+import permissionRoutes from "./routes/permissionRoutes.js";
+import userPermissionRoutes from "./routes/userPermissionRoutes.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
+import tagRoutes from "./routes/tagRoutes.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import prisma from "./config/prismaClient.js";
 
@@ -31,6 +36,11 @@ app.use("/api/audit-logs", auditLogRoutes);
 app.use("/api/email-verifications", emailVerificationRoutes);
 app.use("/api/password-resets", passwordResetRoutes);
 app.use("/api/login-history", loginHistoryRoutes);
+app.use("/api/roles", roleRoutes);
+app.use("/api/permissions", permissionRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/tags", tagRoutes);
+app.use("/api", userPermissionRoutes);
 app.use("/api", userRoutes);
 
 // Error Handling Middleware

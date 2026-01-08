@@ -29,6 +29,12 @@ const processQueue = (error, token = null) => {
 api.interceptors.request.use(
   (config) => {
     const accessToken = useAuthStore.getState().accessToken;
+    console.log(
+      "API Request:",
+      config.url,
+      "Token:",
+      accessToken ? "exists" : "missing"
+    );
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -42,6 +48,7 @@ api.interceptors.request.use(
 // Response interceptor - Handle errors and auto refresh token
 api.interceptors.response.use(
   (response) => {
+    console.log("API Response:", response.config.url, "Data:", response.data);
     return response.data;
   },
   async (error) => {

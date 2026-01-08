@@ -19,7 +19,16 @@ export const getAll = async (req, res, next) => {
       });
     }
 
-    const result = await loginHistoryService.getAll(validation.data);
+    const currentUserId = req.user?.userId;
+    const roleId = req.user?.roleId;
+    const queryData = { ...validation.data };
+
+    // Nếu không phải admin (roleId <= 2), chỉ cho xem sessions của chính mình
+    if (roleId > 2) {
+      queryData.userId = currentUserId;
+    }
+
+    const result = await loginHistoryService.getAll(queryData);
 
     res.json({
       success: true,
@@ -47,6 +56,17 @@ export const getById = async (req, res, next) => {
 
     const session = await loginHistoryService.getById(id);
 
+    const currentUserId = req.user?.userId;
+    const roleId = req.user?.roleId;
+
+    // Nếu không phải admin (roleId <= 2) và session không thuộc user hiện tại
+    if (roleId > 2 && session.userId !== currentUserId) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền xem session này",
+      });
+    }
+
     res.json({
       success: true,
       data: session,
@@ -68,6 +88,22 @@ export const revoke = async (req, res, next) => {
         success: false,
         message: "Dữ liệu không hợp lệ",
         errors: validation.error.errors,
+      });
+    }
+
+    const currentUserId = req.user?.userId;
+    const roleId = req.user?.roleId;
+
+    // Lấy session để kiểm tra ownership
+    const sessionToRevoke = await loginHistoryService.getById(
+      validation.data.sessionId
+    );
+
+    // Nếu không phải admin (roleId <= 2) và session không thuộc user hiện tại
+    if (roleId > 2 && sessionToRevoke.userId !== currentUserId) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền vô hiệu hóa session này",
       });
     }
 
@@ -97,12 +133,26 @@ export const revokeAll = async (req, res, next) => {
       });
     }
 
-    // Get current refresh token from request (nếu có)
-    const currentRefreshToken = req.body.currentRefreshToken || null;
+    // Kiểm tra quyền: user chỉ được revoke sessions của chính mình hoặc admin
+    const currentUserId = req.user?.userId;
+    const roleId = req.user?.roleId;
+
+    // Nếu không phải admin (roleId <= 2) và không phải user đang thao tác với chính mình
+    if (roleId > 2 && userId !== currentUserId) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền thực hiện thao tác này",
+      });
+    }
+
+    // Get current session ID from request (nếu có)
+    const currentSessionId = req.body.currentSessionId
+      ? parseInt(req.body.currentSessionId)
+      : null;
 
     const result = await loginHistoryService.revokeAllExcept(
       userId,
-      currentRefreshToken
+      currentSessionId
     );
 
     res.json({

@@ -81,6 +81,7 @@ const LoginPage = () => {
               label="Mật khẩu"
               type="password"
               placeholder="******"
+              autoComplete="current-password"
               error={errors.password?.message}
               {...register("password")}
             />

@@ -135,7 +135,11 @@ export const create = async (email, ipAddress) => {
     // Không throw error để không tiết lộ user có tồn tại
   }
 
-  return reset;
+  return {
+    ...reset,
+    // Trả về rawToken cho dev mode để test
+    ...(process.env.NODE_ENV === "development" && { rawToken }),
+  };
 };
 
 /**

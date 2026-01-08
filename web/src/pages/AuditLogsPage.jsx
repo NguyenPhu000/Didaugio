@@ -74,8 +74,9 @@ const AuditLogsPage = () => {
       CREATE: "bg-green-100 text-green-700",
       UPDATE: "bg-blue-100 text-blue-700",
       DELETE: "bg-red-100 text-red-700",
-      LOGIN: "bg-purple-100 text-purple-700",
-      LOGOUT: "bg-gray-100 text-gray-700",
+      UPDATE_ROLE: "bg-orange-100 text-orange-700",
+      UPDATE_PERMISSIONS: "bg-purple-100 text-purple-700",
+      ASSIGN_TAGS: "bg-cyan-100 text-cyan-700",
     };
     return colors[action] || "bg-gray-100 text-gray-700";
   };
