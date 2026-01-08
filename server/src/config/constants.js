@@ -61,3 +61,22 @@ export const PAGINATION = {
   DEFAULT_LIMIT: 10,
   MAX_LIMIT: 100,
 };
+
+// Category levels
+export const CATEGORY_LEVELS = {
+  ROOT: 1,
+  LEVEL_2: 2,
+  LEVEL_3: 3,
+};
+
+export const MAX_CATEGORY_LEVEL = 3;
+
+// Tag types
+export const TAG_TYPES = {
+  GENERAL: "general",
+  FEATURE: "feature",
+  AMENITY: "amenity",
+  CUISINE: "cuisine",
+  ACTIVITY: "activity",
+  ATMOSPHERE: "atmosphere",
+};

@@ -2,6 +2,7 @@ import express from "express";
 import * as roleController from "../controllers/roleController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
+import { auditLog } from "../middlewares/auditLogMiddleware.js";
 
 const router = express.Router();
 
@@ -55,6 +56,12 @@ router.put(
   "/:id/permissions",
   authenticate,
   requirePermission("roles.manage_permissions"),
+  auditLog({
+    action: "UPDATE_PERMISSIONS",
+    tableName: "role_permissions",
+    getRecordId: (req) => parseInt(req.params.id),
+    getNewData: (req) => ({ permissionIds: req.body.permissionIds }),
+  }),
   roleController.updateRolePermissions
 );
 

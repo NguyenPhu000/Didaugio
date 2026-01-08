@@ -200,3 +200,45 @@ export const resend = async (userId) => {
     name: user.profile?.fullName,
   });
 };
+
+/**
+ * Manual verify - Admin xác thực email thủ công (không cần token)
+ * Dùng khi user không nhận được email hoặc token đã hết hạn
+ */
+export const manualVerify = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    const error = new Error("Không tìm thấy user");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (user.emailVerified) {
+    const error = new Error("Email đã được xác thực trước đó");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const now = new Date();
+
+  // Update user và đánh dấu verification records nếu có
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { emailVerified: true },
+    }),
+    // Đánh dấu tất cả pending verifications của user này là đã verify
+    prisma.emailVerification.updateMany({
+      where: {
+        userId,
+        verifiedAt: null,
+      },
+      data: { verifiedAt: now },
+    }),
+  ]);
+
+  return { userId, verifiedAt: now };
+};

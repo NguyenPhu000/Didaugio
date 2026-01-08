@@ -123,18 +123,21 @@ const LoginHistoryPage = () => {
       return;
 
     try {
+      // Lấy currentSessionId từ localStorage (nếu có lưu)
       const currentSessionId = loginHistoryService.getCurrentSessionId();
       const response = await loginHistoryService.revokeAll(
         userId,
         currentSessionId
       );
       if (response.success) {
-        toast.success("Đã đăng xuất tất cả thiết bị khác");
+        toast.success(response.message || "Đã đăng xuất tất cả thiết bị khác");
         fetchSessions();
         fetchStats();
       }
     } catch (error) {
-      toast.error("Lỗi khi đăng xuất tất cả");
+      toast.error(
+        error.response?.data?.message || "Lỗi khi đăng xuất tất cả thiết bị"
+      );
       console.error(error);
     }
   };

@@ -18,7 +18,7 @@ import {
 import { authService } from "@/services";
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email("Email khong hop le").toLowerCase(),
+  email: z.string().email("Email không hợp lệ").toLowerCase(),
 });
 
 const ForgotPasswordPage = () => {
@@ -42,7 +42,7 @@ const ForgotPasswordPage = () => {
     try {
       const response = await authService.forgotPassword(data.email);
       setEmailSent(true);
-      toast.success("Vui long kiem tra email de dat lai mat khau");
+      toast.success("Vui lòng kiểm tra email để đặt lại mật khẩu");
 
       // Hiển thị token nếu ở dev mode (để test)
       if (response.data?.resetToken) {
@@ -52,7 +52,7 @@ const ForgotPasswordPage = () => {
         });
       }
     } catch (error) {
-      toast.error(error.message || "Co loi xay ra. Vui long thu lai");
+      toast.error(error.message || "Có lỗi xảy ra. Vui lòng thử lại");
     } finally {
       setIsLoading(false);
     }
@@ -71,7 +71,7 @@ const ForgotPasswordPage = () => {
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Quay lai dang nhap
+          Quay lại đăng nhập
         </button>
 
         <Card className="shadow-xl">
@@ -79,11 +79,11 @@ const ForgotPasswordPage = () => {
             <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
               <Mail className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Quen mat khau?</CardTitle>
+            <CardTitle className="text-2xl">Quên mật khẩu?</CardTitle>
             <CardDescription>
               {emailSent
-                ? "Chung toi da gui huong dan dat lai mat khau"
-                : "Nhap email cua ban de nhan huong dan dat lai mat khau"}
+                ? "Chúng tôi đã gửi hướng dẫn đặt lại mật khẩu"
+                : "Nhập email của bạn để nhận hướng dẫn đặt lại mật khẩu"}
             </CardDescription>
           </CardHeader>
 
@@ -91,7 +91,7 @@ const ForgotPasswordPage = () => {
             {!emailSent ? (
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Dia chi email</Label>
+                  <Label htmlFor="email">Địa chỉ email</Label>
                   <Input
                     id="email"
                     type="email"
@@ -114,7 +114,7 @@ const ForgotPasswordPage = () => {
                   disabled={isLoading}
                 >
                   <Send className="mr-2 h-4 w-4" />
-                  Gui huong dan
+                  Gửi hướng dẫn
                 </Button>
               </form>
             ) : (
@@ -122,14 +122,14 @@ const ForgotPasswordPage = () => {
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-3" />
                   <p className="text-sm text-green-800">
-                    Neu email <strong>{email}</strong> ton tai trong he thong,
-                    ban se nhan duoc email voi huong dan dat lai mat khau.
+                    Nếu email <strong>{email}</strong> tồn tại trong hệ thống,
+                    bạn sẽ nhận được email với hướng dẫn đặt lại mật khẩu.
                   </p>
                 </div>
 
                 <div className="space-y-2 text-sm text-gray-600">
-                  <p>Vui long kiem tra hop thu den va thu muc spam.</p>
-                  <p>Link dat lai mat khau se het han sau 1 gio.</p>
+                  <p>Vui lòng kiểm tra hộp thư đến và thư mục spam.</p>
+                  <p>Link đặt lại mật khẩu sẽ hết hạn sau 1 giờ.</p>
                 </div>
 
                 <div className="flex flex-col gap-2 pt-4">
@@ -138,10 +138,10 @@ const ForgotPasswordPage = () => {
                     onClick={handleResend}
                     className="w-full"
                   >
-                    Thu email khac
+                    Thử email khác
                   </Button>
                   <Button variant="ghost" asChild className="w-full">
-                    <Link to="/auth/login">Quay lai dang nhap</Link>
+                    <Link to="/auth/login">Quay lại đăng nhập</Link>
                   </Button>
                 </div>
               </div>
@@ -152,12 +152,12 @@ const ForgotPasswordPage = () => {
         {/* Help Text */}
         <div className="mt-6 text-center text-sm text-gray-600">
           <p>
-            Ban can ho tro?{" "}
+            Bạn cần hỗ trợ?{" "}
             <a
               href="mailto:support@didaugio.com"
               className="text-primary hover:underline"
             >
-              Lien he ho tro
+              Liên hệ hỗ trợ
             </a>
           </p>
         </div>

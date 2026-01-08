@@ -75,22 +75,35 @@ export const auditLogService = {
    * @returns {Array}
    */
   getActionTypes: () => {
-    return ["CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT"];
+    return [
+      "CREATE",
+      "UPDATE",
+      "DELETE",
+      "UPDATE_ROLE",
+      "UPDATE_PERMISSIONS",
+      "ASSIGN_TAGS",
+    ];
   },
 
   /**
-   * Lấy danh sách tables có trong hệ thống
+   * Lấy danh sách tables có trong hệ thống (theo schema.prisma)
    * @returns {Array}
    */
   getTableNames: () => {
     return [
       "users",
-      "profiles",
-      "tours",
-      "bookings",
-      "reviews",
-      "payments",
-      "favorites",
+      "user_profiles",
+      "user_sessions",
+      "roles",
+      "permissions",
+      "role_permissions",
+      "user_permissions",
+      "categories",
+      "tags",
+      "category_tags",
+      "email_verifications",
+      "password_resets",
+      "audit_logs",
     ];
   },
 };

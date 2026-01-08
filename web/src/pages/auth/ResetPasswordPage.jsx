@@ -21,15 +21,15 @@ const resetPasswordSchema = z
   .object({
     newPassword: z
       .string()
-      .min(6, "Mat khau phai co it nhat 6 ky tu")
+      .min(6, "Mật khẩu phải có ít nhất 6 ký tự")
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Mat khau phai co it nhat 1 chu hoa, 1 chu thuong va 1 so"
+        "Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số"
       ),
-    confirmPassword: z.string().min(1, "Vui long xac nhan mat khau"),
+    confirmPassword: z.string().min(1, "Vui lòng xác nhận mật khẩu"),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Mat khau xac nhan khong khop",
+    message: "Mật khẩu xác nhận không khớp",
     path: ["confirmPassword"],
   });
 
@@ -57,13 +57,13 @@ const ResetPasswordPage = () => {
 
   useEffect(() => {
     if (!token) {
-      setTokenError("Token khong hop le hoac da het han");
+      setTokenError("Token không hợp lệ hoặc đã hết hạn");
     }
   }, [token]);
 
   const onSubmit = async (data) => {
     if (!token) {
-      toast.error("Token khong hop le");
+      toast.error("Token không hợp lệ");
       return;
     }
 
@@ -75,14 +75,14 @@ const ResetPasswordPage = () => {
         data.confirmPassword
       );
       setResetSuccess(true);
-      toast.success("Dat lai mat khau thanh cong!");
+      toast.success("Đặt lại mật khẩu thành công!");
 
       // Chuyển hướng sau 3 giây
       setTimeout(() => {
         navigate("/auth/login");
       }, 3000);
     } catch (error) {
-      toast.error(error.message || "Dat lai mat khau that bai");
+      toast.error(error.message || "Đặt lại mật khẩu thất bại");
       if (error.message.includes("token")) {
         setTokenError(error.message);
       }
@@ -103,11 +103,11 @@ const ResetPasswordPage = () => {
     if (/[^a-zA-Z0-9]/.test(password)) strength++;
 
     const levels = [
-      { strength: 1, label: "Yeu", color: "bg-red-500" },
-      { strength: 2, label: "Trung binh", color: "bg-yellow-500" },
-      { strength: 3, label: "Tot", color: "bg-blue-500" },
-      { strength: 4, label: "Manh", color: "bg-green-500" },
-      { strength: 5, label: "Rat manh", color: "bg-green-600" },
+      { strength: 1, label: "Yếu", color: "bg-red-500" },
+      { strength: 2, label: "Trung bình", color: "bg-yellow-500" },
+      { strength: 3, label: "Tốt", color: "bg-blue-500" },
+      { strength: 4, label: "Mạnh", color: "bg-green-500" },
+      { strength: 5, label: "Rất mạnh", color: "bg-green-600" },
     ];
 
     return levels.find((l) => l.strength === strength) || levels[0];
@@ -124,13 +124,13 @@ const ResetPasswordPage = () => {
               <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
                 <XCircle className="h-10 w-10 text-red-600" />
               </div>
-              <h2 className="text-xl font-semibold">Token khong hop le</h2>
+              <h2 className="text-xl font-semibold">Token không hợp lệ</h2>
               <p className="text-gray-600">
                 {tokenError ||
-                  "Link dat lai mat khau khong hop le hoac da het han."}
+                  "Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn."}
               </p>
               <Button asChild className="w-full">
-                <Link to="/auth/forgot-password">Gui lai yeu cau</Link>
+                <Link to="/auth/forgot-password">Gửi lại yêu cầu</Link>
               </Button>
             </div>
           </CardContent>
@@ -148,13 +148,13 @@ const ResetPasswordPage = () => {
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                 <CheckCircle className="h-10 w-10 text-green-600" />
               </div>
-              <h2 className="text-xl font-semibold">Thanh cong!</h2>
+              <h2 className="text-xl font-semibold">Thành công!</h2>
               <p className="text-gray-600">
-                Mat khau cua ban da duoc dat lai thanh cong. Ban se duoc chuyen
-                huong den trang dang nhap...
+                Mật khẩu của bạn đã được đặt lại thành công. Bạn sẽ được chuyển
+                hướng đến trang đăng nhập...
               </p>
               <Button asChild className="w-full">
-                <Link to="/auth/login">Dang nhap ngay</Link>
+                <Link to="/auth/login">Đăng nhập ngay</Link>
               </Button>
             </div>
           </CardContent>
@@ -171,9 +171,9 @@ const ResetPasswordPage = () => {
             <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
               <Lock className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Dat lai mat khau</CardTitle>
+            <CardTitle className="text-2xl">Đặt lại mật khẩu</CardTitle>
             <CardDescription>
-              Nhap mat khau moi cho tai khoan cua ban
+              Nhập mật khẩu mới cho tài khoản của bạn
             </CardDescription>
           </CardHeader>
 
@@ -181,13 +181,14 @@ const ResetPasswordPage = () => {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {/* New Password */}
               <div className="space-y-2">
-                <Label htmlFor="newPassword">Mat khau moi</Label>
+                <Label htmlFor="newPassword">Mật khẩu mới</Label>
                 <div className="relative">
                   <Input
                     id="newPassword"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Nhap mat khau moi (toi thieu 6 ky tu)"
+                    placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
                     autoFocus
+                    autoComplete="new-password"
                     {...register("newPassword")}
                     className="pr-10"
                   />
@@ -225,7 +226,7 @@ const ResetPasswordPage = () => {
                       ))}
                     </div>
                     <p className="text-xs text-gray-600">
-                      Do manh:{" "}
+                      Độ mạnh:{" "}
                       <span className="font-medium">
                         {passwordStrength.label}
                       </span>
@@ -236,12 +237,13 @@ const ResetPasswordPage = () => {
 
               {/* Confirm Password */}
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Xac nhan mat khau</Label>
+                <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Nhap lai mat khau moi"
+                    placeholder="Nhập lại mật khẩu mới"
+                    autoComplete="new-password"
                     {...register("confirmPassword")}
                     className="pr-10"
                   />
@@ -271,7 +273,7 @@ const ResetPasswordPage = () => {
                 disabled={isLoading}
               >
                 <Lock className="mr-2 h-4 w-4" />
-                Dat lai mat khau
+                Đặt lại mật khẩu
               </Button>
             </form>
 
@@ -280,7 +282,7 @@ const ResetPasswordPage = () => {
                 to="/auth/login"
                 className="text-sm text-primary hover:underline"
               >
-                Quay lai dang nhap
+                Quay lại đăng nhập
               </Link>
             </div>
           </CardContent>

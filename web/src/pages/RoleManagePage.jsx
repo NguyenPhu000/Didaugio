@@ -51,10 +51,8 @@ export default function RoleManagePage() {
         limit: 100,
       });
 
-      console.log("Role response:", response);
-
-      if (response && response.roles) {
-        const filteredRoles = response.roles.filter(
+      if (response?.success && response.data) {
+        const filteredRoles = response.data.filter(
           (role) => role.name !== "guest"
         );
         setRoles(filteredRoles);
@@ -68,8 +66,8 @@ export default function RoleManagePage() {
         }
       }
     } catch (error) {
-      console.error("Lỗi khi tải danh sách vai trò:", error);
-      toast.error("Không thể tải danh sách vai trò");
+      const errorMsg = error.response?.data?.message || error.message || "Không thể tải danh sách vai trò";
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }

@@ -88,8 +88,7 @@ export const updateRolePermissions = async (req, res) => {
 export const getRoleUsers = async (req, res) => {
   try {
     const result = await roleService.getRoleUsers(req.params.id, req.query);
-    // Service already returns {success, data, ...}, spread to flatten
-    res.status(200).json({ ...result });
+    res.status(200).json(result);
   } catch (error) {
     res.status(404).json({
       success: false,

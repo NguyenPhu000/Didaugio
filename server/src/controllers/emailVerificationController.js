@@ -137,3 +137,29 @@ export const resend = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * POST /api/email-verifications/manual-verify/:userId
+ * Admin xác thực email thủ công (không cần token)
+ */
+export const manualVerify = async (req, res, next) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID không hợp lệ",
+      });
+    }
+
+    const result = await emailVerificationService.manualVerify(userId);
+
+    res.json({
+      success: true,
+      message: "Đã xác thực email thành công",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

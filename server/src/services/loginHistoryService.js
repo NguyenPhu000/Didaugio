@@ -122,14 +122,22 @@ export const revoke = async (sessionId) => {
 
 /**
  * Revoke tất cả sessions của một user (trừ current session)
+ * @param {number} userId - User ID
+ * @param {number|null} currentSessionId - Session ID hiện tại cần giữ lại (không phải refreshToken)
  */
-export const revokeAllExcept = async (userId, currentRefreshToken) => {
+export const revokeAllExcept = async (userId, currentSessionId = null) => {
+  const where = {
+    userId,
+    isActive: true,
+  };
+
+  // Nếu có currentSessionId, exclude session đó
+  if (currentSessionId) {
+    where.id = { not: currentSessionId };
+  }
+
   return await prisma.userSession.updateMany({
-    where: {
-      userId,
-      refreshToken: { not: currentRefreshToken },
-      isActive: true,
-    },
+    where,
     data: { isActive: false },
   });
 };

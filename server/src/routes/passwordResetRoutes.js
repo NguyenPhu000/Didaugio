@@ -1,6 +1,7 @@
 import express from "express";
 import * as passwordResetController from "../controllers/passwordResetController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
+import { hasPermission } from "../middlewares/permissionMiddleware.js";
 
 const router = express.Router();
 
@@ -14,9 +15,14 @@ const router = express.Router();
 /**
  * @route   GET /api/password-resets
  * @desc    Lấy danh sách password resets (Admin only)
- * @access  Private (Admin)
+ * @access  Private (Admin - cần quyền password_reset.view)
  * @query   page, limit, userId, status
  */
-router.get("/", authenticate, passwordResetController.getAll);
+router.get(
+  "/",
+  authenticate,
+  hasPermission("password_reset.view"),
+  passwordResetController.getAll
+);
 
 export default router;

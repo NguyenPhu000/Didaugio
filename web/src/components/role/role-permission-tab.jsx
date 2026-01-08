@@ -52,15 +52,12 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         roleService.getRolePermissions(role.id),
       ]);
 
-      console.log("Permissions response:", permissionsResponse);
-      console.log("Role permissions response:", rolePermissionsResponse);
-
-      if (permissionsResponse && permissionsResponse.permissions) {
+      if (permissionsResponse?.success && permissionsResponse.permissions) {
         setAllPermissions(permissionsResponse.permissions);
 
         const currentPermissionIds = new Set();
-        if (rolePermissionsResponse && rolePermissionsResponse.permissions) {
-          Object.values(rolePermissionsResponse.permissions).forEach(
+        if (rolePermissionsResponse?.success && rolePermissionsResponse.data?.permissions) {
+          Object.values(rolePermissionsResponse.data.permissions).forEach(
             (perms) => {
               perms.forEach((p) => currentPermissionIds.add(p.id));
             }
@@ -74,8 +71,8 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         setExpandedModules(new Set(modules.slice(0, 3)));
       }
     } catch (error) {
-      console.error("Lỗi khi tải dữ liệu:", error);
-      toast.error("Không thể tải danh sách quyền");
+      const errorMsg = error.response?.data?.message || error.message || "Không thể tải danh sách quyền";
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -126,19 +123,21 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
       setSaving(true);
       const permissionIds = Array.from(selectedPermissions);
 
-      await roleService.updateRolePermissions(role.id, permissionIds);
+      const response = await roleService.updateRolePermissions(role.id, permissionIds);
 
-      toast.success("Cập nhật quyền thành công");
-      setInitialPermissions(new Set(selectedPermissions));
+      if (response?.success) {
+        toast.success(response.message || "Cập nhật quyền thành công");
+        setInitialPermissions(new Set(selectedPermissions));
 
-      if (onUpdated) {
-        onUpdated();
+        if (onUpdated) {
+          onUpdated();
+        }
+
+        onClose();
       }
-
-      onClose();
     } catch (error) {
-      console.error("Lỗi khi cập nhật quyền:", error);
-      toast.error(error.response?.data?.message || "Không thể cập nhật quyền");
+      const errorMsg = error.response?.data?.message || error.message || "Không thể cập nhật quyền";
+      toast.error(errorMsg);
     } finally {
       setSaving(false);
     }

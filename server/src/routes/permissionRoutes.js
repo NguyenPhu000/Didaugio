@@ -12,35 +12,35 @@ const router = express.Router();
 /**
  * [GET] /api/permissions - Lấy danh sách permissions
  * Query: page, limit, module, search, includeRoles
- * Permission: roles.view (vì xem permissions liên quan đến quản lý roles)
+ * Permission: roles.view_detail (hoặc roles.manage_permissions)
  */
 router.get(
   "/",
   authenticate,
-  requirePermission("roles.view"),
+  requirePermission(["roles.view_detail", "roles.manage_permissions"]),
   permissionController.getPermissions
 );
 
 /**
  * [GET] /api/permissions/by-module - Lấy permissions grouped by module
  * Query: includeRoles
- * Permission: roles.view
+ * Permission: roles.view_detail (hoặc roles.manage_permissions)
  */
 router.get(
   "/by-module",
   authenticate,
-  requirePermission("roles.view"),
+  requirePermission(["roles.view_detail", "roles.manage_permissions"]),
   permissionController.getPermissionsByModule
 );
 
 /**
  * [GET] /api/permissions/modules - Lấy danh sách modules
- * Permission: roles.view
+ * Permission: roles.view_detail
  */
 router.get(
   "/modules",
   authenticate,
-  requirePermission("roles.view"),
+  requirePermission("roles.view_detail"),
   permissionController.getModules
 );
 

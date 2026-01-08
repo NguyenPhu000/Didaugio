@@ -1,27 +1,63 @@
 import prisma from "../config/prismaClient.js";
 
 // =============================================================================
-// PERMISSION MIDDLEWARE - KIỂM TRA QUYỀN HẠN
+// PERMISSION MIDDLEWARE - KIỂM TRA QUYỀN HẠN (RBAC Enhanced)
 // =============================================================================
 
 /**
- * Middleware kiểm tra quyền hạn của user
+ * Lấy tất cả quyền của user (Role + Custom)
+ * Logic: Quyền thực tế = Role Permissions + User Custom Permissions (Additive)
+ */
+async function getUserPermissions(userId, roleId) {
+  // RULE: SUPER_ADMIN (roleId = 1) có tất cả quyền
+  if (roleId === 1) {
+    return { isSuperAdmin: true, permissions: new Set(["*"]) };
+  }
+
+  // Lấy quyền từ Role
+  const rolePermissions = await prisma.rolePermission.findMany({
+    where: { roleId },
+    include: {
+      permission: { select: { name: true } },
+    },
+  });
+
+  // Lấy quyền Custom của User cá nhân
+  const customPermissions = await prisma.userPermission.findMany({
+    where: { userId },
+    include: {
+      permission: { select: { name: true } },
+    },
+  });
+
+  // Gộp 2 nguồn quyền (Additive logic)
+  const allPermissions = new Set([
+    ...rolePermissions.map((rp) => rp.permission.name),
+    ...customPermissions.map((up) => up.permission.name),
+  ]);
+
+  return { isSuperAdmin: false, permissions: allPermissions };
+}
+
+/**
+ * Middleware kiểm tra quyền hạn của user (Check permission-based, not role-based)
  * @param {string|string[]} requiredPermission - Tên quyền hoặc mảng quyền cần kiểm tra
  * @returns {Function} Express middleware
  *
  * @example
  * // Require 1 quyền
- * router.get('/users', requirePermission('users.view'), userController.getAll);
+ * router.put('/places/:id/verify', hasPermission('places:verify'), placeController.verify);
  *
  * // Require 1 trong nhiều quyền (OR logic)
- * router.get('/users', requirePermission(['users.view', 'users.view_detail']), userController.getAll);
+ * router.get('/users', hasPermission(['users:view', 'users:view_detail']), userController.getAll);
  */
-export const requirePermission = (requiredPermission) => {
+export const hasPermission = (requiredPermission) => {
   return async (req, res, next) => {
     try {
       const user = req.user; // Từ authMiddleware
 
-      if (!user) {
+      if (!user || !user.userId) {
+        console.log('[Permission Middleware] No user in request');
         return res.status(401).json({
           success: false,
           data: null,
@@ -29,6 +65,8 @@ export const requirePermission = (requiredPermission) => {
           errorCode: "UNAUTHORIZED",
         });
       }
+
+      console.log('[Permission Middleware] User:', user.userId, 'Role:', user.roleId, 'Required:', requiredPermission);
 
       // RULE 1: GUEST (roleId = 5) tuyệt đối KHÔNG được vào admin panel
       if (user.roleId === 5) {
@@ -40,8 +78,15 @@ export const requirePermission = (requiredPermission) => {
         });
       }
 
-      // RULE 2: SUPER_ADMIN (roleId = 1) có tất cả quyền
-      if (user.roleId === 1) {
+      // Lấy tất cả quyền của user (Role + Custom)
+      const { isSuperAdmin, permissions } = await getUserPermissions(
+        user.userId,
+        user.roleId
+      );
+
+      // RULE 2: SUPER_ADMIN có tất cả quyền
+      if (isSuperAdmin) {
+        req.userPermissions = permissions; // Gắn vào req để dùng sau
         return next();
       }
 
@@ -50,31 +95,12 @@ export const requirePermission = (requiredPermission) => {
         ? requiredPermission
         : [requiredPermission];
 
-      // Lấy tất cả quyền của user từ database
-      const userPermissions = await prisma.rolePermission.findMany({
-        where: {
-          roleId: user.roleId,
-        },
-        include: {
-          permission: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      });
-
-      // Tạo Set các permission names của user
-      const userPermissionNames = new Set(
-        userPermissions.map((rp) => rp.permission.name)
-      );
-
       // Kiểm tra xem user có ít nhất 1 trong các quyền cần thiết không (OR logic)
-      const hasPermission = permissionsToCheck.some((permission) =>
-        userPermissionNames.has(permission)
+      const hasRequiredPermission = permissionsToCheck.some((permission) =>
+        permissions.has(permission)
       );
 
-      if (!hasPermission) {
+      if (!hasRequiredPermission) {
         return res.status(403).json({
           success: false,
           data: null,
@@ -82,10 +108,12 @@ export const requirePermission = (requiredPermission) => {
             " hoặc "
           )}`,
           errorCode: "FORBIDDEN_NO_PERMISSION",
+          requiredPermissions: permissionsToCheck,
         });
       }
 
-      // User có quyền, cho phép tiếp tục
+      // User có quyền, gắn vào req để dùng sau
+      req.userPermissions = permissions;
       next();
     } catch (error) {
       console.error("Permission check error:", error);
@@ -98,6 +126,12 @@ export const requirePermission = (requiredPermission) => {
     }
   };
 };
+
+/**
+ * Legacy middleware - Giữ lại để tương thích ngược
+ * @deprecated Sử dụng hasPermission() thay thế
+ */
+export const requirePermission = hasPermission;
 
 /**
  * Middleware kiểm tra user có TẤT CẢ các quyền (AND logic)
@@ -137,32 +171,17 @@ export const requireAllPermissions = (requiredPermissions) => {
         return next();
       }
 
-      // Lấy quyền của user
-      const userPermissions = await prisma.rolePermission.findMany({
-        where: {
-          roleId: user.roleId,
-        },
-        include: {
-          permission: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      });
-
-      const userPermissionNames = new Set(
-        userPermissions.map((rp) => rp.permission.name)
-      );
+      // Lấy quyền của user (Role + Custom)
+      const { permissions } = await getUserPermissions(user.userId, user.roleId);
 
       // Kiểm tra có đầy đủ TẤT CẢ quyền không (AND logic)
       const hasAllPermissions = requiredPermissions.every((permission) =>
-        userPermissionNames.has(permission)
+        permissions.has(permission)
       );
 
       if (!hasAllPermissions) {
         const missingPermissions = requiredPermissions.filter(
-          (permission) => !userPermissionNames.has(permission)
+          (permission) => !permissions.has(permission)
         );
 
         return res.status(403).json({
@@ -170,6 +189,8 @@ export const requireAllPermissions = (requiredPermissions) => {
           data: null,
           message: `Bạn thiếu các quyền sau: ${missingPermissions.join(", ")}`,
           errorCode: "FORBIDDEN_MISSING_PERMISSIONS",
+          requiredPermissions: requiredPermissions,
+          missingPermissions: missingPermissions,
         });
       }
 

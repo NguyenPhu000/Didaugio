@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import prisma from "../config/prismaClient.js";
+import { USER_STATUS } from "../config/constants.js";
 import {
   loginSchema,
   registerSchema,
@@ -11,6 +12,8 @@ import {
   resetPasswordSchema,
   verifyEmailSchema,
 } from "../models/schemas/authSchema.js";
+import * as emailVerificationService from "./emailVerificationService.js";
+import * as passwordResetService from "./passwordResetService.js";
 
 // =============================================================================
 // AUTH SERVICE
@@ -118,16 +121,23 @@ export const register = async (data) => {
     },
   });
 
-  // TODO: Gửi email verification
-  // await sendVerificationEmail(user.email, verificationToken);
+  // Gửi email verification (sử dụng service mới)
+  try {
+    await emailVerificationService.create({
+      userId: user.id,
+      email: user.email,
+      name: validated.fullName || user.email,
+    });
+  } catch (error) {
+    console.error("Failed to create email verification:", error);
+    // Không throw error để không block việc đăng ký
+  }
 
   const { password, ...userWithoutPassword } = user;
 
   return {
     user: userWithoutPassword,
     message: "Dang ky thanh cong. Vui long xac thuc email.",
-    // Trong môi trường dev, trả về token để test
-    ...(process.env.NODE_ENV === "development" && { verificationToken }),
   };
 };
 
@@ -204,7 +214,7 @@ export const login = async (data, clientInfo = {}) => {
   }
 
   // Kiểm tra trạng thái tài khoản
-  if (user.status === "inactive") {
+  if (user.status === USER_STATUS.INACTIVE) {
     throw new ServiceError(
       "Tai khoan chua duoc kich hoat",
       403,
@@ -212,7 +222,7 @@ export const login = async (data, clientInfo = {}) => {
     );
   }
 
-  if (user.status === "banned") {
+  if (user.status === USER_STATUS.BANNED) {
     throw new ServiceError("Tai khoan da bi cam", 403, "ACCOUNT_BANNED");
   }
 
@@ -314,7 +324,7 @@ export const refreshAccessToken = async (data) => {
   }
 
   // Kiểm tra user status
-  if (session.user.status !== "active") {
+  if (session.user.status !== USER_STATUS.ACTIVE) {
     throw new ServiceError(
       "Tai khoan khong hoat dong",
       403,
@@ -439,52 +449,17 @@ export const changePassword = async (userId, data) => {
 // =============================================================================
 // QUÊN MẬT KHẨU
 // =============================================================================
-export const forgotPassword = async (data) => {
+export const forgotPassword = async (data, ipAddress = null) => {
   const validated = forgotPasswordSchema.parse(data);
 
-  const user = await prisma.user.findUnique({
-    where: { email: validated.email },
-  });
-
-  // Luôn trả về thành công để tránh lộ thông tin email tồn tại
-  if (!user) {
-    return {
-      message: "Neu email ton tai, ban se nhan duoc link dat lai mat khau",
-    };
-  }
-
-  // Tạo reset token
-  const resetToken = generateRandomToken();
-  const hashedResetToken = hashToken(resetToken);
-  const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 giờ
-
-  // Lưu token vào SystemConfig (tạm thời, có thể tạo bảng riêng)
-  await prisma.systemConfig.upsert({
-    where: { key: `reset_password_${user.id}` },
-    update: {
-      value: {
-        token: hashedResetToken,
-        expires: resetExpires.toISOString(),
-      },
-    },
-    create: {
-      key: `reset_password_${user.id}`,
-      value: {
-        token: hashedResetToken,
-        expires: resetExpires.toISOString(),
-      },
-      description: "Password reset token",
-      updatedBy: user.id,
-    },
-  });
-
-  // TODO: Gửi email reset password
-  // await sendResetPasswordEmail(user.email, resetToken);
+  // Sử dụng passwordResetService (lưu vào bảng PasswordReset + gửi email)
+  const result = await passwordResetService.create(validated.email, ipAddress);
 
   return {
     message: "Neu email ton tai, ban se nhan duoc link dat lai mat khau",
-    // Trong môi trường dev, trả về token để test
-    ...(process.env.NODE_ENV === "development" && { resetToken }),
+    // Trong môi trường dev, trả về token để test (nếu service trả về)
+    ...(process.env.NODE_ENV === "development" &&
+      result?.rawToken && { resetToken: result.rawToken }),
   };
 };
 
@@ -493,61 +468,17 @@ export const forgotPassword = async (data) => {
 // =============================================================================
 export const resetPassword = async (data) => {
   const validated = resetPasswordSchema.parse(data);
-  const hashedToken = hashToken(validated.token);
 
-  // Tìm token trong SystemConfig
-  const configs = await prisma.systemConfig.findMany({
-    where: {
-      key: { startsWith: "reset_password_" },
-    },
-  });
+  // Sử dụng passwordResetService để reset (tự động hash password và cleanup)
+  const result = await passwordResetService.reset(
+    validated.token,
+    validated.newPassword
+  );
 
-  let validConfig = null;
-  let userId = null;
-
-  for (const config of configs) {
-    if (
-      config.value.token === hashedToken &&
-      new Date(config.value.expires) > new Date()
-    ) {
-      validConfig = config;
-      userId = parseInt(config.key.replace("reset_password_", ""));
-      break;
-    }
-  }
-
-  if (!validConfig) {
-    throw new ServiceError(
-      "Token khong hop le hoac da het han",
-      400,
-      "INVALID_RESET_TOKEN"
-    );
-  }
-
-  // Hash mật khẩu mới
-  const hashedPassword = await bcrypt.hash(validated.newPassword, 12);
-
-  // Cập nhật mật khẩu và reset failed login count
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      password: hashedPassword,
-      failedLoginCount: 0,
-      lockedUntil: null,
-    },
-  });
-
-  // Xóa token
-  await prisma.systemConfig.delete({
-    where: { id: validConfig.id },
-  });
-
-  // Xóa tất cả session
-  await prisma.userSession.deleteMany({
-    where: { userId },
-  });
-
-  return { message: "Dat lai mat khau thanh cong. Vui long dang nhap lai." };
+  return {
+    message:
+      result.message || "Dat lai mat khau thanh cong. Vui long dang nhap lai.",
+  };
 };
 
 // =============================================================================
@@ -555,98 +486,43 @@ export const resetPassword = async (data) => {
 // =============================================================================
 export const verifyEmail = async (data) => {
   const validated = verifyEmailSchema.parse(data);
-  const hashedToken = hashToken(validated.token);
 
-  // Tìm token trong SystemConfig
-  const configs = await prisma.systemConfig.findMany({
-    where: {
-      key: { startsWith: "verify_email_" },
-    },
-  });
-
-  let validConfig = null;
-  let userId = null;
-
-  for (const config of configs) {
-    if (
-      config.value.token === hashedToken &&
-      new Date(config.value.expires) > new Date()
-    ) {
-      validConfig = config;
-      userId = parseInt(config.key.replace("verify_email_", ""));
-      break;
+  try {
+    // Sử dụng emailVerificationService để verify
+    await emailVerificationService.verify(validated.token);
+    return { message: "Xac thuc email thanh cong" };
+  } catch (error) {
+    // Chuyển đổi error từ service sang ServiceError
+    if (error.statusCode) {
+      throw error; // Đã là ServiceError
     }
-  }
-
-  if (!validConfig) {
     throw new ServiceError(
-      "Token khong hop le hoac da het han",
+      error.message || "Token khong hop le",
       400,
       "INVALID_VERIFICATION_TOKEN"
     );
   }
-
-  // Cập nhật email verified
-  await prisma.user.update({
-    where: { id: userId },
-    data: { emailVerified: true },
-  });
-
-  // Xóa token
-  await prisma.systemConfig.delete({
-    where: { id: validConfig.id },
-  });
-
-  return { message: "Xac thuc email thanh cong" };
 };
 
 // =============================================================================
 // GỬI LẠI EMAIL XÁC THỰC
 // =============================================================================
 export const resendVerificationEmail = async (userId) => {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-  });
-
-  if (!user) {
-    throw new ServiceError("User khong ton tai", 404, "USER_NOT_FOUND");
+  try {
+    // Sử dụng emailVerificationService để resend
+    await emailVerificationService.resend(userId);
+    return { message: "Da gui lai email xac thuc" };
+  } catch (error) {
+    // Chuyển đổi error từ service sang ServiceError
+    if (error.statusCode) {
+      throw error; // Đã là ServiceError
+    }
+    throw new ServiceError(
+      error.message || "Khong the gui email",
+      error.statusCode || 400,
+      "RESEND_FAILED"
+    );
   }
-
-  if (user.emailVerified) {
-    throw new ServiceError("Email da duoc xac thuc", 400, "ALREADY_VERIFIED");
-  }
-
-  // Tạo verification token mới
-  const verificationToken = generateRandomToken();
-  const hashedToken = hashToken(verificationToken);
-  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 giờ
-
-  await prisma.systemConfig.upsert({
-    where: { key: `verify_email_${user.id}` },
-    update: {
-      value: {
-        token: hashedToken,
-        expires: expires.toISOString(),
-      },
-    },
-    create: {
-      key: `verify_email_${user.id}`,
-      value: {
-        token: hashedToken,
-        expires: expires.toISOString(),
-      },
-      description: "Email verification token",
-      updatedBy: user.id,
-    },
-  });
-
-  // TODO: Gửi email
-  // await sendVerificationEmail(user.email, verificationToken);
-
-  return {
-    message: "Da gui email xac thuc",
-    ...(process.env.NODE_ENV === "development" && { verificationToken }),
-  };
 };
 
 // =============================================================================

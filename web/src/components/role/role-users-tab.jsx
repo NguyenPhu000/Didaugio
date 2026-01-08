@@ -31,17 +31,14 @@ export function RoleUsersTab({ role }) {
         search,
       });
 
-      console.log("Users response:", response);
-
-      if (response && Array.isArray(response.users)) {
-        setUsers(response.users);
+      if (response?.success && response.data?.users) {
+        setUsers(response.data.users);
       } else {
-        console.error("Invalid response structure:", response);
         setUsers([]);
       }
     } catch (error) {
-      console.error("Lỗi khi tải users:", error);
-      toast.error("Không thể tải danh sách users");
+      const errorMsg = error.response?.data?.message || error.message || "Không thể tải danh sách users";
+      toast.error(errorMsg);
       setUsers([]);
     } finally {
       setLoading(false);
