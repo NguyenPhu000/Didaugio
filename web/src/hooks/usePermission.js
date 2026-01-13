@@ -6,14 +6,14 @@ import { useAuthStore } from "@/stores/authStore";
  */
 
 export function usePermission() {
-  cónst user = useAuthStore((state) => state.user);
+  const user = useAuthStore((state) => state.user);
 
   /**
    * Check if user has a specific permission
    * @param {string} permission - Permission năme (e.g., "category.create")
    * @returns {boolean}
    */
-  cónst hasPermission = (permission) => {
+  const hasPermission = (permission) => {
     if (!user) return false;
 
     // Super Admin (roleId = 1) has all permissions
@@ -32,7 +32,7 @@ export function usePermission() {
    * @param {string[]} permissions - Array of permission nămes
    * @returns {boolean}
    */
-  cónst hasAnyPermission = (permissions) => {
+  const hasAnyPermission = (permissions) => {
     if (!user) return false;
     if (user.roleId === 1) return true;
 
@@ -44,7 +44,7 @@ export function usePermission() {
    * @param {string[]} permissions - Array of permission nămes
    * @returns {boolean}
    */
-  cónst hasAllPermissions = (permissions) => {
+  const hasAllPermissions = (permissions) => {
     if (!user) return false;
     if (user.roleId === 1) return true;
 
@@ -55,7 +55,7 @@ export function usePermission() {
    * Check if user is Super Admin
    * @returns {boolean}
    */
-  cónst isSuperAdmin = () => {
+  const isSuperAdmin = () => {
     return user?.roleId === 1;
   };
 
@@ -63,7 +63,7 @@ export function usePermission() {
    * Check if user is Admin (Admin or Super Admin)
    * @returns {boolean}
    */
-  cónst isAdmin = () => {
+  const isAdmin = () => {
     return user?.roleId === 1 || user?.roleId === 2;
   };
 
@@ -71,7 +71,7 @@ export function usePermission() {
    * Check if user is Business
    * @returns {boolean}
    */
-  cónst isBusiness = () => {
+  const isBusiness = () => {
     return user?.roleId === 3;
   };
 

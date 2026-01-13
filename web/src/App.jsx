@@ -15,6 +15,10 @@ import {
   AuditLogsPage,
   LoginHistoryPage,
   NotFoundPage,
+  PlaceWizardPage,
+  PlaceListPage,
+  CategoryManagementPage,
+  TagManagementPage,
 } from "@/pages";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
@@ -22,8 +26,6 @@ import VerifyEmailPublicPage from "@/pages/auth/VerifyEmailPublicPage";
 import ResendVerificationPage from "@/pages/auth/ResendVerificationPage";
 import RoleManagePage from "@/pages/RoleManagePage";
 import PermissionManagePage from "@/pages/PermissionManagePage";
-import CategoryManagementPage from "@/pages/admin/CategoryManagementPage";
-import TagManagementPage from "@/pages/admin/TagManagementPage";
 import { useAuthStore } from "@/stores/authStore";
 
 function App() {
@@ -251,6 +253,50 @@ function App() {
               </AdminLayout>
             </ProtectedRoute>
           }
+        />
+
+        {/* Place Management - Admin, Super Admin, Business */}
+        <Route
+          path="/admin/places"
+          element={
+            <ProtectedRoute
+              roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BUSINESS]}
+            >
+              <AdminLayout>
+                <PlaceListPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/places/new"
+          element={
+            <ProtectedRoute
+              roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BUSINESS]}
+            >
+              <AdminLayout>
+                <PlaceWizardPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/places/edit/:id"
+          element={
+            <ProtectedRoute
+              roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BUSINESS]}
+            >
+              <AdminLayout>
+                <PlaceWizardPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Alias routes for places */}
+        <Route
+          path="/places"
+          element={<Navigate to="/admin/places" replace />}
         />
 
         {/* 404 */}
