@@ -80,3 +80,39 @@ export const TAG_TYPES = {
   ACTIVITY: "activity",
   ATMOSPHERE: "atmosphere",
 };
+
+// Price range
+export const PRICE_RANGE = {
+  FREE: "FREE",
+  BUDGET: "BUDGET",
+  MODERATE: "MODERATE",
+  EXPENSIVE: "EXPENSIVE",
+  LUXURY: "LUXURY",
+};
+
+// Days of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+export const DAY_OF_WEEK = {
+  SUNDAY: 0,
+  MONDAY: 1,
+  TUESDAY: 2,
+  WEDNESDAY: 3,
+  THURSDAY: 4,
+  FRIDAY: 5,
+  SATURDAY: 6,
+};
+
+export const DAY_OF_WEEK_NAMES = {
+  0: "Chủ nhật",
+  1: "Thứ 2",
+  2: "Thứ 3",
+  3: "Thứ 4",
+  4: "Thứ 5",
+  5: "Thứ 6",
+  6: "Thứ 7",
+};
+
+// Place image limits
+export const PLACE_IMAGE_LIMITS = {
+  MAX_IMAGES: 10,
+  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+};

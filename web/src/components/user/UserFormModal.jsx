@@ -3,29 +3,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Dialog, DialogContent } from "@/components/ui";
-import { ROLES } from "@/config/constants";
+import { ROLES } from "@/constants/constants";
 import ProvinceDistrictSelect from "@/components/common/ProvinceDistrictSelect";
+import { userFormSchema } from "@/schemas/user";
+import { formatDateForInput } from "@/utils/dateUtils";
 
-// Validation schema
-const userFormSchema = z.object({
-  email: z
-    .string()
-    .min(1, "Email không được để trống")
-    .email("Email không hợp lệ"),
-  fullName: z.string().optional(),
-  phone: z
-    .string()
-    .regex(/^[0-9]{10,11}$/, "Số điện thoại phải có 10-11 chữ số")
-    .optional()
-    .or(z.literal("")),
-  roleId: z.coerce.number().int().positive("Vui lòng chọn vai trò"),
-  password: z.string().optional(),
-  gender: z.enum(["male", "female", "other"]).optional(),
-  address: z.string().optional(),
-  dateOfBirth: z.string().optional(),
-  provinceCode: z.string().optional(),
-  districtCode: z.string().optional(),
-});
+// Schema definition removed
 
 const UserFormModal = ({ open, onClose, user, onSuccess }) => {
   const isEdit = !!user;
@@ -56,22 +39,6 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
 
   const provinceCode = watch("provinceCode");
   const districtCode = watch("districtCode");
-
-  // Helper: Format date from ISO to YYYY-MM-DD for input
-  const formatDateForInput = (dateValue) => {
-    if (!dateValue) return "";
-    try {
-      const date = new Date(dateValue);
-      if (isNaN(date.getTime())) return "";
-      // Format as YYYY-MM-DD
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    } catch {
-      return "";
-    }
-  };
 
   // Reset form when modal opens/closes or user changes
   useEffect(() => {

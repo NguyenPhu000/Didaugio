@@ -1,5 +1,5 @@
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/Label";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
@@ -8,7 +8,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { ShieldCheck, UserPlus } from "lucide-react";
 
 export function PermissionCheckbox({
   permission,
@@ -21,12 +20,12 @@ export function PermissionCheckbox({
   return (
     <div
       className={cn(
-        "flex items-start space-x-3 p-3 rounded-lg border transition-colors",
+        "flex items-start space-x-3 p-3 rounded-xl border transition-all duration-200",
         checked
-          ? "bg-primary/5 border-primary/20"
-          : "bg-background hover:bg-muted/50",
-        disabled && "opacity-50 cursor-not-allowed",
-        isInherited && "border-l-4 border-l-blue-500"
+          ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800"
+          : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700",
+        disabled && "opacity-60 cursor-not-allowed",
+        isInherited && "border-l-4 border-l-blue-500 rounded-l-md"
       )}
     >
       <Checkbox
@@ -34,14 +33,14 @@ export function PermissionCheckbox({
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled} // User có thể bỏ tích quyền từ role
-        className="mt-0.5"
+        className="mt-1 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
       />
       <div className="flex-1 space-y-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Label
             htmlFor={`permission-${permission.id}`}
             className={cn(
-              "text-sm font-medium cursor-pointer",
+              "text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer",
               disabled && "cursor-not-allowed"
             )}
           >
@@ -50,12 +49,12 @@ export function PermissionCheckbox({
           {showSource && isInherited && (
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger>
+                <TooltipTrigger asChild>
                   <Badge
                     variant="outline"
-                    className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                    className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-md"
                   >
-                    <ShieldCheck className="h-3 w-3 mr-1" />
+                    <span className="material-icons-round text-[14px]">shield</span>
                     Từ vai trò
                   </Badge>
                 </TooltipTrigger>
@@ -71,15 +70,15 @@ export function PermissionCheckbox({
           {showSource && !isInherited && checked && (
             <Badge
               variant="outline"
-              className="text-xs bg-green-50 text-green-700 border-green-200"
+              className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-md"
             >
-              <UserPlus className="h-3 w-3 mr-1" />
+              <span className="material-icons-round text-[14px]">person_add</span>
               Đặc quyền
             </Badge>
           )}
         </div>
         {permission.description && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {permission.description}
           </p>
         )}

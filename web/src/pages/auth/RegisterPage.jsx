@@ -15,7 +15,7 @@ import {
   CardDescription,
   Label,
 } from "@/components/ui";
-import { authService } from "@/services/authService";
+import { authService } from "@/apis/authService";
 
 const registerSchema = z
   .object({

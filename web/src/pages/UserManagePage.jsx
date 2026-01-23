@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import { useAuthStore } from "@/stores/authStore";
-import { userService } from "@/services/userService";
-import { ROLES, ROLE_NAMES } from "@/config/constants";
+import { userService } from "@/apis/userService";
+import { ROLES, ROLE_NAMES } from "@/constants/constants";
 import UserFormModal from "@/components/user/UserFormModal";
 import UserDetailModal from "@/components/user/UserDetailModal";
 
@@ -642,7 +642,7 @@ const UserManagePage = () => {
                           <span
                             className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${
                               user.status === "active"
-                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800"
+                                ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-100 dark:border-green-800"
                                 : user.status === "banned"
                                 ? "bg-gray-50 text-gray-700 dark:bg-gray-900/20 dark:text-gray-400 border-gray-100 dark:border-gray-800"
                                 : "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border-red-100 dark:border-red-800"
@@ -651,7 +651,7 @@ const UserManagePage = () => {
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${
                                 user.status === "active"
-                                  ? "bg-emerald-500"
+                                  ? "bg-green-500"
                                   : user.status === "banned"
                                   ? "bg-gray-500"
                                   : "bg-red-500"

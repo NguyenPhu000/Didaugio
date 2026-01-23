@@ -16,7 +16,8 @@ import {
   CardContent,
   Button,
 } from "@/components/ui";
-import { emailVerificationService } from "@/services";
+import { emailVerificationService } from "@/apis";
+import { formatDate } from "@/utils/dateUtils";
 
 const EmailVerificationPage = () => {
   const [verifications, setVerifications] = useState([]);
@@ -134,11 +135,6 @@ const EmailVerificationPage = () => {
       color: "text-yellow-600 bg-yellow-100",
       icon: <Clock className="w-4 h-4" />,
     };
-  };
-
-  // Format date
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString("vi-VN");
   };
 
   return (

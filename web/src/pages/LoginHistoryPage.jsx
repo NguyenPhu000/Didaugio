@@ -22,7 +22,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui";
-import { loginHistoryService } from "@/services";
+import { loginHistoryService } from "@/apis";
+import { formatDate } from "@/utils/dateUtils";
 import { useAuthStore } from "@/stores/authStore";
 
 const LoginHistoryPage = () => {
@@ -180,11 +181,6 @@ const LoginHistoryPage = () => {
       return <Smartphone className="w-4 h-4" />;
     }
     return <Monitor className="w-4 h-4" />;
-  };
-
-  // Format date
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString("vi-VN");
   };
 
   // Truncate device name

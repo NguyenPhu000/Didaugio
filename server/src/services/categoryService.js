@@ -1,10 +1,19 @@
 import prisma from "../config/prismaClient.js";
 import { CATEGORY_LEVELS, MAX_CATEGORY_LEVEL } from "../config/constants.js";
+import { ERROR_MESSAGES, ERROR_CODES, SUCCESS_MESSAGES } from "../config/messages.js";
 
 /**
  * CATEGORY SERVICE
  * Quản lý danh mục phân cấp
  */
+
+class ServiceError extends Error {
+  constructor(message, statusCode = 400, errorCode = ERROR_CODES.VALIDATION_ERROR) {
+    super(message);
+    this.statusCode = statusCode;
+    this.errorCode = errorCode;
+  }
+}
 
 // Lấy tất cả categories (flat list)
 export const getAllCategories = async (filters = {}) => {
@@ -139,6 +148,10 @@ export const getCategoryById = async (id) => {
     },
   });
 
+  if (!category) {
+    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+  }
+
   return category;
 };
 
@@ -165,6 +178,10 @@ export const getCategoryBySlug = async (slug) => {
     },
   });
 
+  if (!category) {
+    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+  }
+
   return category;
 };
 
@@ -182,13 +199,13 @@ export const createCategory = async (data) => {
     });
 
     if (!parent) {
-      throw new Error("Parent category not found");
+      throw new ServiceError(ERROR_MESSAGES.NOT_FOUND + " (Parent)", 404, ERROR_CODES.NOT_FOUND);
     }
 
     level = parent.level + 1;
 
     if (level > MAX_CATEGORY_LEVEL) {
-      throw new Error(`Maximum category level is ${MAX_CATEGORY_LEVEL}`);
+      throw new ServiceError(`Maximum category level is ${MAX_CATEGORY_LEVEL}`);
     }
   }
 
@@ -198,7 +215,7 @@ export const createCategory = async (data) => {
   });
 
   if (existing) {
-    throw new Error("Slug already exists");
+    throw new ServiceError(ERROR_MESSAGES.EXISTED, 400, ERROR_CODES.EXISTED);
   }
 
   const category = await prisma.category.create({
@@ -245,7 +262,7 @@ export const updateCategory = async (id, data) => {
   });
 
   if (!existing) {
-    throw new Error("Category not found");
+    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
   }
 
   // Validate new parent (nếu có)
@@ -254,7 +271,7 @@ export const updateCategory = async (id, data) => {
     if (parentId === null) {
       level = CATEGORY_LEVELS.ROOT;
     } else if (parentId === id) {
-      throw new Error("Category cannot be its own parent");
+      throw new ServiceError("Category cannot be its own parent");
     } else {
       const parent = await prisma.category.findUnique({
         where: { id: parentId },
@@ -262,13 +279,13 @@ export const updateCategory = async (id, data) => {
       });
 
       if (!parent) {
-        throw new Error("Parent category not found");
+        throw new ServiceError("Parent category not found", 404, ERROR_CODES.NOT_FOUND);
       }
 
       level = parent.level + 1;
 
       if (level > MAX_CATEGORY_LEVEL) {
-        throw new Error(`Maximum category level is ${MAX_CATEGORY_LEVEL}`);
+        throw new ServiceError(`Maximum category level is ${MAX_CATEGORY_LEVEL}`);
       }
 
       // Check circular reference
@@ -287,7 +304,7 @@ export const updateCategory = async (id, data) => {
     });
 
     if (duplicateSlug) {
-      throw new Error("Slug already exists");
+      throw new ServiceError(ERROR_MESSAGES.EXISTED + " (Slug)", 400, ERROR_CODES.EXISTED);
     }
   }
 
@@ -356,17 +373,17 @@ export const deleteCategory = async (id) => {
   });
 
   if (!category) {
-    throw new Error("Category not found");
+    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
   }
 
   if (category._count.children > 0) {
-    throw new Error(
+    throw new ServiceError(
       "Cannot delete category with children. Delete children first."
     );
   }
 
   if (category._count.places > 0) {
-    throw new Error(
+    throw new ServiceError(
       `Cannot delete category. ${category._count.places} places are using it.`
     );
   }

@@ -6,11 +6,11 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from "@/components/ui/Dialog";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/Label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -24,20 +24,11 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PermissionCheckbox } from "./permission-checkbox";
-import { userPermissionService } from "@/services/userPermissionService";
-import { permissionService } from "@/services/permissionService";
-import { MODULE_DISPLAY_NAMES } from "@/config/permissions";
-import {
-  Search,
-  Save,
-  Info,
-  ChevronDown,
-  ChevronUp,
-  Trash,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
+import { userPermissionService } from "@/apis/userPermissionService";
+import { permissionService } from "@/apis/permissionService";
+import { MODULE_DISPLAY_NAMES } from "@/constants/permissions";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export function UserPermissionModal({
   open,
@@ -269,14 +260,17 @@ export function UserPermissionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-xl">
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+        <DialogHeader className="p-6 border-b border-slate-100 dark:border-slate-800">
+          <DialogTitle className="text-xl flex items-center gap-2">
+            <span className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+              <span className="material-icons-round">manage_accounts</span>
+            </span>
             {isBulk
               ? `Chỉnh quyền cho ${userIds?.length || 0} users`
               : `Chỉnh quyền - ${user?.fullName || user?.email}`}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-slate-500 dark:text-slate-400 mt-1">
             {isBulk
               ? "Quyền được thêm sẽ áp dụng cho tất cả users đã chọn"
               : `Vai trò: ${role?.displayName}. Quyền custom sẽ override quyền từ role.`}
@@ -284,18 +278,20 @@ export function UserPermissionModal({
         </DialogHeader>
 
         {loading ? (
-          <div className="space-y-4 py-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-40 w-full" />
+          <div className="space-y-4 p-6">
+            <Skeleton className="h-10 w-full rounded-xl" />
+            <Skeleton className="h-10 w-full rounded-xl" />
+            <Skeleton className="h-40 w-full rounded-xl" />
           </div>
         ) : (
           <>
-            <div className="space-y-4">
+            <div className="space-y-4 p-6 pb-0">
               {!isBulk && rolePermissions.size > 0 && (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
+                <Alert className="bg-blue-50/50 border-blue-100 text-blue-800 dark:bg-blue-900/10 dark:border-blue-900/30 dark:text-blue-300">
+                  <span className="material-icons-round text-blue-600 dark:text-blue-400 mr-2 text-lg">
+                    info
+                  </span>
+                  <AlertDescription className="text-sm">
                     {rolePermissions.size} quyền có badge "Từ vai trò" là quyền
                     mặc định. Bạn có thể bỏ chọn nếu không muốn user có quyền
                     đó, hoặc thêm quyền khác.
@@ -303,21 +299,23 @@ export function UserPermissionModal({
                 </Alert>
               )}
 
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="relative flex-1 w-full">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span className="material-icons-round text-lg">search</span>
+                  </span>
                   <Input
                     placeholder="Tìm quyền..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9"
+                    className="pl-10 h-10 rounded-xl border-slate-200 dark:border-slate-800"
                   />
                 </div>
                 <Select value={moduleFilter} onValueChange={setModuleFilter}>
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-full sm:w-[200px] h-10 rounded-xl border-slate-200 dark:border-slate-800">
                     <SelectValue placeholder="Lọc theo module" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800">
                     <SelectItem value="all">Tất cả modules</SelectItem>
                     {Object.keys(allPermissions).map((module) => (
                       <SelectItem key={module} value={module}>
@@ -328,17 +326,20 @@ export function UserPermissionModal({
                 </Select>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">
-                    Đã chọn: {stats.selected} / {stats.total} quyền
-                  </p>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                <div className="space-y-2 w-full sm:w-auto">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <span>
+                      Đã chọn: {stats.selected} / {stats.total} quyền
+                    </span>
+                  </div>
                   <Progress
                     value={stats.percentage}
-                    className="h-2 w-[200px]"
+                    className="h-2 w-full sm:w-[200px] bg-slate-200 dark:bg-slate-700"
+                    indicatorClassName="bg-blue-600"
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full sm:w-auto">
                   <Button
                     variant="outline"
                     size="sm"
@@ -350,8 +351,11 @@ export function UserPermissionModal({
                       setSelectedPermissions(allIds);
                     }}
                     disabled={stats.selected === stats.total}
+                    className="flex-1 sm:flex-none rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    <span className="material-icons-round text-sm mr-2 text-blue-500">
+                      check_circle
+                    </span>
                     Chọn tất cả
                   </Button>
                   <Button
@@ -359,19 +363,25 @@ export function UserPermissionModal({
                     size="sm"
                     onClick={() => setSelectedPermissions(new Set())}
                     disabled={stats.selected === 0}
+                    className="flex-1 sm:flex-none rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
-                    <XCircle className="h-4 w-4 mr-2" />
+                    <span className="material-icons-round text-sm mr-2 text-slate-500">
+                      cancel
+                    </span>
                     Bỏ chọn
                   </Button>
                 </div>
               </div>
             </div>
 
-            <ScrollArea className="flex-1 pr-4 h-[calc(90vh-400px)]">
+            <ScrollArea className="flex-1 px-6 py-2 h-[calc(90vh-450px)]">
               <div className="space-y-3 pb-4">
                 {Object.keys(filteredPermissions).length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Không tìm thấy quyền nào
+                  <div className="text-center py-12 text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                    <span className="material-icons-round text-4xl mb-2 opacity-50">
+                      search_off
+                    </span>
+                    <p>Không tìm thấy quyền nào</p>
                   </div>
                 ) : (
                   Object.entries(filteredPermissions).map(
@@ -385,41 +395,58 @@ export function UserPermissionModal({
                       return (
                         <div
                           key={module}
-                          className="border rounded-lg overflow-hidden"
+                          className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden transition-all shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800"
                         >
                           <div
-                            className="flex items-center justify-between p-4 bg-muted/50 cursor-pointer hover:bg-muted"
+                            className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 cursor-pointer select-none"
                             onClick={() => toggleModuleExpand(module)}
                           >
                             <div className="flex items-center gap-3">
-                              <Checkbox
-                                checked={moduleSelected === moduleTotal}
-                                onCheckedChange={() =>
-                                  handleToggleModule(module)
-                                }
-                                onClick={(e) => e.stopPropagation()}
-                              />
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <Checkbox
+                                  checked={
+                                    moduleSelected === moduleTotal &&
+                                    moduleTotal > 0
+                                      ? true
+                                      : moduleSelected > 0
+                                      ? "indeterminate"
+                                      : false
+                                  }
+                                  onCheckedChange={() =>
+                                    handleToggleModule(module)
+                                  }
+                                  className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
+                                />
+                              </div>
                               <div>
-                                <Label className="font-semibold cursor-pointer">
+                                <Label className="font-bold text-slate-800 dark:text-slate-200 text-base cursor-pointer">
                                   {MODULE_DISPLAY_NAMES[module] || module}
                                 </Label>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-xs text-slate-500 font-medium mt-0.5">
                                   {moduleSelected}/{moduleTotal} quyền custom
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary">{module}</Badge>
-                              {isExpanded ? (
-                                <ChevronUp className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
+                            <div className="flex items-center gap-3">
+                              <Badge
+                                variant="secondary"
+                                className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-2.5"
+                              >
+                                {module}
+                              </Badge>
+                              <span
+                                className={cn(
+                                  "material-icons-round text-slate-400 transition-transform duration-200",
+                                  isExpanded ? "rotate-180" : ""
+                                )}
+                              >
+                                expand_more
+                              </span>
                             </div>
                           </div>
 
                           {isExpanded && (
-                            <div className="p-4 space-y-2 bg-background">
+                            <div className="p-4 space-y-2 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
                               {permissions.map((permission) => {
                                 const isInherited = rolePermissions.has(
                                   permission.id
@@ -452,34 +479,50 @@ export function UserPermissionModal({
               </div>
             </ScrollArea>
 
-            <DialogFooter className="flex items-center justify-between">
+            <DialogFooter className="flex items-center justify-between p-6 border-t border-slate-100 dark:border-slate-800">
               <div>
                 {!isBulk && rolePermissions.size > 0 && (
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() =>
                       setSelectedPermissions(new Set(rolePermissions))
                     }
                     disabled={saving}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                   >
-                    <Trash className="h-4 w-4 mr-2" />
+                    <span className="material-icons-round text-sm mr-2">
+                      restart_alt
+                    </span>
                     Đặt lại về mặc định
                   </Button>
                 )}
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="rounded-xl border-slate-300"
+                >
                   Hủy
                 </Button>
-                <Button onClick={handleSave} disabled={!hasChanges || saving}>
+                <Button
+                  onClick={handleSave}
+                  disabled={!hasChanges || saving}
+                  className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
+                >
                   {saving ? (
-                    <>Đang lưu...</>
+                    <span className="flex items-center gap-2">
+                      <span className="material-icons-round animate-spin text-sm">
+                        refresh
+                      </span>
+                      Đang lưu...
+                    </span>
                   ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
+                    <span className="flex items-center gap-2">
+                      <span className="material-icons-round text-sm">save</span>
                       Lưu thay đổi
-                    </>
+                    </span>
                   )}
                 </Button>
               </div>

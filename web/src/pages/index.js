@@ -10,5 +10,6 @@ export { default as LoginPage } from "./auth/LoginPage";
 export { default as RegisterPage } from "./auth/RegisterPage";
 export { default as PlaceWizardPage } from "./admin/PlaceWizardPage";
 export { default as PlaceListPage } from "./admin/PlaceListPage";
+export { default as MapPage } from "./admin/MapPage";
 export { default as CategoryManagementPage } from "./admin/CategoryManagementPage";
 export { default as TagManagementPage } from "./admin/TagManagementPage";

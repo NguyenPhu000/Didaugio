@@ -7,15 +7,15 @@ import {
   LayoutList,
   Filter,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/components/ui/Card";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/Dialog";
 import {
   Select,
   SelectContent,
@@ -32,8 +32,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+  import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
+  import { useToast } from "@/hooks/use-toast";
 import useCategoryStore from "@/stores/categoryStore";
 import CategoryCardList from "@/components/category/CategoryCardList";
 import CategoryFormDialog from "@/components/category/CategoryFormDialog";

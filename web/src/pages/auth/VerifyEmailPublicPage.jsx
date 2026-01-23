@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { CheckCircle2, XCircle, Loader2, Mail } from "lucide-react";
-import { authService } from "@/services";
+import { authService } from "@/apis";
 import toast from "react-hot-toast";
 
 const VerifyEmailPublicPage = () => {

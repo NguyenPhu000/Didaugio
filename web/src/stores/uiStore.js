@@ -12,8 +12,8 @@ const useUIStore = create(
       expandedCategories: [],
 
       // Toggle category expansion
-      // mode: 'single' = chỉ 1 card expand tại 1 thời điểm
-      // mode: 'multiple' = cho phép nhiều cards expand
+      // mode: 'single' = chỉ 1 card expand tại 1 thời điểm (only at root level)
+      // mode: 'multiple' = cho phép nhiều cards expand (for nested children)
       toggleCategoryExpansion: (categoryId, mode = "multiple") => {
         set((state) => {
           let newExpanded = [...state.expandedCategories];
@@ -27,10 +27,8 @@ const useUIStore = create(
             );
           } else {
             // Expand this category
-            if (mode === "single") {
-              // Single mode: collapse all others first
-              newExpanded = [];
-            }
+            // Note: 'single' mode is ONLY applied at root level cards
+            // It does NOT affect nested children expansion
             newExpanded.push(categoryId);
             console.log(
               `🔼 Expanded category ${categoryId}. Total expanded:`,

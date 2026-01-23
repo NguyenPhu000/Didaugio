@@ -12,7 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui";
-import { auditLogService } from "@/services";
+import auditLogService from "@/apis/auditLogService";
+import { formatDate, formatDateTime } from "@/utils/dateUtils";
 
 const AuditLogsPage = () => {
   const [logs, setLogs] = useState([]);
@@ -79,11 +80,6 @@ const AuditLogsPage = () => {
       ASSIGN_TAGS: "bg-cyan-100 text-cyan-700",
     };
     return colors[action] || "bg-gray-100 text-gray-700";
-  };
-
-  // Format date
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString("vi-VN");
   };
 
   return (
@@ -224,7 +220,7 @@ const AuditLogsPage = () => {
                         {log.description || "-"}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">
-                        {formatDate(log.createdAt)}
+                        {formatDateTime(log.createdAt)}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Button

@@ -1,0 +1,320 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 60% White */
+    --background: 0 0% 100%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    
+    /* 30% Black (Using Darkest Blue #00072D for rich text) */
+    --foreground: 231 82% 9%; /* #00072D */
+    --card-foreground: 231 82% 9%;
+    --popover-foreground: 231 82% 9%;
+    
+    /* 10% Accents */
+    --primary: 204 85% 36%; /* #0E6BA8 */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 198 87% 82%; /* #A6E1FA */
+    --secondary-foreground: 231 82% 9%; /* #00072D */
+    
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    
+    --accent: 198 87% 82%; /* #A6E1FA */
+    --accent-foreground: 231 82% 9%;
+    
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 204 85% 36%; /* Primary */
+    --radius: 0.5rem;
+
+    /* Sidebar - keeping light/clean */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 231 82% 9%;
+    --sidebar-primary: 204 85% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 198 87% 82%;
+    --sidebar-accent-foreground: 231 82% 9%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 204 85% 36%;
+    --sidebar-width: 16rem;
+    --sidebar-width-icon: 3rem;
+  }
+
+  .dark {
+    /* Invert for Dark Mode */
+    --background: 231 82% 9%; /* #00072D */
+    --foreground: 0 0% 100%;
+    
+    --card: 231 82% 9%;
+    --card-foreground: 0 0% 100%;
+    
+    --popover: 231 82% 9%;
+    --popover-foreground: 0 0% 100%;
+    
+    --primary: 204 85% 36%; /* Keep brand color or lighten it? #0E6BA8 is quite visible on dark. */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 220 100% 17%; /* #001C55 - Darker blue for secondary areas in dark mode */
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 220 100% 17%;
+    --muted-foreground: 215 20.2% 65.1%;
+    
+    --accent: 220 100% 17%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 220 100% 17%;
+    --input: 220 100% 17%;
+    --ring: 204 85% 36%;
+
+    /* Sidebar Dark */
+    --sidebar-background: 231 82% 9%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 204 85% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 100% 17%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 100% 17%;
+    --sidebar-ring: 204 85% 36%;
+    --sidebar-width: 16rem;
+    --sidebar-width-icon: 3rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 4px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #475569;
+}
+
+/* Material Icons Round styling */
+.material-icons-round {
+  font-family: "Material Icons Round";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+}
+
+/* ============================================
+   MapLibre GL Custom Styles - Đi Đâu Giờ
+   ============================================ */
+
+/* Map Container */
+.maplibregl-map {
+  font-family: inherit;
+}
+
+/* Navigation Controls - Custom Colors */
+.maplibregl-ctrl-group {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.maplibregl-ctrl-group button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.maplibregl-ctrl-group button:hover {
+  background-color: #f3f4f6;
+}
+
+.maplibregl-ctrl-group button:active {
+  background-color: #e5e7eb;
+}
+
+/* Zoom Controls - Emerald accent */
+.maplibregl-ctrl-zoom-in,
+.maplibregl-ctrl-zoom-out {
+  color: #10b981;
+}
+
+/* Compass */
+.maplibregl-ctrl-compass {
+  color: #10b981;
+}
+
+/* Geolocate Control - Emerald accent */
+.maplibregl-ctrl-geolocate {
+  background-color: white;
+}
+
+.maplibregl-ctrl-geolocate:hover {
+  background-color: #f3f4f6;
+}
+
+.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active,
+.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active:hover {
+  background-color: #10b981;
+  color: white;
+}
+
+.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active-error,
+.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active-error:hover {
+  background-color: #ef4444;
+  color: white;
+}
+
+.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-waiting,
+.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-waiting:hover {
+  background-color: #f59e0b;
+  color: white;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Attribution */
+.maplibregl-ctrl-attrib {
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(4px);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin: 4px;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: #10b981;
+  text-decoration: none;
+}
+
+.maplibregl-ctrl-attrib a:hover {
+  text-decoration: underline;
+}
+
+/* Marker */
+.maplibregl-marker {
+  cursor: grab;
+}
+
+.maplibregl-marker:active {
+  cursor: grabbing;
+}
+
+/* Popup */
+.maplibregl-popup {
+  max-width: 300px;
+}
+
+.maplibregl-popup-content {
+  background-color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+.maplibregl-popup-close-button {
+  color: #6b7280;
+  font-size: 20px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.maplibregl-popup-close-button:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: white;
+}
+
+/* Scale Control */
+.maplibregl-ctrl-scale {
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(4px);
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: #374151;
+  margin: 4px;
+}
+
+/* Logo */
+.maplibregl-ctrl-logo {
+  margin: 4px;
+}
+
+/* Dark mode support */
+.dark .maplibregl-ctrl-group {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark .maplibregl-ctrl-group button:hover {
+  background-color: #374151;
+}
+
+.dark .maplibregl-ctrl-attrib {
+  background-color: rgba(31, 41, 55, 0.8);
+  color: #d1d5db;
+}
+
+.dark .maplibregl-popup-content {
+  background-color: #1f2937;
+  border-color: #374151;
+  color: #f3f4f6;
+}
+
+.dark .maplibregl-ctrl-scale {
+  background-color: rgba(31, 41, 55, 0.8);
+  border-color: #374151;
+  color: #d1d5db;
+}
+
+/* Pulse animation for geolocate */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}

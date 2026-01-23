@@ -5,11 +5,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+} from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
-import { MODULE_DISPLAY_NAMES } from "@/config/permissions";
+import { MODULE_DISPLAY_NAMES } from "@/constants/permissions";
 
 export function PermissionList({ permissions, modules }) {
   const [search, setSearch] = useState("");

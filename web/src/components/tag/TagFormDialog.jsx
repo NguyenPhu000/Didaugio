@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 import {
   Select,
   SelectContent,
@@ -16,40 +16,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/Dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import useTagStore from "@/stores/tagStore";
 import { useToast } from "@/hooks/use-toast";
+import { TAG_TYPES, TAG_COLOR_PRESETS } from "@/constants/tagConstants";
 
 /**
  * TAG FORM DIALOG
  * Form tạo/sửa tag
  */
-
-const TAG_TYPES = {
-  general: "General",
-  food: "Food",
-  travel: "Travel",
-  service: "Service",
-  activity: "Activity",
-  ambience: "Ambience",
-  price: "Price",
-  time: "Time",
-  ai_signal: "AI Signal",
-};
-
-const COLOR_PRESETS = [
-  "#EF4444",
-  "#F59E0B",
-  "#10B981",
-  "#3B82F6",
-  "#8B5CF6",
-  "#EC4899",
-  "#06B6D4",
-  "#84CC16",
-  "#F97316",
-  "#6366F1",
-];
 
 export default function TagFormDialog({ open, onClose, tag }) {
   const { createTag, updateTag, fetchTags } = useTagStore();
@@ -208,7 +184,7 @@ export default function TagFormDialog({ open, onClose, tag }) {
                 className="w-20 h-10"
               />
               <div className="flex flex-wrap gap-1 flex-1">
-                {COLOR_PRESETS.map((color) => (
+                {TAG_COLOR_PRESETS.map((color) => (
                   <button
                     key={color}
                     type="button"

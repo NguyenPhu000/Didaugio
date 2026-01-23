@@ -1,31 +1,20 @@
 import { useState } from "react";
 import { Edit, Trash2, MoreVertical } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card } from "@/components/ui/Card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { TAG_TYPE_COLORS } from "@/constants/tagConstants";
 
 /**
  * TAG LIST
  * Hiển thị danh sách tags dạng table
  */
-
-const TAG_TYPE_COLORS = {
-  general: "default",
-  food: "destructive",
-  travel: "secondary",
-  service: "outline",
-  activity: "default",
-  ambience: "secondary",
-  price: "default",
-  time: "outline",
-  ai_signal: "default",
-};
 
 export default function TagList({ tags, onEdit, onDelete, loading }) {
   if (loading) {

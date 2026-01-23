@@ -6,11 +6,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from "@/components/ui/Dialog";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/Label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -24,9 +24,9 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PermissionCheckbox } from "./permission-checkbox";
-import { roleService } from "@/services/roleService";
-import { permissionService } from "@/services/permissionService";
-import { MODULE_DISPLAY_NAMES } from "@/config/permissions";
+import { roleService } from "@/apis/roleService";
+import { permissionService } from "@/apis/permissionService";
+import { MODULE_DISPLAY_NAMES } from "@/constants/permissions";
 import {
   Search,
   CheckCircle2,

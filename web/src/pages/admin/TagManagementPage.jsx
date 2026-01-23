@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Filter, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/components/ui/Card";
 import {
   Select,
   SelectContent,
@@ -23,29 +23,23 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/Dialog";  
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import useTagStore from "@/stores/tagStore";
 import TagList from "@/components/tag/TagList";
 import TagFormDialog from "@/components/tag/TagFormDialog";
+import { TAG_TYPES } from "@/constants/tagConstants";
 
 /**
  * TAG MANAGEMENT PAGE
  * Admin page quản lý tags
  */
 
-const TAG_TYPES = {
+// Extend TAG_TYPES with "all" option for filter
+const TAG_TYPES_FILTER = {
   all: "All Types",
-  general: "General",
-  food: "Food",
-  travel: "Travel",
-  service: "Service",
-  activity: "Activity",
-  ambience: "Ambience",
-  price: "Price",
-  time: "Time",
-  ai_signal: "AI Signal",
+  ...TAG_TYPES,
 };
 
 export default function TagManagementPage() {
@@ -168,7 +162,7 @@ export default function TagManagementPage() {
                   <SelectValue placeholder="Lọc theo loại" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(TAG_TYPES).map(([value, label]) => (
+                  {Object.entries(TAG_TYPES_FILTER).map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}
                     </SelectItem>

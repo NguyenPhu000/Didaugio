@@ -175,7 +175,7 @@ const validate = () => {
 ### placeService.js
 
 ```jsx
-import { placeService } from "@/services";
+import { placeService } from "@/apis";
 
 // Get all places
 const places = await placeService.getAllPlaces({ 
@@ -283,7 +283,7 @@ import {
   DAY_OF_WEEK,
   DAY_OF_WEEK_NAMES,
   PLACE_IMAGE_LIMITS 
-} from "@/config/constants";
+} from "@/constants/constants";
 
 // Place Status
 PLACE_STATUS.DRAFT      // "draft"

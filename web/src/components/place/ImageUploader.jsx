@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, memo, useCallback } from "react";
 import {
   Upload,
   X,
@@ -7,9 +7,10 @@ import {
   Star,
   Camera,
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Label } from "@/components/ui/Label";
+import { Button, Label } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { IMAGE_UPLOAD_CONFIG } from "@/constants/placeConstants";
+import { compressImage } from "@/utils/imageUtils";
 
 /**
  * IMAGE UPLOADER - REDESIGNED
@@ -18,65 +19,47 @@ import { cn } from "@/lib/utils";
  * Features: Drag & drop, Cover image, Caption, Reorder
  */
 
-const MAX_IMAGES = 10;
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const { MAX_IMAGES, MAX_FILE_SIZE } = IMAGE_UPLOAD_CONFIG;
 
-const ImageUploader = ({ images = [], onChange, error }) => {
+const ImageUploader = memo(({ images = [], onChange, error }) => {
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleFileSelect = (files) => {
-    if (!files || files.length === 0) return;
+  const handleFileSelect = useCallback(
+    (files) => {
+      if (!files || files.length === 0) return;
 
-    // Check total images limit
-    if (images.length + files.length > MAX_IMAGES) {
-      alert(`Chỉ được tải lên tối đa ${MAX_IMAGES} hình ảnh`);
-      return;
-    }
+      // Check total images limit
+      if (images.length + files.length > MAX_IMAGES) {
+        alert(`Chỉ được tải lên tối đa ${MAX_IMAGES} hình ảnh`);
+        return;
+      }
 
-    // Validate and convert files to base64
-    const newImages = [];
-    const filePromises = Array.from(files).map((file) => {
-      return new Promise((resolve, reject) => {
-        // Validate file size
-        if (file.size > MAX_FILE_SIZE) {
-          reject(`File ${file.name} vượt quá 5MB`);
-          return;
-        }
-
-        // Validate file type
+      const filePromises = Array.from(files).map((file) => {
         if (!file.type.startsWith("image/")) {
-          reject(`File ${file.name} không phải là hình ảnh`);
-          return;
+          return Promise.reject(`File ${file.name} không phải là hình ảnh`);
         }
-
-        // Convert to base64
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          resolve({
-            imageData: e.target.result, // Backend expects 'imageData'
-            caption: "",
-            isCover: images.length === 0 && newImages.length === 0, // Backend expects 'isCover'
-            order: images.length + newImages.length,
-          });
-        };
-        reader.onerror = () => reject(`Không thể đọc file ${file.name}`);
-        reader.readAsDataURL(file);
+        return compressImage(file, images.length);
       });
-    });
 
-    setUploading(true);
-    Promise.all(filePromises)
-      .then((results) => {
-        onChange([...images, ...results]);
-        setUploading(false);
-      })
-      .catch((error) => {
-        alert(error);
-        setUploading(false);
-      });
-  };
+      setUploading(true);
+      Promise.all(filePromises)
+        .then((results) => {
+          const newItems = results.map((item, index) => ({
+            ...item,
+            order: images.length + index,
+          }));
+          onChange([...images, ...newItems]);
+          setUploading(false);
+        })
+        .catch((error) => {
+          alert(error);
+          setUploading(false);
+        });
+    },
+    [images, onChange]
+  );
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -341,6 +324,8 @@ const ImageUploader = ({ images = [], onChange, error }) => {
       )}
     </div>
   );
-};
+});
+
+ImageUploader.displayName = "ImageUploader";
 
 export default ImageUploader;

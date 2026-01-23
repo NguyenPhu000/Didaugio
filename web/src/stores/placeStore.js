@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import * as placeService from "@/services/placeService";
+import * as placeService from "@/apis/placeService";
 
 /**
  * PLACE STORE
@@ -51,7 +51,7 @@ const usePlaceStore = create(
         priceFrom: null,
         priceTo: null,
         openingHours: [],
-        amenities: {},
+        amenities: [],
 
         // Meta
         status: "draft",
@@ -154,10 +154,61 @@ const usePlaceStore = create(
         }
       },
 
+      lookupLocation: async (latitude, longitude) => {
+        try {
+          const response = await fetch(
+            "http://localhost:8081/api/districts/lookup",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ latitude, longitude }),
+            }
+          );
+          const data = await response.json();
+
+          if (data.success && data.data) {
+            set((state) => ({
+              wizardData: {
+                ...state.wizardData,
+                districtId: data.data.id,
+                wardId: null,
+              },
+            }));
+            return data.data;
+          }
+          return null;
+        } catch (error) {
+          console.error("Lookup failed", error);
+          return null;
+        }
+      },
+
       createPlace: async (data) => {
         set({ loading: true, error: null });
         try {
-          const response = await placeService.createPlace(data);
+          // Sanitize numeric fields to ensure they are numbers (not strings)
+          const payload = {
+            ...data,
+            categoryId: data.categoryId ? parseInt(data.categoryId) : undefined,
+            districtId: data.districtId ? parseInt(data.districtId) : undefined,
+            wardId: data.wardId ? parseInt(data.wardId) : null,
+            latitude: data.latitude ? parseFloat(data.latitude) : undefined,
+            longitude: data.longitude ? parseFloat(data.longitude) : undefined,
+            priceFrom: data.priceFrom ? parseInt(data.priceFrom) : null,
+            priceTo: data.priceTo ? parseInt(data.priceTo) : null,
+            // Ensure businessId is number if exists
+            businessId: data.businessId ? parseInt(data.businessId) : undefined,
+            // Sanitize optional string fields - empty strings should be null/undefined
+            website: data.website?.trim() || undefined,
+            email: data.email?.trim() || undefined,
+            facebook: data.facebook?.trim() || undefined,
+            phone: data.phone?.trim() || undefined,
+            // Sanitize priceRange - null/empty should be undefined to satisfy optional validation
+            priceRange: data.priceRange || undefined,
+            // Remove status, handle in backend
+          };
+
+          const response = await placeService.createPlace(payload);
           const newPlace = response.data || response;
 
           // Refresh places list
@@ -174,7 +225,47 @@ const usePlaceStore = create(
       updatePlace: async (id, data) => {
         set({ loading: true, error: null });
         try {
-          const response = await placeService.updatePlace(id, data);
+          // Sanitize numeric fields
+          const payload = {
+            ...data,
+          };
+
+          if (data.categoryId !== undefined)
+            payload.categoryId = parseInt(data.categoryId);
+          // ... rest same logic
+
+          if (data.districtId !== undefined)
+            payload.districtId = parseInt(data.districtId);
+          if (data.wardId !== undefined)
+            payload.wardId = data.wardId ? parseInt(data.wardId) : null;
+          if (data.latitude !== undefined)
+            payload.latitude = parseFloat(data.latitude);
+          if (data.longitude !== undefined)
+            payload.longitude = parseFloat(data.longitude);
+          if (data.priceFrom !== undefined)
+            payload.priceFrom = data.priceFrom
+              ? parseInt(data.priceFrom)
+              : null;
+          if (data.priceTo !== undefined)
+            payload.priceTo = data.priceTo ? parseInt(data.priceTo) : null;
+
+          // Sanitize optional string fields
+          if (data.website !== undefined)
+            payload.website = data.website?.trim() || undefined;
+          if (data.email !== undefined)
+            payload.email = data.email?.trim() || undefined;
+          if (data.facebook !== undefined)
+            payload.facebook = data.facebook?.trim() || undefined;
+          if (data.phone !== undefined)
+            payload.phone = data.phone?.trim() || undefined;
+          if (data.priceRange !== undefined)
+            payload.priceRange = data.priceRange || undefined;
+
+          // Status can be updated via specific endpoint or here if allowed, but for create we remove it.
+          // Keeping it here for Update if admin wants to changing it? User said "Remove status from Form create".
+          // So updatePlace logic can remain for now.
+
+          const response = await placeService.updatePlace(id, payload);
           const updatedPlace = response.data || response;
 
           // Refresh places list
@@ -288,8 +379,8 @@ const usePlaceStore = create(
             priceFrom: null,
             priceTo: null,
             openingHours: [],
-            amenities: {},
-            status: "draft",
+            amenities: [],
+            // No status default here needed or default to null, backend handles it.
           },
           currentStep: 1,
         });
@@ -318,8 +409,8 @@ const usePlaceStore = create(
             priceFrom: place.priceFrom || null,
             priceTo: place.priceTo || null,
             openingHours: place.openingHours || [],
-            amenities: place.amenities || {},
-            status: place.status || "draft",
+            amenities: place.amenities || [],
+            // status: place.status || "draft", // Remove status from wizard
           },
           currentStep: 1,
         });

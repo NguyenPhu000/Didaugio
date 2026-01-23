@@ -35,27 +35,12 @@ import {
   Separator,
 } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
-import { profileService } from "@/services/profileService";
-import { ROLE_NAMES } from "@/config/constants";
+import { profileService } from "@/apis/profileService";
+import { ROLE_NAMES } from "@/constants/constants";
 import { ChangePasswordModal } from "@/components/user/ChangePasswordModal";
+import { profileSchema } from "@/schemas/user";
 
-const profileSchema = z.object({
-  fullName: z
-    .string()
-    .min(2, "Ho ten phai co it nhat 2 ky tu")
-    .max(100, "Ho ten qua dai")
-    .optional()
-    .or(z.literal("")),
-  phone: z
-    .string()
-    .max(20, "So dien thoai qua dai")
-    .optional()
-    .or(z.literal("")),
-  dateOfBirth: z.string().optional().or(z.literal("")),
-  gender: z.enum(["male", "female", "other", ""]).optional(),
-  address: z.string().max(500, "Dia chi qua dai").optional().or(z.literal("")),
-  bio: z.string().max(1000, "Gioi thieu qua dai").optional().or(z.literal("")),
-});
+// const profileSchema = z.object({...}) // Removed
 
 const ProfilePage = () => {
   const { user, setUser } = useAuthStore();

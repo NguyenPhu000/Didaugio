@@ -15,7 +15,8 @@ import {
   CardContent,
   Button,
 } from "@/components/ui";
-import { passwordResetService } from "@/services";
+import { passwordResetService } from "@/apis";
+import { formatDate } from "@/utils/dateUtils";
 
 const PasswordResetPage = () => {
   const [resets, setResets] = useState([]);
@@ -96,10 +97,6 @@ const PasswordResetPage = () => {
     };
   };
 
-  // Format date
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString("vi-VN");
-  };
 
   // Calculate time remaining
   const getTimeRemaining = (expiresAt) => {

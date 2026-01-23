@@ -15,11 +15,10 @@ import {
   CardDescription,
   Label,
 } from "@/components/ui";
-import { authService } from "@/services";
+import { authService } from "@/apis";
+import { forgotPasswordSchema } from "@/schemas/auth";
 
-const forgotPasswordSchema = z.object({
-  email: z.string().email("Email không hợp lệ").toLowerCase(),
-});
+// const forgotPasswordSchema = z.object({...}); // Removed
 
 const ForgotPasswordPage = () => {
   const [isLoading, setIsLoading] = useState(false);

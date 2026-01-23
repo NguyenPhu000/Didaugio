@@ -1,25 +1,8 @@
 import { useState, useEffect } from "react";
-import {
-  X,
-  UtensilsCrossed,
-  ChefHat,
-  Coffee,
-  Hotel,
-  Home,
-  Landmark,
-  ShoppingBag,
-  TreePine,
-  Building,
-  Waves,
-  Palmtree,
-  Mountain,
-  Church,
-  Store,
-  Camera,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -35,64 +18,19 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/Dialog";
 import useCategoryStore from "@/stores/categoryStore";
 import { useToast } from "@/hooks/use-toast";
+import {
+  CATEGORY_ICON_MAP,
+  CATEGORY_ICON_PRESETS,
+  CATEGORY_COLOR_PRESETS,
+} from "@/constants/categoryConstants";
 
 /**
  * CATEGORY FORM DIALOG
  * Form tạo/sửa danh mục
  */
-
-// Icon mapper
-const ICON_MAP = {
-  UtensilsCrossed,
-  ChefHat,
-  Coffee,
-  Hotel,
-  Home,
-  Landmark,
-  ShoppingBag,
-  TreePine,
-  Building,
-  Waves,
-  Palmtree,
-  Mountain,
-  Church,
-  Store,
-  Camera,
-};
-
-const ICON_PRESETS = [
-  "UtensilsCrossed",
-  "ChefHat",
-  "Coffee",
-  "Hotel",
-  "Home",
-  "Landmark",
-  "ShoppingBag",
-  "TreePine",
-  "Building",
-  "Waves",
-  "Palmtree",
-  "Mountain",
-  "Church",
-  "Store",
-  "Camera",
-];
-
-const COLOR_PRESETS = [
-  "#EF4444",
-  "#F59E0B",
-  "#10B981",
-  "#3B82F6",
-  "#8B5CF6",
-  "#EC4899",
-  "#06B6D4",
-  "#84CC16",
-  "#F97316",
-  "#6366F1",
-];
 
 export default function CategoryFormDialog({
   open,
@@ -153,20 +91,23 @@ export default function CategoryFormDialog({
   }, [category, parentCategory, open]);
 
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
 
-    // Auto-generate slug from name
-    if (field === "name" && !category) {
-      const slug = value
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/đ/g, "d")
-        .replace(/[^a-z0-9\s-]/g, "")
-        .trim()
-        .replace(/\s+/g, "-");
-      setFormData((prev) => ({ ...prev, slug }));
-    }
+      // Auto-generate slug from name
+      if (field === "name" && !category) {
+        updated.slug = value
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/đ/g, "d")
+          .replace(/[^a-z0-9\s-]/g, "")
+          .trim()
+          .replace(/\s+/g, "-");
+      }
+
+      return updated;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -208,8 +149,8 @@ export default function CategoryFormDialog({
             {category
               ? "Sửa Danh Mục"
               : parentCategory
-              ? "Thêm Danh Mục Con"
-              : "Thêm Danh Mục"}
+                ? "Thêm Danh Mục Con"
+                : "Thêm Danh Mục"}
           </DialogTitle>
           <DialogDescription>
             {parentCategory && `Danh mục cha: ${parentCategory.name}`}
@@ -251,8 +192,8 @@ export default function CategoryFormDialog({
             <div className="space-y-2">
               <Label>Icon</Label>
               <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/30">
-                {ICON_PRESETS.map((iconName) => {
-                  const IconComponent = ICON_MAP[iconName];
+                {CATEGORY_ICON_PRESETS.map((iconName) => {
+                  const IconComponent = CATEGORY_ICON_MAP[iconName];
                   return (
                     <button
                       key={iconName}
@@ -294,7 +235,7 @@ export default function CategoryFormDialog({
                   className="w-20 h-10"
                 />
                 <div className="flex flex-wrap gap-1 flex-1">
-                  {COLOR_PRESETS.map((color) => (
+                  {CATEGORY_COLOR_PRESETS.map((color) => (
                     <button
                       key={color}
                       type="button"

@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/Label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -13,21 +13,12 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PermissionCheckbox } from "./permission-checkbox";
-import { roleService } from "@/services/roleService";
-import { permissionService } from "@/services/permissionService";
-import { MODULE_DISPLAY_NAMES } from "@/config/permissions";
-import {
-  Search,
-  CheckCircle2,
-  XCircle,
-  Save,
-  Lightbulb,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { roleService } from "@/apis/roleService";
+import { permissionService } from "@/apis/permissionService";
+import { MODULE_DISPLAY_NAMES } from "@/constants/permissions";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export function RolePermissionTab({ role, onUpdated, onClose }) {
   const [loading, setLoading] = useState(true);
@@ -213,31 +204,34 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
   if (loading) {
     return (
       <div className="space-y-4 py-4">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <Skeleton className="h-40 w-full rounded-xl" />
+        <Skeleton className="h-40 w-full rounded-xl" />
       </div>
     );
   }
 
   return (
     <div className="space-y-4 pb-4">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Search and Filter */}
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="relative flex-1 w-full">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+             <span className="material-icons-round text-lg">search</span>
+          </span>
           <Input
             placeholder="Tìm quyền..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-10 h-10 rounded-xl border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500"
           />
         </div>
         <Select value={moduleFilter} onValueChange={setModuleFilter}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px] h-10 rounded-xl border-slate-200 dark:border-slate-800">
             <SelectValue placeholder="Lọc theo module" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800">
             <SelectItem value="all">Tất cả modules</SelectItem>
             {Object.keys(allPermissions).map((module) => (
               <SelectItem key={module} value={module}>
@@ -248,21 +242,24 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         </Select>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <p className="text-sm font-medium">
-            Đã chọn: {stats.selected} / {stats.total} quyền
-          </p>
-          <Progress value={stats.percentage} className="h-2 w-[200px]" />
+      {/* Progress and Actions */}
+      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-slate-100 dark:border-slate-800">
+        <div className="space-y-2 w-full sm:w-auto">
+          <div className="flex items-center justify-between sm:justify-start gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+            <span>Đã chọn: {stats.selected} / {stats.total} quyền</span>
+            <span className="text-slate-400">({Math.round(stats.percentage)}%)</span>
+          </div>
+          <Progress value={stats.percentage} className="h-2 w-full sm:w-[240px] bg-slate-200 dark:bg-slate-700" indicatorClassName="bg-blue-600" />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             size="sm"
             onClick={handleSelectAll}
             disabled={stats.selected === stats.total}
+            className="flex-1 sm:flex-none rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-            <CheckCircle2 className="h-4 w-4 mr-2" />
+             <span className="material-icons-round text-sm mr-2 text-blue-500">check_circle</span>
             Chọn tất cả
           </Button>
           <Button
@@ -270,17 +267,20 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
             size="sm"
             onClick={handleDeselectAll}
             disabled={stats.selected === 0}
+            className="flex-1 sm:flex-none rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-            <XCircle className="h-4 w-4 mr-2" />
+            <span className="material-icons-round text-sm mr-2 text-slate-500">cancel</span>
             Bỏ chọn
           </Button>
         </div>
       </div>
 
+      {/* Permissions List */}
       <div className="space-y-3">
         {Object.keys(filteredPermissions).length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            Không tìm thấy quyền nào
+          <div className="text-center py-12 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+             <span className="material-icons-round text-4xl mb-2 opacity-50">search_off</span>
+            <p>Không tìm thấy quyền nào</p>
           </div>
         ) : (
           Object.entries(filteredPermissions).map(([module, permissions]) => {
@@ -291,38 +291,43 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
             const isExpanded = expandedModules.has(module);
 
             return (
-              <div key={module} className="border rounded-lg overflow-hidden">
+              <div key={module} className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden transition-all shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800">
                 <div
-                  className="flex items-center justify-between p-4 bg-muted/50 cursor-pointer hover:bg-muted"
+                  className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 cursor-pointer select-none"
                   onClick={() => toggleModuleExpand(module)}
                 >
                   <div className="flex items-center gap-3">
-                    <Checkbox
-                      checked={moduleSelected === moduleTotal}
-                      onCheckedChange={() => handleToggleModule(module)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    <div onClick={(e) => e.stopPropagation()}>
+                       <Checkbox
+                          checked={moduleSelected === moduleTotal && moduleTotal > 0 ? true : moduleSelected > 0 ? "indeterminate" : false}
+                          onCheckedChange={() => handleToggleModule(module)}
+                          className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
+                        />
+                    </div>
                     <div>
-                      <Label className="font-semibold cursor-pointer">
+                      <Label className="font-bold text-slate-800 dark:text-slate-200 text-base cursor-pointer">
                         {MODULE_DISPLAY_NAMES[module] || module}
                       </Label>
-                      <p className="text-xs text-muted-foreground">
-                        {moduleSelected}/{moduleTotal} quyền
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        {moduleSelected}/{moduleTotal} quyền được chọn
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{module}</Badge>
-                    {isExpanded ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
+                  <div className="flex items-center gap-3">
+                    <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-2.5">
+                       {module}
+                    </Badge>
+                     <span className={cn(
+                        "material-icons-round text-slate-400 transition-transform duration-200",
+                        isExpanded ? "rotate-180" : ""
+                     )}>
+                        expand_more
+                     </span>
                   </div>
                 </div>
 
                 {isExpanded && (
-                  <div className="p-4 space-y-2 bg-background">
+                  <div className="p-4 space-y-2 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
                     {permissions.map((permission) => (
                       <PermissionCheckbox
                         key={permission.id}
@@ -341,18 +346,26 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         )}
       </div>
 
-      <div className="flex justify-end gap-2 pt-4 border-t">
-        <Button variant="outline" onClick={onClose}>
+      {/* Footer Actions */}
+      <div className="flex justify-end gap-3 pt-4 mt-6 border-t border-slate-100 dark:border-slate-800 sticky bottom-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 rounded-t-2xl -mx-4 -mb-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10 sm:static sm:bg-transparent sm:p-0 sm:shadow-none sm:rounded-none">
+        <Button variant="outline" onClick={onClose} className="rounded-xl border-slate-300">
           Hủy
         </Button>
-        <Button onClick={handleSave} disabled={!hasChanges || saving}>
+        <Button 
+           onClick={handleSave} 
+           disabled={!hasChanges || saving} 
+           className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
+        >
           {saving ? (
-            <>Đang lưu...</>
+             <span className="flex items-center gap-2">
+                 <span className="material-icons-round animate-spin text-sm">refresh</span>
+                 Đang lưu...
+             </span>
           ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
+            <span className="flex items-center gap-2">
+              <span className="material-icons-round text-sm">save</span>
               Lưu thay đổi
-            </>
+            </span>
           )}
         </Button>
       </div>

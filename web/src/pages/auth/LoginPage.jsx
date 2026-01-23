@@ -14,18 +14,10 @@ import {
   CardDescription,
 } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
-import { authService } from "@/services/authService";
+import { authService } from "@/apis/authService";
+import { loginSchema } from "@/schemas/auth";
 
-const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, "Email không được để trống")
-    .email("Email không hợp lệ"),
-  password: z
-    .string()
-    .min(1, "Mật khẩu không được để trống")
-    .min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
-});
+// const loginSchema = z.object({...}); // Removed
 
 const LoginPage = () => {
   const navigate = useNavigate();

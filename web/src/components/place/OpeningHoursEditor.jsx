@@ -11,21 +11,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DAYS_OF_WEEK } from "@/constants/placeConstants";
 
 /**
  * OPENING HOURS EDITOR
  * Component để quản lý giờ mở cửa theo từng ngày trong tuần
  */
 
-const DAYS_OF_WEEK = [
-  { value: 0, label: "Chủ nhật" },
-  { value: 1, label: "Thứ 2" },
-  { value: 2, label: "Thứ 3" },
-  { value: 3, label: "Thứ 4" },
-  { value: 4, label: "Thứ 5" },
-  { value: 5, label: "Thứ 6" },
-  { value: 6, label: "Thứ 7" },
-];
+// Map server format to display format
+const DAYS_MAP = DAYS_OF_WEEK.map((day, index) => ({
+  value: index, // Sunday=0, Monday=1, etc.
+  label: day.label,
+}));
 
 const OpeningHoursEditor = ({ value = [], onChange }) => {
   const [is24Hours, setIs24Hours] = useState(false);
@@ -59,7 +56,7 @@ const OpeningHoursEditor = ({ value = [], onChange }) => {
     }
 
     const template = value[0];
-    const newSlots = DAYS_OF_WEEK.map((day) => ({
+    const newSlots = DAYS_MAP.map((day) => ({
       dayOfWeek: day.value,
       openTime: template.openTime,
       closeTime: template.closeTime,
@@ -71,7 +68,7 @@ const OpeningHoursEditor = ({ value = [], onChange }) => {
   const handleSet24Hours = (checked) => {
     setIs24Hours(checked);
     if (checked) {
-      const newSlots = DAYS_OF_WEEK.map((day) => ({
+      const newSlots = DAYS_MAP.map((day) => ({
         dayOfWeek: day.value,
         openTime: "00:00",
         closeTime: "23:59",
@@ -82,7 +79,7 @@ const OpeningHoursEditor = ({ value = [], onChange }) => {
   };
 
   const getDayLabel = (dayOfWeek) => {
-    return DAYS_OF_WEEK.find((d) => d.value === dayOfWeek)?.label || "N/A";
+    return DAYS_MAP.find((d) => d.value === dayOfWeek)?.label || "N/A";
   };
 
   // Group by day for display
@@ -163,7 +160,7 @@ const OpeningHoursEditor = ({ value = [], onChange }) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {DAYS_OF_WEEK.map((day) => (
+                  {DAYS_MAP.map((day) => (
                     <SelectItem key={day.value} value={day.value.toString()}>
                       {day.label}
                     </SelectItem>

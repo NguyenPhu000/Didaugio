@@ -6,23 +6,8 @@ import {
   Plus,
   Edit,
   Trash2,
-  UtensilsCrossed,
-  ChefHat,
-  Coffee,
-  Hotel,
-  Home,
-  Landmark,
-  ShoppingBag,
-  TreePine,
-  Building,
-  Waves,
-  Palmtree,
-  Mountain,
-  Church,
-  Store,
-  Camera,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,30 +15,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { CATEGORY_ICON_MAP } from "@/constants/categoryConstants";
 
 /**
  * CATEGORY TREE ITEM
  * Recursive component hiển thị category tree
  */
-
-// Icon mapper
-const ICON_MAP = {
-  UtensilsCrossed,
-  ChefHat,
-  Coffee,
-  Hotel,
-  Home,
-  Landmark,
-  ShoppingBag,
-  TreePine,
-  Building,
-  Waves,
-  Palmtree,
-  Mountain,
-  Church,
-  Store,
-  Camera,
-};
 
 export default function CategoryTreeItem({
   category,
@@ -110,7 +77,7 @@ export default function CategoryTreeItem({
             }}
           >
             {(() => {
-              const IconComponent = ICON_MAP[category.icon];
+              const IconComponent = CATEGORY_ICON_MAP[category.icon];
               return IconComponent ? (
                 <IconComponent className="h-4 w-4" />
               ) : (

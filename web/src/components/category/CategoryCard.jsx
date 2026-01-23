@@ -6,27 +6,12 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
-  MapPin,
   FolderTree,
-  UtensilsCrossed,
-  ChefHat,
-  Coffee,
-  Hotel,
-  Home,
-  Landmark,
-  ShoppingBag,
-  TreePine,
-  Building,
-  Waves,
-  Palmtree,
-  Mountain,
-  Church,
-  Store,
-  Camera,
+  MapPin,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,25 +19,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import useUIStore from "@/stores/uiStore";
+import { CATEGORY_ICON_MAP } from "@/constants/categoryConstants";
 
-// Icon mapper
-const ICON_MAP = {
-  UtensilsCrossed,
-  ChefHat,
-  Coffee,
-  Hotel,
-  Home,
-  Landmark,
-  ShoppingBag,
-  TreePine,
-  Building,
-  Waves,
-  Palmtree,
-  Mountain,
-  Church,
-  Store,
-  Camera,
-};
 
 /**
  * CATEGORY SUB ITEM
@@ -75,7 +43,7 @@ function CategorySubItem({
 
   const hasChildren = category.children && category.children.length > 0;
   const childrenCount = category._count?.children || 0;
-  const IconComponent = category.icon ? ICON_MAP[category.icon] : FolderTree;
+  const IconComponent = category.icon ? CATEGORY_ICON_MAP[category.icon] : FolderTree;
 
   return (
     <div className="space-y-1">
@@ -195,7 +163,7 @@ export default function CategoryCard({
   const placesCount = category._count?.places || 0;
 
   // Get icon component
-  const IconComponent = category.icon ? ICON_MAP[category.icon] : FolderTree;
+  const IconComponent = category.icon ? CATEGORY_ICON_MAP[category.icon] : FolderTree;
 
   return (
     <Card className="group hover:shadow-xl transition-all duration-300 relative overflow-hidden border-2 hover:border-primary/20">

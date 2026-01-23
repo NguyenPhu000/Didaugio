@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { locationService } from "@/services/locationService";
+import { locationService } from "@/apis/locationService";
 
 /**
  * ProvinceDistrictSelect Component

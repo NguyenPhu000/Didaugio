@@ -1,4 +1,5 @@
 import prisma from "../config/prismaClient.js";
+import { ERROR_MESSAGES, ERROR_CODES } from "../config/messages.js";
 
 // =============================================================================
 // PERMISSION MIDDLEWARE - KIỂM TRA QUYỀN HẠN (RBAC Enhanced)
@@ -43,13 +44,6 @@ async function getUserPermissions(userId, roleId) {
  * Middleware kiểm tra quyền hạn của user (Check permission-based, not role-based)
  * @param {string|string[]} requiredPermission - Tên quyền hoặc mảng quyền cần kiểm tra
  * @returns {Function} Express middleware
- *
- * @example
- * // Require 1 quyền
- * router.put('/places/:id/verify', hasPermission('places:verify'), placeController.verify);
- *
- * // Require 1 trong nhiều quyền (OR logic)
- * router.get('/users', hasPermission(['users:view', 'users:view_detail']), userController.getAll);
  */
 export const hasPermission = (requiredPermission) => {
   return async (req, res, next) => {
@@ -57,16 +51,13 @@ export const hasPermission = (requiredPermission) => {
       const user = req.user; // Từ authMiddleware
 
       if (!user || !user.userId) {
-        console.log('[Permission Middleware] No user in request');
         return res.status(401).json({
           success: false,
           data: null,
-          message: "Vui lòng đăng nhập để tiếp tục",
-          errorCode: "UNAUTHORIZED",
+          message: ERROR_MESSAGES.UNAUTHORIZED,
+          errorCode: ERROR_CODES.UNAUTHORIZED,
         });
       }
-
-      console.log('[Permission Middleware] User:', user.userId, 'Role:', user.roleId, 'Required:', requiredPermission);
 
       // RULE 1: GUEST (roleId = 5) tuyệt đối KHÔNG được vào admin panel
       if (user.roleId === 5) {
@@ -101,13 +92,14 @@ export const hasPermission = (requiredPermission) => {
       );
 
       if (!hasRequiredPermission) {
+        console.warn(`[Permission Denied] User ${user.userId} tried to access ${req.originalUrl} without ${permissionsToCheck.join(", ")}`);
         return res.status(403).json({
           success: false,
           data: null,
-          message: `Bạn không có quyền thực hiện thao tác này. Yêu cầu quyền: ${permissionsToCheck.join(
+          message: `${ERROR_MESSAGES.FORBIDDEN}. Yêu cầu quyền: ${permissionsToCheck.join(
             " hoặc "
           )}`,
-          errorCode: "FORBIDDEN_NO_PERMISSION",
+          errorCode: ERROR_CODES.FORBIDDEN,
           requiredPermissions: permissionsToCheck,
         });
       }
@@ -120,8 +112,8 @@ export const hasPermission = (requiredPermission) => {
       return res.status(500).json({
         success: false,
         data: null,
-        message: "Lỗi khi kiểm tra quyền hạn",
-        errorCode: "PERMISSION_CHECK_ERROR",
+        message: ERROR_MESSAGES.SERVER_ERROR,
+        errorCode: ERROR_CODES.SERVER_ERROR,
       });
     }
   };
@@ -137,10 +129,6 @@ export const requirePermission = hasPermission;
  * Middleware kiểm tra user có TẤT CẢ các quyền (AND logic)
  * @param {string[]} requiredPermissions - Mảng các quyền cần có đầy đủ
  * @returns {Function} Express middleware
- *
- * @example
- * // Require tất cả quyền
- * router.post('/users', requireAllPermissions(['users.create', 'users.edit']), userController.create);
  */
 export const requireAllPermissions = (requiredPermissions) => {
   return async (req, res, next) => {
@@ -151,8 +139,8 @@ export const requireAllPermissions = (requiredPermissions) => {
         return res.status(401).json({
           success: false,
           data: null,
-          message: "Vui lòng đăng nhập để tiếp tục",
-          errorCode: "UNAUTHORIZED",
+          message: ERROR_MESSAGES.UNAUTHORIZED,
+          errorCode: ERROR_CODES.UNAUTHORIZED,
         });
       }
 
@@ -184,10 +172,12 @@ export const requireAllPermissions = (requiredPermissions) => {
           (permission) => !permissions.has(permission)
         );
 
+        console.warn(`[Permission Denied] User ${user.userId} missing permissions: ${missingPermissions.join(", ")}`);
+
         return res.status(403).json({
           success: false,
           data: null,
-          message: `Bạn thiếu các quyền sau: ${missingPermissions.join(", ")}`,
+          message: `${ERROR_MESSAGES.FORBIDDEN}. Thiếu quyền: ${missingPermissions.join(", ")}`,
           errorCode: "FORBIDDEN_MISSING_PERMISSIONS",
           requiredPermissions: requiredPermissions,
           missingPermissions: missingPermissions,
@@ -200,8 +190,8 @@ export const requireAllPermissions = (requiredPermissions) => {
       return res.status(500).json({
         success: false,
         data: null,
-        message: "Lỗi khi kiểm tra quyền hạn",
-        errorCode: "PERMISSION_CHECK_ERROR",
+        message: ERROR_MESSAGES.SERVER_ERROR,
+        errorCode: ERROR_CODES.SERVER_ERROR,
       });
     }
   };
@@ -210,11 +200,6 @@ export const requireAllPermissions = (requiredPermissions) => {
 /**
  * Middleware để lấy tất cả permissions của user hiện tại (không chặn request)
  * Gắn vào req.userPermissions để sử dụng trong controller/service
- * @returns {Function} Express middleware
- *
- * @example
- * router.get('/dashboard', authMiddleware, loadUserPermissions, dashboardController.get);
- * // Trong controller: req.userPermissions sẽ là Set(['users.view', 'places.view', ...])
  */
 export const loadUserPermissions = async (req, res, next) => {
   try {
