@@ -144,13 +144,13 @@ export function UserPermissionModal({
       if (isBulk) {
         await userPermissionService.bulkUpdateUserPermissions(
           userIds,
-          permissionIds
+          permissionIds,
         );
         toast.success(`Cập nhật quyền cho ${userIds.length} users thành công`);
       } else {
         await userPermissionService.updateUserPermissions(
           user.id,
-          permissionIds
+          permissionIds,
         );
         toast.success("Cập nhật quyền user thành công");
       }
@@ -206,7 +206,7 @@ export function UserPermissionModal({
         const matched = perms.filter(
           (p) =>
             p.name.toLowerCase().includes(lowerSearch) ||
-            p.displayName.toLowerCase().includes(lowerSearch)
+            p.displayName.toLowerCase().includes(lowerSearch),
         );
         if (matched.length > 0) {
           filtered[module] = matched;
@@ -226,7 +226,7 @@ export function UserPermissionModal({
     Object.values(filteredPermissions).forEach((perms) => {
       totalFiltered += perms.length;
       selectedFiltered += perms.filter((p) =>
-        selectedPermissions.has(p.id)
+        selectedPermissions.has(p.id),
       ).length;
     });
 
@@ -387,7 +387,7 @@ export function UserPermissionModal({
                   Object.entries(filteredPermissions).map(
                     ([module, permissions]) => {
                       const moduleSelected = permissions.filter((p) =>
-                        selectedPermissions.has(p.id)
+                        selectedPermissions.has(p.id),
                       ).length;
                       const moduleTotal = permissions.length;
                       const isExpanded = expandedModules.has(module);
@@ -409,8 +409,8 @@ export function UserPermissionModal({
                                     moduleTotal > 0
                                       ? true
                                       : moduleSelected > 0
-                                      ? "indeterminate"
-                                      : false
+                                        ? "indeterminate"
+                                        : false
                                   }
                                   onCheckedChange={() =>
                                     handleToggleModule(module)
@@ -437,7 +437,7 @@ export function UserPermissionModal({
                               <span
                                 className={cn(
                                   "material-icons-round text-slate-400 transition-transform duration-200",
-                                  isExpanded ? "rotate-180" : ""
+                                  isExpanded ? "rotate-180" : "",
                                 )}
                               >
                                 expand_more
@@ -449,7 +449,7 @@ export function UserPermissionModal({
                             <div className="p-4 space-y-2 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
                               {permissions.map((permission) => {
                                 const isInherited = rolePermissions.has(
-                                  permission.id
+                                  permission.id,
                                 );
                                 const isCustomSelected =
                                   selectedPermissions.has(permission.id);
@@ -473,7 +473,7 @@ export function UserPermissionModal({
                           )}
                         </div>
                       );
-                    }
+                    },
                   )
                 )}
               </div>

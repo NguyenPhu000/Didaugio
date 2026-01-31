@@ -20,6 +20,9 @@ import {
 } from "@/components/ui";
 import { Textarea } from "@/components/ui/textarea";
 import ImageUploader from "./ImageUploader";
+import PriceRangeSlider from "./PriceRangeSlider";
+import TagSelector from "./TagSelector";
+import OpeningHoursEditor from "./OpeningHoursEditor";
 import { useToast } from "@/hooks/use-toast";
 
 // Lazy load MapPicker (heavy component with maplibre-gl)
@@ -135,64 +138,93 @@ const StepDetails = () => {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-500">
       <Tabs defaultValue="description" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 bg-slate-100/50 p-1 rounded-xl">
+        <TabsList className="grid w-full grid-cols-4 bg-white border border-black p-0 rounded-none h-auto">
           <TabsTrigger
             value="description"
-            className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm"
+            className="rounded-none border-r border-black font-mono uppercase text-xs py-3 data-[state=active]:bg-black data-[state=active]:text-white data-[state=active]:shadow-none transition-all"
           >
-            <Info className="w-4 h-4 mr-2" /> Mô tả
+            <Info className="w-3 h-3 mr-2" /> MÔ TẢ & TAGS
           </TabsTrigger>
           <TabsTrigger
             value="images"
-            className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm"
+            className="rounded-none border-r border-black font-mono uppercase text-xs py-3 data-[state=active]:bg-black data-[state=active]:text-white data-[state=active]:shadow-none transition-all"
           >
-            <ImageIcon className="w-4 h-4 mr-2" /> Hình ảnh
+            <ImageIcon className="w-3 h-3 mr-2" /> HÌNH ẢNH
           </TabsTrigger>
           <TabsTrigger
             value="location"
-            className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm"
+            className="rounded-none border-r border-black font-mono uppercase text-xs py-3 data-[state=active]:bg-black data-[state=active]:text-white data-[state=active]:shadow-none transition-all"
           >
-            <MapPin className="w-4 h-4 mr-2" /> Vị trí
+            <MapPin className="w-3 h-3 mr-2" /> VỊ TRÍ
           </TabsTrigger>
           <TabsTrigger
             value="contact"
-            className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm"
+            className="rounded-none font-mono uppercase text-xs py-3 data-[state=active]:bg-black data-[state=active]:text-white data-[state=active]:shadow-none transition-all"
           >
-            <Phone className="w-4 h-4 mr-2" /> Liên hệ
+            <Phone className="w-3 h-3 mr-2" /> LIÊN HỆ
           </TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Description */}
-        <TabsContent value="description" className="space-y-4 mt-6">
-          <Card className="p-6 border-slate-200 shadow-sm bg-slate-50/30">
-            <div className="space-y-4">
+        <TabsContent value="description" className="space-y-6 mt-6">
+          <Card className="p-8 border border-black shadow-hard bg-white rounded-none">
+            <div className="space-y-8">
               <div>
                 <Label
                   htmlFor="description"
-                  className="text-base font-semibold"
+                  className="text-xs font-bold uppercase tracking-wider mb-2 block"
                 >
-                  Mô tả chi tiết <span className="text-red-500">*</span>
+                  MÔ TẢ CHI TIẾT <span className="text-red-500">*</span>
                 </Label>
-                <p className="text-sm text-slate-500 mb-2">
-                  Giới thiệu về không gian, phong cách, và những điểm đặc biệt
-                  của địa điểm.
-                </p>
-                <Textarea
-                  id="description"
-                  placeholder="Ví dụ: Quán nằm ngay bên bờ sông Hậu thoáng mát, thiết kế theo phong cách vintage..."
-                  rows={12}
-                  value={wizardData.description}
-                  onChange={(e) =>
-                    updateWizardData({ description: e.target.value })
-                  }
-                  className={`bg-white resize-none ${errors.description ? "border-red-500" : "border-slate-200"}`}
-                />
+                <div className="bg-gray-50 border border-black p-4 mb-4">
+                  <p className="text-[10px] font-mono text-gray-500 uppercase leading-relaxed mb-4">
+                    * GIỚI THIỆU VỀ KHÔNG GIAN, PHONG CÁCH, VÀ NHỮNG ĐIỂM ĐẶC
+                    BIỆT CỦA ĐỊA ĐIỂM. INFORMATION SHOULD BE DETAILED TO IMPROVE
+                    SEO AND USER EXPERIENCE.
+                  </p>
+                  <Textarea
+                    id="description"
+                    placeholder="TYPE YOUR DESCRIPTION HERE..."
+                    rows={8}
+                    value={wizardData.description}
+                    onChange={(e) =>
+                      updateWizardData({ description: e.target.value })
+                    }
+                    className={`bg-white rounded-none border-black focus-visible:ring-0 font-mono text-sm resize-none ${errors.description ? "border-red-500" : ""}`}
+                  />
+                </div>
                 {errors.description && (
-                  <div className="flex items-center gap-2 mt-2 text-red-500 text-sm">
-                    <Info className="h-4 w-4" /> {errors.description}
+                  <div className="flex items-center gap-2 mt-2 text-red-500 text-xs font-mono uppercase">
+                    <Info className="h-3 w-3" /> {errors.description}
                   </div>
                 )}
               </div>
+
+              <div className="border-t border-black border-dashed"></div>
+
+              {/* Price Range */}
+              <PriceRangeSlider
+                priceRange={wizardData.priceRange}
+                priceFrom={wizardData.priceFrom}
+                priceTo={wizardData.priceTo}
+                onChange={(data) => updateWizardData(data)}
+              />
+
+              <div className="border-t border-black border-dashed"></div>
+
+              {/* Tags */}
+              <TagSelector
+                selectedTags={wizardData.tagIds || []} // Assuming tagIds is the field
+                onChange={(tags) => updateWizardData({ tagIds: tags })}
+              />
+
+              <div className="border-t border-black border-dashed"></div>
+
+              {/* Opening Hours */}
+              <OpeningHoursEditor
+                value={wizardData.openingHours || []}
+                onChange={(hours) => updateWizardData({ openingHours: hours })}
+              />
             </div>
           </Card>
         </TabsContent>

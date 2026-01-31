@@ -1,15 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DollarSign } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { PRICE_RANGES } from "@/constants/placeConstants";
-import { formatPrice } from "@/utils/currencyUtils";
 
 /**
- * PRICE RANGE SLIDER
+ * PRICE RANGE SLIDER V2
  * Component để chọn mức giá với thanh slider interactive
+ * Updated: Vietnamese Denomination Support (suffix .000)
  */
 
 const PriceRangeSlider = ({
@@ -20,19 +20,25 @@ const PriceRangeSlider = ({
   error,
 }) => {
   const [showCustom, setShowCustom] = useState(!!priceFrom || !!priceTo);
-  
+
   // Slider range: 0đ to 2,000,000đ with 10,000đ steps
   const MAX_PRICE = 2000000;
-  const STEP = 10000;
-  
+
   // Convert prices to slider values
   const [sliderValues, setSliderValues] = useState([
     priceFrom || 0,
     priceTo || 500000,
   ]);
 
+  // Update slider visual when props change externally
+  useEffect(() => {
+    if (priceFrom !== undefined && priceTo !== undefined) {
+      setSliderValues([priceFrom || 0, priceTo || 500000]);
+    }
+  }, [priceFrom, priceTo]);
+
   const handleRangeChange = (range) => {
-    onChange({ priceRange: range, priceFrom: null, priceTo: null });
+    onChange({ priceRange: range, priceFrom: 0, priceTo: 0 }); // Reset custom amounts
     setShowCustom(false);
   };
 
@@ -40,171 +46,201 @@ const PriceRangeSlider = ({
     setSliderValues(values);
     onChange({
       priceRange: priceRange || "MODERATE",
-      priceFrom: values[0] === 0 ? null : values[0],
-      priceTo: values[1] === MAX_PRICE ? null : values[1],
+      priceFrom: values[0],
+      priceTo: values[1],
     });
   };
 
-  const handleInputChange = (field, value) => {
-    const numValue = value ? parseInt(value) : 0;
-    const newValues =
-      field === "priceFrom"
-        ? [numValue, sliderValues[1]]
-        : [sliderValues[0], numValue];
-    
+  const handleInputChange = (field, thousandValue) => {
+    // User inputs 50 -> means 50,000
+    const realValue = thousandValue ? parseInt(thousandValue) * 1000 : 0;
+
+    // Ensure logical constraint
+    let newValues;
+    if (field === "priceFrom") {
+      newValues = [realValue, Math.max(realValue, sliderValues[1])];
+    } else {
+      newValues = [Math.min(realValue, sliderValues[0]), realValue];
+    }
+
     setSliderValues(newValues);
     onChange({
       priceRange: priceRange || "MODERATE",
-      priceFrom: newValues[0] === 0 ? null : newValues[0],
-      priceTo: newValues[1] === MAX_PRICE ? null : newValues[1],
+      priceFrom: newValues[0],
+      priceTo: newValues[1],
     });
   };
 
+  const QUICK_SUGGESTIONS = [
+    { label: "20k", val: 20 },
+    { label: "50k", val: 50 },
+    { label: "100k", val: 100 },
+    { label: "200k", val: 200 },
+    { label: "500k", val: 500 },
+    { label: "1tr", val: 1000 },
+  ];
 
+  const setManualValue = (field, kValue) => {
+    handleInputChange(field, kValue);
+  };
 
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-sm font-semibold mb-3 block">Mức giá dự kiến</label>
+        <label className="text-xs font-bold uppercase tracking-wider mb-3 block">
+          MỨC GIÁ DỰ KIẾN
+        </label>
 
         {/* Price Range Quick Select */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-0 border border-black bg-white">
           {PRICE_RANGES.map((range) => (
             <button
               key={range.value}
               type="button"
               onClick={() => handleRangeChange(range.value)}
               className={cn(
-                "p-3 border-2 rounded-xl text-left transition-all hover:border-primary hover:shadow-md",
+                "p-4 text-center transition-all border-r last:border-r-0 border-black hover:bg-black hover:text-white group relative",
                 priceRange === range.value && !showCustom
-                  ? "border-primary bg-primary/10 shadow-sm"
-                  : "border-gray-200"
+                  ? "bg-black text-white"
+                  : "bg-white text-black",
               )}
             >
-              <div className="text-xl mb-1">{range.icon}</div>
-              <div className="font-semibold text-xs mb-0.5">{range.label}</div>
-              <div className="text-[10px] text-muted-foreground leading-tight">
+              <div className="text-sm font-mono font-bold mb-1">
+                {range.icon}
+              </div>
+              <div className="font-bold text-[10px] uppercase tracking-wider mb-1">
+                {range.label}
+              </div>
+              <div
+                className={cn(
+                  "text-[10px] font-mono opacity-60",
+                  priceRange === range.value && !showCustom
+                    ? "text-gray-300"
+                    : "text-gray-500 group-hover:text-gray-300",
+                )}
+              >
                 {range.description}
               </div>
+
+              {/* Active Indicator */}
+              {priceRange === range.value && !showCustom && (
+                <div className="absolute top-0 right-0 w-2 h-2 bg-white"></div>
+              )}
             </button>
           ))}
         </div>
 
-        {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
+        {error && (
+          <p className="text-sm text-red-500 mt-2 font-mono uppercase">
+            ERROR: {error}
+          </p>
+        )}
       </div>
 
-      {/* Custom Price Slider Section */}
+      {/* Custom Price Button */}
       <div className="space-y-4">
         <Button
           type="button"
           variant={showCustom ? "default" : "outline"}
-          size="sm"
           onClick={() => setShowCustom(!showCustom)}
-          className="w-full"
+          className={cn(
+            "w-full rounded-none border border-black font-mono text-xs uppercase tracking-widest h-10 transition-all",
+            showCustom
+              ? "bg-black text-white hover:bg-black/90"
+              : "bg-white text-black hover:bg-gray-100",
+          )}
         >
-          {showCustom ? "✓ Đang dùng khoảng giá tùy chỉnh" : "Chọn khoảng giá tùy chỉnh"}
+          {showCustom
+            ? "[-] ẨN TÙY CHỈNH GIÁ"
+            : "[+] CHỌN KHOẢNG GIÁ TÙY CHỈNH"}
         </Button>
 
         {showCustom && (
-          <div className="p-5 border-2 border-primary/20 rounded-xl bg-primary/5 space-y-5 animate-in slide-in-from-top-2">
-            {/* Price Display */}
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
-                {sliderValues[0] === 0 && sliderValues[1] === MAX_PRICE
-                  ? "Tất cả mức giá"
-                  : sliderValues[0] === 0
-                  ? `Dưới ${formatPrice(sliderValues[1])}`
-                  : sliderValues[1] === MAX_PRICE
-                  ? `Từ ${formatPrice(sliderValues[0])}`
-                  : `${formatPrice(sliderValues[0])} - ${formatPrice(
-                      sliderValues[1]
-                    )}`}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Kéo thanh slider để điều chỉnh
-              </p>
-            </div>
-
-            {/* Range Slider */}
-            <div className="px-2">
-              <Slider
-                min={0}
-                max={MAX_PRICE}
-                step={STEP}
-                value={sliderValues}
-                onValueChange={handleSliderChange}
-                className="w-full"
-              />
-              
-              {/* Min/Max Labels */}
-              <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                <span>0đ</span>
-                <span>{formatPrice(MAX_PRICE)}+</span>
-              </div>
-            </div>
-
-            {/* Manual Input Fields */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Giá từ
+          <div className="p-6 border border-black bg-gray-50 animate-in slide-in-from-top-2">
+            {/* Inputs */}
+            <div className="flex items-center gap-6 mb-6">
+              <div className="flex-1 space-y-2">
+                <label className="text-[10px] uppercase font-bold text-gray-500 flex justify-between">
+                  <span>TỐI THIỂU (Min)</span>
+                  <span className="text-black font-mono">
+                    {sliderValues[0].toLocaleString("vi-VN")} đ
+                  </span>
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="number"
+                    value={sliderValues[0] > 0 ? sliderValues[0] / 1000 : ""}
                     placeholder="0"
-                    value={sliderValues[0] || ""}
                     onChange={(e) =>
                       handleInputChange("priceFrom", e.target.value)
                     }
-                    className="pl-9"
-                    min="0"
-                    max={sliderValues[1]}
-                    step={STEP}
+                    className="rounded-none border-black font-mono text-right pr-12 text-lg h-12 bg-white"
                   />
+                  <span className="absolute right-3 top-3 text-gray-400 font-mono text-base pointer-events-none select-none bg-white pl-1">
+                    .000
+                  </span>
+                </div>
+                {/* Quick Set Min */}
+                <div className="flex gap-1 flex-wrap">
+                  {QUICK_SUGGESTIONS.slice(0, 3).map((opt) => (
+                    <button
+                      key={`min-${opt.val}`}
+                      type="button"
+                      onClick={() => setManualValue("priceFrom", opt.val)}
+                      className="px-2 py-1 bg-gray-200 hover:bg-black hover:text-white text-[10px] font-mono transition-colors"
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Giá đến
+
+              <div className="font-mono pt-4 text-gray-400">-</div>
+
+              <div className="flex-1 space-y-2">
+                <label className="text-[10px] uppercase font-bold text-gray-500 flex justify-between">
+                  <span>TỐI ĐA (Max)</span>
+                  <span className="text-black font-mono">
+                    {sliderValues[1].toLocaleString("vi-VN")} đ
+                  </span>
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="number"
-                    placeholder={MAX_PRICE.toString()}
-                    value={sliderValues[1] || ""}
-                    onChange={(e) => handleInputChange("priceTo", e.target.value)}
-                    className="pl-9"
-                    min={sliderValues[0]}
-                    max={MAX_PRICE}
-                    step={STEP}
+                    value={sliderValues[1] > 0 ? sliderValues[1] / 1000 : ""}
+                    placeholder="0"
+                    onChange={(e) =>
+                      handleInputChange("priceTo", e.target.value)
+                    }
+                    className="rounded-none border-black font-mono text-right pr-12 text-lg h-12 bg-white"
                   />
+                  <span className="absolute right-3 top-3 text-gray-400 font-mono text-base pointer-events-none select-none bg-white pl-1">
+                    .000
+                  </span>
+                </div>
+                {/* Quick Set Max */}
+                <div className="flex gap-1 flex-wrap">
+                  {QUICK_SUGGESTIONS.slice(1).map((opt) => (
+                    <button
+                      key={`max-${opt.val}`}
+                      type="button"
+                      onClick={() => setManualValue("priceTo", opt.val)}
+                      className="px-2 py-1 bg-gray-200 hover:bg-black hover:text-white text-[10px] font-mono transition-colors"
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
 
-            {/* Quick Amount Buttons */}
-            <div className="flex flex-wrap gap-2">
-              <span className="text-xs text-muted-foreground self-center">
-                Nhanh:
-              </span>
-              {[50000, 100000, 200000, 500000, 1000000].map((amount) => (
-                <Button
-                  key={amount}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleSliderChange([sliderValues[0], amount])
-                  }
-                  className="h-7 text-xs"
-                >
-                  {formatPrice(amount)}
-                </Button>
-              ))}
-            </div>
+            <Slider
+              value={sliderValues}
+              max={MAX_PRICE}
+              step={10000}
+              minStepsBetweenThumbs={1}
+              onValueChange={handleSliderChange}
+            />
           </div>
         )}
       </div>

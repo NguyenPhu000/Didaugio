@@ -171,12 +171,21 @@ function NavMain({ items, label }) {
                         tooltip={item.title}
                         className={cn(
                           "hover:bg-accent transition-colors",
-                          isActive && "bg-accent text-accent-foreground font-medium"
+                          isActive &&
+                            "bg-accent text-accent-foreground font-medium",
                         )}
                       >
-                        <AnimatedIcon icon={item.icon} className={cn("size-4", isActive && "text-primary")} type={isActive ? "pulse" : "hover"} />
+                        <AnimatedIcon
+                          icon={item.icon}
+                          className={cn("size-4", isActive && "text-primary")}
+                          type={isActive ? "pulse" : "hover"}
+                        />
                         <span>{item.title}</span>
-                        <AnimatedIcon icon={ChevronRight} className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" type="rotate" />
+                        <AnimatedIcon
+                          icon={ChevronRight}
+                          className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                          type="rotate"
+                        />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
@@ -209,15 +218,23 @@ function NavMain({ items, label }) {
                   isActive={location.pathname === item.url}
                   className={cn(
                     "hover:bg-accent transition-colors",
-                    location.pathname === item.url && "bg-accent text-accent-foreground font-medium"
+                    location.pathname === item.url &&
+                      "bg-accent text-accent-foreground font-medium",
                   )}
                 >
                   <Link to={item.url} className="flex items-center gap-2">
-                    <AnimatedIcon icon={item.icon} className={cn("size-4", location.pathname === item.url && "text-primary")} type={location.pathname === item.url ? "pulse" : "hover"} />
+                    <AnimatedIcon
+                      icon={item.icon}
+                      className={cn(
+                        "size-4",
+                        location.pathname === item.url && "text-primary",
+                      )}
+                      type={location.pathname === item.url ? "pulse" : "hover"}
+                    />
                     <span className="flex-1">{item.title}</span>
                     {item.badge && (
-                      <Badge 
-                        variant={item.badge.variant || "default"} 
+                      <Badge
+                        variant={item.badge.variant || "default"}
                         className="ml-auto h-5 px-2 text-[10px] font-semibold bg-primary hover:bg-primary/90"
                       >
                         {item.badge.text}
@@ -264,7 +281,11 @@ function NavUser({ user, onLogout }) {
                   {ROLE_NAMES[user?.roleId] || "User"}
                 </span>
               </div>
-              <AnimatedIcon icon={ChevronsUpDown} className="ml-auto size-4 text-muted-foreground" type="rotate" />
+              <AnimatedIcon
+                icon={ChevronsUpDown}
+                className="ml-auto size-4 text-muted-foreground"
+                type="rotate"
+              />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -299,7 +320,11 @@ function NavUser({ user, onLogout }) {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link to="/settings" className="cursor-pointer hover:bg-accent">
-                <AnimatedIcon icon={Settings} className="mr-2 h-4 w-4" type="rotate" />
+                <AnimatedIcon
+                  icon={Settings}
+                  className="mr-2 h-4 w-4"
+                  type="rotate"
+                />
                 Cài đặt
               </Link>
             </DropdownMenuItem>
@@ -334,14 +359,22 @@ function CustomSidebarRail() {
         "fixed top-1/2 z-50 hidden md:flex h-6 w-6 -translate-y-1/2 items-center justify-center",
         "rounded-full border bg-background shadow-md",
         "hover:bg-accent hover:scale-110",
-        "transition-all duration-300 ease-in-out"
+        "transition-all duration-300 ease-in-out",
       )}
       title={open ? "Thu gọn sidebar (Ctrl+B)" : "Mở rộng sidebar (Ctrl+B)"}
     >
       {open ? (
-        <AnimatedIcon icon={ChevronLeft} className="size-4 text-muted-foreground" type="rotate" />
+        <AnimatedIcon
+          icon={ChevronLeft}
+          className="size-4 text-muted-foreground"
+          type="rotate"
+        />
       ) : (
-        <AnimatedIcon icon={ChevronRight} className="size-4 text-muted-foreground" type="rotate" />
+        <AnimatedIcon
+          icon={ChevronRight}
+          className="size-4 text-muted-foreground"
+          type="rotate"
+        />
       )}
     </button>
   );
@@ -350,17 +383,23 @@ function CustomSidebarRail() {
 // Header component
 function Header() {
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-white/80 backdrop-blur-sm px-4">
-      <SidebarTrigger className="-ml-1 hover:bg-accent rounded-md transition-colors" />
-      <Separator orientation="vertical" className="mr-2 h-4 bg-border" />
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-white/10 bg-[#1A1A1A] text-white px-4 shadow-md z-10 relative">
+      <SidebarTrigger className="-ml-1 hover:bg-white/10 rounded-none text-white transition-colors" />
+      <div className="h-4 w-px bg-white/20 mx-2" />
       <div className="flex items-center gap-2">
-        <span className="font-bold text-lg text-primary">
-          Đi Đâu Giờ?
+        <span className="font-black text-lg text-white uppercase tracking-tight">
+          Di Dau Gio?
         </span>
-        <Badge className="bg-primary text-primary-foreground border-none shadow-sm">
-          Admin
-        </Badge>
+        <div className="bg-[#F3E600] text-black px-1.5 py-0.5 text-[10px] font-bold font-mono rounded-[2px] shadow-[0_0_8px_rgba(243,230,0,0.4)]">
+          ADM-CORE
+        </div>
       </div>
+      <div className="ml-auto flex items-center gap-4 text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+        <span className="hidden md:inline-block">NET.STATUS: SECURE</span>
+        <span className="w-1.5 h-1.5 bg-[#F3E600] rounded-none animate-pulse"></span>
+      </div>
+      {/* Decor line bottom */}
+      <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#F3E600] to-transparent opacity-50"></div>
     </header>
   );
 }
@@ -381,14 +420,26 @@ const AdminLayout = ({ children }) => {
         <SidebarHeader className="border-b border-border bg-sidebar-background">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild className="hover:bg-accent transition-colors">
+              <SidebarMenuButton
+                size="lg"
+                asChild
+                className="hover:bg-accent transition-colors"
+              >
                 <Link to="/dashboard">
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-md">
-                    <AnimatedIcon icon={MapPin} className="size-4" type="pulse" />
+                    <AnimatedIcon
+                      icon={MapPin}
+                      className="size-4"
+                      type="pulse"
+                    />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-bold text-primary">Đi Đâu Giờ?</span>
-                    <span className="truncate text-xs text-muted-foreground font-medium">Admin Panel</span>
+                    <span className="truncate font-bold text-primary">
+                      Đi Đâu Giờ?
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground font-medium">
+                      Admin Panel
+                    </span>
                   </div>
                 </Link>
               </SidebarMenuButton>

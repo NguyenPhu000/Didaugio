@@ -133,7 +133,7 @@ export const checkSlug = async (req, res) => {
 
     const exists = await placeService.checkSlugExists(
       slug,
-      excludeId ? parseInt(excludeId) : null
+      excludeId ? parseInt(excludeId) : null,
     );
 
     res.json({
@@ -181,10 +181,18 @@ export const createPlace = async (req, res) => {
     } = req.body;
 
     // Validation
-    if (!name || !categoryId || !districtId || !address || !latitude || !longitude) {
+    if (
+      !name ||
+      !categoryId ||
+      !districtId ||
+      !address ||
+      !latitude ||
+      !longitude
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Thiếu thông tin bắt buộc: name, categoryId, districtId, address, latitude, longitude",
+        message:
+          "Thiếu thông tin bắt buộc: name, categoryId, districtId, address, latitude, longitude",
       });
     }
 
@@ -213,7 +221,7 @@ export const createPlace = async (req, res) => {
         amenities,
         status,
       },
-      req.user.userId
+      req.user.userId,
     );
 
     res.status(201).json({
@@ -240,10 +248,17 @@ export const updatePlace = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({
+        success: false,
+        message: "ID địa điểm không hợp lệ",
+      });
+    }
+
     const place = await placeService.updatePlace(
       parseInt(id),
       updateData,
-      req.user.userId
+      req.user.userId,
     );
 
     res.json({
@@ -311,7 +326,10 @@ export const approvePlace = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const place = await placeService.approvePlace(parseInt(id), req.user.userId);
+    const place = await placeService.approvePlace(
+      parseInt(id),
+      req.user.userId,
+    );
 
     res.json({
       success: true,
@@ -321,7 +339,10 @@ export const approvePlace = async (req, res) => {
   } catch (error) {
     console.error("Error in approvePlace:", error);
 
-    if (error.message.includes("không tồn tại") || error.message.includes("đã được duyệt")) {
+    if (
+      error.message.includes("không tồn tại") ||
+      error.message.includes("đã được duyệt")
+    ) {
       return res.status(400).json({
         success: false,
         message: error.message,
@@ -351,7 +372,11 @@ export const rejectPlace = async (req, res) => {
       });
     }
 
-    const place = await placeService.rejectPlace(parseInt(id), req.user.userId, reason);
+    const place = await placeService.rejectPlace(
+      parseInt(id),
+      req.user.userId,
+      reason,
+    );
 
     res.json({
       success: true,
@@ -401,7 +426,10 @@ export const updateStatus = async (req, res) => {
   } catch (error) {
     console.error("Error in updateStatus:", error);
 
-    if (error.message.includes("không tồn tại") || error.message.includes("không hợp lệ")) {
+    if (
+      error.message.includes("không tồn tại") ||
+      error.message.includes("không hợp lệ")
+    ) {
       return res.status(400).json({
         success: false,
         message: error.message,
@@ -428,7 +456,9 @@ export const toggleFeatured = async (req, res) => {
 
     res.json({
       success: true,
-      message: isFeatured ? "Đánh dấu nổi bật thành công" : "Bỏ đánh dấu nổi bật thành công",
+      message: isFeatured
+        ? "Đánh dấu nổi bật thành công"
+        : "Bỏ đánh dấu nổi bật thành công",
       data: place,
     });
   } catch (error) {
@@ -466,7 +496,10 @@ export const submitForReview = async (req, res) => {
   } catch (error) {
     console.error("Error in submitForReview:", error);
 
-    if (error.message.includes("không tồn tại") || error.message.includes("Chỉ có thể")) {
+    if (
+      error.message.includes("không tồn tại") ||
+      error.message.includes("Chỉ có thể")
+    ) {
       return res.status(400).json({
         success: false,
         message: error.message,
@@ -500,7 +533,11 @@ export const addImages = async (req, res) => {
       });
     }
 
-    const result = await placeService.addImages(parseInt(id), images, req.user.userId);
+    const result = await placeService.addImages(
+      parseInt(id),
+      images,
+      req.user.userId,
+    );
 
     res.status(201).json({
       success: true,
@@ -510,7 +547,10 @@ export const addImages = async (req, res) => {
   } catch (error) {
     console.error("Error in addImages:", error);
 
-    if (error.message.includes("không tồn tại") || error.message.includes("Tối đa")) {
+    if (
+      error.message.includes("không tồn tại") ||
+      error.message.includes("Tối đa")
+    ) {
       return res.status(400).json({
         success: false,
         message: error.message,

@@ -13,3 +13,4 @@ export { default as PlaceListPage } from "./admin/PlaceListPage";
 export { default as MapPage } from "./admin/MapPage";
 export { default as CategoryManagementPage } from "./admin/CategoryManagementPage";
 export { default as TagManagementPage } from "./admin/TagManagementPage";
+export { default as DistrictListPage } from "./admin/DistrictListPage";

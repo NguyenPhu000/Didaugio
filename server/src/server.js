@@ -17,7 +17,7 @@ import tagRoutes from "./routes/tagRoutes.js";
 import placeRoutes from "./routes/placeRoutes.js";
 import districtRoutes from "./routes/districtRoutes.js";
 import wardRoutes from "./routes/wardRoutes.js";
-import boundaryRoutes from "./routes/boundaryRoutes.js"; // Boundary routes (ranh giới địa lý)
+import boundaryRoutes from "./routes/boundaryRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import prisma from "./config/prismaClient.js";
@@ -28,7 +28,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Middleware - Cấu hình cho Base64 images (Rule 5.6)
+// Middleware - Cấu hình cho Base64 images
 app.use(express.json({ limit: "100mb" }));
 app.use(express.urlencoded({ limit: "100mb", extended: true }));
 app.use(cors());

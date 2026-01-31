@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/layouts"; // Updated import
-import { AdminLayout } from "@/layouts";    // Updated import
-import { ROLES } from "@/constants";       // Updated import
+import { AdminLayout } from "@/layouts"; // Updated import
+import { ROLES } from "@/constants"; // Updated import
 import {
   DashboardPage,
   LoginPage,
@@ -18,6 +18,7 @@ import {
   MapPage,
   CategoryManagementPage,
   TagManagementPage,
+  DistrictListPage,
 } from "@/pages";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
@@ -40,10 +41,7 @@ const AppRoutes = () => {
       <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPublicPage />} />
       <Route path="/auth/verify-email" element={<VerifyEmailPublicPage />} />
-      <Route
-        path="/resend-verification"
-        element={<ResendVerificationPage />}
-      />
+      <Route path="/resend-verification" element={<ResendVerificationPage />} />
       <Route
         path="/auth/resend-verification"
         element={<ResendVerificationPage />}
@@ -203,6 +201,18 @@ const AppRoutes = () => {
         }
       />
 
+      {/* District Management - Admin & Super Admin */}
+      <Route
+        path="/districts"
+        element={
+          <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+            <AdminLayout>
+              <DistrictListPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+
       {/* Place Management - Admin, Super Admin, Business */}
       <Route
         path="/admin/map"
@@ -254,10 +264,7 @@ const AppRoutes = () => {
       />
 
       {/* Alias routes for places */}
-      <Route
-        path="/places"
-        element={<Navigate to="/admin/places" replace />}
-      />
+      <Route path="/places" element={<Navigate to="/admin/places" replace />} />
 
       {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />

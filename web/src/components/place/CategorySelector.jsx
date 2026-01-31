@@ -1,14 +1,13 @@
 import { useEffect, useState, memo, useCallback } from "react";
-import { Loader2, Check, ChevronDown, ChevronRight } from "lucide-react";
+import { Loader2, Check, ChevronRight, Layers } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import useCategoryStore from "@/stores/categoryStore";
-import { Label, Card, Badge } from "@/components/ui";
+import { Label, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 /**
- * CATEGORY SELECTOR - ACCORDION STYLE
- * Each parent category can expand/collapse independently
- * Better UX with visual hierarchy
+ * CATEGORY SELECTOR - TECHNICAL INDUSTRIAL MINIMALISM
+ * Sharp borders, high contrast, grid-based layout
  */
 
 // Helper to get icon component from string name - Hoisted
@@ -41,7 +40,7 @@ const CategorySelector = memo(({ value, onChange, error }) => {
   const rootCategories = categories.filter((c) => !c.parentId);
   const getChildren = useCallback(
     (parentId) => categories.filter((c) => c.parentId === parentId),
-    [categories]
+    [categories],
   );
 
   const toggleExpand = useCallback((categoryId) => {
@@ -58,17 +57,16 @@ const CategorySelector = memo(({ value, onChange, error }) => {
 
   const handleCategoryClick = useCallback(
     (category) => {
+      // Toggle expansion if has children
       const children = getChildren(category.id);
-
       if (children.length > 0) {
-        // Has children - toggle expansion
         toggleExpand(category.id);
       } else {
-        // Leaf category - select it
+        // Select if leaf node
         onChange(category.id);
       }
     },
-    [onChange, toggleExpand, categories]
+    [getChildren, toggleExpand, onChange],
   );
 
   const renderCategory = (category, isChild = false) => {
@@ -81,97 +79,103 @@ const CategorySelector = memo(({ value, onChange, error }) => {
       : null;
 
     return (
-      <div key={category.id} className={cn("space-y-2", isChild && "ml-4")}>
+      <div
+        key={category.id}
+        className={cn(
+          "space-y-1 transition-all",
+          isChild && "ml-6 pl-4 border-l-2 border-dashed border-gray-300",
+        )}
+      >
         {/* Category Card */}
         <div
           onClick={() => handleCategoryClick(category)}
           className={cn(
-            "group relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer",
+            "group relative flex items-center gap-3 p-3 border transition-all duration-150 cursor-pointer select-none",
             isSelected
-              ? "border-primary bg-primary/10 shadow-sm"
-              : "border-slate-200 bg-white hover:border-primary/40 hover:shadow-md hover:bg-primary/5",
-            isChild && "border-dashed"
+              ? "border-black bg-black text-white"
+              : "border-black bg-white hover:bg-gray-100",
+            // If it's a parent and expanded, give it a specific style
+            hasChildren &&
+              isExpanded &&
+              !isSelected &&
+              "bg-gray-50 from-gray-50 to-white",
           )}
-          style={{
-            borderTopColor:
-              !isChild && category.color ? category.color : undefined,
-            borderTopWidth: !isChild ? "3px" : undefined,
-          }}
         >
-          {/* Expand/Collapse Icon */}
-          {hasChildren && (
-            <div className="flex-shrink-0 text-slate-400 group-hover:text-primary transition-colors">
-              {isExpanded ? (
-                <ChevronDown className="h-5 w-5" />
-              ) : (
-                <ChevronRight className="h-5 w-5" />
-              )}
-            </div>
-          )}
-
-          {/* Icon */}
+          {/* Icon Box */}
           <div
             className={cn(
-              "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200",
+              "flex-shrink-0 w-8 h-8 flex items-center justify-center border transition-colors",
               isSelected
-                ? "bg-primary/20 scale-110"
-                : "bg-slate-50 group-hover:bg-white group-hover:scale-105",
-              !hasChildren && "ml-8"
+                ? "bg-white text-black border-white"
+                : "bg-gray-100 text-gray-800 border-gray-300 group-hover:border-black group-hover:text-black",
             )}
-            style={{ color: category.color || "hsl(204 85% 36%)" }}
           >
             {IconComponent ? (
-              <IconComponent className="h-6 w-6" />
+              <IconComponent className="w-5 h-5" />
             ) : (
-              <span className="text-2xl">🏷️</span>
+              <span className="text-xs font-bold font-mono">
+                {category.name[0]}
+              </span>
             )}
           </div>
 
-          {/* Details */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3
-                className={cn(
-                  "font-semibold truncate",
-                  isSelected
-                    ? "text-primary"
-                    : "text-slate-800 group-hover:text-primary"
-                )}
-              >
-                {category.name}
-              </h3>
+          {/* Content */}
+          <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
+            <h4
+              className={cn(
+                "font-bold uppercase tracking-tight truncate text-sm font-mono leading-none mb-1",
+                isSelected ? "text-white" : "text-black",
+              )}
+            >
+              {category.name}
+            </h4>
+            {/* Metadata line */}
+            <div className="flex items-center space-x-2">
+              {!isChild && hasChildren && (
+                <span
+                  className={cn(
+                    "text-[10px] font-mono",
+                    isSelected ? "text-gray-300" : "text-gray-500",
+                  )}
+                >
+                  [{children.length} MỤC CON]
+                </span>
+              )}
               {isSelected && (
-                <div className="flex-shrink-0 h-5 w-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground">
-                  <Check className="h-3 w-3" />
-                </div>
+                <span className="text-[10px] bg-white text-black px-1 font-bold">
+                  ĐANG CHỌN
+                </span>
               )}
             </div>
-            {category.description && (
-              <p className="text-xs text-slate-500 truncate mt-0.5">
-                {category.description}
-              </p>
-            )}
           </div>
 
-          {/* Stats */}
-          <div className="flex-shrink-0 flex items-center gap-2">
+          {/* Actions/Indicators */}
+          <div className="flex items-center pl-2 border-l border-transparent">
             {hasChildren && (
-              <Badge
-                variant="secondary"
-                className="bg-slate-100 text-slate-600 text-xs"
+              <div
+                className={cn(
+                  "p-1 transition-transform duration-200",
+                  isExpanded && "rotate-90",
+                )}
               >
-                {children.length} mục con
-              </Badge>
+                <ChevronRight
+                  className={cn(
+                    "w-4 h-4",
+                    isSelected ? "text-white" : "text-black",
+                  )}
+                />
+              </div>
             )}
-            <div className="text-xs text-slate-400">
-              Cấp {category.level || 1}
-            </div>
+
+            {!hasChildren && isSelected && (
+              <Check className="w-4 h-4 text-white" />
+            )}
           </div>
         </div>
 
-        {/* Children (Accordion Content) */}
-        {hasChildren && isExpanded && (
-          <div className="space-y-2 animate-in slide-in-from-top-2 fade-in duration-300">
+        {/* Children Grid */}
+        {isExpanded && hasChildren && (
+          <div className="grid grid-cols-1 gap-2 pt-2 animate-in slide-in-from-top-2 duration-200">
             {children.map((child) => renderCategory(child, true))}
           </div>
         )}
@@ -179,48 +183,44 @@ const CategorySelector = memo(({ value, onChange, error }) => {
     );
   };
 
+  if (loading && categories.length === 0) {
+    return (
+      <Card className="p-8 flex flex-col items-center justify-center border border-black bg-gray-50 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        <Loader2 className="w-8 h-8 animate-spin text-black mb-4" />
+        <div className="text-sm font-mono uppercase tracking-widest animate-pulse">
+          Đang tải dữ liệu...
+        </div>
+      </Card>
+    );
+  }
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <Label className="text-base font-semibold">
-          Danh mục <span className="text-red-500">*</span>
+    <div className="space-y-4">
+      <div className="flex justify-between items-end border-b-4 border-black pb-2 mb-4">
+        <Label className="text-lg font-black uppercase tracking-widest text-black flex items-center gap-2">
+          <Layers className="w-5 h-5" />
+          DANH MỤC
         </Label>
-        <button
-          onClick={() => setExpandedCategories(new Set())}
-          className="text-xs text-slate-500 hover:text-primary underline transition-colors"
-        >
-          Thu gọn tất cả
-        </button>
+        {value && (
+          <div className="hidden sm:block text-[10px] font-mono bg-black text-white px-2 py-1">
+            MÃ: {String(value).substring(0, 8)}
+            {String(value).length > 8 ? "..." : ""}
+          </div>
+        )}
       </div>
 
-      {loading ? (
-        <div className="flex justify-center p-8 bg-slate-50 rounded-xl border border-dashed">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      {/* Scrollable Container */}
+      <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar p-1">
+        <div className="grid grid-cols-1 gap-3">
+          {rootCategories.map((category) => renderCategory(category))}
         </div>
-      ) : (
-        <Card
-          className={cn(
-            "p-4 transition-all duration-300 max-h-[500px] overflow-y-auto",
-            error && "border-red-500 ring-2 ring-red-100"
-          )}
-        >
-          <div className="space-y-3">
-            {rootCategories.length > 0 ? (
-              rootCategories.map((category) => renderCategory(category))
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                <p>Không có danh mục nào</p>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
+      </div>
 
       {error && (
-        <p className="text-sm text-red-500 flex items-center gap-1.5">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500"></span>
+        <div className="border border-red-500 bg-red-50 p-2 text-red-600 text-xs font-mono uppercase flex items-center gap-2">
+          <span>⚠ LỖI:</span>
           {error}
-        </p>
+        </div>
       )}
     </div>
   );

@@ -6,6 +6,10 @@ import {
   Loader2,
   Star,
   Camera,
+  Trash2,
+  Maximize2,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import { Button, Label } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -13,10 +17,9 @@ import { IMAGE_UPLOAD_CONFIG } from "@/constants/placeConstants";
 import { compressImage } from "@/utils/imageUtils";
 
 /**
- * IMAGE UPLOADER - REDESIGNED
+ * IMAGE UPLOADER - T.I.M STYLE
+ * Technical Industrial Minimalism Design
  * Component để upload và quản lý hình ảnh địa điểm
- * Design: Hero image + Thumbnail grid như Travel App
- * Features: Drag & drop, Cover image, Caption, Reorder
  */
 
 const { MAX_IMAGES, MAX_FILE_SIZE } = IMAGE_UPLOAD_CONFIG;
@@ -32,13 +35,13 @@ const ImageUploader = memo(({ images = [], onChange, error }) => {
 
       // Check total images limit
       if (images.length + files.length > MAX_IMAGES) {
-        alert(`Chỉ được tải lên tối đa ${MAX_IMAGES} hình ảnh`);
+        alert(`ERR: LIMIT EXCEEDED. MAX ${MAX_IMAGES}`);
         return;
       }
 
       const filePromises = Array.from(files).map((file) => {
         if (!file.type.startsWith("image/")) {
-          return Promise.reject(`File ${file.name} không phải là hình ảnh`);
+          return Promise.reject(`INVALID TYPE: ${file.name}`);
         }
         return compressImage(file, images.length);
       });
@@ -54,11 +57,11 @@ const ImageUploader = memo(({ images = [], onChange, error }) => {
           setUploading(false);
         })
         .catch((error) => {
-          alert(error);
+          alert(`UPLOAD ERROR: ${error}`);
           setUploading(false);
         });
     },
-    [images, onChange]
+    [images, onChange],
   );
 
   const handleDrop = (e) => {
@@ -101,227 +104,199 @@ const ImageUploader = memo(({ images = [], onChange, error }) => {
     onChange(newImages);
   };
 
-  const updateCaption = (index, caption) => {
-    const newImages = [...images];
-    newImages[index].caption = caption;
-    onChange(newImages);
-  };
-
   const coverImage = images.find((img) => img.isCover) || images[0];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Label className="text-base font-semibold">Thư viện ảnh</Label>
-          <p className="text-sm text-muted-foreground mt-1">
-            Kéo thả để sắp xếp thứ tự hiển thị
-          </p>
+      {/* Header Metric */}
+      <div className="flex items-center justify-between border-b pb-2">
+        <div className="flex items-center gap-2">
+          <ImageIcon className="w-5 h-5 text-gray-500" />
+          <Label className="text-base font-bold font-mono uppercase tracking-wider">
+            MEDIA_GALLERY
+          </Label>
         </div>
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <span
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] text-gray-400 font-mono uppercase">
+              Capacity
+            </span>
+            <span
+              className={cn(
+                "text-sm font-mono font-bold",
+                images.length >= MAX_IMAGES ? "text-red-600" : "text-gray-700",
+              )}
+            >
+              {images.length.toString().padStart(2, "0")}/
+              {MAX_IMAGES.toString().padStart(2, "0")}
+            </span>
+          </div>
+          <div
             className={cn(
-              "px-3 py-1 rounded-full",
-              images.length >= MAX_IMAGES
-                ? "bg-red-100 text-red-700"
-                : "bg-blue-100 text-blue-700"
+              "w-2 h-2 rounded-full animate-pulse",
+              images.length >= MAX_IMAGES ? "bg-red-500" : "bg-emerald-500",
             )}
-          >
-            {images.length} / {MAX_IMAGES} ảnh
-          </span>
+          ></div>
         </div>
       </div>
 
-      {/* Hero Image Display */}
-      {coverImage && (
-        <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
-          <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 relative">
+      {/* Main Viewport (Cover) */}
+      {coverImage ? (
+        <div className="rounded-sm border border-gray-200 bg-gray-50 p-1 relative group">
+          <div className="aspect-[21/9] bg-gray-200 relative overflow-hidden rounded-sm">
             <img
               src={coverImage.imageData}
-              alt={coverImage.caption || "Cover"}
+              alt="Cover Viewport"
+              className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-500"
+            />
+
+            {/* HUD Overlay */}
+            <div className="absolute inset-0 border-[1px] border-white/20 m-2 pointer-events-none">
+              <div className="absolute top-0 left-0 p-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-mono">
+                VIEWPORT_MAIN :: COVER
+              </div>
+              <div className="absolute bottom-0 right-0 p-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-mono">
+                IMG_ID: {images.indexOf(coverImage)}
+              </div>
+            </div>
+
+            <div className="absolute top-4 right-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-sm shadow-sm flex items-center gap-1 font-mono uppercase">
+              <Star className="h-3 w-3 fill-current" /> PRIMARY
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="aspect-[21/9] bg-gray-100 border border-dashed border-gray-300 rounded-sm flex flex-col items-center justify-center text-gray-400 font-mono text-sm">
+          <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
+          [NO_MEDIA_DATA]
+        </div>
+      )}
+
+      {/* Upload Matrix */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Upload Button Area */}
+        <div
+          onClick={() => !uploading && fileInputRef.current?.click()}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          className={cn(
+            "aspect-square flex flex-col items-center justify-center border-2 border-dashed rounded-sm cursor-pointer transition-all relative overflow-hidden",
+            dragActive
+              ? "border-blue-500 bg-blue-50/50"
+              : "border-gray-300 hover:border-gray-800 hover:bg-gray-50",
+            uploading && "opacity-50 cursor-not-allowed",
+            error && "border-red-500 bg-red-50/10",
+          )}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*"
+            className="hidden"
+            disabled={images.length >= MAX_IMAGES || uploading}
+            onChange={(e) => handleFileSelect(e.target.files)}
+          />
+
+          {uploading ? (
+            <>
+              <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-2" />
+              <span className="text-xs font-mono font-bold text-blue-600 animate-pulse">
+                UPLOADING...
+              </span>
+            </>
+          ) : (
+            <>
+              <div className="absolute top-2 left-2 text-[10px] font-mono text-gray-400">
+                CMD: ADD
+              </div>
+              <Upload className="w-8 h-8 text-gray-400 mb-2" />
+              <span className="text-xs font-bold text-gray-600 uppercase font-mono">
+                Select Files
+              </span>
+              <span className="text-[10px] text-gray-400 mt-1 text-center px-4">
+                Drag'n'drop supported
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Image Grid Items */}
+        {images.map((image, index) => (
+          <div
+            key={index}
+            className={cn(
+              "aspect-square relative group bg-gray-100 rounded-sm overflow-hidden border transition-all cursor-pointer",
+              image.isCover
+                ? "border-emerald-500 ring-1 ring-emerald-500 ring-offset-2 ring-offset-white"
+                : "border-gray-200 hover:border-blue-500",
+            )}
+            onClick={() => setPrimaryImage(index)}
+          >
+            <img
+              src={image.imageData}
+              alt={`img-${index}`}
               className="w-full h-full object-cover"
             />
 
-            {/* Cover Badge */}
-            <div className="absolute top-4 left-4 flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2 rounded-full shadow-lg">
-              <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm font-bold">Ảnh bìa (Cover)</span>
+            {/* Index Number */}
+            <div className="absolute font-mono top-0 left-0 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-br-sm backdrop-blur-sm">
+              {String(index + 1).padStart(2, "0")}
             </div>
 
-            {/* Image Info */}
-            {coverImage.caption && (
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6">
-                <p className="text-white font-medium">{coverImage.caption}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Upload Area - Compact when has images */}
-      <div
-        className={cn(
-          "relative border-2 border-dashed rounded-xl transition-all",
-          dragActive
-            ? "border-primary bg-primary/5 scale-105"
-            : "border-gray-300 hover:border-gray-400",
-          error && "border-red-500",
-          uploading && "opacity-50 pointer-events-none",
-          images.length > 0 ? "p-4" : "p-8"
-        )}
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => handleFileSelect(e.target.files)}
-          disabled={images.length >= MAX_IMAGES || uploading}
-        />
-
-        {uploading ? (
-          <div className="flex items-center justify-center gap-3 py-4">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <p className="text-sm font-medium text-muted-foreground">
-              Đang xử lý hình ảnh...
-            </p>
-          </div>
-        ) : (
-          <div
-            className={cn(
-              "flex items-center gap-4",
-              images.length === 0 && "flex-col text-center"
-            )}
-          >
-            {images.length === 0 ? (
-              <>
-                <div className="p-4 bg-primary/10 rounded-full">
-                  <Camera className="h-12 w-12 text-primary" />
-                </div>
-                <div className="space-y-2">
-                  <p className="font-medium text-gray-700">
-                    Thêm hình ảnh địa điểm
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Kéo thả hình ảnh vào đây hoặc nhấn nút bên dưới
-                  </p>
-                </div>
+            {/* Overlay Controls */}
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[1px]">
+              {image.isCover ? (
+                <span className="text-emerald-400 font-mono text-xs font-bold flex items-center gap-1 border border-emerald-400 px-2 py-1 rounded-sm bg-emerald-400/10">
+                  <CheckCircle2 className="w-3 h-3" /> ACTIVE
+                </span>
+              ) : (
                 <Button
-                  type="button"
-                  size="lg"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={images.length >= MAX_IMAGES}
-                  className="mt-2"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 bg-white/10 hover:bg-emerald-500 hover:text-white text-white rounded-sm border border-white/20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPrimaryImage(index);
+                  }}
+                  title="Set as Cover"
                 >
-                  <Upload className="mr-2 h-5 w-5" />
-                  Chọn ảnh từ thiết bị
+                  <Star className="w-4 h-4" />
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  Tối đa {MAX_IMAGES} ảnh • Mỗi ảnh &lt; 5MB • JPG, PNG, WEBP
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-700">
-                    Thêm ảnh mới
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Kéo thả hoặc nhấn nút để thêm
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={images.length >= MAX_IMAGES}
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Thêm ảnh
-                </Button>
-              </>
-            )}
+              )}
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 bg-white/10 hover:bg-red-500 hover:text-white text-white rounded-sm border border-white/20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeImage(index);
+                }}
+                title="Remove"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-        )}
+        ))}
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <div className="text-red-500">⚠️</div>
-          <p className="text-sm text-red-600 font-medium">{error}</p>
+        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-sm text-red-600">
+          <AlertTriangle className="w-4 h-4" />
+          <span className="text-sm font-mono font-bold tracking-tight uppercase">
+            SYSTEM_ALERT :: {error}
+          </span>
         </div>
       )}
 
-      {/* Thumbnail Grid */}
-      {images.length > 0 && (
-        <div className="space-y-3">
-          <Label className="text-sm font-semibold text-gray-700">
-            Tất cả hình ảnh ({images.length})
-          </Label>
-          <div className="grid grid-cols-4 gap-3">
-            {images.map((image, index) => (
-              <div
-                key={index}
-                className={cn(
-                  "relative group rounded-xl overflow-hidden border-3 transition-all hover:scale-105 cursor-pointer",
-                  image.isCover
-                    ? "border-yellow-400 ring-2 ring-yellow-400 ring-offset-2"
-                    : "border-gray-200 hover:border-primary"
-                )}
-                onClick={() => !image.isCover && setPrimaryImage(index)}
-              >
-                {/* Thumbnail */}
-                <div className="aspect-square bg-gray-100 relative">
-                  <img
-                    src={image.imageData}
-                    alt={image.caption || `Ảnh ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-
-                  {/* Cover Badge */}
-                  {image.isCover && (
-                    <div className="absolute top-1.5 left-1.5 bg-yellow-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Star className="h-2.5 w-2.5 fill-current" />
-                      Cover
-                    </div>
-                  )}
-
-                  {/* Hover Actions */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeImage(index);
-                      }}
-                      className="h-8 w-8 p-0"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  {/* Index */}
-                  <div className="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
-                    {index + 1}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground italic">
-            💡 Nhấn vào ảnh để đặt làm ảnh bìa • Ảnh đầu tiên sẽ hiển thị trong
-            danh sách
-          </p>
-        </div>
-      )}
+      <div className="flex justify-between items-center text-xs text-gray-400 font-mono border-t pt-2">
+        <span>MAX_SIZE: {(MAX_FILE_SIZE / 1024 / 1024).toFixed(0)}MB</span>
+        <span>FORMATS: JPG, PNG, WEBP</span>
+      </div>
     </div>
   );
 });

@@ -64,7 +64,11 @@ const defaultInclude = {
     select: { id: true, name: true, wardType: true },
   },
   createdByUser: {
-    select: { id: true, email: true, profile: { select: { fullName: true, avatar: true } } },
+    select: {
+      id: true,
+      email: true,
+      profile: { select: { fullName: true, avatar: true } },
+    },
   },
   images: {
     orderBy: [{ isCover: "desc" }, { order: "asc" }],
@@ -75,6 +79,13 @@ const defaultInclude = {
       tag: {
         select: { id: true, name: true, slug: true, color: true, icon: true },
       },
+    },
+  },
+  amenities: true,
+  openingHours: true,
+  tagLinks: {
+    include: {
+      tag: true,
     },
   },
   _count: {
@@ -115,8 +126,10 @@ export const getAllPlaces = async (filters = {}) => {
   if (districtId) where.districtId = parseInt(districtId);
   if (wardId) where.wardId = parseInt(wardId);
   if (status) where.status = status;
-  if (isFeatured !== undefined) where.isFeatured = isFeatured === "true" || isFeatured === true;
-  if (isVerified !== undefined) where.isVerified = isVerified === "true" || isVerified === true;
+  if (isFeatured !== undefined)
+    where.isFeatured = isFeatured === "true" || isFeatured === true;
+  if (isVerified !== undefined)
+    where.isVerified = isVerified === "true" || isVerified === true;
   if (createdBy) where.createdBy = parseInt(createdBy);
   if (priceRange) where.priceRange = priceRange;
   if (minRating) where.ratingAvg = { gte: parseFloat(minRating) };
@@ -168,18 +181,35 @@ export const getAllPlaces = async (filters = {}) => {
         ward: {
           select: { id: true, name: true },
         },
+        // Include creator info using consistent profile selection
+        createdByUser: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                fullName: true,
+                avatar: true,
+              },
+            },
+          },
+        },
         // Include first 5 images for gallery preview (optimized for list view)
         images: {
           take: 5,
-          orderBy: [
-            { isCover: 'desc' },
-            { order: 'asc' },
-          ],
+          orderBy: [{ isCover: "desc" }, { order: "asc" }],
           select: {
             id: true,
             imageData: true,
             caption: true,
             isCover: true,
+          },
+        },
+        amenities: true,
+        openingHours: true,
+        tagLinks: {
+          include: {
+            tag: true,
           },
         },
         _count: {
@@ -217,7 +247,11 @@ export const getPlaceById = async (id, incrementView = false) => {
       },
       amenities: true,
       approvedByUser: {
-        select: { id: true, email: true, profile: { select: { fullName: true } } },
+        select: {
+          id: true,
+          email: true,
+          profile: { select: { fullName: true } },
+        },
       },
       business: {
         select: { id: true, businessName: true, status: true },
@@ -255,10 +289,16 @@ export const getPlaceBySlug = async (slug, incrementView = false) => {
 
   if (!place) return null;
 
+  // Transform tagLinks to tags for easy consumption
+  if (place.tagLinks) {
+    place.tags = place.tagLinks.map((link) => link.tag);
+    delete place.tagLinks;
+  }
+
   // Increment view count
   if (incrementView) {
     await prisma.place.update({
-      where: { slug },
+      where: { id },
       data: { viewCount: { increment: 1 } },
     });
   }
@@ -313,11 +353,18 @@ export const createPlace = async (data, userId) => {
   } = data;
 
   // Basic Validation
-  if (!name || !categoryId || !districtId || !address || !latitude || !longitude) {
+  if (
+    !name ||
+    !categoryId ||
+    !districtId ||
+    !address ||
+    !latitude ||
+    !longitude
+  ) {
     throw new ServiceError(
       ERROR_CODES.INVALID_INPUT,
       "Thiếu thông tin bắt buộc: Tên, Danh mục, Quận/Huyện, Địa chỉ, Tọa độ",
-      400
+      400,
     );
   }
 
@@ -327,8 +374,18 @@ export const createPlace = async (data, userId) => {
     prisma.districtCantho.findUnique({ where: { id: parseInt(districtId) } }),
   ]);
 
-  if (!category) throw new ServiceError(ERROR_CODES.NOT_FOUND, "Danh mục không tồn tại", 404);
-  if (!district) throw new ServiceError(ERROR_CODES.NOT_FOUND, "Quận/Huyện không tồn tại", 404);
+  if (!category)
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      "Danh mục không tồn tại",
+      404,
+    );
+  if (!district)
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      "Quận/Huyện không tồn tại",
+      404,
+    );
 
   // Validate Tags (filter out invalid IDs)
   let validTagIds = [];
@@ -341,13 +398,19 @@ export const createPlace = async (data, userId) => {
   }
 
   // Validate Opening Hours
-  const validOpeningHours = Array.isArray(openingHours) ? openingHours.filter(oh => {
-      const day = parseInt(oh.dayOfWeek);
-      return !isNaN(day) && day >= 0 && day <= 8; // 0-6 or 1-8 depending on convention, safer to allow standard range
-  }) : [];
+  const validOpeningHours = Array.isArray(openingHours)
+    ? openingHours.filter((oh) => {
+        const day = parseInt(oh.dayOfWeek);
+        return !isNaN(day) && day >= 0 && day <= 8; // 0-6 or 1-8 depending on convention, safer to allow standard range
+      })
+    : [];
 
   // Validate Amenities
-  const validAmenities = Array.isArray(amenities) ? amenities.filter(am => am.amenityType && typeof am.amenityType === 'string') : [];
+  const validAmenities = Array.isArray(amenities)
+    ? amenities.filter(
+        (am) => am.amenityType && typeof am.amenityType === "string",
+      )
+    : [];
 
   // Generate or validate slug
   const baseSlug = customSlug || generateSlug(name);
@@ -453,13 +516,21 @@ export const createPlace = async (data, userId) => {
     });
 
     // Emit event
-    eventEmitter.emit(EVENTS.PLACE.CREATED, { id: place.id, name, createdBy: userId });
+    eventEmitter.emit(EVENTS.PLACE.CREATED, {
+      id: place.id,
+      name,
+      createdBy: userId,
+    });
 
     // Return full place data
     return getPlaceById(place.id);
   } catch (error) {
     console.error("Create place transaction failed:", error);
-    throw new ServiceError(ERROR_CODES.INTERNAL_SERVER_ERROR, "Lỗi khi tạo địa điểm: " + error.message, 500);
+    throw new ServiceError(
+      ERROR_CODES.INTERNAL_SERVER_ERROR,
+      "Lỗi khi tạo địa điểm: " + error.message,
+      500,
+    );
   }
 };
 
@@ -498,7 +569,11 @@ export const updatePlace = async (id, data, userId) => {
   });
 
   if (!existing) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, ERROR_MESSAGES.NOT_FOUND, 404);
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+    );
   }
 
   // Generate or validate slug if changed
@@ -521,9 +596,11 @@ export const updatePlace = async (id, data, userId) => {
     if (slug !== existing.slug) updateData.slug = slug;
     if (categoryId !== undefined) updateData.categoryId = parseInt(categoryId);
     if (districtId !== undefined) updateData.districtId = parseInt(districtId);
-    if (wardId !== undefined) updateData.wardId = wardId ? parseInt(wardId) : null;
+    if (wardId !== undefined)
+      updateData.wardId = wardId ? parseInt(wardId) : null;
     if (description !== undefined) updateData.description = description;
-    if (shortDescription !== undefined) updateData.shortDescription = shortDescription;
+    if (shortDescription !== undefined)
+      updateData.shortDescription = shortDescription;
     if (address !== undefined) updateData.address = address;
     if (latitude !== undefined) updateData.latitude = parseFloat(latitude);
     if (longitude !== undefined) updateData.longitude = parseFloat(longitude);
@@ -532,8 +609,10 @@ export const updatePlace = async (id, data, userId) => {
     if (website !== undefined) updateData.website = website;
     if (facebook !== undefined) updateData.facebook = facebook;
     if (priceRange !== undefined) updateData.priceRange = priceRange;
-    if (priceFrom !== undefined) updateData.priceFrom = priceFrom ? parseInt(priceFrom) : null;
-    if (priceTo !== undefined) updateData.priceTo = priceTo ? parseInt(priceTo) : null;
+    if (priceFrom !== undefined)
+      updateData.priceFrom = priceFrom ? parseInt(priceFrom) : null;
+    if (priceTo !== undefined)
+      updateData.priceTo = priceTo ? parseInt(priceTo) : null;
 
     await tx.place.update({
       where: { id },
@@ -551,7 +630,9 @@ export const updatePlace = async (id, data, userId) => {
       const newTagIds = tagIds.map((id) => parseInt(id));
 
       // Remove old tags
-      const tagsToRemove = currentTagIds.filter((tid) => !newTagIds.includes(tid));
+      const tagsToRemove = currentTagIds.filter(
+        (tid) => !newTagIds.includes(tid),
+      );
       if (tagsToRemove.length > 0) {
         await tx.placeTagLink.deleteMany({
           where: { placeId: id, tagId: { in: tagsToRemove } },
@@ -621,22 +702,26 @@ export const updatePlace = async (id, data, userId) => {
       const currentImages = await tx.placeImage.findMany({
         where: { placeId: id },
       });
-      const currentImageIds = currentImages.map(img => img.id);
+      const currentImageIds = currentImages.map((img) => img.id);
 
       // Identify images to keep/update and new images
       // Expecting images from FE to have 'id' if existing, or just 'imageData' if new
       // Note: FE currently sends all images.
-      
-      const imagesToKeep = images.filter(img => img.id && currentImageIds.includes(img.id));
-      const imagesToKeepIds = imagesToKeep.map(img => img.id);
-      
-      const imagesToAdd = images.filter(img => !img.id); // No ID = New
+
+      const imagesToKeep = images.filter(
+        (img) => img.id && currentImageIds.includes(img.id),
+      );
+      const imagesToKeepIds = imagesToKeep.map((img) => img.id);
+
+      const imagesToAdd = images.filter((img) => !img.id); // No ID = New
 
       // 5.1 Delete removed images
-      const imagesToDelete = currentImageIds.filter(tid => !imagesToKeepIds.includes(tid));
+      const imagesToDelete = currentImageIds.filter(
+        (tid) => !imagesToKeepIds.includes(tid),
+      );
       if (imagesToDelete.length > 0) {
         await tx.placeImage.deleteMany({
-          where: { id: { in: imagesToDelete } }
+          where: { id: { in: imagesToDelete } },
         });
       }
 
@@ -648,49 +733,52 @@ export const updatePlace = async (id, data, userId) => {
             caption: img.caption || null,
             order: img.order ?? 0,
             isCover: img.isCover || false,
-             // Note: We generally don't update imageData for existing images to save bandwidth 
-             // unless explicitly needed. Assuming FE sends same ID.
-          }
+            // Note: We generally don't update imageData for existing images to save bandwidth
+            // unless explicitly needed. Assuming FE sends same ID.
+          },
         });
       }
 
       // 5.3 Add new images
       if (imagesToAdd.length > 0) {
         await tx.placeImage.createMany({
-            data: imagesToAdd.map((img, index) => ({
-                placeId: id,
-                imageData: img.imageData,
-                caption: img.caption || null,
-                order: img.order ?? (imagesToKeep.length + index),
-                isCover: img.isCover || false,
-                uploadedBy: userId
-            }))
+          data: imagesToAdd.map((img, index) => ({
+            placeId: id,
+            imageData: img.imageData,
+            caption: img.caption || null,
+            order: img.order ?? imagesToKeep.length + index,
+            isCover: img.isCover || false,
+            uploadedBy: userId,
+          })),
         });
       }
 
       // 5.4 Update thumbnail if cover changed
       // We need to re-fetch to be sure which one is cover now
       // Or just trust the input. Let's find the cover in the INPUT list.
-      const coverImage = images.find(img => img.isCover) || images[0];
+      const coverImage = images.find((img) => img.isCover) || images[0];
       if (coverImage && coverImage.imageData) {
-         // If it's a new image, it has imageData.
-         // If it's an existing image, we might NOT have sent imageData back if we optimized FE?
-         // But currently FE ImageUploader keeps imageData in state.
-         // Let's assume imageData is present.
-         await tx.place.update({
-            where: { id },
-            data: { thumbnail: coverImage.imageData }
-         });
+        // If it's a new image, it has imageData.
+        // If it's an existing image, we might NOT have sent imageData back if we optimized FE?
+        // But currently FE ImageUploader keeps imageData in state.
+        // Let's assume imageData is present.
+        await tx.place.update({
+          where: { id },
+          data: { thumbnail: coverImage.imageData },
+        });
       } else if (coverImage && coverImage.id) {
-          // Existing image is cover, but we might not have imageData in the payload to update thumbnail
-          // Fetch it from DB
-          const dbImage = await tx.placeImage.findUnique({ where: { id: coverImage.id }, select: { imageData: true } });
-          if (dbImage) {
-              await tx.place.update({
-                where: { id },
-                data: { thumbnail: dbImage.imageData }
-             });
-          }
+        // Existing image is cover, but we might not have imageData in the payload to update thumbnail
+        // Fetch it from DB
+        const dbImage = await tx.placeImage.findUnique({
+          where: { id: coverImage.id },
+          select: { imageData: true },
+        });
+        if (dbImage) {
+          await tx.place.update({
+            where: { id },
+            data: { thumbnail: dbImage.imageData },
+          });
+        }
       }
     }
 
@@ -713,7 +801,11 @@ export const deletePlace = async (id) => {
   });
 
   if (!existing) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, ERROR_MESSAGES.NOT_FOUND, 404);
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+    );
   }
 
   await prisma.place.update({
@@ -736,7 +828,11 @@ export const hardDeletePlace = async (id) => {
   });
 
   if (!existing) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, "Địa điểm không tồn tại", 404);
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      "Địa điểm không tồn tại",
+      404,
+    );
   }
 
   // Cascade delete is handled by Prisma relations
@@ -759,11 +855,19 @@ export const approvePlace = async (id, userId) => {
   });
 
   if (!existing) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, "Địa điểm không tồn tại", 404);
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      "Địa điểm không tồn tại",
+      404,
+    );
   }
 
   if (existing.status === PLACE_STATUS.APPROVED) {
-    throw new ServiceError(ERROR_CODES.INVALID_INPUT, "Địa điểm đã được duyệt trước đó", 400);
+    throw new ServiceError(
+      ERROR_CODES.INVALID_INPUT,
+      "Địa điểm đã được duyệt trước đó",
+      400,
+    );
   }
 
   const place = await prisma.place.update({
@@ -777,7 +881,11 @@ export const approvePlace = async (id, userId) => {
   });
 
   // Emit event
-  eventEmitter.emit(EVENTS.PLACE.APPROVED, { id, approvedBy: userId, ownerId: existing.createdBy });
+  eventEmitter.emit(EVENTS.PLACE.APPROVED, {
+    id,
+    approvedBy: userId,
+    ownerId: existing.createdBy,
+  });
 
   return place;
 };
@@ -792,7 +900,11 @@ export const rejectPlace = async (id, userId, reason) => {
   });
 
   if (!existing) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, "Địa điểm không tồn tại", 404);
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      "Địa điểm không tồn tại",
+      404,
+    );
   }
 
   const place = await prisma.place.update({
@@ -806,7 +918,12 @@ export const rejectPlace = async (id, userId, reason) => {
   });
 
   // Emit event
-  eventEmitter.emit(EVENTS.PLACE.REJECTED, { id, rejectedBy: userId, reason, ownerId: existing.createdBy });
+  eventEmitter.emit(EVENTS.PLACE.REJECTED, {
+    id,
+    rejectedBy: userId,
+    reason,
+    ownerId: existing.createdBy,
+  });
 
   return place;
 };
@@ -817,7 +934,11 @@ export const rejectPlace = async (id, userId, reason) => {
 export const updateStatus = async (id, status) => {
   const validStatuses = Object.values(PLACE_STATUS);
   if (!validStatuses.includes(status)) {
-    throw new ServiceError(ERROR_CODES.INVALID_INPUT, `Trạng thái không hợp lệ. Các trạng thái hợp lệ: ${validStatuses.join(", ")}`, 400);
+    throw new ServiceError(
+      ERROR_CODES.INVALID_INPUT,
+      `Trạng thái không hợp lệ. Các trạng thái hợp lệ: ${validStatuses.join(", ")}`,
+      400,
+    );
   }
 
   const existing = await prisma.place.findUnique({
@@ -826,7 +947,11 @@ export const updateStatus = async (id, status) => {
   });
 
   if (!existing) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, "Địa điểm không tồn tại", 404);
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      "Địa điểm không tồn tại",
+      404,
+    );
   }
 
   const place = await prisma.place.update({
@@ -847,7 +972,11 @@ export const toggleFeatured = async (id, isFeatured) => {
   });
 
   if (!existing) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, "Địa điểm không tồn tại", 404);
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      "Địa điểm không tồn tại",
+      404,
+    );
   }
 
   const place = await prisma.place.update({
@@ -868,11 +997,22 @@ export const submitForReview = async (id) => {
   });
 
   if (!existing) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, "Địa điểm không tồn tại", 404);
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      "Địa điểm không tồn tại",
+      404,
+    );
   }
 
-  if (existing.status !== PLACE_STATUS.DRAFT && existing.status !== PLACE_STATUS.REJECTED) {
-    throw new ServiceError(ERROR_CODES.INVALID_INPUT, "Chỉ có thể gửi duyệt từ trạng thái Bản nháp hoặc Bị từ chối", 400);
+  if (
+    existing.status !== PLACE_STATUS.DRAFT &&
+    existing.status !== PLACE_STATUS.REJECTED
+  ) {
+    throw new ServiceError(
+      ERROR_CODES.INVALID_INPUT,
+      "Chỉ có thể gửi duyệt từ trạng thái Bản nháp hoặc Bị từ chối",
+      400,
+    );
   }
 
   const place = await prisma.place.update({
@@ -900,14 +1040,22 @@ export const addImages = async (placeId, images, userId) => {
   });
 
   if (!existing) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, "Địa điểm không tồn tại", 404);
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      "Địa điểm không tồn tại",
+      404,
+    );
   }
 
   const currentImageCount = existing.images.length;
   const maxImages = 10;
 
   if (currentImageCount + images.length > maxImages) {
-    throw new ServiceError(ERROR_CODES.INVALID_INPUT, `Tối đa ${maxImages} ảnh. Hiện tại: ${currentImageCount}, thêm: ${images.length}`, 400);
+    throw new ServiceError(
+      ERROR_CODES.INVALID_INPUT,
+      `Tối đa ${maxImages} ảnh. Hiện tại: ${currentImageCount}, thêm: ${images.length}`,
+      400,
+    );
   }
 
   const hasCover = existing.images.some((img) => img.isCover);
@@ -943,7 +1091,11 @@ export const deleteImage = async (placeId, imageId) => {
   });
 
   if (!image) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, "Ảnh không tồn tại hoặc không thuộc địa điểm này", 404);
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      "Ảnh không tồn tại hoặc không thuộc địa điểm này",
+      404,
+    );
   }
 
   await prisma.placeImage.delete({ where: { id: imageId } });
@@ -984,7 +1136,11 @@ export const setCoverImage = async (placeId, imageId) => {
   });
 
   if (!image) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, "Ảnh không tồn tại hoặc không thuộc địa điểm này", 404);
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      "Ảnh không tồn tại hoặc không thuộc địa điểm này",
+      404,
+    );
   }
 
   await prisma.$transaction([
@@ -1014,20 +1170,28 @@ export const setCoverImage = async (placeId, imageId) => {
 export const reorderImages = async (placeId, imageOrders) => {
   // Validate imageOrders
   if (!imageOrders || !Array.isArray(imageOrders)) {
-    throw new ServiceError(ERROR_CODES.INVALID_INPUT, "Danh sách thứ tự ảnh không hợp lệ", 400);
+    throw new ServiceError(
+      ERROR_CODES.INVALID_INPUT,
+      "Danh sách thứ tự ảnh không hợp lệ",
+      400,
+    );
   }
 
   // Validate images belong to place
-  const imageIds = imageOrders.map(i => i.id);
+  const imageIds = imageOrders.map((i) => i.id);
   const count = await prisma.placeImage.count({
     where: {
       id: { in: imageIds },
-      placeId
-    }
+      placeId,
+    },
   });
 
   if (count !== imageIds.length) {
-    throw new ServiceError(ERROR_CODES.INVALID_INPUT, "Một số ảnh không thuộc địa điểm này", 400);
+    throw new ServiceError(
+      ERROR_CODES.INVALID_INPUT,
+      "Một số ảnh không thuộc địa điểm này",
+      400,
+    );
   }
 
   await prisma.$transaction(
@@ -1035,13 +1199,12 @@ export const reorderImages = async (placeId, imageOrders) => {
       prisma.placeImage.update({
         where: { id: item.id }, // Already validated placeId
         data: { order: item.order },
-      })
-    )
+      }),
+    ),
   );
 
   return { success: true };
 };
-
 
 // =============================================================================
 // STATISTICS

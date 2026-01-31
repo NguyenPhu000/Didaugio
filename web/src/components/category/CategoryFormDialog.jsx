@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
@@ -42,6 +42,7 @@ export default function CategoryFormDialog({
     useCategoryStore();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [iconSearch, setIconSearch] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -141,153 +142,200 @@ export default function CategoryFormDialog({
     }
   };
 
+  const filteredIcons = CATEGORY_ICON_PRESETS.filter((icon) =>
+    icon.toLowerCase().includes(iconSearch.toLowerCase()),
+  );
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {category
-              ? "Sửa Danh Mục"
-              : parentCategory
-                ? "Thêm Danh Mục Con"
-                : "Thêm Danh Mục"}
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-none border border-black p-0 shadow-hard">
+        <DialogHeader className="bg-black text-white p-6 border-b border-white/20">
+          <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center justify-between">
+            <span>
+              {category
+                ? "CHỈNH SỬA DANH MỤC"
+                : parentCategory
+                  ? "THÊM DANH MỤC CON"
+                  : "TẠO DANH MỤC GỐC"}
+            </span>
+            <span className="text-[10px] font-mono bg-white text-black px-2 py-0.5">
+              {category ? category.id.substring(0, 8) : "NEW"}
+            </span>
           </DialogTitle>
-          <DialogDescription>
-            {parentCategory && `Danh mục cha: ${parentCategory.name}`}
+          <DialogDescription className="text-gray-400 font-mono text-xs uppercase tracking-wider">
+            {parentCategory
+              ? `DIRECTORY PARENT: ${parentCategory.name}`
+              : "ROOT DIRECTORY SYSTEM"}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 bg-white">
           {/* Tên & Slug */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="name">
-                Tên <span className="text-destructive">*</span>
+              <Label
+                htmlFor="name"
+                className="uppercase font-bold text-xs tracking-wider"
+              >
+                TÊN DANH MỤC <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => handleChange("name", e.target.value)}
-                placeholder="Ví dụ: Ẩm thực"
+                placeholder="VD: TRÀ SỮA..."
                 required
+                className="rounded-none border-black font-mono text-sm focus-visible:ring-0 focus-visible:border-primary border-b-2 bg-gray-50 h-10"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="slug">
-                Slug <span className="text-destructive">*</span>
+              <Label
+                htmlFor="slug"
+                className="uppercase font-bold text-xs tracking-wider"
+              >
+                SLUG (URL) <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="slug"
                 value={formData.slug}
                 onChange={(e) => handleChange("slug", e.target.value)}
-                placeholder="Ví dụ: am-thuc"
+                placeholder="vd: tra-sua"
                 required
+                className="rounded-none border-black font-mono text-sm focus-visible:ring-0 bg-gray-50 h-10"
               />
             </div>
           </div>
 
-          {/* Icon & Màu */}
-          <div className="grid grid-cols-1 gap-4">
-            {/* Icon Picker Grid */}
-            <div className="space-y-2">
-              <Label>Icon</Label>
-              <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/30">
-                {CATEGORY_ICON_PRESETS.map((iconName) => {
-                  const IconComponent = CATEGORY_ICON_MAP[iconName];
-                  return (
-                    <button
-                      key={iconName}
-                      type="button"
-                      className="w-12 h-12 flex items-center justify-center rounded-md border-2 hover:scale-110 transition-all hover:bg-accent"
-                      style={{
-                        borderColor:
-                          formData.icon === iconName
-                            ? formData.color
-                            : "transparent",
-                        backgroundColor:
-                          formData.icon === iconName
-                            ? `${formData.color}15`
-                            : "transparent",
-                        color:
-                          formData.icon === iconName
-                            ? formData.color
-                            : "currentColor",
-                      }}
-                      onClick={() => handleChange("icon", iconName)}
-                      title={iconName}
-                    >
-                      {IconComponent && <IconComponent className="h-6 w-6" />}
-                    </button>
-                  );
-                })}
+          {/* Icon Picker */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center border-b border-black pb-2">
+              <Label className="uppercase font-bold text-xs tracking-wider">
+                ICON HIỂN THỊ
+              </Label>
+              <div className="flex items-center gap-2">
+                <Search className="w-3 h-3" />
+                <Input
+                  placeholder="SEARCH ICON..."
+                  value={iconSearch}
+                  onChange={(e) => setIconSearch(e.target.value)}
+                  className="h-6 w-32 rounded-none border-none border-b border-gray-200 text-xs font-mono uppercase bg-transparent p-0 focus-visible:ring-0"
+                />
               </div>
             </div>
 
-            {/* Color Picker */}
+            <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 max-h-[160px] overflow-y-auto p-2 border border-black bg-gray-50 scrollbar-thin">
+              {filteredIcons.map((iconName) => {
+                const IconComponent = CATEGORY_ICON_MAP[iconName];
+                if (!IconComponent) return null;
+
+                const isSelected = formData.icon === iconName;
+
+                return (
+                  <button
+                    key={iconName}
+                    type="button"
+                    className={`
+                        aspect-square flex items-center justify-center border transition-all
+                        ${
+                          isSelected
+                            ? "bg-black text-white border-black shadow-none scale-90"
+                            : "bg-white text-gray-500 border-gray-200 hover:border-black hover:text-black hover:shadow-hard"
+                        }
+                      `}
+                    onClick={() => handleChange("icon", iconName)}
+                    title={iconName}
+                  >
+                    <IconComponent className="h-5 w-5" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Color & Order */}
+          <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="color">Màu sắc</Label>
-              <div className="flex gap-2">
+              <Label className="uppercase font-bold text-xs tracking-wider">
+                MÃ MÀU
+              </Label>
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-10 h-10 border border-black relative"
+                  style={{ backgroundColor: formData.color }}
+                >
+                  <Input
+                    type="color"
+                    value={formData.color}
+                    onChange={(e) => handleChange("color", e.target.value)}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                  />
+                </div>
                 <Input
-                  id="color"
-                  type="color"
                   value={formData.color}
                   onChange={(e) => handleChange("color", e.target.value)}
-                  className="w-20 h-10"
+                  className="flex-1 rounded-none border-black font-mono uppercase focus-visible:ring-0"
                 />
-                <div className="flex flex-wrap gap-1 flex-1">
-                  {CATEGORY_COLOR_PRESETS.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      className="w-8 h-8 rounded border-2 hover:scale-110 transition-transform"
-                      style={{
-                        backgroundColor: color,
-                        borderColor:
-                          formData.color === color ? "#000" : "transparent",
-                      }}
-                      onClick={() => handleChange("color", color)}
-                    />
-                  ))}
-                </div>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="order"
+                className="uppercase font-bold text-xs tracking-wider"
+              >
+                THỨ TỰ (PRIORITY)
+              </Label>
+              <Input
+                id="order"
+                type="number"
+                value={formData.order}
+                onChange={(e) =>
+                  handleChange("order", parseInt(e.target.value))
+                }
+                min="0"
+                className="rounded-none border-black font-mono focus-visible:ring-0"
+              />
             </div>
           </div>
 
           {/* Mô tả */}
           <div className="space-y-2">
-            <Label htmlFor="description">Mô tả</Label>
+            <Label
+              htmlFor="description"
+              className="uppercase font-bold text-xs tracking-wider"
+            >
+              MÔ TẢ NGẮN
+            </Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => handleChange("description", e.target.value)}
-              placeholder="Mô tả danh mục..."
+              placeholder="CHI TIẾT..."
               rows={3}
+              className="rounded-none border-black font-mono focus-visible:ring-0 bg-gray-50"
             />
           </div>
 
-          {/* Thứ tự */}
-          <div className="space-y-2">
-            <Label htmlFor="order">Thứ tự hiển thị</Label>
-            <Input
-              id="order"
-              type="number"
-              value={formData.order}
-              onChange={(e) => handleChange("order", parseInt(e.target.value))}
-              min="0"
-            />
-          </div>
-
-          <DialogFooter>
+          <DialogFooter className="border-t border-black pt-6 gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={loading}
+              className="rounded-none border-black hover:bg-gray-200 font-mono uppercase"
             >
-              Hủy
+              HỦY BỎ
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Đang lưu..." : category ? "Cập nhật" : "Tạo mới"}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="rounded-none bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard font-bold uppercase transition-all"
+            >
+              {loading
+                ? "ĐANG XỬ LÝ..."
+                : category
+                  ? "LƯU THAY ĐỔI"
+                  : "TẠO DANH MỤC"}
             </Button>
           </DialogFooter>
         </form>

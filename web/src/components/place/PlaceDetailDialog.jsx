@@ -5,11 +5,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/Dialog";
-import { Badge, Button, Separator, ScrollArea } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  ScrollArea,
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui";
 import {
   MapPin,
   Clock,
-  DollarSign,
   Phone,
   Globe,
   Star,
@@ -19,100 +25,133 @@ import {
   CheckCircle,
   XCircle,
   Facebook,
-  X,
+  Grid as GridIcon,
+  Tag,
+  Info,
+  Calendar,
+  User,
+  ExternalLink,
+  ShieldCheck,
+  Mail,
 } from "lucide-react";
-import AnimatedIcon from "@/components/ui/animated-icon";
 import { PRICE_RANGE_LABELS } from "@/constants/constants";
 import CanThoMap from "@/components/map/CanThoMap";
+import { cn } from "@/lib/utils";
 
 /**
- * PlaceDetailDialog Component - Premium Design
- * Comprehensive place information display with modern UI
+ * PlaceDetailDialog Component - T.I.M Style
+ * Technical Industrial Minimalism - Vietnamese Version
  */
-const PlaceDetailDialog = ({ place, open, onOpenChange, onEdit, onDelete, onApprove, onReject }) => {
+const PlaceDetailDialog = ({
+  place,
+  open,
+  onOpenChange,
+  onEdit,
+  onDelete,
+  onApprove,
+  onReject,
+}) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   if (!place) return null;
 
+  const labels = {
+    draft: "NHÁP",
+    pending: "CHỜ DUYỆT",
+    approved: "ĐÃ DUYỆT",
+    rejected: "TỪ CHỐI",
+    hidden: "ẨN",
+  };
+
   const getStatusBadge = (status) => {
     const statusConfig = {
-      draft: { className: "bg-slate-100 text-slate-700 border-slate-200" },
-      pending: { className: "bg-amber-50 text-amber-700 border-amber-200" },
-      approved: { className: "bg-green-50 text-green-700 border-green-200" },
-      rejected: { className: "bg-red-50 text-red-700 border-red-200" },
-      hidden: { className: "bg-gray-50 text-gray-600 border-gray-200" },
+      draft: "bg-gray-100 text-gray-600 border-gray-400",
+      pending: "bg-yellow-50 text-yellow-700 border-yellow-400",
+      approved: "bg-green-50 text-green-700 border-green-400",
+      rejected: "bg-red-50 text-red-700 border-red-400",
+      hidden: "bg-gray-200 text-gray-500 border-gray-400",
     };
 
-    const labels = {
-      draft: "Nháp",
-      pending: "Chờ duyệt",
-      approved: "Đã duyệt",
-      rejected: "Từ chối",
-      hidden: "Ẩn",
-    };
-
-    const config = statusConfig[status] || statusConfig.draft;
-    
     return (
-      <Badge className={`${config.className} border font-medium`}>
+      <Badge
+        className={cn(
+          "rounded-none border font-mono uppercase text-[10px] px-2 py-0.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)]",
+          statusConfig[status] || statusConfig.draft,
+        )}
+      >
         {labels[status]}
       </Badge>
     );
   };
 
+  // Helper to get user display info
+  const creatorData = place.createdByUser || place.user;
+  const creatorProfile = creatorData?.profile;
+
+  // Preferred Name: Profile FullName > User FullName > Username > Email > ID
+  const creatorName =
+    creatorProfile?.fullName ||
+    creatorData?.fullName ||
+    creatorData?.username ||
+    creatorData?.email ||
+    `USER #${place.createdBy}`;
+  const creatorAvatar = creatorProfile?.avatar || creatorData?.avatar;
+  const creatorInitial = creatorName
+    ? creatorName.charAt(0).toUpperCase()
+    : "?";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl h-[90vh] p-0 gap-0 overflow-hidden">
-        <div className="flex h-full">
+      <DialogContent className="max-w-6xl w-full h-[85vh] max-h-[85vh] p-0 gap-0 overflow-hidden rounded-none border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col">
+        <div className="flex flex-1 min-h-0 flex-col md:flex-row overflow-hidden">
           {/* Left Side - Image Gallery */}
-          <div className="w-1/2 bg-gray-50 relative">
+          <div className="w-full md:w-1/2 bg-gray-100 relative flex flex-col border-r-2 border-black overflow-hidden">
             {place.images && place.images.length > 0 ? (
               <>
                 {/* Main Image */}
-                <div className="h-3/4 relative">
+                <div className="flex-1 relative bg-black/5 overflow-hidden group min-h-0">
                   <img
                     src={place.images[currentImageIndex]?.imageData}
                     alt={place.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
-                  
-                  {/* Status & Featured Badges */}
-                  <div className="absolute top-4 left-4 flex gap-2">
+
+                  {/* Status & Featured Badges Overlay */}
+                  <div className="absolute top-4 left-4 flex flex-col gap-2">
                     {getStatusBadge(place.status)}
                     {place.isFeatured && (
-                      <Badge className="bg-yellow-500 text-white border-0 shadow-md">
-                        <AnimatedIcon icon={Star} className="w-3 h-3 mr-1 fill-current" type="pulse" />
-                        Nổi bật
+                      <Badge className="bg-black text-white border border-black rounded-none font-mono uppercase text-[10px] w-max shadow-[2px_2px_0px_0px_rgba(255,255,255,0.5)]">
+                        <Star className="w-3 h-3 mr-1 fill-white" />
+                        NỔI BẬT
                       </Badge>
                     )}
                   </div>
 
                   {/* Image Counter */}
-                  {place.images.length > 1 && (
-                    <div className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm">
-                      {currentImageIndex + 1} / {place.images.length}
-                    </div>
-                  )}
+                  <div className="absolute top-4 right-4 bg-black text-white px-2 py-1 text-[10px] font-mono border border-white">
+                    IMG: {currentImageIndex + 1}/{place.images.length}
+                  </div>
                 </div>
 
                 {/* Thumbnail Strip */}
                 {place.images.length > 1 && (
-                  <div className="h-1/4 p-4 bg-white border-t">
-                    <ScrollArea className="h-full">
-                      <div className="flex gap-2">
+                  <div className="h-24 p-2 bg-white border-t-2 border-black grid grid-rows-1">
+                    <ScrollArea className="h-full w-full">
+                      <div className="flex gap-2 h-full items-center px-1">
                         {place.images.map((img, idx) => (
                           <button
                             key={idx}
                             onClick={() => setCurrentImageIndex(idx)}
-                            className={`relative flex-shrink-0 w-24 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                            className={cn(
+                              "relative flex-shrink-0 w-20 h-16 border-2 transition-all",
                               currentImageIndex === idx
-                                ? "border-primary shadow-md scale-105"
-                                : "border-gray-200 hover:border-gray-300 opacity-60 hover:opacity-100"
-                            }`}
+                                ? "border-black brightness-100 ring-1 ring-black ring-offset-1"
+                                : "border-gray-200 brightness-75 hover:border-black hover:brightness-90",
+                            )}
                           >
                             <img
                               src={img.imageData}
-                              alt={`${place.name} - ${idx + 1}`}
+                              alt={`Thumbnail ${idx + 1}`}
                               className="w-full h-full object-cover"
                             />
                           </button>
@@ -123,89 +162,100 @@ const PlaceDetailDialog = ({ place, open, onOpenChange, onEdit, onDelete, onAppr
                 )}
               </>
             ) : (
-              <div className="h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-                <div className="text-center">
-                  <AnimatedIcon icon={MapPin} className="w-20 h-20 mx-auto text-gray-300 mb-4" type="pulse" />
-                  <p className="text-gray-400 font-medium">Chưa có hình ảnh</p>
+              <div className="h-full flex flex-col items-center justify-center bg-gray-50 border-r border-black">
+                <div className="border-2 border-black border-dashed p-8 rounded-full mb-4 opacity-20">
+                  <MapPin className="w-12 h-12 text-black" />
                 </div>
+                <p className="text-gray-400 font-mono text-xs uppercase">
+                  CHƯA CÓ HÌNH ẢNH
+                </p>
               </div>
             )}
           </div>
 
           {/* Right Side - Information */}
-          <div className="w-1/2 flex flex-col">
+          <div className="w-full md:w-1/2 flex flex-col bg-white h-full overflow-hidden">
             {/* Header */}
-            <DialogHeader className="p-6 pb-4 border-b">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <DialogTitle className="text-2xl font-bold text-gray-900 mb-2">
-                    {place.name}
-                  </DialogTitle>
-                  
-                  <div className="flex items-center gap-3 text-sm text-gray-600 mb-3">
-                    <span className="font-medium text-primary">{place.category?.name}</span>
-                    <span className="text-gray-300">•</span>
-                    <div className="flex items-center gap-1">
-                      <AnimatedIcon icon={Star} className="w-4 h-4 text-yellow-500 fill-yellow-500" type="pulse" />
-                      <span className="font-semibold text-gray-900">
-                        {place.ratingAvg ? parseFloat(place.ratingAvg).toFixed(1) : "N/A"}
-                      </span>
-                      <span className="text-gray-400">({place.ratingCount || 0})</span>
-                    </div>
-                    <span className="text-gray-300">•</span>
-                    <div className="flex items-center gap-1">
-                      <AnimatedIcon icon={Eye} className="w-4 h-4" />
-                      <span>{place.viewCount || 0}</span>
-                    </div>
-                  </div>
-
-                  {/* Quick Badges */}
-                  <div className="flex items-center gap-2">
-                    {place.isVerified && (
-                      <Badge className="bg-blue-50 text-blue-700 border-blue-200 border">
-                        <AnimatedIcon icon={CheckCircle} className="w-3 h-3 mr-1" type="pulse" />
-                        Đã xác minh
+            <DialogHeader className="p-6 border-b-2 border-black bg-white shrink-0">
+              <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2 w-full">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-black text-white hover:bg-black rounded-none font-mono text-[10px] uppercase px-2 py-0.5">
+                        {place.category?.name || "CHƯA PHÂN LOẠI"}
                       </Badge>
+                      {place.isVerified && (
+                        <Badge className="bg-blue-600 text-white hover:bg-blue-700 rounded-none font-mono text-[10px] uppercase px-2 py-0.5 border-0 flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3" />
+                          ĐÃ XÁC MINH
+                        </Badge>
+                      )}
+                    </div>
+                    <DialogTitle className="text-2xl md:text-3xl font-black uppercase tracking-tighter leading-tight break-words pr-8">
+                      {place.name}
+                    </DialogTitle>
+                    {place.shortDescription && (
+                      <div className="font-mono text-sm text-gray-500 italic mt-1 border-l-2 border-black pl-2">
+                        "{place.shortDescription}"
+                      </div>
                     )}
-                    {place.priceRange && (
-                      <Badge className="bg-primary/10 text-primary border-primary/20 border">
-                        {PRICE_RANGE_LABELS[place.priceRange]}
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-4 text-xs font-mono text-gray-500 uppercase mt-2">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                        <span className="font-bold text-black">
+                          {place.ratingAvg
+                            ? parseFloat(place.ratingAvg).toFixed(1)
+                            : "0.0"}
+                        </span>
+                        <span>({place.ratingCount || 0} ĐÁNH GIÁ)</span>
+                      </div>
+                      <div className="w-[1px] h-4 bg-gray-300"></div>
+                      <div className="flex items-center gap-1">
+                        <Eye className="w-4 h-4" />
+                        <span>{place.viewCount || 0} LƯỢT XEM</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  {place.status === 'pending' && onApprove && (
-                    <Button 
-                      size="sm" 
-                      className="bg-green-600 hover:bg-green-700"
+                {/* Action Buttons Toolbar */}
+                <div className="flex gap-2 pt-2 border-t border-dashed border-gray-200 mt-2">
+                  {onEdit && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 border-black rounded-none hover:bg-black hover:text-white font-mono uppercase text-xs"
+                      onClick={() => onEdit(place)}
+                    >
+                      <Edit className="w-3 h-3 mr-2" /> SỬA
+                    </Button>
+                  )}
+                  {onApprove && place.status === "pending" && (
+                    <Button
+                      size="sm"
+                      className="h-8 bg-green-600 hover:bg-green-700 text-white border border-black rounded-none font-mono uppercase text-xs"
                       onClick={() => onApprove(place)}
                     >
-                      <AnimatedIcon icon={CheckCircle} className="w-4 h-4 mr-1" type="tap" />
-                      Duyệt
+                      <CheckCircle className="w-3 h-3 mr-2" /> DUYỆT
                     </Button>
                   )}
-                  {place.status === 'pending' && onReject && (
-                    <Button 
-                      size="sm" 
-                      variant="destructive"
+                  {onReject && place.status === "pending" && (
+                    <Button
+                      size="sm"
+                      className="h-8 bg-black hover:bg-red-700 text-white border border-black rounded-none font-mono uppercase text-xs"
                       onClick={() => onReject(place)}
                     >
-                      <AnimatedIcon icon={XCircle} className="w-4 h-4 mr-1" type="tap" />
-                      Từ chối
-                    </Button>
-                  )}
-                  {onEdit && (
-                    <Button size="sm" variant="outline" onClick={() => onEdit(place)}>
-                      <AnimatedIcon icon={Edit} className="w-4 h-4 mr-1" type="rotate" />
-                      Sửa
+                      <XCircle className="w-3 h-3 mr-2" /> TỪ CHỐI
                     </Button>
                   )}
                   {onDelete && (
-                    <Button size="sm" variant="ghost" onClick={() => onDelete(place)}>
-                      <AnimatedIcon icon={Trash2} className="w-4 h-4" type="tap" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0 border-black rounded-none hover:bg-red-600 hover:text-white hover:border-red-600 ml-auto"
+                      onClick={() => onDelete(place)}
+                    >
+                      <Trash2 className="w-3 h-3" />
                     </Button>
                   )}
                 </div>
@@ -213,170 +263,334 @@ const PlaceDetailDialog = ({ place, open, onOpenChange, onEdit, onDelete, onAppr
             </DialogHeader>
 
             {/* Content - Scrollable */}
-            <ScrollArea className="flex-1 p-6">
-              <div className="space-y-6">
-                {/* Thông tin chi tiết Section */}
-                <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                      <AnimatedIcon icon={MapPin} className="w-4 h-4 text-blue-600" type="pulse" />
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="p-6 space-y-8">
+                {/* 1. Metadata Grid - Redesigned */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-0 border border-black divide-y sm:divide-y-0 sm:divide-x divide-black bg-gray-50">
+                  {/* Category */}
+                  <div className="p-4 hover:bg-white transition-colors">
+                    <span className="text-[10px] font-bold uppercase text-gray-500 block mb-2 tracking-wider">
+                      DANH MỤC
+                    </span>
+                    <div className="font-mono text-sm font-bold flex items-center gap-2">
+                      {place.category?.icon ? (
+                        <span className="text-lg">{place.category.icon}</span>
+                      ) : (
+                        <GridIcon className="w-4 h-4 text-gray-400" />
+                      )}
+                      <span
+                        className="break-words leading-tight"
+                        title={place.category?.name}
+                      >
+                        {place.category?.name || "N/A"}
+                      </span>
                     </div>
-                    <h3 className="font-semibold text-gray-900">Thông tin chi tiết</h3>
                   </div>
 
-                  <div className="space-y-3">
-                    {/* Address */}
-                    <div className="flex items-start gap-3">
-                      <div className="min-w-[100px] text-sm font-medium text-gray-600">Địa chỉ</div>
-                      <p className="text-sm text-gray-900">
-                        {place.address}
-                        {place.ward && `, ${place.ward.name}`}
-                        {place.district && `, ${place.district.name}`}
-                      </p>
+                  {/* District */}
+                  <div className="p-4 hover:bg-white transition-colors">
+                    <span className="text-[10px] font-bold uppercase text-gray-500 block mb-2 tracking-wider">
+                      KHU VỰC
+                    </span>
+                    <div className="font-mono text-sm font-bold break-words leading-tight">
+                      {place.district?.name || "N/A"}
                     </div>
+                  </div>
 
-                    {/* Phone */}
-                    {place.phoneNumber && (
-                      <div className="flex items-center gap-3">
-                        <div className="min-w-[100px] text-sm font-medium text-gray-600 flex items-center gap-2">
-                          <AnimatedIcon icon={Phone} className="w-4 h-4 text-blue-600" type="rotate" />
-                          Điện thoại
-                        </div>
-                        <a 
-                          href={`tel:${place.phoneNumber}`}
-                          className="text-sm text-blue-600 hover:underline font-medium"
-                        >
-                          {place.phoneNumber}
-                        </a>
+                  {/* Price */}
+                  <div className="p-4 hover:bg-white transition-colors">
+                    <span className="text-[10px] font-bold uppercase text-gray-500 block mb-2 tracking-wider">
+                      MỨC GIÁ
+                    </span>
+                    <div className="font-mono text-sm font-bold flex flex-col">
+                      <div className="flex items-center gap-1 text-green-700">
+                        <span className="font-sans">₫</span>
+                        {place.priceRange
+                          ? PRICE_RANGE_LABELS[place.priceRange]
+                          : "CHƯA CẬP NHẬT"}
                       </div>
-                    )}
+                      {(place.priceFrom || place.priceTo) && (
+                        <div className="text-[10px] text-gray-500 font-normal mt-1 border-t border-dashed border-gray-300 pt-1">
+                          {place.priceFrom
+                            ? new Intl.NumberFormat("vi-VN").format(
+                                place.priceFrom,
+                              )
+                            : "0"}
+                          {" - "}
+                          {place.priceTo
+                            ? new Intl.NumberFormat("vi-VN").format(
+                                place.priceTo,
+                              )
+                            : "∞"}
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                    {/* Website */}
-                    {place.website && (
-                      <div className="flex items-center gap-3">
-                        <div className="min-w-[100px] text-sm font-medium text-gray-600 flex items-center gap-2">
-                          <AnimatedIcon icon={Globe} className="w-4 h-4 text-blue-600" type="rotate" />
-                          Website
-                        </div>
-                        <a
-                          href={place.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:underline truncate"
-                        >
-                          {place.website}
-                        </a>
+                  {/* Creator */}
+                  <div className="p-4 hover:bg-white transition-colors">
+                    <span className="text-[10px] font-bold uppercase text-gray-500 block mb-2 tracking-wider">
+                      NGƯỜI ĐĂNG
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8 border border-black rounded-none shrink-0">
+                        <AvatarImage src={creatorAvatar} />
+                        <AvatarFallback className="rounded-none bg-black text-white font-mono text-xs">
+                          {creatorInitial}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div
+                        className="font-mono text-sm font-bold break-words leading-tight"
+                        title={creatorName}
+                      >
+                        {creatorName}
                       </div>
-                    )}
-
-                    {/* Facebook */}
-                    {place.facebookUrl && (
-                      <div className="flex items-center gap-3">
-                        <div className="min-w-[100px] text-sm font-medium text-gray-600 flex items-center gap-2">
-                          <AnimatedIcon icon={Facebook} className="w-4 h-4 text-blue-600" type="rotate" />
-                          Facebook
-                        </div>
-                        <a
-                          href={place.facebookUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:underline truncate"
-                        >
-                          facebook.com/...
-                        </a>
-                      </div>
-                    )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Opening Hours */}
-                {place.openingHours && place.openingHours.length > 0 && (
-                  <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <AnimatedIcon icon={Clock} className="w-4 h-4 text-primary" type="pulse" />
-                      </div>
-                      <h3 className="font-semibold text-gray-900">Giờ mở cửa</h3>
-                    </div>
-                    <div className="space-y-2">
-                      {place.openingHours.map((hour, idx) => (
-                        <div key={idx} className="flex justify-between text-sm">
-                          <span className="font-medium text-gray-700">
-                            {["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"][hour.dayOfWeek]}
-                          </span>
-                          <span className={hour.isClosed ? "text-red-600 font-medium" : "text-primary font-medium"}>
-                            {hour.isClosed ? "Đóng cửa" : `${hour.openTime} - ${hour.closeTime}`}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Description */}
+                {/* 2. Description & Price */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Giới thiệu</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-                    {place.description || place.shortDescription || "Chưa có mô tả chi tiết."}
-                  </p>
+                  <div className="flex items-center gap-2 mb-3 border-b-2 border-black pb-1 w-max">
+                    <Info className="w-4 h-4" />
+                    <h3 className="font-bold font-mono text-sm uppercase">
+                      MÔ TẢ
+                    </h3>
+                  </div>
+
+                  {/* Price Info */}
+                  {(place.priceRange || place.priceFrom || place.priceTo) && (
+                    <div className="mb-4 flex items-center gap-2 text-sm font-mono bg-yellow-50 border border-yellow-200 p-2 text-yellow-800">
+                      <span className="font-bold uppercase">Mức giá:</span>
+                      {place.priceRange ? (
+                        <span>{place.priceRange}</span>
+                      ) : (
+                        <span>
+                          {place.priceFrom?.toLocaleString()}đ -{" "}
+                          {place.priceTo?.toLocaleString()}đ
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="text-sm text-gray-800 font-mono leading-relaxed whitespace-pre-line bg-gray-50 border border-gray-200 p-4">
+                    {place.description ||
+                      place.shortDescription ||
+                      "[CHƯA CÓ NỘI DUNG MÔ TẢ]"}
+                  </div>
                 </div>
 
-                {/* Map */}
-                {place.latitude && place.longitude && (
+                {/* 3. Contact & Location */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  {/* Contact Info */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-3 border-b-2 border-black pb-1 w-max">
+                      <Phone className="w-4 h-4" />
+                      <h3 className="font-bold font-mono text-sm uppercase">
+                        LIÊN HỆ
+                      </h3>
+                    </div>
+                    <div className="space-y-3 font-mono text-xs">
+                      <div className="flex gap-3 items-start">
+                        <MapPin className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span className="break-words font-medium">
+                          {place.address}
+                          {place.ward && `, ${place.ward.name}`}
+                          {place.district && `, ${place.district.name}`}
+                        </span>
+                      </div>
+                      {place.phoneNumber && (
+                        <div className="flex gap-3 items-center">
+                          <Phone className="w-4 h-4 shrink-0" />
+                          <a
+                            href={`tel:${place.phoneNumber}`}
+                            className="hover:underline hover:text-blue-600 font-bold"
+                          >
+                            {place.phoneNumber}
+                          </a>
+                        </div>
+                      )}
+                      {place.email && (
+                        <div className="flex gap-3 items-center">
+                          <Mail className="w-4 h-4 shrink-0" />
+                          <a
+                            href={`mailto:${place.email}`}
+                            className="hover:underline hover:text-blue-600 truncate max-w-[200px]"
+                          >
+                            {place.email}
+                          </a>
+                        </div>
+                      )}
+                      {place.website && (
+                        <div className="flex gap-3 items-center">
+                          <Globe className="w-4 h-4 shrink-0" />
+                          <a
+                            href={place.website}
+                            target="_blank"
+                            className="hover:underline hover:text-blue-600 truncate max-w-[200px]"
+                          >
+                            {place.website}
+                          </a>
+                        </div>
+                      )}
+                      {place.facebookUrl && (
+                        <div className="flex gap-3 items-center">
+                          <Facebook className="w-4 h-4 shrink-0" />
+                          <a
+                            href={place.facebookUrl}
+                            target="_blank"
+                            className="hover:underline hover:text-blue-600 truncate max-w-[200px]"
+                          >
+                            Facebook Page
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Opening Hours */}
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-3">Vị trí bản đồ</h3>
-                    <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm" style={{ height: '250px' }}>
+                    <div className="flex items-center gap-2 mb-3 border-b-2 border-black pb-1 w-max">
+                      <Clock className="w-4 h-4" />
+                      <h3 className="font-bold font-mono text-sm uppercase">
+                        GIỜ HOẠT ĐỘNG
+                      </h3>
+                    </div>
+                    {place.openingHours && place.openingHours.length > 0 ? (
+                      <div className="space-y-1">
+                        {[...place.openingHours]
+                          .sort((a, b) => {
+                            const d1 = a.dayOfWeek === 0 ? 7 : a.dayOfWeek;
+                            const d2 = b.dayOfWeek === 0 ? 7 : b.dayOfWeek;
+                            return d1 - d2;
+                          })
+                          .map((hour, idx) => (
+                            <div
+                              key={idx}
+                              className="flex justify-between text-xs font-mono border-b border-dashed border-gray-200 pb-1 last:border-0 hover:bg-gray-50 px-1"
+                            >
+                              <span className="font-bold w-12">
+                                {
+                                  ["CN", "T2", "T3", "T4", "T5", "T6", "T7"][
+                                    hour.dayOfWeek
+                                  ]
+                                }
+                              </span>
+                              <span
+                                className={
+                                  hour.isClosed
+                                    ? "text-red-500 font-bold"
+                                    : "text-black"
+                                }
+                              >
+                                {hour.isClosed
+                                  ? "ĐÓNG CỬA"
+                                  : `${hour.openTime?.slice(0, 5)} - ${hour.closeTime?.slice(0, 5)}`}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs font-mono italic text-gray-400">
+                        -- CHƯA CẬP NHẬT GIỜ --
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. Map */}
+                {place.latitude && place.longitude && (
+                  <div className="border-2 border-black p-1 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
+                    <div className="h-[200px] grayscale hover:grayscale-0 transition-all duration-500 border border-gray-200">
                       <CanThoMap
                         places={[place]}
                         showMarkers={true}
                         interactive={false}
                         initialViewState={{
-                            latitude: place.latitude,
-                            longitude: place.longitude,
-                            zoom: 15
+                          latitude: place.latitude,
+                          longitude: place.longitude,
+                          zoom: 14,
                         }}
                       />
                     </div>
-                  </div>
-                )}
-
-                {/* Amenities */}
-                {place.amenities && place.amenities.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-3">Tiện nghi</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {place.amenities.map((amenity, idx) => (
-                        <Badge key={idx} variant="outline" className="bg-white">
-                          {amenity.amenityType}: {amenity.amenityValue}
-                        </Badge>
-                      ))}
+                    <div className="bg-black text-white px-2 py-1.5 text-[10px] font-mono flex justify-between items-center mt-1">
+                      <span className="flex items-center gap-2">
+                        <MapPin className="w-3 h-3 text-white" />
+                        TỌA ĐỘ: {Number(place.latitude).toFixed(4)},{" "}
+                        {Number(place.longitude).toFixed(4)}
+                      </span>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${place.latitude},${place.longitude}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:underline flex items-center gap-1 hover:text-yellow-400 transition-colors"
+                      >
+                        MỞ GOOGLE MAPS <ExternalLink className="w-2 h-2" />
+                      </a>
                     </div>
                   </div>
                 )}
 
-                {/* Tags */}
-                {place.tagLinks && place.tagLinks.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-3">Tags</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {place.tagLinks.map((link, idx) => (
-                        <Badge key={idx} className="bg-gray-100 text-gray-700 border-0">
-                          {link.tag?.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Metadata */}
-                <div className="pt-4 border-t">
-                  <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
+                {/* 5. Amenities & Tags */}
+                <div className="space-y-6">
+                  {place.amenities && place.amenities.length > 0 && (
                     <div>
-                      <span className="font-medium">Người tạo:</span> User #{place.createdBy}
+                      <span className="text-[10px] font-bold uppercase text-gray-500 block mb-2 tracking-wider">
+                        TIỆN ÍCH (AMENITIES)
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {place.amenities.map((amenity, idx) => (
+                          <div
+                            key={idx}
+                            className="border border-black px-3 py-1 text-[10px] font-mono uppercase bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)] flex items-center gap-1"
+                          >
+                            <CheckCircle className="w-3 h-3 text-green-600" />
+                            <span className="font-bold">
+                              {amenity.amenityType}
+                            </span>
+                            : {amenity.amenityValue}
+                          </div>
+                        ))}
+                      </div>
                     </div>
+                  )}
+
+                  {(place.tagLinks?.length > 0 || place.tags?.length > 0) && (
                     <div>
-                      <span className="font-medium">Ngày tạo:</span>{" "}
-                      {new Date(place.createdAt).toLocaleDateString('vi-VN')}
+                      <span className="text-[10px] font-bold uppercase text-gray-500 block mb-2 tracking-wider">
+                        THẺ (TAGS)
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {(place.tagLinks
+                          ? place.tagLinks.map((link) => link.tag)
+                          : place.tags || []
+                        )
+                          .filter(Boolean)
+                          .map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="bg-black text-white px-2 py-1 text-[10px] font-mono uppercase border border-black hover:bg-white hover:text-black transition-colors cursor-default"
+                            >
+                              #{tag.name}
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Metadata */}
+                <div className="pt-6 border-t-2 border-black border-dashed mt-8">
+                  <div className="flex justify-between items-center text-[10px] font-mono text-gray-400 uppercase">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      NGÀY TẠO:{" "}
+                      {new Date(place.createdAt).toLocaleString("vi-VN")}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      CẬP NHẬT:{" "}
+                      {new Date(place.updatedAt).toLocaleString("vi-VN")}
                     </div>
                   </div>
                 </div>

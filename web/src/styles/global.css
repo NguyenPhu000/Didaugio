@@ -4,91 +4,105 @@
 
 @layer base {
   :root {
-    /* 60% White */
-    --background: 0 0% 100%;
+    /* Arknights: Endfield Style - T.I.M */
+
+    /* Base Background - White */
+    --background: 0 0% 100%; /* #FFFFFF */
+
+    /* Base Text - Dark Carbon */
+    --foreground: 0 0% 10%; /* #1A1A1A */
+
+    /* Card Background - White */
     --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+
+    /* Popover */
     --popover: 0 0% 100%;
-    
-    /* 30% Black (Using Darkest Blue #00072D for rich text) */
-    --foreground: 231 82% 9%; /* #00072D */
-    --card-foreground: 231 82% 9%;
-    --popover-foreground: 231 82% 9%;
-    
-    /* 10% Accents */
-    --primary: 204 85% 36%; /* #0E6BA8 */
-    --primary-foreground: 0 0% 100%;
-    
-    --secondary: 198 87% 82%; /* #A6E1FA */
-    --secondary-foreground: 231 82% 9%; /* #00072D */
-    
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    
-    --accent: 198 87% 82%; /* #A6E1FA */
-    --accent-foreground: 231 82% 9%;
-    
+    --popover-foreground: 0 0% 10%;
+
+    /* Primary / Action - Safety Yellow #F3E600 */
+    --primary: 57 100% 47%; /* #F3E600 */
+    --primary-foreground: 0 0% 10%; /* Dark text on Yellow */
+
+    /* Secondary - Neutral Light Gray or Dark Charcoal for contrast elements */
+    --secondary: 0 0% 96%; /* Light gray for secondary backgrounds */
+    --secondary-foreground: 0 0% 10%;
+
+    /* Muted - For micro-typography #666666 */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%; /* #666666 */
+
+    /* Accent - Dark Charcoal for high contrast accents */
+    --accent: 0 0% 10%; /* #1A1A1A */
+    --accent-foreground: 0 0% 100%; /* White text on Dark Accent */
+
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 204 85% 36%; /* Primary */
-    --radius: 0.5rem;
+    /* Border - Hairline style rgba(0,0,0,0.1) */
+    --border: 0 0% 90%; /* Light gray border */
+    --input: 0 0% 90%;
+    --ring: 57 100% 47%; /* Yellow Ring */
 
-    /* Sidebar - keeping light/clean */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 231 82% 9%;
-    --sidebar-primary: 204 85% 36%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 198 87% 82%;
-    --sidebar-accent-foreground: 231 82% 9%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 204 85% 36%;
-    --sidebar-width: 16rem;
-    --sidebar-width-icon: 3rem;
+    /* Radius - Mixed */
+    --radius: 1.25rem; /* 20px for large containers */
+
+    /* Sidebar - Dark Carbon #1A1A1A */
+    --sidebar-background: 0 0% 10%; /* #1A1A1A */
+    --sidebar-foreground: 0 0% 100%; /* White text */
+    --sidebar-primary: 57 100% 47%; /* Yellow */
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 0 0% 15%; /* Slightly lighter dark */
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 57 100% 47%;
+
+    --sidebar-width: 18rem;
+    --sidebar-width-icon: 4rem;
   }
 
   .dark {
-    /* Invert for Dark Mode */
-    --background: 231 82% 9%; /* #00072D */
+    /* Dark Mode - Inverted T.I.M (Optional, but user focused on White Base) */
+    /* If Dark Mode is active, maybe full Cyberpunk Dark? */
+    /* keeping similar to Light mode's dark elements */
+
+    --background: 0 0% 10%; /* #1A1A1A */
     --foreground: 0 0% 100%;
-    
-    --card: 231 82% 9%;
+
+    --card: 0 0% 13%;
     --card-foreground: 0 0% 100%;
-    
-    --popover: 231 82% 9%;
+
+    --popover: 0 0% 13%;
     --popover-foreground: 0 0% 100%;
-    
-    --primary: 204 85% 36%; /* Keep brand color or lighten it? #0E6BA8 is quite visible on dark. */
-    --primary-foreground: 0 0% 100%;
-    
-    --secondary: 220 100% 17%; /* #001C55 - Darker blue for secondary areas in dark mode */
+
+    --primary: 57 100% 47%; /* #F3E600 */
+    --primary-foreground: 0 0% 10%;
+
+    --secondary: 0 0% 20%;
     --secondary-foreground: 0 0% 100%;
-    
-    --muted: 220 100% 17%;
-    --muted-foreground: 215 20.2% 65.1%;
-    
-    --accent: 220 100% 17%;
+
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 0 0% 20%;
     --accent-foreground: 0 0% 100%;
-    
+
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    
-    --border: 220 100% 17%;
-    --input: 220 100% 17%;
-    --ring: 204 85% 36%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 57 100% 47%;
 
     /* Sidebar Dark */
-    --sidebar-background: 231 82% 9%;
+    --sidebar-background: 0 0% 8%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 204 85% 36%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 100% 17%;
+    --sidebar-primary: 57 100% 47%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 0 0% 15%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 220 100% 17%;
-    --sidebar-ring: 204 85% 36%;
-    --sidebar-width: 16rem;
-    --sidebar-width-icon: 3rem;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 57 100% 47%;
   }
 }
 
@@ -148,7 +162,9 @@
 .maplibregl-ctrl-group {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
   border: 1px solid #e5e7eb;
 }
 
@@ -244,7 +260,9 @@
   background-color: white;
   padding: 12px 16px;
   border-radius: 8px;
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
   border: 1px solid #e5e7eb;
   font-size: 14px;
 }
@@ -311,7 +329,8 @@
 
 /* Pulse animation for geolocate */
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {

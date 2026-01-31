@@ -47,11 +47,14 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         setAllPermissions(permissionsResponse.permissions);
 
         const currentPermissionIds = new Set();
-        if (rolePermissionsResponse?.success && rolePermissionsResponse.data?.permissions) {
+        if (
+          rolePermissionsResponse?.success &&
+          rolePermissionsResponse.data?.permissions
+        ) {
           Object.values(rolePermissionsResponse.data.permissions).forEach(
             (perms) => {
               perms.forEach((p) => currentPermissionIds.add(p.id));
-            }
+            },
           );
         }
 
@@ -62,7 +65,10 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         setExpandedModules(new Set(modules.slice(0, 3)));
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || "Không thể tải danh sách quyền";
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Không thể tải danh sách quyền";
       toast.error(errorMsg);
     } finally {
       setLoading(false);
@@ -114,7 +120,10 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
       setSaving(true);
       const permissionIds = Array.from(selectedPermissions);
 
-      const response = await roleService.updateRolePermissions(role.id, permissionIds);
+      const response = await roleService.updateRolePermissions(
+        role.id,
+        permissionIds,
+      );
 
       if (response?.success) {
         toast.success(response.message || "Cập nhật quyền thành công");
@@ -127,7 +136,10 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         onClose();
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || "Không thể cập nhật quyền";
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Không thể cập nhật quyền";
       toast.error(errorMsg);
     } finally {
       setSaving(false);
@@ -149,7 +161,7 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         const matched = perms.filter(
           (p) =>
             p.name.toLowerCase().includes(lowerSearch) ||
-            p.displayName.toLowerCase().includes(lowerSearch)
+            p.displayName.toLowerCase().includes(lowerSearch),
         );
         if (matched.length > 0) {
           filtered[module] = matched;
@@ -169,7 +181,7 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
     Object.values(filteredPermissions).forEach((perms) => {
       totalFiltered += perms.length;
       selectedFiltered += perms.filter((p) =>
-        selectedPermissions.has(p.id)
+        selectedPermissions.has(p.id),
       ).length;
     });
 
@@ -218,7 +230,7 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-             <span className="material-icons-round text-lg">search</span>
+            <span className="material-icons-round text-lg">search</span>
           </span>
           <Input
             placeholder="Tìm quyền..."
@@ -246,10 +258,18 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-slate-100 dark:border-slate-800">
         <div className="space-y-2 w-full sm:w-auto">
           <div className="flex items-center justify-between sm:justify-start gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-            <span>Đã chọn: {stats.selected} / {stats.total} quyền</span>
-            <span className="text-slate-400">({Math.round(stats.percentage)}%)</span>
+            <span>
+              Đã chọn: {stats.selected} / {stats.total} quyền
+            </span>
+            <span className="text-slate-400">
+              ({Math.round(stats.percentage)}%)
+            </span>
           </div>
-          <Progress value={stats.percentage} className="h-2 w-full sm:w-[240px] bg-slate-200 dark:bg-slate-700" indicatorClassName="bg-blue-600" />
+          <Progress
+            value={stats.percentage}
+            className="h-2 w-full sm:w-[240px] bg-slate-200 dark:bg-slate-700"
+            indicatorClassName="bg-blue-600"
+          />
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <Button
@@ -259,7 +279,9 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
             disabled={stats.selected === stats.total}
             className="flex-1 sm:flex-none rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-             <span className="material-icons-round text-sm mr-2 text-blue-500">check_circle</span>
+            <span className="material-icons-round text-sm mr-2 text-blue-500">
+              check_circle
+            </span>
             Chọn tất cả
           </Button>
           <Button
@@ -269,7 +291,9 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
             disabled={stats.selected === 0}
             className="flex-1 sm:flex-none rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-            <span className="material-icons-round text-sm mr-2 text-slate-500">cancel</span>
+            <span className="material-icons-round text-sm mr-2 text-slate-500">
+              cancel
+            </span>
             Bỏ chọn
           </Button>
         </div>
@@ -279,30 +303,41 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
       <div className="space-y-3">
         {Object.keys(filteredPermissions).length === 0 ? (
           <div className="text-center py-12 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-             <span className="material-icons-round text-4xl mb-2 opacity-50">search_off</span>
+            <span className="material-icons-round text-4xl mb-2 opacity-50">
+              search_off
+            </span>
             <p>Không tìm thấy quyền nào</p>
           </div>
         ) : (
           Object.entries(filteredPermissions).map(([module, permissions]) => {
             const moduleSelected = permissions.filter((p) =>
-              selectedPermissions.has(p.id)
+              selectedPermissions.has(p.id),
             ).length;
             const moduleTotal = permissions.length;
             const isExpanded = expandedModules.has(module);
 
             return (
-              <div key={module} className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden transition-all shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800">
+              <div
+                key={module}
+                className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden transition-all shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800"
+              >
                 <div
                   className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 cursor-pointer select-none"
                   onClick={() => toggleModuleExpand(module)}
                 >
                   <div className="flex items-center gap-3">
                     <div onClick={(e) => e.stopPropagation()}>
-                       <Checkbox
-                          checked={moduleSelected === moduleTotal && moduleTotal > 0 ? true : moduleSelected > 0 ? "indeterminate" : false}
-                          onCheckedChange={() => handleToggleModule(module)}
-                          className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
-                        />
+                      <Checkbox
+                        checked={
+                          moduleSelected === moduleTotal && moduleTotal > 0
+                            ? true
+                            : moduleSelected > 0
+                              ? "indeterminate"
+                              : false
+                        }
+                        onCheckedChange={() => handleToggleModule(module)}
+                        className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
+                      />
                     </div>
                     <div>
                       <Label className="font-bold text-slate-800 dark:text-slate-200 text-base cursor-pointer">
@@ -314,15 +349,20 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-2.5">
-                       {module}
+                    <Badge
+                      variant="secondary"
+                      className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-2.5"
+                    >
+                      {module}
                     </Badge>
-                     <span className={cn(
+                    <span
+                      className={cn(
                         "material-icons-round text-slate-400 transition-transform duration-200",
-                        isExpanded ? "rotate-180" : ""
-                     )}>
-                        expand_more
-                     </span>
+                        isExpanded ? "rotate-180" : "",
+                      )}
+                    >
+                      expand_more
+                    </span>
                   </div>
                 </div>
 
@@ -348,19 +388,25 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
 
       {/* Footer Actions */}
       <div className="flex justify-end gap-3 pt-4 mt-6 border-t border-slate-100 dark:border-slate-800 sticky bottom-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 rounded-t-2xl -mx-4 -mb-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10 sm:static sm:bg-transparent sm:p-0 sm:shadow-none sm:rounded-none">
-        <Button variant="outline" onClick={onClose} className="rounded-xl border-slate-300">
+        <Button
+          variant="outline"
+          onClick={onClose}
+          className="rounded-xl border-slate-300"
+        >
           Hủy
         </Button>
-        <Button 
-           onClick={handleSave} 
-           disabled={!hasChanges || saving} 
-           className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
+        <Button
+          onClick={handleSave}
+          disabled={!hasChanges || saving}
+          className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
         >
           {saving ? (
-             <span className="flex items-center gap-2">
-                 <span className="material-icons-round animate-spin text-sm">refresh</span>
-                 Đang lưu...
-             </span>
+            <span className="flex items-center gap-2">
+              <span className="material-icons-round animate-spin text-sm">
+                refresh
+              </span>
+              Đang lưu...
+            </span>
           ) : (
             <span className="flex items-center gap-2">
               <span className="material-icons-round text-sm">save</span>

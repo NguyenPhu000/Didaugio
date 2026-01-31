@@ -4,6 +4,11 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["Inter", "System-UI", "sans-serif"],
+        mono: ["JetBrains Mono", "Fira Code", "monospace"],
+        technical: ["Saira", "DIN Alternate", "Oswald", "sans-serif"], // For heavy headers
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -48,11 +53,31 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // T.I.M Specific Palette extensions
+        "tim-bg": "#F4F4F4",
+        "tim-dark": "#1c1b1d",
+        "tim-yellow": "#F3E600",
+        "tim-gray": "#E0E0E0",
       },
       borderRadius: {
-        lg: "var(--radius)",
+        lg: "var(--radius)", // 20px
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        // Custom T.I.M sharp/beveled styles are usually inline or clip-path based
+      },
+      backgroundImage: {
+        "grid-pattern":
+          "linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px)",
+        "grid-pattern-dark":
+          "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
+      },
+      backgroundSize: {
+        "grid-10": "10px 10px",
+        "grid-20": "20px 20px",
+      },
+      boxShadow: {
+        hard: "4px 4px 0 0 rgba(0,0,0,1)", // Retro/Industrial hard shadow
+        "glow-yellow": "0 0 10px rgba(243, 230, 0, 0.5)",
       },
       // Custom transition durations for animate-ui sidebar
       transitionDuration: {

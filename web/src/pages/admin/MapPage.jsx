@@ -1,400 +1,366 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import usePlaceStore from "@/stores/placeStore";
 import useCategoryStore from "@/stores/categoryStore";
-import CanThoMap from "@/components/map/CanThoMap";
+import PlaceDetailDialog from "@/components/place/PlaceDetailDialog";
 import {
-  Card,
-  CardContent,
-  // CardHeader, CardFooter via map component or removed here
   Button,
-  Input,
-  Badge,
-  Skeleton,
-  ScrollArea,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  // Avatar, AvatarFallback, AvatarImage
 } from "@/components/ui";
 import {
   Search,
-  MapPin,
-  Star,
-  // X,
   Filter,
-  ChevronDown,
-  Eye,
   MapIcon,
   ListIcon,
   Heart,
-  // Share2
+  Target,
+  Maximize,
+  Compass,
 } from "lucide-react";
-import { Link } from "react-router-dom";
-import { PRICE_RANGE_LABELS } from "@/constants/constants";
-import { CAN_THO_CENTER, DEFAULT_MAP_STYLE } from "@/constants/mapConfigs";
+import {
+  CAN_THO_CENTER,
+  MAP_CONFIGS,
+  DEFAULT_MAP_STYLE,
+} from "@/constants/mapConfigs";
+import Map, { NavigationControl, Marker, Popup } from "react-map-gl";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+
+/**
+ * MAP PAGE - T.I.M STYLE OVERHAUL (VIETNAMESE + REAL MAP)
+ */
 
 const MapPage = () => {
-  const { places, fetchPlaces, loading } = usePlaceStore();
+  const { places, fetchPlaces } = usePlaceStore();
   const { categories, fetchCategories } = useCategoryStore();
   const [viewState, setViewState] = useState({
     latitude: CAN_THO_CENTER.lat,
     longitude: CAN_THO_CENTER.lng,
-    zoom: 11,
+    zoom: 12,
   });
   const [selectedPlace, setSelectedPlace] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("approved");
-  const [viewMode, setViewMode] = useState("map"); // "map" or "list"
-  const [sortBy, setSortBy] = useState("name");
+  const [viewMode, setViewMode] = useState("map");
   const mapRef = useRef(null);
 
   useEffect(() => {
-    fetchPlaces({
-      limit: 100,
-      status: selectedStatus === "all" ? "" : selectedStatus,
-    });
+    fetchPlaces({ limit: 100, status: "approved" });
     if (categories.length === 0) {
       fetchCategories();
     }
-  }, [fetchPlaces, fetchCategories, selectedStatus, categories.length]);
+  }, [fetchPlaces, fetchCategories, categories.length]);
 
   const filteredPlaces = useMemo(() => {
     let filtered = places;
-
-    // Filter by search query
     if (searchQuery) {
       filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           p.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.shortDescription?.toLowerCase().includes(searchQuery.toLowerCase())
+          p.shortDescription?.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
-
-    // Filter by category
     if (selectedCategory !== "all") {
       filtered = filtered.filter(
-        (p) => p.categoryId?.toString() === selectedCategory
+        (p) => p.categoryId?.toString() === selectedCategory,
       );
     }
-
-    // Sort places
-    const sorted = [...filtered].sort((a, b) => {
-      switch (sortBy) {
-        case "name":
-          return a.name.localeCompare(b.name);
-        case "rating":
-          return (b.averageRating || 0) - (a.averageRating || 0);
-        case "views":
-          return (b.viewCount || 0) - (a.viewCount || 0);
-        case "featured":
-          return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
-        default:
-          return 0;
-      }
-    });
-
-    return sorted;
-  }, [places, searchQuery, selectedCategory, sortBy]);
-
-  const handleMarkerClick = (place, e) => {
-    e.originalEvent.stopPropagation();
-    setSelectedPlace(place);
-    setViewState({
-      ...viewState,
-      latitude: place.latitude || CAN_THO_CENTER.lat,
-      longitude: place.longitude || CAN_THO_CENTER.lng,
-      zoom: 15,
-      transitionDuration: 500,
-    });
-  };
+    return filtered;
+  }, [places, searchQuery, selectedCategory]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-2rem)] bg-sidebar-background rounded-xl overflow-hidden">
-      {/* Header with Filters */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-border p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Bản đồ địa điểm
-            </h1>
-            <p className="text-muted-foreground">
-              Khám phá {filteredPlaces.length} địa điểm tuyệt vời tại Cần Thơ
-            </p>
+    <div className="h-[calc(100vh-2rem)] bg-[#F4F4F4] relative overflow-hidden font-sans p-4">
+      {/* Background Decor */}
+      <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none"></div>
+
+      {/* Main Container - Industrial Frame */}
+      <div className="h-full border border-black bg-white flex flex-col shadow-hard relative z-10">
+        {/* Top Control Bar */}
+        <div className="h-16 border-b border-black flex items-center justify-between px-6 bg-white z-20 relative">
+          {/* Left Title Module */}
+          <div className="flex items-center gap-4 h-full border-r border-dashed border-gray-300 pr-6">
+            <div className="bg-black text-white p-2">
+              <MapIcon className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black uppercase tracking-tight text-foreground leading-none">
+                BẢN ĐỒ SỐ
+              </h1>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="w-2 h-2 bg-green-500 rounded-none animate-pulse"></span>
+                <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+                  CẦN THƠ // TRỰC TUYẾN
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Tabs value={viewMode} onValueChange={setViewMode} className="">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="map" className="flex items-center gap-2">
-                  <MapIcon className="h-4 w-4" />
-                  Bản đồ
-                </TabsTrigger>
-                <TabsTrigger value="list" className="flex items-center gap-2">
-                  <ListIcon className="h-4 w-4" />
-                  Danh sách
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+          {/* Center Search & Filter Module */}
+          <div className="flex-1 flex items-center justify-center gap-4">
+            {/* Tim Search Bar */}
+            <div className="flex items-center shadow-sm w-96 group">
+              <div className="h-10 w-10 bg-gray-100 border border-black border-r-0 flex items-center justify-center group-hover:bg-primary transition-colors">
+                <Search className="h-4 w-4 text-black" />
+              </div>
+              <input
+                placeholder="TÌM KIẾM ĐỊA ĐIỂM..."
+                className="h-10 flex-1 border border-black px-4 font-mono text-xs uppercase focus:outline-none focus:bg-yellow-50"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
 
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Heart className="h-4 w-4 mr-2" />
-              Lưu tìm kiếm
+            {/* Filters */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-none border border-black hover:bg-black hover:text-white font-mono text-xs uppercase"
+                >
+                  <Filter className="h-3 w-3 mr-2" />
+                  DANH MỤC
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="rounded-none border-black">
+                <DropdownMenuItem
+                  onClick={() => setSelectedCategory("all")}
+                  className="font-mono text-xs uppercase cursor-pointer hover:bg-primary"
+                >
+                  TẤT CẢ
+                </DropdownMenuItem>
+                {categories.map((cat) => (
+                  <DropdownMenuItem
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id.toString())}
+                    className="font-mono text-xs uppercase cursor-pointer"
+                  >
+                    {cat.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Right Controls */}
+          <div className="flex items-center gap-2 border-l border-dashed border-gray-300 pl-6 h-full">
+            <Button
+              className={`h-10 w-10 p-0 rounded-none border border-black ${viewMode === "map" ? "bg-primary text-black" : "bg-white text-gray-400 hover:bg-black hover:text-white"}`}
+              onClick={() => setViewMode("map")}
+            >
+              <MapIcon className="h-5 w-5" />
+            </Button>
+            <Button
+              className={`h-10 w-10 p-0 rounded-none border border-black ${viewMode === "list" ? "bg-primary text-black" : "bg-white text-gray-400 hover:bg-black hover:text-white"}`}
+              onClick={() => setViewMode("list")}
+            >
+              <ListIcon className="h-5 w-5" />
             </Button>
           </div>
         </div>
 
-        {/* Filter Bar */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-primary" />
-            <Input
-              placeholder="Tìm kiếm địa điểm, khu vực..."
-              className="pl-9 border-input focus:border-primary"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="border-emerald-200 hover:bg-emerald-50"
+        {/* Content Area */}
+        <div className="flex-1 relative overflow-hidden bg-gray-100">
+          {viewMode === "map" ? (
+            <div className="absolute inset-0 w-full h-full">
+              <Map
+                ref={mapRef}
+                initialViewState={viewState}
+                onMove={(evt) => setViewState(evt.viewState)}
+                style={{ width: "100%", height: "100%" }}
+                mapStyle={DEFAULT_MAP_STYLE}
+                mapLib={maplibregl}
+                attributionControl={false}
               >
-                <Filter className="h-4 w-4 mr-2" />
-                Danh mục
-                <ChevronDown className="h-4 w-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setSelectedCategory("all")}>
-                Tất cả danh mục
-              </DropdownMenuItem>
-              {categories.map((cat) => (
-                <DropdownMenuItem
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id.toString())}
-                >
-                  {cat.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <NavigationControl
+                  position="bottom-right"
+                  showCompass={false}
+                />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="border-input hover:bg-accent"
-              >
-                Trạng thái
-                <ChevronDown className="h-4 w-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setSelectedStatus("all")}>
-                Tất cả
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSelectedStatus("approved")}>
-                Đã duyệt
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSelectedStatus("pending")}>
-                Chờ duyệt
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="border-emerald-200 hover:bg-emerald-50"
-              >
-                Sắp xếp:{" "}
-                {sortBy === "name"
-                  ? "Tên"
-                  : sortBy === "rating"
-                  ? "Đánh giá"
-                  : sortBy === "views"
-                  ? "Lượt xem"
-                  : "Nổi bật"}
-                <ChevronDown className="h-4 w-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setSortBy("name")}>
-                Theo tên
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy("rating")}>
-                Đánh giá cao
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy("views")}>
-                Lượt xem
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy("featured")}>
-                Nổi bật
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar List */}
-        <div
-          className={`${
-            viewMode === "list" ? "w-full" : "w-[450px]"
-          } flex flex-col bg-white/60 backdrop-blur-sm border-r border-border`}
-        >
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-4">
-              {loading
-                ? Array.from({ length: 6 }).map((_, i) => (
-                    <Card
-                      key={i}
-                      className="overflow-hidden border-emerald-100"
-                    >
-                      <div className="flex">
-                        <Skeleton className="h-32 w-32 shrink-0" />
-                        <div className="p-4 space-y-3 flex-1">
-                          <Skeleton className="h-4 w-3/4" />
-                          <Skeleton className="h-3 w-full" />
-                          <Skeleton className="h-3 w-1/2" />
-                        </div>
-                      </div>
-                    </Card>
-                  ))
-                : filteredPlaces.map((place) => (
-                    <Card
-                      key={place.id}
-                      className={`group overflow-hidden cursor-pointer transition-all duration-200 border-border/50 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 ${
-                        selectedPlace?.id === place.id
-                          ? "ring-2 ring-primary border-primary shadow-lg"
-                          : ""
-                      }`}
-                      onClick={() => {
-                        setSelectedPlace(place);
-                        if (place.latitude && place.longitude) {
-                          setViewState((prev) => ({
-                            ...prev,
-                            latitude: place.latitude,
-                            longitude: place.longitude,
-                            zoom: 15,
-                            transitionDuration: 800,
-                          }));
-                        }
-                      }}
-                    >
-                      <div className="flex">
-                        <div className="relative h-32 w-32 shrink-0 overflow-hidden bg-emerald-50">
-                          {place.images?.[0]?.url ? (
-                            <>
-                              <img
-                                src={place.images[0].url}
-                                alt={place.name}
-                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                            </>
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center">
-                              <MapPin className="h-12 w-12 text-muted-foreground/30" />
-                            </div>
-                          )}
-                          {place.isFeatured && (
-                            <div className="absolute top-2 left-2">
-                              <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white border-none shadow-sm">
-                                <Star className="h-3 w-3 mr-1 fill-current" />
-                                Nổi bật
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-
-                        <CardContent className="p-4 flex-1">
-                          <div className="space-y-2">
-                            <div className="flex items-start justify-between">
-                              <h3 className="font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
-                                {place.name}
-                              </h3>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <Heart className="h-4 w-4" />
-                              </Button>
-                            </div>
-
-                            <div className="flex items-center gap-2 text-sm text-emerald-700/80">
-                              <Badge
-                                variant="outline"
-                                className="text-xs border-primary/20 text-primary"
-                              >
-                                {place.category?.name || "Địa điểm"}
-                              </Badge>
-                              <MapPin className="h-3 w-3" />
-                              <span className="line-clamp-1">
-                                {place.district?.name}
-                              </span>
-                            </div>
-
-                            {place.shortDescription && (
-                              <p className="text-sm text-muted-foreground line-clamp-2">
-                                {place.shortDescription}
-                              </p>
-                            )}
-
-                            <div className="flex items-center justify-between mt-3">
-                              <div className="flex items-center gap-3 text-xs text-primary">
-                                <div className="flex items-center gap-1">
-                                  <Eye className="h-3 w-3" />
-                                  {place.viewCount || 0}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                  {place.averageRating?.toFixed(1) || "N/A"}
-                                </div>
-                              </div>
-
-                              {place.priceRange && (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-xs bg-primary/10 text-primary"
-                                >
-                                  {PRICE_RANGE_LABELS[place.priceRange]}
-                                </Badge>
-                              )}
-                            </div>
+                {/* Markers */}
+                {filteredPlaces.map(
+                  (place) =>
+                    place.latitude &&
+                    place.longitude && (
+                      <Marker
+                        key={place.id}
+                        latitude={place.latitude}
+                        longitude={place.longitude}
+                        onClick={(e) => {
+                          e.originalEvent.stopPropagation();
+                          setSelectedPlace(place);
+                        }}
+                      >
+                        <div className="relative group cursor-pointer hover:z-50">
+                          <div className="w-8 h-8 bg-black text-white flex items-center justify-center border border-primary shadow-hard hover:bg-primary hover:text-black transition-colors">
+                            <MapIcon className="w-4 h-4" />
                           </div>
-                        </CardContent>
+                          <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-white border border-black px-2 py-1 text-[10px] whitespace-nowrap hidden group-hover:block font-bold">
+                            {place.name}
+                          </div>
+                        </div>
+                      </Marker>
+                    ),
+                )}
+
+                {/* Cleanup Selected Place on Map Click */}
+                {selectedPlace && (
+                  <Popup
+                    latitude={selectedPlace.latitude}
+                    longitude={selectedPlace.longitude}
+                    onClose={() => setSelectedPlace(null)}
+                    closeButton={false}
+                    className="z-50"
+                    maxWidth="300px"
+                  >
+                    <div className="p-0 font-sans">
+                      <div className="p-3 border border-black bg-white shadow-hard relative">
+                        <button
+                          onClick={() => setSelectedPlace(null)}
+                          className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-black text-white text-xs font-bold hover:bg-red-500"
+                        >
+                          X
+                        </button>
+                        <h3 className="font-bold text-sm uppercase pr-6 mb-1">
+                          {selectedPlace.name}
+                        </h3>
+                        <p className="text-xs text-gray-500 mb-2 font-mono">
+                          {selectedPlace.address}
+                        </p>
+                        <div className="h-24 bg-gray-100 mb-2 overflow-hidden border border-black/10">
+                          {selectedPlace.images?.[0] ? (
+                            <img
+                              src={
+                                selectedPlace.images[0].imageData ||
+                                selectedPlace.images[0]
+                              }
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 uppercase">
+                              NO_IMG
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => setIsDetailOpen(true)}
+                          className="w-full h-8 rounded-none bg-primary text-black font-bold uppercase hover:bg-yellow-400 text-xs"
+                        >
+                          XEM CHI TIẾT
+                        </Button>
                       </div>
-                    </Card>
-                  ))}
+                    </div>
+                  </Popup>
+                )}
+              </Map>
+
+              {/* Info Panel Left Overlay */}
+              <div className="absolute top-6 left-6 w-64 bg-white/90 backdrop-blur border border-black p-4 shadow-hard pointer-events-none">
+                <div className="text-[10px] font-mono text-gray-400 uppercase mb-2">
+                  THÔNG TIN KHU VỰC
+                </div>
+                <div className="text-2xl font-black font-technical uppercase">
+                  TRUNG TÂM CẦN THƠ
+                </div>
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between text-xs font-mono border-b border-gray-200 pb-1">
+                    <span>TỔNG ĐIỂM</span>
+                    <span className="font-bold">{places.length}</span>
+                  </div>
+                  <div className="flex justify-between text-xs font-mono border-b border-gray-200 pb-1">
+                    <span>HIỂN THỊ</span>
+                    <span className="font-bold">{filteredPlaces.length}</span>
+                  </div>
+                  <div className="flex justify-between text-xs font-mono pb-1">
+                    <span>TOẠ ĐỘ</span>
+                    <span className="font-bold">
+                      {viewState.latitude.toFixed(4)} /{" "}
+                      {viewState.longitude.toFixed(4)}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </ScrollArea>
+          ) : (
+            <div className="p-8 h-full overflow-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredPlaces.map((place) => (
+                  <div
+                    key={place.id}
+                    className="bg-white border border-black p-4 group hover:shadow-hard transition-all cursor-pointer"
+                  >
+                    <div className="h-32 bg-gray-200 mb-4 relative overflow-hidden">
+                      {/* Image Placeholder */}
+                      {place.images?.[0] ? (
+                        <img
+                          src={place.images[0].imageData || place.images[0]}
+                          alt=""
+                          className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-300 font-mono text-xs uppercase">
+                          KHÔNG CÓ TÍN HIỆU
+                        </div>
+                      )}
+
+                      {/* Status Badge */}
+                      <div className="absolute top-2 right-2 px-2 py-0.5 bg-primary text-black text-[10px] font-bold uppercase">
+                        {place.status === "approved"
+                          ? "ĐÃ DUYỆT"
+                          : place.status}
+                      </div>
+                    </div>
+                    <h3 className="font-bold text-sm uppercase truncate mb-1">
+                      {place.name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground font-mono truncate mb-4">
+                      {place.address}
+                    </p>
+
+                    <div className="flex items-center justify-between border-t border-gray-100 pt-3 mt-auto">
+                      <div className="flex items-center gap-1 text-[10px] font-mono text-gray-500">
+                        <Heart className="h-3 w-3" />
+                        {place.favoriteCount || 0}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-[10px] font-bold uppercase hover:bg-black hover:text-white rounded-none"
+                      >
+                        CHI TIẾT &rarr;
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Map Area */}
-        {viewMode === "map" && (
-          <div className="flex-1 relative">
-            <CanThoMap 
-              places={filteredPlaces} 
-              onSelectPlace={(place) => {
-                 setSelectedPlace(place);
-                 setViewState(prev => ({ ...prev, zoom: 15, latitude: place.latitude, longitude: place.longitude }));
-              }}
-            />
+        {/* Footer Status Bar */}
+        <div className="h-8 bg-black border-t border-white/20 flex items-center justify-between px-4 text-[10px] font-mono text-gray-400 uppercase">
+          <div className="flex gap-4">
+            <span>CHẾ ĐỘ: {viewMode === "map" ? "BẢN ĐỒ" : "DANH SÁCH"}</span>
+            <span>
+              BỘ LỌC: {selectedCategory === "all" ? "KHÔNG" : selectedCategory}
+            </span>
           </div>
-        )}
+          <div className="flex gap-4">
+            <span>ĐỒNG BỘ: TỰ ĐỘNG</span>
+            <span className="text-primary">MẠNG: ỔN ĐỊNH</span>
+          </div>
+        </div>
       </div>
+      {/* Detail Dialog */}
+      <PlaceDetailDialog
+        place={selectedPlace}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+      />
     </div>
   );
 };

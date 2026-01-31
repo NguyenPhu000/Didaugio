@@ -95,7 +95,7 @@ const usePlaceStore = create(
         try {
           const response = await placeService.getPlaceBySlug(
             slug,
-            incrementView
+            incrementView,
           );
           const data = response.data || response;
           set({ selectedPlace: data, loading: false });
@@ -120,7 +120,7 @@ const usePlaceStore = create(
         try {
           const response = await placeService.getFeaturedPlaces(
             limit,
-            categoryId
+            categoryId,
           );
           const data = response.data || response;
           set({ featuredPlaces: data, loading: false });
@@ -135,7 +135,7 @@ const usePlaceStore = create(
         latitude,
         longitude,
         radius = 5,
-        limit = 10
+        limit = 10,
       ) => {
         set({ loading: true, error: null });
         try {
@@ -143,7 +143,7 @@ const usePlaceStore = create(
             latitude,
             longitude,
             radius,
-            limit
+            limit,
           );
           const data = response.data || response;
           set({ nearbyPlaces: data, loading: false });
@@ -162,7 +162,7 @@ const usePlaceStore = create(
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ latitude, longitude }),
-            }
+            },
           );
           const data = await response.json();
 
@@ -389,6 +389,7 @@ const usePlaceStore = create(
       loadPlaceIntoWizard: (place) => {
         set({
           wizardData: {
+            id: place.id, // Important: ID for updates
             name: place.name || "",
             slug: place.slug || "",
             categoryId: place.categoryId || null,
@@ -404,7 +405,13 @@ const usePlaceStore = create(
             website: place.website || "",
             facebook: place.facebook || "",
             images: place.images || [],
-            tagIds: place.tags?.map((t) => t.id) || [],
+            tagIds: place.tags
+              ? place.tags.map((t) => t.id)
+              : place.tagLinks
+                ? place.tagLinks
+                    .map((l) => l.tagId || l.tag?.id)
+                    .filter(Boolean)
+                : [],
             priceRange: place.priceRange || null,
             priceFrom: place.priceFrom || null,
             priceTo: place.priceTo || null,
@@ -441,8 +448,8 @@ const usePlaceStore = create(
         });
       },
     }),
-    { name: "PlaceStore" }
-  )
+    { name: "PlaceStore" },
+  ),
 );
 
 export default usePlaceStore;

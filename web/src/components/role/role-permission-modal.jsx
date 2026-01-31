@@ -80,7 +80,7 @@ export function RolePermissionModal({
           Object.values(rolePermissionsResponse.permissions).forEach(
             (perms) => {
               perms.forEach((p) => currentPermissionIds.add(p.id));
-            }
+            },
           );
         }
 
@@ -176,7 +176,7 @@ export function RolePermissionModal({
         const matched = perms.filter(
           (p) =>
             p.name.toLowerCase().includes(lowerSearch) ||
-            p.displayName.toLowerCase().includes(lowerSearch)
+            p.displayName.toLowerCase().includes(lowerSearch),
         );
         if (matched.length > 0) {
           filtered[module] = matched;
@@ -196,7 +196,7 @@ export function RolePermissionModal({
     Object.values(filteredPermissions).forEach((perms) => {
       totalFiltered += perms.length;
       selectedFiltered += perms.filter((p) =>
-        selectedPermissions.has(p.id)
+        selectedPermissions.has(p.id),
       ).length;
     });
 
@@ -338,7 +338,7 @@ export function RolePermissionModal({
                   Object.entries(filteredPermissions).map(
                     ([module, permissions]) => {
                       const moduleSelected = permissions.filter((p) =>
-                        selectedPermissions.has(p.id)
+                        selectedPermissions.has(p.id),
                       ).length;
                       const moduleTotal = permissions.length;
                       const isExpanded = expandedModules.has(module);
@@ -386,7 +386,7 @@ export function RolePermissionModal({
                                   key={permission.id}
                                   permission={permission}
                                   checked={selectedPermissions.has(
-                                    permission.id
+                                    permission.id,
                                   )}
                                   onCheckedChange={() =>
                                     handleTogglePermission(permission.id)
@@ -397,7 +397,7 @@ export function RolePermissionModal({
                           )}
                         </div>
                       );
-                    }
+                    },
                   )
                 )}
               </div>

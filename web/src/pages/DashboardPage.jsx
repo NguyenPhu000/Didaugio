@@ -1,44 +1,86 @@
 import { useEffect, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  Badge,
-  Button,
-  Skeleton,
-  Input,
-  Progress,
-} from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
 import usePlaceStore from "@/stores/placeStore";
 import useCategoryStore from "@/stores/categoryStore";
-import { ROLE_NAMES } from "@/constants/constants";
+import { userService } from "@/apis/userService";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Users,
   MapPin,
-  Star,
   Building2,
   TrendingUp,
-  Clock,
-  Eye,
-  CheckCircle,
-  AlertCircle,
-  Activity,
-  BarChart3,
-  Map,
   ArrowUpRight,
   ArrowDownRight,
+  Activity,
+  Layers,
   Search,
-  TrendingDown,
-  Award,
-  Target,
-  Zap,
   Filter,
+  BarChart3,
+  Archive,
+  AlertCircle,
 } from "lucide-react";
 import AnimatedIcon from "@/components/ui/animated-icon";
+
+/**
+ * DASHBOARD PAGE - T.I.M STYLE OVERHAUL (VIETNAMESE)
+ */
+
+// Custom Stats Card - T.I.M Style
+const TimStatsCard = ({
+  label,
+  value,
+  icon: Icon,
+  subValue,
+  subLabel,
+  status = "neutral",
+  serial,
+}) => {
+  // Status colors
+  const colors = {
+    positive: "text-green-600",
+    negative: "text-red-500",
+    neutral: "text-gray-400",
+    warning: "text-yellow-500",
+    primary: "text-foreground",
+  };
+
+  return (
+    <div className="relative bg-white border border-black p-6 group hover:shadow-hard transition-all duration-300">
+      {/* Serial Number */}
+      <div className="absolute top-2 right-2 text-[8px] font-mono text-gray-400">
+        {serial}
+      </div>
+
+      {/* Corner Decor */}
+      <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-primary"></div>
+      <div className="absolute bottom-0 left-0 w-full h-[2px] bg-black scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+
+      <div className="flex justify-between items-start mb-4">
+        <div className="bg-gray-50 p-2 border border-gray-100 group-hover:bg-primary group-hover:border-black transition-colors">
+          <Icon className="w-5 h-5 text-gray-500 group-hover:text-black" />
+        </div>
+        {/* Trend or Sub-info */}
+        <div
+          className={`flex items-center gap-1 text-[10px] font-mono font-bold uppercase ${colors[status]}`}
+        >
+          {subValue}
+          {status === "positive" && <ArrowUpRight className="w-3 h-3" />}
+          {status === "negative" && <ArrowDownRight className="w-3 h-3" />}
+          {subLabel && <span className="text-gray-400 ml-1">/ {subLabel}</span>}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">
+          {label}
+        </h3>
+        <div className="text-5xl font-black tracking-tighter text-foreground font-technical">
+          {value}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const DashboardPage = () => {
   const { user } = useAuthStore();
@@ -47,6 +89,7 @@ const DashboardPage = () => {
   const { categories, fetchCategories } = useCategoryStore();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [userCount, setUserCount] = useState(0);
   const [stats, setStats] = useState({
     total: 0,
     approved: 0,
@@ -54,16 +97,28 @@ const DashboardPage = () => {
     featured: 0,
     totalViews: 0,
     avgRating: 0,
-    draft: 0,
     rejected: 0,
-    hidden: 0,
   });
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
+        // Fetch max allowed to get stats (100 is limit)
         await Promise.all([fetchPlaces({ limit: 100 }), fetchCategories()]);
+
+        // Fetch User Stats
+        try {
+          const userRes = await userService.getAll({ limit: 1 });
+          // Access depending on API structure
+          if (userRes.data?.total) setUserCount(userRes.data.total);
+          else if (userRes.data?.users?.length)
+            setUserCount(userRes.data.users.length); // Fallback
+          else if (Array.isArray(userRes.data))
+            setUserCount(userRes.data.length);
+        } catch (err) {
+          console.error("Failed to load user stats", err);
+        }
       } finally {
         setLoading(false);
       }
@@ -75,16 +130,15 @@ const DashboardPage = () => {
     if (places.length > 0) {
       const approved = places.filter((p) => p.status === "approved").length;
       const pending = places.filter((p) => p.status === "pending").length;
-      const draft = places.filter((p) => p.status === "draft").length;
       const rejected = places.filter((p) => p.status === "rejected").length;
-      const hidden = places.filter((p) => p.status === "hidden").length;
       const featured = places.filter((p) => p.isFeatured).length;
       const totalViews = places.reduce((sum, p) => sum + (p.viewCount || 0), 0);
       const ratingsSum = places.reduce(
         (sum, p) => sum + (p.averageRating || 0),
-        0
+        0,
       );
-      const avgRating = places.length > 0 ? ratingsSum / places.length : 0;
+      const avgRating =
+        places.length > 0 ? (ratingsSum / places.length).toFixed(1) : 0;
 
       setStats({
         total: places.length,
@@ -93,624 +147,200 @@ const DashboardPage = () => {
         featured,
         totalViews,
         avgRating,
-        draft,
         rejected,
-        hidden,
       });
     }
   }, [places]);
 
   const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/admin/places?search=${encodeURIComponent(searchQuery)}`);
+    if (e.key === "Enter" || e.type === "click") {
+      if (searchQuery.trim()) {
+        navigate(`/admin/places?search=${encodeURIComponent(searchQuery)}`);
+      }
     }
   };
 
-  const topPlaces = places
-    .filter((p) => p.status === "approved")
-    .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
-    .slice(0, 5);
-
-  const topRatedPlaces = places
-    .filter((p) => p.status === "approved" && p.averageRating > 0)
-    .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
-    .slice(0, 5);
-
-  const categoryStats = categories
-    .map((cat) => ({
-      ...cat,
-      count: places.filter((p) => p.categoryId === cat.id).length,
-    }))
-    .sort((a, b) => b.count - a.count);
-
-  const StatCard = ({
-    label,
-    value,
-    icon: Icon,
-    trend,
-    trendValue,
-    variant = "primary",
-    link,
-  }) => {
-    const variants = {
-      primary: {
-        border: "border-primary/20 hover:border-primary/50",
-        iconBg: "bg-primary/10",
-        iconText: "text-primary",
-        trendUp: "text-green-600",
-        trendDown: "text-red-600",
-      },
-      success: {
-        border: "border-green-200 hover:border-green-400",
-        iconBg: "bg-green-100",
-        iconText: "text-green-600",
-        trendUp: "text-green-700",
-        trendDown: "text-red-600",
-      },
-      warning: {
-        border: "border-amber-200 hover:border-amber-400",
-        iconBg: "bg-amber-100",
-        iconText: "text-amber-600",
-        trendUp: "text-green-600",
-        trendDown: "text-red-600",
-      },
-      secondary: {
-        border: "border-accent/40 hover:border-accent",
-        iconBg: "bg-accent/20",
-        iconText: "text-primary",
-        trendUp: "text-green-600",
-        trendDown: "text-red-600",
-      },
-    };
-
-    const style = variants[variant] || variants.primary;
-
+  if (loading) {
     return (
-      <Link to={link || "#"}>
-        <Card
-          className={`group hover:shadow-lg transition-all duration-200 ${style.border}`}
-        >
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">
-                  {label}
-                </p>
-                <div className="flex items-baseline gap-2">
-                  {loading ? (
-                    <Skeleton className="h-8 w-20" />
-                  ) : (
-                    <>
-                      <p className="text-3xl font-bold text-foreground">
-                        {value}
-                      </p>
-                      {trend && (
-                        <div
-                          className={`flex items-center text-xs font-medium ${
-                            trend === "up" ? style.trendUp : style.trendDown
-                          }`}
-                        >
-                          {trend === "up" ? (
-                            <AnimatedIcon icon={ArrowUpRight} className="h-3 w-3" type="pulse" />
-                          ) : (
-                            <AnimatedIcon icon={ArrowDownRight} className="h-3 w-3" type="pulse" />
-                          )}
-                          {trendValue}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-              <div
-                className={`p-3 rounded-full group-hover:scale-110 transition-transform ${style.iconBg}`}
-              >
-                <AnimatedIcon icon={Icon} className={`h-6 w-6 ${style.iconText}`} type="pulse" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </Link>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="w-16 h-16 border-4 border-black border-t-primary rounded-full animate-spin"></div>
+        <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+          ĐANG KHỞI TẠO HỆ THỐNG...
+        </div>
+      </div>
     );
-  };
+  }
 
   return (
-    <div className="space-y-6 p-1">
-      {/* Header with Search */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">
-            Dashboard
-          </h1>
-          <div className="text-muted-foreground mt-1">
-            Chào mừng trở lại,{" "}
-            <span className="font-semibold text-primary">
-              {user?.fullName || user?.email}
-            </span>
-            <Badge
-              variant="outline"
-              className="ml-2 border-primary/30 text-primary"
-            >
-              {ROLE_NAMES[user?.roleId]}
-            </Badge>
+    <div className="min-h-screen p-8 bg-[url('https://ui.shadcn.com/placeholder.svg')] bg-fixed relative">
+      {/* Background Grid */}
+      <div className="absolute inset-0 bg-[#F4F4F4]/95 z-0 bg-grid-pattern bg-grid-20 pointer-events-none"></div>
+
+      <div className="relative z-10 space-y-12 max-w-[1600px] mx-auto">
+        {/* Header Section */}
+        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-6">
+            <div className="w-3 h-20 bg-primary shadow-hard"></div>
+            <div>
+              <h1 className="text-7xl font-black uppercase tracking-tighter leading-none text-foreground font-technical">
+                TỔNG QUAN
+              </h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="text-xs font-mono text-muted-foreground tracking-[0.3em] uppercase bg-black text-white px-2 py-1">
+                  QUẢN TRỊ VIÊN // BẢNG ĐIỀU KHIỂN
+                </span>
+                <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">
+                  PHIÊN BẢN 2.0 // HỆ THỐNG HOẠT ĐỘNG
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-3">
-          <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Tìm kiếm địa điểm..."
-              className="pl-9 w-64 border-input focus:border-primary"
+
+          {/* Quick Search Module */}
+          <div className="flex items-center gap-0 shadow-hard hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all duration-200">
+            <div className="h-12 w-12 bg-black flex items-center justify-center text-white">
+              <Search className="h-5 w-5" />
+            </div>
+            <input
+              type="text"
+              placeholder="TÌM KIẾM HỆ THỐNG..."
+              className="h-12 w-64 px-4 border-y border-r border-black font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearch}
             />
-          </form>
-          <Link to="/admin/map">
-            <Button className="bg-primary hover:bg-primary/90">
-              <Map className="h-4 w-4 mr-2" />
-              Bản đồ
-            </Button>
-          </Link>
+          </div>
         </div>
-      </div>
 
-      {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          label="Tổng địa điểm"
-          value={stats.total}
-          icon={MapPin}
-          variant="primary"
-          link="/admin/places"
-        />
-        <StatCard
-          label="Đã duyệt"
-          value={stats.approved}
-          icon={CheckCircle}
-          variant="success"
-          link="/admin/places?status=approved"
-        />
-        <StatCard
-          label="Chờ duyệt"
-          value={stats.pending}
-          icon={AlertCircle}
-          variant="warning"
-          link="/admin/places?status=pending"
-        />
-        <StatCard
-          label="Danh mục"
-          value={categories.length}
-          icon={Building2}
-          variant="secondary"
-          link="/categories"
-        />
-      </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <TimStatsCard
+            label="TỔNG ĐỊA ĐIỂM"
+            value={stats.total}
+            icon={Building2}
+            serial="DAT-001"
+            subValue={`+${places.filter((p) => new Date(p.createdAt) > new Date(Date.now() - 86400000)).length}`}
+            subLabel="MỚI"
+            status="positive"
+          />
+          <TimStatsCard
+            label="LƯỢT TRUY CẬP"
+            value={(stats.totalViews / 1000).toFixed(1) + "K"}
+            icon={Activity}
+            serial="ANA-002"
+            subValue="--.-%"
+            subLabel="TRUNG BÌNH"
+            status="neutral"
+          />
+          <TimStatsCard
+            label="ĐÁNH GIÁ TB"
+            value={stats.avgRating}
+            icon={TrendingUp}
+            serial="QOS-003"
+            subValue="NGƯỜI DÙNG"
+            subLabel="RATING"
+            status="positive"
+          />
+          <TimStatsCard
+            label="NGƯỜI DÙNG"
+            value={userCount}
+            icon={Users}
+            serial="USR-004"
+            subValue="TỔNG SỐ"
+            status="neutral"
+          />
+        </div>
 
-      {/* Secondary Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-primary/20 hover:shadow-md transition-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">
-                  Tổng lượt xem
-                </p>
-                {loading ? (
-                  <Skeleton className="h-6 w-20" />
-                ) : (
-                  <p className="text-2xl font-bold text-primary">
-                    {stats.totalViews.toLocaleString()}
-                  </p>
-                )}
+        {/* Complex Stats / Status Modules */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* System Status Module */}
+          <div className="lg:col-span-2 border border-black bg-white p-0 shadow-sm">
+            <div className="flex items-center justify-between p-4 border-b border-black bg-black text-white">
+              <div className="flex items-center gap-2">
+                <Layers className="h-4 w-4 text-primary" />
+                <h3 className="font-bold font-mono text-sm uppercase tracking-widest">
+                  TRẠNG THÁI DỮ LIỆU
+                </h3>
               </div>
-              <div className="p-2 bg-primary/10 rounded-full">
-                <Eye className="h-5 w-5 text-primary" />
+              <div className="flex gap-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-yellow-100 hover:shadow-md transition-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">
-                  Đánh giá TB
-                </p>
-                {loading ? (
-                  <Skeleton className="h-6 w-16" />
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <p className="text-2xl font-bold text-yellow-600">
-                      {stats.avgRating.toFixed(1)}
-                    </p>
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  </div>
-                )}
-              </div>
-              <div className="p-2 bg-yellow-100 rounded-full">
-                <Award className="h-5 w-5 text-yellow-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-purple-100 hover:shadow-md transition-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Nổi bật</p>
-                {loading ? (
-                  <Skeleton className="h-6 w-16" />
-                ) : (
-                  <p className="text-2xl font-bold text-purple-700">
-                    {stats.featured}
-                  </p>
-                )}
-              </div>
-              <div className="p-2 bg-purple-100 rounded-full">
-                <Zap className="h-5 w-5 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-100 hover:shadow-md transition-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Bản nháp</p>
-                {loading ? (
-                  <Skeleton className="h-6 w-16" />
-                ) : (
-                  <p className="text-2xl font-bold text-slate-700">
-                    {stats.draft}
-                  </p>
-                )}
-              </div>
-              <div className="p-2 bg-slate-100 rounded-full">
-                <Clock className="h-5 w-5 text-slate-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Status Distribution */}
-        <Card className="border-primary/20 lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center">
-              <Target className="h-5 w-5 mr-2 text-primary" />
-              Phân bổ trạng thái
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">
-                    Đã duyệt
-                  </span>
-                  <span className="text-sm font-semibold text-green-600">
-                    {stats.approved}
-                  </span>
+            <div className="p-8 grid grid-cols-3 gap-8">
+              <div className="text-center space-y-2 group cursor-pointer hover:bg-gray-50 p-4 border border-transparent hover:border-black/10 transition-all">
+                <div className="mx-auto w-12 h-12 flex items-center justify-center bg-green-100 text-green-700 rounded-none border border-green-200 group-hover:bg-green-600 group-hover:text-white transition-colors">
+                  <Activity className="h-6 w-6" />
                 </div>
-                <Progress
-                  value={
-                    stats.total > 0 ? (stats.approved / stats.total) * 100 : 0
-                  }
-                  className="h-2 bg-green-100"
-                />
+                <div className="text-3xl font-black font-technical">
+                  {stats.approved}
+                </div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-black">
+                  ĐÃ DUYỆT
+                </div>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">
-                    Chờ duyệt
-                  </span>
-                  <span className="text-sm font-semibold text-amber-600">
-                    {stats.pending}
-                  </span>
+              <div className="text-center space-y-2 group cursor-pointer hover:bg-gray-50 p-4 border border-transparent hover:border-black/10 transition-all">
+                <div className="mx-auto w-12 h-12 flex items-center justify-center bg-yellow-100 text-yellow-700 rounded-none border border-yellow-200 group-hover:bg-yellow-500 group-hover:text-black transition-colors">
+                  <AlertCircle className="h-6 w-6" />
                 </div>
-                <Progress
-                  value={
-                    stats.total > 0 ? (stats.pending / stats.total) * 100 : 0
-                  }
-                  className="h-2 bg-amber-100"
-                />
+                <div className="text-3xl font-black font-technical">
+                  {stats.pending}
+                </div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-black">
+                  CHỜ DUYỆT
+                </div>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">
-                    Bản nháp
-                  </span>
-                  <span className="text-sm font-semibold text-slate-600">
-                    {stats.draft}
-                  </span>
+              <div className="text-center space-y-2 group cursor-pointer hover:bg-gray-50 p-4 border border-transparent hover:border-black/10 transition-all">
+                <div className="mx-auto w-12 h-12 flex items-center justify-center bg-red-100 text-red-700 rounded-none border border-red-200 group-hover:bg-red-600 group-hover:text-white transition-colors">
+                  <Archive className="h-6 w-6" />
                 </div>
-                <Progress
-                  value={
-                    stats.total > 0 ? (stats.draft / stats.total) * 100 : 0
-                  }
-                  className="h-2 bg-slate-100"
-                />
+                <div className="text-3xl font-black font-technical">
+                  {stats.rejected}
+                </div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-black">
+                  ĐÃ HỦY
+                </div>
               </div>
-
-              {stats.rejected > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">
-                      Từ chối
-                    </span>
-                    <span className="text-sm font-semibold text-red-600">
-                      {stats.rejected}
-                    </span>
-                  </div>
-                  <Progress
-                    value={
-                      stats.total > 0 ? (stats.rejected / stats.total) * 100 : 0
-                    }
-                    className="h-2 bg-red-100"
-                  />
-                </div>
-              )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Top Categories */}
-        <Card className="border-accent/40 lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center">
-                <BarChart3 className="h-5 w-5 mr-2 text-primary" />
-                Danh mục phổ biến
-              </CardTitle>
-              <Link to="/categories">
-                <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                  Xem tất cả
-                </Button>
-              </Link>
+          {/* Categories Module */}
+          <div className="border border-black bg-white flex flex-col">
+            <div className="p-4 border-b border-black border-dashed flex items-center justify-between">
+              <h3 className="font-bold font-mono text-sm uppercase tracking-widest">
+                DANH MỤC CƠ SỞ
+              </h3>
+              <Filter className="h-4 w-4 text-gray-400" />
             </div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
-              </div>
-            ) : categoryStats.length > 0 ? (
-              <div className="space-y-3">
-                {categoryStats.slice(0, 5).map((cat, idx) => (
-                  <div key={cat.id} className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-emerald-400 text-white font-bold text-sm">
-                      {idx + 1}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-sm">{cat.name}</span>
-                        <span className="text-xs font-semibold text-primary">
-                          {cat.count} địa điểm
-                        </span>
-                      </div>
-                      <Progress
-                        value={
-                          stats.total > 0 ? (cat.count / stats.total) * 100 : 0
-                        }
-                        className="h-1.5 bg-accent"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-4">
-                Chưa có danh mục
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Three Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Viewed Places */}
-        <Card className="border-primary/20">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center">
-              <TrendingUp className="h-5 w-5 mr-2 text-primary" />
-              Xem nhiều nhất
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex gap-2">
-                    <Skeleton className="h-14 w-14 rounded" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-3 w-full" />
-                      <Skeleton className="h-3 w-2/3" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : topPlaces.length > 0 ? (
-              <div className="space-y-3">
-                {topPlaces.map((place, idx) => (
-                  <Link key={place.id} to={`/admin/places/edit/${place.id}`}>
-                      <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/10 transition-colors group">
-                        <div className="relative">
-                          <div className="h-14 w-14 rounded-md bg-accent/20 flex items-center justify-center overflow-hidden">
-                            {place.images?.[0]?.url ? (
-                              <img
-                                src={place.images[0].url}
-                                alt={place.name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <MapPin className="h-6 w-6 text-primary" />
-                            )}
-                        </div>
-                        <div className="absolute -top-1 -left-1 h-5 w-5 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white text-xs font-bold">
-                          {idx + 1}
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate group-hover:text-emerald-700">
-                          {place.name}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Eye className="h-3 w-3" />
-                          <span>{place.viewCount || 0} lượt xem</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-4 text-sm">
-                Chưa có dữ liệu
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Top Rated Places */}
-        <Card className="border-yellow-100">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center">
-              <Award className="h-5 w-5 mr-2 text-yellow-600" />
-              Đánh giá cao
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex gap-2">
-                    <Skeleton className="h-14 w-14 rounded" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-3 w-full" />
-                      <Skeleton className="h-3 w-2/3" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : topRatedPlaces.length > 0 ? (
-              <div className="space-y-3">
-                {topRatedPlaces.map((place, idx) => (
-                  <Link key={place.id} to={`/admin/places/edit/${place.id}`}>
-                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-yellow-50 transition-colors group">
-                      <div className="relative">
-                        <div className="h-14 w-14 rounded-md bg-yellow-100 flex items-center justify-center overflow-hidden">
-                          {place.images?.[0]?.url ? (
-                            <img
-                              src={place.images[0].url}
-                              alt={place.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <MapPin className="h-6 w-6 text-yellow-600" />
-                          )}
-                        </div>
-                        <div className="absolute -top-1 -left-1 h-5 w-5 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
-                          {idx + 1}
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate group-hover:text-yellow-700">
-                          {place.name}
-                        </p>
-                        <div className="flex items-center gap-1 text-xs text-yellow-600">
-                          <Star className="h-3 w-3 fill-current" />
-                          <span>{place.averageRating?.toFixed(1) || 0}</span>
-                          <span className="text-muted-foreground ml-1">
-                            ({place.reviewCount || 0} đánh giá)
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-4 text-sm">
-                Chưa có đánh giá
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions & Stats */}
-        <Card className="border-accent/40">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center">
-              <Zap className="h-5 w-5 mr-2 text-primary" />
-              Thao tác nhanh
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <Link to="/admin/places/new">
-                <Button className="w-full bg-primary hover:bg-primary/90">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  Thêm địa điểm mới
-                </Button>
-              </Link>
-
-              <Link to="/admin/places?status=pending">
-                <Button
-                  variant="outline"
-                  className="w-full border-amber-200 hover:bg-amber-50 text-amber-700"
+            <div className="p-0 flex-1 overflow-y-auto max-h-[300px] scrollbar-hide">
+              {categories.map((cat, idx) => (
+                <div
+                  key={cat.id}
+                  className="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-yellow-50 transition-colors group"
                 >
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                  Duyệt địa điểm ({stats.pending})
-                </Button>
-              </Link>
-
-              <Link to="/categories">
-                <Button
-                  variant="outline"
-                  className="w-full border-accent hover:bg-accent/20 text-primary"
-                >
-                  <Building2 className="h-4 w-4 mr-2" />
-                  Quản lý danh mục
-                </Button>
-              </Link>
-
-              <Link to="/admin/map">
-                <Button
-                  variant="outline"
-                  className="w-full border-primary/20 hover:bg-primary/5 text-primary"
-                >
-                  <Map className="h-4 w-4 mr-2" />
-                  Xem bản đồ
-                </Button>
-              </Link>
-
-              <div className="pt-4 mt-4 border-t space-y-3">
-                <div className="flex items-center justify-between p-2 rounded bg-slate-50">
-                  <span className="text-xs text-muted-foreground">Ẩn</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {stats.hidden}
-                  </Badge>
+                  <span className="font-mono text-xs text-gray-400 w-8">
+                    {String(idx + 1).padStart(2, "0")}
+                  </span>
+                  <span className="font-bold text-sm uppercase flex-1">
+                    {cat.name}
+                  </span>
+                  <span className="font-mono text-xs bg-black text-white px-2 py-0.5 rounded-none group-hover:bg-primary group-hover:text-black transition-colors">
+                    {places.filter((p) => p.categoryId === cat.id).length}
+                  </span>
                 </div>
-                <div className="flex items-center justify-between p-2 rounded bg-red-50">
-                  <span className="text-xs text-muted-foreground">Từ chối</span>
-                  <Badge variant="destructive" className="text-xs">
-                    {stats.rejected}
-                  </Badge>
-                </div>
-              </div>
+              ))}
             </div>
-          </CardContent>
-        </Card>
+            <Link
+              to="/categories"
+              className="p-4 border-t border-black bg-gray-50 text-center font-bold text-xs uppercase hover:bg-black hover:text-white transition-colors"
+            >
+              QUẢN LÝ DANH MỤC &rarr;
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );
