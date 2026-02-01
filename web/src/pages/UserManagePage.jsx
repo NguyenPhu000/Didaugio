@@ -252,25 +252,23 @@ const UserManagePage = () => {
   };
 
   return (
-    <div className="min-h-screen p-8 bg-[#F4F4F4] relative font-sans">
-      <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none"></div>
+    <div className="min-h-screen p-8 bg-background relative">
+      {/* Enhanced grid background with dots */}
+      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none"></div>
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-4">
-          <div className="flex items-center gap-4">
-            <div className="w-2 h-16 bg-primary"></div>
+        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-6">
+            <div className="accent-bar h-16"></div>
             <div>
-              <h1 className="text-5xl font-black uppercase tracking-tighter leading-none text-foreground font-technical">
-                QUẢN LÝ NGƯỜI DÙNG
-              </h1>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-[12px] bg-black text-white px-2 py-0.5 font-mono uppercase">
+              <h1 className="tim-title">QUẢN LÝ NGƯỜI DÙNG</h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1">
                   SYSTEM // USERS
                 </span>
-                <p className="text-sm font-mono text-muted-foreground uppercase tracking-widest">
-                  {pagination.total} TÀI KHOẢN TRONG HỆ THỐNG
-                </p>
+                <p className="tim-meta">QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN</p>
               </div>
             </div>
           </div>
@@ -286,7 +284,7 @@ const UserManagePage = () => {
             </Button>
             <Button
               onClick={handleCreate}
-              className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all font-bold uppercase rounded-none border border-black px-6"
+              className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
             >
               <Plus className="mr-2 h-4 w-4" />
               THÊM NGƯỜI DÙNG
@@ -304,7 +302,7 @@ const UserManagePage = () => {
               placeholder="TÌM THEO TÊN, EMAIL, SĐT..."
               value={filters.search}
               onChange={(e) => handleFilterChange("search", e.target.value)}
-              className="flex-1 h-10 px-4 border-y border-r border-black font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400"
+              className="flex-1 h-10 px-4 border-y border-r border-black tim-body uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400"
             />
           </div>
 
@@ -354,29 +352,29 @@ const UserManagePage = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-black text-white font-mono text-sm uppercase tracking-wider">
-                    <th className="p-4 border-r border-gray-800 w-[60px]">
+                  <tr className="bg-black text-white tim-table-header">
+                    <th className="p-4 border-r border-black/20 w-[60px]">
                       ID
                     </th>
-                    <th className="p-4 border-r border-gray-800">
+                    <th className="p-4 border-r border-black/20">
                       THÔNG TIN CƠ BẢN
                     </th>
-                    <th className="p-4 border-r border-gray-800">LIÊN HỆ</th>
-                    <th className="p-4 border-r border-gray-800">VAI TRÒ</th>
-                    <th className="p-4 border-r border-gray-800">TRẠNG THÁI</th>
+                    <th className="p-4 border-r border-black/20">LIÊN HỆ</th>
+                    <th className="p-4 border-r border-black/20">VAI TRÒ</th>
+                    <th className="p-4 border-r border-black/20">TRẠNG THÁI</th>
                     <th className="p-4 text-right">THAO TÁC</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-black/5">
                   {users.map((user, index) => (
                     <tr
                       key={user.id}
                       className="hover:bg-yellow-50 group transition-colors"
                     >
-                      <td className="p-4 font-mono text-sm text-gray-400 border-r border-gray-100">
+                      <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
                         #{user.id}
                       </td>
-                      <td className="p-4 border-r border-gray-100">
+                      <td className="p-4 border-r border-black/5">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 border border-black rounded-none">
                             <AvatarImage src={user.profile?.avatar} />

@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
-import {
-  ArrowRight,
-  Loader2,
-  MapPin,
-  Globe,
-  FileText,
-  Type,
-} from "lucide-react";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import Type from "lucide-react/dist/esm/icons/type";
 import AnimatedIcon from "@/components/ui/animated-icon";
 import usePlaceStore from "@/stores/placeStore";
 import * as districtService from "@/apis/districtService";

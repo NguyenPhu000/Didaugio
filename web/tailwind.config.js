@@ -5,9 +5,12 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Inter", "System-UI", "sans-serif"],
-        mono: ["JetBrains Mono", "Fira Code", "monospace"],
-        technical: ["Saira", "DIN Alternate", "Oswald", "sans-serif"], // For heavy headers
+        // Professional System Fonts - IBM Plex Sans based
+        sans: ["IBM Plex Sans", "Inter", "system-ui", "sans-serif"],
+        mono: ["IBM Plex Mono", "JetBrains Mono", "Fira Code", "monospace"],
+        technical: ["IBM Plex Mono", "JetBrains Mono", "monospace"], // For technical/code text
+        display: ["IBM Plex Sans", "Inter", "system-ui", "sans-serif"], // For main titles
+        system: ["IBM Plex Mono", "JetBrains Mono", "monospace"], // For system labels
       },
       colors: {
         border: "hsl(var(--border))",

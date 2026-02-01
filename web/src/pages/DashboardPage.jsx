@@ -1,24 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import usePlaceStore from "@/stores/placeStore";
 import useCategoryStore from "@/stores/categoryStore";
 import { userService } from "@/apis/userService";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  Users,
-  MapPin,
-  Building2,
-  TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight,
-  Activity,
-  Layers,
-  Search,
-  Filter,
-  BarChart3,
-  Archive,
-  AlertCircle,
-} from "lucide-react";
+import Users from "lucide-react/dist/esm/icons/users";
+import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import Building2 from "lucide-react/dist/esm/icons/building-2";
+import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
+import ArrowUpRight from "lucide-react/dist/esm/icons/arrow-up-right";
+import ArrowDownRight from "lucide-react/dist/esm/icons/arrow-down-right";
+import Activity from "lucide-react/dist/esm/icons/activity";
+import Layers from "lucide-react/dist/esm/icons/layers";
+import Search from "lucide-react/dist/esm/icons/search";
+import Filter from "lucide-react/dist/esm/icons/filter";
+import BarChart3 from "lucide-react/dist/esm/icons/bar-chart-3";
+import Archive from "lucide-react/dist/esm/icons/archive";
+import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import AnimatedIcon from "@/components/ui/animated-icon";
 
 /**
@@ -47,9 +45,7 @@ const TimStatsCard = ({
   return (
     <div className="relative bg-white border border-black p-6 group hover:shadow-hard transition-all duration-300">
       {/* Serial Number */}
-      <div className="absolute top-2 right-2 text-[8px] font-mono text-gray-400">
-        {serial}
-      </div>
+      <div className="absolute top-2 right-2 tim-meta">{serial}</div>
 
       {/* Corner Decor */}
       <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-primary"></div>
@@ -61,7 +57,7 @@ const TimStatsCard = ({
         </div>
         {/* Trend or Sub-info */}
         <div
-          className={`flex items-center gap-1 text-[10px] font-mono font-bold uppercase ${colors[status]}`}
+          className={`flex items-center gap-1 tim-meta font-bold ${colors[status]}`}
         >
           {subValue}
           {status === "positive" && <ArrowUpRight className="w-3 h-3" />}
@@ -71,12 +67,8 @@ const TimStatsCard = ({
       </div>
 
       <div>
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">
-          {label}
-        </h3>
-        <div className="text-5xl font-black tracking-tighter text-foreground font-technical">
-          {value}
-        </div>
+        <h3 className="tim-table-header text-muted-foreground mb-1">{label}</h3>
+        <div className="tim-stats text-foreground">{value}</div>
       </div>
     </div>
   );
@@ -152,63 +144,61 @@ const DashboardPage = () => {
     }
   }, [places]);
 
-  const handleSearch = (e) => {
-    if (e.key === "Enter" || e.type === "click") {
-      if (searchQuery.trim()) {
-        navigate(`/admin/places?search=${encodeURIComponent(searchQuery)}`);
+  const handleSearch = useCallback(
+    (e) => {
+      if (e.key === "Enter" || e.type === "click") {
+        if (searchQuery.trim()) {
+          navigate(`/admin/places?search=${encodeURIComponent(searchQuery)}`);
+        }
       }
-    }
-  };
+    },
+    [navigate, searchQuery],
+  );
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <div className="w-16 h-16 border-4 border-black border-t-primary rounded-full animate-spin"></div>
-        <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-          ĐANG KHỞI TẠO HỆ THỐNG...
-        </div>
+        <div className="tim-meta">ĐANG KHỞI TẠO HỆ THỐNG...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-8 bg-[url('https://ui.shadcn.com/placeholder.svg')] bg-fixed relative">
-      {/* Background Grid */}
-      <div className="absolute inset-0 bg-[#F4F4F4]/95 z-0 bg-grid-pattern bg-grid-20 pointer-events-none"></div>
+    <div className="min-h-screen p-8 bg-background relative">
+      {/* Enhanced Multi-layer Background */}
+      <div className="absolute inset-0 bg-grid-dots opacity-40 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid-lines opacity-15 pointer-events-none"></div>
 
       <div className="relative z-10 space-y-12 max-w-[1600px] mx-auto">
-        {/* Header Section */}
+        {/* Header */}
         <div className="flex items-end justify-between border-b-2 border-black pb-6">
           <div className="flex items-center gap-6">
-            <div className="w-3 h-20 bg-primary shadow-hard"></div>
+            <div className="accent-bar h-16"></div>
             <div>
-              <h1 className="text-7xl font-black uppercase tracking-tighter leading-none text-foreground font-technical">
-                TỔNG QUAN
-              </h1>
+              <h1 className="tim-title">TỔNG QUAN</h1>
               <div className="flex items-center gap-4 mt-2">
-                <span className="text-xs font-mono text-muted-foreground tracking-[0.3em] uppercase bg-black text-white px-2 py-1">
-                  QUẢN TRỊ VIÊN // BẢNG ĐIỀU KHIỂN
+                <span className="tim-system bg-black text-white px-2 py-1">
+                  DASHBOARD // OVERVIEW
                 </span>
-                <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">
-                  PHIÊN BẢN 2.0 // HỆ THỐNG HOẠT ĐỘNG
-                </span>
+                <p className="tim-meta">BẢNG ĐIỀU KHIỂN & THỐNG KÊ</p>
               </div>
             </div>
           </div>
-
-          {/* Quick Search Module */}
-          <div className="flex items-center gap-0 shadow-hard hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all duration-200">
-            <div className="h-12 w-12 bg-black flex items-center justify-center text-white">
-              <Search className="h-5 w-5" />
+          <div className="corner-tech">
+            <div className="flex items-center shadow-hard hover:shadow-hard-subtle transition-all duration-200">
+              <div className="h-12 w-12 bg-black flex items-center justify-center text-white hud-element">
+                <Search className="h-5 w-5" />
+              </div>
+              <input
+                type="text"
+                placeholder="TÌM KIẾM HỆ THỐNG..."
+                className="h-12 w-64 px-4 border-y border-r border-black tim-body uppercase focus:outline-none focus:bg-primary/10 placeholder:text-muted-foreground input-technical"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearch}
+              />
             </div>
-            <input
-              type="text"
-              placeholder="TÌM KIẾM HỆ THỐNG..."
-              className="h-12 w-64 px-4 border-y border-r border-black font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleSearch}
-            />
           </div>
         </div>
 

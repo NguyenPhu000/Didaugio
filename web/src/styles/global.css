@@ -1,51 +1,74 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&subset=vietnamese&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&subset=vietnamese&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&subset=vietnamese&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* === ENHANCED FONT SYSTEM FOR VIETNAMESE === */
+:root {
+  /* Primary Font Stack - IBM Plex Sans for Professional System Look */
+  --font-display:
+    "IBM Plex Sans", "Inter", system-ui, -apple-system, sans-serif;
+  --font-body: "IBM Plex Sans", "Inter", system-ui, -apple-system, sans-serif;
+  --font-technical: "IBM Plex Mono", "JetBrains Mono", "Courier New", monospace;
+
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+}
+
 @layer base {
   :root {
-    /* Arknights: Endfield Style - T.I.M */
+    /* Arknights: Endfield Style - T.I.M Enhanced */
 
-    /* Base Background - White */
-    --background: 0 0% 100%; /* #FFFFFF */
+    /* Base Background - Subtle Gray instead of pure white */
+    --background: 0 0% 95%; /* #F2F2F2 - Subtle gray background */
 
-    /* Base Text - Dark Carbon */
-    --foreground: 0 0% 10%; /* #1A1A1A */
+    /* Base Text - Sharp Carbon */
+    --foreground: 0 0% 8%; /* #141414 - Darker for more contrast */
 
-    /* Card Background - White */
+    /* Card Background - Pure White for contrast */
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 0 0% 8%;
 
     /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 0 0% 8%;
 
-    /* Primary / Action - Safety Yellow #F3E600 */
-    --primary: 57 100% 47%; /* #F3E600 */
-    --primary-foreground: 0 0% 10%; /* Dark text on Yellow */
+    /* Primary / Action - Endfield Yellow #F3E600 */
+    --primary: 57 100% 45%; /* #F3E600 - More muted neon yellow */
+    --primary-foreground: 0 0% 8%; /* Dark text on Yellow */
 
-    /* Secondary - Neutral Light Gray or Dark Charcoal for contrast elements */
-    --secondary: 0 0% 96%; /* Light gray for secondary backgrounds */
-    --secondary-foreground: 0 0% 10%;
+    /* Secondary - Technical Gray */
+    --secondary: 0 0% 94%; /* Slightly darker gray */
+    --secondary-foreground: 0 0% 8%;
 
-    /* Muted - For micro-typography #666666 */
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 40%; /* #666666 */
+    /* Muted - For micro-typography with 40-50% opacity */
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 35%; /* 35% gray for better hierarchy */
 
-    /* Accent - Dark Charcoal for high contrast accents */
-    --accent: 0 0% 10%; /* #1A1A1A */
-    --accent-foreground: 0 0% 100%; /* White text on Dark Accent */
+    /* Accent - Sharp Black for technical elements */
+    --accent: 0 0% 8%; /* Darker black */
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    /* Border - Hairline style rgba(0,0,0,0.1) */
-    --border: 0 0% 90%; /* Light gray border */
-    --input: 0 0% 90%;
-    --ring: 57 100% 47%; /* Yellow Ring */
+    /* Border - Hairline style with subtle variations */
+    --border: 0 0% 88%; /* Slightly more visible borders */
+    --border-subtle: 0 0% 92%; /* For micro-details */
+    --input: 0 0% 88%;
+    --ring: 57 100% 45%; /* Yellow Ring */
 
-    /* Radius - Mixed */
-    --radius: 1.25rem; /* 20px for large containers */
+    /* Technical Grid Color */
+    --grid-pattern: 0 0% 90%; /* For dot grid background */
+
+    /* Radius - Minimal for industrial look */
+    --radius: 0rem; /* Sharp corners for industrial feel */
 
     /* Sidebar - Dark Carbon #1A1A1A */
     --sidebar-background: 0 0% 10%; /* #1A1A1A */
@@ -334,6 +357,254 @@
     opacity: 1;
   }
   50% {
-    opacity: 0.6;
+    opacity: 0.5;
+  }
+}
+
+/* ============================================
+   T.I.M Typography System - Vietnamese Support
+   ============================================ */
+
+@layer components {
+  /* Main Display Titles - Professional System Headers */
+  .tim-title {
+    @apply text-4xl md:text-5xl uppercase leading-none text-foreground;
+    font-family: var(--font-display);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.5px;
+    text-rendering: optimizeLegibility;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Secondary Headers - More condensed */
+  .tim-header {
+    @apply text-2xl md:text-3xl uppercase leading-tight text-foreground;
+    font-family: var(--font-display);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.3px;
+  }
+
+  /* System Labels - For tags and metadata */
+  .tim-system {
+    @apply text-xs uppercase tracking-wider text-foreground;
+    font-family: var(--font-display);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 1px;
+  }
+
+  /* Body Text - Clean and readable */
+  .tim-body {
+    @apply text-sm text-foreground;
+    font-family: var(--font-body);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.6;
+  }
+
+  /* Meta Information - Subtle secondary text */
+  .tim-meta {
+    @apply text-xs text-muted-foreground uppercase;
+    font-family: var(--font-body);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.5px;
+  }
+
+  /* Code/Technical Text */
+  .tim-code {
+    @apply text-xs text-muted-foreground uppercase;
+    font-family: var(--font-technical);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.5px;
+  }
+
+  /* Button Text - Sharp and commanding */
+  .tim-button {
+    @apply uppercase;
+    font-family: var(--font-display);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.5px;
+  }
+
+  /* Statistics Numbers */
+  .tim-stats {
+    @apply text-3xl md:text-4xl leading-none;
+    font-family: var(--font-display);
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Table Headers */
+  .tim-table-header {
+    @apply text-xs uppercase;
+    font-family: var(--font-display);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.5px;
+  }
+
+  /* Body Text - Vietnamese optimized with technical feel */
+  .tim-body {
+    @apply font-sans text-sm leading-relaxed;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Technical Code/ID text */
+  .tim-code {
+    @apply font-system text-xs font-medium;
+    letter-spacing: 0.05em;
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--muted-foreground));
+  }
+}
+
+/* ============================================
+   Enhanced T.I.M Components - HUD Elements
+   ============================================ */
+
+@layer components {
+  /* Hard Shadow Effect - More pronounced */
+  .shadow-hard {
+    box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 0.9);
+  }
+
+  /* Subtle Hard Shadow for micro-elements */
+  .shadow-hard-subtle {
+    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Dot Grid Pattern Background - Like Endfield */
+  .bg-grid-dots {
+    background-image: radial-gradient(
+      circle,
+      hsl(var(--grid-pattern)) 1px,
+      transparent 1px
+    );
+    background-size: 20px 20px;
+    background-position: 10px 10px;
+  }
+
+  /* Line Grid Pattern */
+  .bg-grid-lines {
+    background-image:
+      linear-gradient(hsl(var(--border-subtle)) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border-subtle)) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Technical Border with corner accents */
+  .border-technical {
+    border: 1px solid hsl(var(--border));
+    position: relative;
+  }
+
+  .border-technical::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    border-top: 2px solid hsl(var(--primary));
+    border-right: 2px solid hsl(var(--primary));
+  }
+
+  .border-technical::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: -2px;
+    width: 8px;
+    height: 8px;
+    border-bottom: 2px solid hsl(var(--primary));
+    border-left: 2px solid hsl(var(--primary));
+  }
+
+  /* Yellow Accent Bar - Thinner and sharper */
+  .accent-bar {
+    @apply bg-primary w-1 h-full shadow-hard-subtle;
+  }
+
+  /* HUD Elements */
+  .hud-element {
+    @apply border border-black bg-white relative;
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  .hud-element::before {
+    content: "+";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    font-size: 8px;
+    line-height: 1;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* System ID Labels */
+  .system-id {
+    @apply tim-meta;
+    position: relative;
+    padding-left: 16px;
+  }
+
+  .system-id::before {
+    content: "SYS_";
+    position: absolute;
+    left: 0;
+    opacity: 0.4;
+    font-size: 8px;
+  }
+
+  /* Technical Input with coordinates */
+  .input-technical {
+    @apply relative;
+  }
+
+  .input-technical::after {
+    content: "v2.0";
+    position: absolute;
+    bottom: 2px;
+    right: 6px;
+    font-size: 8px;
+    font-family: "JetBrains Mono", monospace;
+    color: hsl(var(--muted-foreground));
+    opacity: 0.5;
+  }
+
+  /* Hairline dividers */
+  .divider-hairline {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--border)),
+      transparent
+    );
+  }
+
+  /* Status indicators */
+  .status-online {
+    @apply relative;
+  }
+
+  .status-online::before {
+    content: "●";
+    color: #00ff88;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  /* Corner decorations */
+  .corner-tech {
+    position: relative;
+  }
+
+  .corner-tech::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 12px 12px 0;
+    border-color: transparent hsl(var(--primary)) transparent transparent;
   }
 }

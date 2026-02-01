@@ -148,38 +148,39 @@ export default function TagManagementPage() {
   };
 
   return (
-    <div className="min-h-screen p-8 bg-[url('https://ui.shadcn.com/placeholder.svg')] bg-fixed relative">
-      <div className="absolute inset-0 bg-[#F4F4F4]/90 z-0 bg-grid-pattern bg-grid-10 pointer-events-none"></div>
+    <div className="min-h-screen p-8 bg-background relative">
+      {/* Enhanced grid background with dots */}
+      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none"></div>
 
-      <div className="relative z-10 space-y-8 max-w-[1600px] mx-auto">
-        {/* Header Section */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-4">
-          <div className="flex items-center gap-4">
-            <div className="w-2 h-16 bg-primary"></div>{" "}
-            {/* Decorative Vertical Bar */}
+      <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
+        {/* Header */}
+        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-6">
+            <div className="accent-bar h-16"></div>
             <div>
-              <h1 className="text-6xl font-black uppercase tracking-tighter leading-none text-foreground font-technical">
-                QUẢN LÝ THẺ
-              </h1>
-              <p className="text-xs font-mono text-muted-foreground tracking-[0.3em] uppercase mt-1">
-                HỆ THỐNG // CẤU HÌNH // THẺ
-              </p>
+              <h1 className="tim-title">QUẢN LÝ THẻ</h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1">
+                  SYSTEM // TAGS
+                </span>
+                <p className="tim-meta">PHÂN LOẠI VÀ GẮN NHÃN</p>
+              </div>
             </div>
           </div>
-          <div className="flex gap-3 mb-1">
+          <div className="flex gap-2">
             <Button
               variant="outline"
-              size="icon"
               onClick={handleRefresh}
-              className="border-black rounded-none hover:bg-black hover:text-white"
+              className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
             <Button
               onClick={handleAdd}
-              className="bg-primary text-black font-bold uppercase tracking-wider rounded-none hover:bg-yellow-400 border border-black shadow-hard hover:translate-y-1 hover:shadow-none transition-all"
+              className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               TẠO THẺ MỚI
             </Button>
           </div>

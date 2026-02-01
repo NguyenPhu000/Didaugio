@@ -27,15 +27,13 @@ import { PermissionCheckbox } from "./permission-checkbox";
 import { roleService } from "@/apis/roleService";
 import { permissionService } from "@/apis/permissionService";
 import { MODULE_DISPLAY_NAMES } from "@/constants/permissions";
-import {
-  Search,
-  CheckCircle2,
-  XCircle,
-  Save,
-  Lightbulb,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import Search from "lucide-react/dist/esm/icons/search";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import XCircle from "lucide-react/dist/esm/icons/x-circle";
+import Save from "lucide-react/dist/esm/icons/save";
+import Lightbulb from "lucide-react/dist/esm/icons/lightbulb";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 

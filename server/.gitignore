@@ -1,7 +1,8 @@
 node_modules
 # Keep environment variables out of version control
+thunder-collection.json
 .env
-
+scripts
 /generated/prisma
 prisma/migrations
 tests

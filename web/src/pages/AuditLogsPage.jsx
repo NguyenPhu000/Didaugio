@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { FileText, RefreshCw, Eye, Filter } from "lucide-react";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import Filter from "lucide-react/dist/esm/icons/filter";
 import toast from "react-hot-toast";
 import {
   Card,
@@ -206,7 +209,7 @@ const AuditLogsPage = () => {
                       <td className="px-4 py-3">
                         <span
                           className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getActionColor(
-                            log.action
+                            log.action,
                           )}`}
                         >
                           {log.action}
@@ -283,7 +286,7 @@ const AuditLogsPage = () => {
                   <p className="mt-1">
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getActionColor(
-                        selectedLog.action
+                        selectedLog.action,
                       )}`}
                     >
                       {selectedLog.action}

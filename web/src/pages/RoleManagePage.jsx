@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { RoleManagementModal } from "@/components/role/role-management-modal";
 import { ROLE_ICONS, ROLE_COLORS } from "@/constants/roleConstants";
+import { Button } from "@/components/ui/Button";
+import { RefreshCw, Plus, Search } from "lucide-react";
 
 // Note: Material icons mapping differs from Lucide, keeping local mapping
 const ROLE_ICON_NAMES = {
@@ -20,6 +22,7 @@ export default function RoleManagePage() {
   const [search, setSearch] = useState("");
   const [selectedRole, setSelectedRole] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [totalPermissions, setTotalPermissions] = useState(0);
 
   const fetchRoles = useCallback(async () => {
@@ -88,53 +91,70 @@ export default function RoleManagePage() {
   };
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900 min-h-screen p-6 lg:p-10">
-      {/* Header */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <span className="bg-blue-600/10 text-blue-600 p-2 rounded-lg">
-              <span className="material-icons-round text-2xl">admin_panel_settings</span>
-            </span>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Quản lý vai trò
-            </h1>
+    <div className="min-h-screen p-8 bg-background relative">
+      {/* Enhanced grid background with dots */}
+      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none"></div>
+      
+      <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
+        {/* Header */}
+        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-6">
+            <div className="accent-bar h-16"></div>
+            <div>
+              <h1 className="tim-title">
+                QUẢN LÝ VAI TRÒ
+              </h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1">
+                  RBAC // ROLES
+                </span>
+                <p className="tim-meta">
+                  CẤU HÌNH VAI TRÒ VÀ QUYỀN HẠN
+                </p>
+              </div>
+            </div>
           </div>
-          <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base ml-14">
-            Quản lý quyền hạn và phân cấp vai trò trong hệ thống
-          </p>
+          <div className="flex gap-2">
+            <Button
+              onClick={fetchRoles}
+              variant="outline"
+              className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
+              disabled={loading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
+            </Button>
+            <Button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              TẠO VAI TRÒ MỚI
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={fetchRoles}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm text-sm font-medium disabled:opacity-50"
-          >
-            <span className={`material-icons-round text-lg ${loading ? "animate-spin" : ""}`}>
-              refresh
-            </span>
-            Làm mới
-          </button>
-        </div>
-      </header>
 
-      {/* Search */}
-      <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm mb-6">
-        <div className="relative w-full lg:max-w-xl">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-            <span className="material-icons-round text-xl">search</span>
-          </span>
+        {/* Search Bar */}
+        <div className="bg-white border border-black p-4 flex shadow-sm">
+          <div className="h-10 w-10 bg-black flex items-center justify-center text-white">
+            <Search className="h-4 w-4" />
+          </div>
           <input
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all text-slate-700 dark:text-slate-300 placeholder:text-slate-400"
-            placeholder="Tìm kiếm vai trò..."
-            type="text"
+            placeholder="TÌM KIẾM VAI TRÒ..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 h-10 px-4 border-y border-r border-black tim-body uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400"
           />
         </div>
-      </div>
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 h-10 px-4 border-y border-r border-black tim-body uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400"
+          />
+        </div>
 
-      {/* Roles Grid */}
+        {/* Roles Grid */}
       {loading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => (

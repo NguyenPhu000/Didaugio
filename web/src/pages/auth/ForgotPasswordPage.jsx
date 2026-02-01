@@ -4,7 +4,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import toast from "react-hot-toast";
-import { Mail, ArrowLeft, Send, CheckCircle } from "lucide-react";
+import Mail from "lucide-react/dist/esm/icons/mail";
+import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
+import Send from "lucide-react/dist/esm/icons/send";
+import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 import {
   Button,
   Input,

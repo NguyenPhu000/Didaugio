@@ -13,27 +13,25 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui";
-import {
-  MapPin,
-  Clock,
-  Phone,
-  Globe,
-  Star,
-  Eye,
-  Edit,
-  Trash2,
-  CheckCircle,
-  XCircle,
-  Facebook,
-  Grid as GridIcon,
-  Tag,
-  Info,
-  Calendar,
-  User,
-  ExternalLink,
-  ShieldCheck,
-  Mail,
-} from "lucide-react";
+import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import Clock from "lucide-react/dist/esm/icons/clock";
+import Phone from "lucide-react/dist/esm/icons/phone";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import Star from "lucide-react/dist/esm/icons/star";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import Edit from "lucide-react/dist/esm/icons/edit";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
+import XCircle from "lucide-react/dist/esm/icons/x-circle";
+import Facebook from "lucide-react/dist/esm/icons/facebook";
+import GridIcon from "lucide-react/dist/esm/icons/grid";
+import Tag from "lucide-react/dist/esm/icons/tag";
+import Info from "lucide-react/dist/esm/icons/info";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import User from "lucide-react/dist/esm/icons/user";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
+import Mail from "lucide-react/dist/esm/icons/mail";
 import { PRICE_RANGE_LABELS } from "@/constants/constants";
 import CanThoMap from "@/components/map/CanThoMap";
 import { cn } from "@/lib/utils";

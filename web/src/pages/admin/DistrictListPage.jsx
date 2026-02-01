@@ -59,20 +59,16 @@ const DistrictListPage = () => {
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-4">
-          <div className="flex items-center gap-4">
-            <div className="w-2 h-16 bg-primary"></div>
+        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-6">
+            <div className="accent-bar h-16"></div>
             <div>
-              <h1 className="text-5xl font-black uppercase tracking-tighter leading-none text-foreground font-technical">
-                QUẢN LÝ KHU VỰC
-              </h1>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-[10px] bg-black text-white px-1 font-mono uppercase">
+              <h1 className="tim-title">QUẢN LÝ KHU VỰC</h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1">
                   GEODATA // DISTRICTS
                 </span>
-                <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
-                  HÀNH CHÍNH & RANH GIỚI
-                </p>
+                <p className="tim-meta">HÀNH CHÍNH & RANH GIỚI</p>
               </div>
             </div>
           </div>

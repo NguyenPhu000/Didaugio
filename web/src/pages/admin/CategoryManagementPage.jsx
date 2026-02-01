@@ -63,19 +63,13 @@ const StatsCard = ({
     </div>
     <div className="relative z-10">
       <div className="flex justify-between items-start mb-4">
-        <div className="font-mono text-[10px] uppercase tracking-widest border border-black px-1.5 py-0.5 bg-white text-black">
+        <div className="tim-meta border border-black px-1.5 py-0.5 bg-white text-black">
           {serial}
         </div>
         <Icon className={`w-5 h-5 ${textColor}`} />
       </div>
-      <div className={`text-4xl font-black mb-1 font-technical ${textColor}`}>
-        {value}
-      </div>
-      <div
-        className={`text-xs font-bold uppercase tracking-wider ${textColor}`}
-      >
-        {title}
-      </div>
+      <div className={`tim-stats mb-1 ${textColor}`}>{value}</div>
+      <div className={`tim-table-header ${textColor}`}>{title}</div>
     </div>
   </div>
 );
@@ -166,7 +160,34 @@ export default function CategoryManagementPage() {
     selectedRootFilter,
   ]);
 
-  // Stats
+  // Calculate actual stats (not affected by expansion state)
+  // BUG FIX: Separate actual total categories from filtered display count
+  // Previously: filteredFlatCategories.length would increase when expanding subcategories
+  // Now: actualTotalCategories always shows true total regardless of UI expansion state
+  const actualTotalCategories = useMemo(() => {
+    const countAll = (categories) => {
+      return categories.reduce((total, cat) => {
+        return total + 1 + (cat.children ? countAll(cat.children) : 0);
+      }, 0);
+    };
+    return categoryTree ? countAll(categoryTree) : 0;
+  }, [categoryTree]);
+
+  const actualActiveCount = useMemo(() => {
+    const countActive = (categories) => {
+      return categories.reduce((total, cat) => {
+        const thisActive = !cat.isHidden ? 1 : 0;
+        return (
+          total + thisActive + (cat.children ? countActive(cat.children) : 0)
+        );
+      }, 0);
+    };
+    return categoryTree ? countActive(categoryTree) : 0;
+  }, [categoryTree]);
+
+  const actualHiddenCount = actualTotalCategories - actualActiveCount;
+
+  // Stats for currently visible (filtered) categories
   const activeCount = filteredFlatCategories.filter((c) => !c.isHidden).length;
   const hiddenCount = filteredFlatCategories.filter((c) => c.isHidden).length;
 
@@ -226,25 +247,23 @@ export default function CategoryManagementPage() {
   };
 
   return (
-    <div className="min-h-screen p-8 bg-[#F4F4F4] relative font-sans">
-      <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none"></div>
+    <div className="min-h-screen p-8 bg-background relative">
+      {/* Enhanced grid background with dots */}
+      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none"></div>
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-4">
-          <div className="flex items-center gap-4">
-            <div className="w-2 h-16 bg-primary"></div>
+        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-6">
+            <div className="accent-bar h-16"></div>
             <div>
-              <h1 className="text-5xl font-black uppercase tracking-tighter leading-none text-foreground font-technical">
-                QUẢN LÝ DANH MỤC
-              </h1>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-[12px] bg-black text-white px-2 py-0.5 font-mono uppercase">
-                  SYSTEM // CATEGORIES
+              <h1 className="tim-title">QUẢN LÝ DANH MỤC</h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1">
+                  TAXONOMY // CATEGORIES
                 </span>
-                <p className="text-sm font-mono text-muted-foreground uppercase tracking-widest">
-                  {filteredFlatCategories.length} MỤC TRONG CƠ SỞ DỮ LIỆU
-                </p>
+                <p className="tim-meta">PHÂN LOẠI VÀ TỔ CHỨC DỮ LIỆU</p>
               </div>
             </div>
           </div>
@@ -260,7 +279,7 @@ export default function CategoryManagementPage() {
             </Button>
             <Button
               onClick={handleAddRoot}
-              className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all font-bold uppercase rounded-none border border-black px-6"
+              className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
             >
               <Plus className="mr-2 h-4 w-4" />
               TẠO DANH MỤC GỐC
@@ -272,20 +291,20 @@ export default function CategoryManagementPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <StatsCard
             title="TỔNG DANH MỤC"
-            value={filteredFlatCategories.length}
+            value={actualTotalCategories}
             icon={FolderTree}
             serial="CAT-001"
           />
           <StatsCard
             title="ĐANG HIỂN THỊ"
-            value={activeCount}
+            value={actualActiveCount}
             icon={Eye}
             serial="CAT-002"
             textColor="text-green-600"
           />
           <StatsCard
             title="ĐANG ẨN"
-            value={hiddenCount}
+            value={actualHiddenCount}
             icon={EyeOff}
             serial="CAT-003"
             textColor="text-gray-500"
@@ -543,56 +562,56 @@ export default function CategoryManagementPage() {
             </div>
           )}
         </div>
+
+        {/* Forms */}
+        <CategoryFormDialog
+          open={formOpen}
+          onClose={() => {
+            setFormOpen(false);
+            setSelectedCategory(null);
+            setParentCategory(null);
+          }}
+          category={selectedCategory}
+          parentCategory={parentCategory}
+        />
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="rounded-none border border-black p-0 overflow-hidden sm:max-w-md">
+            <DialogHeader className="p-6 bg-red-600 text-white">
+              <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+                <Activity className="h-6 w-6" /> CẢNH BÁO: QUY TRÌNH XÓA
+              </DialogTitle>
+              <DialogDescription className="text-red-100 font-mono text-xs mt-2 uppercase">
+                Thao tác này là vĩnh viễn và không thể hoàn tác. Xin xác nhận.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="p-6 bg-white">
+              <p className="font-mono text-sm mb-4">
+                Bạn có chắc chắn muốn xóa danh mục{" "}
+                <span className="font-bold">[{categoryToDelete?.name}]</span>{" "}
+                khỏi cơ sở dữ liệu?
+              </p>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteDialogOpen(false)}
+                  className="rounded-none border-black hover:bg-gray-100"
+                >
+                  Hủy bỏ
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteConfirm}
+                  className="rounded-none bg-red-600 hover:bg-red-700 font-bold uppercase"
+                >
+                  Xác nhận xóa
+                </Button>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      {/* Forms */}
-      <CategoryFormDialog
-        open={formOpen}
-        onClose={() => {
-          setFormOpen(false);
-          setSelectedCategory(null);
-          setParentCategory(null);
-        }}
-        category={selectedCategory}
-        parentCategory={parentCategory}
-      />
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="rounded-none border border-black p-0 overflow-hidden sm:max-w-md">
-          <DialogHeader className="p-6 bg-red-600 text-white">
-            <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-              <Activity className="h-6 w-6" /> CẢNH BÁO: QUY TRÌNH XÓA
-            </DialogTitle>
-            <DialogDescription className="text-red-100 font-mono text-xs mt-2 uppercase">
-              Thao tác này là vĩnh viễn và không thể hoàn tác. Xin xác nhận.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="p-6 bg-white">
-            <p className="font-mono text-sm mb-4">
-              Bạn có chắc chắn muốn xóa danh mục{" "}
-              <span className="font-bold">[{categoryToDelete?.name}]</span> khỏi
-              cơ sở dữ liệu?
-            </p>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button
-                variant="outline"
-                onClick={() => setDeleteDialogOpen(false)}
-                className="rounded-none border-black hover:bg-gray-100"
-              >
-                Hủy bỏ
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteConfirm}
-                className="rounded-none bg-red-600 hover:bg-red-700 font-bold uppercase"
-              >
-                Xác nhận xóa
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

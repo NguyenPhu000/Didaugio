@@ -144,10 +144,12 @@ const menuData = {
 // NavMain component with collapsible
 function NavMain({ items, label }) {
   const location = useLocation();
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
 
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel className="text-xs font-semibold text-primary uppercase tracking-wider px-3">
+    <SidebarGroup className="py-2">
+      <SidebarGroupLabel className="text-[10px] font-mono text-gray-500 uppercase tracking-widest px-2 group-data-[collapsible=icon]:hidden">
         {label}
       </SidebarGroupLabel>
       <SidebarGroupContent>
@@ -158,6 +160,77 @@ function NavMain({ items, label }) {
               item.items?.some((sub) => sub.url === location.pathname);
 
             if (item.items) {
+              if (isCollapsed) {
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <SidebarMenuButton
+                          tooltip={item.title}
+                          isActive={isActive}
+                          className={cn(
+                            "relative transition-all duration-200 h-9 justify-center",
+                            "hover:bg-white/5 hover:text-white text-gray-400",
+                            isActive && "text-[#F3E600] bg-white/5",
+                          )}
+                        >
+                          <AnimatedIcon
+                            icon={item.icon}
+                            className={cn(
+                              "size-4 shrink-0 transition-colors",
+                              isActive
+                                ? "text-[#F3E600]"
+                                : "text-gray-400 group-hover:text-white",
+                            )}
+                            type={isActive ? "pulse" : "hover"}
+                          />
+                          <span className="sr-only">{item.title}</span>
+                          {isActive && (
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[#F3E600] rounded-r-sm shadow-[0_0_8px_rgba(243,230,0,0.5)]" />
+                          )}
+                        </SidebarMenuButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="right"
+                        align="start"
+                        sideOffset={20}
+                        className="w-56 rounded-md border border-white/10 bg-[#1A1A1A] p-2 text-white shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                      >
+                        <DropdownMenuLabel className="text-xs font-mono text-gray-500 uppercase tracking-widest px-2 pb-2">
+                          {item.title}
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator className="bg-white/10 my-1" />
+                        {item.items.map((subItem) => {
+                          const isSubActive = location.pathname === subItem.url;
+                          return (
+                            <DropdownMenuItem
+                              key={subItem.url}
+                              asChild
+                              className="focus:bg-white/5 focus:text-[#F3E600]"
+                            >
+                              <Link
+                                to={subItem.url}
+                                className={cn(
+                                  "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
+                                  isSubActive
+                                    ? "text-[#F3E600] font-medium bg-white/5"
+                                    : "text-gray-400 hover:text-white hover:bg-white/5",
+                                )}
+                              >
+                                {isSubActive && (
+                                  <div className="h-1.5 w-1.5 rounded-full bg-[#F3E600] shadow-[0_0_4px_#F3E600]" />
+                                )}
+                                {subItem.title}
+                              </Link>
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </SidebarMenuItem>
+                );
+              }
+
               return (
                 <Collapsible
                   key={item.title}
@@ -170,39 +243,57 @@ function NavMain({ items, label }) {
                       <SidebarMenuButton
                         tooltip={item.title}
                         className={cn(
-                          "hover:bg-accent transition-colors",
-                          isActive &&
-                            "bg-accent text-accent-foreground font-medium",
+                          "relative transition-all duration-200 h-9",
+                          "hover:bg-white/5 hover:text-white text-gray-400",
+                          isActive && "text-[#F3E600] font-medium bg-white/5",
                         )}
                       >
+                        {isActive && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[#F3E600] rounded-r-sm shadow-[0_0_8px_rgba(243,230,0,0.5)]" />
+                        )}
                         <AnimatedIcon
                           icon={item.icon}
-                          className={cn("size-4", isActive && "text-primary")}
+                          className={cn(
+                            "size-4 transition-colors",
+                            isActive
+                              ? "text-[#F3E600]"
+                              : "text-gray-400 group-hover/collapsible:text-white",
+                          )}
                           type={isActive ? "pulse" : "hover"}
                         />
-                        <span>{item.title}</span>
+                        <span className="text-sm tracking-wide group-data-[collapsible=icon]:hidden">
+                          {item.title}
+                        </span>
                         <AnimatedIcon
                           icon={ChevronRight}
-                          className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                          className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 opacity-50 group-data-[collapsible=icon]:hidden"
                           type="rotate"
                         />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {item.items.map((subItem) => (
-                          <SidebarMenuSubItem key={subItem.url}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={location.pathname === subItem.url}
-                              className="hover:bg-accent data-[active=true]:bg-accent data-[active=true]:text-accent-foreground data-[active=true]:font-medium transition-colors"
-                            >
-                              <Link to={subItem.url}>
-                                <span className="text-sm">{subItem.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
+                      <SidebarMenuSub className="border-l-white/10 ml-5">
+                        {item.items.map((subItem) => {
+                          const isSubActive = location.pathname === subItem.url;
+                          return (
+                            <SidebarMenuSubItem key={subItem.url}>
+                              <SidebarMenuSubButton
+                                asChild
+                                isActive={isSubActive}
+                                className={cn(
+                                  "h-8 transition-colors text-xs",
+                                  isSubActive
+                                    ? "text-[#F3E600] bg-white/5 font-medium"
+                                    : "text-gray-500 hover:text-white hover:bg-transparent",
+                                )}
+                              >
+                                <Link to={subItem.url}>
+                                  <span>{subItem.title}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          );
+                        })}
                       </SidebarMenuSub>
                     </CollapsibleContent>
                   </SidebarMenuItem>
@@ -217,25 +308,36 @@ function NavMain({ items, label }) {
                   tooltip={item.title}
                   isActive={location.pathname === item.url}
                   className={cn(
-                    "hover:bg-accent transition-colors",
+                    "relative transition-all duration-200 h-9",
+                    "hover:bg-white/5 hover:text-white text-gray-400",
                     location.pathname === item.url &&
-                      "bg-accent text-accent-foreground font-medium",
+                      "text-[#F3E600] font-medium bg-white/5",
                   )}
                 >
-                  <Link to={item.url} className="flex items-center gap-2">
+                  <Link
+                    to={item.url}
+                    className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0"
+                  >
+                    {location.pathname === item.url && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[#F3E600] rounded-r-sm shadow-[0_0_8px_rgba(243,230,0,0.5)]" />
+                    )}
                     <AnimatedIcon
                       icon={item.icon}
                       className={cn(
-                        "size-4",
-                        location.pathname === item.url && "text-primary",
+                        "size-4 shrink-0 transition-colors",
+                        location.pathname === item.url
+                          ? "text-[#F3E600]"
+                          : "text-gray-400 group-hover:text-white",
                       )}
                       type={location.pathname === item.url ? "pulse" : "hover"}
                     />
-                    <span className="flex-1">{item.title}</span>
+                    <span className="flex-1 text-sm tracking-wide group-data-[collapsible=icon]:hidden">
+                      {item.title}
+                    </span>
                     {item.badge && (
                       <Badge
                         variant={item.badge.variant || "default"}
-                        className="ml-auto h-5 px-2 text-[10px] font-semibold bg-primary hover:bg-primary/90"
+                        className="ml-auto h-4 px-1.5 text-[9px] font-bold bg-[#F3E600] text-black rounded-sm border-none shadow-[0_0_5px_rgba(243,230,0,0.4)] group-data-[collapsible=icon]:hidden"
                       >
                         {item.badge.text}
                       </Badge>
@@ -266,60 +368,66 @@ function NavUser({ user, onLogout }) {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-accent hover:bg-accent transition-colors border-t border-border"
+              className="group-data-[collapsible=icon]:!p-2 hover:bg-white/5 data-[state=open]:bg-white/5 transition-colors ring-1 ring-white/5 hover:ring-white/10"
             >
-              <Avatar className="h-8 w-8 rounded-lg border-2 border-emerald-200">
-                <AvatarFallback className="rounded-lg bg-gradient-to-br from-primary to-accent text-primary-foreground font-semibold">
+              <Avatar className="h-8 w-8 rounded-sm ring-1 ring-white/20">
+                <AvatarFallback className="rounded-sm bg-[#1A1A1A] text-[#F3E600] font-bold font-mono text-xs">
                   {getInitials(user?.email)}
                 </AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold text-foreground">
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="truncate font-semibold text-white">
                   {user?.fullName || user?.email}
                 </span>
-                <span className="truncate text-xs text-muted-foreground font-medium">
-                  {ROLE_NAMES[user?.roleId] || "User"}
+                <span className="truncate text-[10px] text-gray-500 font-mono tracking-wider">
+                  {ROLE_NAMES[user?.roleId] || "USER"} :: {user?.id}
                 </span>
               </div>
               <AnimatedIcon
                 icon={ChevronsUpDown}
-                className="ml-auto size-4 text-muted-foreground"
+                className="ml-auto size-4 text-gray-500 group-data-[collapsible=icon]:hidden"
                 type="rotate"
               />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg border-border"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-md border border-white/10 bg-[#141414] text-gray-200"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg border-2 border-emerald-200">
-                  <AvatarFallback className="rounded-lg bg-gradient-to-br from-primary to-accent text-primary-foreground font-semibold">
+                <Avatar className="h-8 w-8 rounded-sm">
+                  <AvatarFallback className="rounded-sm bg-[#F3E600] text-black font-bold">
                     {getInitials(user?.email)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">
+                  <span className="truncate font-bold text-white">
                     {user?.fullName || user?.email}
                   </span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate text-xs text-gray-500">
                     {user?.email}
                   </span>
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/profile" className="cursor-pointer hover:bg-accent">
+            <DropdownMenuSeparator className="bg-white/10" />
+            <DropdownMenuItem
+              asChild
+              className="focus:bg-white/5 focus:text-white"
+            >
+              <Link to="/profile" className="cursor-pointer">
                 <AnimatedIcon icon={Users} className="mr-2 h-4 w-4" />
                 Hồ sơ
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/settings" className="cursor-pointer hover:bg-accent">
+            <DropdownMenuItem
+              asChild
+              className="focus:bg-white/5 focus:text-white"
+            >
+              <Link to="/settings" className="cursor-pointer">
                 <AnimatedIcon
                   icon={Settings}
                   className="mr-2 h-4 w-4"
@@ -328,9 +436,9 @@ function NavUser({ user, onLogout }) {
                 Cài đặt
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="bg-white/10" />
             <DropdownMenuItem
-              className="text-destructive cursor-pointer hover:bg-red-50 focus:bg-red-50"
+              className="text-red-400 cursor-pointer focus:bg-red-500/10 focus:text-red-400"
               onClick={onLogout}
             >
               <AnimatedIcon icon={LogOut} className="mr-2 h-4 w-4" type="tap" />
@@ -416,29 +524,33 @@ const AdminLayout = ({ children }) => {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon" className="border-r border-border">
-        <SidebarHeader className="border-b border-border bg-sidebar-background">
+      <Sidebar
+        collapsible="icon"
+        variant="inset"
+        className="[&_[data-sidebar=sidebar]]:!rounded-[24px] [&_[data-sidebar=sidebar]]:!border-[2px] [&_[data-sidebar=sidebar]]:!border-[#F3E600] [&_[data-sidebar=sidebar]]:shadow-[0_0_20px_rgba(243,230,0,0.15)] [&_[data-sidebar=sidebar]]:overflow-hidden bg-transparent pl-4 py-4"
+      >
+        <SidebarHeader className="bg-sidebar-background px-4 py-6">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
                 size="lg"
                 asChild
-                className="hover:bg-accent transition-colors"
+                className="hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!p-2"
               >
                 <Link to="/dashboard">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-md">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-sm bg-[#F3E600] text-black shadow-[0_0_10px_rgba(243,230,0,0.3)]">
                     <AnimatedIcon
                       icon={MapPin}
-                      className="size-4"
+                      className="size-5"
                       type="pulse"
                     />
                   </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-bold text-primary">
-                      Đi Đâu Giờ?
+                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                    <span className="font-bold text-white uppercase tracking-wider">
+                      Di Dau Gio
                     </span>
-                    <span className="truncate text-xs text-muted-foreground font-medium">
-                      Admin Panel
+                    <span className="text-[10px] text-gray-400 font-mono">
+                      ADMIN TERMINAL
                     </span>
                   </div>
                 </Link>
@@ -446,14 +558,14 @@ const AdminLayout = ({ children }) => {
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarHeader>
-        <SidebarContent className="bg-sidebar-background">
-          <NavMain items={menuData.main} label="Tổng quan" />
-          <NavMain items={menuData.management} label="Quản lý nội dung" />
-          <NavMain items={menuData.users} label="Người dùng" />
-          <NavMain items={menuData.system} label="Hệ thống" />
-          <NavMain items={menuData.settings} label="Cài đặt" />
+        <SidebarContent className="bg-sidebar-background px-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <NavMain items={menuData.main} label="Main" />
+          <NavMain items={menuData.management} label="Management" />
+          <NavMain items={menuData.users} label="Users" />
+          <NavMain items={menuData.system} label="System" />
+          <NavMain items={menuData.settings} label="Settings" />
         </SidebarContent>
-        <SidebarFooter>
+        <SidebarFooter className="bg-sidebar-background p-4 pb-6">
           <NavUser user={user} onLogout={handleLogout} />
         </SidebarFooter>
       </Sidebar>

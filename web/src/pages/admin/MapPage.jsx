@@ -1,7 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import usePlaceStore from "@/stores/placeStore";
 import useCategoryStore from "@/stores/categoryStore";
-import PlaceDetailDialog from "@/components/place/PlaceDetailDialog";
+
+// Dynamic import for heavy component
+const PlaceDetailDialog = lazy(
+  () => import("@/components/place/PlaceDetailDialog"),
+);
 import {
   Button,
   DropdownMenu,
@@ -356,11 +360,19 @@ const MapPage = () => {
         </div>
       </div>
       {/* Detail Dialog */}
-      <PlaceDetailDialog
-        place={selectedPlace}
-        open={isDetailOpen}
-        onOpenChange={setIsDetailOpen}
-      />
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        }
+      >
+        <PlaceDetailDialog
+          place={selectedPlace}
+          open={isDetailOpen}
+          onOpenChange={setIsDetailOpen}
+        />
+      </Suspense>
     </div>
   );
 };

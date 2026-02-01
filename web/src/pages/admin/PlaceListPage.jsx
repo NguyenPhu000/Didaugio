@@ -1,29 +1,32 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import {
-  Plus,
-  Search,
-  Filter,
-  MapPin,
-  Eye,
-  Edit,
-  Trash2,
-  MoreHorizontal,
-  Star,
-  CheckCircle,
-  XCircle,
-  Info,
-  Layers,
-  BarChart3,
-  Activity,
-  List,
-  Grid as GridIcon,
-} from "lucide-react";
+import Plus from "lucide-react/dist/esm/icons/plus";
+import Search from "lucide-react/dist/esm/icons/search";
+import Filter from "lucide-react/dist/esm/icons/filter";
+import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import Edit from "lucide-react/dist/esm/icons/edit";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
+import Star from "lucide-react/dist/esm/icons/star";
+import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
+import XCircle from "lucide-react/dist/esm/icons/x-circle";
+import Info from "lucide-react/dist/esm/icons/info";
+import Layers from "lucide-react/dist/esm/icons/layers";
+import BarChart3 from "lucide-react/dist/esm/icons/bar-chart-3";
+import Activity from "lucide-react/dist/esm/icons/activity";
+import List from "lucide-react/dist/esm/icons/list";
+import GridIcon from "lucide-react/dist/esm/icons/grid";
 import AnimatedIcon from "@/components/ui/animated-icon";
+import { lazy, Suspense } from "react";
 import usePlaceStore from "@/stores/placeStore";
 import useCategoryStore from "@/stores/categoryStore";
 import * as districtService from "@/apis/districtService";
-import PlaceDetailDialog from "@/components/place/PlaceDetailDialog";
+
+// Dynamic import for heavy component
+const PlaceDetailDialog = lazy(
+  () => import("@/components/place/PlaceDetailDialog"),
+);
 import {
   Button,
   Input,
@@ -270,28 +273,24 @@ const PlaceListPage = () => {
       <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none"></div>
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
-        {/* Header Section */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-4">
-          <div className="flex items-center gap-4">
-            <div className="w-2 h-16 bg-primary"></div>
+        {/* Header */}
+        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-6">
+            <div className="accent-bar h-16"></div>
             <div>
-              <h1 className="text-5xl font-black uppercase tracking-tighter leading-none text-foreground font-technical">
-                QUẢN LÝ ĐỊA ĐIỂM
-              </h1>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-[10px] bg-black text-white px-1 font-mono uppercase">
-                  DATABASE // VER 2.0
+              <h1 className="tim-title">QUẢN LÝ ĐỊA ĐIỂM</h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1">
+                  DATABASE // PLACES
                 </span>
-                <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
-                  KIỂM SOÁT VÀ ĐIỀU PHỐI DỮ LIỆU
-                </p>
+                <p className="tim-meta">KIỂM SOÁT VÀ ĐIỀU PHỐI DỮ LIỆU</p>
               </div>
             </div>
           </div>
           {hasPermission("place.create") && (
             <Button
               onClick={handleCreate}
-              className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all font-bold uppercase rounded-none border border-black"
+              className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
             >
               <Plus className="mr-2 h-4 w-4" />
               KHỞI TẠO ĐỊA ĐIỂM
@@ -621,15 +620,23 @@ const PlaceListPage = () => {
       </div>
 
       {/* Detail Dialog */}
-      <PlaceDetailDialog
-        place={selectedPlace}
-        open={detailDialogOpen}
-        onOpenChange={setDetailDialogOpen}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onApprove={(place) => handleStatusChange(place, "approved")}
-        onReject={(place) => handleStatusChange(place, "rejected")}
-      />
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        }
+      >
+        <PlaceDetailDialog
+          place={selectedPlace}
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onApprove={(place) => handleStatusChange(place, "approved")}
+          onReject={(place) => handleStatusChange(place, "rejected")}
+        />
+      </Suspense>
     </div>
   );
 };

@@ -4,7 +4,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import toast from "react-hot-toast";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import EyeOff from "lucide-react/dist/esm/icons/eye-off";
+import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import {
   Button,
   Input,
@@ -32,7 +34,7 @@ const registerSchema = z
       .min(6, "Mat khau phai co it nhat 6 ky tu")
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Mat khau phai co it nhat 1 chu hoa, 1 chu thuong va 1 so"
+        "Mat khau phai co it nhat 1 chu hoa, 1 chu thuong va 1 so",
       ),
     confirmPassword: z.string().min(1, "Xac nhan mat khau khong duoc de trong"),
   })

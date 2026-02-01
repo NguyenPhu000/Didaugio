@@ -1,18 +1,16 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
-import {
-  LogOut,
-  Menu,
-  X,
-  LayoutDashboard,
-  MapPin,
-  Users,
-  Settings,
-  Mail,
-  Key,
-  FileText,
-  Monitor,
-} from "lucide-react";
+import LogOut from "lucide-react/dist/esm/icons/log-out";
+import Menu from "lucide-react/dist/esm/icons/menu";
+import X from "lucide-react/dist/esm/icons/x";
+import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
+import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import Users from "lucide-react/dist/esm/icons/users";
+import Settings from "lucide-react/dist/esm/icons/settings";
+import Mail from "lucide-react/dist/esm/icons/mail";
+import Key from "lucide-react/dist/esm/icons/key";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import Monitor from "lucide-react/dist/esm/icons/monitor";
 import { useState } from "react";
 import {
   Button,
