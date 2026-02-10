@@ -11,5 +11,100 @@ skills
 .agents/skills
 .vscode
 
-
+.agents
 .git_bk
+.agent
+.env
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# AI Agent skills directories (React Best Practices)
+.cursor/
+.claude/
+.gemini/
+.agent/
+.cursorrules
+node_modules
+# Keep environment variables out of version control
+thunder-collection.json
+.env
+scripts
+/generated/prisma
+prisma/migrations
+tests
+scripts
+check_db.js 
+debug_turf.js
+import_boundaries.js 
+inspect_geojson.js
+inspect_ward_geojson.js
+test_lookup.js
+scripts
+thunder-collection.json
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+
+.env.development
+.env.production
+.env
