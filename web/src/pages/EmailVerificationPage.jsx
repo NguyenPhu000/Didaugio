@@ -16,7 +16,8 @@ import {
   CardContent,
   Button,
 } from "@/components/ui";
-import { emailVerificationService } from "@/services";
+import { emailVerificationService } from "@/apis";
+import { formatDate } from "@/utils/dateUtils";
 
 const EmailVerificationPage = () => {
   const [verifications, setVerifications] = useState([]);
@@ -92,7 +93,7 @@ const EmailVerificationPage = () => {
   const handleManualVerify = async (userId, email) => {
     if (
       !window.confirm(
-        `Xác thực thủ công email ${email}?\n\nLưu ý: Chỉ sử dụng khi user không nhận được email hoặc token đã hết hạn.`
+        `Xác thực thủ công email ${email}?\n\nLưu ý: Chỉ sử dụng khi user không nhận được email hoặc token đã hết hạn.`,
       )
     )
       return;
@@ -136,164 +137,178 @@ const EmailVerificationPage = () => {
     };
   };
 
-  // Format date
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString("vi-VN");
-  };
-
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Mail className="w-8 h-8 text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold">Xác Thực Email</h1>
-            <p className="text-gray-500">Quản lý email verification tokens</p>
+    <div className="min-h-screen p-8 bg-background relative">
+      {/* Enhanced grid background with dots */}
+      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none"></div>
+
+      <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
+        {/* Header */}
+        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-6">
+            <div className="accent-bar h-16"></div>
+            <div>
+              <h1 className="tim-title">XÁC THỰC EMAIL</h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1">
+                  SYSTEM // EMAIL VERIFICATION
+                </span>
+                <p className="tim-meta">QUẢN LÝ XÁC THỰC EMAIL</p>
+              </div>
+            </div>
+          </div>
+          <Button
+            onClick={() => fetchVerifications()}
+            disabled={loading}
+            variant="outline"
+            className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="tim-meta">TỔNG SỐ</span>
+              <Mail className="h-5 w-5 text-gray-400" />
+            </div>
+            <div className="text-4xl font-black tracking-tighter">
+              {stats.total}
+            </div>
+          </div>
+          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all border-l-4 border-l-[#F3E600]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="tim-meta">CHỜ XÁC THỰC</span>
+              <Clock className="h-5 w-5 text-[#F3E600]" />
+            </div>
+            <div className="text-4xl font-black tracking-tighter text-[#F3E600]">
+              {stats.pending}
+            </div>
+          </div>
+          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="tim-meta">ĐÃ XÁC THỰC</span>
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            </div>
+            <div className="text-4xl font-black tracking-tighter text-green-600">
+              {stats.verified}
+            </div>
+          </div>
+          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="tim-meta">HẾT HẠN</span>
+              <XCircle className="h-5 w-5 text-red-600" />
+            </div>
+            <div className="text-4xl font-black tracking-tighter text-red-600">
+              {stats.expired}
+            </div>
           </div>
         </div>
-        <Button onClick={() => fetchVerifications()} disabled={loading}>
-          <RefreshCw
-            className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
-          />
-          Làm mới
-        </Button>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-gray-500 text-sm">Tổng số</p>
-              <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-gray-500 text-sm">Chờ xác thực</p>
-              <p className="text-3xl font-bold text-yellow-600">
-                {stats.pending}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-gray-500 text-sm">Đã xác thực</p>
-              <p className="text-3xl font-bold text-green-600">
-                {stats.verified}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-gray-500 text-sm">Hết hạn</p>
-              <p className="text-3xl font-bold text-red-600">{stats.expired}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters & Table */}
-      <Card>
-        <CardHeader>
+        {/* Filter Bar */}
+        <div className="bg-white border border-black p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <CardTitle>Danh sách Email Verifications</CardTitle>
+            <span className="tim-meta">BỘ LỌC DỮ LIỆU</span>
             <select
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="px-4 py-2 border rounded-lg"
+              className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50"
             >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="pending">Chờ xác thực</option>
-              <option value="verified">Đã xác thực</option>
-              <option value="expired">Hết hạn</option>
+              <option value="all">TẤT CẢ TRẠNG THÁI</option>
+              <option value="pending">CHỜ XÁC THỰC</option>
+              <option value="verified">ĐÃ XÁC THỰC</option>
+              <option value="expired">HẾT HẠN</option>
             </select>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        {/* Data Table */}
+        <div className="bg-white border border-black shadow-sm overflow-hidden">
           {loading ? (
-            <div className="text-center py-8">
-              <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
-              <p className="text-gray-500 mt-2">Đang tải...</p>
+            <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
+              <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
+              <span className="font-mono text-xs uppercase text-gray-500">
+                LOADING DATA...
+              </span>
             </div>
           ) : verifications.length === 0 ? (
-            <div className="text-center py-8">
-              <Mail className="w-12 h-12 mx-auto text-gray-300" />
-              <p className="text-gray-500 mt-2">Không có dữ liệu</p>
+            <div className="flex flex-col items-center justify-center py-20">
+              <Mail className="h-12 w-12 text-gray-300 mb-4" />
+              <div className="font-bold uppercase text-gray-400">
+                KHÔNG TÌM THẤY DỮ LIỆU
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-black text-white tim-table-header">
+                    <th className="p-4 border-r border-black/20 w-[60px]">
                       ID
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Email
+                    <th className="p-4 border-r border-black/20">EMAIL</th>
+                    <th className="p-4 border-r border-black/20">USER</th>
+                    <th className="p-4 border-r border-black/20">TRẠNG THÁI</th>
+                    <th className="p-4 border-r border-black/20">NGÀY TẠO</th>
+                    <th className="p-4 border-r border-black/20">HẾT HẠN</th>
+                    <th className="p-4 border-r border-black/20">
+                      NGÀY XÁC THỰC
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      User
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Trạng thái
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Ngày tạo
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Hết hạn
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Ngày xác thực
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                      Thao tác
-                    </th>
+                    <th className="p-4 text-center">THAO TÁC</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-black/5">
                   {verifications.map((verification) => {
                     const statusInfo = getStatusInfo(verification);
                     return (
-                      <tr key={verification.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm">{verification.id}</td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {verification.email}
+                      <tr
+                        key={verification.id}
+                        className="hover:bg-yellow-50 group transition-colors"
+                      >
+                        <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
+                          #{verification.id}
                         </td>
-                        <td className="px-4 py-3 text-sm">
-                          {verification.user?.email || "-"}
+                        <td className="p-4 border-r border-black/5">
+                          <div className="font-mono text-sm font-medium">
+                            {verification.email}
+                          </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="p-4 border-r border-black/5">
+                          <div className="font-mono text-sm text-gray-600">
+                            {verification.user?.email || "—"}
+                          </div>
+                        </td>
+                        <td className="p-4 border-r border-black/5">
                           <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${statusInfo.color}`}
                           >
                             {statusInfo.icon}
                             {statusInfo.label}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          {formatDate(verification.createdAt)}
+                        <td className="p-4 border-r border-black/5">
+                          <div className="font-mono text-sm text-gray-500">
+                            {formatDate(verification.createdAt)}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          {formatDate(verification.expiresAt)}
+                        <td className="p-4 border-r border-black/5">
+                          <div className="font-mono text-sm text-gray-500">
+                            {formatDate(verification.expiresAt)}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          {verification.verifiedAt
-                            ? formatDate(verification.verifiedAt)
-                            : "-"}
+                        <td className="p-4 border-r border-black/5">
+                          <div className="font-mono text-sm text-gray-500">
+                            {verification.verifiedAt
+                              ? formatDate(verification.verifiedAt)
+                              : "—"}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="p-4 text-center">
                           {!verification.verifiedAt ? (
                             <div className="flex gap-2 justify-center">
                               <Button
@@ -302,32 +317,31 @@ const EmailVerificationPage = () => {
                                 onClick={() =>
                                   handleResend(
                                     verification.userId,
-                                    verification.email
+                                    verification.email,
                                   )
                                 }
-                                title="Gửi lại email xác thực"
+                                className="rounded-none border border-black hover:bg-black hover:text-white uppercase text-[10px] font-bold h-8"
                               >
-                                <Send className="w-4 h-4 mr-1" />
-                                Gửi lại
+                                <Send className="w-3 h-3 mr-1" />
+                                GỬI
                               </Button>
                               <Button
                                 size="sm"
-                                variant="default"
                                 onClick={() =>
                                   handleManualVerify(
                                     verification.userId,
-                                    verification.email
+                                    verification.email,
                                   )
                                 }
-                                title="Xác thực thủ công (không cần token)"
+                                className="rounded-none bg-[#F3E600] hover:bg-black text-black hover:text-white border border-black uppercase text-[10px] font-bold h-8"
                               >
-                                <ShieldCheck className="w-4 h-4 mr-1" />
-                                Xác thực
+                                <ShieldCheck className="w-3 h-3 mr-1" />
+                                XÁC THỰC
                               </Button>
                             </div>
                           ) : (
-                            <span className="text-green-600 text-sm">
-                              ✓ Đã xác thực
+                            <span className="text-green-600 text-xs uppercase font-mono font-bold">
+                              ✓ ĐÃ XÁC THỰC
                             </span>
                           )}
                         </td>
@@ -341,32 +355,37 @@ const EmailVerificationPage = () => {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                Trước
-              </Button>
-              <span className="text-sm text-gray-600">
-                Trang {currentPage} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-              >
-                Sau
-              </Button>
+            <div className="flex items-center justify-between p-4 border-t border-black bg-gray-50 font-mono text-xs uppercase">
+              <div>HIỂN THỊ {verifications.length} KẾT QUẢ</div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-none border-black h-8 hover:bg-black hover:text-white"
+                >
+                  TRƯỚC
+                </Button>
+                <span className="flex items-center px-4 font-bold">
+                  {currentPage}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="rounded-none border-black h-8 hover:bg-black hover:text-white"
+                >
+                  SAU
+                </Button>
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

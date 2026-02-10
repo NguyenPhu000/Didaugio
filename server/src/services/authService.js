@@ -4,6 +4,12 @@ import crypto from "crypto";
 import prisma from "../config/prismaClient.js";
 import { USER_STATUS } from "../config/constants.js";
 import {
+  ERROR_MESSAGES,
+  ERROR_CODES,
+  SUCCESS_MESSAGES,
+} from "../config/messages.js";
+import eventEmitter, { EVENTS } from "../utils/eventEmitter.js";
+import {
   loginSchema,
   registerSchema,
   changePasswordSchema,
@@ -17,16 +23,15 @@ import * as passwordResetService from "./passwordResetService.js";
 
 // =============================================================================
 // AUTH SERVICE
-// Hệ thống xác thực JWT hoàn chỉnh với:
-// - Access Token (ngắn hạn) + Refresh Token (dài hạn)
-// - Session management trong database
-// - Account lockout sau nhiều lần đăng nhập sai
-// - Forgot password / Reset password
-// - Email verification
+// Hệ thống xác thực JWT hoàn chỉnh
 // =============================================================================
 
 class ServiceError extends Error {
-  constructor(message, statusCode = 400, errorCode = "SERVICE_ERROR") {
+  constructor(
+    message,
+    statusCode = 400,
+    errorCode = ERROR_CODES.VALIDATION_ERROR,
+  ) {
     super(message);
     this.statusCode = statusCode;
     this.errorCode = errorCode;
@@ -37,44 +42,29 @@ class ServiceError extends Error {
 // CONFIG
 // =============================================================================
 const JWT_SECRET = process.env.JWT_SECRET || "didaugio-secret-key-2026";
-const JWT_REFRESH_SECRET =
-  process.env.JWT_REFRESH_SECRET || "didaugio-refresh-secret-2026";
-const ACCESS_TOKEN_EXPIRES = process.env.ACCESS_TOKEN_EXPIRES || "15m"; // 15 phút
-const REFRESH_TOKEN_EXPIRES = process.env.REFRESH_TOKEN_EXPIRES || "7d"; // 7 ngày
-const REFRESH_TOKEN_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000; // 7 ngày in milliseconds
+const ACCESS_TOKEN_EXPIRES = process.env.ACCESS_TOKEN_EXPIRES || "15m";
+const REFRESH_TOKEN_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // Account lockout config
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 phút
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
-/**
- * Generate Access Token (ngắn hạn)
- */
 const generateAccessToken = (payload) => {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES });
 };
 
-/**
- * Generate Refresh Token (dài hạn)
- */
 const generateRefreshToken = () => {
   return crypto.randomBytes(64).toString("hex");
 };
 
-/**
- * Generate random token for email verification / password reset
- */
 const generateRandomToken = () => {
   return crypto.randomBytes(32).toString("hex");
 };
 
-/**
- * Hash token for storage
- */
 const hashToken = (token) => {
   return crypto.createHash("sha256").update(token).digest("hex");
 };
@@ -85,29 +75,35 @@ const hashToken = (token) => {
 export const register = async (data) => {
   const validated = registerSchema.parse(data);
 
-  // Kiểm tra email đã tồn tại
+  // 🚫 BLOCK: GUEST role cannot register via web
+  // GUEST is reserved for mobile app only
+  if (validated.roleId && validated.roleId === 5) {
+    throw new ServiceError(
+      "GUEST role registration is not allowed via web. Mobile app only.",
+      400,
+      "GUEST_REGISTRATION_NOT_ALLOWED",
+    );
+  }
+
+  // Check existing email
   const existingUser = await prisma.user.findUnique({
     where: { email: validated.email },
   });
 
   if (existingUser) {
-    throw new ServiceError("Email da duoc su dung", 400, "EMAIL_EXISTS");
+    throw new ServiceError(ERROR_MESSAGES.EXISTED, 400, ERROR_CODES.EXISTED);
   }
 
   // Hash password
   const hashedPassword = await bcrypt.hash(validated.password, 12);
 
-  // Tạo verification token
-  const verificationToken = generateRandomToken();
-  const hashedVerificationToken = hashToken(verificationToken);
-
-  // Tạo user và profile
+  // Create user - Default to BUSINESS role (3) for web registration
   const user = await prisma.user.create({
     data: {
       email: validated.email,
       password: hashedPassword,
-      roleId: 5, // Default: user
-      status: "active",
+      roleId: validated.roleId || 3, // Default: BUSINESS, not GUEST
+      status: USER_STATUS.ACTIVE, // Assuming active by default for now
       emailVerified: false,
       profile: {
         create: {
@@ -121,7 +117,7 @@ export const register = async (data) => {
     },
   });
 
-  // Gửi email verification (sử dụng service mới)
+  // Send verification email
   try {
     await emailVerificationService.create({
       userId: user.id,
@@ -130,14 +126,19 @@ export const register = async (data) => {
     });
   } catch (error) {
     console.error("Failed to create email verification:", error);
-    // Không throw error để không block việc đăng ký
   }
+
+  // Emit event
+  eventEmitter.emit(EVENTS.USER.REGISTERED, {
+    userId: user.id,
+    email: user.email,
+  });
 
   const { password, ...userWithoutPassword } = user;
 
   return {
     user: userWithoutPassword,
-    message: "Dang ky thanh cong. Vui long xac thuc email.",
+    message: "Đăng ký thành công. Vui lòng xác thực email.",
   };
 };
 
@@ -147,7 +148,6 @@ export const register = async (data) => {
 export const login = async (data, clientInfo = {}) => {
   const validated = loginSchema.parse(data);
 
-  // Tìm user theo email
   const user = await prisma.user.findUnique({
     where: { email: validated.email },
     include: {
@@ -158,36 +158,34 @@ export const login = async (data, clientInfo = {}) => {
 
   if (!user) {
     throw new ServiceError(
-      "Email hoac mat khau khong dung",
+      ERROR_MESSAGES.UNAUTHORIZED,
       401,
-      "INVALID_CREDENTIALS"
+      ERROR_CODES.UNAUTHORIZED,
     );
   }
 
-  // Kiểm tra account lockout
+  // Check lockout
   if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
     const remainingTime = Math.ceil(
-      (new Date(user.lockedUntil) - new Date()) / 60000
+      (new Date(user.lockedUntil) - new Date()) / 60000,
     );
     throw new ServiceError(
-      `Tai khoan bi khoa. Vui long thu lai sau ${remainingTime} phut`,
+      `Tài khoản bị khóa. Vui lòng thử lại sau ${remainingTime} phút`,
       423,
-      "ACCOUNT_LOCKED"
+      "ACCOUNT_LOCKED",
     );
   }
 
   // Check password
   const isValidPassword = await bcrypt.compare(
     validated.password,
-    user.password
+    user.password,
   );
 
   if (!isValidPassword) {
-    // Tăng số lần đăng nhập sai
     const failedCount = user.failedLoginCount + 1;
     const updateData = { failedLoginCount: failedCount };
 
-    // Khóa tài khoản nếu vượt quá giới hạn
     if (failedCount >= MAX_FAILED_ATTEMPTS) {
       updateData.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION);
     }
@@ -200,33 +198,43 @@ export const login = async (data, clientInfo = {}) => {
     const remainingAttempts = MAX_FAILED_ATTEMPTS - failedCount;
     if (remainingAttempts > 0) {
       throw new ServiceError(
-        `Email hoac mat khau khong dung. Con ${remainingAttempts} lan thu`,
+        `Email hoặc mật khẩu không đúng. Còn ${remainingAttempts} lần thử`,
         401,
-        "INVALID_CREDENTIALS"
+        ERROR_CODES.UNAUTHORIZED,
       );
     } else {
       throw new ServiceError(
-        "Tai khoan da bi khoa do dang nhap sai qua nhieu lan",
+        "Tài khoản đã bị khóa do đăng nhập sai quá nhiều lần",
         423,
-        "ACCOUNT_LOCKED"
+        "ACCOUNT_LOCKED",
       );
     }
   }
 
-  // Kiểm tra trạng thái tài khoản
+  // 🚫 BLOCK: GUEST role cannot login to web admin
+  // GUEST is reserved for mobile app only
+  if (user.roleId === 5) {
+    throw new ServiceError(
+      "GUEST users cannot login to web admin. Mobile app only.",
+      403,
+      "GUEST_LOGIN_NOT_ALLOWED",
+    );
+  }
+
+  // Check status
   if (user.status === USER_STATUS.INACTIVE) {
     throw new ServiceError(
-      "Tai khoan chua duoc kich hoat",
+      ERROR_MESSAGES.UNAUTHORIZED,
       403,
-      "ACCOUNT_INACTIVE"
+      "ACCOUNT_INACTIVE",
     );
   }
 
   if (user.status === USER_STATUS.BANNED) {
-    throw new ServiceError("Tai khoan da bi cam", 403, "ACCOUNT_BANNED");
+    throw new ServiceError("Tài khoản đã bị cấm", 403, "ACCOUNT_BANNED");
   }
 
-  // Reset failed login count và cập nhật last login
+  // Reset lockout
   await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -236,7 +244,7 @@ export const login = async (data, clientInfo = {}) => {
     },
   });
 
-  // Tạo tokens
+  // Generate tokens
   const accessToken = generateAccessToken({
     userId: user.id,
     email: user.email,
@@ -246,7 +254,7 @@ export const login = async (data, clientInfo = {}) => {
 
   const refreshToken = generateRefreshToken();
 
-  // Lưu refresh token vào session
+  // Create session
   await prisma.userSession.create({
     data: {
       userId: user.id,
@@ -258,13 +266,16 @@ export const login = async (data, clientInfo = {}) => {
     },
   });
 
-  // Xóa các session cũ đã hết hạn
+  // Cleanup old sessions
   await prisma.userSession.deleteMany({
     where: {
       userId: user.id,
       expiresAt: { lt: new Date() },
     },
   });
+
+  // Emit event
+  eventEmitter.emit(EVENTS.USER.LOGGED_IN, { userId: user.id });
 
   const { password, ...userWithoutPassword } = user;
 
@@ -283,56 +294,48 @@ export const refreshAccessToken = async (data) => {
   const validated = refreshTokenSchema.parse(data);
   const hashedToken = hashToken(validated.refreshToken);
 
-  // Tìm session với refresh token
   const session = await prisma.userSession.findUnique({
     where: { refreshToken: hashedToken },
     include: {
       user: {
-        include: {
-          role: true,
-        },
+        include: { role: true },
       },
     },
   });
 
   if (!session) {
     throw new ServiceError(
-      "Refresh token khong hop le",
+      ERROR_MESSAGES.UNAUTHORIZED,
       401,
-      "INVALID_REFRESH_TOKEN"
+      ERROR_CODES.INVALID_TOKEN,
     );
   }
 
-  // Kiểm tra token hết hạn
   if (new Date(session.expiresAt) < new Date()) {
-    // Xóa session hết hạn
     await prisma.userSession.delete({ where: { id: session.id } });
     throw new ServiceError(
-      "Refresh token da het han",
+      ERROR_MESSAGES.UNAUTHORIZED,
       401,
-      "REFRESH_TOKEN_EXPIRED"
+      "REFRESH_TOKEN_EXPIRED",
     );
   }
 
-  // Kiểm tra session còn active
   if (!session.isActive) {
     throw new ServiceError(
-      "Session da bi vo hieu hoa",
+      ERROR_MESSAGES.UNAUTHORIZED,
       401,
-      "SESSION_INACTIVE"
+      "SESSION_INACTIVE",
     );
   }
 
-  // Kiểm tra user status
   if (session.user.status !== USER_STATUS.ACTIVE) {
     throw new ServiceError(
-      "Tai khoan khong hoat dong",
+      ERROR_MESSAGES.UNAUTHORIZED,
       403,
-      "ACCOUNT_INACTIVE"
+      "ACCOUNT_INACTIVE",
     );
   }
 
-  // Tạo access token mới
   const accessToken = generateAccessToken({
     userId: session.user.id,
     email: session.user.email,
@@ -340,7 +343,6 @@ export const refreshAccessToken = async (data) => {
     roleName: session.user.role.name,
   });
 
-  // Cập nhật last used
   await prisma.userSession.update({
     where: { id: session.id },
     data: { lastUsedAt: new Date() },
@@ -353,36 +355,32 @@ export const refreshAccessToken = async (data) => {
 };
 
 // =============================================================================
-// ĐĂNG XUẤT
+// LOGOUT
 // =============================================================================
 export const logout = async (refreshToken) => {
   if (!refreshToken) {
-    return { message: "Dang xuat thanh cong" };
+    return { message: SUCCESS_MESSAGES.ACTION_SUCCESS };
   }
 
   const hashedToken = hashToken(refreshToken);
 
-  // Xóa session
   await prisma.userSession.deleteMany({
     where: { refreshToken: hashedToken },
   });
 
-  return { message: "Dang xuat thanh cong" };
+  return { message: SUCCESS_MESSAGES.ACTION_SUCCESS };
 };
 
-/**
- * Đăng xuất tất cả thiết bị
- */
 export const logoutAll = async (userId) => {
   await prisma.userSession.deleteMany({
     where: { userId },
   });
 
-  return { message: "Da dang xuat tat ca thiet bi" };
+  return { message: SUCCESS_MESSAGES.ACTION_SUCCESS };
 };
 
 // =============================================================================
-// LẤY THÔNG TIN USER HIỆN TẠI
+// GET ME
 // =============================================================================
 export const getMe = async (userId) => {
   const user = await prisma.user.findUnique({
@@ -394,7 +392,11 @@ export const getMe = async (userId) => {
   });
 
   if (!user) {
-    throw new ServiceError("User khong ton tai", 404, "USER_NOT_FOUND");
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   const { password, ...userWithoutPassword } = user;
@@ -402,7 +404,7 @@ export const getMe = async (userId) => {
 };
 
 // =============================================================================
-// ĐỔI MẬT KHẨU
+// PASSWORD OPERATIONS
 // =============================================================================
 export const changePassword = async (userId, data) => {
   const validated = changePasswordSchema.parse(data);
@@ -412,124 +414,104 @@ export const changePassword = async (userId, data) => {
   });
 
   if (!user) {
-    throw new ServiceError("User khong ton tai", 404, "USER_NOT_FOUND");
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
-  // Kiểm tra mật khẩu hiện tại
   const isValidPassword = await bcrypt.compare(
     validated.currentPassword,
-    user.password
+    user.password,
   );
 
   if (!isValidPassword) {
     throw new ServiceError(
-      "Mat khau hien tai khong dung",
+      "Mật khẩu hiện tại không đúng",
       400,
-      "INVALID_CURRENT_PASSWORD"
+      ERROR_CODES.VALIDATION_ERROR,
     );
   }
 
-  // Hash mật khẩu mới
   const hashedPassword = await bcrypt.hash(validated.newPassword, 12);
 
-  // Cập nhật mật khẩu
   await prisma.user.update({
     where: { id: userId },
     data: { password: hashedPassword },
   });
 
-  // Xóa tất cả session (bắt buộc đăng nhập lại)
   await prisma.userSession.deleteMany({
     where: { userId },
   });
 
-  return { message: "Doi mat khau thanh cong. Vui long dang nhap lai." };
+  return { message: "Đổi mật khẩu thành công. Vui lòng đăng nhập lại." };
 };
 
-// =============================================================================
-// QUÊN MẬT KHẨU
-// =============================================================================
 export const forgotPassword = async (data, ipAddress = null) => {
   const validated = forgotPasswordSchema.parse(data);
 
-  // Sử dụng passwordResetService (lưu vào bảng PasswordReset + gửi email)
   const result = await passwordResetService.create(validated.email, ipAddress);
 
   return {
-    message: "Neu email ton tai, ban se nhan duoc link dat lai mat khau",
-    // Trong môi trường dev, trả về token để test (nếu service trả về)
+    message: "Nếu email tồn tại, bạn sẽ nhận được link đặt lại mật khẩu",
     ...(process.env.NODE_ENV === "development" &&
       result?.rawToken && { resetToken: result.rawToken }),
   };
 };
 
-// =============================================================================
-// ĐẶT LẠI MẬT KHẨU
-// =============================================================================
 export const resetPassword = async (data) => {
   const validated = resetPasswordSchema.parse(data);
 
-  // Sử dụng passwordResetService để reset (tự động hash password và cleanup)
   const result = await passwordResetService.reset(
     validated.token,
-    validated.newPassword
+    validated.newPassword,
   );
 
   return {
     message:
-      result.message || "Dat lai mat khau thanh cong. Vui long dang nhap lai.",
+      result.message || "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.",
   };
 };
 
 // =============================================================================
-// XÁC THỰC EMAIL
+// EMAIL VERIFICATION
 // =============================================================================
 export const verifyEmail = async (data) => {
   const validated = verifyEmailSchema.parse(data);
 
   try {
-    // Sử dụng emailVerificationService để verify
     await emailVerificationService.verify(validated.token);
-    return { message: "Xac thuc email thanh cong" };
+    return { message: "Xác thực email thành công" };
   } catch (error) {
-    // Chuyển đổi error từ service sang ServiceError
-    if (error.statusCode) {
-      throw error; // Đã là ServiceError
-    }
+    if (error.statusCode) throw error;
     throw new ServiceError(
-      error.message || "Token khong hop le",
+      error.message || ERROR_MESSAGES.VALIDATION_ERROR,
       400,
-      "INVALID_VERIFICATION_TOKEN"
+      ERROR_CODES.VALIDATION_ERROR,
     );
   }
 };
 
-// =============================================================================
-// GỬI LẠI EMAIL XÁC THỰC
-// =============================================================================
 export const resendVerificationEmail = async (userId) => {
   try {
-    // Sử dụng emailVerificationService để resend
     await emailVerificationService.resend(userId);
-    return { message: "Da gui lai email xac thuc" };
+    return { message: "Đã gửi lại email xác thực" };
   } catch (error) {
-    // Chuyển đổi error từ service sang ServiceError
-    if (error.statusCode) {
-      throw error; // Đã là ServiceError
-    }
+    if (error.statusCode) throw error;
     throw new ServiceError(
-      error.message || "Khong the gui email",
+      error.message || "Không thể gửi email",
       error.statusCode || 400,
-      "RESEND_FAILED"
+      "RESEND_FAILED",
     );
   }
 };
 
 // =============================================================================
-// LẤY DANH SÁCH SESSION
+// SESSIONS
 // =============================================================================
 export const getSessions = async (userId) => {
-  const sessions = await prisma.userSession.findMany({
+  return await prisma.userSession.findMany({
     where: {
       userId,
       isActive: true,
@@ -545,32 +527,28 @@ export const getSessions = async (userId) => {
     },
     orderBy: { lastUsedAt: "desc" },
   });
-
-  return sessions;
 };
 
-// =============================================================================
-// XÓA SESSION CỤ THỂ
-// =============================================================================
 export const revokeSession = async (userId, sessionId) => {
   const session = await prisma.userSession.findFirst({
     where: { id: sessionId, userId },
   });
 
   if (!session) {
-    throw new ServiceError("Session khong ton tai", 404, "SESSION_NOT_FOUND");
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   await prisma.userSession.delete({
     where: { id: sessionId },
   });
 
-  return { message: "Da xoa session" };
+  return { message: SUCCESS_MESSAGES.ACTION_SUCCESS };
 };
 
-// =============================================================================
-// VERIFY ACCESS TOKEN (dùng cho middleware)
-// =============================================================================
 export const verifyAccessToken = (token) => {
   try {
     return jwt.verify(token, JWT_SECRET);

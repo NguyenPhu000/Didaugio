@@ -15,7 +15,7 @@ import {
   CardDescription,
   Label,
 } from "@/components/ui";
-import { authService } from "@/services";
+import { authService } from "@/apis";
 
 const resetPasswordSchema = z
   .object({

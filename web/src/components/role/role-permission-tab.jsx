@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/Label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -13,21 +13,21 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PermissionCheckbox } from "./permission-checkbox";
-import { roleService } from "@/services/roleService";
-import { permissionService } from "@/services/permissionService";
-import { MODULE_DISPLAY_NAMES } from "@/config/permissions";
+import { roleService } from "@/apis/roleService";
+import { permissionService } from "@/apis/permissionService";
+import { MODULE_DISPLAY_NAMES } from "@/constants/permissions";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   Search,
-  CheckCircle2,
+  CheckCircle,
   XCircle,
-  Save,
-  Lightbulb,
   ChevronDown,
-  ChevronUp,
+  Save,
+  RefreshCw,
+  SearchX,
 } from "lucide-react";
-import { toast } from "sonner";
 
 export function RolePermissionTab({ role, onUpdated, onClose }) {
   const [loading, setLoading] = useState(true);
@@ -56,11 +56,14 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         setAllPermissions(permissionsResponse.permissions);
 
         const currentPermissionIds = new Set();
-        if (rolePermissionsResponse?.success && rolePermissionsResponse.data?.permissions) {
+        if (
+          rolePermissionsResponse?.success &&
+          rolePermissionsResponse.data?.permissions
+        ) {
           Object.values(rolePermissionsResponse.data.permissions).forEach(
             (perms) => {
               perms.forEach((p) => currentPermissionIds.add(p.id));
-            }
+            },
           );
         }
 
@@ -71,7 +74,10 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         setExpandedModules(new Set(modules.slice(0, 3)));
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || "Không thể tải danh sách quyền";
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Không thể tải danh sách quyền";
       toast.error(errorMsg);
     } finally {
       setLoading(false);
@@ -123,7 +129,10 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
       setSaving(true);
       const permissionIds = Array.from(selectedPermissions);
 
-      const response = await roleService.updateRolePermissions(role.id, permissionIds);
+      const response = await roleService.updateRolePermissions(
+        role.id,
+        permissionIds,
+      );
 
       if (response?.success) {
         toast.success(response.message || "Cập nhật quyền thành công");
@@ -136,7 +145,10 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         onClose();
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || "Không thể cập nhật quyền";
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Không thể cập nhật quyền";
       toast.error(errorMsg);
     } finally {
       setSaving(false);
@@ -158,7 +170,7 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         const matched = perms.filter(
           (p) =>
             p.name.toLowerCase().includes(lowerSearch) ||
-            p.displayName.toLowerCase().includes(lowerSearch)
+            p.displayName.toLowerCase().includes(lowerSearch),
         );
         if (matched.length > 0) {
           filtered[module] = matched;
@@ -178,7 +190,7 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
     Object.values(filteredPermissions).forEach((perms) => {
       totalFiltered += perms.length;
       selectedFiltered += perms.filter((p) =>
-        selectedPermissions.has(p.id)
+        selectedPermissions.has(p.id),
       ).length;
     });
 
@@ -213,34 +225,43 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
   if (loading) {
     return (
       <div className="space-y-4 py-4">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-10 w-full border border-black" />
+        <Skeleton className="h-10 w-full border border-black" />
+        <Skeleton className="h-40 w-full border border-black" />
+        <Skeleton className="h-40 w-full border border-black" />
       </div>
     );
   }
 
   return (
     <div className="space-y-4 pb-4">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Search and Filter */}
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="relative flex-1 w-full">
+          <div className="absolute left-0 top-0 h-full w-10 bg-black flex items-center justify-center text-white">
+            <Search className="h-4 w-4" />
+          </div>
           <Input
-            placeholder="Tìm quyền..."
+            placeholder="TÌM KIẾM QUYỀN..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-12 h-10 rounded-none border border-black bg-white focus-visible:ring-0 focus-visible:border-black focus:bg-yellow-50 uppercase text-xs font-mono"
           />
         </div>
         <Select value={moduleFilter} onValueChange={setModuleFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Lọc theo module" />
+          <SelectTrigger className="w-full sm:w-[200px] h-10 rounded-none border border-black bg-white uppercase text-xs font-bold">
+            <SelectValue placeholder="LỌC MODULE" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả modules</SelectItem>
+          <SelectContent className="rounded-none border-2 border-black bg-white">
+            <SelectItem value="all" className="uppercase font-mono text-xs">
+              TẤT CẢ MODULES
+            </SelectItem>
             {Object.keys(allPermissions).map((module) => (
-              <SelectItem key={module} value={module}>
+              <SelectItem
+                key={module}
+                value={module}
+                className="uppercase font-mono text-xs"
+              >
                 {MODULE_DISPLAY_NAMES[module] || module}
               </SelectItem>
             ))}
@@ -248,81 +269,116 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         </Select>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <p className="text-sm font-medium">
-            Đã chọn: {stats.selected} / {stats.total} quyền
-          </p>
-          <Progress value={stats.percentage} className="h-2 w-[200px]" />
+      {/* Progress and Actions */}
+      <div className="bg-white p-4 border border-black flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="space-y-2 w-full sm:w-auto">
+          <div className="flex items-center justify-between sm:justify-start gap-3 text-xs font-bold text-black uppercase tracking-wider">
+            <span className="font-mono">
+              ĐÃ CHỌN: {stats.selected} / {stats.total}
+            </span>
+            <span className="bg-[#F3E600] text-black px-2 py-0.5 font-mono">
+              {Math.round(stats.percentage)}%
+            </span>
+          </div>
+          <div className="w-full sm:w-[240px] h-1 bg-gray-200 border border-gray-300">
+            <div
+              className="h-full bg-[#F3E600] transition-all duration-300"
+              style={{ width: `${stats.percentage}%` }}
+            />
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             size="sm"
             onClick={handleSelectAll}
             disabled={stats.selected === stats.total}
+            className="flex-1 sm:flex-none rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
           >
-            <CheckCircle2 className="h-4 w-4 mr-2" />
-            Chọn tất cả
+            <CheckCircle className="h-3 w-3 mr-2" />
+            CHỌN TẤT
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleDeselectAll}
             disabled={stats.selected === 0}
+            className="flex-1 sm:flex-none rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
           >
-            <XCircle className="h-4 w-4 mr-2" />
-            Bỏ chọn
+            <XCircle className="h-3 w-3 mr-2" />
+            BỎ CHỌN
           </Button>
         </div>
       </div>
 
+      {/* Permissions List */}
       <div className="space-y-3">
         {Object.keys(filteredPermissions).length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            Không tìm thấy quyền nào
+          <div className="text-center py-12 text-gray-500 bg-white border border-black border-dashed">
+            <SearchX className="h-12 w-12 mx-auto mb-2 opacity-30" />
+            <p className="uppercase font-mono text-xs">KHÔNG TÌM THẤY QUYỀN</p>
           </div>
         ) : (
           Object.entries(filteredPermissions).map(([module, permissions]) => {
             const moduleSelected = permissions.filter((p) =>
-              selectedPermissions.has(p.id)
+              selectedPermissions.has(p.id),
             ).length;
             const moduleTotal = permissions.length;
             const isExpanded = expandedModules.has(module);
 
             return (
-              <div key={module} className="border rounded-lg overflow-hidden">
+              <div
+                key={module}
+                className="border border-black overflow-hidden transition-all hover:shadow-hard"
+              >
                 <div
-                  className="flex items-center justify-between p-4 bg-muted/50 cursor-pointer hover:bg-muted"
+                  className="flex items-center justify-between p-4 bg-white cursor-pointer select-none hover:bg-gray-50 border-l-4 border-l-transparent hover:border-l-[#F3E600] transition-all"
                   onClick={() => toggleModuleExpand(module)}
                 >
                   <div className="flex items-center gap-3">
-                    <Checkbox
-                      checked={moduleSelected === moduleTotal}
-                      onCheckedChange={() => handleToggleModule(module)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <div>
-                      <Label className="font-semibold cursor-pointer">
-                        {MODULE_DISPLAY_NAMES[module] || module}
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        {moduleSelected}/{moduleTotal} quyền
-                      </p>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={
+                          moduleSelected === moduleTotal && moduleTotal > 0
+                            ? true
+                            : moduleSelected > 0
+                              ? "indeterminate"
+                              : false
+                        }
+                        onCheckedChange={() => handleToggleModule(module)}
+                        className="data-[state=checked]:bg-[#F3E600] data-[state=checked]:border-black data-[state=checked]:text-black rounded-none border-2"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-1 bg-black"></div>
+                      <div>
+                        <Label className="font-bold text-black text-sm cursor-pointer uppercase tracking-tight">
+                          {MODULE_DISPLAY_NAMES[module] || module}
+                        </Label>
+                        <p className="text-xs text-gray-500 font-mono mt-0.5 uppercase">
+                          {moduleSelected}/{moduleTotal} QUYỀN
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{module}</Badge>
-                    {isExpanded ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
+                  <div className="flex items-center gap-3">
+                    <Badge
+                      variant="secondary"
+                      className="bg-black text-white rounded-none px-2.5 py-1 font-mono text-xs uppercase"
+                    >
+                      {module}
+                    </Badge>
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 text-black transition-transform duration-200",
+                        isExpanded ? "rotate-180" : "",
+                      )}
+                    />
                   </div>
                 </div>
 
                 {isExpanded && (
-                  <div className="p-4 space-y-2 bg-background">
+                  <div className="p-4 space-y-2 bg-gray-50 border-t-2 border-black">
                     {permissions.map((permission) => (
                       <PermissionCheckbox
                         key={permission.id}
@@ -341,18 +397,30 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         )}
       </div>
 
-      <div className="flex justify-end gap-2 pt-4 border-t">
-        <Button variant="outline" onClick={onClose}>
-          Hủy
+      {/* Footer Actions */}
+      <div className="flex justify-end gap-3 pt-4 mt-6 border-t-2 border-black sticky bottom-0 bg-white p-4 -mx-4 -mb-4 shadow-hard z-10 sm:static sm:bg-transparent sm:p-0 sm:shadow-none">
+        <Button
+          variant="outline"
+          onClick={onClose}
+          className="rounded-none border border-black hover:bg-gray-100 uppercase text-xs font-bold"
+        >
+          HỦY
         </Button>
-        <Button onClick={handleSave} disabled={!hasChanges || saving}>
+        <Button
+          onClick={handleSave}
+          disabled={!hasChanges || saving}
+          className="rounded-none bg-black hover:bg-[#F3E600] hover:text-black text-white border border-black shadow-hard uppercase text-xs font-bold"
+        >
           {saving ? (
-            <>Đang lưu...</>
+            <span className="flex items-center gap-2">
+              <RefreshCw className="h-3 w-3 animate-spin" />
+              ĐANG LƯU...
+            </span>
           ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              Lưu thay đổi
-            </>
+            <span className="flex items-center gap-2">
+              <Save className="h-3 w-3" />
+              LƯU THAY ĐỔI
+            </span>
           )}
         </Button>
       </div>

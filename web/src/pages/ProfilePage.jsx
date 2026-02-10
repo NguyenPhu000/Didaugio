@@ -16,6 +16,9 @@ import {
   Shield,
   Bell,
   KeyRound,
+  Activity,
+  Lock,
+  AlertCircle,
 } from "lucide-react";
 import {
   Button,
@@ -35,27 +38,12 @@ import {
   Separator,
 } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
-import { profileService } from "@/services/profileService";
-import { ROLE_NAMES } from "@/config/constants";
+import { profileService } from "@/apis/profileService";
+import { ROLE_NAMES } from "@/constants/constants";
 import { ChangePasswordModal } from "@/components/user/ChangePasswordModal";
+import { profileSchema } from "@/schemas/user";
 
-const profileSchema = z.object({
-  fullName: z
-    .string()
-    .min(2, "Ho ten phai co it nhat 2 ky tu")
-    .max(100, "Ho ten qua dai")
-    .optional()
-    .or(z.literal("")),
-  phone: z
-    .string()
-    .max(20, "So dien thoai qua dai")
-    .optional()
-    .or(z.literal("")),
-  dateOfBirth: z.string().optional().or(z.literal("")),
-  gender: z.enum(["male", "female", "other", ""]).optional(),
-  address: z.string().max(500, "Dia chi qua dai").optional().or(z.literal("")),
-  bio: z.string().max(1000, "Gioi thieu qua dai").optional().or(z.literal("")),
-});
+// const profileSchema = z.object({...}) // Removed
 
 const ProfilePage = () => {
   const { user, setUser } = useAuthStore();
@@ -149,320 +137,414 @@ const ProfilePage = () => {
 
   if (isFetching) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <div className="w-12 h-12 border-4 border-black border-t-[#F3E600] rounded-full animate-spin"></div>
+        <span className="font-mono text-xs uppercase tracking-widest text-gray-500">
+          LOADING PROFILE DATA...
+        </span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Thong tin ca nhan</h1>
-        <p className="text-muted-foreground">
-          Quan ly thong tin tai khoan cua ban
-        </p>
-      </div>
+    <div className="min-h-screen p-8 bg-background relative">
+      {/* Grid Background */}
+      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none"></div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="profile" className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Thong tin
-          </TabsTrigger>
-          <TabsTrigger value="security" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            Bao mat
-          </TabsTrigger>
-          <TabsTrigger
-            value="notifications"
-            className="flex items-center gap-2"
-          >
-            <Bell className="h-4 w-4" />
-            Thong bao
-          </TabsTrigger>
-        </TabsList>
+      <div className="relative z-10 space-y-6 max-w-[1400px] mx-auto">
+        {/* Header - T.I.M Style */}
+        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-6">
+            <div className="accent-bar h-16"></div>
+            <div>
+              <h1 className="tim-title">PROFILE SETTINGS</h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1">
+                  SYSTEM // USER PROFILE
+                </span>
+                <p className="tim-meta">QUẢN LÝ THÔNG TIN CÁ NHÂN</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="bg-white border-2 border-black p-3">
+              <Activity className="h-5 w-5" />
+            </div>
+          </div>
+        </div>
 
-        {/* Profile Tab */}
-        <TabsContent value="profile" className="space-y-6">
-          {/* Avatar Section */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-6">
+        <Tabs defaultValue="profile" className="space-y-6">
+          {/* Tactical Tabs */}
+          <TabsList className="bg-white border-2 border-black p-1 rounded-none h-auto">
+            <TabsTrigger
+              value="profile"
+              className="flex items-center gap-2 rounded-none data-[state=active]:bg-[#F3E600] data-[state=active]:text-black font-bold uppercase text-xs px-6 h-10"
+            >
+              <User className="h-4 w-4" />
+              THÔNG TIN
+            </TabsTrigger>
+            <TabsTrigger
+              value="security"
+              className="flex items-center gap-2 rounded-none data-[state=active]:bg-[#F3E600] data-[state=active]:text-black font-bold uppercase text-xs px-6 h-10"
+            >
+              <Shield className="h-4 w-4" />
+              BẢO MẬT
+            </TabsTrigger>
+            <TabsTrigger
+              value="notifications"
+              className="flex items-center gap-2 rounded-none data-[state=active]:bg-[#F3E600] data-[state=active]:text-black font-bold uppercase text-xs px-6 h-10"
+            >
+              <Bell className="h-4 w-4" />
+              THÔNG BÁO
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Profile Tab */}
+          <TabsContent value="profile" className="space-y-6">
+            {/* Avatar Section - T.I.M Style */}
+            <div className="bg-white border-2 border-black p-6 shadow-sm">
+              <div className="flex items-center gap-8">
                 <div className="relative">
-                  <Avatar className="h-24 w-24">
+                  <div className="h-32 w-32 border-4 border-black bg-gray-900 overflow-hidden relative group">
                     {profile?.profile?.avatar ? (
                       <img
                         src={profile.profile.avatar}
                         alt="Avatar"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover grayscale group-hover:grayscale-0 transition-all"
                       />
                     ) : (
-                      <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                      <div className="h-full w-full flex items-center justify-center bg-black text-[#F3E600] text-4xl font-black font-mono">
                         {getInitials(
                           profile?.profile?.fullName,
-                          profile?.email
+                          profile?.email,
                         )}
-                      </AvatarFallback>
+                      </div>
                     )}
-                  </Avatar>
+                    {/* Accent corner */}
+                    <div className="absolute bottom-0 right-0 w-8 h-8 bg-[#F3E600] border-t-2 border-l-2 border-black"></div>
+                  </div>
                   <button
-                    className="absolute bottom-0 right-0 p-1.5 bg-primary text-primary-foreground rounded-full shadow-md hover:bg-primary/90"
-                    onClick={() => toast("Chuc nang dang phat trien")}
+                    className="absolute -bottom-2 -right-2 p-2 bg-black border-2 border-white text-[#F3E600] hover:bg-[#F3E600] hover:text-black transition-all"
+                    onClick={() => toast("Chức năng đang phát triển")}
                   >
                     <Camera className="h-4 w-4" />
                   </button>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold">
+                <div className="flex-1">
+                  <h3 className="text-2xl font-black uppercase tracking-tight mb-2">
                     {profile?.profile?.fullName || profile?.email}
                   </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {profile?.email}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                      {ROLE_NAMES[profile?.roleId] || "User"}
+                  <div className="flex items-center gap-3 mb-3">
+                    <Mail className="h-4 w-4 text-gray-400" />
+                    <p className="font-mono text-sm text-gray-600">
+                      {profile?.email}
+                    </p>
+                  </div>
+                  <div className="inline-flex items-center gap-2 bg-[#F3E600] border-2 border-black px-3 py-1">
+                    <Shield className="h-4 w-4" />
+                    <span className="text-xs font-black uppercase font-mono">
+                      {ROLE_NAMES[profile?.roleId] || "USER"}
                     </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Profile Form - T.I.M Style */}
+            <div className="bg-white border-2 border-black shadow-sm">
+              <div className="bg-black text-white p-4 border-b-2 border-black">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-8 bg-[#F3E600]"></div>
+                  <div>
+                    <h3 className="tim-meta text-white mb-1">
+                      BASIC INFORMATION
+                    </h3>
+                    <p className="text-xs text-gray-400 uppercase font-mono">
+                      CẬP NHẬT THÔNG TIN CÁ NHÂN
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {/* Full Name */}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="fullName"
+                        className="flex items-center gap-2 tim-meta"
+                      >
+                        <User className="h-4 w-4" />
+                        HỌ VÀ TÊN
+                      </Label>
+                      <Input
+                        id="fullName"
+                        placeholder="NHẬP HỌ VÀ TÊN"
+                        className="rounded-none border-2 border-black h-11 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                        {...register("fullName")}
+                      />
+                      {errors.fullName && (
+                        <p className="text-xs text-red-600 font-mono uppercase">
+                          {errors.fullName.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Email (readonly) */}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="email"
+                        className="flex items-center gap-2 tim-meta"
+                      >
+                        <Mail className="h-4 w-4" />
+                        EMAIL
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="email"
+                          value={profile?.email || ""}
+                          disabled
+                          className="rounded-none border-2 border-gray-300 h-11 font-mono text-sm bg-gray-100 text-gray-600"
+                        />
+                        <Lock className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
+                      </div>
+                      <p className="text-xs text-gray-500 uppercase font-mono">
+                        EMAIL KHÔNG THỂ THAY ĐỔI
+                      </p>
+                    </div>
+
+                    {/* Phone */}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="phone"
+                        className="flex items-center gap-2 tim-meta"
+                      >
+                        <Phone className="h-4 w-4" />
+                        SỐ ĐIỆN THOẠI
+                      </Label>
+                      <Input
+                        id="phone"
+                        placeholder="0123 456 789"
+                        className="rounded-none border-2 border-black h-11 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                        {...register("phone")}
+                      />
+                      {errors.phone && (
+                        <p className="text-xs text-red-600 font-mono uppercase">
+                          {errors.phone.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Date of Birth */}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="dateOfBirth"
+                        className="flex items-center gap-2 tim-meta"
+                      >
+                        <Calendar className="h-4 w-4" />
+                        NGÀY SINH
+                      </Label>
+                      <Input
+                        id="dateOfBirth"
+                        type="date"
+                        className="rounded-none border-2 border-black h-11 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                        {...register("dateOfBirth")}
+                      />
+                    </div>
+
+                    {/* Gender */}
+                    <div className="space-y-2">
+                      <Label htmlFor="gender" className="tim-meta">
+                        GIỚI TÍNH
+                      </Label>
+                      <select
+                        id="gender"
+                        className="flex h-11 w-full rounded-none border-2 border-black bg-white px-3 py-2 font-mono text-sm uppercase focus:outline-none focus:border-[#F3E600] disabled:cursor-not-allowed disabled:opacity-50"
+                        {...register("gender")}
+                      >
+                        <option value="">CHỌN GIỚI TÍNH</option>
+                        <option value="male">NAM</option>
+                        <option value="female">NỮ</option>
+                        <option value="other">KHÁC</option>
+                      </select>
+                    </div>
+
+                    {/* Address */}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="address"
+                        className="flex items-center gap-2 tim-meta"
+                      >
+                        <MapPin className="h-4 w-4" />
+                        ĐỊA CHỈ
+                      </Label>
+                      <Input
+                        id="address"
+                        placeholder="NHẬP ĐỊA CHỈ"
+                        className="rounded-none border-2 border-black h-11 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                        {...register("address")}
+                      />
+                      {errors.address && (
+                        <p className="text-xs text-red-600 font-mono uppercase">
+                          {errors.address.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bio */}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label
+                      htmlFor="bio"
+                      className="flex items-center gap-2 tim-meta"
+                    >
+                      <FileText className="h-4 w-4" />
+                      GIỚI THIỆU BẢN THÂN
+                    </Label>
+                    <textarea
+                      id="bio"
+                      rows={4}
+                      className="flex w-full rounded-none border-2 border-black bg-white px-4 py-3 text-sm font-mono uppercase placeholder:text-gray-400 focus:outline-none focus:border-[#F3E600] disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                      placeholder="VIẾT VÀI DÒNG VỀ BẢN THÂN..."
+                      {...register("bio")}
+                    />
+                    {errors.bio && (
+                      <p className="text-xs text-red-600 font-mono uppercase">
+                        {errors.bio.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="md:col-span-2 border-t-2 border-black pt-6 flex justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => reset()}
+                      disabled={!isDirty}
+                      className="rounded-none border-2 border-black h-11 px-6 hover:bg-gray-100 uppercase font-black text-xs"
+                    >
+                      HỦY
+                    </Button>
+                    <Button
+                      type="submit"
+                      loading={isLoading}
+                      disabled={!isDirty}
+                      className="rounded-none border-2 border-black bg-[#F3E600] text-black hover:bg-black hover:text-[#F3E600] h-11 px-8 uppercase font-black text-xs transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      LƯU THAY ĐỔI
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Security Tab - T.I.M Style */}
+          <TabsContent value="security" className="space-y-6">
+            {/* Change Password Section */}
+            <div className="bg-white border-2 border-black shadow-sm">
+              <div className="bg-black text-white p-4 border-b-2 border-black flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-8 bg-[#F3E600]"></div>
+                  <div>
+                    <h3 className="tim-meta text-white mb-1 flex items-center gap-2">
+                      <KeyRound className="h-4 w-4" />
+                      CHANGE PASSWORD
+                    </h3>
+                    <p className="text-xs text-gray-400 uppercase font-mono">
+                      THAY ĐỔI MẬT KHẨU BẢO VỆ TÀI KHOẢN
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="flex items-start gap-4 p-4 bg-yellow-50 border-2 border-[#F3E600]">
+                  <AlertCircle className="h-6 w-6 text-black mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-black uppercase mb-2">
+                      BẢO MẬT TÀI KHOẢN
+                    </p>
+                    <p className="text-xs text-gray-600 uppercase font-mono leading-relaxed">
+                      MẬT KHẨU MẠNH BAO GỒM CHỮ HOA, CHỮ THƯỜNG, SỐ VÀ KÝ TỰ ĐẶC
+                      BIỆT. NÊN ĐỔI MẬT KHẨU ĐỊNH KỲ ĐỂ TĂNG CƯỜNG BẢO MẬT.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setChangePasswordOpen(true)}
+                  className="rounded-none border-2 border-black bg-black text-[#F3E600] hover:bg-[#F3E600] hover:text-black h-11 px-8 uppercase font-black text-xs transition-all"
+                >
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  ĐỔI MẬT KHẨU
+                </Button>
+              </div>
+            </div>
+
+            {/* Login Sessions Section */}
+            <div className="bg-white border-2 border-black shadow-sm">
+              <div className="bg-black text-white p-4 border-b-2 border-black">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-8 bg-[#F3E600]"></div>
+                  <div>
+                    <h3 className="tim-meta text-white mb-1 flex items-center gap-2">
+                      <Activity className="h-4 w-4" />
+                      LOGIN SESSIONS
+                    </h3>
+                    <p className="text-xs text-gray-400 uppercase font-mono">
+                      QUẢN LÝ CÁC THIẾT BỊ ĐĂNG NHẬP
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6">
+                <Button
+                  variant="outline"
+                  onClick={() => toast("Chức năng đang phát triển")}
+                  className="rounded-none border-2 border-black h-11 px-6 hover:bg-gray-100 uppercase font-black text-xs"
+                >
+                  XEM TẤT CẢ PHIÊN
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Notifications Tab - T.I.M Style */}
+          <TabsContent value="notifications" className="space-y-6">
+            <div className="bg-white border-2 border-black shadow-sm">
+              <div className="bg-black text-white p-4 border-b-2 border-black">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-8 bg-[#F3E600]"></div>
+                  <div>
+                    <h3 className="tim-meta text-white mb-1 flex items-center gap-2">
+                      <Bell className="h-4 w-4" />
+                      NOTIFICATION SETTINGS
+                    </h3>
+                    <p className="text-xs text-gray-400 uppercase font-mono">
+                      TÙY CHỈNH CÁCH BẠN NHẬN THÔNG BÁO
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-gray-300">
+                  <Bell className="h-16 w-16 text-gray-300 mb-4" />
+                  <p className="font-mono text-xs text-gray-400 uppercase tracking-wider">
+                    CHỨC NĂNG ĐANG ĐƯỢC PHÁT TRIỂN...
                   </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
 
-          {/* Profile Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Thong tin co ban</CardTitle>
-              <CardDescription>
-                Cap nhat thong tin ca nhan cua ban
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2">
-                  {/* Full Name */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="fullName"
-                      className="flex items-center gap-2"
-                    >
-                      <User className="h-4 w-4" />
-                      Ho va ten
-                    </Label>
-                    <Input
-                      id="fullName"
-                      placeholder="Nhap ho va ten"
-                      {...register("fullName")}
-                    />
-                    {errors.fullName && (
-                      <p className="text-sm text-destructive">
-                        {errors.fullName.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Email (readonly) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="flex items-center gap-2">
-                      <Mail className="h-4 w-4" />
-                      Email
-                    </Label>
-                    <Input
-                      id="email"
-                      value={profile?.email || ""}
-                      disabled
-                      className="bg-muted"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Email khong the thay doi
-                    </p>
-                  </div>
-
-                  {/* Phone */}
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      So dien thoai
-                    </Label>
-                    <Input
-                      id="phone"
-                      placeholder="0123 456 789"
-                      {...register("phone")}
-                    />
-                    {errors.phone && (
-                      <p className="text-sm text-destructive">
-                        {errors.phone.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Date of Birth */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="dateOfBirth"
-                      className="flex items-center gap-2"
-                    >
-                      <Calendar className="h-4 w-4" />
-                      Ngay sinh
-                    </Label>
-                    <Input
-                      id="dateOfBirth"
-                      type="date"
-                      {...register("dateOfBirth")}
-                    />
-                  </div>
-
-                  {/* Gender */}
-                  <div className="space-y-2">
-                    <Label htmlFor="gender">Gioi tinh</Label>
-                    <select
-                      id="gender"
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      {...register("gender")}
-                    >
-                      <option value="">Chon gioi tinh</option>
-                      <option value="male">Nam</option>
-                      <option value="female">Nu</option>
-                      <option value="other">Khac</option>
-                    </select>
-                  </div>
-
-                  {/* Address */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="address"
-                      className="flex items-center gap-2"
-                    >
-                      <MapPin className="h-4 w-4" />
-                      Dia chi
-                    </Label>
-                    <Input
-                      id="address"
-                      placeholder="Nhap dia chi"
-                      {...register("address")}
-                    />
-                    {errors.address && (
-                      <p className="text-sm text-destructive">
-                        {errors.address.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bio */}
-                <div className="space-y-2">
-                  <Label htmlFor="bio" className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Gioi thieu ban than
-                  </Label>
-                  <textarea
-                    id="bio"
-                    rows={4}
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                    placeholder="Viet vai dong ve ban than..."
-                    {...register("bio")}
-                  />
-                  {errors.bio && (
-                    <p className="text-sm text-destructive">
-                      {errors.bio.message}
-                    </p>
-                  )}
-                </div>
-
-                <Separator />
-
-                {/* Submit Button */}
-                <div className="flex justify-end">
-                  <Button
-                    type="submit"
-                    loading={isLoading}
-                    disabled={!isDirty}
-                    className="min-w-[120px]"
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    Luu thay doi
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Security Tab */}
-        <TabsContent value="security" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <KeyRound className="h-5 w-5" />
-                Doi mat khau
-              </CardTitle>
-              <CardDescription>
-                Thay doi mat khau de bao ve tai khoan cua ban
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
-                <Shield className="h-5 w-5 text-primary mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Bao mat tai khoan</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Mat khau manh bao gom chu hoa, chu thuong, so va ky tu dac
-                    biet. Nen doi mat khau dinh ky de tang cuong bao mat.
-                  </p>
-                </div>
-              </div>
-              <Button
-                onClick={() => setChangePasswordOpen(true)}
-                className="w-full sm:w-auto"
-              >
-                <KeyRound className="mr-2 h-4 w-4" />
-                Doi mat khau
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Phien dang nhap</CardTitle>
-              <CardDescription>
-                Quan ly cac thiet bi dang dang nhap
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button
-                variant="outline"
-                onClick={() => toast("Chuc nang dang phat trien")}
-              >
-                Xem tat ca phien
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Notifications Tab */}
-        <TabsContent value="notifications" className="space-y-6">
-          <Card>
-            {/* Change Password Modal */}
-            <ChangePasswordModal
-              open={changePasswordOpen}
-              onOpenChange={setChangePasswordOpen}
-            />
-            <CardHeader>
-              <CardTitle>Cai dat thong bao</CardTitle>
-              <CardDescription>
-                Tuy chinh cach ban nhan thong bao
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Chuc nang dang duoc phat trien...
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        open={changePasswordOpen}
+        onOpenChange={setChangePasswordOpen}
+      />
     </div>
   );
 };

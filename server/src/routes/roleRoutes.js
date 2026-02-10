@@ -3,8 +3,12 @@ import * as roleController from "../controllers/roleController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
+import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
 
 const router = express.Router();
+
+// 🔒 SECURITY: Block GUEST role from all role management routes
+router.use(authenticate, blockGuestFromAdmin);
 
 // =============================================================================
 // ROLE ROUTES - API ENDPOINTS
@@ -19,7 +23,7 @@ router.get(
   "/",
   authenticate,
   requirePermission("roles.view"),
-  roleController.getRoles
+  roleController.getRoles,
 );
 
 /**
@@ -31,7 +35,7 @@ router.get(
   "/:id",
   authenticate,
   requirePermission("roles.view_detail"),
-  roleController.getRoleById
+  roleController.getRoleById,
 );
 
 /**
@@ -43,7 +47,7 @@ router.get(
   "/:id/permissions",
   authenticate,
   requirePermission("roles.view_detail"),
-  roleController.getRolePermissions
+  roleController.getRolePermissions,
 );
 
 /**
@@ -62,7 +66,7 @@ router.put(
     getRecordId: (req) => parseInt(req.params.id),
     getNewData: (req) => ({ permissionIds: req.body.permissionIds }),
   }),
-  roleController.updateRolePermissions
+  roleController.updateRolePermissions,
 );
 
 /**
@@ -75,7 +79,7 @@ router.get(
   "/:id/users",
   authenticate,
   requirePermission("roles.view_users"),
-  roleController.getRoleUsers
+  roleController.getRoleUsers,
 );
 
 export default router;

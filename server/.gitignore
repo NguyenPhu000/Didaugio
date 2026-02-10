@@ -1,5 +1,17 @@
 node_modules
 # Keep environment variables out of version control
+thunder-collection.json
 .env
-
+scripts
 /generated/prisma
+prisma/migrations
+tests
+scripts
+check_db.js 
+debug_turf.js
+import_boundaries.js 
+inspect_geojson.js
+inspect_ward_geojson.js
+test_lookup.js
+scripts
+thunder-collection.json

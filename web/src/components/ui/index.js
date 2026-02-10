@@ -1,6 +1,6 @@
-export { Button, buttonVariants } from "./button";
-export { Input } from "./input";
-export { Spinner } from "./spinner";
+export { Button, buttonVariants } from "./Button";
+export { Input } from "./Input";
+export { Spinner } from "./Spinner";
 export {
   Card,
   CardHeader,
@@ -8,12 +8,12 @@ export {
   CardTitle,
   CardDescription,
   CardContent,
-} from "./card";
-export { Label } from "./label";
-export { Separator } from "./separator";
+} from "./Card";
+export { Label } from "./Label";
+export { Separator } from "./Separator";
 export { Skeleton } from "./skeleton";
-export { Avatar, AvatarImage, AvatarFallback } from "./avatar";
-export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";
+export { Avatar, AvatarImage, AvatarFallback } from "./Avatar";
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./Tabs";
 export {
   Dialog,
   DialogPortal,
@@ -25,7 +25,7 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
-} from "./dialog";
+} from "./Dialog";
 export {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -58,3 +58,4 @@ export {
   SelectSeparator,
 } from "./select";
 export { Checkbox } from "./checkbox";
+export { Slider } from "./slider";

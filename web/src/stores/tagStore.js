@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import * as tagService from "@/services/tagService";
+import * as tagService from "@/apis/tagService";
 
 /**
  * TAG STORE

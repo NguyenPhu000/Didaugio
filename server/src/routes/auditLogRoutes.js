@@ -2,8 +2,12 @@ import express from "express";
 import * as auditLogController from "../controllers/auditLogController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { hasPermission } from "../middlewares/permissionMiddleware.js";
+import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
 
 const router = express.Router();
+
+// 🔒 SECURITY: Block GUEST role from audit logs
+router.use(authenticate, blockGuestFromAdmin);
 
 /**
  * @route   GET /api/audit-logs
@@ -14,7 +18,7 @@ router.get(
   "/",
   authenticate,
   hasPermission("audit_log.view"),
-  auditLogController.getAll
+  auditLogController.getAll,
 );
 
 /**
@@ -26,7 +30,7 @@ router.get(
   "/:id",
   authenticate,
   hasPermission("audit_log.view"),
-  auditLogController.getById
+  auditLogController.getById,
 );
 
 export default router;

@@ -11,9 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from "@/components/ui/Dialog";
 import { Button, Input, Label } from "@/components/ui";
-import { authService } from "@/services";
+import { authService } from "@/apis";
 
 const changePasswordSchema = z
   .object({

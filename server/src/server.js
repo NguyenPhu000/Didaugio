@@ -14,20 +14,26 @@ import permissionRoutes from "./routes/permissionRoutes.js";
 import userPermissionRoutes from "./routes/userPermissionRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import tagRoutes from "./routes/tagRoutes.js";
+import placeRoutes from "./routes/placeRoutes.js";
+import districtRoutes from "./routes/districtRoutes.js";
+import wardRoutes from "./routes/wardRoutes.js";
+import boundaryRoutes from "./routes/boundaryRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import prisma from "./config/prismaClient.js";
+import { initNotificationService } from "./services/notificationService.js";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Middleware - Cấu hình cho Base64 images (Rule 5.6)
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+// Middleware - Cấu hình cho Base64 images
+app.use(express.json({ limit: "100mb" }));
+app.use(express.urlencoded({ limit: "100mb", extended: true }));
 app.use(cors());
-app.use(bodyParser.json({ limit: "50mb" }));
-app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
+app.use(bodyParser.json({ limit: "100mb" }));
+app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -40,6 +46,11 @@ app.use("/api/roles", roleRoutes);
 app.use("/api/permissions", permissionRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/tags", tagRoutes);
+app.use("/api/places", placeRoutes);
+app.use("/api/districts", districtRoutes);
+app.use("/api/wards", wardRoutes);
+app.use("/api/boundaries", boundaryRoutes); // Map boundaries & GeoJSON
+app.use("/api/settings", settingsRoutes); // System settings & configuration
 app.use("/api", userPermissionRoutes);
 app.use("/api", userRoutes);
 
@@ -68,6 +79,9 @@ app.get("/", async (req, res) => {
     });
   }
 });
+
+// Initialize Services
+initNotificationService();
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

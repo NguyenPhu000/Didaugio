@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { userPermissionService } from "@/services/userPermissionService";
-import { Search, Settings, UserCog, Users as UsersIcon } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
+import { userPermissionService } from "@/apis/userPermissionService";
 import { toast } from "sonner";
 import { UserPermissionModal } from "./user-permission-modal";
+import { Search, UserCog, Users, Settings } from "lucide-react";
 
 export function RoleUsersTab({ role }) {
   const [users, setUsers] = useState([]);
@@ -37,7 +37,10 @@ export function RoleUsersTab({ role }) {
         setUsers([]);
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || "Không thể tải danh sách users";
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Không thể tải danh sách users";
       toast.error(errorMsg);
       setUsers([]);
     } finally {
@@ -96,16 +99,16 @@ export function RoleUsersTab({ role }) {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 py-4">
         {[...Array(5)].map((_, i) => (
           <div
             key={i}
-            className="flex items-center gap-3 p-4 border rounded-lg"
+            className="flex items-center gap-3 p-4 border border-black"
           >
-            <Skeleton className="h-10 w-10 rounded-full" />
+            <Skeleton className="h-10 w-10 border border-gray-300" />
             <div className="flex-1">
-              <Skeleton className="h-4 w-48 mb-2" />
-              <Skeleton className="h-3 w-32" />
+              <Skeleton className="h-4 w-48 mb-2 border border-gray-300" />
+              <Skeleton className="h-3 w-32 border border-gray-300" />
             </div>
           </div>
         ))}
@@ -117,91 +120,119 @@ export function RoleUsersTab({ role }) {
     <div className="space-y-4 pb-4">
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="absolute left-0 top-0 h-full w-10 bg-black flex items-center justify-center text-white">
+            <Search className="h-4 w-4" />
+          </div>
           <Input
-            placeholder="Tìm user theo email hoặc tên..."
+            placeholder="TÌM USER THEO EMAIL HOẶC TÊN..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            className="pl-9"
+            className="pl-12 h-10 rounded-none border border-black bg-white focus-visible:ring-0 focus-visible:border-black focus:bg-yellow-50 uppercase text-xs font-mono"
           />
         </div>
-        <Button onClick={handleSearch} variant="outline">
-          Tìm
+        <Button
+          onClick={handleSearch}
+          variant="outline"
+          className="h-10 rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
+        >
+          TÌM
         </Button>
       </div>
 
       {selectedUsers.size > 0 && (
-        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-          <p className="text-sm font-medium">
-            Đã chọn {selectedUsers.size} user(s)
+        <div className="flex items-center justify-between p-4 bg-[#F3E600]/20 border-2 border-[#F3E600]">
+          <p className="text-xs font-bold text-black uppercase tracking-wider font-mono">
+            ĐÃ CHỌN {selectedUsers.size} USER(S)
           </p>
           <div className="flex gap-2">
-            <Button size="sm" onClick={handleBulkManage}>
-              <UserCog className="h-4 w-4 mr-2" />
-              Chỉnh quyền hàng loạt
+            <Button
+              size="sm"
+              onClick={handleBulkManage}
+              className="bg-black hover:bg-[#F3E600] hover:text-black text-white rounded-none border border-black uppercase text-xs font-bold"
+            >
+              <UserCog className="h-3 w-3 mr-2" />
+              CHỈNH QUYỀN HÀNG LOẠT
             </Button>
-            <Button size="sm" variant="outline" onClick={handleDeselectAll}>
-              Bỏ chọn
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDeselectAll}
+              className="bg-white border border-black text-black hover:bg-gray-100 rounded-none uppercase text-xs font-bold"
+            >
+              BỎ CHỌN
             </Button>
           </div>
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{users.length} user(s)</p>
+      <div className="flex items-center justify-between border-b border-black pb-2">
+        <p className="text-xs font-mono font-bold text-black uppercase tracking-wider">
+          {users.length} USER(S)
+        </p>
         <Button
           size="sm"
-          variant="outline"
+          variant="ghost"
           onClick={handleSelectAll}
           disabled={selectedUsers.size === users.length}
+          className="text-black hover:bg-gray-100 border border-black rounded-none uppercase text-xs font-bold h-8"
         >
-          Chọn tất cả
+          CHỌN TẤT CẢ
         </Button>
       </div>
 
       {users.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <UsersIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>Chưa có user nào trong vai trò này</p>
+        <div className="text-center py-12 text-gray-500 bg-white border border-black border-dashed">
+          <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
+          <p className="uppercase font-mono text-xs">
+            CHƯA CÓ USER NÀO TRONG VAI TRÒ NÀY
+          </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {users.map((user) => (
             <div
               key={user.id}
-              className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+              className="group flex items-center gap-3 p-4 bg-white border border-black hover:shadow-hard transition-all hover:border-l-4 hover:border-l-[#F3E600]"
             >
               <Checkbox
                 checked={selectedUsers.has(user.id)}
                 onCheckedChange={() => handleToggleUser(user.id)}
+                className="data-[state=checked]:bg-[#F3E600] data-[state=checked]:border-black data-[state=checked]:text-black rounded-none border-2"
               />
-              <Avatar className="h-10 w-10">
+              <Avatar className="h-10 w-10 border-2 border-black rounded-none">
                 <AvatarImage src={user.avatar} />
-                <AvatarFallback>
+                <AvatarFallback className="bg-gray-100 text-black font-bold rounded-none">
                   {getInitials(user.email, user.fullName)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-medium truncate">
+                  <p className="font-bold text-black truncate uppercase text-sm tracking-tight">
                     {user.fullName || user.email}
                   </p>
                   {user.customPermissionCount > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      +{user.customPermissionCount} custom
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] bg-[#F3E600] text-black border border-black rounded-none uppercase font-mono"
+                    >
+                      +{user.customPermissionCount} CUSTOM
                     </Badge>
                   )}
                   <Badge
                     variant={
                       user.status === "active" ? "default" : "destructive"
                     }
-                    className="text-xs"
+                    className={
+                      user.status === "active"
+                        ? "text-[10px] bg-black text-white border border-black rounded-none uppercase font-mono"
+                        : "text-[10px] bg-red-500 text-white border border-black rounded-none uppercase font-mono"
+                    }
                   >
                     {user.status}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground truncate">
+                <p className="text-xs text-gray-500 truncate font-mono">
                   {user.email}
                 </p>
               </div>
@@ -209,9 +240,10 @@ export function RoleUsersTab({ role }) {
                 size="sm"
                 variant="outline"
                 onClick={() => handleManageUser(user)}
+                className="opacity-0 group-hover:opacity-100 transition-opacity rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
               >
-                <Settings className="h-4 w-4 mr-2" />
-                Quản lý quyền
+                <Settings className="h-3 w-3 mr-2" />
+                QUẢN LÝ
               </Button>
             </div>
           ))}

@@ -21,7 +21,7 @@ const transporter = nodemailer.createTransport({
  */
 export const sendVerificationEmail = async ({ to, token, name }) => {
   const verifyUrl = `${FRONTEND_URL}/verify-email?token=${encodeURIComponent(
-    token
+    token,
   )}`;
 
   const html = `
@@ -31,33 +31,167 @@ export const sendVerificationEmail = async ({ to, token, name }) => {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-        .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
-        .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif; 
+          line-height: 1.6; 
+          color: #000; 
+          background: #f5f5f5;
+          padding: 20px;
+        }
+        .container { 
+          max-width: 600px; 
+          margin: 0 auto; 
+          background: #fff;
+          border: 2px solid #000;
+        }
+        .header { 
+          background: #000; 
+          color: #F3E600; 
+          padding: 30px; 
+          border-bottom: 2px solid #F3E600;
+          position: relative;
+        }
+        .header::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background: #F3E600;
+        }
+        .header h1 { 
+          font-size: 24px; 
+          font-weight: 700; 
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          margin-bottom: 8px;
+          font-family: 'JetBrains Mono', 'Courier New', monospace;
+        }
+        .header p { 
+          font-size: 12px; 
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: #fff;
+          font-family: 'JetBrains Mono', monospace;
+        }
+        .content { 
+          padding: 30px; 
+          background: #fff;
+          border: 2px solid #000;
+          border-top: none;
+        }
+        .content p { 
+          margin-bottom: 16px; 
+          color: #000;
+          font-size: 14px;
+        }
+        .label {
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: #666;
+          font-family: 'JetBrains Mono', monospace;
+          margin-bottom: 8px;
+        }
+        .button-container { 
+          text-align: center; 
+          margin: 30px 0;
+        }
+        .button { 
+          display: inline-block; 
+          padding: 14px 40px; 
+          background: #F3E600;
+          color: #000 !important; 
+          text-decoration: none; 
+          border: 2px solid #000;
+          font-weight: 700; 
+          font-size: 13px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          font-family: 'JetBrains Mono', monospace;
+          box-shadow: 4px 4px 0px 0px #000;
+        }
+        .link-box { 
+          word-break: break-all; 
+          background: #f5f5f5; 
+          padding: 16px; 
+          font-size: 12px;
+          border: 2px solid #000;
+          margin: 20px 0;
+          font-family: 'Courier New', monospace;
+        }
+        .info-box { 
+          background: #F3E600; 
+          border: 2px solid #000;
+          padding: 16px; 
+          margin: 24px 0;
+          box-shadow: 4px 4px 0px 0px #000;
+        }
+        .info-box p {
+          margin: 0;
+          color: #000;
+          font-size: 13px;
+          font-weight: 600;
+        }
+        .warning-box { 
+          background: #fff; 
+          border: 2px solid #000;
+          padding: 16px; 
+          margin: 24px 0;
+          border-left: 6px solid #000;
+        }
+        .warning-box p {
+          margin: 0;
+          color: #000;
+          font-size: 13px;
+        }
+        .footer { 
+          text-align: center; 
+          padding: 20px;
+          background: #000;
+          color: #F3E600;
+          border-top: 2px solid #F3E600;
+        }
+        .footer p { 
+          margin: 0;
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          font-family: 'JetBrains Mono', monospace;
+        }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <h1>🌍 Xác Thực Email</h1>
-          <p>Chào mừng bạn đến với Didaugio</p>
+          <h1>⚡ XÁC THỰC EMAIL</h1>
+          <p>DIDAUGIO // EMAIL VERIFICATION</p>
         </div>
         <div class="content">
-          <p>Xin chào <strong>${name || "bạn"}</strong>,</p>
-          <p>Cảm ơn bạn đã đăng ký tài khoản. Để hoàn tất quá trình đăng ký, vui lòng xác thực địa chỉ email của bạn bằng cách nhấn vào nút bên dưới:</p>
-          <div style="text-align: center;">
-            <a href="${verifyUrl}" class="button">Xác Thực Email</a>
+          <p class="label">TÀI KHOẢN:</p>
+          <p><strong>${name || "BẠN"}</strong></p>
+          
+          <p style="margin-top: 24px;">Cảm ơn bạn đã đăng ký tài khoản. Để hoàn tất quá trình đăng ký và kích hoạt tài khoản, vui lòng xác thực địa chỉ email của bạn:</p>
+          
+          <div class="button-container">
+            <a href="${verifyUrl}" class="button">XÁC THỰC NGAY</a>
           </div>
-          <p><small>Hoặc sao chép link sau vào trình duyệt:</small></p>
-          <p style="word-break: break-all; background: white; padding: 10px; border-radius: 4px; font-size: 12px;"><code>${verifyUrl}</code></p>
-          <p style="margin-top: 30px;"><strong>⏰ Link này có hiệu lực trong 24 giờ.</strong></p>
-          <p style="color: #ef4444; margin-top: 20px;"><strong>⚠️ Lưu ý:</strong> Nếu bạn không thực hiện đăng ký này, vui lòng bỏ qua email này.</p>
+          
+          <p class="label">HOẶC SỬ DỤNG LINK:</p>
+          <div class="link-box">${verifyUrl}</div>
+          
+          <div class="info-box">
+            <p>⏰ THỜI HẠN: 24 GIỜ</p>
+          </div>
+          
+          <div class="warning-box">
+            <p><strong>⚠️ BẢO MẬT:</strong> Nếu bạn không thực hiện đăng ký này, vui lòng bỏ qua email này.</p>
+          </div>
         </div>
         <div class="footer">
-          <p>Email tự động, vui lòng không trả lời.</p>
+          <p>© ${new Date().getFullYear()} DIDAUGIO // AUTOMATED EMAIL</p>
         </div>
       </div>
     </body>
@@ -93,43 +227,177 @@ Nếu bạn không thực hiện đăng ký này, vui lòng bỏ qua email này.
  */
 export const sendPasswordResetEmail = async ({ to, token, name }) => {
   const resetUrl = `${FRONTEND_URL}/reset-password?token=${encodeURIComponent(
-    token
+    token,
   )}`;
 
   const html = `
     <!DOCTYPE html>
-    <html>
+    <html lang="vi">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-        .button { display: inline-block; padding: 12px 30px; background: #ef4444; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
-        .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif; 
+          line-height: 1.6; 
+          color: #000; 
+          background: #f5f5f5;
+          padding: 20px;
+        }
+        .email-wrapper { 
+          max-width: 600px; 
+          margin: 0 auto; 
+          background: #fff;
+          border: 2px solid #000;
+        }
+        .header { 
+          background: #000; 
+          color: #F3E600; 
+          padding: 30px; 
+          border-bottom: 2px solid #F3E600;
+          position: relative;
+        }
+        .header::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background: #F3E600;
+        }
+        .header h1 { 
+          font-size: 24px; 
+          font-weight: 700; 
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          margin-bottom: 8px;
+          font-family: 'JetBrains Mono', 'Courier New', monospace;
+        }
+        .header p { 
+          font-size: 12px; 
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: #fff;
+          font-family: 'JetBrains Mono', monospace;
+        }
+        .content { 
+          padding: 30px; 
+          background: #fff;
+          border: 2px solid #000;
+          border-top: none;
+        }
+        .content p { 
+          margin-bottom: 16px; 
+          color: #000;
+          font-size: 14px;
+        }
+        .label {
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: #666;
+          font-family: 'JetBrains Mono', monospace;
+          margin-bottom: 8px;
+        }
+        .button-container { 
+          text-align: center; 
+          margin: 30px 0;
+        }
+        .button { 
+          display: inline-block; 
+          padding: 14px 40px; 
+          background: #F3E600;
+          color: #000 !important; 
+          text-decoration: none; 
+          border: 2px solid #000;
+          font-weight: 700; 
+          font-size: 13px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          font-family: 'JetBrains Mono', monospace;
+          box-shadow: 4px 4px 0px 0px #000;
+        }
+        .link-box { 
+          word-break: break-all; 
+          background: #f5f5f5; 
+          padding: 16px; 
+          font-size: 12px;
+          border: 2px solid #000;
+          margin: 20px 0;
+          font-family: 'Courier New', monospace;
+        }
+        .info-box { 
+          background: #F3E600; 
+          border: 2px solid #000;
+          padding: 16px; 
+          margin: 24px 0;
+          box-shadow: 4px 4px 0px 0px #000;
+        }
+        .info-box p {
+          margin: 0;
+          color: #000;
+          font-size: 13px;
+          font-weight: 600;
+        }
+        .warning-box { 
+          background: #fff; 
+          border: 2px solid #000;
+          padding: 16px; 
+          margin: 24px 0;
+          border-left: 6px solid #000;
+        }
+        .warning-box p {
+          margin: 0;
+          color: #000;
+          font-size: 13px;
+        }
+        .footer { 
+          text-align: center; 
+          padding: 20px;
+          background: #000;
+          color: #F3E600;
+          border-top: 2px solid #F3E600;
+        }
+        .footer p { 
+          margin: 0;
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          font-family: 'JetBrains Mono', monospace;
+        }
       </style>
     </head>
     <body>
-      <div class="container">
+      <div class="email-wrapper">
         <div class="header">
-          <h1>🔑 Đặt Lại Mật Khẩu</h1>
-          <p>Yêu cầu khôi phục mật khẩu</p>
+          <h1>🔑 ĐẶT LẠI MẬT KHẨU</h1>
+          <p>DIDAUGIO // PASSWORD RESET</p>
         </div>
         <div class="content">
-          <p>Xin chào <strong>${name || "bạn"}</strong>,</p>
-          <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Nhấn vào nút bên dưới để tạo mật khẩu mới:</p>
-          <div style="text-align: center;">
-            <a href="${resetUrl}" class="button">Đặt Lại Mật Khẩu</a>
+          <p class="label">TÀI KHOẢN:</p>
+          <p><strong>${name || "BẠN"}</strong></p>
+          
+          <p style="margin-top: 24px;">Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Nhấn vào nút bên dưới để tạo mật khẩu mới:</p>
+          
+          <div class="button-container">
+            <a href="${resetUrl}" class="button">ĐẶT LẠI NGAY</a>
           </div>
-          <p><small>Hoặc sao chép link sau vào trình duyệt:</small></p>
-          <p style="word-break: break-all; background: white; padding: 10px; border-radius: 4px; font-size: 12px;"><code>${resetUrl}</code></p>
-          <p style="margin-top: 30px;"><strong>⏰ Link này có hiệu lực trong 1 giờ.</strong></p>
-          <p style="color: #ef4444; margin-top: 20px;"><strong>⚠️ Cảnh báo bảo mật:</strong> Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này và giữ an toàn tài khoản của bạn.</p>
+          
+          <p class="label">HOẶC SỬ DỤNG LINK:</p>
+          <div class="link-box">${resetUrl}</div>
+          
+          <div class="info-box">
+            <p>⏰ THỜI HẠN: 1 GIỜ</p>
+          </div>
+          
+          <div class="warning-box">
+            <p><strong>⚠️ BẢO MẬT:</strong> Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này và giữ an toàn tài khoản của bạn.</p>
+          </div>
         </div>
         <div class="footer">
-          <p>Email tự động, vui lòng không trả lời.</p>
+          <p>© ${new Date().getFullYear()} DIDAUGIO // AUTOMATED EMAIL</p>
         </div>
       </div>
     </body>
@@ -137,6 +405,8 @@ export const sendPasswordResetEmail = async ({ to, token, name }) => {
   `;
 
   const text = `
+🔑 ĐẶT LẠI MẬT KHẨU
+
 Xin chào ${name || "bạn"},
 
 Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.
@@ -144,9 +414,9 @@ Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoả
 Để đặt lại mật khẩu, vui lòng truy cập link sau:
 ${resetUrl}
 
-Link này có hiệu lực trong 1 giờ.
+⏰ Link này có hiệu lực trong 1 giờ.
 
-Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.
+⚠️ CẢNH BÁO BẢO MẬT: Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.
   `;
 
   await transporter.sendMail({

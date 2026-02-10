@@ -15,7 +15,8 @@ import {
   CardContent,
   Button,
 } from "@/components/ui";
-import { passwordResetService } from "@/services";
+import { passwordResetService } from "@/apis";
+import { formatDate } from "@/utils/dateUtils";
 
 const PasswordResetPage = () => {
   const [resets, setResets] = useState([]);
@@ -96,11 +97,6 @@ const PasswordResetPage = () => {
     };
   };
 
-  // Format date
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString("vi-VN");
-  };
-
   // Calculate time remaining
   const getTimeRemaining = (expiresAt) => {
     const now = new Date();
@@ -117,174 +113,187 @@ const PasswordResetPage = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Key className="w-8 h-8 text-purple-600" />
-          <div>
-            <h1 className="text-2xl font-bold">Reset Mật Khẩu</h1>
-            <p className="text-gray-500">Quản lý yêu cầu reset password</p>
+    <div className="min-h-screen p-8 bg-background relative">
+      {/* Enhanced grid background with dots */}
+      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none"></div>
+
+      <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
+        {/* Header */}
+        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-6">
+            <div className="accent-bar h-16"></div>
+            <div>
+              <h1 className="tim-title">RESET MẬT KHẨU</h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1">
+                  SYSTEM // PASSWORD RESET
+                </span>
+                <p className="tim-meta">QUẢN LÝ YÊU CẦU ĐẶT LẠI MẬT KHẨU</p>
+              </div>
+            </div>
+          </div>
+          <Button
+            onClick={() => fetchResets()}
+            disabled={loading}
+            variant="outline"
+            className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="tim-meta">TỔNG SỐ</span>
+              <Key className="h-5 w-5 text-gray-400" />
+            </div>
+            <div className="text-4xl font-black tracking-tighter">
+              {stats.total}
+            </div>
+          </div>
+          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all border-l-4 border-l-[#F3E600]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="tim-meta">CHỜ SỆ DỤNG</span>
+              <Clock className="h-5 w-5 text-[#F3E600]" />
+            </div>
+            <div className="text-4xl font-black tracking-tighter text-[#F3E600]">
+              {stats.pending}
+            </div>
+          </div>
+          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="tim-meta">ĐÃ SỆ DỤNG</span>
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            </div>
+            <div className="text-4xl font-black tracking-tighter text-green-600">
+              {stats.used}
+            </div>
+          </div>
+          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="tim-meta">HẾT HẠN</span>
+              <XCircle className="h-5 w-5 text-red-600" />
+            </div>
+            <div className="text-4xl font-black tracking-tighter text-red-600">
+              {stats.expired}
+            </div>
           </div>
         </div>
-        <Button onClick={() => fetchResets()} disabled={loading}>
-          <RefreshCw
-            className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
-          />
-          Làm mới
-        </Button>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-gray-500 text-sm">Tổng số</p>
-              <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-gray-500 text-sm">Chờ sử dụng</p>
-              <p className="text-3xl font-bold text-yellow-600">
-                {stats.pending}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-gray-500 text-sm">Đã sử dụng</p>
-              <p className="text-3xl font-bold text-green-600">{stats.used}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-gray-500 text-sm">Hết hạn</p>
-              <p className="text-3xl font-bold text-red-600">{stats.expired}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters & Table */}
-      <Card>
-        <CardHeader>
+        {/* Filter Bar */}
+        <div className="bg-white border border-black p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <CardTitle>Danh sách Password Resets</CardTitle>
+            <span className="tim-meta">BỘ LỌC DỮ LIỆU</span>
             <select
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="px-4 py-2 border rounded-lg"
+              className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50"
             >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="pending">Chờ sử dụng</option>
-              <option value="used">Đã sử dụng</option>
-              <option value="expired">Hết hạn</option>
+              <option value="all">TẤT CẢ TRẠNG THÁI</option>
+              <option value="pending">CHỜ SỆ DỤNG</option>
+              <option value="used">ĐÃ SỆ DỤNG</option>
+              <option value="expired">HẾT HẠN</option>
             </select>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        {/* Data Table */}
+        <div className="bg-white border border-black shadow-sm overflow-hidden">
           {loading ? (
-            <div className="text-center py-8">
-              <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
-              <p className="text-gray-500 mt-2">Đang tải...</p>
+            <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
+              <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
+              <span className="font-mono text-xs uppercase text-gray-500">
+                LOADING DATA...
+              </span>
             </div>
           ) : resets.length === 0 ? (
-            <div className="text-center py-8">
-              <Key className="w-12 h-12 mx-auto text-gray-300" />
-              <p className="text-gray-500 mt-2">Không có dữ liệu</p>
+            <div className="flex flex-col items-center justify-center py-20">
+              <Key className="h-12 w-12 text-gray-300 mb-4" />
+              <div className="font-bold uppercase text-gray-400">
+                KHÔNG TÌM THẤY DỮ LIỆU
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-black text-white tim-table-header">
+                    <th className="p-4 border-r border-black/20 w-[60px]">
                       ID
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Email
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      User
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      IP Address
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Trạng thái
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Ngày tạo
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Hết hạn
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Thời gian còn lại
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Đã dùng lúc
-                    </th>
+                    <th className="p-4 border-r border-black/20">EMAIL</th>
+                    <th className="p-4 border-r border-black/20">USER</th>
+                    <th className="p-4 border-r border-black/20">IP ADDRESS</th>
+                    <th className="p-4 border-r border-black/20">TRẠNG THÁI</th>
+                    <th className="p-4 border-r border-black/20">NGÀY TẠO</th>
+                    <th className="p-4 border-r border-black/20">HẾT HẠN</th>
+                    <th className="p-4 border-r border-black/20">CÒN LẠI</th>
+                    <th className="p-4">ĐÃ DÙNG</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-black/5">
                   {resets.map((reset) => {
                     const statusInfo = getStatusInfo(reset);
                     return (
-                      <tr key={reset.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm">{reset.id}</td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {reset.email}
+                      <tr
+                        key={reset.id}
+                        className="hover:bg-yellow-50 group transition-colors"
+                      >
+                        <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
+                          #{reset.id}
                         </td>
-                        <td className="px-4 py-3 text-sm">
-                          {reset.user?.email || "-"}
+                        <td className="p-4 border-r border-black/5">
+                          <div className="font-mono text-sm font-medium">
+                            {reset.email}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-sm">
-                          <div className="flex items-center gap-1">
+                        <td className="p-4 border-r border-black/5">
+                          <div className="font-mono text-sm text-gray-600">
+                            {reset.user?.email || "—"}
+                          </div>
+                        </td>
+                        <td className="p-4 border-r border-black/5">
+                          <div className="flex items-center gap-1 font-mono text-sm text-gray-600">
                             <MapPin className="w-3 h-3 text-gray-400" />
                             {reset.ipAddress}
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="p-4 border-r border-black/5">
                           <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${statusInfo.color}`}
                           >
                             {statusInfo.icon}
                             {statusInfo.label}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          {formatDate(reset.createdAt)}
+                        <td className="p-4 border-r border-black/5">
+                          <div className="font-mono text-sm text-gray-500">
+                            {formatDate(reset.createdAt)}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          {formatDate(reset.expiresAt)}
+                        <td className="p-4 border-r border-black/5">
+                          <div className="font-mono text-sm text-gray-500">
+                            {formatDate(reset.expiresAt)}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className="p-4 border-r border-black/5">
                           {!reset.usedAt && (
                             <span
-                              className={
-                                new Date(reset.expiresAt) > new Date()
-                                  ? "text-yellow-600 font-medium"
-                                  : "text-red-600"
-                              }
+                              className={`font-mono text-sm font-bold ${new Date(reset.expiresAt) > new Date() ? "text-[#F3E600]" : "text-red-600"}`}
                             >
                               {getTimeRemaining(reset.expiresAt)}
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          {reset.usedAt ? formatDate(reset.usedAt) : "-"}
+                        <td className="p-4">
+                          <div className="font-mono text-sm text-gray-500">
+                            {reset.usedAt ? formatDate(reset.usedAt) : "—"}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -296,32 +305,37 @@ const PasswordResetPage = () => {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                Trước
-              </Button>
-              <span className="text-sm text-gray-600">
-                Trang {currentPage} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-              >
-                Sau
-              </Button>
+            <div className="flex items-center justify-between p-4 border-t border-black bg-gray-50 font-mono text-xs uppercase">
+              <div>HIỂN THỊ {resets.length} KẾT QUẢ</div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-none border-black h-8 hover:bg-black hover:text-white"
+                >
+                  TRƯỚC
+                </Button>
+                <span className="flex items-center px-4 font-bold">
+                  {currentPage}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="rounded-none border-black h-8 hover:bg-black hover:text-white"
+                >
+                  SAU
+                </Button>
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

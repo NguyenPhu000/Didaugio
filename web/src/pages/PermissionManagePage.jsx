@@ -1,39 +1,32 @@
 import { useState, useEffect } from "react";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/Dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { permissionService } from "@/services/permissionService";
-import { MODULE_DISPLAY_NAMES, MODULE_GRADIENTS } from "@/config/permissions";
+import { permissionService } from "@/apis/permissionService";
+import { MODULE_DISPLAY_NAMES } from "@/constants/permissions";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   RefreshCw,
   Shield,
-  ChevronRight,
   Users,
   MapPin,
   Calendar,
-  MessageSquare,
+  Star,
   Briefcase,
   Flag,
   Settings,
-  FolderTree,
+  Grid3x3,
   CreditCard,
+  Eye,
+  Edit,
+  BarChart3,
+  Layers,
 } from "lucide-react";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 export default function PermissionManagePage() {
   const [permissions, setPermissions] = useState({});
@@ -50,8 +43,6 @@ export default function PermissionManagePage() {
     try {
       setLoading(true);
       const response = await permissionService.getPermissionsByModule(true);
-
-      console.log("Permission response:", response);
 
       if (response && response.permissions) {
         setPermissions(response.permissions);
@@ -83,11 +74,11 @@ export default function PermissionManagePage() {
     roles: Shield,
     places: MapPin,
     bookings: Calendar,
-    reviews: MessageSquare,
+    reviews: Star,
     business: Briefcase,
     reports: Flag,
     system: Settings,
-    categories: FolderTree,
+    categories: Grid3x3,
     payments: CreditCard,
   };
 
@@ -95,201 +86,264 @@ export default function PermissionManagePage() {
     return MODULE_ICON_MAP[module] || Shield;
   };
 
-  const getModuleGradient = (module) => {
-    return MODULE_GRADIENTS?.[module] || "from-gray-500 to-slate-500";
-  };
-
-  const modules = Object.keys(permissions);
+  // Helper to safely get nested values without errors
+  const modules = Object.keys(permissions || {});
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Quản lý quyền hạn
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Xem danh sách quyền được nhóm theo module
-          </p>
+    <div className="min-h-screen p-8 bg-background relative">
+      {/* Grid background */}
+      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none"></div>
+
+      <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
+        {/* Header */}
+        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-6">
+            <div className="accent-bar h-16"></div>
+            <div>
+              <h1 className="tim-title">QUẢN LÝ QUYỀN HẠN</h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1">
+                  RBAC // PERMISSIONS
+                </span>
+                <p className="tim-meta">PHÂN HỆ CHỨC NĂNG VÀ QUYỀN TRUY CẬP</p>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={fetchPermissions}
+            className="h-12 w-12 border border-black bg-white hover:bg-black hover:text-white transition-colors flex items-center justify-center"
+            title="Làm mới"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
         </div>
-        <Button onClick={fetchPermissions} variant="outline" size="icon">
-          <RefreshCw className="h-4 w-4" />
-        </Button>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="pt-6">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Total Permissions */}
+          <div className="bg-white border border-black p-6 hover:shadow-hard transition-all">
             <div className="flex items-center justify-between">
-              <div className="p-3 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-md">
+              <div className="h-12 w-12 bg-black text-white flex items-center justify-center">
                 <Shield className="h-6 w-6" />
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Tổng số quyền</p>
-                <p className="text-2xl font-bold">{stats.totalPermissions}</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  Tổng quyền
+                </p>
+                <h3 className="text-3xl font-bold text-black font-mono">
+                  {stats.totalPermissions}
+                </h3>
               </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-xs text-gray-500 font-mono uppercase">
+                Tổng số quyền hạn trong hệ thống
+              </p>
+            </div>
+          </div>
 
-        <Card>
-          <CardContent className="pt-6">
+          {/* Total Modules */}
+          <div className="bg-white border border-black p-6 hover:shadow-hard transition-all">
             <div className="flex items-center justify-between">
-              <div className="p-3 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-md">
-                <Shield className="h-6 w-6" />
+              <div className="h-12 w-12 bg-black text-white flex items-center justify-center">
+                <Layers className="h-6 w-6" />
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Số modules</p>
-                <p className="text-2xl font-bold">{stats.totalModules}</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  Modules
+                </p>
+                <h3 className="text-3xl font-bold text-black font-mono">
+                  {stats.totalModules}
+                </h3>
               </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-xs text-gray-500 font-mono uppercase">
+                Các phân hệ chức năng
+              </p>
+            </div>
+          </div>
 
-        <Card>
-          <CardContent className="pt-6">
+          {/* Avg Permissions */}
+          <div className="bg-white border border-black p-6 hover:shadow-hard transition-all">
             <div className="flex items-center justify-between">
-              <div className="p-3 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 text-white shadow-md">
-                <Shield className="h-6 w-6" />
+              <div className="h-12 w-12 bg-black text-white flex items-center justify-center">
+                <BarChart3 className="h-6 w-6" />
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">TB quyền/module</p>
-                <p className="text-2xl font-bold">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  TB/Module
+                </p>
+                <h3 className="text-3xl font-bold text-black font-mono">
                   {stats.totalModules > 0
                     ? Math.round(
-                        (stats.totalPermissions / stats.totalModules) * 10
+                        (stats.totalPermissions / stats.totalModules) * 10,
                       ) / 10
                     : 0}
-                </p>
+                </h3>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {loading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-32" />
-                <Skeleton className="h-4 w-48 mt-2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-20 w-full" />
-              </CardContent>
-            </Card>
-          ))}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-xs text-gray-500 font-mono uppercase">
+                Trung bình quyền/module
+              </p>
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {modules.map((module) => {
-            const Icon = getModuleIcon(module);
-            const gradient = getModuleGradient(module);
-            const perms = permissions[module] || [];
-            const stats = moduleStats[module] || {};
 
-            return (
-              <Card
-                key={module}
-                className="group cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02]"
-                onClick={() => handleOpenModule(module)}
+        {loading ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-white border border-black p-6 h-48 animate-pulse"
               >
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div
-                      className={cn(
-                        "p-3 rounded-lg bg-gradient-to-br text-white shadow-md transition-transform group-hover:scale-110",
-                        gradient
-                      )}
-                    >
-                      <Icon className="h-6 w-6" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 bg-gray-200" />
+                  <div className="h-6 w-20 bg-gray-200" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-6 w-32 bg-gray-200" />
+                  <div className="h-4 w-full bg-gray-200" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {modules.map((module) => {
+              const IconComponent = getModuleIcon(module);
+              const perms = permissions[module] || [];
+              const modStats = moduleStats[module] || {};
+
+              const displayName =
+                MODULE_DISPLAY_NAMES?.[module] ||
+                module.charAt(0).toUpperCase() + module.slice(1);
+
+              return (
+                <div
+                  key={module}
+                  onClick={() => handleOpenModule(module)}
+                  className="group relative bg-white border border-black p-6 hover:shadow-hard transition-all cursor-pointer overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-[#F3E600]/10 -mr-8 -mt-8 rotate-45 transform transition-transform group-hover:scale-150"></div>
+
+                  <div className="flex items-start justify-between relative z-10">
+                    <div className="h-12 w-12 bg-black text-white flex items-center justify-center group-hover:bg-[#F3E600] group-hover:text-black transition-colors">
+                      <IconComponent className="h-6 w-6" />
                     </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                    <div className="px-2 py-1 bg-gray-100 border border-gray-200 text-xs font-mono text-gray-600">
+                      {perms.length} quyền
+                    </div>
                   </div>
-                  <CardTitle className="mt-4">
-                    {MODULE_DISPLAY_NAMES?.[module] || module}
-                  </CardTitle>
-                  <CardDescription>
-                    {perms.length} quyền · {stats.rolesUsing || 0} vai trò
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Quyền xem</span>
-                      <Badge variant="secondary">
+
+                  <h3 className="mt-4 text-lg font-bold text-black relative z-10 uppercase tracking-tight font-display">
+                    {displayName}
+                  </h3>
+                  <p className="mt-1 text-xs text-gray-500 relative z-10 font-mono uppercase">
+                    {modStats.rolesUsing || 0} vai trò sử dụng
+                  </p>
+
+                  <div className="mt-6 space-y-2 relative z-10">
+                    <div className="flex items-center justify-between text-xs border-t border-gray-100 pt-2">
+                      <div className="flex items-center text-gray-600">
+                        <Eye className="h-3 w-3 mr-2" />
+                        <span className="font-mono uppercase">Xem</span>
+                      </div>
+                      <span className="bg-[#F3E600] text-black text-xs font-bold px-2 py-0.5 font-mono">
                         {perms.filter((p) => p.action === "view").length}
-                      </Badge>
+                      </span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Quyền sửa</span>
-                      <Badge variant="secondary">
+                    <div className="flex items-center justify-between text-xs border-t border-gray-100 pt-2">
+                      <div className="flex items-center text-gray-600">
+                        <Edit className="h-3 w-3 mr-2" />
+                        <span className="font-mono uppercase">Thao tác</span>
+                      </div>
+                      <span className="bg-black text-white text-xs font-bold px-2 py-0.5 font-mono">
                         {
                           perms.filter((p) =>
                             ["create", "update", "delete", "manage"].includes(
-                              p.action
-                            )
+                              p.action,
+                            ),
                           ).length
                         }
-                      </Badge>
+                      </span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedModule &&
-                (MODULE_DISPLAY_NAMES?.[selectedModule] || selectedModule)}
-            </DialogTitle>
-          </DialogHeader>
-          <ScrollArea className="max-h-[60vh]">
-            <div className="space-y-3 pr-4">
-              {selectedModule &&
-                permissions[selectedModule]?.map((permission) => (
-                  <Card key={permission.id}>
-                    <CardContent className="pt-6">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">{permission.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {permission.description}
-                            </p>
-                          </div>
-                          <Badge>{permission.action}</Badge>
+        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+          <DialogContent className="max-w-3xl max-h-[85vh] p-0 overflow-hidden bg-white border-2 border-black rounded-none shadow-hard">
+            <DialogHeader className="p-6 border-b-2 border-black">
+              <DialogTitle className="flex items-center gap-3 text-xl font-bold uppercase tracking-wider">
+                <div className="h-8 w-8 bg-black text-white flex items-center justify-center">
+                  {selectedModule &&
+                    (() => {
+                      const IconComponent = getModuleIcon(selectedModule);
+                      return <IconComponent className="h-5 w-5" />;
+                    })()}
+                </div>
+                {selectedModule &&
+                  (MODULE_DISPLAY_NAMES?.[selectedModule] || selectedModule)}
+              </DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="max-h-[60vh] p-6">
+              <div className="grid gap-4">
+                {selectedModule &&
+                  permissions[selectedModule]?.map((permission) => (
+                    <div
+                      key={permission.id}
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-black hover:shadow-hard transition-all"
+                    >
+                      <div className="space-y-1 mb-3 sm:mb-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-black uppercase tracking-tight">
+                            {permission.name}
+                          </p>
+                          <span
+                            className={cn(
+                              "text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider font-mono",
+                              permission.action === "view"
+                                ? "bg-[#F3E600] text-black"
+                                : permission.action === "delete"
+                                  ? "bg-red-500 text-white"
+                                  : "bg-black text-white",
+                            )}
+                          >
+                            {permission.action}
+                          </span>
                         </div>
+                        <p className="text-xs text-gray-500 font-mono">
+                          {permission.description}
+                        </p>
                         {permission.roles && permission.roles.length > 0 && (
-                          <div className="flex items-center gap-2 flex-wrap mt-2">
-                            <span className="text-xs text-muted-foreground">
+                          <div className="flex items-center flex-wrap gap-1 mt-2">
+                            <span className="text-xs text-gray-400 mr-1 font-mono uppercase">
                               Vai trò:
                             </span>
                             {permission.roles.map((role) => (
-                              <Badge
+                              <span
                                 key={role.id}
-                                variant="outline"
-                                className="text-xs"
+                                className="text-xs bg-gray-100 border border-gray-300 text-black px-2 py-0.5 font-mono"
                               >
                                 {role.displayName}
-                              </Badge>
+                              </span>
                             ))}
                           </div>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-            </div>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
+                    </div>
+                  ))}
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }

@@ -4,9 +4,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/components/ui/Card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import { Progress } from "@/components/ui/progress";
 import {
   ShieldCheck,
@@ -17,26 +17,20 @@ import {
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ROLE_ICONS, ROLE_GRADIENTS } from "@/constants/roleConstants";
 
-const ROLE_ICONS = {
-  super_admin: ShieldCheck,
-  admin: UserCog,
-  business: Store,
-  staff: UsersIcon,
-  guest: User,
-};
-
-const ROLE_GRADIENTS = {
-  super_admin: "from-purple-500 to-pink-500",
-  admin: "from-blue-500 to-cyan-500",
-  business: "from-green-500 to-emerald-500",
-  staff: "from-yellow-500 to-orange-500",
-  guest: "from-gray-500 to-slate-500",
+// Map Lucide icons to role names
+const LUCIDE_ICON_MAP = {
+  1: ShieldCheck,  // Super Admin
+  2: UserCog,      // Admin
+  3: Store,        // Business
+  4: UsersIcon,    // Staff
+  5: User,         // Guest
 };
 
 export function RoleCard({ role, onManagePermissions, totalPermissions = 72 }) {
-  const Icon = ROLE_ICONS[role.name] || User;
-  const gradient = ROLE_GRADIENTS[role.name] || "from-gray-500 to-slate-500";
+  const Icon = LUCIDE_ICON_MAP[role.id] || User;
+  const gradient = ROLE_GRADIENTS[role.id] || ROLE_GRADIENTS[5];
   const permissionPercentage =
     totalPermissions > 0 ? (role.permissionCount / totalPermissions) * 100 : 0;
 

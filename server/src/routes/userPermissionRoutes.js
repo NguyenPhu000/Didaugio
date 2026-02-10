@@ -3,15 +3,19 @@ import * as userPermissionController from "../controllers/userPermissionControll
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
 import { checkRoleHierarchy } from "../middlewares/checkRoleHierarchy.js";
+import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
 
 const router = express.Router();
+
+// 🔒 SECURITY: Block GUEST from user permission management
+router.use(authenticate, blockGuestFromAdmin);
 
 // Lấy danh sách users trong role
 router.get(
   "/roles/:roleId/users",
   authenticate,
   requirePermission("users.view"),
-  userPermissionController.getUsersByRole
+  userPermissionController.getUsersByRole,
 );
 
 // Lấy quyền của user
@@ -19,7 +23,7 @@ router.get(
   "/users/:userId/permissions",
   authenticate,
   requirePermission("users.view"),
-  userPermissionController.getUserPermissions
+  userPermissionController.getUserPermissions,
 );
 
 // Cập nhật quyền custom cho user
@@ -28,7 +32,7 @@ router.put(
   authenticate,
   requirePermission("roles.assign_to_users"),
   checkRoleHierarchy,
-  userPermissionController.updateUserCustomPermissions
+  userPermissionController.updateUserCustomPermissions,
 );
 
 // Cập nhật quyền cho nhiều users
@@ -36,7 +40,7 @@ router.post(
   "/users/permissions/bulk",
   authenticate,
   requirePermission("roles.assign_to_users"),
-  userPermissionController.bulkUpdateUserPermissions
+  userPermissionController.bulkUpdateUserPermissions,
 );
 
 // Xóa quyền custom của user
@@ -45,7 +49,7 @@ router.delete(
   authenticate,
   requirePermission("roles.assign_to_users"),
   checkRoleHierarchy,
-  userPermissionController.removeUserCustomPermissions
+  userPermissionController.removeUserCustomPermissions,
 );
 
 export default router;

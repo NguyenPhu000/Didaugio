@@ -4,15 +4,19 @@ import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
 import { checkRoleHierarchy } from "../middlewares/checkRoleHierarchy.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
+import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
 
 const router = express.Router();
+
+// 🔒 SECURITY: Block GUEST role from all user management routes
+router.use(authenticate, blockGuestFromAdmin);
 
 // User routes
 router.get(
   "/users",
   authenticate,
   requirePermission("users.view"),
-  userController.getAllUsers
+  userController.getAllUsers,
 );
 
 router.post(
@@ -25,14 +29,14 @@ router.post(
     getRecordId: (req, body) => body?.data?.id,
     getNewData: (req) => ({ email: req.body.email, roleId: req.body.roleId }),
   }),
-  userController.createUser
+  userController.createUser,
 );
 
 router.get(
   "/users/:id",
   authenticate,
   requirePermission("users.view"),
-  userController.getUserById
+  userController.getUserById,
 );
 
 router.put(
@@ -46,7 +50,7 @@ router.put(
     getRecordId: (req) => parseInt(req.params.id),
     getNewData: (req) => req.body,
   }),
-  userController.updateUser
+  userController.updateUser,
 );
 
 router.delete(
@@ -59,7 +63,7 @@ router.delete(
     tableName: "users",
     getRecordId: (req) => parseInt(req.params.id),
   }),
-  userController.deleteUser
+  userController.deleteUser,
 );
 
 // Route đặc biệt: cập nhật role (chỉ Super Admin và Admin)
@@ -74,7 +78,7 @@ router.patch(
     getRecordId: (req) => parseInt(req.params.id),
     getNewData: (req) => ({ roleId: req.body.roleId }),
   }),
-  userController.updateUserRole
+  userController.updateUserRole,
 );
 
 export default router;

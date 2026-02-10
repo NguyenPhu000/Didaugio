@@ -1,5 +1,5 @@
 import { FolderTree, Eye, EyeOff, MapPin } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/Card";
 
 /**
  * CATEGORY STATS

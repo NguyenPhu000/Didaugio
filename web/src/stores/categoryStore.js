@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import * as categoryService from "@/services/categoryService";
+import * as categoryService from "@/apis/categoryService";
 
 /**
  * CATEGORY STORE

@@ -332,6 +332,7 @@ model WardCantho {
   wardType   String   @map("ward_type")
   latitude   Decimal? @db.Decimal(10, 7)
   longitude  Decimal? @db.Decimal(10, 7)
+  boundary   Json?
   isActive   Boolean  @default(true) @map("is_active")
 
   district DistrictCantho @relation(fields: [districtId], references: [id])
@@ -350,15 +351,18 @@ model Category {
   description String?    @db.Text
   thumbnail   String?    @db.Text
   parentId    Int?       @map("parent_id")
+  level       Int        @default(1)
   order       Int        @default(0)
   isActive    Boolean    @default(true) @map("is_active")
   createdAt   DateTime   @default(now()) @map("created_at")
 
-  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children Category[] @relation("CategoryHierarchy")
-  places   Place[]
+  parent       Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children     Category[]    @relation("CategoryHierarchy")
+  places       Place[]
+  categoryTags CategoryTag[]
 
   @@index([slug])
+  @@index([level])
   @@map("categories")
 }
 
@@ -374,8 +378,26 @@ model PlaceTag {
   createdAt  DateTime @default(now()) @map("created_at")
 
   placeTagLinks PlaceTagLink[]
+  categoryTags  CategoryTag[]
 
   @@map("place_tags")
+}
+
+// Lien ket Category voi Tag (goi y tag theo danh muc)
+model CategoryTag {
+  id         Int      @id @default(autoincrement())
+  categoryId Int      @map("category_id")
+  tagId      Int      @map("tag_id")
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  tag      PlaceTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, tagId])
+  @@index([categoryId])
+  @@index([tagId])
+  @@map("category_tags")
 }
 
 // =============================================================================

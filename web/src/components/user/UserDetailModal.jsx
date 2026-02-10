@@ -17,8 +17,10 @@ import {
   CheckCircle,
   XCircle,
 } from "lucide-react";
-import { ROLE_NAMES } from "@/config/constants";
-import { locationService } from "@/services/locationService";
+import { ROLE_NAMES } from "@/constants/constants";
+import { userService } from "@/apis";
+import { formatDate, formatDateTime } from "@/utils/dateUtils";
+import { locationService } from "@/apis/locationService";
 
 const UserDetailModal = ({ open, onClose, user }) => {
   const [fullAddress, setFullAddress] = useState("Đang tải...");
@@ -105,34 +107,6 @@ const UserDetailModal = ({ open, onClose, user }) => {
   if (!user) return null;
 
   // Helper functions
-  const formatDate = (date) => {
-    if (!date) return "—";
-    try {
-      return new Date(date).toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch {
-      return "—";
-    }
-  };
-
-  const formatDateTime = (date) => {
-    if (!date) return "—";
-    try {
-      return new Date(date).toLocaleString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      });
-    } catch {
-      return "—";
-    }
-  };
 
   const getRoleName = (roleId) => {
     return ROLE_NAMES[roleId] || "Không xác định";
@@ -164,7 +138,7 @@ const UserDetailModal = ({ open, onClose, user }) => {
     const colors = {
       1: "bg-red-100 text-red-700", // Super Admin
       2: "bg-purple-100 text-purple-700", // Admin
-      3: "bg-emerald-100 text-emerald-700", // Business
+      3: "bg-primary/10 text-primary", // Business
       4: "bg-blue-100 text-blue-700", // Staff
       5: "bg-gray-100 text-gray-700", // Guest
     };

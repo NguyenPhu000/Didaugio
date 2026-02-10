@@ -2,6 +2,7 @@ import express from "express";
 import * as tagController from "../controllers/tagController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
+import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
 
 const router = express.Router();
 
@@ -21,36 +22,41 @@ router.get("/:id", tagController.getTagById);
 router.post(
   "/",
   authenticate,
+  blockGuestFromAdmin,
   requirePermission("tag.create"),
-  tagController.createTag
+  tagController.createTag,
 );
 
 router.post(
   "/bulk",
   authenticate,
+  blockGuestFromAdmin,
   requirePermission("tag.create"),
-  tagController.bulkCreateTags
+  tagController.bulkCreateTags,
 );
 
 router.put(
   "/:id",
   authenticate,
+  blockGuestFromAdmin,
   requirePermission("tag.update"),
-  tagController.updateTag
+  tagController.updateTag,
 );
 
 router.delete(
   "/:id",
   authenticate,
+  blockGuestFromAdmin,
   requirePermission("tag.delete"),
-  tagController.deleteTag
+  tagController.deleteTag,
 );
 
 router.post(
   "/:id/recalculate",
   authenticate,
+  blockGuestFromAdmin,
   requirePermission("tag.update"),
-  tagController.recalculateUsageCount
+  tagController.recalculateUsageCount,
 );
 
 export default router;

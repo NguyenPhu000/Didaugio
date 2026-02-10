@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { ROLES } from "@/constants/constants";
+import { STORAGE_KEYS } from "@/constants/timing";
 
 export const useAuthStore = create(
   persist(
@@ -43,7 +45,7 @@ export const useAuthStore = create(
           isLoading: false,
         });
         // Clear localStorage explicitly
-        localStorage.removeItem("auth-storage");
+        localStorage.removeItem(STORAGE_KEYS.AUTH);
       },
 
       // Getters
@@ -56,15 +58,17 @@ export const useAuthStore = create(
       },
       isAdmin: () => {
         const user = get().user;
-        return user?.roleId === 1 || user?.roleId === 2;
+        return (
+          user?.roleId === ROLES.SUPER_ADMIN || user?.roleId === ROLES.ADMIN
+        );
       },
       isBusiness: () => {
         const user = get().user;
-        return user?.roleId === 3;
+        return user?.roleId === ROLES.BUSINESS;
       },
     }),
     {
-      name: "auth-storage",
+      name: STORAGE_KEYS.AUTH,
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
@@ -83,6 +87,6 @@ export const useAuthStore = create(
         }
         return persistedState;
       },
-    }
-  )
+    },
+  ),
 );

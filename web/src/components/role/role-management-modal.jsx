@@ -5,12 +5,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@/components/ui/Dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RolePermissionTab } from "./role-permission-tab";
 import { RoleUsersTab } from "./role-users-tab";
-import { Shield, Users } from "lucide-react";
+import { Settings, Shield, Users } from "lucide-react";
 
 export function RoleManagementModal({ open, onOpenChange, role, onUpdated }) {
   const [activeTab, setActiveTab] = useState("permissions");
@@ -25,12 +25,15 @@ export function RoleManagementModal({ open, onOpenChange, role, onUpdated }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6">
-          <DialogTitle className="text-xl">
-            Quản lý - {role.displayName}
+      <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 bg-white border-2 border-black rounded-none shadow-hard">
+        <DialogHeader className="px-6 pt-6 border-b-2 border-black pb-4">
+          <DialogTitle className="text-xl flex items-center gap-3 font-bold uppercase tracking-wider">
+            <div className="h-8 w-8 bg-black text-white flex items-center justify-center">
+              <Settings className="h-5 w-5" />
+            </div>
+            QUẢN LÝ - {role.displayName}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-gray-500 font-mono text-xs">
             {role.description || "Cấu hình quyền hạn và quản lý users"}
           </DialogDescription>
         </DialogHeader>
@@ -38,17 +41,20 @@ export function RoleManagementModal({ open, onOpenChange, role, onUpdated }) {
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
-          className="flex-1 flex flex-col px-6 overflow-hidden"
+          className="flex-1 flex flex-col px-6 py-4 overflow-hidden"
         >
-          <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100 border border-black rounded-none p-1 gap-1">
             <TabsTrigger
               value="permissions"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 rounded-none data-[state=active]:bg-black data-[state=active]:text-white transition-all font-bold uppercase tracking-wider data-[state=active]:shadow-none"
             >
               <Shield className="h-4 w-4" />
               Quyền hạn
             </TabsTrigger>
-            <TabsTrigger value="users" className="flex items-center gap-2">
+            <TabsTrigger
+              value="users"
+              className="flex items-center gap-2 rounded-none data-[state=active]:bg-black data-[state=active]:text-white transition-all font-bold uppercase tracking-wider data-[state=active]:shadow-none"
+            >
               <Users className="h-4 w-4" />
               Users ({role.userCount || 0})
             </TabsTrigger>
