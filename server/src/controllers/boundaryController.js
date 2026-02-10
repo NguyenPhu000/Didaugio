@@ -15,9 +15,7 @@ import * as boundaryService from "../services/boundaryService.js";
 export const getDistrictsGeoJSON = async (req, res) => {
   try {
     const geojson = await boundaryService.getDistrictsGeoJSON();
-
-    res.setHeader("Content-Type", "application/json");
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=300"); // 5 min browser cache
     res.json(geojson);
   } catch (error) {
     console.error("Error in getDistrictsGeoJSON:", error);
@@ -35,9 +33,7 @@ export const getDistrictsGeoJSON = async (req, res) => {
 export const getWardsGeoJSON = async (req, res) => {
   try {
     const geojson = await boundaryService.getWardsGeoJSON();
-
-    res.setHeader("Content-Type", "application/json");
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=300");
     res.json(geojson);
   } catch (error) {
     console.error("Error in getWardsGeoJSON:", error);
@@ -50,22 +46,14 @@ export const getWardsGeoJSON = async (req, res) => {
 };
 
 /**
- * GET /api/boundaries/style - Lấy MapLibre Style JSON
+ * POST /api/boundaries/cache/invalidate - Xóa cache (admin only)
  */
-export const getStyleJSON = async (req, res) => {
+export const invalidateCache = async (req, res) => {
   try {
-    const style = await boundaryService.getStyleJSON();
-
-    res.setHeader("Content-Type", "application/json");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.json(style);
+    boundaryService.invalidateCache();
+    res.json({ success: true, message: "Cache invalidated" });
   } catch (error) {
-    console.error("Error in getStyleJSON:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể lấy Style JSON",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -74,55 +62,39 @@ export const getStyleJSON = async (req, res) => {
 // =============================================================================
 
 /**
- * GET /api/boundaries/districts/:code/center - Lấy tọa độ trung tâm quận/huyện
+ * GET /api/boundaries/districts/:code/center
  */
 export const getDistrictCenter = async (req, res) => {
   try {
     const { code } = req.params;
     const centroid = await boundaryService.getDistrictCentroid(code);
-
-    res.json({
-      success: true,
-      data: centroid,
-    });
+    res.json({ success: true, data: centroid });
   } catch (error) {
     console.error("Error in getDistrictCenter:", error);
-    
     const statusCode = error.message.includes("not found") ? 404 : 500;
-    res.status(statusCode).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(statusCode).json({ success: false, message: error.message });
   }
 };
 
 /**
- * GET /api/boundaries/wards/:id/center - Lấy tọa độ trung tâm phường/xã
+ * GET /api/boundaries/wards/:id/center
  */
 export const getWardCenter = async (req, res) => {
   try {
     const { id } = req.params;
     const centroid = await boundaryService.getWardCentroid(parseInt(id));
-
-    res.json({
-      success: true,
-      data: centroid,
-    });
+    res.json({ success: true, data: centroid });
   } catch (error) {
     console.error("Error in getWardCenter:", error);
-    
     const statusCode = error.message.includes("not found") ? 404 : 500;
-    res.status(statusCode).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(statusCode).json({ success: false, message: error.message });
   }
 };
 
 export default {
   getDistrictsGeoJSON,
   getWardsGeoJSON,
-  getStyleJSON,
   getDistrictCenter,
   getWardCenter,
+  invalidateCache,
 };

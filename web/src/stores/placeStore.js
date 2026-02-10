@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import * as placeService from "@/apis/placeService";
+import { PAGINATION, API_BASE_URL } from "@/constants/constants";
 
 /**
  * PLACE STORE
@@ -18,8 +19,8 @@ const usePlaceStore = create(
       loading: false,
       error: null,
       pagination: {
-        page: 1,
-        limit: 10,
+        page: PAGINATION.DEFAULT_PAGE,
+        limit: PAGINATION.DEFAULT_LIMIT,
         total: 0,
         totalPages: 0,
       },
@@ -156,14 +157,11 @@ const usePlaceStore = create(
 
       lookupLocation: async (latitude, longitude) => {
         try {
-          const response = await fetch(
-            "http://localhost:8081/api/districts/lookup",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ latitude, longitude }),
-            },
-          );
+          const response = await fetch(`${API_BASE_URL}/districts/lookup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ latitude, longitude }),
+          });
           const data = await response.json();
 
           if (data.success && data.data) {

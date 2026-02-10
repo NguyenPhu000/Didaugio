@@ -332,6 +332,7 @@ model WardCantho {
   wardType   String   @map("ward_type")
   latitude   Decimal? @db.Decimal(10, 7)
   longitude  Decimal? @db.Decimal(10, 7)
+  boundary   Json?
   isActive   Boolean  @default(true) @map("is_active")
 
   district DistrictCantho @relation(fields: [districtId], references: [id])

@@ -27,7 +27,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
       email: "",
       fullName: "",
       phone: "",
-      roleId: ROLES.GUEST,
+      roleId: ROLES.BUSINESS, // Default to BUSINESS (GUEST is mobile-only)
       password: "",
       gender: "male",
       address: "",
@@ -50,12 +50,12 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
           email: user.email || "",
           fullName: user.profile?.fullName || user.fullName || "",
           phone: user.profile?.phone || user.phone || "",
-          roleId: user.roleId || ROLES.GUEST,
+          roleId: user.roleId || ROLES.BUSINESS, // Fallback to BUSINESS (GUEST is mobile-only)
           password: "",
           gender: user.profile?.gender || user.gender || "male",
           address: user.profile?.address || user.address || "",
           dateOfBirth: formatDateForInput(
-            user.profile?.dateOfBirth || user.dateOfBirth
+            user.profile?.dateOfBirth || user.dateOfBirth,
           ),
           provinceCode: user.profile?.provinceCode || user.provinceCode || "",
           districtCode: user.profile?.districtCode || user.districtCode || "",
@@ -66,7 +66,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
           email: "",
           fullName: "",
           phone: "",
-          roleId: ROLES.GUEST,
+          roleId: ROLES.BUSINESS, // Default to BUSINESS (GUEST is mobile-only)
           password: "",
           gender: "male",
           address: "",
@@ -254,7 +254,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
                     </span>
                   </span>
                   <select {...register("roleId")} className={selectClassName}>
-                    <option value={ROLES.GUEST}>Guest</option>
+                    {/* GUEST role removed - mobile app only */}
                     <option value={ROLES.STAFF}>Staff</option>
                     <option value={ROLES.BUSINESS}>Business Owner</option>
                     <option value={ROLES.ADMIN}>Admin</option>

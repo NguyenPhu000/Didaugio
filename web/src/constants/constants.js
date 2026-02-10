@@ -101,5 +101,4 @@ export const TAG_TYPES = {
   ATMOSPHERE: "atmosphere",
 };
 
-// Toast durations
-export const TOAST_DURATION = 3000;
+// Toast durations moved to constants/timing.js as TOAST_DURATION object

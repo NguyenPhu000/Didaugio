@@ -1,12 +1,4 @@
 import prisma from "../config/prismaClient.js";
-import { booleanPointInPolygon } from "@turf/boolean-point-in-polygon";
-import { point, polygon, multiPolygon } from "@turf/helpers";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 /**
  * DISTRICT SERVICE
@@ -142,7 +134,13 @@ export const getWardById = async (id) => {
     where: { id },
     include: {
       district: {
-        select: { id: true, name: true, code: true, latitude: true, longitude: true },
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          latitude: true,
+          longitude: true,
+        },
       },
       _count: {
         select: { places: true },
@@ -220,117 +218,63 @@ export const getAllWards = async (filters = {}) => {
   };
 };
 
+// =============================================================================
+// LOOKUP DISTRICT BY LAT/LNG (DB-based)
+// =============================================================================
 
 /**
- * =============================================================================
- * CACHE & LOOKUP LOGIC
- * =============================================================================
+ * Haversine distance (km) between two lat/lng points
  */
-
-let boundaryCache = {
-  features: [],
-  isLoaded: false,
+const haversineKm = (lat1, lon1, lat2, lon2) => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
 /**
- * Load boundaries into memory from GeoJSON file
- */
-export const initializeBoundaryCache = async () => {
-  if (boundaryCache.isLoaded) return;
-
-  console.log("Initializing boundary cache from file...");
-  try {
-      // Data is at root/data, server is at root/server
-      // So from server/src/services, we need to go up:
-      // ../ (src) -> ../ (server) -> ../ (root) -> data
-      const filePath = path.join(__dirname, "../../../data/cantho_districts.geojson");
-      console.log("Loading boundaries from:", filePath);
-      
-      if (fs.existsSync(filePath)) {
-          const data = fs.readFileSync(filePath, "utf8");
-          const json = JSON.parse(data);
-          boundaryCache.features = json.features || [];
-          boundaryCache.isLoaded = true;
-          console.log(`✅ Loaded ${boundaryCache.features.length} district boundaries.`);
-      } else {
-          console.error("❌ GeoJSON file not found at:", filePath);
-          // Fallback or retry? Logic stops here.
-      }
-  } catch (error) {
-      console.error("❌ Failed to load boundary cache:", error);
-  }
-};
-
-/**
- * Lookup District by Lat/Lng
+ * Lookup the nearest district for a given lat/lng.
+ * Reads centroid coordinates directly from the DB — no file needed.
  */
 export const lookupDistrict = async (lat, lng) => {
-  if (!boundaryCache.isLoaded) {
-    await initializeBoundaryCache();
-  }
-  
-  if (!boundaryCache.features || boundaryCache.features.length === 0) {
-      console.warn("Boundary cache empty. Lookup failed.");
-      return null;
-  }
-
-  // Ensure Lat/Lng are numbers
   const latitude = parseFloat(lat);
   const longitude = parseFloat(lng);
-
   if (isNaN(latitude) || isNaN(longitude)) return null;
 
-  const pt = point([longitude, latitude]); // Turf uses [lng, lat]
-  console.log(`Looking up point: [${longitude}, ${latitude}] in ${boundaryCache.features.length} features`);
+  const MAX_DISTANCE_KM = 20;
 
-  // Calculate distances to find closest district (features are Points)
-  let closestDistrict = null;
-  let minDistance = Infinity;
-  const MAX_DISTANCE_KM = 20; // Only match if within 20km
+  const districts = await prisma.districtCantho.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      latitude: true,
+      longitude: true,
+    },
+  });
 
-  // Simple Haversine implementation to avoid new dependency
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
+  let closest = null;
+  let minDist = Infinity;
 
-  for (const feature of boundaryCache.features) {
-    try {
-      const geometry = feature.geometry;
-      // Ensure it's a Point
-      if (geometry.type !== 'Point') continue;
-      
-      const [featLng, featLat] = geometry.coordinates;
-      const dist = calculateDistance(latitude, longitude, featLat, featLng);
-
-      if (dist < minDistance && dist <= MAX_DISTANCE_KM) {
-        minDistance = dist;
-        closestDistrict = feature;
-      }
-    } catch (e) {
-      console.error(`Error checking feature distance:`, e);
+  for (const d of districts) {
+    if (d.latitude == null || d.longitude == null) continue;
+    const dist = haversineKm(latitude, longitude, d.latitude, d.longitude);
+    if (dist < minDist && dist <= MAX_DISTANCE_KM) {
+      minDist = dist;
+      closest = d;
     }
   }
 
-  if (closestDistrict) {
-      const { code, district_id, name } = closestDistrict.properties;
-      console.log(`Found closest district: ${name} (${minDistance.toFixed(2)}km)`);
-      
-      if (code) return await getDistrictByCode(code.toString());
-      if (district_id) return await getDistrictById(parseInt(district_id));
-      if (name) {
-          const districts = await getAllDistricts({ search: name });
-          if (districts.length > 0) return districts[0];
-      }
-  }
+  if (!closest) return null;
 
-  return null;
+  // Return full district with wards
+  return getDistrictByCode(closest.code);
 };
 
 // =============================================================================
@@ -402,8 +346,8 @@ export const getFullAddress = async (districtId, wardId = null) => {
         ward.wardType === "phuong"
           ? "Phường"
           : ward.wardType === "xa"
-          ? "Xã"
-          : "Thị trấn";
+            ? "Xã"
+            : "Thị trấn";
       fullAddress = `${wardPrefix} ${ward.name}, ${fullAddress}`;
     }
   }
@@ -422,5 +366,4 @@ export default {
   searchAddress,
   getFullAddress,
   lookupDistrict,
-  initializeBoundaryCache
 };

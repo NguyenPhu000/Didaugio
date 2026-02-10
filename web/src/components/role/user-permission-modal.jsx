@@ -29,6 +29,18 @@ import { permissionService } from "@/apis/permissionService";
 import { MODULE_DISPLAY_NAMES } from "@/constants/permissions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  Search,
+  CheckCircle,
+  XCircle,
+  ChevronDown,
+  Save,
+  RefreshCw,
+  SearchX,
+  UserCog,
+  Info,
+  RotateCcw,
+} from "lucide-react";
 
 export function UserPermissionModal({
   open,
@@ -260,65 +272,71 @@ export function UserPermissionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-        <DialogHeader className="p-6 border-b border-slate-100 dark:border-slate-800">
-          <DialogTitle className="text-xl flex items-center gap-2">
-            <span className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
-              <span className="material-icons-round">manage_accounts</span>
-            </span>
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 bg-white border-2 border-black rounded-none shadow-hard">
+        <DialogHeader className="p-6 border-b-2 border-black">
+          <DialogTitle className="text-xl flex items-center gap-3 font-bold uppercase tracking-wider">
+            <div className="h-8 w-8 bg-black text-white flex items-center justify-center">
+              <UserCog className="h-5 w-5" />
+            </div>
             {isBulk
-              ? `Chỉnh quyền cho ${userIds?.length || 0} users`
-              : `Chỉnh quyền - ${user?.fullName || user?.email}`}
+              ? `CHỈNH QUYỀN CHO ${userIds?.length || 0} USERS`
+              : `CHỈNH QUYỀN - ${user?.fullName || user?.email}`}
           </DialogTitle>
-          <DialogDescription className="text-slate-500 dark:text-slate-400 mt-1">
+          <DialogDescription className="text-gray-500 mt-1 font-mono text-xs uppercase">
             {isBulk
-              ? "Quyền được thêm sẽ áp dụng cho tất cả users đã chọn"
-              : `Vai trò: ${role?.displayName}. Quyền custom sẽ override quyền từ role.`}
+              ? "QUYỀN ĐƯỢC THÊM SẼ ÁP DỤNG CHO TẤT CẢ USERS"
+              : `VAI TRÒ: ${role?.displayName}. QUYỀN CUSTOM SẼ OVERRIDE QUYỀN TỪ ROLE.`}
           </DialogDescription>
         </DialogHeader>
 
         {loading ? (
           <div className="space-y-4 p-6">
-            <Skeleton className="h-10 w-full rounded-xl" />
-            <Skeleton className="h-10 w-full rounded-xl" />
-            <Skeleton className="h-40 w-full rounded-xl" />
+            <Skeleton className="h-10 w-full border border-black" />
+            <Skeleton className="h-10 w-full border border-black" />
+            <Skeleton className="h-40 w-full border border-black" />
           </div>
         ) : (
           <>
             <div className="space-y-4 p-6 pb-0">
               {!isBulk && rolePermissions.size > 0 && (
-                <Alert className="bg-blue-50/50 border-blue-100 text-blue-800 dark:bg-blue-900/10 dark:border-blue-900/30 dark:text-blue-300">
-                  <span className="material-icons-round text-blue-600 dark:text-blue-400 mr-2 text-lg">
-                    info
-                  </span>
-                  <AlertDescription className="text-sm">
-                    {rolePermissions.size} quyền có badge "Từ vai trò" là quyền
-                    mặc định. Bạn có thể bỏ chọn nếu không muốn user có quyền
-                    đó, hoặc thêm quyền khác.
+                <Alert className="bg-[#F3E600]/10 border-2 border-[#F3E600] text-black rounded-none">
+                  <Info className="h-4 w-4 text-black" />
+                  <AlertDescription className="text-xs font-mono uppercase">
+                    {rolePermissions.size} QUYỀN CÓ BADGE "ROLE" LÀ QUYỀN MẶC
+                    ĐỊNH. BẠN CÓ THỂ BỎ CHỌN HOẶC THÊM QUYỀN KHÁC.
                   </AlertDescription>
                 </Alert>
               )}
 
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <div className="relative flex-1 w-full">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <span className="material-icons-round text-lg">search</span>
-                  </span>
+                  <div className="absolute left-0 top-0 h-full w-10 bg-black flex items-center justify-center text-white">
+                    <Search className="h-4 w-4" />
+                  </div>
                   <Input
-                    placeholder="Tìm quyền..."
+                    placeholder="TÌM KIẾM QUYỀN..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-10 h-10 rounded-xl border-slate-200 dark:border-slate-800"
+                    className="pl-12 h-10 rounded-none border border-black bg-white focus-visible:ring-0 focus-visible:border-black focus:bg-yellow-50 uppercase text-xs font-mono"
                   />
                 </div>
                 <Select value={moduleFilter} onValueChange={setModuleFilter}>
-                  <SelectTrigger className="w-full sm:w-[200px] h-10 rounded-xl border-slate-200 dark:border-slate-800">
-                    <SelectValue placeholder="Lọc theo module" />
+                  <SelectTrigger className="w-full sm:w-[200px] h-10 rounded-none border border-black bg-white uppercase text-xs font-bold">
+                    <SelectValue placeholder="LỌC MODULE" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800">
-                    <SelectItem value="all">Tất cả modules</SelectItem>
+                  <SelectContent className="rounded-none border-2 border-black bg-white">
+                    <SelectItem
+                      value="all"
+                      className="uppercase font-mono text-xs"
+                    >
+                      TẤT CẢ MODULES
+                    </SelectItem>
                     {Object.keys(allPermissions).map((module) => (
-                      <SelectItem key={module} value={module}>
+                      <SelectItem
+                        key={module}
+                        value={module}
+                        className="uppercase font-mono text-xs"
+                      >
                         {MODULE_DISPLAY_NAMES[module] || module}
                       </SelectItem>
                     ))}
@@ -326,18 +344,22 @@ export function UserPermissionModal({
                 </Select>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 border border-black">
                 <div className="space-y-2 w-full sm:w-auto">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                    <span>
-                      Đã chọn: {stats.selected} / {stats.total} quyền
+                  <div className="flex items-center gap-3 text-xs font-bold text-black uppercase tracking-wider">
+                    <span className="font-mono">
+                      ĐÃ CHỌN: {stats.selected} / {stats.total}
+                    </span>
+                    <span className="bg-[#F3E600] text-black px-2 py-0.5 font-mono">
+                      {Math.round(stats.percentage)}%
                     </span>
                   </div>
-                  <Progress
-                    value={stats.percentage}
-                    className="h-2 w-full sm:w-[200px] bg-slate-200 dark:bg-slate-700"
-                    indicatorClassName="bg-blue-600"
-                  />
+                  <div className="w-full sm:w-[200px] h-1 bg-gray-200 border border-gray-300">
+                    <div
+                      className="h-full bg-[#F3E600] transition-all duration-300"
+                      style={{ width: `${stats.percentage}%` }}
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                   <Button
@@ -351,24 +373,20 @@ export function UserPermissionModal({
                       setSelectedPermissions(allIds);
                     }}
                     disabled={stats.selected === stats.total}
-                    className="flex-1 sm:flex-none rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="flex-1 sm:flex-none rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
                   >
-                    <span className="material-icons-round text-sm mr-2 text-blue-500">
-                      check_circle
-                    </span>
-                    Chọn tất cả
+                    <CheckCircle className="h-3 w-3 mr-2" />
+                    CHỌN TẤT
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setSelectedPermissions(new Set())}
                     disabled={stats.selected === 0}
-                    className="flex-1 sm:flex-none rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="flex-1 sm:flex-none rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
                   >
-                    <span className="material-icons-round text-sm mr-2 text-slate-500">
-                      cancel
-                    </span>
-                    Bỏ chọn
+                    <XCircle className="h-3 w-3 mr-2" />
+                    BỎ CHỌN
                   </Button>
                 </div>
               </div>
@@ -377,11 +395,11 @@ export function UserPermissionModal({
             <ScrollArea className="flex-1 px-6 py-2 h-[calc(90vh-450px)]">
               <div className="space-y-3 pb-4">
                 {Object.keys(filteredPermissions).length === 0 ? (
-                  <div className="text-center py-12 text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-                    <span className="material-icons-round text-4xl mb-2 opacity-50">
-                      search_off
-                    </span>
-                    <p>Không tìm thấy quyền nào</p>
+                  <div className="text-center py-12 text-gray-500 bg-white border border-black border-dashed">
+                    <SearchX className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                    <p className="uppercase font-mono text-xs">
+                      KHÔNG TÌM THẤY QUYỀN
+                    </p>
                   </div>
                 ) : (
                   Object.entries(filteredPermissions).map(
@@ -395,10 +413,10 @@ export function UserPermissionModal({
                       return (
                         <div
                           key={module}
-                          className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden transition-all shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800"
+                          className="border border-black overflow-hidden transition-all hover:shadow-hard"
                         >
                           <div
-                            className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 cursor-pointer select-none"
+                            className="flex items-center justify-between p-4 bg-white cursor-pointer select-none hover:bg-gray-50 border-l-4 border-l-transparent hover:border-l-[#F3E600] transition-all"
                             onClick={() => toggleModuleExpand(module)}
                           >
                             <div className="flex items-center gap-3">
@@ -415,38 +433,39 @@ export function UserPermissionModal({
                                   onCheckedChange={() =>
                                     handleToggleModule(module)
                                   }
-                                  className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
+                                  className="data-[state=checked]:bg-[#F3E600] data-[state=checked]:border-black data-[state=checked]:text-black rounded-none border-2"
                                 />
                               </div>
-                              <div>
-                                <Label className="font-bold text-slate-800 dark:text-slate-200 text-base cursor-pointer">
-                                  {MODULE_DISPLAY_NAMES[module] || module}
-                                </Label>
-                                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                                  {moduleSelected}/{moduleTotal} quyền custom
-                                </p>
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-1 bg-black"></div>
+                                <div>
+                                  <Label className="font-bold text-black text-sm cursor-pointer uppercase tracking-tight">
+                                    {MODULE_DISPLAY_NAMES[module] || module}
+                                  </Label>
+                                  <p className="text-xs text-gray-500 font-mono mt-0.5 uppercase">
+                                    {moduleSelected}/{moduleTotal} QUYỀN
+                                  </p>
+                                </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
                               <Badge
                                 variant="secondary"
-                                className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-2.5"
+                                className="bg-black text-white rounded-none px-2.5 py-1 font-mono text-xs uppercase"
                               >
                                 {module}
                               </Badge>
-                              <span
+                              <ChevronDown
                                 className={cn(
-                                  "material-icons-round text-slate-400 transition-transform duration-200",
+                                  "h-4 w-4 text-black transition-transform duration-200",
                                   isExpanded ? "rotate-180" : "",
                                 )}
-                              >
-                                expand_more
-                              </span>
+                              />
                             </div>
                           </div>
 
                           {isExpanded && (
-                            <div className="p-4 space-y-2 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
+                            <div className="p-4 space-y-2 bg-gray-50 border-t-2 border-black">
                               {permissions.map((permission) => {
                                 const isInherited = rolePermissions.has(
                                   permission.id,
@@ -479,7 +498,7 @@ export function UserPermissionModal({
               </div>
             </ScrollArea>
 
-            <DialogFooter className="flex items-center justify-between p-6 border-t border-slate-100 dark:border-slate-800">
+            <DialogFooter className="flex items-center justify-between p-6 border-t-2 border-black">
               <div>
                 {!isBulk && rolePermissions.size > 0 && (
                   <Button
@@ -489,12 +508,10 @@ export function UserPermissionModal({
                       setSelectedPermissions(new Set(rolePermissions))
                     }
                     disabled={saving}
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    className="text-black hover:bg-gray-100 border border-black rounded-none uppercase text-xs font-bold"
                   >
-                    <span className="material-icons-round text-sm mr-2">
-                      restart_alt
-                    </span>
-                    Đặt lại về mặc định
+                    <RotateCcw className="h-3 w-3 mr-2" />
+                    ĐẶT LẠI MẶC ĐỊNH
                   </Button>
                 )}
               </div>
@@ -502,26 +519,24 @@ export function UserPermissionModal({
                 <Button
                   variant="outline"
                   onClick={() => onOpenChange(false)}
-                  className="rounded-xl border-slate-300"
+                  className="rounded-none border border-black hover:bg-gray-100 uppercase text-xs font-bold"
                 >
-                  Hủy
+                  HỦY
                 </Button>
                 <Button
                   onClick={handleSave}
                   disabled={!hasChanges || saving}
-                  className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
+                  className="rounded-none bg-black hover:bg-[#F3E600] hover:text-black text-white border border-black shadow-hard uppercase text-xs font-bold"
                 >
                   {saving ? (
                     <span className="flex items-center gap-2">
-                      <span className="material-icons-round animate-spin text-sm">
-                        refresh
-                      </span>
-                      Đang lưu...
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      ĐANG LƯU...
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
-                      <span className="material-icons-round text-sm">save</span>
-                      Lưu thay đổi
+                      <Save className="h-3 w-3" />
+                      LƯU THAY ĐỔI
                     </span>
                   )}
                 </Button>

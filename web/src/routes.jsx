@@ -1,7 +1,14 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { ProtectedRoute } from "@/layouts"; // Updated import
-import { AdminLayout } from "@/layouts"; // Updated import
-import { ROLES } from "@/constants"; // Updated import
+import { ProtectedRoute } from "@/layouts";
+import { AdminLayout } from "@/layouts";
+import { ROLES } from "@/constants";
+import {
+  AUTH_ROUTES,
+  AUTH_PREFIX_ROUTES,
+  ADMIN_ROUTES,
+  PLACES_ALIAS,
+  DEFAULT_REDIRECT,
+} from "@/constants/routes";
 import {
   DashboardPage,
   LoginPage,
@@ -27,244 +34,241 @@ import ResendVerificationPage from "@/pages/auth/ResendVerificationPage";
 import RoleManagePage from "@/pages/RoleManagePage";
 import PermissionManagePage from "@/pages/PermissionManagePage";
 
+/**
+ * Route configuration helpers
+ *
+ * SECURITY NOTE: GUEST (role 5) is NEVER included in any admin role arrays
+ */
+const adminRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
+const allStaffRoles = [
+  ROLES.SUPER_ADMIN,
+  ROLES.ADMIN,
+  ROLES.BUSINESS,
+  ROLES.STAFF,
+]; // GUEST excluded
+const placeRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BUSINESS];
+const superAdminOnly = [ROLES.SUPER_ADMIN];
+
+/** Wrap page in ProtectedRoute + AdminLayout */
+const ProtectedAdmin = ({ children, roles }) => (
+  <ProtectedRoute roles={roles}>
+    <AdminLayout>{children}</AdminLayout>
+  </ProtectedRoute>
+);
+
 const AppRoutes = () => {
   return (
     <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/auth/login" element={<LoginPage />} />
-      <Route path="/auth/register" element={<RegisterPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/verify-email" element={<VerifyEmailPublicPage />} />
-      <Route path="/auth/verify-email" element={<VerifyEmailPublicPage />} />
-      <Route path="/resend-verification" element={<ResendVerificationPage />} />
+      {/* ===== Public auth routes ===== */}
+      <Route path={AUTH_ROUTES.LOGIN} element={<LoginPage />} />
+      <Route path={AUTH_ROUTES.REGISTER} element={<RegisterPage />} />
+      <Route path={AUTH_PREFIX_ROUTES.LOGIN} element={<LoginPage />} />
+      <Route path={AUTH_PREFIX_ROUTES.REGISTER} element={<RegisterPage />} />
       <Route
-        path="/auth/resend-verification"
+        path={AUTH_ROUTES.FORGOT_PASSWORD}
+        element={<ForgotPasswordPage />}
+      />
+      <Route
+        path={AUTH_PREFIX_ROUTES.FORGOT_PASSWORD}
+        element={<ForgotPasswordPage />}
+      />
+      <Route
+        path={AUTH_ROUTES.RESET_PASSWORD}
+        element={<ResetPasswordPage />}
+      />
+      <Route
+        path={AUTH_PREFIX_ROUTES.RESET_PASSWORD}
+        element={<ResetPasswordPage />}
+      />
+      <Route
+        path={AUTH_ROUTES.VERIFY_EMAIL}
+        element={<VerifyEmailPublicPage />}
+      />
+      <Route
+        path={AUTH_PREFIX_ROUTES.VERIFY_EMAIL}
+        element={<VerifyEmailPublicPage />}
+      />
+      <Route
+        path={AUTH_ROUTES.RESEND_VERIFICATION}
+        element={<ResendVerificationPage />}
+      />
+      <Route
+        path={AUTH_PREFIX_ROUTES.RESEND_VERIFICATION}
         element={<ResendVerificationPage />}
       />
 
       {/* Redirect root to dashboard */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Navigate to={DEFAULT_REDIRECT} replace />} />
 
-      {/* Protected routes - Only Admin, Business, Staff */}
+      {/* ===== Protected routes ===== */}
+
+      {/* Dashboard */}
       <Route
-        path="/dashboard"
+        path={ADMIN_ROUTES.DASHBOARD}
         element={
-          <ProtectedRoute
-            roles={[
-              ROLES.SUPER_ADMIN,
-              ROLES.ADMIN,
-              ROLES.BUSINESS,
-              ROLES.STAFF,
-            ]}
-          >
-            <AdminLayout>
-              <DashboardPage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={allStaffRoles}>
+            <DashboardPage />
+          </ProtectedAdmin>
         }
       />
 
-      {/* Profile - All logged in users */}
+      {/* Profile & Settings */}
       <Route
-        path="/profile"
+        path={ADMIN_ROUTES.PROFILE}
         element={
-          <ProtectedRoute>
-            <AdminLayout>
-              <ProfilePage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin>
+            <ProfilePage />
+          </ProtectedAdmin>
+        }
+      />
+      <Route
+        path={ADMIN_ROUTES.SETTINGS}
+        element={
+          <ProtectedAdmin>
+            <ProfilePage />
+          </ProtectedAdmin>
         }
       />
 
-      {/* Settings - alias for profile */}
+      {/* User Management */}
       <Route
-        path="/settings"
+        path={ADMIN_ROUTES.USERS}
         element={
-          <ProtectedRoute>
-            <AdminLayout>
-              <ProfilePage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={adminRoles}>
+            <UserManagePage />
+          </ProtectedAdmin>
         }
       />
 
-      {/* User Management - Only Admin & Super Admin */}
+      {/* Email Verification */}
       <Route
-        path="/users"
+        path={ADMIN_ROUTES.EMAIL_VERIFICATIONS}
         element={
-          <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-            <AdminLayout>
-              <UserManagePage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={adminRoles}>
+            <EmailVerificationPage />
+          </ProtectedAdmin>
         }
       />
 
-      {/* Email Verification Management - Only Admin & Super Admin */}
+      {/* Password Resets */}
       <Route
-        path="/email-verifications"
+        path={ADMIN_ROUTES.PASSWORD_RESETS}
         element={
-          <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-            <AdminLayout>
-              <EmailVerificationPage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={adminRoles}>
+            <PasswordResetPage />
+          </ProtectedAdmin>
         }
       />
 
-      {/* Password Reset Management - Only Admin & Super Admin */}
+      {/* Audit Logs */}
       <Route
-        path="/password-resets"
+        path={ADMIN_ROUTES.AUDIT_LOGS}
         element={
-          <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-            <AdminLayout>
-              <PasswordResetPage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={adminRoles}>
+            <AuditLogsPage />
+          </ProtectedAdmin>
         }
       />
 
-      {/* Audit Logs - Only Admin & Super Admin */}
+      {/* Login History */}
       <Route
-        path="/audit-logs"
+        path={ADMIN_ROUTES.LOGIN_HISTORY}
         element={
-          <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-            <AdminLayout>
-              <AuditLogsPage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={adminRoles}>
+            <LoginHistoryPage />
+          </ProtectedAdmin>
         }
       />
 
-      {/* Login History - Only Admin & Super Admin */}
+      {/* Role Management */}
       <Route
-        path="/login-history"
+        path={ADMIN_ROUTES.ROLES}
         element={
-          <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-            <AdminLayout>
-              <LoginHistoryPage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={superAdminOnly}>
+            <RoleManagePage />
+          </ProtectedAdmin>
         }
       />
 
-      {/* Role Management - Only Super Admin */}
+      {/* Permission Management */}
       <Route
-        path="/roles"
+        path={ADMIN_ROUTES.PERMISSIONS}
         element={
-          <ProtectedRoute roles={[ROLES.SUPER_ADMIN]}>
-            <AdminLayout>
-              <RoleManagePage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={superAdminOnly}>
+            <PermissionManagePage />
+          </ProtectedAdmin>
         }
       />
 
-      {/* Permission Management - Only Super Admin */}
+      {/* Category Management */}
       <Route
-        path="/permissions"
+        path={ADMIN_ROUTES.CATEGORIES}
         element={
-          <ProtectedRoute roles={[ROLES.SUPER_ADMIN]}>
-            <AdminLayout>
-              <PermissionManagePage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={adminRoles}>
+            <CategoryManagementPage />
+          </ProtectedAdmin>
         }
       />
 
-      {/* Category Management - Admin & Super Admin */}
+      {/* Tag Management */}
       <Route
-        path="/categories"
+        path={ADMIN_ROUTES.TAGS}
         element={
-          <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-            <AdminLayout>
-              <CategoryManagementPage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={adminRoles}>
+            <TagManagementPage />
+          </ProtectedAdmin>
         }
       />
 
-      {/* Tag Management - Admin & Super Admin */}
+      {/* District Management */}
       <Route
-        path="/tags"
+        path={ADMIN_ROUTES.DISTRICTS}
         element={
-          <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-            <AdminLayout>
-              <TagManagementPage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={adminRoles}>
+            <DistrictListPage />
+          </ProtectedAdmin>
         }
       />
 
-      {/* District Management - Admin & Super Admin */}
+      {/* Place Management */}
       <Route
-        path="/districts"
+        path={ADMIN_ROUTES.MAP}
         element={
-          <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-            <AdminLayout>
-              <DistrictListPage />
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Place Management - Admin, Super Admin, Business */}
-      <Route
-        path="/admin/map"
-        element={
-          <ProtectedRoute
-            roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BUSINESS]}
-          >
-            <AdminLayout>
-              <MapPage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={placeRoles}>
+            <MapPage />
+          </ProtectedAdmin>
         }
       />
       <Route
-        path="/admin/places"
+        path={ADMIN_ROUTES.PLACES}
         element={
-          <ProtectedRoute
-            roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BUSINESS]}
-          >
-            <AdminLayout>
-              <PlaceListPage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={placeRoles}>
+            <PlaceListPage />
+          </ProtectedAdmin>
         }
       />
       <Route
-        path="/admin/places/new"
+        path={ADMIN_ROUTES.PLACES_NEW}
         element={
-          <ProtectedRoute
-            roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BUSINESS]}
-          >
-            <AdminLayout>
-              <PlaceWizardPage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={placeRoles}>
+            <PlaceWizardPage />
+          </ProtectedAdmin>
         }
       />
       <Route
         path="/admin/places/edit/:id"
         element={
-          <ProtectedRoute
-            roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BUSINESS]}
-          >
-            <AdminLayout>
-              <PlaceWizardPage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedAdmin roles={placeRoles}>
+            <PlaceWizardPage />
+          </ProtectedAdmin>
         }
       />
 
-      {/* Alias routes for places */}
-      <Route path="/places" element={<Navigate to="/admin/places" replace />} />
+      {/* Alias routes */}
+      <Route
+        path={PLACES_ALIAS}
+        element={<Navigate to={ADMIN_ROUTES.PLACES} replace />}
+      />
 
       {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />

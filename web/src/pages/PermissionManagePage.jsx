@@ -7,9 +7,26 @@ import {
 } from "@/components/ui/Dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { permissionService } from "@/apis/permissionService";
-import { MODULE_DISPLAY_NAMES, MODULE_GRADIENTS } from "@/constants/permissions";
+import { MODULE_DISPLAY_NAMES } from "@/constants/permissions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  RefreshCw,
+  Shield,
+  Users,
+  MapPin,
+  Calendar,
+  Star,
+  Briefcase,
+  Flag,
+  Settings,
+  Grid3x3,
+  CreditCard,
+  Eye,
+  Edit,
+  BarChart3,
+  Layers,
+} from "lucide-react";
 
 export default function PermissionManagePage() {
   const [permissions, setPermissions] = useState({});
@@ -53,237 +70,280 @@ export default function PermissionManagePage() {
   };
 
   const MODULE_ICON_MAP = {
-    users: "group",
-    roles: "verified_user",
-    places: "place",
-    bookings: "calendar_today",
-    reviews: "rate_review",
-    business: "business_center",
-    reports: "flag",
-    system: "settings",
-    categories: "category",
-    payments: "payments",
+    users: Users,
+    roles: Shield,
+    places: MapPin,
+    bookings: Calendar,
+    reviews: Star,
+    business: Briefcase,
+    reports: Flag,
+    system: Settings,
+    categories: Grid3x3,
+    payments: CreditCard,
   };
 
   const getModuleIcon = (module) => {
-    return MODULE_ICON_MAP[module] || "shield";
+    return MODULE_ICON_MAP[module] || Shield;
   };
 
   // Helper to safely get nested values without errors
   const modules = Object.keys(permissions || {});
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Quản lý quyền hạn
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Xem danh sách quyền được nhóm theo module và các vai trò liên quan.
-          </p>
-        </div>
-        <button
-          onClick={fetchPermissions}
-          className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          title="Làm mới"
-        >
-          <span className="material-icons-round">refresh</span>
-        </button>
-      </div>
+    <div className="min-h-screen p-8 bg-background relative">
+      {/* Grid background */}
+      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none"></div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Total Permissions */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-              <span className="material-icons-round text-2xl">verified_user</span>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Tổng số quyền</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.totalPermissions}</h3>
-            </div>
-          </div>
-          <div className="mt-4 flex items-center text-xs text-slate-500">
-             <span className="material-icons-round text-base mr-1">info</span>
-             Tổng số quyền hạn trong hệ thống
-          </div>
-        </div>
-
-        {/* Total Modules */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="p-3 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-              <span className="material-icons-round text-2xl">view_module</span>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Số modules</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.totalModules}</h3>
-            </div>
-          </div>
-          <div className="mt-4 flex items-center text-xs text-slate-500">
-             <span className="material-icons-round text-base mr-1">dvr</span>
-             Các phân hệ chức năng
-          </div>
-        </div>
-
-        {/* Avg Permissions */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <span className="material-icons-round text-2xl">analytics</span>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">TB quyền/module</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                {stats.totalModules > 0
-                  ? Math.round((stats.totalPermissions / stats.totalModules) * 10) / 10
-                  : 0}
-              </h3>
-            </div>
-          </div>
-           <div className="mt-4 flex items-center text-xs text-slate-500">
-             <span className="material-icons-round text-base mr-1">functions</span>
-             Trung bình quyền trên mỗi module
-          </div>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 h-48 animate-pulse">
-              <div className="flex items-center gap-4 mb-4">
-                 <div className="h-12 w-12 bg-slate-200 dark:bg-slate-800 rounded-xl" />
-                 <div className="h-6 w-32 bg-slate-200 dark:bg-slate-800 rounded" />
-              </div>
-              <div className="space-y-2">
-                 <div className="h-4 w-full bg-slate-200 dark:bg-slate-800 rounded" />
-                 <div className="h-4 w-2/3 bg-slate-200 dark:bg-slate-800 rounded" />
+      <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
+        {/* Header */}
+        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-6">
+            <div className="accent-bar h-16"></div>
+            <div>
+              <h1 className="tim-title">QUẢN LÝ QUYỀN HẠN</h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1">
+                  RBAC // PERMISSIONS
+                </span>
+                <p className="tim-meta">PHÂN HỆ CHỨC NĂNG VÀ QUYỀN TRUY CẬP</p>
               </div>
             </div>
-          ))}
+          </div>
+          <button
+            onClick={fetchPermissions}
+            className="h-12 w-12 border border-black bg-white hover:bg-black hover:text-white transition-colors flex items-center justify-center"
+            title="Làm mới"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
         </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {modules.map((module) => {
-            const iconName = getModuleIcon(module);
-            const perms = permissions[module] || [];
-            const modStats = moduleStats[module] || {};
-            
-            // Map module names for display
-            const displayName = MODULE_DISPLAY_NAMES?.[module] || module.charAt(0).toUpperCase() + module.slice(1);
 
-            return (
-              <div
-                key={module}
-                onClick={() => handleOpenModule(module)}
-                className="group relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden"
-              >
-                <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-opacity">
-                    <span className="material-icons-round text-8xl text-slate-900 dark:text-slate-100 rotate-12">{iconName}</span>
-                </div>
-
-                <div className="flex items-start justify-between relative z-10">
-                  <div
-                    className={cn(
-                      "p-3 rounded-xl shadow-sm transition-transform group-hover:scale-110",
-                       "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                    )}
-                  >
-                    <span className="material-icons-round text-2xl">{iconName}</span>
-                  </div>
-                  <div className="bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-400">
-                    {perms.length} quyền
-                  </div>
-                </div>
-                
-                <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100 relative z-10 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                  {displayName}
-                </h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 relative z-10">
-                   Được sử dụng bởi {modStats.rolesUsing || 0} vai trò
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Total Permissions */}
+          <div className="bg-white border border-black p-6 hover:shadow-hard transition-all">
+            <div className="flex items-center justify-between">
+              <div className="h-12 w-12 bg-black text-white flex items-center justify-center">
+                <Shield className="h-6 w-6" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  Tổng quyền
                 </p>
+                <h3 className="text-3xl font-bold text-black font-mono">
+                  {stats.totalPermissions}
+                </h3>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-xs text-gray-500 font-mono uppercase">
+                Tổng số quyền hạn trong hệ thống
+              </p>
+            </div>
+          </div>
 
-                <div className="mt-6 space-y-3 relative z-10">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center text-slate-600 dark:text-slate-400">
-                         <span className="material-icons-round text-base mr-2 text-blue-500">visibility</span>
-                         <span>Xem</span>
-                      </div>
-                      <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-semibold px-2 py-0.5 rounded-full">
-                         {perms.filter((p) => p.action === "view").length}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center text-slate-600 dark:text-slate-400">
-                         <span className="material-icons-round text-base mr-2 text-amber-500">edit</span>
-                         <span>Thao tác (Sửa/Xóa)</span>
-                      </div>
-                       <span className="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs font-semibold px-2 py-0.5 rounded-full">
-                         {perms.filter((p) => ["create", "update", "delete", "manage"].includes(p.action)).length}
-                      </span>
-                    </div>
+          {/* Total Modules */}
+          <div className="bg-white border border-black p-6 hover:shadow-hard transition-all">
+            <div className="flex items-center justify-between">
+              <div className="h-12 w-12 bg-black text-white flex items-center justify-center">
+                <Layers className="h-6 w-6" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  Modules
+                </p>
+                <h3 className="text-3xl font-bold text-black font-mono">
+                  {stats.totalModules}
+                </h3>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-xs text-gray-500 font-mono uppercase">
+                Các phân hệ chức năng
+              </p>
+            </div>
+          </div>
+
+          {/* Avg Permissions */}
+          <div className="bg-white border border-black p-6 hover:shadow-hard transition-all">
+            <div className="flex items-center justify-between">
+              <div className="h-12 w-12 bg-black text-white flex items-center justify-center">
+                <BarChart3 className="h-6 w-6" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  TB/Module
+                </p>
+                <h3 className="text-3xl font-bold text-black font-mono">
+                  {stats.totalModules > 0
+                    ? Math.round(
+                        (stats.totalPermissions / stats.totalModules) * 10,
+                      ) / 10
+                    : 0}
+                </h3>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-xs text-gray-500 font-mono uppercase">
+                Trung bình quyền/module
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-white border border-black p-6 h-48 animate-pulse"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 bg-gray-200" />
+                  <div className="h-6 w-20 bg-gray-200" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-6 w-32 bg-gray-200" />
+                  <div className="h-4 w-full bg-gray-200" />
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {modules.map((module) => {
+              const IconComponent = getModuleIcon(module);
+              const perms = permissions[module] || [];
+              const modStats = moduleStats[module] || {};
 
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] p-0 overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <DialogHeader className="p-6 border-b border-slate-100 dark:border-slate-800">
-            <DialogTitle className="flex items-center gap-2 text-xl">
-               <span className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                  <span className="material-icons-round text-slate-600 dark:text-slate-400">
-                      {selectedModule && getModuleIcon(selectedModule)}
-                  </span>
-               </span>
-              {selectedModule && (MODULE_DISPLAY_NAMES?.[selectedModule] || selectedModule)}
-            </DialogTitle>
-          </DialogHeader>
-          <ScrollArea className="max-h-[60vh] p-6">
-            <div className="grid gap-4">
-              {selectedModule &&
-                permissions[selectedModule]?.map((permission) => (
-                  <div key={permission.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900/50 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
-                    <div className="space-y-1 mb-3 sm:mb-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-slate-900 dark:text-slate-100">{permission.name}</p>
-                         <span className={cn(
-                             "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider",
-                             permission.action === 'view' ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" :
-                             permission.action === 'delete' ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" :
-                             "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                         )}>
-                            {permission.action}
-                         </span>
-                      </div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        {permission.description}
-                      </p>
-                       {permission.roles && permission.roles.length > 0 && (
-                          <div className="flex items-center flex-wrap gap-1 mt-2">
-                            <span className="text-xs text-slate-400 mr-1">
-                               Dành cho:
-                            </span>
-                             {permission.roles.map((role) => (
-                                <span key={role.id} className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded">
-                                   {role.displayName}
-                                </span>
-                             ))}
-                          </div>
-                      )}
+              const displayName =
+                MODULE_DISPLAY_NAMES?.[module] ||
+                module.charAt(0).toUpperCase() + module.slice(1);
+
+              return (
+                <div
+                  key={module}
+                  onClick={() => handleOpenModule(module)}
+                  className="group relative bg-white border border-black p-6 hover:shadow-hard transition-all cursor-pointer overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-[#F3E600]/10 -mr-8 -mt-8 rotate-45 transform transition-transform group-hover:scale-150"></div>
+
+                  <div className="flex items-start justify-between relative z-10">
+                    <div className="h-12 w-12 bg-black text-white flex items-center justify-center group-hover:bg-[#F3E600] group-hover:text-black transition-colors">
+                      <IconComponent className="h-6 w-6" />
+                    </div>
+                    <div className="px-2 py-1 bg-gray-100 border border-gray-200 text-xs font-mono text-gray-600">
+                      {perms.length} quyền
                     </div>
                   </div>
-                ))}
-            </div>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
+
+                  <h3 className="mt-4 text-lg font-bold text-black relative z-10 uppercase tracking-tight font-display">
+                    {displayName}
+                  </h3>
+                  <p className="mt-1 text-xs text-gray-500 relative z-10 font-mono uppercase">
+                    {modStats.rolesUsing || 0} vai trò sử dụng
+                  </p>
+
+                  <div className="mt-6 space-y-2 relative z-10">
+                    <div className="flex items-center justify-between text-xs border-t border-gray-100 pt-2">
+                      <div className="flex items-center text-gray-600">
+                        <Eye className="h-3 w-3 mr-2" />
+                        <span className="font-mono uppercase">Xem</span>
+                      </div>
+                      <span className="bg-[#F3E600] text-black text-xs font-bold px-2 py-0.5 font-mono">
+                        {perms.filter((p) => p.action === "view").length}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs border-t border-gray-100 pt-2">
+                      <div className="flex items-center text-gray-600">
+                        <Edit className="h-3 w-3 mr-2" />
+                        <span className="font-mono uppercase">Thao tác</span>
+                      </div>
+                      <span className="bg-black text-white text-xs font-bold px-2 py-0.5 font-mono">
+                        {
+                          perms.filter((p) =>
+                            ["create", "update", "delete", "manage"].includes(
+                              p.action,
+                            ),
+                          ).length
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+          <DialogContent className="max-w-3xl max-h-[85vh] p-0 overflow-hidden bg-white border-2 border-black rounded-none shadow-hard">
+            <DialogHeader className="p-6 border-b-2 border-black">
+              <DialogTitle className="flex items-center gap-3 text-xl font-bold uppercase tracking-wider">
+                <div className="h-8 w-8 bg-black text-white flex items-center justify-center">
+                  {selectedModule &&
+                    (() => {
+                      const IconComponent = getModuleIcon(selectedModule);
+                      return <IconComponent className="h-5 w-5" />;
+                    })()}
+                </div>
+                {selectedModule &&
+                  (MODULE_DISPLAY_NAMES?.[selectedModule] || selectedModule)}
+              </DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="max-h-[60vh] p-6">
+              <div className="grid gap-4">
+                {selectedModule &&
+                  permissions[selectedModule]?.map((permission) => (
+                    <div
+                      key={permission.id}
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-black hover:shadow-hard transition-all"
+                    >
+                      <div className="space-y-1 mb-3 sm:mb-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-black uppercase tracking-tight">
+                            {permission.name}
+                          </p>
+                          <span
+                            className={cn(
+                              "text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider font-mono",
+                              permission.action === "view"
+                                ? "bg-[#F3E600] text-black"
+                                : permission.action === "delete"
+                                  ? "bg-red-500 text-white"
+                                  : "bg-black text-white",
+                            )}
+                          >
+                            {permission.action}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 font-mono">
+                          {permission.description}
+                        </p>
+                        {permission.roles && permission.roles.length > 0 && (
+                          <div className="flex items-center flex-wrap gap-1 mt-2">
+                            <span className="text-xs text-gray-400 mr-1 font-mono uppercase">
+                              Vai trò:
+                            </span>
+                            {permission.roles.map((role) => (
+                              <span
+                                key={role.id}
+                                className="text-xs bg-gray-100 border border-gray-300 text-black px-2 py-0.5 font-mono"
+                              >
+                                {role.displayName}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }

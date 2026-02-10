@@ -1,5 +1,9 @@
 import prisma from "../config/prismaClient.js";
-import { USER_STATUS, PAGINATION, ROLE_HIERARCHY } from "../config/constants.js";
+import {
+  USER_STATUS,
+  PAGINATION,
+  ROLE_HIERARCHY,
+} from "../config/constants.js";
 import { ERROR_MESSAGES, ERROR_CODES } from "../config/messages.js";
 import {
   idSchema,
@@ -138,7 +142,11 @@ export const getUserById = async (id) => {
   });
 
   if (!user) {
-    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   return user;
@@ -161,6 +169,16 @@ export const createUser = async (userData) => {
     provinceCode,
     districtCode,
   } = validatedData;
+
+  // 🚫 BLOCK: GUEST role (5) cannot be created via web admin
+  // GUEST is reserved for mobile app only
+  if (roleId === 5) {
+    throw new ServiceError(
+      "Cannot create GUEST role user. GUEST role is reserved for mobile app only.",
+      400,
+      "GUEST_CREATION_NOT_ALLOWED",
+    );
+  }
 
   const existingUser = await prisma.user.findUnique({
     where: { email },
@@ -202,7 +220,7 @@ export const createUser = async (userData) => {
     };
 
     const cleanProfileData = Object.fromEntries(
-      Object.entries(profileData).filter(([_, v]) => v !== undefined)
+      Object.entries(profileData).filter(([_, v]) => v !== undefined),
     );
 
     if (Object.keys(cleanProfileData).length > 0) {
@@ -233,7 +251,11 @@ export const updateUser = async (id, updateData) => {
   });
 
   if (!existingUser || existingUser.deletedAt) {
-    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   const {
@@ -277,7 +299,7 @@ export const updateUser = async (id, updateData) => {
     };
 
     const cleanProfileData = Object.fromEntries(
-      Object.entries(profileData).filter(([_, v]) => v !== undefined)
+      Object.entries(profileData).filter(([_, v]) => v !== undefined),
     );
 
     if (Object.keys(cleanProfileData).length > 0) {
@@ -309,11 +331,19 @@ export const deleteUser = async (id) => {
   });
 
   if (!existingUser) {
-    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   if (existingUser.deletedAt) {
-    throw new ServiceError("Người dùng đã bị xóa trước đó", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError(
+      "Người dùng đã bị xóa trước đó",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
   }
 
   const deletedUser = await prisma.user.update({
@@ -355,7 +385,11 @@ export const updateUserRole = async (userId, newRoleId, currentUser) => {
   });
 
   if (!targetUser) {
-    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   const newRole = await prisma.role.findUnique({
@@ -364,13 +398,21 @@ export const updateUserRole = async (userId, newRoleId, currentUser) => {
   });
 
   if (!newRole) {
-    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   // Check hierarchy
   const currentRole = ROLE_HIERARCHY[currentUser.roleId];
   if (!currentRole.canManage.includes(validRoleId)) {
-    throw new ServiceError(ERROR_MESSAGES.FORBIDDEN, 403, ERROR_CODES.FORBIDDEN);
+    throw new ServiceError(
+      ERROR_MESSAGES.FORBIDDEN,
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
   }
 
   const updatedUser = await prisma.user.update({

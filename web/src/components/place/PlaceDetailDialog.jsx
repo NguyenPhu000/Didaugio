@@ -33,7 +33,7 @@ import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
 import Mail from "lucide-react/dist/esm/icons/mail";
 import { PRICE_RANGE_LABELS } from "@/constants/constants";
-import CanThoMap from "@/components/map/CanThoMap";
+import { MapView } from "@/modules/map";
 import { cn } from "@/lib/utils";
 
 /**
@@ -500,7 +500,7 @@ const PlaceDetailDialog = ({
                 {place.latitude && place.longitude && (
                   <div className="border-2 border-black p-1 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
                     <div className="h-[200px] grayscale hover:grayscale-0 transition-all duration-500 border border-gray-200">
-                      <CanThoMap
+                      <MapView
                         places={[place]}
                         showMarkers={true}
                         interactive={false}

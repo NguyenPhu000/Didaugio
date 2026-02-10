@@ -1,13 +1,15 @@
 import axios from "axios";
 import { API_BASE_URL } from "./constants";
 import { useAuthStore } from "@/stores/authStore";
+import { AUTH_ROUTES } from "./routes";
+import { API_TIMEOUT } from "./timing";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 30000,
+  timeout: API_TIMEOUT,
 });
 
 // Flag để tránh refresh token nhiều lần cùng lúc
@@ -29,12 +31,6 @@ const processQueue = (error, token = null) => {
 api.interceptors.request.use(
   (config) => {
     const accessToken = useAuthStore.getState().accessToken;
-    console.log(
-      "API Request:",
-      config.url,
-      "Token:",
-      accessToken ? "exists" : "missing"
-    );
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -42,13 +38,12 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor - Handle errors and auto refresh token
 api.interceptors.response.use(
   (response) => {
-    console.log("API Response:", response.config.url, "Data:", response.data);
     return response.data;
   },
   async (error) => {
@@ -77,7 +72,7 @@ api.interceptors.response.use(
       // Nếu không có refresh token thì logout
       if (!refreshToken) {
         useAuthStore.getState().logout();
-        window.location.href = "/login";
+        window.location.href = AUTH_ROUTES.LOGIN;
         return Promise.reject(error);
       }
 
@@ -86,7 +81,7 @@ api.interceptors.response.use(
         const refreshResponse = await axios.post(
           `${API_BASE_URL}/auth/refresh`,
           { refreshToken },
-          { headers: { "Content-Type": "application/json" } }
+          { headers: { "Content-Type": "application/json" } },
         );
 
         if (refreshResponse.data.success) {
@@ -108,7 +103,7 @@ api.interceptors.response.use(
         // Refresh token thất bại - logout
         processQueue(refreshError, null);
         useAuthStore.getState().logout();
-        window.location.href = "/login";
+        window.location.href = AUTH_ROUTES.LOGIN;
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -119,9 +114,9 @@ api.interceptors.response.use(
     if (response?.status === 400 && response?.data?.errors) {
       const validationErrors = response.data.errors;
       const errorMessages = validationErrors.map(
-        (err) => `${err.field}: ${err.message}`
+        (err) => `${err.field}: ${err.message}`,
       );
-      const message = `Lỗi validation:\n${errorMessages.join('\n')}`;
+      const message = `Lỗi validation:\n${errorMessages.join("\n")}`;
       return Promise.reject(new Error(message));
     }
 
@@ -129,7 +124,7 @@ api.interceptors.response.use(
     const message =
       response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại";
     return Promise.reject(new Error(message));
-  }
+  },
 );
 
 export default api;

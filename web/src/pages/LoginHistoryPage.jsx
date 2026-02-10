@@ -118,7 +118,7 @@ const LoginHistoryPage = () => {
   const handleRevokeAll = async (userId) => {
     if (
       !window.confirm(
-        "Bạn có chắc muốn đăng xuất tất cả thiết bị khác? (Giữ lại session hiện tại)"
+        "Bạn có chắc muốn đăng xuất tất cả thiết bị khác? (Giữ lại session hiện tại)",
       )
     )
       return;
@@ -128,7 +128,7 @@ const LoginHistoryPage = () => {
       const currentSessionId = loginHistoryService.getCurrentSessionId();
       const response = await loginHistoryService.revokeAll(
         userId,
-        currentSessionId
+        currentSessionId,
       );
       if (response.success) {
         toast.success(response.message || "Đã đăng xuất tất cả thiết bị khác");
@@ -137,7 +137,7 @@ const LoginHistoryPage = () => {
       }
     } catch (error) {
       toast.error(
-        error.response?.data?.message || "Lỗi khi đăng xuất tất cả thiết bị"
+        error.response?.data?.message || "Lỗi khi đăng xuất tất cả thiết bị",
       );
       console.error(error);
     }
@@ -190,69 +190,80 @@ const LoginHistoryPage = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Monitor className="w-8 h-8 text-cyan-600" />
-          <div>
-            <h1 className="text-2xl font-bold">Lịch Sử Đăng Nhập</h1>
-            <p className="text-gray-500">Quản lý sessions và thiết bị</p>
+    <div className="min-h-screen p-8 bg-background relative">
+      {/* Enhanced grid background with dots */}
+      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none"></div>
+
+      <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
+        {/* Header */}
+        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-6">
+            <div className="accent-bar h-16"></div>
+            <div>
+              <h1 className="tim-title">LỊCH SỚ ĐĂNG NHẬP</h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1">
+                  SYSTEM // LOGIN HISTORY
+                </span>
+                <p className="tim-meta">QUẢN LÝ SESSIONS VÀ THIẾT BỊ</p>
+              </div>
+            </div>
+          </div>
+          <Button
+            onClick={() => fetchSessions()}
+            disabled={loading}
+            variant="outline"
+            className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="tim-meta">TỔNG SỐ</span>
+              <Monitor className="h-5 w-5 text-gray-400" />
+            </div>
+            <div className="text-4xl font-black tracking-tighter">
+              {stats.total}
+            </div>
+          </div>
+          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all border-l-4 border-l-[#F3E600]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="tim-meta">ĐANG HOẠT ĐỘNG</span>
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            </div>
+            <div className="text-4xl font-black tracking-tighter text-green-600">
+              {stats.active}
+            </div>
+          </div>
+          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="tim-meta">ĐÃ VÔ HIỆU</span>
+              <Ban className="h-5 w-5 text-gray-600" />
+            </div>
+            <div className="text-4xl font-black tracking-tighter text-gray-600">
+              {stats.revoked}
+            </div>
+          </div>
+          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="tim-meta">HẾT HẠN</span>
+              <XCircle className="h-5 w-5 text-red-600" />
+            </div>
+            <div className="text-4xl font-black tracking-tighter text-red-600">
+              {stats.expired}
+            </div>
           </div>
         </div>
-        <Button onClick={() => fetchSessions()} disabled={loading}>
-          <RefreshCw
-            className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
-          />
-          Làm mới
-        </Button>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-gray-500 text-sm">Tổng số</p>
-              <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-gray-500 text-sm">Đang hoạt động</p>
-              <p className="text-3xl font-bold text-green-600">
-                {stats.active}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-gray-500 text-sm">Đã vô hiệu</p>
-              <p className="text-3xl font-bold text-gray-600">
-                {stats.revoked}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-gray-500 text-sm">Hết hạn</p>
-              <p className="text-3xl font-bold text-red-600">{stats.expired}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters & Table */}
-      <Card>
-        <CardHeader>
+        {/* Filter Bar */}
+        <div className="bg-white border border-black p-4 shadow-sm">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <CardTitle>Danh sách Sessions</CardTitle>
+            <span className="tim-meta">BỘ LỌC DỮ LIỆU</span>
             <div className="flex gap-2">
               <select
                 value={statusFilter}
@@ -260,119 +271,126 @@ const LoginHistoryPage = () => {
                   setStatusFilter(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="px-4 py-2 border rounded-lg"
+                className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50"
               >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="active">Đang hoạt động</option>
-                <option value="inactive">Đã vô hiệu</option>
+                <option value="all">TẤT CẢ TRẠNG THÁI</option>
+                <option value="active">ĐANG HOẠT ĐỘNG</option>
+                <option value="inactive">ĐÃ VÔ HIỆU</option>
               </select>
               {currentUser && (
                 <Button
                   variant="outline"
                   onClick={() => handleRevokeAll(currentUser.id)}
+                  className="h-10 rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
                 >
                   <Ban className="w-4 h-4 mr-2" />
-                  Đăng xuất tất cả
+                  ĐĂNG XUẤT TẤT CẢ
                 </Button>
               )}
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+
+        {/* Data Table */}
+        <div className="bg-white border border-black shadow-sm overflow-hidden">
           {loading ? (
-            <div className="text-center py-8">
-              <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
-              <p className="text-gray-500 mt-2">Đang tải...</p>
+            <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
+              <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
+              <span className="font-mono text-xs uppercase text-gray-500">
+                LOADING DATA...
+              </span>
             </div>
           ) : sessions.length === 0 ? (
-            <div className="text-center py-8">
-              <Monitor className="w-12 h-12 mx-auto text-gray-300" />
-              <p className="text-gray-500 mt-2">Không có dữ liệu</p>
+            <div className="flex flex-col items-center justify-center py-20">
+              <Monitor className="h-12 w-12 text-gray-300 mb-4" />
+              <div className="font-bold uppercase text-gray-400">
+                KHÔNG TÌM THẤY DỮ LIỆU
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-black text-white tim-table-header">
+                    <th className="p-4 border-r border-black/20 w-[60px]">
                       ID
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      User
+                    <th className="p-4 border-r border-black/20">USER</th>
+                    <th className="p-4 border-r border-black/20">THIẾT BỊ</th>
+                    <th className="p-4 border-r border-black/20">IP ADDRESS</th>
+                    <th className="p-4 border-r border-black/20">TRẠNG THÁI</th>
+                    <th className="p-4 border-r border-black/20">ĐĂNG NHẬP</th>
+                    <th className="p-4 border-r border-black/20">
+                      DÙNG GẦN NHẤT
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Thiết bị
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      IP Address
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Trạng thái
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Đăng nhập
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Sử dụng gần nhất
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Hết hạn
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                      Thao tác
-                    </th>
+                    <th className="p-4 border-r border-black/20">HẾT HẠN</th>
+                    <th className="p-4 text-center">THAO TÁC</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-black/5">
                   {sessions.map((session) => {
                     const statusInfo = getStatusInfo(session);
                     return (
-                      <tr key={session.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm">{session.id}</td>
-                        <td className="px-4 py-3 text-sm">
+                      <tr
+                        key={session.id}
+                        className="hover:bg-yellow-50 group transition-colors"
+                      >
+                        <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
+                          #{session.id}
+                        </td>
+                        <td className="p-4 border-r border-black/5">
                           <div>
-                            <div className="font-medium">
+                            <div className="font-bold uppercase text-sm">
                               {session.user?.profile?.fullName || "N/A"}
                             </div>
-                            <div className="text-gray-500 text-xs">
+                            <div className="text-gray-500 text-xs font-mono">
                               {session.user?.email || "N/A"}
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className="p-4 border-r border-black/5">
                           <div className="flex items-center gap-2">
                             {getDeviceIcon(session.deviceName)}
-                            <span className="truncate max-w-[200px]">
+                            <span className="truncate max-w-[200px] text-sm">
                               {truncateDevice(session.deviceName)}
                             </span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm font-mono">
-                          {session.ipAddress}
+                        <td className="p-4 border-r border-black/5">
+                          <span className="font-mono text-sm">
+                            {session.ipAddress}
+                          </span>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="p-4 border-r border-black/5">
                           <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${statusInfo.color}`}
                           >
                             {statusInfo.icon}
                             {statusInfo.label}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          {formatDate(session.createdAt)}
+                        <td className="p-4 border-r border-black/5">
+                          <span className="font-mono text-sm text-gray-500">
+                            {formatDate(session.createdAt)}
+                          </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          {formatDate(session.lastUsedAt)}
+                        <td className="p-4 border-r border-black/5">
+                          <span className="font-mono text-sm text-gray-500">
+                            {formatDate(session.lastUsedAt)}
+                          </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          {formatDate(session.expiresAt)}
+                        <td className="p-4 border-r border-black/5">
+                          <span className="font-mono text-sm text-gray-500">
+                            {formatDate(session.expiresAt)}
+                          </span>
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="p-4 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => handleViewDetail(session)}
+                              className="rounded-none border border-transparent hover:border-black hover:bg-white h-8"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -381,7 +399,7 @@ const LoginHistoryPage = () => {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => handleRevoke(session.id)}
-                                className="text-red-600 hover:text-red-700"
+                                className="rounded-none border border-transparent hover:border-red-600 hover:bg-red-50 text-red-600 hover:text-red-700 h-8"
                               >
                                 <Ban className="w-4 h-4" />
                               </Button>
@@ -398,148 +416,155 @@ const LoginHistoryPage = () => {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                Trước
-              </Button>
-              <span className="text-sm text-gray-600">
-                Trang {currentPage} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-              >
-                Sau
-              </Button>
+            <div className="flex items-center justify-between p-4 border-t border-black bg-gray-50 font-mono text-xs uppercase">
+              <div>HIỂN THỊ {sessions.length} KẾT QUẢ</div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-none border-black h-8 hover:bg-black hover:text-white"
+                >
+                  TRƯỚC
+                </Button>
+                <span className="flex items-center px-4 font-bold">
+                  {currentPage}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="rounded-none border-black h-8 hover:bg-black hover:text-white"
+                >
+                  SAU
+                </Button>
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Detail Modal */}
-      <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Chi tiết Session #{selectedSession?.id}</DialogTitle>
-          </DialogHeader>
-          {selectedSession && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    User
-                  </label>
-                  <p className="mt-1">
-                    {selectedSession.user?.profile?.fullName || "N/A"}
-                    <br />
-                    <span className="text-sm text-gray-500">
-                      {selectedSession.user?.email}
-                    </span>
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Trạng thái
-                  </label>
-                  <p className="mt-1">
-                    {(() => {
-                      const statusInfo = getStatusInfo(selectedSession);
-                      return (
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}
-                        >
-                          {statusInfo.icon}
-                          {statusInfo.label}
-                        </span>
-                      );
-                    })()}
-                  </p>
-                </div>
-                <div className="col-span-2">
-                  <label className="text-sm font-medium text-gray-500">
-                    Thiết bị
-                  </label>
-                  <div className="mt-1 flex items-center gap-2">
-                    {getDeviceIcon(selectedSession.deviceName)}
-                    <p className="break-all">{selectedSession.deviceName}</p>
+        {/* Detail Modal */}
+        <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Chi tiết Session #{selectedSession?.id}</DialogTitle>
+            </DialogHeader>
+            {selectedSession && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      User
+                    </label>
+                    <p className="mt-1">
+                      {selectedSession.user?.profile?.fullName || "N/A"}
+                      <br />
+                      <span className="text-sm text-gray-500">
+                        {selectedSession.user?.email}
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Trạng thái
+                    </label>
+                    <p className="mt-1">
+                      {(() => {
+                        const statusInfo = getStatusInfo(selectedSession);
+                        return (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}
+                          >
+                            {statusInfo.icon}
+                            {statusInfo.label}
+                          </span>
+                        );
+                      })()}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-sm font-medium text-gray-500">
+                      Thiết bị
+                    </label>
+                    <div className="mt-1 flex items-center gap-2">
+                      {getDeviceIcon(selectedSession.deviceName)}
+                      <p className="break-all">{selectedSession.deviceName}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      IP Address
+                    </label>
+                    <p className="mt-1 font-mono">
+                      {selectedSession.ipAddress}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Device ID
+                    </label>
+                    <p className="mt-1 font-mono">
+                      {selectedSession.deviceId || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Đăng nhập lúc
+                    </label>
+                    <p className="mt-1">
+                      {formatDate(selectedSession.createdAt)}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Sử dụng lần cuối
+                    </label>
+                    <p className="mt-1">
+                      {formatDate(selectedSession.lastUsedAt)}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Hết hạn lúc
+                    </label>
+                    <p className="mt-1">
+                      {formatDate(selectedSession.expiresAt)}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Refresh Token
+                    </label>
+                    <p className="mt-1 font-mono text-xs truncate">
+                      {selectedSession.refreshToken}
+                    </p>
                   </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    IP Address
-                  </label>
-                  <p className="mt-1 font-mono">{selectedSession.ipAddress}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Device ID
-                  </label>
-                  <p className="mt-1 font-mono">
-                    {selectedSession.deviceId || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Đăng nhập lúc
-                  </label>
-                  <p className="mt-1">
-                    {formatDate(selectedSession.createdAt)}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Sử dụng lần cuối
-                  </label>
-                  <p className="mt-1">
-                    {formatDate(selectedSession.lastUsedAt)}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Hết hạn lúc
-                  </label>
-                  <p className="mt-1">
-                    {formatDate(selectedSession.expiresAt)}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Refresh Token
-                  </label>
-                  <p className="mt-1 font-mono text-xs truncate">
-                    {selectedSession.refreshToken}
-                  </p>
-                </div>
-              </div>
 
-              {selectedSession.isActive && (
-                <div className="pt-4 border-t">
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      handleRevoke(selectedSession.id);
-                      setShowDetailModal(false);
-                    }}
-                    className="w-full"
-                  >
-                    <Ban className="w-4 h-4 mr-2" />
-                    Vô hiệu hóa Session
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+                {selectedSession.isActive && (
+                  <div className="pt-4 border-t">
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        handleRevoke(selectedSession.id);
+                        setShowDetailModal(false);
+                      }}
+                      className="w-full"
+                    >
+                      <Ban className="w-4 h-4 mr-2" />
+                      Vô hiệu hóa Session
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 };

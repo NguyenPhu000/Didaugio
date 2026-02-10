@@ -236,35 +236,35 @@ const PlaceListPage = () => {
   const getStatusBadge = (status) => {
     const statusConfig = {
       draft: {
-        label: "NHÁP",
-        className: "bg-gray-100 text-gray-500 border-gray-300",
+        label: "DRAFT",
+        className: "bg-gray-200 text-gray-700 border-2 border-gray-400",
       },
       pending: {
-        label: "CHỜ DUYỆT",
+        label: "PENDING",
         className:
-          "bg-yellow-100 text-yellow-700 border-yellow-300 animate-pulse",
+          "bg-yellow-400 text-black border-2 border-yellow-600 animate-pulse font-black",
       },
       approved: {
-        label: "ĐÃ DUYỆT",
-        className: "bg-primary text-black border-black font-bold",
+        label: "APPROVED",
+        className: "bg-[#F3E600] text-black border-2 border-black font-black",
       },
       rejected: {
-        label: "TỪ CHỐI",
-        className: "bg-red-100 text-red-600 border-red-300",
+        label: "REJECTED",
+        className: "bg-red-500 text-white border-2 border-red-700 font-black",
       },
       hidden: {
-        label: "ẨN",
-        className: "bg-black text-gray-500 border-gray-600",
+        label: "HIDDEN",
+        className: "bg-gray-800 text-gray-300 border-2 border-gray-600",
       },
     };
 
     const config = statusConfig[status] || statusConfig.draft;
     return (
-      <span
-        className={`px-2 py-0.5 text-[10px] uppercase font-mono border ${config.className}`}
+      <div
+        className={`px-3 py-1.5 text-[10px] uppercase font-mono ${config.className} backdrop-blur-sm shadow-sm`}
       >
         {config.label}
-      </span>
+      </div>
     );
   };
 
@@ -387,84 +387,120 @@ const PlaceListPage = () => {
           >
             {places.map((place) =>
               viewMode === "grid" ? (
-                // GRID VIEW CARD
+                // GRID VIEW CARD - ENHANCED T.I.M STYLE
                 <div
                   key={place.id}
-                  className="relative group bg-white border border-black transition-all hover:-translate-y-1 hover:shadow-hard"
+                  className="relative group bg-white border-2 border-black transition-all hover:-translate-y-2 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden"
                 >
-                  {/* Image */}
-                  <div className="h-48 bg-gray-200 relative overflow-hidden border-b border-black">
+                  {/* Grid Background Overlay */}
+                  <div className="absolute inset-0 bg-grid-dots opacity-30 pointer-events-none"></div>
+
+                  {/* Image Container */}
+                  <div className="h-52 bg-gray-900 relative overflow-hidden border-b-2 border-black">
                     {place.images?.[0] ? (
-                      <img
-                        src={place.images[0].imageData || place.images[0]}
-                        className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
-                      />
+                      <>
+                        <img
+                          src={place.images[0].imageData || place.images[0]}
+                          className="w-full h-full object-cover grayscale-[0.7] group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700"
+                          alt={place.name}
+                        />
+                        {/* Accent Bar on Image */}
+                        <div className="absolute bottom-0 left-0 w-1 h-full bg-[#F3E600] group-hover:w-2 transition-all"></div>
+                      </>
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center font-mono text-xs text-gray-400 uppercase bg-gray-100">
-                        NO_SIGNAL
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                        <MapPin className="h-12 w-12 text-gray-600 mb-2" />
+                        <span className="font-mono text-xs text-gray-500 uppercase tracking-wider">
+                          NO_IMAGE_DATA
+                        </span>
                       </div>
                     )}
 
-                    <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+                    {/* Status & Featured Badges */}
+                    <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
                       {getStatusBadge(place.status)}
                       {place.isFeatured && (
-                        <Badge className="rounded-none bg-yellow-500 text-black border-none text-[10px] uppercase px-1 font-bold">
-                          <Star className="w-3 h-3 mr-1 fill-black" /> STAR
-                        </Badge>
+                        <div className="bg-[#F3E600] border-2 border-black text-black px-2 py-1 text-[10px] uppercase font-black flex items-center gap-1">
+                          <Star className="w-3 h-3 fill-black" /> FEATURED
+                        </div>
                       )}
+                    </div>
+
+                    {/* ID Badge */}
+                    <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm border border-white/20 px-2 py-1">
+                      <span className="font-mono text-[10px] text-white">
+                        #{place.id}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Content */}
-                  <div className="p-4">
+                  {/* Content Section */}
+                  <div className="p-5 relative bg-white">
+                    {/* Title */}
                     <h3
-                      className="font-bold text-lg leading-tight uppercase truncate mb-1"
+                      className="font-black text-lg leading-tight uppercase mb-2 tracking-tight hover:text-[#F3E600] transition-colors cursor-pointer"
                       title={place.name}
+                      onClick={() => handleViewDetails(place)}
                     >
-                      {place.name}
+                      {place.name.length > 30
+                        ? place.name.substring(0, 30) + "..."
+                        : place.name}
                     </h3>
-                    <div className="flex items-center gap-2 text-[10px] font-mono text-gray-500 mb-3 uppercase">
-                      <span>{place.category?.name || "UNKNOWN"}</span>
-                      <span>//</span>
-                      <span className="truncate max-w-[100px]">
-                        {place.district?.name}
+
+                    {/* Meta Info */}
+                    <div className="flex items-center gap-2 text-[10px] font-mono text-gray-500 mb-4 uppercase">
+                      <span className="bg-gray-100 px-2 py-0.5 border border-gray-300">
+                        {place.category?.name || "UNCATEGORIZED"}
+                      </span>
+                      <span className="text-gray-300">//</span>
+                      <span
+                        className="truncate max-w-[120px]"
+                        title={place.district?.name}
+                      >
+                        {place.district?.name || "NO_DISTRICT"}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 border-t border-dashed border-gray-300 pt-3 mb-3">
-                      <div className="text-center">
-                        <div className="text-[10px] text-gray-400 font-mono uppercase">
-                          LƯỢT XEM
+                    {/* Stats Grid - Enhanced */}
+                    <div className="grid grid-cols-2 gap-3 border-t-2 border-black pt-4 mb-4">
+                      <div className="text-center bg-gray-50 border border-gray-200 p-2">
+                        <div className="text-[10px] text-gray-400 font-mono uppercase mb-1 tracking-wider">
+                          <Eye className="w-3 h-3 inline mr-1" />
+                          VIEWS
                         </div>
-                        <div className="font-bold">{place.viewCount || 0}</div>
+                        <div className="font-black text-xl tracking-tighter">
+                          {place.viewCount || 0}
+                        </div>
                       </div>
-                      <div className="text-center border-l border-dashed border-gray-300">
-                        <div className="text-[10px] text-gray-400 font-mono uppercase">
-                          ĐÁNH GIÁ
+                      <div className="text-center bg-yellow-50 border border-yellow-200 p-2">
+                        <div className="text-[10px] text-gray-400 font-mono uppercase mb-1 tracking-wider">
+                          <Star className="w-3 h-3 inline mr-1" />
+                          RATING
                         </div>
-                        <div className="font-bold text-yellow-600">
+                        <div className="font-black text-xl tracking-tighter text-yellow-600">
                           {place.ratingAvg
                             ? parseFloat(place.ratingAvg).toFixed(1)
-                            : "-"}
+                            : "N/A"}
                         </div>
                       </div>
                     </div>
 
+                    {/* Action Buttons - Tactical Style */}
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        className="flex-1 rounded-none border border-black bg-white text-black hover:bg-black hover:text-white uppercase font-bold text-xs h-8"
+                        className="flex-1 rounded-none border-2 border-black bg-white text-black hover:bg-[#F3E600] hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] uppercase font-black text-xs h-10 transition-all"
                         onClick={() => handleEdit(place)}
                       >
-                        <Edit className="w-3 h-3 mr-1" /> SỬA
+                        <Edit className="w-4 h-4 mr-1.5" /> EDIT
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="icon"
-                            className="h-8 w-8 rounded-none border border-black bg-primary text-black hover:bg-yellow-400"
+                            className="h-10 w-10 rounded-none border-2 border-black bg-black text-[#F3E600] hover:bg-[#F3E600] hover:text-black transition-all"
                           >
-                            <MoreHorizontal className="w-4 h-4" />
+                            <MoreHorizontal className="w-5 h-5" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent

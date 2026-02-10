@@ -8,40 +8,41 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { Shield, UserPlus } from "lucide-react";
 
 export function PermissionCheckbox({
   permission,
   checked,
   onCheckedChange,
   disabled = false,
-  isInherited = false, // Quyền kế thừa từ Role
-  showSource = false, // Hiển thị badge nguồn gốc
+  isInherited = false,
+  showSource = false,
 }) {
   return (
     <div
       className={cn(
-        "flex items-start space-x-3 p-3 rounded-xl border transition-all duration-200",
+        "flex items-start space-x-3 p-3 border transition-all duration-200",
         checked
-          ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800"
-          : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700",
+          ? "bg-white border-black border-l-4 border-l-[#F3E600]"
+          : "bg-white border-gray-300 hover:border-black",
         disabled && "opacity-60 cursor-not-allowed",
-        isInherited && "border-l-4 border-l-blue-500 rounded-l-md"
+        isInherited && "border-l-4 border-l-black",
       )}
     >
       <Checkbox
         id={`permission-${permission.id}`}
         checked={checked}
         onCheckedChange={onCheckedChange}
-        disabled={disabled} // User có thể bỏ tích quyền từ role
-        className="mt-1 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+        disabled={disabled}
+        className="mt-1 data-[state=checked]:bg-[#F3E600] data-[state=checked]:border-black data-[state=checked]:text-black rounded-none border-2"
       />
       <div className="flex-1 space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
           <Label
             htmlFor={`permission-${permission.id}`}
             className={cn(
-              "text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer",
-              disabled && "cursor-not-allowed"
+              "text-xs font-bold text-black cursor-pointer uppercase tracking-tight",
+              disabled && "cursor-not-allowed",
             )}
           >
             {permission.displayName}
@@ -52,15 +53,17 @@ export function PermissionCheckbox({
                 <TooltipTrigger asChild>
                   <Badge
                     variant="outline"
-                    className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-md"
+                    className="text-xs bg-black text-white border-black flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-none uppercase font-mono"
                   >
-                    <span className="material-icons-round text-[14px]">shield</span>
-                    Từ vai trò
+                    <Shield className="h-3 w-3" />
+                    ROLE
                   </Badge>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>Quyền mặc định từ vai trò</p>
-                  <p className="text-xs text-muted-foreground">
+                <TooltipContent className="bg-black text-white border-black rounded-none">
+                  <p className="uppercase font-mono text-xs">
+                    Quyền mặc định từ vai trò
+                  </p>
+                  <p className="text-xs text-gray-300 font-mono">
                     Bạn có thể bỏ chọn nếu không muốn user có quyền này
                   </p>
                 </TooltipContent>
@@ -70,15 +73,15 @@ export function PermissionCheckbox({
           {showSource && !isInherited && checked && (
             <Badge
               variant="outline"
-              className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-md"
+              className="text-xs bg-[#F3E600] text-black border-black flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-none uppercase font-mono"
             >
-              <span className="material-icons-round text-[14px]">person_add</span>
-              Đặc quyền
+              <UserPlus className="h-3 w-3" />
+              ĐẶC QUYỀN
             </Badge>
           )}
         </div>
         {permission.description && (
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-gray-500 font-mono">
             {permission.description}
           </p>
         )}

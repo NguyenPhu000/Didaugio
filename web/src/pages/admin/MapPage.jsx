@@ -27,10 +27,11 @@ import {
   CAN_THO_CENTER,
   MAP_CONFIGS,
   DEFAULT_MAP_STYLE,
-} from "@/constants/mapConfigs";
-import Map, { NavigationControl, Marker, Popup } from "react-map-gl";
-import maplibregl from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
+  MapGL,
+  NavigationControl,
+  Marker,
+  Popup,
+} from "@/modules/map";
 
 /**
  * MAP PAGE - T.I.M STYLE OVERHAUL (VIETNAMESE + REAL MAP)
@@ -170,13 +171,12 @@ const MapPage = () => {
         <div className="flex-1 relative overflow-hidden bg-gray-100">
           {viewMode === "map" ? (
             <div className="absolute inset-0 w-full h-full">
-              <Map
+              <MapGL
                 ref={mapRef}
                 initialViewState={viewState}
                 onMove={(evt) => setViewState(evt.viewState)}
                 style={{ width: "100%", height: "100%" }}
                 mapStyle={DEFAULT_MAP_STYLE}
-                mapLib={maplibregl}
                 attributionControl={false}
               >
                 <NavigationControl
@@ -260,7 +260,7 @@ const MapPage = () => {
                     </div>
                   </Popup>
                 )}
-              </Map>
+              </MapGL>
 
               {/* Info Panel Left Overlay */}
               <div className="absolute top-6 left-6 w-64 bg-white/90 backdrop-blur border border-black p-4 shadow-hard pointer-events-none">

@@ -1,17 +1,18 @@
 import axios from "axios";
+import { CACHE_TTL, CAN_THO_PROVINCE_CODE } from "@/constants/timing";
 
-const API_BASE = "https://34tinhthanh.com/api";
+const API_BASE =
+  import.meta.env.VITE_LOCATION_API_URL || "https://34tinhthanh.com/api";
 
 // Cache để giảm số lần gọi API
 const cache = new Map();
-const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-// Mã Cần Thơ (sau khi sát nhập 2025) - dùng cho dự án Đi Đâu Giờ
-const CAN_THO_PROVINCE_CODE = "92"; // String format theo API mới
+// Mã Cần Thơ - dùng cho dự án Đi Đâu Giờ
+// CAN_THO_PROVINCE_CODE imported from constants/timing
 
 const setCacheWithTTL = (key, data) => {
   cache.set(key, data);
-  setTimeout(() => cache.delete(key), CACHE_TTL);
+  setTimeout(() => cache.delete(key), CACHE_TTL.LOCATION);
 };
 
 export const locationService = {

@@ -13,43 +13,27 @@ const router = express.Router();
 // GEOJSON ROUTES
 // =============================================================================
 
-/**
- * @route   GET /api/boundaries/districts
- * @desc    Lấy GeoJSON quận/huyện Cần Thơ
- * @access  Public
- */
+/** GET /api/boundaries/districts - GeoJSON quận/huyện */
 router.get("/districts", boundaryController.getDistrictsGeoJSON);
 
-/**
- * @route   GET /api/boundaries/wards
- * @desc    Lấy GeoJSON phường/xã Cần Thơ
- * @access  Public
- */
+/** GET /api/boundaries/wards - GeoJSON phường/xã */
 router.get("/wards", boundaryController.getWardsGeoJSON);
-
-/**
- * @route   GET /api/boundaries/style
- * @desc    Lấy MapLibre Style JSON cho bản đồ Cần Thơ
- * @access  Public
- */
-router.get("/style", boundaryController.getStyleJSON);
 
 // =============================================================================
 // CENTROID ROUTES
 // =============================================================================
 
-/**
- * @route   GET /api/boundaries/districts/:code/center
- * @desc    Lấy tọa độ trung tâm của quận/huyện theo code
- * @access  Public
- */
+/** GET /api/boundaries/districts/:code/center - Tâm quận/huyện */
 router.get("/districts/:code/center", boundaryController.getDistrictCenter);
 
-/**
- * @route   GET /api/boundaries/wards/:id/center
- * @desc    Lấy tọa độ trung tâm của phường/xã theo ID
- * @access  Public
- */
+/** GET /api/boundaries/wards/:id/center - Tâm phường/xã */
 router.get("/wards/:id/center", boundaryController.getWardCenter);
+
+// =============================================================================
+// CACHE MANAGEMENT
+// =============================================================================
+
+/** POST /api/boundaries/cache/invalidate - Xóa cache (admin) */
+router.post("/cache/invalidate", boundaryController.invalidateCache);
 
 export default router;

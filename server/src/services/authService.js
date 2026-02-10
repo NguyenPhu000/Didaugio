@@ -3,7 +3,11 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import prisma from "../config/prismaClient.js";
 import { USER_STATUS } from "../config/constants.js";
-import { ERROR_MESSAGES, ERROR_CODES, SUCCESS_MESSAGES } from "../config/messages.js";
+import {
+  ERROR_MESSAGES,
+  ERROR_CODES,
+  SUCCESS_MESSAGES,
+} from "../config/messages.js";
 import eventEmitter, { EVENTS } from "../utils/eventEmitter.js";
 import {
   loginSchema,
@@ -23,7 +27,11 @@ import * as passwordResetService from "./passwordResetService.js";
 // =============================================================================
 
 class ServiceError extends Error {
-  constructor(message, statusCode = 400, errorCode = ERROR_CODES.VALIDATION_ERROR) {
+  constructor(
+    message,
+    statusCode = 400,
+    errorCode = ERROR_CODES.VALIDATION_ERROR,
+  ) {
     super(message);
     this.statusCode = statusCode;
     this.errorCode = errorCode;
@@ -67,6 +75,16 @@ const hashToken = (token) => {
 export const register = async (data) => {
   const validated = registerSchema.parse(data);
 
+  // 🚫 BLOCK: GUEST role cannot register via web
+  // GUEST is reserved for mobile app only
+  if (validated.roleId && validated.roleId === 5) {
+    throw new ServiceError(
+      "GUEST role registration is not allowed via web. Mobile app only.",
+      400,
+      "GUEST_REGISTRATION_NOT_ALLOWED",
+    );
+  }
+
   // Check existing email
   const existingUser = await prisma.user.findUnique({
     where: { email: validated.email },
@@ -79,12 +97,12 @@ export const register = async (data) => {
   // Hash password
   const hashedPassword = await bcrypt.hash(validated.password, 12);
 
-  // Create user
+  // Create user - Default to BUSINESS role (3) for web registration
   const user = await prisma.user.create({
     data: {
       email: validated.email,
       password: hashedPassword,
-      roleId: 5, // User
+      roleId: validated.roleId || 3, // Default: BUSINESS, not GUEST
       status: USER_STATUS.ACTIVE, // Assuming active by default for now
       emailVerified: false,
       profile: {
@@ -111,7 +129,10 @@ export const register = async (data) => {
   }
 
   // Emit event
-  eventEmitter.emit(EVENTS.USER.REGISTERED, { userId: user.id, email: user.email });
+  eventEmitter.emit(EVENTS.USER.REGISTERED, {
+    userId: user.id,
+    email: user.email,
+  });
 
   const { password, ...userWithoutPassword } = user;
 
@@ -136,21 +157,30 @@ export const login = async (data, clientInfo = {}) => {
   });
 
   if (!user) {
-    throw new ServiceError(ERROR_MESSAGES.UNAUTHORIZED, 401, ERROR_CODES.UNAUTHORIZED);
+    throw new ServiceError(
+      ERROR_MESSAGES.UNAUTHORIZED,
+      401,
+      ERROR_CODES.UNAUTHORIZED,
+    );
   }
 
   // Check lockout
   if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
-    const remainingTime = Math.ceil((new Date(user.lockedUntil) - new Date()) / 60000);
+    const remainingTime = Math.ceil(
+      (new Date(user.lockedUntil) - new Date()) / 60000,
+    );
     throw new ServiceError(
       `Tài khoản bị khóa. Vui lòng thử lại sau ${remainingTime} phút`,
       423,
-      "ACCOUNT_LOCKED"
+      "ACCOUNT_LOCKED",
     );
   }
 
   // Check password
-  const isValidPassword = await bcrypt.compare(validated.password, user.password);
+  const isValidPassword = await bcrypt.compare(
+    validated.password,
+    user.password,
+  );
 
   if (!isValidPassword) {
     const failedCount = user.failedLoginCount + 1;
@@ -170,20 +200,34 @@ export const login = async (data, clientInfo = {}) => {
       throw new ServiceError(
         `Email hoặc mật khẩu không đúng. Còn ${remainingAttempts} lần thử`,
         401,
-        ERROR_CODES.UNAUTHORIZED
+        ERROR_CODES.UNAUTHORIZED,
       );
     } else {
       throw new ServiceError(
         "Tài khoản đã bị khóa do đăng nhập sai quá nhiều lần",
         423,
-        "ACCOUNT_LOCKED"
+        "ACCOUNT_LOCKED",
       );
     }
   }
 
+  // 🚫 BLOCK: GUEST role cannot login to web admin
+  // GUEST is reserved for mobile app only
+  if (user.roleId === 5) {
+    throw new ServiceError(
+      "GUEST users cannot login to web admin. Mobile app only.",
+      403,
+      "GUEST_LOGIN_NOT_ALLOWED",
+    );
+  }
+
   // Check status
   if (user.status === USER_STATUS.INACTIVE) {
-    throw new ServiceError(ERROR_MESSAGES.UNAUTHORIZED, 403, "ACCOUNT_INACTIVE");
+    throw new ServiceError(
+      ERROR_MESSAGES.UNAUTHORIZED,
+      403,
+      "ACCOUNT_INACTIVE",
+    );
   }
 
   if (user.status === USER_STATUS.BANNED) {
@@ -260,20 +304,36 @@ export const refreshAccessToken = async (data) => {
   });
 
   if (!session) {
-    throw new ServiceError(ERROR_MESSAGES.UNAUTHORIZED, 401, ERROR_CODES.INVALID_TOKEN);
+    throw new ServiceError(
+      ERROR_MESSAGES.UNAUTHORIZED,
+      401,
+      ERROR_CODES.INVALID_TOKEN,
+    );
   }
 
   if (new Date(session.expiresAt) < new Date()) {
     await prisma.userSession.delete({ where: { id: session.id } });
-    throw new ServiceError(ERROR_MESSAGES.UNAUTHORIZED, 401, "REFRESH_TOKEN_EXPIRED");
+    throw new ServiceError(
+      ERROR_MESSAGES.UNAUTHORIZED,
+      401,
+      "REFRESH_TOKEN_EXPIRED",
+    );
   }
 
   if (!session.isActive) {
-    throw new ServiceError(ERROR_MESSAGES.UNAUTHORIZED, 401, "SESSION_INACTIVE");
+    throw new ServiceError(
+      ERROR_MESSAGES.UNAUTHORIZED,
+      401,
+      "SESSION_INACTIVE",
+    );
   }
 
   if (session.user.status !== USER_STATUS.ACTIVE) {
-    throw new ServiceError(ERROR_MESSAGES.UNAUTHORIZED, 403, "ACCOUNT_INACTIVE");
+    throw new ServiceError(
+      ERROR_MESSAGES.UNAUTHORIZED,
+      403,
+      "ACCOUNT_INACTIVE",
+    );
   }
 
   const accessToken = generateAccessToken({
@@ -332,7 +392,11 @@ export const getMe = async (userId) => {
   });
 
   if (!user) {
-    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   const { password, ...userWithoutPassword } = user;
@@ -350,13 +414,24 @@ export const changePassword = async (userId, data) => {
   });
 
   if (!user) {
-    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
-  const isValidPassword = await bcrypt.compare(validated.currentPassword, user.password);
+  const isValidPassword = await bcrypt.compare(
+    validated.currentPassword,
+    user.password,
+  );
 
   if (!isValidPassword) {
-    throw new ServiceError("Mật khẩu hiện tại không đúng", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError(
+      "Mật khẩu hiện tại không đúng",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
   }
 
   const hashedPassword = await bcrypt.hash(validated.newPassword, 12);
@@ -380,17 +455,22 @@ export const forgotPassword = async (data, ipAddress = null) => {
 
   return {
     message: "Nếu email tồn tại, bạn sẽ nhận được link đặt lại mật khẩu",
-    ...(process.env.NODE_ENV === "development" && result?.rawToken && { resetToken: result.rawToken }),
+    ...(process.env.NODE_ENV === "development" &&
+      result?.rawToken && { resetToken: result.rawToken }),
   };
 };
 
 export const resetPassword = async (data) => {
   const validated = resetPasswordSchema.parse(data);
 
-  const result = await passwordResetService.reset(validated.token, validated.newPassword);
+  const result = await passwordResetService.reset(
+    validated.token,
+    validated.newPassword,
+  );
 
   return {
-    message: result.message || "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.",
+    message:
+      result.message || "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.",
   };
 };
 
@@ -405,7 +485,11 @@ export const verifyEmail = async (data) => {
     return { message: "Xác thực email thành công" };
   } catch (error) {
     if (error.statusCode) throw error;
-    throw new ServiceError(error.message || ERROR_MESSAGES.VALIDATION_ERROR, 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError(
+      error.message || ERROR_MESSAGES.VALIDATION_ERROR,
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
   }
 };
 
@@ -415,7 +499,11 @@ export const resendVerificationEmail = async (userId) => {
     return { message: "Đã gửi lại email xác thực" };
   } catch (error) {
     if (error.statusCode) throw error;
-    throw new ServiceError(error.message || "Không thể gửi email", error.statusCode || 400, "RESEND_FAILED");
+    throw new ServiceError(
+      error.message || "Không thể gửi email",
+      error.statusCode || 400,
+      "RESEND_FAILED",
+    );
   }
 };
 
@@ -447,7 +535,11 @@ export const revokeSession = async (userId, sessionId) => {
   });
 
   if (!session) {
-    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   await prisma.userSession.delete({

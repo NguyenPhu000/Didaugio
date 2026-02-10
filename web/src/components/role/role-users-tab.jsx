@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import { userPermissionService } from "@/apis/userPermissionService";
 import { toast } from "sonner";
 import { UserPermissionModal } from "./user-permission-modal";
+import { Search, UserCog, Users, Settings } from "lucide-react";
 
 export function RoleUsersTab({ role }) {
   const [users, setUsers] = useState([]);
@@ -36,7 +37,10 @@ export function RoleUsersTab({ role }) {
         setUsers([]);
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || "Không thể tải danh sách users";
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Không thể tải danh sách users";
       toast.error(errorMsg);
       setUsers([]);
     } finally {
@@ -99,12 +103,12 @@ export function RoleUsersTab({ role }) {
         {[...Array(5)].map((_, i) => (
           <div
             key={i}
-            className="flex items-center gap-3 p-4 border rounded-xl"
+            className="flex items-center gap-3 p-4 border border-black"
           >
-            <Skeleton className="h-10 w-10 rounded-full" />
+            <Skeleton className="h-10 w-10 border border-gray-300" />
             <div className="flex-1">
-              <Skeleton className="h-4 w-48 mb-2" />
-              <Skeleton className="h-3 w-32" />
+              <Skeleton className="h-4 w-48 mb-2 border border-gray-300" />
+              <Skeleton className="h-3 w-32 border border-gray-300" />
             </div>
           </div>
         ))}
@@ -116,83 +120,103 @@ export function RoleUsersTab({ role }) {
     <div className="space-y-4 pb-4">
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
-           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-             <span className="material-icons-round text-lg">search</span>
-           </span>
+          <div className="absolute left-0 top-0 h-full w-10 bg-black flex items-center justify-center text-white">
+            <Search className="h-4 w-4" />
+          </div>
           <Input
-            placeholder="Tìm user theo email hoặc tên..."
+            placeholder="TÌM USER THEO EMAIL HOẶC TÊN..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            className="pl-9 rounded-xl border-slate-200 dark:border-slate-800"
+            className="pl-12 h-10 rounded-none border border-black bg-white focus-visible:ring-0 focus-visible:border-black focus:bg-yellow-50 uppercase text-xs font-mono"
           />
         </div>
-        <Button onClick={handleSearch} variant="outline" className="rounded-xl border-slate-200 dark:border-slate-800">
-          Tìm
+        <Button
+          onClick={handleSearch}
+          variant="outline"
+          className="h-10 rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
+        >
+          TÌM
         </Button>
       </div>
 
       {selectedUsers.size > 0 && (
-        <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20">
-          <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
-            Đã chọn {selectedUsers.size} user(s)
+        <div className="flex items-center justify-between p-4 bg-[#F3E600]/20 border-2 border-[#F3E600]">
+          <p className="text-xs font-bold text-black uppercase tracking-wider font-mono">
+            ĐÃ CHỌN {selectedUsers.size} USER(S)
           </p>
           <div className="flex gap-2">
-            <Button size="sm" onClick={handleBulkManage} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm rounded-lg">
-              <span className="material-icons-round text-sm mr-2">manage_accounts</span>
-              Chỉnh quyền hàng loạt
+            <Button
+              size="sm"
+              onClick={handleBulkManage}
+              className="bg-black hover:bg-[#F3E600] hover:text-black text-white rounded-none border border-black uppercase text-xs font-bold"
+            >
+              <UserCog className="h-3 w-3 mr-2" />
+              CHỈNH QUYỀN HÀNG LOẠT
             </Button>
-            <Button size="sm" variant="outline" onClick={handleDeselectAll} className="bg-white dark:bg-slate-800 border-red-200 text-red-600 hover:bg-red-50 rounded-lg">
-              Bỏ chọn
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDeselectAll}
+              className="bg-white border border-black text-black hover:bg-gray-100 rounded-none uppercase text-xs font-bold"
+            >
+              BỎ CHỌN
             </Button>
           </div>
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500 font-medium">{users.length} user(s)</p>
+      <div className="flex items-center justify-between border-b border-black pb-2">
+        <p className="text-xs font-mono font-bold text-black uppercase tracking-wider">
+          {users.length} USER(S)
+        </p>
         <Button
           size="sm"
           variant="ghost"
           onClick={handleSelectAll}
           disabled={selectedUsers.size === users.length}
-          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+          className="text-black hover:bg-gray-100 border border-black rounded-none uppercase text-xs font-bold h-8"
         >
-          Chọn tất cả
+          CHỌN TẤT CẢ
         </Button>
       </div>
 
       {users.length === 0 ? (
-        <div className="text-center py-12 text-slate-400">
-           <span className="material-icons-round text-5xl mb-3 opacity-20">group_off</span>
-          <p>Chưa có user nào trong vai trò này</p>
+        <div className="text-center py-12 text-gray-500 bg-white border border-black border-dashed">
+          <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
+          <p className="uppercase font-mono text-xs">
+            CHƯA CÓ USER NÀO TRONG VAI TRÒ NÀY
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
           {users.map((user) => (
             <div
               key={user.id}
-              className="group flex items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-2xl hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all"
+              className="group flex items-center gap-3 p-4 bg-white border border-black hover:shadow-hard transition-all hover:border-l-4 hover:border-l-[#F3E600]"
             >
               <Checkbox
                 checked={selectedUsers.has(user.id)}
                 onCheckedChange={() => handleToggleUser(user.id)}
-                className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
+                className="data-[state=checked]:bg-[#F3E600] data-[state=checked]:border-black data-[state=checked]:text-black rounded-none border-2"
               />
-              <Avatar className="h-10 w-10 border border-slate-100 dark:border-slate-700">
+              <Avatar className="h-10 w-10 border-2 border-black rounded-none">
                 <AvatarImage src={user.avatar} />
-                <AvatarFallback className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium">
+                <AvatarFallback className="bg-gray-100 text-black font-bold rounded-none">
                   {getInitials(user.email, user.fullName)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-slate-900 dark:text-slate-100 truncate">
+                  <p className="font-bold text-black truncate uppercase text-sm tracking-tight">
                     {user.fullName || user.email}
                   </p>
                   {user.customPermissionCount > 0 && (
-                    <Badge variant="secondary" className="text-[10px] bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-900/30">
-                      +{user.customPermissionCount} custom
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] bg-[#F3E600] text-black border border-black rounded-none uppercase font-mono"
+                    >
+                      +{user.customPermissionCount} CUSTOM
                     </Badge>
                   )}
                   <Badge
@@ -200,15 +224,15 @@ export function RoleUsersTab({ role }) {
                       user.status === "active" ? "default" : "destructive"
                     }
                     className={
-                        user.status === "active" 
-                        ? "text-[10px] bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-300 hover:bg-green-100" 
-                        : "text-[10px]"
+                      user.status === "active"
+                        ? "text-[10px] bg-black text-white border border-black rounded-none uppercase font-mono"
+                        : "text-[10px] bg-red-500 text-white border border-black rounded-none uppercase font-mono"
                     }
                   >
                     {user.status}
                   </Badge>
                 </div>
-                <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                <p className="text-xs text-gray-500 truncate font-mono">
                   {user.email}
                 </p>
               </div>
@@ -216,10 +240,10 @@ export function RoleUsersTab({ role }) {
                 size="sm"
                 variant="outline"
                 onClick={() => handleManageUser(user)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="opacity-0 group-hover:opacity-100 transition-opacity rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
               >
-                <span className="material-icons-round text-lg mr-1 text-slate-500">settings</span>
-                Quản lý quyền
+                <Settings className="h-3 w-3 mr-2" />
+                QUẢN LÝ
               </Button>
             </div>
           ))}

@@ -3,77 +3,53 @@ import { useAuthStore } from "@/stores/authStore";
 import usePlaceStore from "@/stores/placeStore";
 import useCategoryStore from "@/stores/categoryStore";
 import { userService } from "@/apis/userService";
-import { Link, useNavigate } from "react-router-dom";
-import Users from "lucide-react/dist/esm/icons/users";
-import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import { useNavigate } from "react-router-dom";
 import Building2 from "lucide-react/dist/esm/icons/building-2";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
-import ArrowUpRight from "lucide-react/dist/esm/icons/arrow-up-right";
-import ArrowDownRight from "lucide-react/dist/esm/icons/arrow-down-right";
 import Activity from "lucide-react/dist/esm/icons/activity";
-import Layers from "lucide-react/dist/esm/icons/layers";
+import Users from "lucide-react/dist/esm/icons/users";
 import Search from "lucide-react/dist/esm/icons/search";
-import Filter from "lucide-react/dist/esm/icons/filter";
-import BarChart3 from "lucide-react/dist/esm/icons/bar-chart-3";
-import Archive from "lucide-react/dist/esm/icons/archive";
-import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
-import AnimatedIcon from "@/components/ui/animated-icon";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from "chart.js";
+import { PAGINATION } from "@/constants/constants";
+import { ADMIN_ROUTES } from "@/constants/routes";
+import { INTERVALS } from "@/constants/timing";
+
+// Sub-components
+import { TimStatsCard } from "./dashboard";
+import { DashboardDataStatus } from "./dashboard";
+import { DashboardCategories } from "./dashboard";
+import { DashboardCharts } from "./dashboard";
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+);
 
 /**
- * DASHBOARD PAGE - T.I.M STYLE OVERHAUL (VIETNAMESE)
+ * DASHBOARD PAGE - T.I.M STYLE WITH ADVANCED CHARTS
+ * Refactored: sub-components extracted to pages/dashboard/
  */
-
-// Custom Stats Card - T.I.M Style
-const TimStatsCard = ({
-  label,
-  value,
-  icon: Icon,
-  subValue,
-  subLabel,
-  status = "neutral",
-  serial,
-}) => {
-  // Status colors
-  const colors = {
-    positive: "text-green-600",
-    negative: "text-red-500",
-    neutral: "text-gray-400",
-    warning: "text-yellow-500",
-    primary: "text-foreground",
-  };
-
-  return (
-    <div className="relative bg-white border border-black p-6 group hover:shadow-hard transition-all duration-300">
-      {/* Serial Number */}
-      <div className="absolute top-2 right-2 tim-meta">{serial}</div>
-
-      {/* Corner Decor */}
-      <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-primary"></div>
-      <div className="absolute bottom-0 left-0 w-full h-[2px] bg-black scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-
-      <div className="flex justify-between items-start mb-4">
-        <div className="bg-gray-50 p-2 border border-gray-100 group-hover:bg-primary group-hover:border-black transition-colors">
-          <Icon className="w-5 h-5 text-gray-500 group-hover:text-black" />
-        </div>
-        {/* Trend or Sub-info */}
-        <div
-          className={`flex items-center gap-1 tim-meta font-bold ${colors[status]}`}
-        >
-          {subValue}
-          {status === "positive" && <ArrowUpRight className="w-3 h-3" />}
-          {status === "negative" && <ArrowDownRight className="w-3 h-3" />}
-          {subLabel && <span className="text-gray-400 ml-1">/ {subLabel}</span>}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="tim-table-header text-muted-foreground mb-1">{label}</h3>
-        <div className="tim-stats text-foreground">{value}</div>
-      </div>
-    </div>
-  );
-};
-
 const DashboardPage = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -96,16 +72,16 @@ const DashboardPage = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        // Fetch max allowed to get stats (100 is limit)
-        await Promise.all([fetchPlaces({ limit: 100 }), fetchCategories()]);
+        await Promise.all([
+          fetchPlaces({ limit: PAGINATION.MAX_LIMIT }),
+          fetchCategories(),
+        ]);
 
-        // Fetch User Stats
         try {
           const userRes = await userService.getAll({ limit: 1 });
-          // Access depending on API structure
           if (userRes.data?.total) setUserCount(userRes.data.total);
           else if (userRes.data?.users?.length)
-            setUserCount(userRes.data.users.length); // Fallback
+            setUserCount(userRes.data.users.length);
           else if (Array.isArray(userRes.data))
             setUserCount(userRes.data.length);
         } catch (err) {
@@ -124,7 +100,10 @@ const DashboardPage = () => {
       const pending = places.filter((p) => p.status === "pending").length;
       const rejected = places.filter((p) => p.status === "rejected").length;
       const featured = places.filter((p) => p.isFeatured).length;
-      const totalViews = places.reduce((sum, p) => sum + (p.viewCount || 0), 0);
+      const totalViews = places.reduce(
+        (sum, p) => sum + (p.viewCount || 0),
+        0,
+      );
       const ratingsSum = places.reduce(
         (sum, p) => sum + (p.averageRating || 0),
         0,
@@ -148,7 +127,9 @@ const DashboardPage = () => {
     (e) => {
       if (e.key === "Enter" || e.type === "click") {
         if (searchQuery.trim()) {
-          navigate(`/admin/places?search=${encodeURIComponent(searchQuery)}`);
+          navigate(
+            `${ADMIN_ROUTES.PLACES}?search=${encodeURIComponent(searchQuery)}`,
+          );
         }
       }
     },
@@ -166,7 +147,7 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen p-8 bg-background relative">
-      {/* Enhanced Multi-layer Background */}
+      {/* Multi-layer Background */}
       <div className="absolute inset-0 bg-grid-dots opacity-40 pointer-events-none"></div>
       <div className="absolute inset-0 bg-grid-lines opacity-15 pointer-events-none"></div>
 
@@ -241,96 +222,18 @@ const DashboardPage = () => {
           />
         </div>
 
-        {/* Complex Stats / Status Modules */}
+        {/* Data Status + Categories */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* System Status Module */}
-          <div className="lg:col-span-2 border border-black bg-white p-0 shadow-sm">
-            <div className="flex items-center justify-between p-4 border-b border-black bg-black text-white">
-              <div className="flex items-center gap-2">
-                <Layers className="h-4 w-4 text-primary" />
-                <h3 className="font-bold font-mono text-sm uppercase tracking-widest">
-                  TRẠNG THÁI DỮ LIỆU
-                </h3>
-              </div>
-              <div className="flex gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              </div>
-            </div>
-            <div className="p-8 grid grid-cols-3 gap-8">
-              <div className="text-center space-y-2 group cursor-pointer hover:bg-gray-50 p-4 border border-transparent hover:border-black/10 transition-all">
-                <div className="mx-auto w-12 h-12 flex items-center justify-center bg-green-100 text-green-700 rounded-none border border-green-200 group-hover:bg-green-600 group-hover:text-white transition-colors">
-                  <Activity className="h-6 w-6" />
-                </div>
-                <div className="text-3xl font-black font-technical">
-                  {stats.approved}
-                </div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-black">
-                  ĐÃ DUYỆT
-                </div>
-              </div>
-
-              <div className="text-center space-y-2 group cursor-pointer hover:bg-gray-50 p-4 border border-transparent hover:border-black/10 transition-all">
-                <div className="mx-auto w-12 h-12 flex items-center justify-center bg-yellow-100 text-yellow-700 rounded-none border border-yellow-200 group-hover:bg-yellow-500 group-hover:text-black transition-colors">
-                  <AlertCircle className="h-6 w-6" />
-                </div>
-                <div className="text-3xl font-black font-technical">
-                  {stats.pending}
-                </div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-black">
-                  CHỜ DUYỆT
-                </div>
-              </div>
-
-              <div className="text-center space-y-2 group cursor-pointer hover:bg-gray-50 p-4 border border-transparent hover:border-black/10 transition-all">
-                <div className="mx-auto w-12 h-12 flex items-center justify-center bg-red-100 text-red-700 rounded-none border border-red-200 group-hover:bg-red-600 group-hover:text-white transition-colors">
-                  <Archive className="h-6 w-6" />
-                </div>
-                <div className="text-3xl font-black font-technical">
-                  {stats.rejected}
-                </div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-black">
-                  ĐÃ HỦY
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Categories Module */}
-          <div className="border border-black bg-white flex flex-col">
-            <div className="p-4 border-b border-black border-dashed flex items-center justify-between">
-              <h3 className="font-bold font-mono text-sm uppercase tracking-widest">
-                DANH MỤC CƠ SỞ
-              </h3>
-              <Filter className="h-4 w-4 text-gray-400" />
-            </div>
-            <div className="p-0 flex-1 overflow-y-auto max-h-[300px] scrollbar-hide">
-              {categories.map((cat, idx) => (
-                <div
-                  key={cat.id}
-                  className="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-yellow-50 transition-colors group"
-                >
-                  <span className="font-mono text-xs text-gray-400 w-8">
-                    {String(idx + 1).padStart(2, "0")}
-                  </span>
-                  <span className="font-bold text-sm uppercase flex-1">
-                    {cat.name}
-                  </span>
-                  <span className="font-mono text-xs bg-black text-white px-2 py-0.5 rounded-none group-hover:bg-primary group-hover:text-black transition-colors">
-                    {places.filter((p) => p.categoryId === cat.id).length}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <Link
-              to="/categories"
-              className="p-4 border-t border-black bg-gray-50 text-center font-bold text-xs uppercase hover:bg-black hover:text-white transition-colors"
-            >
-              QUẢN LÝ DANH MỤC &rarr;
-            </Link>
-          </div>
+          <DashboardDataStatus stats={stats} />
+          <DashboardCategories categories={categories} places={places} />
         </div>
+
+        {/* Charts Section */}
+        <DashboardCharts
+          stats={stats}
+          categories={categories}
+          places={places}
+        />
       </div>
     </div>
   );

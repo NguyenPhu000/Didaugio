@@ -3,6 +3,7 @@ import * as categoryController from "../controllers/categoryController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
+import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
 
 const router = express.Router();
 
@@ -23,6 +24,7 @@ router.get("/:id/suggested-tags", categoryController.getSuggestedTags);
 router.post(
   "/",
   authenticate,
+  blockGuestFromAdmin,
   requirePermission("category.create"),
   auditLog({
     action: "CREATE",
@@ -30,12 +32,13 @@ router.post(
     getRecordId: (req, body) => body?.data?.id,
     getNewData: (req) => ({ name: req.body.name, slug: req.body.slug }),
   }),
-  categoryController.createCategory
+  categoryController.createCategory,
 );
 
 router.put(
   "/:id",
   authenticate,
+  blockGuestFromAdmin,
   requirePermission("category.update"),
   auditLog({
     action: "UPDATE",
@@ -43,24 +46,26 @@ router.put(
     getRecordId: (req) => parseInt(req.params.id),
     getNewData: (req) => req.body,
   }),
-  categoryController.updateCategory
+  categoryController.updateCategory,
 );
 
 router.delete(
   "/:id",
   authenticate,
+  blockGuestFromAdmin,
   requirePermission("category.delete"),
   auditLog({
     action: "DELETE",
     tableName: "categories",
     getRecordId: (req) => parseInt(req.params.id),
   }),
-  categoryController.deleteCategory
+  categoryController.deleteCategory,
 );
 
 router.post(
   "/:id/tags",
   authenticate,
+  blockGuestFromAdmin,
   requirePermission("category.update"),
   auditLog({
     action: "ASSIGN_TAGS",
@@ -68,7 +73,7 @@ router.post(
     getRecordId: (req) => parseInt(req.params.id),
     getNewData: (req) => ({ tagIds: req.body.tagIds }),
   }),
-  categoryController.assignTags
+  categoryController.assignTags,
 );
 
 export default router;

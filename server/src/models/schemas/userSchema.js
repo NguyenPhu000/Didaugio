@@ -17,7 +17,14 @@ export const createUserSchema = z.object({
     .min(6, "Mật khẩu phải có ít nhất 6 ký tự")
     .max(100, "Mật khẩu quá dài"),
 
-  roleId: z.coerce.number().int().positive().default(5),
+  roleId: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(3) // Default to BUSINESS (roleId: 3)
+    .refine((val) => val !== 5, {
+      message: "GUEST role (5) cannot be assigned. GUEST is mobile-only.",
+    }),
 
   // Profile fields (optional for create)
   fullName: z.string().max(100).optional(),
@@ -46,7 +53,14 @@ export const updateUserSchema = z.object({
 
   status: userStatusEnum.optional(),
 
-  roleId: z.coerce.number().int().positive().optional(),
+  roleId: z.coerce
+    .number()
+    .int()
+    .positive()
+    .refine((val) => val !== 5, {
+      message: "GUEST role (5) cannot be assigned. GUEST is mobile-only.",
+    })
+    .optional(),
 
   emailVerified: z.boolean().optional(),
 

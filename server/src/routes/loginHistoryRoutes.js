@@ -1,8 +1,12 @@
 import express from "express";
 import * as loginHistoryController from "../controllers/loginHistoryController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
+import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
 
 const router = express.Router();
+
+// 🔒 SECURITY: Block GUEST from viewing login history
+router.use(authenticate, blockGuestFromAdmin);
 
 /**
  * @route   GET /api/login-history
@@ -36,7 +40,7 @@ router.post("/revoke", authenticate, loginHistoryController.revoke);
 router.post(
   "/revoke-all/:userId",
   authenticate,
-  loginHistoryController.revokeAll
+  loginHistoryController.revokeAll,
 );
 
 export default router;

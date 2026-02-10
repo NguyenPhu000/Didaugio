@@ -1,13 +1,17 @@
 import express from "express";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
+import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
 
 const router = express.Router();
+
+// 🔒 SECURITY: Block GUEST from settings
+router.use(authenticate, blockGuestFromAdmin);
 
 /**
  * SETTINGS ROUTES
  * Base: /api/settings
- * 
+ *
  * System configuration and settings management
  */
 
@@ -26,7 +30,7 @@ router.get(
       },
       message: "Settings retrieved successfully",
     });
-  }
+  },
 );
 
 // Update settings (super admin only)
@@ -40,7 +44,7 @@ router.put(
       data: req.body,
       message: "Settings updated successfully",
     });
-  }
+  },
 );
 
 export default router;

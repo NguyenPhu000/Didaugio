@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback, memo } from "react";
-import { Marker, NavigationControl } from "react-map-gl/maplibre";
 import {
   MapPin,
   Locate,
@@ -13,11 +12,16 @@ import {
 } from "lucide-react";
 import { Input, Button, Label, Card, Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { MapProvider, useMapContext } from "@/providers";
-import MapBase from "@/components/map/MapBase";
-import BoundaryLayer from "@/components/map/BoundaryLayer";
-import { useMapData } from "@/hooks/useMapData";
-import { CAN_THO_CENTER } from "@/constants/mapConfigs";
+import {
+  Marker,
+  NavigationControl,
+  MapProvider,
+  useMapContext,
+  MapBase,
+  BoundaryLayer,
+  useMapData,
+  CAN_THO_CENTER,
+} from "@/modules/map";
 
 /**
  * MAP PICKER - CAN THO MODULE
@@ -42,16 +46,20 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Initial Sync ViewState (Only once on mount if not set?) 
+  // Initial Sync ViewState (Only once on mount if not set?)
   // MapProvider has its own default, but we might want to ensure we start at the marker if provided.
   useEffect(() => {
-    if (latitude && longitude && (latitude !== CAN_THO_CENTER.lat || longitude !== CAN_THO_CENTER.lng)) {
-        setViewState(prev => ({
-            ...prev,
-            latitude,
-            longitude,
-            zoom: 15
-        }));
+    if (
+      latitude &&
+      longitude &&
+      (latitude !== CAN_THO_CENTER.lat || longitude !== CAN_THO_CENTER.lng)
+    ) {
+      setViewState((prev) => ({
+        ...prev,
+        latitude,
+        longitude,
+        zoom: 15,
+      }));
     }
   }, [setViewState]); // Run once on mount effective/dependency
 
@@ -67,7 +75,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
       setMarker({ latitude: lat, longitude: lng });
       onChange?.(lat, lng);
     },
-    [onChange]
+    [onChange],
   );
 
   const onMarkerDragStart = useCallback(() => setIsDragging(true), []);
@@ -82,14 +90,14 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
       setIsDragging(false);
       updateLocation(event.lngLat.lat, event.lngLat.lng);
     },
-    [updateLocation]
+    [updateLocation],
   );
 
   const onMapClick = useCallback(
     (event) => {
       updateLocation(event.lngLat.lat, event.lngLat.lng);
     },
-    [updateLocation]
+    [updateLocation],
   );
 
   const onMapRightDoubleClick = useCallback(
@@ -104,7 +112,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
       updateLocation(lat, lng);
       setViewState((prev) => ({ ...prev, latitude: lat, longitude: lng }));
     },
-    [updateLocation, setViewState]
+    [updateLocation, setViewState],
   );
 
   const handleUseCurrentLocation = () => {
@@ -120,7 +128,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
             zoom: 16,
           }));
         },
-        (error) => alert("Không thể lấy vị trí: " + error.message)
+        (error) => alert("Không thể lấy vị trí: " + error.message),
       );
     }
   };
@@ -142,7 +150,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
     <div
       className={cn(
         "relative w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-50 transition-all duration-500",
-        isFullscreen ? "fixed inset-0 z-50 rounded-none h-screen" : "h-[650px]"
+        isFullscreen ? "fixed inset-0 z-50 rounded-none h-screen" : "h-[650px]",
       )}
     >
       {/* MAP HEADER OVERLAY */}
@@ -199,13 +207,9 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
         className="w-full h-full"
       >
         <NavigationControl position="bottom-right" showCompass={false} />
-        
+
         {/* Render Boundaries for Visual Context */}
-        <BoundaryLayer 
-            mask={canThoMask} 
-            districts={districts} 
-            wards={wards} 
-        />
+        <BoundaryLayer mask={canThoMask} districts={districts} wards={wards} />
 
         {/* CUSTOM MARKER */}
         <Marker
@@ -225,7 +229,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
             <div
               className={cn(
                 "relative flex flex-col items-center transition-transform duration-300",
-                isDragging ? "scale-110 -translate-y-4" : "hover:scale-105"
+                isDragging ? "scale-110 -translate-y-4" : "hover:scale-105",
               )}
             >
               <div className="bg-primary text-primary-foreground p-2.5 rounded-xl shadow-xl shadow-primary/40 transform rotate-45 border-2 border-white">
@@ -239,7 +243,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
             <div
               className={cn(
                 "absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap pointer-events-none",
-                isDragging && "opacity-100 translate-y-1"
+                isDragging && "opacity-100 translate-y-1",
               )}
             >
               {isDragging ? "Thả để chọn" : "Kéo để di chuyển"}
@@ -375,9 +379,9 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
 
 // Wrapper to provide MapContext
 const MapPicker = (props) => (
-    <MapProvider>
-        <MapPickerInner {...props} />
-    </MapProvider>
+  <MapProvider>
+    <MapPickerInner {...props} />
+  </MapProvider>
 );
 
 MapPicker.displayName = "MapPicker";

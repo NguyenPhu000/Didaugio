@@ -2,8 +2,12 @@ import express from "express";
 import * as permissionController from "../controllers/permissionController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
+import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
 
 const router = express.Router();
+
+// 🔒 SECURITY: Block GUEST role from all permission routes
+router.use(authenticate, blockGuestFromAdmin);
 
 // =============================================================================
 // PERMISSION ROUTES - API ENDPOINTS
@@ -18,7 +22,7 @@ router.get(
   "/",
   authenticate,
   requirePermission(["roles.view_detail", "roles.manage_permissions"]),
-  permissionController.getPermissions
+  permissionController.getPermissions,
 );
 
 /**
@@ -30,7 +34,7 @@ router.get(
   "/by-module",
   authenticate,
   requirePermission(["roles.view_detail", "roles.manage_permissions"]),
-  permissionController.getPermissionsByModule
+  permissionController.getPermissionsByModule,
 );
 
 /**
@@ -41,7 +45,7 @@ router.get(
   "/modules",
   authenticate,
   requirePermission("roles.view_detail"),
-  permissionController.getModules
+  permissionController.getModules,
 );
 
 export default router;
