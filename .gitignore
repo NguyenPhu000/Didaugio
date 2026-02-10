@@ -10,4 +10,6 @@ skills
 .env
 .agents/skills
 .vscode
-app
+
+
+.git_bk
