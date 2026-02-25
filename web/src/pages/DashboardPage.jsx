@@ -27,10 +27,13 @@ import { ADMIN_ROUTES } from "@/constants/routes";
 import { INTERVALS } from "@/constants/timing";
 
 // Sub-components
-import { TimStatsCard } from "./dashboard";
-import { DashboardDataStatus } from "./dashboard";
-import { DashboardCategories } from "./dashboard";
-import { DashboardCharts } from "./dashboard";
+import {
+  TimStatsCard,
+  DashboardDataStatus,
+  DashboardCategories,
+  DashboardCharts,
+  DashboardRecentPlaces,
+} from "./dashboard";
 
 // Register ChartJS components
 ChartJS.register(
@@ -100,10 +103,7 @@ const DashboardPage = () => {
       const pending = places.filter((p) => p.status === "pending").length;
       const rejected = places.filter((p) => p.status === "rejected").length;
       const featured = places.filter((p) => p.isFeatured).length;
-      const totalViews = places.reduce(
-        (sum, p) => sum + (p.viewCount || 0),
-        0,
-      );
+      const totalViews = places.reduce((sum, p) => sum + (p.viewCount || 0), 0);
       const ratingsSum = places.reduce(
         (sum, p) => sum + (p.averageRating || 0),
         0,
@@ -153,10 +153,13 @@ const DashboardPage = () => {
 
       <div className="relative z-10 space-y-12 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-black pb-6 gap-4">
           <div className="flex items-center gap-6">
-            <div className="accent-bar h-16"></div>
+            <div className="accent-bar h-16" />
             <div>
+              <div className="tim-meta mb-1 opacity-60">
+                XIN CHÀO, {user?.name?.toUpperCase() || "ADMIN"}
+              </div>
               <h1 className="tim-title">TỔNG QUAN</h1>
               <div className="flex items-center gap-4 mt-2">
                 <span className="tim-system bg-black text-white px-2 py-1">
@@ -234,6 +237,9 @@ const DashboardPage = () => {
           categories={categories}
           places={places}
         />
+
+        {/* Recent Places */}
+        <DashboardRecentPlaces places={places} />
       </div>
     </div>
   );

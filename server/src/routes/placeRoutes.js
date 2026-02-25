@@ -33,6 +33,13 @@ router.get("/stats", placeController.getStats);
 // GET /api/places/check-slug/:slug - Kiểm tra slug (public)
 router.get("/check-slug/:slug", placeController.checkSlug);
 
+// GET /api/places/nearby - Lấy địa điểm gần vị trí hiện tại (public)
+router.get(
+  "/nearby",
+  validateQuery(nearbyPlacesQuerySchema),
+  placeController.getNearbyPlaces,
+);
+
 // GET /api/places/slug/:slug - Lấy theo slug (public)
 router.get("/slug/:slug", placeController.getPlaceBySlug);
 
@@ -47,7 +54,7 @@ router.get("/:id", placeController.getPlaceById);
 router.post(
   "/",
   authenticate,
-  requirePermission("place.create"),
+  requirePermission("places.create"),
   validateBody(createPlaceSchema),
   auditLog({
     action: "CREATE",
@@ -59,7 +66,7 @@ router.post(
       address: req.body.address,
     }),
   }),
-  placeController.createPlace
+  placeController.createPlace,
 );
 
 // =============================================================================
@@ -70,7 +77,7 @@ router.post(
 router.put(
   "/:id",
   authenticate,
-  requirePermission(["place.update", "place.manage_own"]),
+  requirePermission("places.edit"),
   checkPlaceOwnership,
   validateBody(updatePlaceSchema),
   auditLog({
@@ -79,35 +86,35 @@ router.put(
     getRecordId: (req) => parseInt(req.params.id),
     getNewData: (req) => req.body,
   }),
-  placeController.updatePlace
+  placeController.updatePlace,
 );
 
 // DELETE /api/places/:id - Xóa địa điểm
 router.delete(
   "/:id",
   authenticate,
-  requirePermission(["place.delete", "place.manage_own"]),
+  requirePermission("places.delete"),
   checkPlaceOwnership,
   auditLog({
     action: "DELETE",
     tableName: "places",
     getRecordId: (req) => parseInt(req.params.id),
   }),
-  placeController.deletePlace
+  placeController.deletePlace,
 );
 
 // POST /api/places/:id/submit - Gửi duyệt
 router.post(
   "/:id/submit",
   authenticate,
-  requirePermission(["place.update", "place.manage_own"]),
+  requirePermission("places.edit"),
   checkPlaceOwnership,
   auditLog({
     action: "SUBMIT_REVIEW",
     tableName: "places",
     getRecordId: (req) => parseInt(req.params.id),
   }),
-  placeController.submitForReview
+  placeController.submitForReview,
 );
 
 // =============================================================================
@@ -118,55 +125,55 @@ router.post(
 router.put(
   "/:id/approve",
   authenticate,
-  requirePermission("place.approve"),
+  requirePermission("places.approve"),
   auditLog({
     action: "APPROVE",
     tableName: "places",
     getRecordId: (req) => parseInt(req.params.id),
   }),
-  placeController.approvePlace
+  placeController.approvePlace,
 );
 
 // PUT /api/places/:id/reject - Từ chối địa điểm
 router.put(
   "/:id/reject",
   authenticate,
-  requirePermission("place.approve"),
+  requirePermission("places.reject"),
   auditLog({
     action: "REJECT",
     tableName: "places",
     getRecordId: (req) => parseInt(req.params.id),
     getNewData: (req) => ({ reason: req.body.reason }),
   }),
-  placeController.rejectPlace
+  placeController.rejectPlace,
 );
 
 // PUT /api/places/:id/status - Đổi trạng thái
 router.put(
   "/:id/status",
   authenticate,
-  requirePermission("place.update"),
+  requirePermission("places.edit"),
   auditLog({
     action: "UPDATE_STATUS",
     tableName: "places",
     getRecordId: (req) => parseInt(req.params.id),
     getNewData: (req) => ({ status: req.body.status }),
   }),
-  placeController.updateStatus
+  placeController.updateStatus,
 );
 
 // PUT /api/places/:id/feature - Đánh dấu nổi bật
 router.put(
   "/:id/feature",
   authenticate,
-  requirePermission("place.feature"),
+  requirePermission("places.feature"),
   auditLog({
     action: "TOGGLE_FEATURED",
     tableName: "places",
     getRecordId: (req) => parseInt(req.params.id),
     getNewData: (req) => ({ isFeatured: req.body.isFeatured }),
   }),
-  placeController.toggleFeatured
+  placeController.toggleFeatured,
 );
 
 // =============================================================================
@@ -177,36 +184,36 @@ router.put(
 router.post(
   "/:id/images",
   authenticate,
-  requirePermission(["place.update", "place.manage_own"]),
+  requirePermission("places.manage_images"),
   checkPlaceOwnership,
-  placeController.addImages
+  placeController.addImages,
 );
 
 // PUT /api/places/:id/images/reorder - Sắp xếp ảnh
 router.put(
   "/:id/images/reorder",
   authenticate,
-  requirePermission(["place.update", "place.manage_own"]),
+  requirePermission("places.manage_images"),
   checkPlaceOwnership,
-  placeController.reorderImages
+  placeController.reorderImages,
 );
 
 // PUT /api/places/:id/images/:imageId/cover - Đặt làm ảnh bìa
 router.put(
   "/:id/images/:imageId/cover",
   authenticate,
-  requirePermission(["place.update", "place.manage_own"]),
+  requirePermission("places.manage_images"),
   checkPlaceOwnership,
-  placeController.setCoverImage
+  placeController.setCoverImage,
 );
 
 // DELETE /api/places/:id/images/:imageId - Xóa ảnh
 router.delete(
   "/:id/images/:imageId",
   authenticate,
-  requirePermission(["place.update", "place.manage_own"]),
+  requirePermission("places.manage_images"),
   checkPlaceOwnership,
-  placeController.deleteImage
+  placeController.deleteImage,
 );
 
 export default router;

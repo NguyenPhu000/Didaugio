@@ -5,24 +5,25 @@ import {
   useCallback,
   useMemo,
 } from "react";
-import { MAP_CONFIGS } from "../config/mapConfig";
+import {
+  MAP_CONFIGS,
+  MAP_STYLES,
+  DEFAULT_MAP_STYLE,
+} from "../config/mapConfig";
 
 const MapContext = createContext(null);
 
 export const MapProvider = ({ children }) => {
-  // View State
   const [viewState, setViewState] = useState(MAP_CONFIGS.INITIAL_VIEW);
+  const [basemap, setBasemap] = useState(DEFAULT_MAP_STYLE);
 
-  // Selection State
   const [selectedDistrict, setSelectedDistrict] = useState(null);
   const [selectedWard, setSelectedWard] = useState(null);
   const [hoveredFeature, setHoveredFeature] = useState(null);
 
-  // Data State
   const [places, setPlaces] = useState([]);
   const [filteredPlaces, setFilteredPlaces] = useState([]);
 
-  // Actions
   const flyTo = useCallback((coords, zoom = 13) => {
     setViewState((prev) => ({
       ...prev,
@@ -52,6 +53,9 @@ export const MapProvider = ({ children }) => {
     () => ({
       viewState,
       setViewState,
+      basemap,
+      setBasemap,
+      MAP_STYLES,
       selectedDistrict,
       selectedWard,
       hoveredFeature,
@@ -66,6 +70,7 @@ export const MapProvider = ({ children }) => {
     }),
     [
       viewState,
+      basemap,
       selectedDistrict,
       selectedWard,
       hoveredFeature,

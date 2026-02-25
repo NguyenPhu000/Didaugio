@@ -1,50 +1,56 @@
 {
   "expo": {
-    "name": "Di Dau Gio",
-    "slug": "didaugio",
+    "name": "Đi Đâu Giờ?",
+    "slug": "didaugio-app",
+    "scheme": "didaugio",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "scheme": "didaugio",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "vn.didaugio.app"
-    },
-    "android": {
-      "package": "vn.didaugio.app",
-      "permissions": [
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.INTERNET"
-      ]
-    },
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
-    },
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "plugins": [
       "expo-router",
-      "expo-font",
       "expo-secure-store",
+      "expo-font",
       [
-        "expo-location",
+        "expo-splash-screen",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Di Dau Gio to use your location."
+          "backgroundColor": "#0077b8",
+          "resizeMode": "contain"
         }
       ],
       [
-        "@maplibre/maplibre-react-native",
+        "expo-location",
         {
-          "locationLayer": true
+          "locationWhenInUsePermission": "Đi Đâu Giờ? cần vị trí để hiển thị địa điểm gần bạn."
         }
+      ],
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0077b8"
+      },
+      "package": "vn.didaugio.app",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
-    ]
+    },
+    "ios": {
+      "bundleIdentifier": "vn.didaugio.app",
+      "supportsTablet": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fd70727b-495e-4344-a2c7-364931acfcdf"
+      }
+    },
+    "owner": "nguyenphu_000"
   }
 }

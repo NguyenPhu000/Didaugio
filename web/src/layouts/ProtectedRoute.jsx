@@ -6,19 +6,24 @@ import { ROLES } from "@/constants/constants";
 /**
  * Protected Route Component
  *
- * SECURITY REQUIREMENT:
- * - GUEST role is NEVER allowed in admin routes
- * - Check both authentication and role permissions
+ * Zustand v5 `persist` with localStorage hydrates synchronously before
+ * the first React render, so no hydration guard is needed.
  */
-const ProtectedRoute = ({ allowedRoles = [], children }) => {
+const ProtectedRoute = ({ allowedRoles = [], roles = [], children }) => {
   const { isAuthenticated, user } = useAuthStore();
 
-  // Must be authenticated
+  const effectiveRoles =
+    Array.isArray(allowedRoles) && allowedRoles.length > 0
+      ? allowedRoles
+      : Array.isArray(roles)
+        ? roles
+        : [];
+
   if (!isAuthenticated) {
     return <Navigate to={AUTH_ROUTES.LOGIN} replace />;
   }
 
-  // 🔒 CRITICAL: Block GUEST role from all admin routes
+  //CRITICAL: Block GUEST role from all admin routes
   if (user?.roleId === ROLES.GUEST) {
     return (
       <Navigate
@@ -33,7 +38,7 @@ const ProtectedRoute = ({ allowedRoles = [], children }) => {
   }
 
   // Check specific role requirements if provided
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.roleId)) {
+  if (effectiveRoles.length > 0 && !effectiveRoles.includes(user?.roleId)) {
     return <Navigate to={AUTH_ROUTES.LOGIN} replace />;
   }
 

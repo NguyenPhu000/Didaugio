@@ -10,17 +10,19 @@ export const ROLES = {
   ADMIN: 2,
   BUSINESS: 3,
   STAFF: 4,
-  GUEST: 5,
+  USER: 5,
+  GUEST: 6,
 };
 
 // Hierarchy: Số nhỏ hơn = quyền cao hơn
-// Super Admin (1) > Admin (2) > Business (3) > Staff (4) > Guest (5)
+// Super Admin (1) > Admin (2) > Business (3) > Staff (4) >  USER(5) > Guest (6)
 export const ROLE_HIERARCHY = {
   1: { name: "super_admin", level: 1, canManage: [2, 3, 4, 5] }, // Quản lý được tất cả trừ Super Admin
-  2: { name: "admin", level: 2, canManage: [3, 4, 5] },          // Quản lý được Business, Staff, Guest
-  3: { name: "business", level: 3, canManage: [] },              // Không quản lý ai
-  4: { name: "staff", level: 4, canManage: [] },                 // Không quản lý ai
-  5: { name: "guest", level: 5, canManage: [] },                 // Không quản lý ai
+  2: { name: "admin", level: 2, canManage: [3, 4, 5] }, // Quản lý được Business, Staff, Guest
+  3: { name: "business", level: 3, canManage: [] }, // Không quản lý ai
+  4: { name: "staff", level: 4, canManage: [] }, // Không quản lý ai
+  5: { name: "user", level: 5, canManage: [] }, // Không quản lý ai
+  6: { name: "guest", level: 6, canManage: [] }, // Không quản lý ai
 };
 
 export const BOOKING_STATUS = {

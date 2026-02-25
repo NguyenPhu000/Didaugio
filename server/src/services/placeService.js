@@ -50,6 +50,28 @@ const ensureUniqueSlug = async (baseSlug, excludeId = null) => {
   }
 };
 
+const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+  const earthRadius = 6371000;
+
+  const deltaLat = toRadians(lat2 - lat1);
+  const deltaLon = toRadians(lon2 - lon1);
+  const startLat = toRadians(lat1);
+  const endLat = toRadians(lat2);
+
+  const haversine =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(startLat) *
+      Math.cos(endLat) *
+      Math.sin(deltaLon / 2) *
+      Math.sin(deltaLon / 2);
+
+  const centralAngle =
+    2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+
+  return earthRadius * centralAngle;
+};
+
 /**
  * Default include cho queries
  */
@@ -232,6 +254,83 @@ export const getAllPlaces = async (filters = {}) => {
       totalPages: Math.ceil(total / take),
     },
   };
+};
+
+/**
+ * Lấy danh sách địa điểm gần vị trí hiện tại
+ */
+export const getNearbyPlaces = async (params = {}) => {
+  const { latitude, longitude, radius = 5000, limit = 10, categoryId } = params;
+
+  const currentLatitude = parseFloat(latitude);
+  const currentLongitude = parseFloat(longitude);
+  const maxDistanceMeters = parseInt(radius, 10);
+  const maxResults = parseInt(limit, 10);
+
+  const where = {
+    deletedAt: null,
+    status: "approved",
+  };
+
+  if (categoryId) {
+    where.categoryId = parseInt(categoryId, 10);
+  }
+
+  const places = await prisma.place.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      shortDescription: true,
+      address: true,
+      latitude: true,
+      longitude: true,
+      ratingAvg: true,
+      ratingCount: true,
+      isFeatured: true,
+      thumbnail: true,
+      category: {
+        select: { id: true, name: true, slug: true, icon: true, color: true },
+      },
+      district: {
+        select: { id: true, name: true, code: true },
+      },
+      images: {
+        take: 1,
+        orderBy: [{ isCover: "desc" }, { order: "asc" }],
+        select: {
+          id: true,
+          imageData: true,
+          caption: true,
+          isCover: true,
+        },
+      },
+    },
+  });
+
+  const withDistance = places
+    .map((place) => {
+      const placeLatitude = parseFloat(place.latitude?.toString() || "0");
+      const placeLongitude = parseFloat(place.longitude?.toString() || "0");
+      const distanceMeters = calculateDistanceMeters(
+        currentLatitude,
+        currentLongitude,
+        placeLatitude,
+        placeLongitude,
+      );
+
+      return {
+        ...place,
+        distanceMeters: Math.round(distanceMeters),
+        distanceKm: Number((distanceMeters / 1000).toFixed(2)),
+      };
+    })
+    .filter((place) => place.distanceMeters <= maxDistanceMeters)
+    .sort((a, b) => a.distanceMeters - b.distanceMeters)
+    .slice(0, maxResults);
+
+  return withDistance;
 };
 
 /**
@@ -1252,6 +1351,7 @@ export const getPlaceStats = async () => {
 
 export default {
   getAllPlaces,
+  getNearbyPlaces,
   getPlaceById,
   getPlaceBySlug,
   checkSlugExists,

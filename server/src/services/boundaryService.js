@@ -93,7 +93,8 @@ export const getWardsGeoJSON = async () => {
       wardType: true,
       latitude: true,
       longitude: true,
-      boundary: true,
+      // boundary omitted: Prisma client needs regeneration after column was added.
+      // Ward boundaries are not seeded yet so Point fallback is used anyway.
       district: {
         select: { id: true, name: true, code: true },
       },
@@ -109,6 +110,9 @@ export const getWardsGeoJSON = async () => {
         const lng = w.longitude ? parseFloat(w.longitude) : null;
         const lat = w.latitude ? parseFloat(w.latitude) : null;
 
+        const geometry =
+          lng && lat ? { type: "Point", coordinates: [lng, lat] } : null;
+
         return {
           type: "Feature",
           properties: {
@@ -121,9 +125,7 @@ export const getWardsGeoJSON = async () => {
             ward_type: w.wardType,
             level: "ward",
           },
-          geometry:
-            w.boundary ||
-            (lng && lat ? { type: "Point", coordinates: [lng, lat] } : null),
+          geometry,
         };
       })
       .filter((f) => f.geometry !== null),

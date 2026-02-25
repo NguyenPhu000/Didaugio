@@ -1,6 +1,9 @@
 /**
  * Role Hierarchy & Management Rules
  * Định nghĩa cấp bậc vai trò và quyền quản lý
+ *
+ * Source of truth: constants.js → ROLES
+ * SUPER_ADMIN(1) > ADMIN(2) > BUSINESS(3) > STAFF(4) > USER(5) > GUEST(6)
  */
 
 export const ROLE_HIERARCHY = {
@@ -8,7 +11,8 @@ export const ROLE_HIERARCHY = {
   admin: 2,
   business: 3,
   staff: 4,
-  guest: 5,
+  user: 5,
+  guest: 6,
 };
 
 export const ROLE_IDS = {
@@ -16,7 +20,8 @@ export const ROLE_IDS = {
   ADMIN: 2,
   BUSINESS: 3,
   STAFF: 4,
-  GUEST: 5,
+  USER: 5,  // Regular tourist / mobile app user
+  GUEST: 6, // Unauthenticated session (mobile only)
 };
 
 /**

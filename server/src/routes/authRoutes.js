@@ -14,6 +14,15 @@ router.post("/register", authController.register);
 // Đăng nhập
 router.post("/login", authController.login);
 
+// Đăng nhập bằng Google OAuth — mobile app gửi id_token
+router.post("/google", authController.loginGoogle);
+
+// Google OAuth 2.0 Web Flow (server-side Authorization Code Flow)
+// Bước 1: App mở browser → server redirect → Google sign-in
+router.get("/google/web", authController.initiateGoogleOAuth);
+// Bước 2: Google redirect về đây → server tạo JWT → deep link về app
+router.get("/google/web/callback", authController.googleOAuthCallback);
+
 // Refresh token - lấy access token mới
 router.post("/refresh", authController.refreshToken);
 
@@ -38,7 +47,7 @@ router.post("/change-password", authenticate, authController.changePassword);
 router.post(
   "/resend-verification",
   authenticate,
-  authController.resendVerification
+  authController.resendVerification,
 );
 
 // Đăng xuất (xóa session hiện tại)
@@ -54,7 +63,7 @@ router.get("/sessions", authenticate, authController.getSessions);
 router.delete(
   "/sessions/:sessionId",
   authenticate,
-  authController.revokeSession
+  authController.revokeSession,
 );
 
 export default router;

@@ -19,6 +19,7 @@ import districtRoutes from "./routes/districtRoutes.js";
 import wardRoutes from "./routes/wardRoutes.js";
 import boundaryRoutes from "./routes/boundaryRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
+import appRoutes from "./routes/appRoutes.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import prisma from "./config/prismaClient.js";
 import { initNotificationService } from "./services/notificationService.js";
@@ -51,6 +52,7 @@ app.use("/api/districts", districtRoutes);
 app.use("/api/wards", wardRoutes);
 app.use("/api/boundaries", boundaryRoutes); // Map boundaries & GeoJSON
 app.use("/api/settings", settingsRoutes); // System settings & configuration
+app.use("/api/app", appRoutes); // Mobile app user/guest APIs
 app.use("/api", userPermissionRoutes);
 app.use("/api", userRoutes);
 

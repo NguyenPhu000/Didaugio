@@ -1,380 +1,487 @@
-import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { centroid as turfCentroid } from "@turf/turf";
 import usePlaceStore from "@/stores/placeStore";
 import useCategoryStore from "@/stores/categoryStore";
+import {
+  MapProvider,
+  useMapContext,
+  useMapData,
+  BoundaryLayer,
+  PlaceMarkers,
+  MapControls,
+  MapBase,
+  DISTRICT_COLORS,
+} from "@/modules/map";
+import DistrictLabels from "@/modules/map/components/DistrictLabels";
+import {
+  Search,
+  MapIcon,
+  ListIcon,
+  MapPin,
+  PanelLeftClose,
+  PanelLeftOpen,
+  X,
+} from "lucide-react";
 
-// Dynamic import for heavy component
 const PlaceDetailDialog = lazy(
   () => import("@/components/place/PlaceDetailDialog"),
 );
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui";
-import {
-  Search,
-  Filter,
-  MapIcon,
-  ListIcon,
-  Heart,
-  Target,
-  Maximize,
-  Compass,
-} from "lucide-react";
-import {
-  CAN_THO_CENTER,
-  MAP_CONFIGS,
-  DEFAULT_MAP_STYLE,
-  MapGL,
-  NavigationControl,
-  Marker,
-  Popup,
-} from "@/modules/map";
 
-/**
- * MAP PAGE - T.I.M STYLE OVERHAUL (VIETNAMESE + REAL MAP)
- */
+const DistrictRow = ({ name, count, color, active, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`w-full flex items-center justify-between px-3 py-2 border-b border-gray-100 text-left transition-colors cursor-pointer ${
+      active ? "bg-black text-white" : "hover:bg-gray-50"
+    }`}
+  >
+    <div className="flex items-center gap-2">
+      <span
+        className="w-2.5 h-2.5 flex-shrink-0"
+        style={{ backgroundColor: active ? "#fff" : color }}
+      />
+      <span
+        className={`text-xs font-bold uppercase ${active ? "text-white" : "text-gray-700"}`}
+      >
+        {name}
+      </span>
+    </div>
+    <span
+      className={`text-[10px] font-mono px-1.5 py-0.5 ${active ? "bg-white text-black" : "bg-gray-100 text-gray-500"}`}
+    >
+      {count}
+    </span>
+  </button>
+);
 
-const MapPage = () => {
+const PlaceCard = ({ place, onFly }) => (
+  <div
+    onClick={() => onFly(place)}
+    className="flex gap-2 px-3 py-2.5 border-b border-gray-100 hover:bg-yellow-50 cursor-pointer group"
+  >
+    <div className="w-10 h-10 flex-shrink-0 bg-gray-100 overflow-hidden">
+      {place.images?.[0]?.url ? (
+        <img
+          src={place.images[0].url}
+          className="w-full h-full object-cover"
+          alt=""
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <MapPin className="h-4 w-4 text-gray-300" />
+        </div>
+      )}
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="text-xs font-bold uppercase truncate group-hover:text-black">
+        {place.name}
+      </p>
+      <p className="text-[10px] text-gray-400 font-mono truncate">
+        {place.address || "—"}
+      </p>
+    </div>
+  </div>
+);
+
+const MapPageContent = () => {
+  const {
+    flyTo,
+    selectArea,
+    selectedDistrict,
+    resetSelection,
+    setFilteredPlaces,
+  } = useMapContext();
+  const { districts, wards, canThoMask, loading } = useMapData();
   const { places, fetchPlaces } = usePlaceStore();
   const { categories, fetchCategories } = useCategoryStore();
-  const [viewState, setViewState] = useState({
-    latitude: CAN_THO_CENTER.lat,
-    longitude: CAN_THO_CENTER.lng,
-    zoom: 12,
-  });
-  const [selectedPlace, setSelectedPlace] = useState(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [viewMode, setViewMode] = useState("map");
-  const mapRef = useRef(null);
+  const [selectedPlaceDetail, setSelectedPlaceDetail] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   useEffect(() => {
-    fetchPlaces({ limit: 100, status: "approved" });
-    if (categories.length === 0) {
-      fetchCategories();
-    }
-  }, [fetchPlaces, fetchCategories, categories.length]);
+    // Only load system-pinned places onto the map
+    fetchPlaces({ limit: 100, status: "approved", isFeatured: true });
+    if (!categories.length) fetchCategories();
+  }, [fetchPlaces, fetchCategories]);
+
+  const districtIds = useMemo(() => {
+    if (!districts?.features) return [];
+    return [...districts.features]
+      .sort((a, b) => a.properties.id - b.properties.id)
+      .map((f) => f.properties.id);
+  }, [districts]);
+
+  const districtCentroids = useMemo(() => {
+    if (!districts?.features) return {};
+    const map = {};
+    districts.features.forEach((f) => {
+      try {
+        if (f.geometry?.type === "Point") {
+          map[f.properties.id] = {
+            lat: f.geometry.coordinates[1],
+            lng: f.geometry.coordinates[0],
+          };
+        } else if (f.geometry) {
+          const c = turfCentroid(f);
+          map[f.properties.id] = {
+            lat: c.geometry.coordinates[1],
+            lng: c.geometry.coordinates[0],
+          };
+        }
+      } catch {}
+    });
+    return map;
+  }, [districts]);
 
   const filteredPlaces = useMemo(() => {
-    let filtered = places;
-    if (searchQuery) {
-      filtered = filtered.filter(
+    let result = places;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
         (p) =>
-          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.shortDescription?.toLowerCase().includes(searchQuery.toLowerCase()),
+          p.name?.toLowerCase().includes(q) ||
+          p.address?.toLowerCase().includes(q),
       );
     }
     if (selectedCategory !== "all") {
-      filtered = filtered.filter(
+      result = result.filter(
         (p) => p.categoryId?.toString() === selectedCategory,
       );
     }
-    return filtered;
+    return result;
   }, [places, searchQuery, selectedCategory]);
 
-  return (
-    <div className="h-[calc(100vh-2rem)] bg-[#F4F4F4] relative overflow-hidden font-sans p-4">
-      {/* Background Decor */}
-      <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none"></div>
+  // Sync filtered places into MapContext so PlaceMarkers can render them
+  useEffect(() => {
+    setFilteredPlaces(filteredPlaces);
+  }, [filteredPlaces, setFilteredPlaces]);
 
-      {/* Main Container - Industrial Frame */}
-      <div className="h-full border border-black bg-white flex flex-col shadow-hard relative z-10">
-        {/* Top Control Bar */}
-        <div className="h-16 border-b border-black flex items-center justify-between px-6 bg-white z-20 relative">
-          {/* Left Title Module */}
-          <div className="flex items-center gap-4 h-full border-r border-dashed border-gray-300 pr-6">
-            <div className="bg-black text-white p-2">
-              <MapIcon className="h-6 w-6" />
-            </div>
-            <div>
-              <h1 className="text-xl font-black uppercase tracking-tight text-foreground leading-none">
-                BẢN ĐỒ SỐ
-              </h1>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="w-2 h-2 bg-green-500 rounded-none animate-pulse"></span>
-                <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
-                  CẦN THƠ // TRỰC TUYẾN
+  const districtList = useMemo(() => {
+    if (!districts?.features) return [];
+    return districts.features
+      .sort((a, b) => a.properties.id - b.properties.id)
+      .map((f, idx) => ({
+        id: f.properties.id,
+        name: f.properties.name,
+        feature: f,
+        count: filteredPlaces.filter((p) => p.districtId === f.properties.id)
+          .length,
+        colorIdx: idx,
+      }));
+  }, [districts, filteredPlaces]);
+
+  const selectedDistrictId = selectedDistrict?.properties?.id;
+
+  const handleDistrictClick = (d) => {
+    if (selectedDistrictId === d.id) {
+      resetSelection();
+      return;
+    }
+    selectArea(d.feature, "district");
+    const coords = districtCentroids[d.id];
+    if (coords) flyTo(coords, 13);
+  };
+
+  const handlePlaceFly = (place) => {
+    flyTo({ lat: Number(place.latitude), lng: Number(place.longitude) }, 16);
+    setSelectedPlaceDetail(place);
+    setIsDetailOpen(true);
+  };
+
+  const districtPlaces = useMemo(() => {
+    if (!selectedDistrictId) return [];
+    return filteredPlaces.filter((p) => p.districtId === selectedDistrictId);
+  }, [filteredPlaces, selectedDistrictId]);
+
+  const displayPlaces = selectedDistrictId
+    ? districtPlaces
+    : filteredPlaces.slice(0, 60);
+
+  return (
+    <>
+      <div className="h-[calc(100vh-2rem)] bg-[#F4F4F4] relative overflow-hidden font-sans p-4">
+        <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none" />
+        <div className="h-full border border-black bg-white flex flex-col shadow-hard relative z-10">
+          {/* Header */}
+          <div className="h-14 border-b border-black flex items-center justify-between px-5 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="bg-black text-white p-2">
+                <MapIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <span className="text-lg font-black uppercase tracking-tight">
+                  BẢN ĐỒ SỐ
                 </span>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="w-1.5 h-1.5 bg-green-500 animate-pulse" />
+                  <span className="text-[9px] font-mono text-gray-400 uppercase tracking-widest">
+                    CẦN THƠ • 9 QUẬN/HUYỆN
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Center Search & Filter Module */}
-          <div className="flex-1 flex items-center justify-center gap-4">
-            {/* Tim Search Bar */}
-            <div className="flex items-center shadow-sm w-96 group">
-              <div className="h-10 w-10 bg-gray-100 border border-black border-r-0 flex items-center justify-center group-hover:bg-primary transition-colors">
-                <Search className="h-4 w-4 text-black" />
+            <div className="flex-1 max-w-sm mx-6 flex">
+              <div className="h-9 w-9 bg-gray-100 border border-black border-r-0 flex items-center justify-center">
+                <Search className="h-4 w-4" />
               </div>
               <input
-                placeholder="TÌM KIẾM ĐỊA ĐIỂM..."
-                className="h-10 flex-1 border border-black px-4 font-mono text-xs uppercase focus:outline-none focus:bg-yellow-50"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="TÌM KIẾM ĐỊA ĐIỂM..."
+                className="h-9 flex-1 border border-black px-3 font-mono text-xs uppercase focus:outline-none focus:bg-yellow-50"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="h-9 w-9 border border-black border-l-0 flex items-center justify-center hover:bg-black hover:text-white"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
-
-            {/* Filters */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="h-10 rounded-none border border-black hover:bg-black hover:text-white font-mono text-xs uppercase"
-                >
-                  <Filter className="h-3 w-3 mr-2" />
-                  DANH MỤC
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="rounded-none border-black">
-                <DropdownMenuItem
-                  onClick={() => setSelectedCategory("all")}
-                  className="font-mono text-xs uppercase cursor-pointer hover:bg-primary"
-                >
-                  TẤT CẢ
-                </DropdownMenuItem>
-                {categories.map((cat) => (
-                  <DropdownMenuItem
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id.toString())}
-                    className="font-mono text-xs uppercase cursor-pointer"
-                  >
-                    {cat.name}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Right Controls */}
-          <div className="flex items-center gap-2 border-l border-dashed border-gray-300 pl-6 h-full">
-            <Button
-              className={`h-10 w-10 p-0 rounded-none border border-black ${viewMode === "map" ? "bg-primary text-black" : "bg-white text-gray-400 hover:bg-black hover:text-white"}`}
-              onClick={() => setViewMode("map")}
-            >
-              <MapIcon className="h-5 w-5" />
-            </Button>
-            <Button
-              className={`h-10 w-10 p-0 rounded-none border border-black ${viewMode === "list" ? "bg-primary text-black" : "bg-white text-gray-400 hover:bg-black hover:text-white"}`}
-              onClick={() => setViewMode("list")}
-            >
-              <ListIcon className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Content Area */}
-        <div className="flex-1 relative overflow-hidden bg-gray-100">
-          {viewMode === "map" ? (
-            <div className="absolute inset-0 w-full h-full">
-              <MapGL
-                ref={mapRef}
-                initialViewState={viewState}
-                onMove={(evt) => setViewState(evt.viewState)}
-                style={{ width: "100%", height: "100%" }}
-                mapStyle={DEFAULT_MAP_STYLE}
-                attributionControl={false}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setViewMode("map")}
+                className={`h-9 w-9 border border-black flex items-center justify-center ${viewMode === "map" ? "bg-primary" : "hover:bg-gray-100"}`}
               >
-                <NavigationControl
-                  position="bottom-right"
-                  showCompass={false}
-                />
-
-                {/* Markers */}
-                {filteredPlaces.map(
-                  (place) =>
-                    place.latitude &&
-                    place.longitude && (
-                      <Marker
-                        key={place.id}
-                        latitude={place.latitude}
-                        longitude={place.longitude}
-                        onClick={(e) => {
-                          e.originalEvent.stopPropagation();
-                          setSelectedPlace(place);
-                        }}
-                      >
-                        <div className="relative group cursor-pointer hover:z-50">
-                          <div className="w-8 h-8 bg-black text-white flex items-center justify-center border border-primary shadow-hard hover:bg-primary hover:text-black transition-colors">
-                            <MapIcon className="w-4 h-4" />
-                          </div>
-                          <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-white border border-black px-2 py-1 text-[10px] whitespace-nowrap hidden group-hover:block font-bold">
-                            {place.name}
-                          </div>
-                        </div>
-                      </Marker>
-                    ),
+                <MapIcon className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`h-9 w-9 border border-black flex items-center justify-center ${viewMode === "list" ? "bg-primary" : "hover:bg-gray-100"}`}
+              >
+                <ListIcon className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setSidebarOpen((v) => !v)}
+                className="h-9 w-9 border border-black flex items-center justify-center hover:bg-black hover:text-white"
+              >
+                {sidebarOpen ? (
+                  <PanelLeftClose className="h-4 w-4" />
+                ) : (
+                  <PanelLeftOpen className="h-4 w-4" />
                 )}
+              </button>
+            </div>
+          </div>
 
-                {/* Cleanup Selected Place on Map Click */}
-                {selectedPlace && (
-                  <Popup
-                    latitude={selectedPlace.latitude}
-                    longitude={selectedPlace.longitude}
-                    onClose={() => setSelectedPlace(null)}
-                    closeButton={false}
-                    className="z-50"
-                    maxWidth="300px"
-                  >
-                    <div className="p-0 font-sans">
-                      <div className="p-3 border border-black bg-white shadow-hard relative">
-                        <button
-                          onClick={() => setSelectedPlace(null)}
-                          className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-black text-white text-xs font-bold hover:bg-red-500"
-                        >
-                          X
-                        </button>
-                        <h3 className="font-bold text-sm uppercase pr-6 mb-1">
-                          {selectedPlace.name}
-                        </h3>
-                        <p className="text-xs text-gray-500 mb-2 font-mono">
-                          {selectedPlace.address}
-                        </p>
-                        <div className="h-24 bg-gray-100 mb-2 overflow-hidden border border-black/10">
-                          {selectedPlace.images?.[0] ? (
-                            <img
-                              src={
-                                selectedPlace.images[0].imageData ||
-                                selectedPlace.images[0]
-                              }
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 uppercase">
-                              NO_IMG
-                            </div>
-                          )}
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => setIsDetailOpen(true)}
-                          className="w-full h-8 rounded-none bg-primary text-black font-bold uppercase hover:bg-yellow-400 text-xs"
-                        >
-                          XEM CHI TIẾT
-                        </Button>
-                      </div>
+          {/* Body */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Sidebar */}
+            {sidebarOpen && (
+              <div className="w-64 border-r border-black flex-shrink-0 flex flex-col overflow-hidden bg-white">
+                <div className="px-3 py-2 border-b border-gray-100 flex gap-3 bg-gray-50">
+                  <div className="flex-1 text-center">
+                    <div className="text-lg font-black">{places.length}</div>
+                    <div className="text-[9px] font-mono text-gray-400 uppercase">
+                      Địa điểm
                     </div>
-                  </Popup>
-                )}
-              </MapGL>
+                  </div>
+                  <div className="w-px bg-gray-200" />
+                  <div className="flex-1 text-center">
+                    <div className="text-lg font-black">
+                      {filteredPlaces.length}
+                    </div>
+                    <div className="text-[9px] font-mono text-gray-400 uppercase">
+                      Hiển thị
+                    </div>
+                  </div>
+                  <div className="w-px bg-gray-200" />
+                  <div className="flex-1 text-center">
+                    <div className="text-lg font-black">
+                      {districtList.length}
+                    </div>
+                    <div className="text-[9px] font-mono text-gray-400 uppercase">
+                      Khu vực
+                    </div>
+                  </div>
+                </div>
 
-              {/* Info Panel Left Overlay */}
-              <div className="absolute top-6 left-6 w-64 bg-white/90 backdrop-blur border border-black p-4 shadow-hard pointer-events-none">
-                <div className="text-[10px] font-mono text-gray-400 uppercase mb-2">
-                  THÔNG TIN KHU VỰC
-                </div>
-                <div className="text-2xl font-black font-technical uppercase">
-                  TRUNG TÂM CẦN THƠ
-                </div>
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between text-xs font-mono border-b border-gray-200 pb-1">
-                    <span>TỔNG ĐIỂM</span>
-                    <span className="font-bold">{places.length}</span>
+                <div className="p-2 border-b border-gray-100">
+                  <div className="flex flex-wrap gap-1">
+                    <button
+                      onClick={() => setSelectedCategory("all")}
+                      className={`px-2 py-0.5 text-[10px] font-bold uppercase border transition-colors ${selectedCategory === "all" ? "bg-black text-white border-black" : "border-gray-300 text-gray-500 hover:border-black"}`}
+                    >
+                      Tất cả
+                    </button>
+                    {categories.slice(0, 8).map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() =>
+                          setSelectedCategory(
+                            selectedCategory === cat.id.toString()
+                              ? "all"
+                              : cat.id.toString(),
+                          )
+                        }
+                        className={`px-2 py-0.5 text-[10px] font-bold uppercase border transition-colors ${selectedCategory === cat.id.toString() ? "bg-primary text-black border-primary" : "border-gray-300 text-gray-500 hover:border-black"}`}
+                      >
+                        {cat.name}
+                      </button>
+                    ))}
                   </div>
-                  <div className="flex justify-between text-xs font-mono border-b border-gray-200 pb-1">
-                    <span>HIỂN THỊ</span>
-                    <span className="font-bold">{filteredPlaces.length}</span>
+                </div>
+
+                <div className="border-b border-black">
+                  <div className="px-3 py-1.5 bg-black text-white flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-widest">
+                      Quận / Huyện
+                    </span>
+                    {selectedDistrictId && (
+                      <button
+                        onClick={resetSelection}
+                        className="text-[9px] text-gray-400 hover:text-white uppercase"
+                      >
+                        Bỏ chọn
+                      </button>
+                    )}
                   </div>
-                  <div className="flex justify-between text-xs font-mono pb-1">
-                    <span>TOẠ ĐỘ</span>
-                    <span className="font-bold">
-                      {viewState.latitude.toFixed(4)} /{" "}
-                      {viewState.longitude.toFixed(4)}
+                  {districtList.map((d) => (
+                    <DistrictRow
+                      key={d.id}
+                      name={d.name}
+                      count={d.count}
+                      color={
+                        DISTRICT_COLORS[d.colorIdx % DISTRICT_COLORS.length]
+                          ?.line || "#6b7280"
+                      }
+                      active={selectedDistrictId === d.id}
+                      onClick={() => handleDistrictClick(d)}
+                    />
+                  ))}
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                  <div className="px-3 py-1.5 bg-gray-900 text-white flex items-center justify-between sticky top-0">
+                    <span className="text-[10px] font-black uppercase tracking-widest">
+                      {selectedDistrictId
+                        ? selectedDistrict?.properties?.name
+                        : "Địa điểm"}
+                    </span>
+                    <span className="text-[9px] font-mono text-gray-400">
+                      {displayPlaces.length}
                     </span>
                   </div>
+                  {displayPlaces.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-gray-400 font-mono uppercase">
+                      Không có dữ liệu
+                    </div>
+                  ) : (
+                    displayPlaces.map((place) => (
+                      <PlaceCard
+                        key={place.id}
+                        place={place}
+                        onFly={handlePlaceFly}
+                      />
+                    ))
+                  )}
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="p-8 h-full overflow-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredPlaces.map((place) => (
-                  <div
-                    key={place.id}
-                    className="bg-white border border-black p-4 group hover:shadow-hard transition-all cursor-pointer"
-                  >
-                    <div className="h-32 bg-gray-200 mb-4 relative overflow-hidden">
-                      {/* Image Placeholder */}
-                      {place.images?.[0] ? (
-                        <img
-                          src={place.images[0].imageData || place.images[0]}
-                          alt=""
-                          className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-300 font-mono text-xs uppercase">
-                          KHÔNG CÓ TÍN HIỆU
-                        </div>
-                      )}
+            )}
 
-                      {/* Status Badge */}
-                      <div className="absolute top-2 right-2 px-2 py-0.5 bg-primary text-black text-[10px] font-bold uppercase">
-                        {place.status === "approved"
-                          ? "ĐÃ DUYỆT"
-                          : place.status}
-                      </div>
-                    </div>
-                    <h3 className="font-bold text-sm uppercase truncate mb-1">
-                      {place.name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground font-mono truncate mb-4">
-                      {place.address}
-                    </p>
-
-                    <div className="flex items-center justify-between border-t border-gray-100 pt-3 mt-auto">
-                      <div className="flex items-center gap-1 text-[10px] font-mono text-gray-500">
-                        <Heart className="h-3 w-3" />
-                        {place.favoriteCount || 0}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 text-[10px] font-bold uppercase hover:bg-black hover:text-white rounded-none"
-                      >
-                        CHI TIẾT &rarr;
-                      </Button>
+            {/* Map or List */}
+            {viewMode === "map" ? (
+              <div className="flex-1 relative">
+                {loading ? (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                    <div className="text-center">
+                      <div className="w-8 h-8 border-2 border-black border-t-transparent animate-spin mx-auto mb-2" />
+                      <span className="text-xs font-mono uppercase text-gray-500">
+                        Đang tải bản đồ...
+                      </span>
                     </div>
                   </div>
-                ))}
+                ) : (
+                  <MapBase>
+                    <BoundaryLayer
+                      mask={canThoMask}
+                      districts={districts}
+                      wards={wards}
+                      onSelect={(f, t) => selectArea(f, t)}
+                    />
+                    <PlaceMarkers />
+                    {districts && <DistrictLabels districts={districts} />}
+                    <MapControls />
+                  </MapBase>
+                )}
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer Status Bar */}
-        <div className="h-8 bg-black border-t border-white/20 flex items-center justify-between px-4 text-[10px] font-mono text-gray-400 uppercase">
-          <div className="flex gap-4">
-            <span>CHẾ ĐỘ: {viewMode === "map" ? "BẢN ĐỒ" : "DANH SÁCH"}</span>
-            <span>
-              BỘ LỌC: {selectedCategory === "all" ? "KHÔNG" : selectedCategory}
-            </span>
+            ) : (
+              <div className="flex-1 overflow-auto p-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {displayPlaces.map((place) => (
+                    <div
+                      key={place.id}
+                      onClick={() => handlePlaceFly(place)}
+                      className="border border-black bg-white group hover:shadow-hard transition-all cursor-pointer"
+                    >
+                      <div className="h-28 overflow-hidden relative">
+                        {place.images?.[0]?.url ? (
+                          <img
+                            src={place.images[0].url}
+                            className="w-full h-full object-cover"
+                            alt=""
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                            <MapPin className="h-8 w-8 text-gray-300" />
+                          </div>
+                        )}
+                        <span className="absolute top-2 right-2 bg-primary text-black text-[9px] font-black px-1.5 py-0.5 uppercase">
+                          {place.category?.name || "—"}
+                        </span>
+                      </div>
+                      <div className="p-2">
+                        <p className="text-xs font-black uppercase truncate">
+                          {place.name}
+                        </p>
+                        <p className="text-[10px] text-gray-400 font-mono truncate">
+                          {place.address || "—"}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-          <div className="flex gap-4">
-            <span>ĐỒNG BỘ: TỰ ĐỘNG</span>
-            <span className="text-primary">MẠNG: ỔN ĐỊNH</span>
+
+          <div className="h-7 bg-black border-t border-white/20 flex items-center justify-between px-4 flex-shrink-0">
+            <div className="flex gap-4 text-[9px] font-mono text-gray-400 uppercase">
+              <span>
+                HIỂN THỊ: {filteredPlaces.length} / {places.length}
+              </span>
+              {selectedDistrictId && (
+                <span className="text-primary">
+                  ◈ {selectedDistrict?.properties?.name}
+                </span>
+              )}
+            </div>
+            <span className="text-[9px] font-mono text-gray-500 uppercase">
+              CẦN THƠ — 9 QUẬN/HUYỆN
+            </span>
           </div>
         </div>
       </div>
-      {/* Detail Dialog */}
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        }
-      >
+
+      <Suspense fallback={null}>
         <PlaceDetailDialog
-          place={selectedPlace}
+          place={selectedPlaceDetail}
           open={isDetailOpen}
           onOpenChange={setIsDetailOpen}
         />
       </Suspense>
-    </div>
+    </>
   );
 };
+
+const MapPage = () => (
+  <MapProvider>
+    <MapPageContent />
+  </MapProvider>
+);
 
 export default MapPage;

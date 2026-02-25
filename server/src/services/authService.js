@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import prisma from "../config/prismaClient.js";
-import { USER_STATUS } from "../config/constants.js";
+import { USER_STATUS, ROLES } from "../config/constants.js";
 import {
   ERROR_MESSAGES,
   ERROR_CODES,
@@ -69,15 +69,51 @@ const hashToken = (token) => {
   return crypto.createHash("sha256").update(token).digest("hex");
 };
 
+const getUserPermissionNames = async (userId, roleId) => {
+  if (!userId || !roleId) {
+    return [];
+  }
+
+  if (roleId === 1) {
+    return ["*"];
+  }
+
+  const [rolePermissions, customPermissions] = await Promise.all([
+    prisma.rolePermission.findMany({
+      where: { roleId },
+      select: {
+        permission: {
+          select: { name: true },
+        },
+      },
+    }),
+    prisma.userPermission.findMany({
+      where: { userId },
+      select: {
+        permission: {
+          select: { name: true },
+        },
+      },
+    }),
+  ]);
+
+  return Array.from(
+    new Set([
+      ...rolePermissions.map((item) => item.permission.name),
+      ...customPermissions.map((item) => item.permission.name),
+    ]),
+  );
+};
+
 // =============================================================================
 // ĐĂNG KÝ
 // =============================================================================
 export const register = async (data) => {
   const validated = registerSchema.parse(data);
 
-  // 🚫 BLOCK: GUEST role cannot register via web
-  // GUEST is reserved for mobile app only
-  if (validated.roleId && validated.roleId === 5) {
+  // 🚫 BLOCK: GUEST role (id=6) cannot register via web
+  // GUEST is reserved for unauthenticated mobile sessions only
+  if (validated.roleId && validated.roleId === ROLES.GUEST) {
     throw new ServiceError(
       "GUEST role registration is not allowed via web. Mobile app only.",
       400,
@@ -211,9 +247,10 @@ export const login = async (data, clientInfo = {}) => {
     }
   }
 
-  // 🚫 BLOCK: GUEST role cannot login to web admin
-  // GUEST is reserved for mobile app only
-  if (user.roleId === 5) {
+  // 🚫 BLOCK: GUEST role (id=6) cannot login to web admin
+  // GUEST is reserved for unauthenticated mobile sessions only.
+  // USER (id=5) = regular tourist — can login to web if needed
+  if (user.roleId === ROLES.GUEST) {
     throw new ServiceError(
       "GUEST users cannot login to web admin. Mobile app only.",
       403,
@@ -277,10 +314,14 @@ export const login = async (data, clientInfo = {}) => {
   // Emit event
   eventEmitter.emit(EVENTS.USER.LOGGED_IN, { userId: user.id });
 
+  const permissions = await getUserPermissionNames(user.id, user.roleId);
   const { password, ...userWithoutPassword } = user;
 
   return {
-    user: userWithoutPassword,
+    user: {
+      ...userWithoutPassword,
+      permissions,
+    },
     accessToken,
     refreshToken,
     expiresIn: ACCESS_TOKEN_EXPIRES,
@@ -399,8 +440,13 @@ export const getMe = async (userId) => {
     );
   }
 
+  const permissions = await getUserPermissionNames(user.id, user.roleId);
   const { password, ...userWithoutPassword } = user;
-  return userWithoutPassword;
+
+  return {
+    ...userWithoutPassword,
+    permissions,
+  };
 };
 
 // =============================================================================
@@ -549,6 +595,158 @@ export const revokeSession = async (userId, sessionId) => {
   return { message: SUCCESS_MESSAGES.ACTION_SUCCESS };
 };
 
+// =============================================================================
+// ĐĂNG NHẬP BẰNG GOOGLE
+// =============================================================================
+
+/**
+ * Xác thực Google id_token và tạo phiên đăng nhập
+ * Tự động tạo tài khoản nếu email chưa tồn tại
+ */
+export const loginWithGoogle = async (idToken, clientInfo = {}) => {
+  if (!idToken) {
+    throw new ServiceError("id_token is required", 400, "MISSING_ID_TOKEN");
+  }
+
+  // Xác thực id_token với Google (không cần thêm package)
+  const tokenInfoRes = await fetch(
+    `https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${idToken}`,
+  );
+
+  if (!tokenInfoRes.ok) {
+    throw new ServiceError(
+      "id_token Google không hợp lệ hoặc đã hết hạn",
+      401,
+      "INVALID_GOOGLE_TOKEN",
+    );
+  }
+
+  const tokenInfo = await tokenInfoRes.json();
+
+  if (tokenInfo.error) {
+    throw new ServiceError(
+      `Google token error: ${tokenInfo.error_description || tokenInfo.error}`,
+      401,
+      "INVALID_GOOGLE_TOKEN",
+    );
+  }
+
+  const { email, email_verified, name, picture, sub: googleSub } = tokenInfo;
+
+  if (!email) {
+    throw new ServiceError("Không lấy được email từ Google", 401, "NO_EMAIL");
+  }
+
+  if (email_verified !== "true" && email_verified !== true) {
+    throw new ServiceError(
+      "Email Google chưa được xác thực",
+      401,
+      "EMAIL_NOT_VERIFIED",
+    );
+  }
+
+  // Tìm hoặc tạo user
+  let user = await prisma.user.findUnique({
+    where: { email },
+    include: { role: true, profile: true },
+  });
+
+  if (!user) {
+    // Tạo tài khoản mới với role USER (5) — khách du lịch dùng mobile app
+    // ROLES.USER = 5: regular tourist, không phải STAFF nội bộ hay GUEST ẩn danh
+    user = await prisma.user.create({
+      data: {
+        email,
+        password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 12),
+        roleId: ROLES.USER, // 5 — USER role: khách du lịch đã xác thực qua Google
+        status: USER_STATUS.ACTIVE,
+        emailVerified: true, // Google đã xác thực rồi
+        profile: {
+          create: {
+            fullName: name || email.split("@")[0],
+            avatar: picture || null,
+          },
+        },
+      },
+      include: { role: true, profile: true },
+    });
+  } else {
+    // Cập nhật avatar nếu chưa có
+    if (picture && !user.profile?.avatar) {
+      await prisma.userProfile.update({
+        where: { userId: user.id },
+        data: { avatar: picture },
+      });
+    }
+  }
+
+  if (user.status === USER_STATUS.BANNED) {
+    throw new ServiceError("Tài khoản đã bị cấm", 403, "ACCOUNT_BANNED");
+  }
+
+  if (user.status === USER_STATUS.INACTIVE) {
+    throw new ServiceError(
+      "Tài khoản chưa được kích hoạt",
+      403,
+      "ACCOUNT_INACTIVE",
+    );
+  }
+
+  // Update lastLoginAt
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() },
+  });
+
+  // Generate tokens
+  const accessToken = generateAccessToken({
+    userId: user.id,
+    email: user.email,
+    roleId: user.roleId,
+    roleName: user.role.name,
+  });
+
+  const refreshToken = generateRefreshToken();
+
+  // Tạo session
+  await prisma.userSession.create({
+    data: {
+      userId: user.id,
+      refreshToken: hashToken(refreshToken),
+      deviceId: clientInfo.deviceId || null,
+      deviceName: clientInfo.deviceName || "Mobile App (Google)",
+      ipAddress: clientInfo.ipAddress || null,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRES_MS),
+    },
+  });
+
+  // Cleanup expired sessions
+  await prisma.userSession.deleteMany({
+    where: { userId: user.id, expiresAt: { lt: new Date() } },
+  });
+
+  eventEmitter.emit(EVENTS.USER.LOGGED_IN, { userId: user.id });
+
+  const permissions = await getUserPermissionNames(user.id, user.roleId);
+  const { password, ...userWithoutPassword } = user;
+
+  // Refresh user profile (may have been updated)
+  const freshProfile = await prisma.userProfile.findUnique({
+    where: { userId: user.id },
+  });
+
+  return {
+    user: {
+      ...userWithoutPassword,
+      profile: freshProfile || user.profile,
+      permissions,
+    },
+    accessToken,
+    refreshToken,
+    expiresIn: ACCESS_TOKEN_EXPIRES,
+  };
+};
+
 export const verifyAccessToken = (token) => {
   try {
     return jwt.verify(token, JWT_SECRET);
@@ -571,5 +769,6 @@ export default {
   resendVerificationEmail,
   getSessions,
   revokeSession,
+  loginWithGoogle,
   verifyAccessToken,
 };

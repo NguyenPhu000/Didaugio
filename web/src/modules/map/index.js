@@ -27,6 +27,7 @@ export { default as MapBase } from "./components/MapBase";
 export { default as BoundaryLayer } from "./components/BoundaryLayer";
 export { default as PlaceMarkers } from "./components/PlaceMarkers";
 export { default as MapControls } from "./components/MapControls";
+export { default as DistrictLabels } from "./components/DistrictLabels";
 
 // Context & Hooks
 export { MapProvider, useMapContext } from "./context/MapProvider";
@@ -41,6 +42,8 @@ export {
   MAP_THEME,
   LAYER_IDS,
   MAP_API_PATHS,
+  DISTRICT_COLORS,
+  buildDistrictColorExpression,
 } from "./config/mapConfig";
 
 // Adapter (for advanced custom map usage)

@@ -3,6 +3,124 @@ import authService from "../services/authService.js";
 // AUTH CONTROLLER
 
 /**
+ * POST /api/auth/google
+ * Đăng nhập bằng Google OAuth id_token
+ * Nhận id_token từ mobile app, xác thực với Google và trả về JWT session
+ */
+export const loginGoogle = async (req, res, next) => {
+  try {
+    const { idToken } = req.body;
+    const clientInfo = {
+      ipAddress: req.ip || req.connection.remoteAddress,
+      deviceId: req.headers["x-device-id"],
+      deviceName: req.headers["x-device-name"] || req.headers["user-agent"],
+    };
+    const result = await authService.loginWithGoogle(idToken, clientInfo);
+    res.json({
+      success: true,
+      data: result,
+      message: "Dang nhap Google thanh cong",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/auth/google/web
+ * Bắt đầu Google OAuth 2.0 Authorization Code Flow (server-side)
+ * Browser redirect → Google sign-in page
+ */
+export const initiateGoogleOAuth = (req, res) => {
+  const callbackUrl =
+    process.env.GOOGLE_CALLBACK_URL ||
+    `http://localhost:${process.env.PORT || 8081}/api/auth/google/web/callback`;
+
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    redirect_uri: callbackUrl,
+    response_type: "code",
+    scope: "openid email profile",
+    access_type: "offline",
+    prompt: "select_account",
+  });
+
+  return res.redirect(
+    `https://accounts.google.com/o/oauth2/v2/auth?${params}`,
+  );
+};
+
+/**
+ * GET /api/auth/google/web/callback
+ * Google redirect về đây với authorization code
+ * Đổi code → id_token → tạo JWT → redirect deep link về app
+ */
+export const googleOAuthCallback = async (req, res, next) => {
+  const appScheme = process.env.APP_SCHEME || "didaugio";
+  try {
+    const { code, error } = req.query;
+
+    if (error || !code) {
+      const msg = encodeURIComponent(error || "No authorization code received");
+      return res.redirect(`${appScheme}://auth-error?message=${msg}`);
+    }
+
+    const callbackUrl =
+      process.env.GOOGLE_CALLBACK_URL ||
+      `http://localhost:${process.env.PORT || 8081}/api/auth/google/web/callback`;
+
+    // Exchange authorization code for tokens
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: callbackUrl,
+        grant_type: "authorization_code",
+      }),
+    });
+
+    const tokenData = await tokenResponse.json();
+
+    if (!tokenData.id_token) {
+      const msg = encodeURIComponent(
+        tokenData.error_description || "Failed to get token from Google",
+      );
+      return res.redirect(`${appScheme}://auth-error?message=${msg}`);
+    }
+
+    // Reuse existing loginWithGoogle service (verifies id_token, creates session)
+    const clientInfo = {
+      ipAddress: req.ip || req.connection?.remoteAddress,
+      deviceName: req.headers["user-agent"],
+    };
+    const result = await authService.loginWithGoogle(
+      tokenData.id_token,
+      clientInfo,
+    );
+
+    // Encode user object as base64 JSON for deep link
+    // ⚠️ Must encodeURIComponent(base64) — base64 contains +, /, = which break URL parsing
+    const userBase64 = Buffer.from(JSON.stringify(result.user)).toString(
+      "base64",
+    );
+
+    // Redirect to app via custom scheme deep link
+    const deepLink =
+      `${appScheme}://auth-success` +
+      `?accessToken=${encodeURIComponent(result.accessToken)}` +
+      `&refreshToken=${encodeURIComponent(result.refreshToken)}` +
+      `&user=${encodeURIComponent(userBase64)}`;
+
+    return res.redirect(deepLink);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * POST /api/auth/register
  * Đăng ký tài khoản
  */
@@ -224,7 +342,7 @@ export const revokeSession = async (req, res, next) => {
   try {
     const result = await authService.revokeSession(
       req.user.userId,
-      parseInt(req.params.sessionId)
+      parseInt(req.params.sessionId),
     );
     res.json({
       success: true,
@@ -239,6 +357,9 @@ export const revokeSession = async (req, res, next) => {
 export default {
   register,
   login,
+  loginGoogle,
+  initiateGoogleOAuth,
+  googleOAuthCallback,
   refreshToken,
   getMe,
   changePassword,

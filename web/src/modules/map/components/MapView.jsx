@@ -6,12 +6,14 @@ import MapBase from "./MapBase";
 import BoundaryLayer from "./BoundaryLayer";
 import PlaceMarkers from "./PlaceMarkers";
 import MapControls from "./MapControls";
+import DistrictLabels from "./DistrictLabels";
 
 const MapViewInner = ({
   places = [],
   onSelectPlace,
   onSelectArea,
   showMarkers = true,
+  showLabels = true,
   interactive = true,
   children,
   initialViewState,
@@ -20,14 +22,11 @@ const MapViewInner = ({
     useMapContext();
   const { districts, wards, canThoMask, loading } = useMapData();
 
-  // Apply initial viewState if provided
   useEffect(() => {
-    if (initialViewState) {
+    if (initialViewState)
       setViewState((prev) => ({ ...prev, ...initialViewState }));
-    }
   }, [initialViewState, setViewState]);
 
-  // Sync places to context
   useEffect(() => {
     setPlaces(places);
     setFilteredPlaces(places);
@@ -59,10 +58,7 @@ const MapViewInner = ({
       };
 
   return (
-    <MapBase
-      className="rounded-xl overflow-hidden shadow-inner"
-      {...interactionProps}
-    >
+    <MapBase {...interactionProps}>
       <BoundaryLayer
         mask={canThoMask}
         districts={districts}
@@ -70,6 +66,7 @@ const MapViewInner = ({
         onSelect={handleAreaSelection}
       />
       {showMarkers && <PlaceMarkers />}
+      {showLabels && districts && <DistrictLabels districts={districts} />}
       {children}
       {interactive && <MapControls />}
     </MapBase>
@@ -77,16 +74,7 @@ const MapViewInner = ({
 };
 
 /**
- * MapView — Main map component with full boundary + marker support.
- * Drop-in replacement for the old CanThoMap.
- *
- * Props:
- *  - places: Place[] - places to show as markers
- *  - onSelectArea: (feature, type) => void - area click handler
- *  - showMarkers: boolean - toggle markers
- *  - interactive: boolean - toggle zoom/pan
- *  - initialViewState: partial viewState override
- *  - children: additional map children (custom layers, etc.)
+ * MapView — full map with boundaries, markers, district labels and controls.
  */
 const MapView = (props) => (
   <MapProvider>

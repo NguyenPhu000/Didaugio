@@ -287,7 +287,7 @@ const PlaceListPage = () => {
               </div>
             </div>
           </div>
-          {hasPermission("place.create") && (
+          {hasPermission("places.create") && (
             <Button
               onClick={handleCreate}
               className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
@@ -297,6 +297,53 @@ const PlaceListPage = () => {
             </Button>
           )}
         </div>
+
+        {/* Quick Stats Bar */}
+        {!loading &&
+          places.length > 0 &&
+          (() => {
+            const total = places.length;
+            const approved = places.filter(
+              (p) => p.status === "approved",
+            ).length;
+            const pending = places.filter((p) => p.status === "pending").length;
+            const featured = places.filter((p) => p.isFeatured).length;
+            const items = [
+              { label: "TỔNG", value: total, cls: "border-black" },
+              {
+                label: "ĐÃ DUYỆT",
+                value: approved,
+                cls: "border-emerald-500 text-emerald-700",
+              },
+              {
+                label: "CHỜ DUYỆT",
+                value: pending,
+                cls: "border-yellow-400 text-yellow-700",
+              },
+              {
+                label: "NỔI BẬT",
+                value: featured,
+                cls: "border-primary text-primary",
+              },
+            ];
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {items.map(({ label, value, cls }) => (
+                  <div
+                    key={label}
+                    className={`bg-white border-l-4 border border-black pl-4 py-3 pr-4 flex items-center justify-between ${cls}`}
+                  >
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                      {label}
+                    </span>
+                    <span className="font-black font-mono text-xl">
+                      {value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
         {/* Filter Bar */}
         <div className="bg-white border border-black p-4 flex flex-col md:flex-row gap-4 shadow-sm">
@@ -546,7 +593,7 @@ const PlaceListPage = () => {
                             </>
                           )}
 
-                          {hasPermission("place.delete") && (
+                          {hasPermission("places.delete") && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem

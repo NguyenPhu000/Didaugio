@@ -62,6 +62,37 @@ export const getPlaces = async (req, res) => {
 };
 
 /**
+ * GET /api/places/nearby - Lấy danh sách địa điểm gần vị trí hiện tại
+ */
+export const getNearbyPlaces = async (req, res) => {
+  try {
+    const { latitude, longitude, radius, limit, categoryId } = req.query;
+
+    const places = await placeService.getNearbyPlaces({
+      latitude,
+      longitude,
+      radius,
+      limit,
+      categoryId,
+    });
+
+    res.json({
+      success: true,
+      data: places,
+      message: "Lấy danh sách địa điểm gần bạn thành công",
+    });
+  } catch (error) {
+    console.error("Error in getNearbyPlaces:", error);
+    res.status(500).json({
+      success: false,
+      data: null,
+      message: "Không thể lấy danh sách địa điểm gần bạn",
+      errorCode: "NEARBY_PLACES_ERROR",
+    });
+  }
+};
+
+/**
  * GET /api/places/:id - Lấy địa điểm theo ID
  */
 export const getPlaceById = async (req, res) => {
@@ -687,6 +718,7 @@ export const getStats = async (req, res) => {
 
 export default {
   getPlaces,
+  getNearbyPlaces,
   getPlaceById,
   getPlaceBySlug,
   checkSlug,

@@ -1,9 +1,38 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Marker, Popup } from "../adapters";
 import { useMapContext } from "../context/MapProvider";
-import { MapPin, Star, Eye } from "lucide-react";
-import { Badge } from "@/components/ui";
-import { MAP_THEME } from "../config/mapConfig";
+import { MapPin, Star, Eye, X } from "lucide-react";
+
+const CATEGORY_COLORS = [
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#06b6d4",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+  "#14b8a6",
+  "#f43f5e",
+];
+
+const categoryColor = (categoryId) =>
+  CATEGORY_COLORS[((categoryId || 0) - 1) % CATEGORY_COLORS.length] ||
+  "#6b7280";
+
+const StarRating = ({ value }) => {
+  const full = Math.round(value || 0);
+  return (
+    <span className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Star
+          key={i}
+          className={`h-3 w-3 ${i <= full ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+        />
+      ))}
+    </span>
+  );
+};
 
 const PlaceMarkers = () => {
   const { filteredPlaces, flyTo } = useMapContext();
@@ -12,46 +41,54 @@ const PlaceMarkers = () => {
   const handleMarkerClick = (e, place) => {
     e.originalEvent.stopPropagation();
     setPopupInfo(place);
-    flyTo({ lat: place.latitude, lng: place.longitude }, 15);
+    flyTo({ lat: Number(place.latitude), lng: Number(place.longitude) }, 15);
   };
 
   return (
     <>
-      {filteredPlaces.map((place) => (
-        <Marker
-          key={place.id}
-          latitude={place.latitude}
-          longitude={place.longitude}
-          anchor="bottom"
-          onClick={(e) => handleMarkerClick(e, place)}
-        >
-          <div className="group relative cursor-pointer transition-transform hover:scale-125 duration-300">
-            <div className="absolute -inset-1 bg-primary/20 rounded-full animate-ping opacity-0 group-hover:opacity-100" />
-            <div className="flex items-center justify-center p-2 rounded-full shadow-lg border-2 border-white bg-white text-primary hover:bg-primary hover:text-white transition-colors">
-              <MapPin className="h-5 w-5 fill-current" />
-            </div>
-            {place.isFeatured && (
-              <div className="absolute -top-1 -right-1 bg-yellow-400 text-white rounded-full p-0.5 shadow-sm">
-                <Star className="h-2.5 w-2.5 fill-current" />
+      {filteredPlaces.map((place) =>
+        place.latitude && place.longitude ? (
+          <Marker
+            key={place.id}
+            latitude={Number(place.latitude)}
+            longitude={Number(place.longitude)}
+            anchor="bottom"
+            onClick={(e) => handleMarkerClick(e, place)}
+          >
+            <div className="group cursor-pointer relative flex flex-col items-center">
+              <div
+                className="w-7 h-7 rounded-full border-2 border-white shadow-lg flex items-center justify-center transition-transform group-hover:scale-125 group-hover:shadow-xl"
+                style={{ backgroundColor: categoryColor(place.categoryId) }}
+              >
+                <MapPin className="h-3.5 w-3.5 text-white fill-white" />
               </div>
-            )}
-          </div>
-        </Marker>
-      ))}
+              {place.isFeatured && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-yellow-400 border border-white" />
+              )}
+            </div>
+          </Marker>
+        ) : null,
+      )}
 
       {popupInfo && (
         <Popup
           anchor="top"
-          latitude={popupInfo.latitude}
-          longitude={popupInfo.longitude}
+          latitude={Number(popupInfo.latitude)}
+          longitude={Number(popupInfo.longitude)}
           onClose={() => setPopupInfo(null)}
           closeOnClick={false}
-          offset={10}
-          maxWidth="300px"
-          className="z-50"
+          offset={12}
+          maxWidth="280px"
         >
-          <div className="p-0">
-            <div className="relative h-24 w-full bg-slate-100 rounded-t-lg overflow-hidden">
+          <div className="relative font-sans">
+            <button
+              onClick={() => setPopupInfo(null)}
+              className="absolute top-1 right-1 z-10 bg-white/80 rounded-full p-0.5 hover:bg-white"
+            >
+              <X className="h-3.5 w-3.5 text-gray-500" />
+            </button>
+
+            <div className="relative h-28 bg-gray-100 overflow-hidden">
               {popupInfo.images?.[0]?.url ? (
                 <img
                   src={popupInfo.images[0].url}
@@ -59,30 +96,44 @@ const PlaceMarkers = () => {
                   alt={popupInfo.name}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-400">
-                  <MapPin className="h-8 w-8" />
+                <div
+                  className="w-full h-full flex items-center justify-center"
+                  style={{
+                    backgroundColor: categoryColor(popupInfo.categoryId) + "22",
+                  }}
+                >
+                  <MapPin
+                    className="h-10 w-10"
+                    style={{ color: categoryColor(popupInfo.categoryId) }}
+                  />
                 </div>
               )}
-              <Badge className="absolute top-2 left-2 bg-white/90 text-primary text-[10px] hover:bg-white shadow-sm">
-                {popupInfo.category?.name}
-              </Badge>
+              {popupInfo.category?.name && (
+                <span
+                  className="absolute bottom-2 left-2 px-1.5 py-0.5 text-[9px] font-black uppercase text-white"
+                  style={{
+                    backgroundColor: categoryColor(popupInfo.categoryId),
+                  }}
+                >
+                  {popupInfo.category.name}
+                </span>
+              )}
             </div>
+
             <div className="p-3">
-              <h3
-                className="font-bold text-slate-800 line-clamp-1 mb-1"
-                style={{ color: MAP_THEME.PRIMARY_BLUE }}
-              >
+              <h3 className="font-black text-sm text-gray-900 line-clamp-1 mb-0.5">
                 {popupInfo.name}
               </h3>
-              <p className="text-xs text-slate-500 line-clamp-1 mb-2">
-                {popupInfo.address}
-              </p>
-              <div className="flex items-center justify-between text-xs text-slate-400 border-t pt-2">
-                <span className="flex items-center gap-1">
-                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                  {popupInfo.averageRating || 0}
-                </span>
-                <span className="flex items-center gap-1">
+              {popupInfo.address && (
+                <p className="text-[11px] text-gray-500 line-clamp-1 mb-2">
+                  {popupInfo.address}
+                </p>
+              )}
+              <div className="flex items-center justify-between">
+                <StarRating
+                  value={popupInfo.averageRating ?? popupInfo.ratingAvg}
+                />
+                <span className="flex items-center gap-1 text-[11px] text-gray-400">
                   <Eye className="h-3 w-3" />
                   {popupInfo.viewCount || 0}
                 </span>

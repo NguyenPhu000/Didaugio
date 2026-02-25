@@ -1,65 +1,77 @@
 import { Tabs } from "expo-router";
-import { Platform } from "react-native";
-import { View } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 
-// You can import icons here locally or use a library like @expo/vector-icons
-// For now, I'll use simple text or placeholders if icons aren't available.
-// In a real app, use: import { MapPin, Compass, Sparkles, Heart, User } from "lucide-react-native";
+const TabIcon = ({ name, color, size }) => (
+  <MaterialIcons name={name} size={size ?? 24} color={color} />
+);
 
-export default function TabLayout() {
+export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarActiveTintColor: "#0576b3",
+        tabBarInactiveTintColor: "#9ca3af",
         tabBarStyle: {
-          backgroundColor: "#ffffff",
-          borderTopWidth: 1,
-          borderTopColor: "#e5e5e5",
-          height: Platform.OS === "ios" ? 85 : 60,
-          paddingBottom: Platform.OS === "ios" ? 30 : 10,
-          paddingTop: 10,
+          backgroundColor: "#fff",
+          borderTopWidth: 0,
+          elevation: 12,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          height: 60,
+          paddingBottom: 6,
         },
-        tabBarActiveTintColor: "#0077b8",
-        tabBarInactiveTintColor: "#a3a3a3",
         tabBarLabelStyle: {
-          fontFamily: "BeVietnamPro-Medium", // Will fallback if font not loaded
-          fontSize: 12,
+          fontSize: 11,
+          fontWeight: "600",
         },
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="map"
         options={{
           title: "Bản đồ",
-          // tabBarIcon: ({ color }) => <MapPin color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="map" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
           title: "Khám phá",
-          // tabBarIcon: ({ color }) => <Compass color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="explore" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="ai-planner"
         options={{
-          title: "AI Plan",
-          // tabBarIcon: ({ color }) => <Sparkles color={color} />,
+          title: "AI",
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="auto-awesome" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="saved"
         options={{
           title: "Đã lưu",
-          // tabBarIcon: ({ color }) => <Heart color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="bookmark" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Cá nhân",
-          // tabBarIcon: ({ color }) => <User color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="person" color={color} size={size} />
+          ),
         }}
       />
     </Tabs>

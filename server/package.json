@@ -9,9 +9,12 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon --exec babel-node src/server.js",
-    "studio": "prisma studio --schema=prisma/schema.prisma --port 5555"
+    "studio": "prisma studio --schema=prisma/schema.prisma --port 5555",
+    "seed:boundaries": "node src/scripts/seedBoundaries.js",
+    "seed:districts": "node src/scripts/seedDistricts.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.22.0",
     "@turf/boolean-point-in-polygon": "^7.3.2",
     "@turf/helpers": "^7.3.2",

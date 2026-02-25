@@ -3,14 +3,33 @@ import { persist } from "zustand/middleware";
 import { ROLES } from "@/constants/constants";
 import { STORAGE_KEYS } from "@/constants/timing";
 
+/**
+ * Read persisted auth state synchronously from localStorage at module load time.
+ * This ensures the FIRST render already has the correct auth values,
+ * preventing the "redirect to login on F5" race condition with Zustand v5's
+ * async persist hydration.
+ */
+const getPersistedAuth = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.AUTH);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return parsed?.state ?? {};
+    }
+  } catch {}
+  return {};
+};
+
+const _p = getPersistedAuth();
+
 export const useAuthStore = create(
   persist(
     (set, get) => ({
-      // State
-      user: null,
-      accessToken: null,
-      refreshToken: null,
-      isAuthenticated: false,
+      // State — seeded from localStorage so first render is already correct
+      user: _p.user ?? null,
+      accessToken: _p.accessToken ?? null,
+      refreshToken: _p.refreshToken ?? null,
+      isAuthenticated: _p.isAuthenticated ?? false,
       isLoading: false,
 
       // Actions

@@ -1,10 +1,11 @@
 import { forwardRef } from "react";
 import { MapGL } from "../adapters";
 import { useMapContext } from "../context/MapProvider";
-import { MAP_CONFIGS, DEFAULT_MAP_STYLE } from "../config/mapConfig";
+import { MAP_CONFIGS } from "../config/mapConfig";
 
 const MapBase = forwardRef(({ children, className = "", ...props }, ref) => {
-  const { viewState, setViewState } = useMapContext();
+  const { viewState, setViewState, basemap } = useMapContext();
+  const { BOUNDS, CONSTRAINTS } = MAP_CONFIGS;
 
   return (
     <div className={`relative w-full h-full ${className}`}>
@@ -12,12 +13,14 @@ const MapBase = forwardRef(({ children, className = "", ...props }, ref) => {
         ref={ref}
         {...viewState}
         onMove={(evt) => setViewState(evt.viewState)}
-        mapStyle={DEFAULT_MAP_STYLE}
+        mapStyle={basemap}
         style={{ width: "100%", height: "100%" }}
-        maxBounds={MAP_CONFIGS.BOUNDS}
-        minZoom={MAP_CONFIGS.CONSTRAINTS.minZoom}
-        maxZoom={MAP_CONFIGS.CONSTRAINTS.maxZoom}
-        dragRotate={MAP_CONFIGS.CONSTRAINTS.dragRotate}
+        maxBounds={BOUNDS}
+        minZoom={CONSTRAINTS.minZoom}
+        maxZoom={CONSTRAINTS.maxZoom}
+        maxPitch={CONSTRAINTS.maxPitch}
+        dragRotate={CONSTRAINTS.dragRotate}
+        pitchWithRotate={CONSTRAINTS.pitchWithRotate}
         {...props}
       >
         {children}
