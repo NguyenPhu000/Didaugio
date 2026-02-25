@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { paginationSchema } from "./commonSchema.js";
+import { paginationSchema, paginationLargeSchema } from "./commonSchema.js";
 
 // =============================================================================
 // PLACE IMAGE SCHEMA
@@ -25,7 +25,10 @@ export const placeImageCreateSchema = placeImageBaseSchema.extend({
       invalid_type_error: "Dữ liệu ảnh phải là chuỗi base64",
     })
     .min(100, "Dữ liệu ảnh không hợp lệ (quá ngắn)")
-    .regex(/^data:image\/(jpeg|jpg|png|gif|webp);base64,/, "Dữ liệu ảnh phải là base64 hợp lệ"),
+    .regex(
+      /^data:image\/(jpeg|jpg|png|gif|webp);base64,/,
+      "Dữ liệu ảnh phải là base64 hợp lệ",
+    ),
 });
 
 // For Updating Existing Images (id required, imageData optional)
@@ -36,8 +39,8 @@ export const placeImageExistingSchema = placeImageBaseSchema.extend({
 
 // Union for Update Place (can contain both New and Existing)
 export const placeImageUpdateSchema = z.union([
-  placeImageCreateSchema, 
-  placeImageExistingSchema
+  placeImageCreateSchema,
+  placeImageExistingSchema,
 ]);
 
 // Export for backward compatibility (though should update usages)
@@ -50,10 +53,26 @@ export const placeImageSchema = placeImageCreateSchema;
 export const openingHourSchema = z.object({
   dayOfWeek: z.number().int().min(0).max(6),
   isClosed: z.boolean().default(false),
-  openTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional().nullable(),
-  closeTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional().nullable(),
-  breakStart: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional().nullable(),
-  breakEnd: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional().nullable(),
+  openTime: z
+    .string()
+    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .optional()
+    .nullable(),
+  closeTime: z
+    .string()
+    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .optional()
+    .nullable(),
+  breakStart: z
+    .string()
+    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .optional()
+    .nullable(),
+  breakEnd: z
+    .string()
+    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .optional()
+    .nullable(),
   note: z.string().max(100).optional().nullable(),
 });
 
@@ -86,7 +105,10 @@ export const createPlaceSchema = z.object({
     })
     .min(3)
     .max(200)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug chỉ được chứa chữ thường, số và dấu gạch ngang"),
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Slug chỉ được chứa chữ thường, số và dấu gạch ngang",
+    ),
 
   description: z.string().max(5000).optional().nullable(),
   shortDescription: z.string().max(500).optional().nullable(),
@@ -191,11 +213,18 @@ export const updatePlaceSchema = z.object({
   address: z.string().min(5).max(500).optional(),
   latitude: z.number().min(8).max(11).optional(),
   longitude: z.number().min(104).max(107).optional(),
-  phone: z.string().regex(/^[0-9]{10,11}$/).optional().nullable(),
+  phone: z
+    .string()
+    .regex(/^[0-9]{10,11}$/)
+    .optional()
+    .nullable(),
   email: z.string().email().optional().nullable(),
   website: z.string().url().optional().nullable(),
   facebook: z.string().max(200).optional().nullable(),
-  priceRange: z.enum(["FREE", "BUDGET", "MODERATE", "EXPENSIVE", "LUXURY"]).optional().nullable(),
+  priceRange: z
+    .enum(["FREE", "BUDGET", "MODERATE", "EXPENSIVE", "LUXURY"])
+    .optional()
+    .nullable(),
   priceFrom: z.number().int().min(0).optional().nullable(),
   priceTo: z.number().int().min(0).optional().nullable(),
   images: z.array(placeImageUpdateSchema).min(1).max(10).optional(),
@@ -209,16 +238,24 @@ export const updatePlaceSchema = z.object({
 // GET PLACES QUERY SCHEMA
 // =============================================================================
 
-export const getPlacesQuerySchema = paginationSchema.extend({
+export const getPlacesQuerySchema = paginationLargeSchema.extend({
   search: z.string().max(200).optional(),
   categoryId: z.coerce.number().int().positive().optional(),
   districtId: z.coerce.number().int().positive().optional(),
   wardId: z.coerce.number().int().positive().optional(),
-  status: z.enum(["all", "pending", "approved", "rejected", "draft"]).optional(),
-  priceRange: z.enum(["all", "FREE", "BUDGET", "MODERATE", "EXPENSIVE", "LUXURY"]).optional(),
+  status: z
+    .enum(["all", "pending", "approved", "rejected", "draft"])
+    .optional(),
+  priceRange: z
+    .enum(["all", "FREE", "BUDGET", "MODERATE", "EXPENSIVE", "LUXURY"])
+    .optional(),
   isFeatured: z.coerce.boolean().optional(),
   isVerified: z.coerce.boolean().optional(),
-  sortBy: z.enum(["newest", "oldest", "rating", "views", "name"]).default("newest"),
+  sortBy: z
+    .enum(["newest", "oldest", "rating", "views", "name"])
+    .default("newest"),
+  // Override pagination limit — map view needs all approved places at once
+  limit: z.coerce.number().int().min(1).max(500).default(10),
 });
 
 // =============================================================================

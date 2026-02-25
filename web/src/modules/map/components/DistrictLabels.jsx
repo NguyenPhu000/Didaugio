@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { Marker } from "../adapters";
 import { centroid as turfCentroid } from "@turf/turf";
-import { DISTRICT_COLORS } from "../config/mapConfig";
 
 const DistrictLabels = ({ districts }) => {
   const labels = useMemo(() => {
@@ -29,13 +28,11 @@ const DistrictLabels = ({ districts }) => {
             return null;
           }
         }
-        const color = DISTRICT_COLORS[idx % DISTRICT_COLORS.length].line;
         return {
           id: feature.properties.id,
           name: feature.properties.name,
           lng,
           lat,
-          color,
         };
       })
       .filter(Boolean);
@@ -52,14 +49,16 @@ const DistrictLabels = ({ districts }) => {
           style={{ pointerEvents: "none" }}
         >
           <div
-            className="select-none whitespace-nowrap font-black text-[11px] tracking-wider uppercase drop-shadow-sm"
+            className="select-none whitespace-nowrap font-bold uppercase"
             style={{
-              color: label.color,
+              fontSize: "11px",
+              letterSpacing: "0.15em",
+              color: "#334155",
               textShadow:
-                "0 1px 3px rgba(255,255,255,0.9), 0 -1px 3px rgba(255,255,255,0.9)",
+                "0 0 6px #fff, 0 0 10px #fff, 1px 1px 0 #fff, -1px -1px 0 #fff",
             }}
           >
-            {label.name}
+            {label.name.toUpperCase()}
           </div>
         </Marker>
       ))}

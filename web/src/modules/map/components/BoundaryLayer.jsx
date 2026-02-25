@@ -1,95 +1,106 @@
 import { useMemo } from "react";
 import { Source, Layer } from "../adapters";
 import { useMapContext } from "../context/MapProvider";
-import {
-  MAP_THEME,
-  LAYER_IDS,
-  DISTRICT_COLORS,
-  buildDistrictColorExpression,
-} from "../config/mapConfig";
+import { MAP_THEME, LAYER_IDS } from "../config/mapConfig";
 
 const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
-  const { hoveredFeature, selectedDistrict, setHoveredFeature } = useMapContext();
-
-  // Stable, sorted district id list for deterministic color assignment
-  const districtIds = useMemo(() => {
-    if (!districts?.features) return [];
-    return [...districts.features]
-      .sort((a, b) => a.properties.id - b.properties.id)
-      .map((f) => f.properties.id);
-  }, [districts]);
+  const { hoveredFeature, selectedDistrict, setHoveredFeature } =
+    useMapContext();
 
   const selectedId = selectedDistrict?.properties?.id ?? null;
   const hoveredId = hoveredFeature?.properties?.id ?? null;
 
-  // Fill: unique color per district; hover/selected brightened from same palette
-  const districtFillStyle = useMemo(() => {
-    const defaultFillExpr = buildDistrictColorExpression(districtIds, "fill", "rgba(14,107,168,0.05)");
-    const hoverFillExpr = buildDistrictColorExpression(districtIds, "hover", "rgba(14,107,168,0.2)");
-    const selectedFillExpr = buildDistrictColorExpression(districtIds, "selected", "rgba(14,107,168,0.35)");
-
-    return {
+  // ── Fill: transparent by default, only appears on hover / selected
+  const districtFillStyle = useMemo(
+    () => ({
       id: LAYER_IDS.DISTRICT_FILL,
       type: "fill",
       paint: {
         "fill-color": [
           "case",
-          ["==", ["to-string", ["get", "id"]], String(selectedId)], selectedFillExpr,
-          ["==", ["to-string", ["get", "id"]], String(hoveredId)], hoverFillExpr,
-          defaultFillExpr,
+          ["==", ["to-string", ["get", "id"]], String(selectedId)],
+          MAP_THEME.DISTRICT.SELECTED_FILL,
+          ["==", ["to-string", ["get", "id"]], String(hoveredId)],
+          MAP_THEME.DISTRICT.HOVER_FILL,
+          "rgba(0,0,0,0)", // fully transparent default
         ],
         "fill-opacity": 1,
       },
-    };
-  }, [districtIds, selectedId, hoveredId]);
+    }),
+    [selectedId, hoveredId],
+  );
 
-  const districtLineStyle = useMemo(() => {
-    const lineColorExpr = buildDistrictColorExpression(districtIds, "line", "#0E6BA8");
-    return {
+  // ── Outline: single neutral stroke, thickens on hover/selected
+  const districtLineStyle = useMemo(
+    () => ({
       id: LAYER_IDS.DISTRICT_LINE,
       type: "line",
       paint: {
-        "line-color": lineColorExpr,
+        "line-color": MAP_THEME.DISTRICT.STROKE_COLOR,
         "line-width": [
           "case",
           ["==", ["to-string", ["get", "id"]], String(selectedId)],
-          MAP_THEME.DISTRICT.LINE_WIDTH_SELECTED,
-          MAP_THEME.DISTRICT.LINE_WIDTH,
+          MAP_THEME.DISTRICT.STROKE_WIDTH_SELECTED,
+          ["==", ["to-string", ["get", "id"]], String(hoveredId)],
+          MAP_THEME.DISTRICT.STROKE_WIDTH_HOVER,
+          MAP_THEME.DISTRICT.STROKE_WIDTH,
         ],
-        "line-opacity": 0.9,
+        "line-opacity": [
+          "case",
+          ["==", ["to-string", ["get", "id"]], String(hoveredId)],
+          1,
+          ["==", ["to-string", ["get", "id"]], String(selectedId)],
+          1,
+          0.65,
+        ],
       },
-    };
-  }, [districtIds, selectedId]);
+    }),
+    [selectedId, hoveredId],
+  );
 
-  const maskLayerStyle = useMemo(() => ({
-    id: LAYER_IDS.MASK,
-    type: "fill",
-    paint: {
-      "fill-color": MAP_THEME.MASK_COLOR,
-      "fill-opacity": MAP_THEME.MASK_OPACITY,
-    },
-  }), []);
+  const maskLayerStyle = useMemo(
+    () => ({
+      id: LAYER_IDS.MASK,
+      type: "fill",
+      paint: {
+        "fill-color": MAP_THEME.MASK_COLOR,
+        "fill-opacity": MAP_THEME.MASK_OPACITY,
+      },
+    }),
+    [],
+  );
 
-  const wardFillStyle = useMemo(() => ({
-    id: LAYER_IDS.WARD_FILL,
-    type: "fill",
-    minzoom: 12,
-    paint: {
-      "fill-color": MAP_THEME.WARD.HOVER_FILL,
-      "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0],
-    },
-  }), []);
+  const wardFillStyle = useMemo(
+    () => ({
+      id: LAYER_IDS.WARD_FILL,
+      type: "fill",
+      minzoom: 12,
+      paint: {
+        "fill-color": MAP_THEME.WARD.HOVER_FILL,
+        "fill-opacity": [
+          "case",
+          ["boolean", ["feature-state", "hover"], false],
+          1,
+          0,
+        ],
+      },
+    }),
+    [],
+  );
 
-  const wardLineStyle = useMemo(() => ({
-    id: LAYER_IDS.WARD_LINE,
-    type: "line",
-    minzoom: 12,
-    paint: {
-      "line-color": MAP_THEME.WARD.LINE_COLOR,
-      "line-width": MAP_THEME.WARD.LINE_WIDTH,
-      "line-dasharray": [3, 2],
-    },
-  }), []);
+  const wardLineStyle = useMemo(
+    () => ({
+      id: LAYER_IDS.WARD_LINE,
+      type: "line",
+      minzoom: 12,
+      paint: {
+        "line-color": MAP_THEME.WARD.LINE_COLOR,
+        "line-width": MAP_THEME.WARD.LINE_WIDTH,
+        "line-dasharray": [4, 3],
+      },
+    }),
+    [],
+  );
 
   const onClick = (e) => {
     const feature = e.features?.[0];
@@ -101,7 +112,9 @@ const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
 
   const onHover = (e) => {
     const feature = e.features?.[0];
-    setHoveredFeature(feature ? { id: feature.id, properties: feature.properties } : null);
+    setHoveredFeature(
+      feature ? { id: feature.id, properties: feature.properties } : null,
+    );
   };
 
   return (
@@ -114,7 +127,12 @@ const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
 
       {districts && (
         <Source id="districts-source" type="geojson" data={districts}>
-          <Layer {...districtFillStyle} onClick={onClick} onMouseMove={onHover} onMouseLeave={() => setHoveredFeature(null)} />
+          <Layer
+            {...districtFillStyle}
+            onClick={onClick}
+            onMouseMove={onHover}
+            onMouseLeave={() => setHoveredFeature(null)}
+          />
           <Layer {...districtLineStyle} />
         </Source>
       )}

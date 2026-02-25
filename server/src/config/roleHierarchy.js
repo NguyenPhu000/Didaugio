@@ -20,7 +20,7 @@ export const ROLE_IDS = {
   ADMIN: 2,
   BUSINESS: 3,
   STAFF: 4,
-  USER: 5,  // Regular tourist / mobile app user
+  USER: 5, // Regular tourist / mobile app user
   GUEST: 6, // Unauthenticated session (mobile only)
 };
 

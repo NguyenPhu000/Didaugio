@@ -610,3 +610,20 @@
     border-color: transparent hsl(var(--primary)) transparent transparent;
   }
 }
+
+/* ── MapLibre popup reset — let PlacePopup provide its own styles ── */
+.maplibregl-popup-content {
+  padding: 0 !important;
+  border-radius: 12px !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.18),
+    0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden !important;
+  border: none !important;
+}
+.maplibregl-popup-tip {
+  display: none !important;
+}
+.maplibregl-popup-close-button {
+  display: none !important;
+}

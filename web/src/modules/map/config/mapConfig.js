@@ -14,27 +14,49 @@ const ESRI_ATTRIBUTION =
   "© Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN";
 
 export const MAP_STYLES = {
+  // Pure white canvas — no tiles, only boundary lines & fills
+  BLANK: {
+    version: 8,
+    name: "Thuần tú",
+    sources: {},
+    layers: [
+      {
+        id: "background",
+        type: "background",
+        paint: { "background-color": "#ffffff" },
+      },
+    ],
+  },
+
+  // Colorful raster — CartoDB Voyager roads/colors (no POI icons, no labels in base tile)
+  // then a labels-only tile on top for street/place names
   OSM: {
     version: 8,
     name: "Bản đồ",
     sources: {
-      osm: {
+      voyager_base: {
         type: "raster",
         tiles: [
-          "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-          "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          "https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
+          "https://b.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
+          "https://c.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
         ],
         tileSize: 256,
-        attribution: "&copy; OpenStreetMap contributors",
+        attribution: "&copy; CartoDB &copy; OpenStreetMap contributors",
+      },
+      voyager_labels: {
+        type: "raster",
+        tiles: [
+          "https://a.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+          "https://b.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+          "https://c.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+        ],
+        tileSize: 256,
       },
     },
     layers: [
-      {
-        id: "osm",
-        type: "raster",
-        source: "osm",
-        paint: { "raster-saturation": -0.2, "raster-contrast": 0.1 },
-      },
+      { id: "voyager-base", type: "raster", source: "voyager_base" },
+      { id: "voyager-labels", type: "raster", source: "voyager_labels" },
     ],
   },
 
@@ -53,6 +75,31 @@ export const MAP_STYLES = {
       },
     },
     layers: [{ id: "carto", type: "raster", source: "carto" }],
+  },
+
+  // Minimal admin style — faint street context, no label clutter
+  ADMIN: {
+    version: 8,
+    name: "Hành chính",
+    sources: {
+      carto_nl: {
+        type: "raster",
+        tiles: [
+          "https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+          "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+        ],
+        tileSize: 256,
+        attribution: "&copy; CartoDB &copy; OSM contributors",
+      },
+    },
+    layers: [
+      {
+        id: "carto_nl",
+        type: "raster",
+        source: "carto_nl",
+        paint: { "raster-opacity": 0.55, "raster-saturation": -0.6 },
+      },
+    ],
   },
 
   SATELLITE: {
@@ -131,60 +178,61 @@ export const MAP_CONFIGS = {
 // =============================================================================
 
 export const DISTRICT_COLORS = [
+  // Professional cartographic pastel palette — adjacent districts contrast well
   {
-    fill: "rgba(59,130,246,0.18)",
-    line: "#3b82f6",
-    hover: "rgba(59,130,246,0.35)",
-    selected: "rgba(59,130,246,0.5)",
-  }, // blue
+    fill: "rgba(186,215,233,0.72)",
+    line: "#2B7CB8",
+    hover: "rgba(186,215,233,0.92)",
+    selected: "rgba(43,124,184,0.38)",
+  }, // steel blue
   {
-    fill: "rgba(16,185,129,0.18)",
-    line: "#10b981",
-    hover: "rgba(16,185,129,0.35)",
-    selected: "rgba(16,185,129,0.5)",
+    fill: "rgba(166,220,195,0.72)",
+    line: "#1E8A5E",
+    hover: "rgba(166,220,195,0.92)",
+    selected: "rgba(30,138,94,0.38)",
   }, // emerald
   {
-    fill: "rgba(245,158,11,0.18)",
-    line: "#f59e0b",
-    hover: "rgba(245,158,11,0.35)",
-    selected: "rgba(245,158,11,0.5)",
+    fill: "rgba(250,224,178,0.72)",
+    line: "#C47F17",
+    hover: "rgba(250,224,178,0.92)",
+    selected: "rgba(196,127,23,0.38)",
   }, // amber
   {
-    fill: "rgba(239,68,68,0.18)",
-    line: "#ef4444",
-    hover: "rgba(239,68,68,0.35)",
-    selected: "rgba(239,68,68,0.5)",
-  }, // red
+    fill: "rgba(240,188,188,0.72)",
+    line: "#B83040",
+    hover: "rgba(240,188,188,0.92)",
+    selected: "rgba(184,48,64,0.38)",
+  }, // rose
   {
-    fill: "rgba(139,92,246,0.18)",
-    line: "#8b5cf6",
-    hover: "rgba(139,92,246,0.35)",
-    selected: "rgba(139,92,246,0.5)",
+    fill: "rgba(208,195,232,0.72)",
+    line: "#6840A8",
+    hover: "rgba(208,195,232,0.92)",
+    selected: "rgba(104,64,168,0.38)",
   }, // violet
   {
-    fill: "rgba(236,72,153,0.18)",
-    line: "#ec4899",
-    hover: "rgba(236,72,153,0.35)",
-    selected: "rgba(236,72,153,0.5)",
-  }, // pink
-  {
-    fill: "rgba(20,184,166,0.18)",
-    line: "#14b8a6",
-    hover: "rgba(20,184,166,0.35)",
-    selected: "rgba(20,184,166,0.5)",
+    fill: "rgba(178,226,218,0.72)",
+    line: "#1A8A7F",
+    hover: "rgba(178,226,218,0.92)",
+    selected: "rgba(26,138,127,0.38)",
   }, // teal
   {
-    fill: "rgba(249,115,22,0.18)",
-    line: "#f97316",
-    hover: "rgba(249,115,22,0.35)",
-    selected: "rgba(249,115,22,0.5)",
-  }, // orange
+    fill: "rgba(248,203,168,0.72)",
+    line: "#B85520",
+    hover: "rgba(248,203,168,0.92)",
+    selected: "rgba(184,85,32,0.38)",
+  }, // burnt orange
   {
-    fill: "rgba(6,182,212,0.18)",
-    line: "#06b6d4",
-    hover: "rgba(6,182,212,0.35)",
-    selected: "rgba(6,182,212,0.5)",
-  }, // cyan
+    fill: "rgba(185,202,230,0.72)",
+    line: "#3450A0",
+    hover: "rgba(185,202,230,0.92)",
+    selected: "rgba(52,80,160,0.38)",
+  }, // indigo
+  {
+    fill: "rgba(195,222,180,0.72)",
+    line: "#3A7830",
+    hover: "rgba(195,222,180,0.92)",
+    selected: "rgba(58,120,48,0.38)",
+  }, // sage green
 ];
 
 // Build MapLibre match expressions from a sorted list of district ids
@@ -203,21 +251,27 @@ export function buildDistrictColorExpression(districtIds, colorKey, fallback) {
 // =============================================================================
 
 export const MAP_THEME = {
-  PRIMARY_BLUE: "#0E6BA8",
-  ACCENT_BLUE: "#A6E1FA",
+  PRIMARY_BLUE: "#334155",
+  ACCENT_BLUE: "#94a3b8",
 
-  MASK_COLOR: "#e8eef4",
-  MASK_OPACITY: 0.88,
+  // Outside-Cần Thơ mask: very faint so it doesn't distract
+  MASK_COLOR: "#f1f5f9",
+  MASK_OPACITY: 0.75,
 
   DISTRICT: {
-    LINE_WIDTH: 2.5,
-    LINE_WIDTH_SELECTED: 3.5,
+    // Minimalist outline — no fill used by default
+    STROKE_COLOR: "#334155",
+    STROKE_WIDTH: 1.8,
+    STROKE_WIDTH_HOVER: 2.8,
+    STROKE_WIDTH_SELECTED: 3.2,
+    HOVER_FILL: "rgba(51,65,85,0.05)", // barely visible tint on hover
+    SELECTED_FILL: "rgba(51,65,85,0.10)", // slightly more visible when selected
   },
 
   WARD: {
-    LINE_COLOR: "rgba(100,116,139,0.35)",
-    LINE_WIDTH: 1,
-    HOVER_FILL: "rgba(100,116,139,0.2)",
+    LINE_COLOR: "rgba(148,163,184,0.5)",
+    LINE_WIDTH: 0.7,
+    HOVER_FILL: "rgba(148,163,184,0.08)",
   },
 };
 
@@ -227,6 +281,7 @@ export const MAP_THEME = {
 
 export const LAYER_IDS = {
   MASK: "world-mask",
+  DISTRICT_CASING: "district-casing",
   DISTRICT_LINE: "district-line",
   DISTRICT_FILL: "district-fill",
   WARD_LINE: "ward-line",

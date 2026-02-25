@@ -61,7 +61,7 @@ export const ERROR_CODES = {
 export const PAGINATION = {
   DEFAULT_PAGE: 1,
   DEFAULT_LIMIT: 10,
-  MAX_LIMIT: 100,
+  MAX_LIMIT: 500,
 };
 
 // Category levels

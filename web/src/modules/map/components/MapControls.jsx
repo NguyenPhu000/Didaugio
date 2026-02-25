@@ -1,8 +1,9 @@
 import { NavigationControl, ScaleControl, GeolocateControl } from "../adapters";
 import { useMapContext } from "../context/MapProvider";
-import { Layers, Map, Satellite } from "lucide-react";
+import { Layers, Map, Satellite, Globe2 } from "lucide-react";
 
 const BASEMAP_OPTIONS = [
+  { key: "BLANK", label: "Thuần tú", Icon: Globe2 },
   { key: "OSM", label: "Bản đồ", Icon: Map },
   { key: "SATELLITE", label: "Vệ tinh", Icon: Satellite },
   { key: "HYBRID", label: "Hybrid", Icon: Layers },
