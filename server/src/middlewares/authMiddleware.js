@@ -1,14 +1,25 @@
 import jwt from "jsonwebtoken";
+import { ROLES } from "../config/constants.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-/**
- * Middleware xac thuc token
- * Su dung cho cac route can dang nhap
- */
+const ROLE_NAME_TO_ID = {
+  super_admin: ROLES.SUPER_ADMIN,
+  admin: ROLES.ADMIN,
+  business: ROLES.BUSINESS,
+  staff: ROLES.STAFF,
+  user: ROLES.USER,
+  guest: ROLES.GUEST,
+};
+
+const resolveRoleId = (decoded = {}) => {
+  if (decoded.roleId) return decoded.roleId;
+  const roleKey = String(decoded.roleName || decoded.role || "").toLowerCase();
+  return ROLE_NAME_TO_ID[roleKey] || null;
+};
+
 export const authenticate = (req, res, next) => {
   try {
-    // Lay token tu header
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -21,15 +32,13 @@ export const authenticate = (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
-
-    // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
 
-    // Attach user info vao request (normalize payload legacy/new)
     req.user = {
       ...decoded,
       userId: decoded.userId || decoded.id,
       id: decoded.id || decoded.userId,
+      roleId: resolveRoleId(decoded),
     };
 
     next();
@@ -62,10 +71,7 @@ export const authenticate = (req, res, next) => {
 };
 
 /**
- * Optional authentication middleware
- * - Không có token: cho qua như guest
- * - Có token hợp lệ: gắn req.user
- * - Có token lỗi: trả về 401
+ * Không có token → cho qua (guest). Token lỗi → 401.
  */
 export const authenticateOptional = (req, res, next) => {
   try {
@@ -92,6 +98,7 @@ export const authenticateOptional = (req, res, next) => {
       ...decoded,
       userId: decoded.userId || decoded.id,
       id: decoded.id || decoded.userId,
+      roleId: resolveRoleId(decoded),
     };
 
     return next();
@@ -114,11 +121,6 @@ export const authenticateOptional = (req, res, next) => {
   }
 };
 
-/**
- * Middleware kiem tra quyen (role)
- * Su dung sau authenticate middleware
-//  * @param {number[]} allowedRoles - Danh sach roleId duoc phep
- */
 export const authorize = (allowedRoles) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -143,8 +145,4 @@ export const authorize = (allowedRoles) => {
   };
 };
 
-export default {
-  authenticate,
-  authenticateOptional,
-  authorize,
-};
+export default { authenticate, authenticateOptional, authorize };

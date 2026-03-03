@@ -1,6 +1,3 @@
-/**
- * usePlaceDetail — queries place detail by id
- */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getPlaceDetailApi,

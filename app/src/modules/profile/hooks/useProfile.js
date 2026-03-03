@@ -1,6 +1,3 @@
-/**
- * useProfile — queries authenticated user profile
- */
 import { useQuery } from "@tanstack/react-query";
 import { getMyProfileApi } from "../api/profileApi";
 

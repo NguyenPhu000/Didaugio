@@ -1,14 +1,5 @@
-/**
- * BOUNDARY SERVICE
- * Serves GeoJSON FeatureCollections built from database records.
- * Database is the single source of truth — no static file reads.
- */
-
 import prisma from "../config/prismaClient.js";
 
-// =============================================================================
-// IN-MEMORY CACHE (avoid hitting DB on every map load)
-// =============================================================================
 let cache = {
   districts: null,
   wards: null,
@@ -32,10 +23,6 @@ export const invalidateCache = (key = null) => {
     cache.timestamps = { districts: 0, wards: 0 };
   }
 };
-
-// =============================================================================
-// GEOJSON BUILDERS
-// =============================================================================
 
 /**
  * Build GeoJSON FeatureCollection for districts from DB
@@ -135,10 +122,6 @@ export const getWardsGeoJSON = async () => {
   cache.timestamps.wards = Date.now();
   return geojson;
 };
-
-// =============================================================================
-// CENTROID SERVICES
-// =============================================================================
 
 /**
  * Lấy centroid của District theo code

@@ -53,21 +53,25 @@ export const initiateGoogleOAuth = (req, res) => {
  * Google redirect về đây với authorization code
  * Đổi code → id_token → tạo JWT → redirect deep link về app
  */
-export const googleOAuthCallback = async (req, res, next) => {
+export const googleOAuthCallback = async (req, res) => {
   const appScheme = process.env.APP_SCHEME || "didaugio";
+
+  const redirectError = (message) => {
+    const msg = encodeURIComponent(message || "Đăng nhập thất bại");
+    return res.redirect(`${appScheme}://auth-error?message=${msg}`);
+  };
+
   try {
     const { code, error } = req.query;
 
     if (error || !code) {
-      const msg = encodeURIComponent(error || "No authorization code received");
-      return res.redirect(`${appScheme}://auth-error?message=${msg}`);
+      return redirectError(error || "No authorization code received");
     }
 
     const callbackUrl =
       process.env.GOOGLE_CALLBACK_URL ||
       `http://localhost:${process.env.PORT || 8081}/api/auth/google/web/callback`;
 
-    // Exchange authorization code for tokens
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -83,13 +87,11 @@ export const googleOAuthCallback = async (req, res, next) => {
     const tokenData = await tokenResponse.json();
 
     if (!tokenData.id_token) {
-      const msg = encodeURIComponent(
+      return redirectError(
         tokenData.error_description || "Failed to get token from Google",
       );
-      return res.redirect(`${appScheme}://auth-error?message=${msg}`);
     }
 
-    // Reuse existing loginWithGoogle service (verifies id_token, creates session)
     const clientInfo = {
       ipAddress: req.ip || req.connection?.remoteAddress,
       deviceName: req.headers["user-agent"],
@@ -99,13 +101,10 @@ export const googleOAuthCallback = async (req, res, next) => {
       clientInfo,
     );
 
-    // Encode user object as base64 JSON for deep link
-    // ⚠️ Must encodeURIComponent(base64) — base64 contains +, /, = which break URL parsing
     const userBase64 = Buffer.from(JSON.stringify(result.user)).toString(
       "base64",
     );
 
-    // Redirect to app via custom scheme deep link
     const deepLink =
       `${appScheme}://auth-success` +
       `?accessToken=${encodeURIComponent(result.accessToken)}` +
@@ -114,7 +113,8 @@ export const googleOAuthCallback = async (req, res, next) => {
 
     return res.redirect(deepLink);
   } catch (err) {
-    next(err);
+    console.error("[Google OAuth Callback]", err.message);
+    return redirectError(err.message);
   }
 };
 
@@ -281,6 +281,23 @@ export const resendVerification = async (req, res, next) => {
 };
 
 /**
+ * POST /api/auth/resend-verification-public
+ * Gửi lại email xác thực (không yêu cầu đăng nhập)
+ */
+export const resendVerificationPublic = async (req, res, next) => {
+  try {
+    const result = await authService.resendVerificationEmailPublic(req.body);
+    res.json({
+      success: true,
+      data: null,
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * POST /api/auth/logout
  * Đăng xuất (xóa session hiện tại)
  */
@@ -352,10 +369,65 @@ export const revokeSession = async (req, res, next) => {
   }
 };
 
+export const exchangeGoogleCode = async (req, res, next) => {
+  try {
+    const { code, redirectUri } = req.body;
+
+    if (!code || !redirectUri) {
+      return res.status(400).json({
+        success: false,
+        message: "code and redirectUri are required",
+      });
+    }
+
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code",
+      }),
+    });
+
+    const tokenData = await tokenResponse.json();
+
+    if (!tokenData.id_token) {
+      return res.status(400).json({
+        success: false,
+        message:
+          tokenData.error_description ||
+          "Không thể đổi code lấy token từ Google",
+      });
+    }
+
+    const clientInfo = {
+      ipAddress: req.ip || req.connection?.remoteAddress,
+      deviceId: req.headers["x-device-id"],
+      deviceName: req.headers["x-device-name"] || req.headers["user-agent"],
+    };
+
+    const result = await authService.loginWithGoogle(
+      tokenData.id_token,
+      clientInfo,
+    );
+    res.json({
+      success: true,
+      data: result,
+      message: "Đăng nhập Google thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   register,
   login,
   loginGoogle,
+  exchangeGoogleCode,
   initiateGoogleOAuth,
   googleOAuthCallback,
   refreshToken,
@@ -365,6 +437,7 @@ export default {
   resetPassword,
   verifyEmail,
   resendVerification,
+  resendVerificationPublic,
   logout,
   logoutAll,
   getSessions,

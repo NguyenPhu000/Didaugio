@@ -1,9 +1,5 @@
 import * as permissionService from "../services/permissionService.js";
 
-// =============================================================================
-// PERMISSION CONTROLLER - HTTP HANDLERS
-// =============================================================================
-
 /**
  * [GET] /api/permissions - Lấy danh sách permissions
  * Query: page, limit, module, search, includeRoles

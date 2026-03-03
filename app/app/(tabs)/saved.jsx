@@ -1,10 +1,4 @@
-/**
- * SavedScreen — User's saved/favorite places
- * Data: GET /app/me/saved-places → { data: [{ id, placeId, createdAt, place: {...} }], pagination }
- * Each item: { id, placeId, userId, createdAt, place: { id, name, address, images, ratingAvg, ... } }
- */
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
-import { FlashList } from "@shopify/flash-list";
+import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -16,7 +10,6 @@ import { useAuthStore } from "../../src/stores/authStore";
 import { PlaceCard } from "../../src/components/ui/PlaceCard";
 import { GuestGate } from "../../src/components/ui/GuestGate";
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
 const EmptyState = () => (
   <View className="flex-1 items-center justify-center px-10 gap-3">
     <View className="w-20 h-20 rounded-full items-center justify-center bg-blue-50">
@@ -31,7 +24,6 @@ const EmptyState = () => (
   </View>
 );
 
-// ─── Main screen ──────────────────────────────────────────────────────────────
 export default function SavedScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -48,7 +40,6 @@ export default function SavedScreen() {
   } = useSavedPlaces();
   const unsaveMutation = useUnsavePlace();
 
-  // savedData = [{ id, placeId, userId, createdAt, place: {...} }]
   const items = savedData || [];
 
   return (
@@ -81,10 +72,9 @@ export default function SavedScreen() {
       ) : items.length === 0 ? (
         <EmptyState />
       ) : (
-        <FlashList
+        <FlatList
           data={items}
           keyExtractor={(item) => String(item.id)}
-          estimatedItemSize={100}
           contentContainerStyle={{ padding: 16 }}
           refreshing={isRefetching}
           onRefresh={refetch}

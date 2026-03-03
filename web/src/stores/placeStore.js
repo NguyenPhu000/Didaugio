@@ -305,6 +305,32 @@ const usePlaceStore = create(
         }
       },
 
+      approvePlace: async (id) => {
+        set({ loading: true, error: null });
+        try {
+          const response = await placeService.approvePlace(id);
+          await get().fetchPlaces();
+          set({ loading: false });
+          return response.data;
+        } catch (error) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+
+      rejectPlace: async (id, reason) => {
+        set({ loading: true, error: null });
+        try {
+          const response = await placeService.rejectPlace(id, reason);
+          await get().fetchPlaces();
+          set({ loading: false });
+          return response.data;
+        } catch (error) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+
       toggleFeature: async (id) => {
         set({ loading: true, error: null });
         try {

@@ -1,4 +1,5 @@
 import client from "../../../api/client";
+import { ENDPOINTS } from "../../../api/endpoints";
 
-/** Get authenticated user's profile */
-export const getMyProfileApi = () => client.get("/app/me/profile");
+export const getMyProfileApi = () =>
+  client.get(ENDPOINTS.profile.summary);

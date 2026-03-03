@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -12,9 +12,18 @@ import toast from "react-hot-toast";
 
 const ResendVerificationPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
 
-  const [email, setEmail] = useState(user?.email || "");
+  const queryEmail = searchParams.get("email") || "";
+  const fromRegister = searchParams.get("from") === "register";
+
+  const initialEmail = useMemo(
+    () => user?.email || queryEmail,
+    [user?.email, queryEmail],
+  );
+
+  const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -33,16 +42,9 @@ const ResendVerificationPage = () => {
       setLoading(true);
 
       if (isAuthenticated) {
-        // User đã đăng nhập → Gọi API resend (cần auth)
         await authService.resendVerification();
       } else {
-        // User chưa đăng nhập → Hiện tại API chưa có endpoint public
-        // TODO: Cần tạo endpoint POST /api/auth/resend-verification-public { email }
-        setError("Bạn cần đăng nhập để gửi lại email xác thực.");
-        setTimeout(() => {
-          navigate("/login");
-        }, 2000);
-        return;
+        await authService.resendVerificationPublic(email.trim());
       }
 
       setSuccess(true);
@@ -113,7 +115,7 @@ const ResendVerificationPage = () => {
                   placeholder="your-email@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  disabled={isAuthenticated || loading}
+                  disabled={loading}
                   required
                 />
                 {isAuthenticated && (
@@ -145,6 +147,12 @@ const ResendVerificationPage = () => {
               {/* Info */}
               <Alert className="bg-blue-50 border-blue-200">
                 <AlertDescription className="text-sm text-gray-700">
+                  {fromRegister && (
+                    <p className="font-semibold mb-2">
+                      ✅ Tài khoản đã tạo thành công. Vui lòng xác thực email
+                      trước khi đăng nhập.
+                    </p>
+                  )}
                   <p className="font-semibold mb-2">📧 Lưu ý:</p>
                   <ul className="space-y-1 text-xs">
                     <li>• Kiểm tra cả thư mục Spam/Junk</li>

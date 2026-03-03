@@ -67,6 +67,14 @@ export const authService = {
     return response;
   },
 
+  // Gửi lại email xác thực (public - chưa đăng nhập)
+  resendVerificationPublic: async (email) => {
+    const response = await api.post("/auth/resend-verification-public", {
+      email,
+    });
+    return response;
+  },
+
   // Đăng xuất
   logout: async (refreshToken) => {
     const response = await api.post("/auth/logout", { refreshToken });
@@ -88,6 +96,15 @@ export const authService = {
   // Xóa session cụ thể
   revokeSession: async (sessionId) => {
     const response = await api.delete(`/auth/sessions/${sessionId}`);
+    return response;
+  },
+
+  // Đăng nhập Google (exchange code)
+  googleLogin: async (code, redirectUri) => {
+    const response = await api.post("/auth/google/exchange", {
+      code,
+      redirectUri,
+    });
     return response;
   },
 };

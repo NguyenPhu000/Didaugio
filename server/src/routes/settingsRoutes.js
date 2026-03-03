@@ -5,17 +5,8 @@ import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
 
 const router = express.Router();
 
-// 🔒 SECURITY: Block GUEST from settings
 router.use(authenticate, blockGuestFromAdmin);
 
-/**
- * SETTINGS ROUTES
- * Base: /api/settings
- *
- * System configuration and settings management
- */
-
-// Get all settings (admin only)
 router.get(
   "/",
   authenticate,
@@ -33,7 +24,6 @@ router.get(
   },
 );
 
-// Update settings (super admin only)
 router.put(
   "/",
   authenticate,

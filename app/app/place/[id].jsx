@@ -1,12 +1,3 @@
-/**
- * Place Detail Screen — /place/[id]
- * Shows full place information: images, info, hours, reviews
- * Data: GET /app/places/:id → { id, name, description, address, phone, website, priceRange,
- *   ratingAvg, isSaved, category: { name }, ward: { name }, district: { name },
- *   openingHours: [{ dayOfWeek, isClosed, openTime, closeTime }],
- *   images: [{ id, imageData }], _count: { reviews } }
- * Reviews: GET /app/places/:id/reviews → data: [...reviews]
- */
 import {
   ActivityIndicator,
   Linking,
@@ -35,7 +26,6 @@ import { cn } from "../../src/lib/cn";
 
 const DAY_NAMES = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
-// ─── Stars ───────────────────────────────────────────────────────────────
 const StarRow = ({ rating, size = 16 }) =>
   [1, 2, 3, 4, 5].map((s) => (
     <MaterialIcons
@@ -46,7 +36,6 @@ const StarRow = ({ rating, size = 16 }) =>
     />
   ));
 
-// ─── Review card ─────────────────────────────────────────────────────────
 const ReviewCard = ({ review }) => {
   const author =
     review?.user?.profile?.fullName ||
@@ -92,7 +81,6 @@ const ReviewCard = ({ review }) => {
   );
 };
 
-// ─── Opening hours ────────────────────────────────────────────────────────
 const OpeningHours = ({ hours }) => {
   const today = new Date().getDay();
   return (
@@ -136,7 +124,6 @@ const OpeningHours = ({ hours }) => {
   );
 };
 
-// ─── Main screen ─────────────────────────────────────────────────────────
 export default function PlaceDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();

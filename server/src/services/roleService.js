@@ -6,10 +6,6 @@ import {
   roleUsersQuerySchema,
 } from "../models/schemas/index.js";
 
-// =============================================================================
-// ROLE SERVICE - BUSINESS LOGIC
-// =============================================================================
-
 /**
  * Lấy danh sách tất cả vai trò
  * @param {object} query - Query params { page, limit, search, includePermissions, includeUserCount }

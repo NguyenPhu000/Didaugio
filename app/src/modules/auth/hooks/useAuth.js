@@ -1,7 +1,3 @@
-/**
- * useAuth — Convenience hook for authentication state
- * Returns user, auth status, and logout handler.
- */
 import { useCallback } from "react";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "../../../stores/authStore";
@@ -22,10 +18,8 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     try {
-      // Gửi refreshToken để server xóa session từ DB
       await logoutApi(refreshToken);
     } catch {
-      // Ignore API errors — clear local session regardless
     } finally {
       exitGuestMode();
       await clearSession();

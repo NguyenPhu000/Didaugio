@@ -1,37 +1,30 @@
-// ─── Brand / Primary ─────────────────────────────────────────────────────────
 export const COLORS = {
   primary: "#0077b8",
   primaryDark: "#005f96",
   primaryLight: "#e6f3fb",
 
-  // Neutrals
   background: "#f5f7f8",
   surface: "#ffffff",
   border: "#e5e7eb",
   divider: "#f1f5f9",
 
-  // Text
   text: "#111618",
   textSecondary: "#737373",
   textMuted: "#9ca3af",
   textInverse: "#ffffff",
 
-  // Semantic
   success: "#22c55e",
   warning: "#f59e0b",
   error: "#ef4444",
   info: "#3b82f6",
 
-  // Misc
   gold: "#C5A028",
   starFill: "#FBBF24",
 
-  // Glass morphism
   glassBg: "rgba(255,255,255,0.72)",
   glassBorder: "rgba(255,255,255,0.55)",
   glassOverlay: "rgba(0,0,0,0.04)",
 
-  // Dark mode surfaces
   dark: {
     background: "#0f172a",
     surface: "#1e293b",

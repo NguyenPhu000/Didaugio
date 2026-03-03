@@ -1,27 +1,39 @@
 import { Tabs } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import { COLORS } from "../../src/constants/colors";
+
+const TAB_BAR_HEIGHT = 60;
+const TAB_BAR_PADDING_BOTTOM = 6;
 
 const TabIcon = ({ name, color, size }) => (
   <MaterialIcons name={name} size={size ?? 24} color={color} />
 );
+
+const TAB_SCREENS = [
+  { name: "map", title: "Bản đồ", icon: "map" },
+  { name: "explore", title: "Khám phá", icon: "explore" },
+  { name: "ai-planner", title: "AI", icon: "auto-awesome" },
+  { name: "saved", title: "Đã lưu", icon: "bookmark" },
+  { name: "profile", title: "Cá nhân", icon: "person" },
+];
 
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#0576b3",
-        tabBarInactiveTintColor: "#9ca3af",
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: {
-          backgroundColor: "#fff",
+          backgroundColor: COLORS.surface,
           borderTopWidth: 0,
           elevation: 12,
-          shadowColor: "#000",
+          shadowColor: COLORS.text,
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.08,
           shadowRadius: 8,
-          height: 60,
-          paddingBottom: 6,
+          height: TAB_BAR_HEIGHT,
+          paddingBottom: TAB_BAR_PADDING_BOTTOM,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -29,51 +41,18 @@ export default function TabsLayout() {
         },
       }}
     >
-      <Tabs.Screen
-        name="map"
-        options={{
-          title: "Bản đồ",
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="map" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: "Khám phá",
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="explore" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="ai-planner"
-        options={{
-          title: "AI",
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="auto-awesome" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="saved"
-        options={{
-          title: "Đã lưu",
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="bookmark" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Cá nhân",
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="person" color={color} size={size} />
-          ),
-        }}
-      />
+      {TAB_SCREENS.map((screen) => (
+        <Tabs.Screen
+          key={screen.name}
+          name={screen.name}
+          options={{
+            title: screen.title,
+            tabBarIcon: ({ color, size }) => (
+              <TabIcon name={screen.icon} color={color} size={size} />
+            ),
+          }}
+        />
+      ))}
     </Tabs>
   );
 }

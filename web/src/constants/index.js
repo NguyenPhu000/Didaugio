@@ -1,7 +1,6 @@
 export * from "./constants";
 export * from "./permissions";
 export { default as api } from "./api";
-export * from "./mapConfigs";
 export * from "./tagConstants";
 export * from "./categoryConstants";
 export * from "./placeConstants";

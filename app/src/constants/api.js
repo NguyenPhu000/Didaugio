@@ -4,7 +4,6 @@ const PROD_DEFAULT_API_URL = "https://api.didaugio.vn/api";
 const DEV_FALLBACK_API_URL = "http://10.0.2.2:8081/api";
 
 const getRuntimeHost = () => {
-  // SDK 54 Expo Go: debuggerHost = "192.168.x.x:8083"
   const debuggerHost =
     Constants.expoGoConfig?.debuggerHost ||
     Constants.manifest2?.extra?.expoClient?.hostUri ||

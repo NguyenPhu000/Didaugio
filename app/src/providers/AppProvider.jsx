@@ -17,10 +17,8 @@ const AuthGuard = ({ children }) => {
     const isLoggedIn = !!accessToken || isGuest;
 
     if (!isLoggedIn && !inAuthGroup) {
-      // Not authenticated → redirect to login
       router.replace("/(auth)/login");
     } else if (isLoggedIn && inAuthGroup) {
-      // Already authenticated → redirect to app
       router.replace("/(tabs)/map");
     }
   }, [isHydrated, accessToken, isGuest, segments]);
@@ -37,8 +35,6 @@ const Bootstrap = ({ children }) => {
     const init = async () => {
       await hydrate();
 
-      // Background: refresh user profile nếu đang đăng nhập
-      // Không block render — chỉ cập nhật user mới nhất từ server
       const { accessToken, setUser } = useAuthStore.getState();
       if (accessToken) {
         getMeApi()
@@ -46,10 +42,7 @@ const Bootstrap = ({ children }) => {
             const freshUser = res?.data || res;
             if (freshUser?.id) setUser(freshUser);
           })
-          .catch(() => {
-            // Token hết hạn → refresh interceptor (client.js) sẽ tự xử lý
-            // khi có request tiếp theo; không cần làm gì ở đây
-          });
+          .catch(() => {});
       }
     };
     init();

@@ -11,7 +11,6 @@ const client = axios.create({
   },
 });
 
-// ── Request interceptor: attach Bearer token ──
 client.interceptors.request.use((config) => {
   const token = useAuthStore.getState().getAccessToken();
   if (token) {
@@ -20,7 +19,6 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
-// ── Response interceptor: 401 → silent refresh → retry ──
 let isRefreshing = false;
 let failedQueue = [];
 

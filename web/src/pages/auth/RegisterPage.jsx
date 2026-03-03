@@ -73,8 +73,12 @@ const RegisterPage = () => {
       });
 
       if (response.success) {
-        toast.success("Dang ky thanh cong! Vui long dang nhap.");
-        navigate("/login");
+        toast.success(
+          "Đăng ký thành công! Vui lòng kiểm tra email để xác thực.",
+        );
+        navigate(
+          `/resend-verification?email=${encodeURIComponent(data.email)}&from=register`,
+        );
       }
     } catch (error) {
       toast.error(error.message || "Dang ky that bai");

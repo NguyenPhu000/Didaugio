@@ -17,7 +17,7 @@ export const getAllPlaces = async (params = {}) => {
     }
     return acc;
   }, {});
-  
+
   const response = await api.get(BASE_URL, { params: cleanParams });
   return response;
 };
@@ -70,6 +70,18 @@ export const updatePlaceStatus = async (id, status) => {
   return response;
 };
 
+// Approve place (moderation)
+export const approvePlace = async (id) => {
+  const response = await api.put(`${BASE_URL}/${id}/approve`);
+  return response;
+};
+
+// Reject place (moderation)
+export const rejectPlace = async (id, reason) => {
+  const response = await api.put(`${BASE_URL}/${id}/reject`, { reason });
+  return response;
+};
+
 // Feature/Unfeature place (Admin)
 export const toggleFeature = async (id) => {
   const response = await api.put(`${BASE_URL}/${id}/feature`);
@@ -83,7 +95,12 @@ export const toggleVerify = async (id) => {
 };
 
 // Get nearby places
-export const getNearbyPlaces = async (latitude, longitude, radius = 5, limit = 10) => {
+export const getNearbyPlaces = async (
+  latitude,
+  longitude,
+  radius = 5,
+  limit = 10,
+) => {
   const response = await api.get(`${BASE_URL}/nearby`, {
     params: { latitude, longitude, radius, limit },
   });
@@ -124,7 +141,7 @@ export const addPlaceImages = async (id, images) => {
 export const updatePlaceImage = async (placeId, imageId, data) => {
   const response = await api.put(
     `${BASE_URL}/${placeId}/images/${imageId}`,
-    data
+    data,
   );
   return response.data;
 };
@@ -157,6 +174,8 @@ export default {
   updatePlace,
   deletePlace,
   updatePlaceStatus,
+  approvePlace,
+  rejectPlace,
   toggleFeature,
   toggleVerify,
   getNearbyPlaces,

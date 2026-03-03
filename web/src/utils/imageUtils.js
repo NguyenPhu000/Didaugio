@@ -2,17 +2,6 @@ import { IMAGE_UPLOAD_CONFIG } from "@/constants/placeConstants";
 
 const { MAX_WIDTH, MAX_HEIGHT, JPEG_QUALITY } = IMAGE_UPLOAD_CONFIG;
 
-/**
- * IMAGE UTILITIES
- * Helper functions for image processing
- */
-
-/**
- * Compress and resize image to Base64
- * @param {File} file - Image file to compress
- * @param {number} currentImagesLength - Current number of images (for setting as cover)
- * @returns {Promise<{imageData: string, caption: string, isCover: boolean, order: number}>}
- */
 export const compressImage = (file, currentImagesLength) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

@@ -127,7 +127,22 @@ function CollapsedMenuItem({ item, isActive, location }) {
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                   )}
                 >
-                  {subItem.title}
+                  {subItem.icon && (
+                    <AnimatedIcon
+                      icon={subItem.icon}
+                      className="size-3.5 shrink-0"
+                      type={isSubActive ? "pulse" : "hover"}
+                    />
+                  )}
+                  <span className="flex-1">{subItem.title}</span>
+                  {subItem.badge?.text && (
+                    <Badge
+                      variant="secondary"
+                      className="h-4 px-1.5 text-[10px] font-semibold"
+                    >
+                      {subItem.badge.text}
+                    </Badge>
+                  )}
                 </Link>
               </DropdownMenuItem>
             );
@@ -168,7 +183,22 @@ function ExpandedMenuItem({ item, isActive, location }) {
                 <SidebarMenuSubItem key={subItem.url}>
                   <SidebarMenuSubButton asChild isActive={isSubActive}>
                     <Link to={subItem.url}>
-                      <span>{subItem.title}</span>
+                      {subItem.icon && (
+                        <AnimatedIcon
+                          icon={subItem.icon}
+                          className="size-3.5 shrink-0"
+                          type={isSubActive ? "pulse" : "hover"}
+                        />
+                      )}
+                      <span className="flex-1">{subItem.title}</span>
+                      {subItem.badge?.text && (
+                        <Badge
+                          variant="secondary"
+                          className="h-4 px-1.5 text-[10px] font-semibold"
+                        >
+                          {subItem.badge.text}
+                        </Badge>
+                      )}
                     </Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Dialog, DialogContent } from "@/components/ui/Dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/Dialog";
 import { ScrollArea } from "@/components/ui";
 import {
   MapPin,
@@ -354,6 +354,9 @@ const PlaceDetailDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[1100px] w-full h-[90vh] max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+        <DialogTitle className="sr-only">
+          {place.name} - Chi tiết địa điểm
+        </DialogTitle>
         <div className="flex h-full overflow-hidden">
           {/* ═══ LEFT panel: image gallery ═══ */}
           <div className="w-[400px] flex-shrink-0 flex flex-col overflow-hidden">

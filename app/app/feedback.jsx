@@ -1,7 +1,3 @@
-/**
- * FeedbackScreen — Góp ý & Hỗ trợ
- * API: POST /app/feedback → { reportType, title, content }
- */
 import { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
@@ -20,7 +16,6 @@ import { useRouter } from "expo-router";
 import { useFeedback } from "../src/modules/feedback/hooks/useFeedback";
 import { cn } from "../src/lib/cn";
 
-// ─── Report type options ──────────────────────────────────────────────────
 const REPORT_TYPES = [
   { value: "suggestion", label: "Góp ý cải thiện", icon: "lightbulb" },
   { value: "bug_report", label: "Báo lỗi ứng dụng", icon: "bug-report" },
@@ -28,7 +23,6 @@ const REPORT_TYPES = [
   { value: "other", label: "Khác", icon: "help-outline" },
 ];
 
-// ─── TypeChip ────────────────────────────────────────────────────────────
 const TypeChip = ({ option, active, onPress }) => (
   <Pressable
     onPress={onPress}
@@ -53,7 +47,6 @@ const TypeChip = ({ option, active, onPress }) => (
   </Pressable>
 );
 
-// ─── Main screen ─────────────────────────────────────────────────────────
 export default function FeedbackScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -75,7 +68,6 @@ export default function FeedbackScreen() {
     reset,
   } = useFeedback();
 
-  // Handle success / error
   useEffect(() => {
     if (isSuccess) {
       Alert.alert(

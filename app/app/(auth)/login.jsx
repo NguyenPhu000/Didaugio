@@ -1,8 +1,3 @@
-/**
- * LoginScreen
- * Google-only authentication for Đi Đâu Giờ?
- * Design: full-bleed brand gradient top + white card bottom
- */
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

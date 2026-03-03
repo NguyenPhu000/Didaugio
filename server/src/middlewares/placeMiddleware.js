@@ -1,36 +1,21 @@
 import prisma from "../config/prismaClient.js";
 import { ROLES } from "../config/constants.js";
 
-/**
- * PLACE MIDDLEWARE
- * Middleware kiểm tra quyền sở hữu địa điểm
- */
+const EDITABLE_STATUSES = ["draft", "rejected"];
 
-/**
- * Kiểm tra user có quyền truy cập place không
- * - Super Admin (1) và Admin (2): Truy cập tất cả
- * - Business (3): Chỉ truy cập place của mình hoặc business của mình
- * - Các role khác: Từ chối
- */
 export const checkPlaceOwnership = async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user.userId;
     const roleId = req.user.roleId;
 
-    // Admin+ có thể truy cập mọi place
     if (roleId <= ROLES.ADMIN) {
       return next();
     }
 
-    // Lấy thông tin place
     const place = await prisma.place.findUnique({
       where: { id: parseInt(id), deletedAt: null },
-      select: {
-        id: true,
-        createdBy: true,
-        businessId: true,
-      },
+      select: { id: true, createdBy: true, businessId: true },
     });
 
     if (!place) {
@@ -41,25 +26,21 @@ export const checkPlaceOwnership = async (req, res, next) => {
       });
     }
 
-    // Kiểm tra ownership
-    // 1. Người tạo
     if (place.createdBy === userId) {
       return next();
     }
 
-    // 2. Business owner
     if (place.businessId) {
       const business = await prisma.business.findUnique({
         where: { id: place.businessId },
         select: { ownerId: true },
       });
 
-      if (business && business.ownerId === userId) {
+      if (business?.ownerId === userId) {
         return next();
       }
     }
 
-    // Không có quyền
     return res.status(403).json({
       success: false,
       message: "Bạn không có quyền truy cập địa điểm này",
@@ -75,17 +56,11 @@ export const checkPlaceOwnership = async (req, res, next) => {
   }
 };
 
-/**
- * Kiểm tra place có đang ở trạng thái cho phép chỉnh sửa không
- * Chỉ cho phép chỉnh sửa khi: draft, rejected
- * Trừ Admin có thể chỉnh sửa mọi trạng thái
- */
 export const checkPlaceEditable = async (req, res, next) => {
   try {
     const { id } = req.params;
     const roleId = req.user.roleId;
 
-    // Admin có thể chỉnh sửa mọi lúc
     if (roleId <= ROLES.ADMIN) {
       return next();
     }
@@ -102,8 +77,7 @@ export const checkPlaceEditable = async (req, res, next) => {
       });
     }
 
-    const editableStatuses = ["draft", "rejected"];
-    if (!editableStatuses.includes(place.status)) {
+    if (!EDITABLE_STATUSES.includes(place.status)) {
       return res.status(403).json({
         success: false,
         message: `Không thể chỉnh sửa địa điểm đang ở trạng thái: ${place.status}. Vui lòng liên hệ Admin.`,
@@ -121,15 +95,10 @@ export const checkPlaceEditable = async (req, res, next) => {
   }
 };
 
-/**
- * Middleware gắn place vào request để dùng trong controller
- */
 export const loadPlace = async (req, res, next) => {
   try {
-    const { id } = req.params;
-
     const place = await prisma.place.findUnique({
-      where: { id: parseInt(id), deletedAt: null },
+      where: { id: parseInt(req.params.id), deletedAt: null },
       include: {
         category: { select: { id: true, name: true } },
         district: { select: { id: true, name: true } },
@@ -161,8 +130,4 @@ export const loadPlace = async (req, res, next) => {
   }
 };
 
-export default {
-  checkPlaceOwnership,
-  checkPlaceEditable,
-  loadPlace,
-};
+export default { checkPlaceOwnership, checkPlaceEditable, loadPlace };

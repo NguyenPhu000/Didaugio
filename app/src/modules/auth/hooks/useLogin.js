@@ -1,6 +1,3 @@
-/**
- * useLogin — email/password authentication hook
- */
 import { useState, useCallback } from "react";
 import { useRouter } from "expo-router";
 import { loginApi } from "../api/authApi";

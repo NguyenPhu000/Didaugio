@@ -1,15 +1,9 @@
 import EventEmitter from "events";
 
-/**
- * Global Event Emitter
- * Used for decoupling modules and handling async events
- * (e.g. sending notifications after place approval)
- */
 class AppEventEmitter extends EventEmitter {}
 
 const eventEmitter = new AppEventEmitter();
 
-// Define Event Names
 export const EVENTS = {
   PLACE: {
     CREATED: "place:created",
@@ -25,6 +19,19 @@ export const EVENTS = {
   REVIEW: {
     CREATED: "review:created",
     REPLIED: "review:replied",
+  },
+  BOOKING: {
+    CREATED: "booking:created",
+    CONFIRMED: "booking:confirmed",
+    CANCELLED: "booking:cancelled",
+    COMPLETED: "booking:completed",
+    NO_SHOW: "booking:no_show",
+  },
+  BUSINESS: {
+    REGISTERED: "business:registered",
+    APPROVED: "business:approved",
+    REJECTED: "business:rejected",
+    RESUBMITTED: "business:resubmitted",
   },
 };
 

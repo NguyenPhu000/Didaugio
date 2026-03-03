@@ -1,12 +1,10 @@
-import { ERROR_CODES } from "../config/constants.js";
+import { ERROR_CODES } from "../config/messages.js";
 import { ZodError } from "zod";
 
-// Centralized error handling middleware
 const errorHandler = (err, req, res, next) => {
   console.error(`[ERROR] ${err.message}`);
   console.error(err.stack);
 
-  // Zod validation errors
   if (err instanceof ZodError) {
     const firstError = err.errors?.[0];
     return res.status(400).json({
@@ -22,7 +20,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Prisma errors
   if (err.code === "P2002") {
     return res.status(400).json({
       success: false,
@@ -41,7 +38,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Default error response (Rule 5.1)
   return res.status(err.statusCode || 500).json({
     success: false,
     data: null,

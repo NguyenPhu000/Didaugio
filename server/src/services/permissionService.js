@@ -4,10 +4,6 @@ import {
   validatePermissionByModuleQuery,
 } from "../models/schemas/index.js";
 
-// =============================================================================
-// PERMISSION SERVICE - BUSINESS LOGIC
-// =============================================================================
-
 /**
  * Lấy danh sách tất cả permissions
  * @param {object} query - Query params { page, limit, module, search, includeRoles }

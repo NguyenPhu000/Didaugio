@@ -1,9 +1,5 @@
 import * as roleService from "../services/roleService.js";
 
-// =============================================================================
-// ROLE CONTROLLER - HTTP HANDLERS
-// =============================================================================
-
 /**
  * [GET] /api/roles - Lấy danh sách vai trò
  * Query: page, limit, search, includePermissions, includeUserCount

@@ -1,7 +1,3 @@
-/**
- * useExplore — infinite scroll powered by GET /app/places
- * Supports full-text search, category filter, district filter, and pagination.
- */
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { searchPlacesApi, getHomeApi } from "../api/exploreApi";
 
@@ -33,7 +29,6 @@ export function useExplore({
   });
 }
 
-/** Load categories for filter chips from the home endpoint */
 export function useCategories() {
   return useQuery({
     queryKey: ["home-categories"],

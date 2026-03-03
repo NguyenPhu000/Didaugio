@@ -1,8 +1,3 @@
-/**
- * ProfileScreen — User profile
- * Data: GET /app/me/profile → { id, email, profile: { fullName, avatar }, stats: { favorites, trips, bookings } }
- * Design: matches Stitch profile screen with stats row
- */
 import {
   ActivityIndicator,
   Pressable,
@@ -18,7 +13,6 @@ import { useProfile } from "../../src/modules/profile/hooks/useProfile";
 import { useAuth } from "../../src/modules/auth/hooks/useAuth";
 import { useAuthStore } from "../../src/stores/authStore";
 
-// ─── Settings row ────────────────────────────────────────────────────────
 const SettingsRow = ({ icon, label, value, onPress, danger, iconBg }) => (
   <Pressable
     onPress={onPress}
@@ -47,7 +41,6 @@ const SettingsRow = ({ icon, label, value, onPress, danger, iconBg }) => (
   </Pressable>
 );
 
-// ─── Stat item ────────────────────────────────────────────────────────────
 const StatItem = ({ count, label }) => (
   <View className="flex-1 items-center">
     <Text className="text-[20px] font-bold text-ink">{count ?? 0}</Text>
@@ -55,7 +48,6 @@ const StatItem = ({ count, label }) => (
   </View>
 );
 
-// ─── Guest prompt ─────────────────────────────────────────────────────────
 const GuestProfile = () => {
   const router = useRouter();
   return (
@@ -78,7 +70,6 @@ const GuestProfile = () => {
   );
 };
 
-// ─── Main screen ─────────────────────────────────────────────────────────
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -88,7 +79,6 @@ export default function ProfileScreen() {
   const isLoggedIn = !!accessToken && !isGuest;
   const { data: profile, isLoading } = useProfile();
 
-  // profile = { id, email, status, profile: { fullName, avatar }, stats: { favorites, trips, bookings } }
   const displayUser = profile || storeUser;
 
   const fullName = displayUser?.profile?.fullName || displayUser?.email || "Người dùng";

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Search from "lucide-react/dist/esm/icons/search";
@@ -47,6 +47,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui";
 import {
   Select,
@@ -58,16 +63,27 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { PRICE_RANGE_LABELS } from "@/constants/constants";
 import { usePermission } from "@/hooks/usePermission";
+import { Textarea } from "@/components/ui/textarea";
 
 /**
  * PLACE LIST PAGE - T.I.M STYLE OVERHAUL (VIETNAMESE)
  */
 
-const PlaceListPage = () => {
+const PlaceListPage = ({
+  initialStatus = "all",
+  lockStatusFilter = false,
+  pageTitle = "QUẢN LÝ ĐỊA ĐIỂM",
+  pageMeta = "KIỂM SOÁT VÀ ĐIỀU PHỐI DỮ LIỆU",
+  moderationMode = false,
+  allowCreate = true,
+}) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { hasPermission } = usePermission();
+  const canModeratePlaces =
+    hasPermission("places.approve") || hasPermission("places.reject");
+  const canFeaturePlaces = hasPermission("places.feature");
 
   const {
     places,
@@ -76,6 +92,8 @@ const PlaceListPage = () => {
     fetchPlaces,
     deletePlace,
     updatePlaceStatus,
+    approvePlace,
+    rejectPlace,
     toggleFeature,
   } = usePlaceStore();
 
@@ -85,13 +103,20 @@ const PlaceListPage = () => {
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState("grid"); // grid | list
+  const searchDebounceRef = useRef(null);
+  const [moderationDialog, setModerationDialog] = useState({
+    open: false,
+    place: null,
+    action: "approved",
+    comment: "",
+  });
 
   // Initialize from URL or defaults
   const [filters, setFilters] = useState({
     search: searchParams.get("search") || "",
     categoryId: searchParams.get("categoryId") || "",
     districtId: searchParams.get("districtId") || "",
-    status: searchParams.get("status") || "all",
+    status: searchParams.get("status") || initialStatus,
     priceRange: searchParams.get("priceRange") || "",
     page: parseInt(searchParams.get("page")) || 1,
     limit: parseInt(searchParams.get("limit")) || 12,
@@ -103,13 +128,13 @@ const PlaceListPage = () => {
       search: searchParams.get("search") || "",
       categoryId: searchParams.get("categoryId") || "",
       districtId: searchParams.get("districtId") || "",
-      status: searchParams.get("status") || "all",
+      status: searchParams.get("status") || initialStatus,
       priceRange: searchParams.get("priceRange") || "",
       page: parseInt(searchParams.get("page")) || 1,
       limit: parseInt(searchParams.get("limit")) || 12,
     };
     setFilters(newFilters);
-  }, [searchParams]);
+  }, [searchParams, initialStatus]);
 
   // Load data when filters change
   useEffect(() => {
@@ -147,16 +172,33 @@ const PlaceListPage = () => {
   };
 
   const handleSearch = (e) => {
-    // Handling search on enter would be better but let's stick to update
+    const value = e.target.value;
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      const newFilters = { ...filters, search: value, page: 1 };
+      setFilters(newFilters);
+      updateURL(newFilters);
+    }, 350);
   };
 
   const onSearchKey = (e) => {
     if (e.key === "Enter") {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
       const newFilters = { ...filters, search: e.target.value, page: 1 };
       setFilters(newFilters);
       updateURL(newFilters);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, []);
 
   const handleFilterChange = (key, value) => {
     const newFilters = { ...filters, [key]: value, page: 1 };
@@ -199,7 +241,20 @@ const PlaceListPage = () => {
 
   const handleStatusChange = async (place, newStatus) => {
     try {
-      await updatePlaceStatus(place.id, newStatus);
+      if (newStatus === "approved") {
+        if (!hasPermission("places.approve")) {
+          throw new Error("Bạn không có quyền duyệt địa điểm.");
+        }
+        await approvePlace(place.id);
+      } else if (newStatus === "rejected") {
+        if (!hasPermission("places.reject")) {
+          throw new Error("Bạn không có quyền từ chối địa điểm.");
+        }
+        openModerationDialog(place, "rejected");
+        return;
+      } else {
+        await updatePlaceStatus(place.id, newStatus);
+      }
       toast({
         title: "TRẠNG THÁI",
         description: "Cập nhật trạng thái thành công.",
@@ -210,6 +265,69 @@ const PlaceListPage = () => {
         variant: "destructive",
         title: "LỖI",
         description: error.message,
+      });
+    }
+  };
+
+  const openModerationDialog = (place, action) => {
+    setModerationDialog({
+      open: true,
+      place,
+      action,
+      comment: "",
+    });
+  };
+
+  const handleModerationConfirm = async () => {
+    const place = moderationDialog.place;
+    if (!place) return;
+
+    const note = moderationDialog.comment?.trim() || "";
+    if (moderationDialog.action === "rejected" && note.length < 10) {
+      toast({
+        variant: "destructive",
+        title: "LỖI DỮ LIỆU",
+        description: "Lý do từ chối phải có ít nhất 10 ký tự.",
+      });
+      return;
+    }
+
+    try {
+      if (moderationDialog.action === "approved") {
+        await approvePlace(place.id);
+        toast({
+          title: "DUYỆT THÀNH CÔNG",
+          description: "Địa điểm đã được phê duyệt.",
+          className: "bg-black text-white border border-primary font-mono",
+        });
+      } else {
+        await rejectPlace(place.id, note);
+        toast({
+          title: "ĐÃ TỪ CHỐI",
+          description: "Địa điểm đã được chuyển về trạng thái từ chối.",
+          className: "bg-black text-white border border-primary font-mono",
+        });
+      }
+
+      const refreshedFilters = { ...filters };
+      if (refreshedFilters.status === "all") refreshedFilters.status = "";
+      if (refreshedFilters.categoryId === "all")
+        refreshedFilters.categoryId = "";
+      if (refreshedFilters.districtId === "all")
+        refreshedFilters.districtId = "";
+      await fetchPlaces(refreshedFilters);
+
+      setModerationDialog({
+        open: false,
+        place: null,
+        action: "approved",
+        comment: "",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "LỖI",
+        description: error.message || "Không thể cập nhật trạng thái duyệt.",
       });
     }
   };
@@ -278,16 +396,16 @@ const PlaceListPage = () => {
           <div className="flex items-center gap-6">
             <div className="accent-bar h-16"></div>
             <div>
-              <h1 className="tim-title">QUẢN LÝ ĐỊA ĐIỂM</h1>
+              <h1 className="tim-title">{pageTitle}</h1>
               <div className="flex items-center gap-4 mt-2">
                 <span className="tim-system bg-black text-white px-2 py-1">
                   DATABASE // PLACES
                 </span>
-                <p className="tim-meta">KIỂM SOÁT VÀ ĐIỀU PHỐI DỮ LIỆU</p>
+                <p className="tim-meta">{pageMeta}</p>
               </div>
             </div>
           </div>
-          {hasPermission("places.create") && (
+          {allowCreate && hasPermission("places.create") && (
             <Button
               onClick={handleCreate}
               className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
@@ -354,7 +472,8 @@ const PlaceListPage = () => {
             </div>
             <input
               placeholder="TÌM KIẾM THEO TÊN, ĐỊA CHỈ [ENTER]..."
-              defaultValue={filters.search}
+              value={filters.search}
+              onChange={handleSearch}
               onKeyDown={onSearchKey}
               className="flex-1 h-10 px-4 border-y border-r border-black font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400"
             />
@@ -365,6 +484,7 @@ const PlaceListPage = () => {
             <Select
               value={filters.status || "all"}
               onValueChange={(val) => handleFilterChange("status", val)}
+              disabled={lockStatusFilter}
             >
               <SelectTrigger className="w-[150px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
                 <SelectValue placeholder="TRẠNG THÁI" />
@@ -562,34 +682,44 @@ const PlaceListPage = () => {
                           >
                             <Info className="mr-2 h-3 w-3" /> CHI TIẾT
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleToggleFeature(place)}
-                            className="cursor-pointer hover:bg-gray-100"
-                          >
-                            <Star className="mr-2 h-3 w-3" />{" "}
-                            {place.isFeatured ? "GỠ NỔI BẬT" : "ĐẶT NỔI BẬT"}
-                          </DropdownMenuItem>
+                          {canFeaturePlaces && (
+                            <DropdownMenuItem
+                              onClick={() => handleToggleFeature(place)}
+                              className="cursor-pointer hover:bg-gray-100"
+                            >
+                              <Star className="mr-2 h-3 w-3" />{" "}
+                              {place.isFeatured ? "GỠ NỔI BẬT" : "ĐẶT NỔI BẬT"}
+                            </DropdownMenuItem>
+                          )}
 
-                          {place.status === "pending" && (
+                          {place.status === "pending" && canModeratePlaces && (
                             <>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  handleStatusChange(place, "approved")
-                                }
-                                className="text-green-600 hover:bg-green-50 cursor-pointer text-bold"
-                              >
-                                <CheckCircle className="mr-2 h-3 w-3" /> DUYỆT
-                                NHANH
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  handleStatusChange(place, "rejected")
-                                }
-                                className="text-red-600 hover:bg-red-50 cursor-pointer text-bold"
-                              >
-                                <XCircle className="mr-2 h-3 w-3" /> TỪ CHỐI
-                              </DropdownMenuItem>
+                              {hasPermission("places.approve") && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    moderationMode
+                                      ? openModerationDialog(place, "approved")
+                                      : handleStatusChange(place, "approved")
+                                  }
+                                  className="text-green-600 hover:bg-green-50 cursor-pointer text-bold"
+                                >
+                                  <CheckCircle className="mr-2 h-3 w-3" /> DUYỆT
+                                  NHANH
+                                </DropdownMenuItem>
+                              )}
+                              {hasPermission("places.reject") && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    moderationMode
+                                      ? openModerationDialog(place, "rejected")
+                                      : handleStatusChange(place, "rejected")
+                                  }
+                                  className="text-red-600 hover:bg-red-50 cursor-pointer text-bold"
+                                >
+                                  <XCircle className="mr-2 h-3 w-3" /> TỪ CHỐI
+                                </DropdownMenuItem>
+                              )}
                             </>
                           )}
 
@@ -716,10 +846,93 @@ const PlaceListPage = () => {
           onOpenChange={setDetailDialogOpen}
           onEdit={handleEdit}
           onDelete={handleDelete}
-          onApprove={(place) => handleStatusChange(place, "approved")}
-          onReject={(place) => handleStatusChange(place, "rejected")}
+          onApprove={
+            hasPermission("places.approve")
+              ? (place) => approvePlace(place.id)
+              : undefined
+          }
+          onReject={
+            hasPermission("places.reject")
+              ? (place) => openModerationDialog(place, "rejected")
+              : undefined
+          }
         />
       </Suspense>
+
+      <Dialog
+        open={moderationDialog.open}
+        onOpenChange={(open) =>
+          setModerationDialog((prev) => ({ ...prev, open }))
+        }
+      >
+        <DialogContent className="rounded-none border border-black bg-white sm:max-w-[560px]">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="font-black uppercase tracking-wide text-base">
+              {moderationDialog.action === "approved"
+                ? "XÁC NHẬN DUYỆT ĐỊA ĐIỂM"
+                : "XÁC NHẬN TỪ CHỐI ĐỊA ĐIỂM"}
+            </DialogTitle>
+            <DialogDescription className="font-mono text-xs uppercase text-gray-500">
+              {moderationDialog.place?.name || "ĐỊA ĐIỂM"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <label className="font-mono text-[11px] uppercase text-gray-600">
+              {moderationDialog.action === "approved"
+                ? "GHI CHÚ (TÙY CHỌN)"
+                : "LÝ DO TỪ CHỐI (BẮT BUỘC, TỐI THIỂU 10 KÝ TỰ)"}
+            </label>
+            <Textarea
+              value={moderationDialog.comment}
+              onChange={(e) =>
+                setModerationDialog((prev) => ({
+                  ...prev,
+                  comment: e.target.value,
+                }))
+              }
+              rows={4}
+              placeholder={
+                moderationDialog.action === "approved"
+                  ? "Ví dụ: Nội dung đầy đủ, dữ liệu hợp lệ..."
+                  : "Ví dụ: Thiếu thông tin địa chỉ, ảnh không phù hợp..."
+              }
+              className="rounded-none border-black focus-visible:ring-0 font-mono text-sm"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-none border-black font-bold uppercase text-xs"
+              onClick={() =>
+                setModerationDialog({
+                  open: false,
+                  place: null,
+                  action: "approved",
+                  comment: "",
+                })
+              }
+            >
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              className={`rounded-none border border-black font-bold uppercase text-xs ${
+                moderationDialog.action === "approved"
+                  ? "bg-green-600 hover:bg-green-700 text-white"
+                  : "bg-red-600 hover:bg-red-700 text-white"
+              }`}
+              onClick={handleModerationConfirm}
+            >
+              {moderationDialog.action === "approved"
+                ? "Xác nhận duyệt"
+                : "Xác nhận từ chối"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

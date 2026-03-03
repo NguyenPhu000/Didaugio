@@ -1,6 +1,3 @@
-/**
- * useSavedPlaces — queries for authenticated user's saved places
- */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getSavedPlacesApi,

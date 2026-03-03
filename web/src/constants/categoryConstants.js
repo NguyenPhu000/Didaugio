@@ -16,11 +16,6 @@ import {
   Camera,
 } from "lucide-react";
 
-/**
- * CATEGORY CONSTANTS
- * Centralized constants for category management
- */
-
 export const CATEGORY_ICON_MAP = {
   UtensilsCrossed,
   ChefHat,

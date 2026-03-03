@@ -10,10 +10,6 @@ const router = express.Router();
 // 🔒 SECURITY: Block GUEST role from all role management routes
 router.use(authenticate, blockGuestFromAdmin);
 
-// =============================================================================
-// ROLE ROUTES - API ENDPOINTS
-// =============================================================================
-
 /**
  * [GET] /api/roles - Lấy danh sách vai trò
  * Query: page, limit, search, includePermissions, includeUserCount

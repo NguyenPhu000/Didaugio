@@ -18,12 +18,13 @@ datasource db {
 // =============================================================================
 
 model Role {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  displayName String   @map("display_name")
-  description String?
-  isSystem    Boolean  @default(false) @map("is_system")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  displayName  String   @map("display_name")
+  description  String?
+  isSystem     Boolean  @default(false) @map("is_system")
+  isProtected  Boolean  @default(false) @map("is_protected")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   users           User[]
   rolePermissions RolePermission[]

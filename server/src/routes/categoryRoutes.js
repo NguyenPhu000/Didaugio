@@ -7,12 +7,6 @@ import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
 
 const router = express.Router();
 
-/**
- * CATEGORY ROUTES
- * Base: /api/categories
- */
-
-// Public routes
 router.get("/", categoryController.getCategories);
 router.get("/tree", categoryController.getCategoryTree);
 router.get("/slug/:slug", categoryController.getCategoryBySlug);
@@ -20,7 +14,6 @@ router.get("/:id", categoryController.getCategoryById);
 router.get("/:id/path", categoryController.getCategoryPath);
 router.get("/:id/suggested-tags", categoryController.getSuggestedTags);
 
-// Admin routes - Require authentication + permission
 router.post(
   "/",
   authenticate,

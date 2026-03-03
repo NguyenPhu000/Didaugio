@@ -1,7 +1,3 @@
-/**
- * ExploreScreen — Search & discover places in Cần Thơ
- * Features: debounced search, category filter chips, FlashList infinite scroll
- */
 import {
   useCallback,
   useDeferredValue,
@@ -11,13 +7,13 @@ import {
 } from "react";
 import {
   ActivityIndicator,
+  FlatList,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { FlashList } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
@@ -28,9 +24,6 @@ import { PlaceCard } from "../../src/components/ui/PlaceCard";
 import { PlaceCardSkeleton } from "../../src/components/ui/Skeleton";
 import { cn } from "../../src/lib/cn";
 
-const ITEM_ESTIMATED_HEIGHT = 230;
-
-// ─── Category chip ─────────────────────────────────────────────────────────
 const CategoryChip = ({ label, active, onPress }) => (
   <Pressable
     onPress={onPress}
@@ -61,7 +54,6 @@ const CategoryChip = ({ label, active, onPress }) => (
   </Pressable>
 );
 
-// ─── Empty state ──────────────────────────────────────────────────────────
 const EmptyState = ({ query }) => (
   <View className="flex-1 items-center justify-center px-10 pt-16 gap-3">
     <MaterialIcons name="search-off" size={64} color="#9ca3af" />
@@ -76,7 +68,6 @@ const EmptyState = ({ query }) => (
   </View>
 );
 
-// ─── Main screen ──────────────────────────────────────────────────────────
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const searchRef = useRef(null);
@@ -99,8 +90,6 @@ export default function ExploreScreen() {
     error,
   } = useExplore({ search: deferredSearch, categoryId: activeCategoryId });
 
-  // Server returns: { success, data: [...places], pagination }
-  // So lastPage.data is the places array
   const places = useMemo(() => {
     if (!data?.pages) return [];
     return data.pages.flatMap((page) => page?.data || []);
@@ -215,11 +204,10 @@ export default function ExploreScreen() {
           </Text>
         </View>
       ) : (
-        <FlashList
+        <FlatList
           data={places}
           renderItem={renderItem}
           keyExtractor={(item) => String(item.id)}
-          estimatedItemSize={ITEM_ESTIMATED_HEIGHT}
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.4}
           ListHeaderComponent={

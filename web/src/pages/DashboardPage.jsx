@@ -22,7 +22,7 @@ import {
   Legend,
   Filler,
 } from "chart.js";
-import { PAGINATION } from "@/constants/constants";
+import { PAGINATION, ROLES } from "@/constants/constants";
 import { ADMIN_ROUTES } from "@/constants/routes";
 import { INTERVALS } from "@/constants/timing";
 
@@ -80,22 +80,24 @@ const DashboardPage = () => {
           fetchCategories(),
         ]);
 
-        try {
-          const userRes = await userService.getAll({ limit: 1 });
-          if (userRes.data?.total) setUserCount(userRes.data.total);
-          else if (userRes.data?.users?.length)
-            setUserCount(userRes.data.users.length);
-          else if (Array.isArray(userRes.data))
-            setUserCount(userRes.data.length);
-        } catch (err) {
-          console.error("Failed to load user stats", err);
+        if (user?.roleId === ROLES.SUPER_ADMIN || user?.roleId === ROLES.ADMIN) {
+          try {
+            const userRes = await userService.getAll({ limit: 1 });
+            if (userRes.data?.total) setUserCount(userRes.data.total);
+            else if (userRes.data?.users?.length)
+              setUserCount(userRes.data.users.length);
+            else if (Array.isArray(userRes.data))
+              setUserCount(userRes.data.length);
+          } catch (err) {
+            console.error("Failed to load user stats", err);
+          }
         }
       } finally {
         setLoading(false);
       }
     };
     loadData();
-  }, [fetchPlaces, fetchCategories]);
+  }, [fetchPlaces, fetchCategories, user?.roleId]);
 
   useEffect(() => {
     if (places.length > 0) {

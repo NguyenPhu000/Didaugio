@@ -1,8 +1,3 @@
-/**
- * AIPlannerScreen — "The Concierge" AI trip planner
- * Design: Chat interface matching Stitch "AI Planner The Concierge" screen
- * Data: POST /app/me/trips/generate → trip.destinations[]
- */
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -29,15 +24,12 @@ const QUICK_SUGGESTIONS = [
   "☕ Cà phê view đẹp gần trung tâm",
 ];
 
-// ─── Destination timeline item ─────────────────────────────────────────────
 const DestinationItem = ({ dest, index }) => (
   <View className="flex-row gap-3 mb-3">
-    {/* Step dot */}
     <View className="items-center">
       <View className="w-6 h-6 rounded-full bg-primary items-center justify-center">
         <Text className="text-[11px] font-bold text-white">{index + 1}</Text>
       </View>
-      {/* Connector line — rendered by parent */}
     </View>
     <View className="flex-1 pb-1">
       {dest.startTime ? (
@@ -74,7 +66,6 @@ const DestinationItem = ({ dest, index }) => (
   </View>
 );
 
-// ─── Trip summary card ─────────────────────────────────────────────────────
 const TripCard = ({ trip }) => {
   const destinations = trip?.destinations || [];
 
@@ -83,7 +74,6 @@ const TripCard = ({ trip }) => {
       className="mt-3 rounded-2xl overflow-hidden border border-gray-100"
       style={{ backgroundColor: "#f8faff" }}
     >
-      {/* Trip header */}
       <View className="bg-primary px-4 py-3">
         <Text className="text-[15px] font-bold text-white">{trip.title}</Text>
         <View className="flex-row items-center gap-3 mt-1">
@@ -122,7 +112,6 @@ const TripCard = ({ trip }) => {
         </View>
       </View>
 
-      {/* Destinations */}
       {destinations.length > 0 && (
         <View className="p-4">
           {destinations.map((dest, idx) => (
@@ -134,7 +123,6 @@ const TripCard = ({ trip }) => {
   );
 };
 
-// ─── Chat bubble ────────────────────────────────────────────────────────────
 const ChatBubble = ({ message }) => {
   const isUser = message.role === "user";
 
@@ -180,7 +168,6 @@ const ChatBubble = ({ message }) => {
           {message.text}
         </Text>
 
-        {/* Trip timeline */}
         {message.plan?.destinations?.length > 0 && (
           <TripCard trip={message.plan} />
         )}
@@ -189,7 +176,6 @@ const ChatBubble = ({ message }) => {
   );
 };
 
-// ─── Main screen ─────────────────────────────────────────────────────────────
 export default function AIPlannerScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef(null);
@@ -199,7 +185,6 @@ export default function AIPlannerScreen() {
 
   const { messages, isLoading, error, sendMessage, reset } = useAIPlanner();
 
-  // Guard: chỉ user đăng nhập mới dùng được AI Planner
   if (!accessToken || isGuest) {
     return (
       <GuestGate

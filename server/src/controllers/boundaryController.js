@@ -1,13 +1,4 @@
-/**
- * BOUNDARY CONTROLLER
- * Xử lý request/response cho ranh giới địa lý
- */
-
 import * as boundaryService from "../services/boundaryService.js";
-
-// =============================================================================
-// GEOJSON ENDPOINTS
-// =============================================================================
 
 /**
  * GET /api/boundaries/districts - Lấy GeoJSON quận/huyện
@@ -56,10 +47,6 @@ export const invalidateCache = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-// =============================================================================
-// CENTROID ENDPOINTS
-// =============================================================================
 
 /**
  * GET /api/boundaries/districts/:code/center

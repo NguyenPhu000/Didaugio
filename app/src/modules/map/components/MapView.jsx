@@ -1,8 +1,3 @@
-/**
- * MapView — React Native (react-native-maps + OSM UrlTile)
- * Works with Expo Go — no native build required.
- * Mirrors web MapBase + PlaceMarkers interface.
- */
 import { forwardRef, useImperativeHandle, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import RNMapView, {
@@ -10,9 +5,8 @@ import RNMapView, {
   Marker,
   PROVIDER_DEFAULT,
 } from "react-native-maps";
-import { MAP_CONFIGS, MAP_THEME } from "../config/mapConfig";
+import { MAP_CONFIGS, MAP_THEME, DEFAULT_MAP_STYLE } from "../config/mapConfig";
 
-// Can Tho initial region
 const INITIAL_REGION = {
   latitude: MAP_CONFIGS.INITIAL_VIEW.centerCoordinate[1],
   longitude: MAP_CONFIGS.INITIAL_VIEW.centerCoordinate[0],
@@ -22,8 +16,12 @@ const INITIAL_REGION = {
 
 const MIN_DELTA = 0.004;
 const MAX_DELTA = 0.5;
+const ZOOM_FACTOR = 0.5;
+const FLY_DURATION = 800;
+const ZOOM_DURATION = 300;
 
-// ─── Place pin dot ────────────────────────────────────────────────────────────
+const zoomToDelta = (zoom) => (zoom >= 15 ? 0.01 : zoom >= 13 ? 0.03 : 0.08);
+
 const PinDot = ({ isFeatured, isActive }) => (
   <View
     style={[
@@ -42,10 +40,16 @@ const PinDot = ({ isFeatured, isActive }) => (
   </View>
 );
 
-// ─── Main map component ───────────────────────────────────────────────────────
 const MapView = forwardRef(
   (
-    { places = [], selectedPlaceId = null, onSelectPlace, style, children },
+    {
+      places = [],
+      selectedPlaceId = null,
+      onSelectPlace,
+      style,
+      tileUrl,
+      children,
+    },
     ref,
   ) => {
     const mapRef = useRef(null);
@@ -53,28 +57,28 @@ const MapView = forwardRef(
 
     useImperativeHandle(ref, () => ({
       flyTo: ([lng, lat], zoom = 14) => {
-        const delta = zoom >= 15 ? 0.01 : zoom >= 13 ? 0.03 : 0.08;
+        const delta = zoomToDelta(zoom);
         regionRef.current = {
           latitude: lat,
           longitude: lng,
           latitudeDelta: delta,
           longitudeDelta: delta,
         };
-        mapRef.current?.animateToRegion(regionRef.current, 800);
+        mapRef.current?.animateToRegion(regionRef.current, FLY_DURATION);
       },
       zoomIn: () => {
         const r = regionRef.current;
-        const delta = Math.max(r.latitudeDelta * 0.5, MIN_DELTA);
+        const delta = Math.max(r.latitudeDelta * ZOOM_FACTOR, MIN_DELTA);
         const next = { ...r, latitudeDelta: delta, longitudeDelta: delta };
         regionRef.current = next;
-        mapRef.current?.animateToRegion(next, 300);
+        mapRef.current?.animateToRegion(next, ZOOM_DURATION);
       },
       zoomOut: () => {
         const r = regionRef.current;
-        const delta = Math.min(r.latitudeDelta * 2, MAX_DELTA);
+        const delta = Math.min(r.latitudeDelta / ZOOM_FACTOR, MAX_DELTA);
         const next = { ...r, latitudeDelta: delta, longitudeDelta: delta };
         regionRef.current = next;
-        mapRef.current?.animateToRegion(next, 300);
+        mapRef.current?.animateToRegion(next, ZOOM_DURATION);
       },
     }));
 
@@ -98,16 +102,14 @@ const MapView = forwardRef(
           regionRef.current = region;
         }}
       >
-        {/* CartoDB Light tiles — free, no User-Agent restriction */}
         <UrlTile
-          urlTemplate="https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
+          urlTemplate={tileUrl || DEFAULT_MAP_STYLE.url}
           maximumZ={19}
           tileSize={256}
           flipY={false}
           shouldReplaceMapContent
         />
 
-        {/* Place markers */}
         {places.map((place) => {
           if (!place.latitude || !place.longitude) return null;
           return (
@@ -138,10 +140,8 @@ const MapView = forwardRef(
 MapView.displayName = "MapView";
 export default MapView;
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   map: { flex: 1 },
-
   pinOuter: {
     width: 22,
     height: 22,

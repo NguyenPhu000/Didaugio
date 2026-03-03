@@ -1,6 +1,9 @@
 import express from "express";
 import * as placeController from "../controllers/placeController.js";
-import { authenticate } from "../middlewares/authMiddleware.js";
+import {
+  authenticate,
+  authenticateOptional,
+} from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
 import { checkPlaceOwnership } from "../middlewares/placeMiddleware.js";
@@ -15,42 +18,33 @@ import {
 
 const router = express.Router();
 
-/**
- * PLACE ROUTES
- * Base: /api/places
- */
+router.get("/home", placeController.getHomeData);
+router.get("/services", placeController.getBusinessServices);
 
-// =============================================================================
-// PUBLIC ROUTES
-// =============================================================================
+router.get(
+  "/",
+  authenticateOptional,
+  validateQuery(getPlacesQuerySchema),
+  placeController.getPlaces,
+);
 
-// GET /api/places - Lấy danh sách địa điểm (public)
-router.get("/", validateQuery(getPlacesQuerySchema), placeController.getPlaces);
-
-// GET /api/places/stats - Thống kê (public hoặc admin)
 router.get("/stats", placeController.getStats);
 
-// GET /api/places/check-slug/:slug - Kiểm tra slug (public)
 router.get("/check-slug/:slug", placeController.checkSlug);
 
-// GET /api/places/nearby - Lấy địa điểm gần vị trí hiện tại (public)
 router.get(
   "/nearby",
   validateQuery(nearbyPlacesQuerySchema),
   placeController.getNearbyPlaces,
 );
 
-// GET /api/places/slug/:slug - Lấy theo slug (public)
 router.get("/slug/:slug", placeController.getPlaceBySlug);
 
-// GET /api/places/:id - Lấy theo ID (public)
 router.get("/:id", placeController.getPlaceById);
 
-// =============================================================================
-// AUTHENTICATED ROUTES - Tạo địa điểm
-// =============================================================================
+router.get("/:id/reviews", placeController.getPlaceReviews);
+router.post("/:id/reviews", authenticate, placeController.createReview);
 
-// POST /api/places - Tạo địa điểm mới
 router.post(
   "/",
   authenticate,
@@ -69,11 +63,6 @@ router.post(
   placeController.createPlace,
 );
 
-// =============================================================================
-// OWNER/ADMIN ROUTES - Cập nhật địa điểm
-// =============================================================================
-
-// PUT /api/places/:id - Cập nhật địa điểm
 router.put(
   "/:id",
   authenticate,
@@ -89,7 +78,6 @@ router.put(
   placeController.updatePlace,
 );
 
-// DELETE /api/places/:id - Xóa địa điểm
 router.delete(
   "/:id",
   authenticate,
@@ -103,7 +91,6 @@ router.delete(
   placeController.deletePlace,
 );
 
-// POST /api/places/:id/submit - Gửi duyệt
 router.post(
   "/:id/submit",
   authenticate,
@@ -117,11 +104,6 @@ router.post(
   placeController.submitForReview,
 );
 
-// =============================================================================
-// ADMIN ROUTES - Quản lý trạng thái
-// =============================================================================
-
-// PUT /api/places/:id/approve - Duyệt địa điểm
 router.put(
   "/:id/approve",
   authenticate,
@@ -134,7 +116,6 @@ router.put(
   placeController.approvePlace,
 );
 
-// PUT /api/places/:id/reject - Từ chối địa điểm
 router.put(
   "/:id/reject",
   authenticate,
@@ -148,7 +129,6 @@ router.put(
   placeController.rejectPlace,
 );
 
-// PUT /api/places/:id/status - Đổi trạng thái
 router.put(
   "/:id/status",
   authenticate,
@@ -162,7 +142,6 @@ router.put(
   placeController.updateStatus,
 );
 
-// PUT /api/places/:id/feature - Đánh dấu nổi bật
 router.put(
   "/:id/feature",
   authenticate,
@@ -176,11 +155,6 @@ router.put(
   placeController.toggleFeatured,
 );
 
-// =============================================================================
-// IMAGE ROUTES
-// =============================================================================
-
-// POST /api/places/:id/images - Thêm ảnh
 router.post(
   "/:id/images",
   authenticate,
@@ -189,7 +163,6 @@ router.post(
   placeController.addImages,
 );
 
-// PUT /api/places/:id/images/reorder - Sắp xếp ảnh
 router.put(
   "/:id/images/reorder",
   authenticate,
@@ -198,7 +171,6 @@ router.put(
   placeController.reorderImages,
 );
 
-// PUT /api/places/:id/images/:imageId/cover - Đặt làm ảnh bìa
 router.put(
   "/:id/images/:imageId/cover",
   authenticate,
@@ -207,7 +179,6 @@ router.put(
   placeController.setCoverImage,
 );
 
-// DELETE /api/places/:id/images/:imageId - Xóa ảnh
 router.delete(
   "/:id/images/:imageId",
   authenticate,

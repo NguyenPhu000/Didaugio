@@ -3,14 +3,12 @@ import { Source, Layer } from "../adapters";
 import { useMapContext } from "../context/MapProvider";
 import { MAP_THEME, LAYER_IDS } from "../config/mapConfig";
 
-const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
-  const { hoveredFeature, selectedDistrict, setHoveredFeature } =
-    useMapContext();
+const BoundaryLayer = ({ mask, districts, wards }) => {
+  const { selectedDistrict } = useMapContext();
 
   const selectedId = selectedDistrict?.properties?.id ?? null;
-  const hoveredId = hoveredFeature?.properties?.id ?? null;
 
-  // ── Fill: transparent by default, only appears on hover / selected
+  // ── District fill — selected state via React, hover via GL feature-state ──
   const districtFillStyle = useMemo(
     () => ({
       id: LAYER_IDS.DISTRICT_FILL,
@@ -20,17 +18,16 @@ const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
           "case",
           ["==", ["to-string", ["get", "id"]], String(selectedId)],
           MAP_THEME.DISTRICT.SELECTED_FILL,
-          ["==", ["to-string", ["get", "id"]], String(hoveredId)],
+          ["boolean", ["feature-state", "hover"], false],
           MAP_THEME.DISTRICT.HOVER_FILL,
-          "rgba(0,0,0,0)", // fully transparent default
+          "rgba(0,0,0,0)",
         ],
         "fill-opacity": 1,
       },
     }),
-    [selectedId, hoveredId],
+    [selectedId],
   );
 
-  // ── Outline: single neutral stroke, thickens on hover/selected
   const districtLineStyle = useMemo(
     () => ({
       id: LAYER_IDS.DISTRICT_LINE,
@@ -41,13 +38,13 @@ const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
           "case",
           ["==", ["to-string", ["get", "id"]], String(selectedId)],
           MAP_THEME.DISTRICT.STROKE_WIDTH_SELECTED,
-          ["==", ["to-string", ["get", "id"]], String(hoveredId)],
+          ["boolean", ["feature-state", "hover"], false],
           MAP_THEME.DISTRICT.STROKE_WIDTH_HOVER,
           MAP_THEME.DISTRICT.STROKE_WIDTH,
         ],
         "line-opacity": [
           "case",
-          ["==", ["to-string", ["get", "id"]], String(hoveredId)],
+          ["boolean", ["feature-state", "hover"], false],
           1,
           ["==", ["to-string", ["get", "id"]], String(selectedId)],
           1,
@@ -55,7 +52,7 @@ const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
         ],
       },
     }),
-    [selectedId, hoveredId],
+    [selectedId],
   );
 
   const maskLayerStyle = useMemo(
@@ -102,21 +99,6 @@ const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
     [],
   );
 
-  const onClick = (e) => {
-    const feature = e.features?.[0];
-    if (feature && onSelect) {
-      const type = feature.layer.id.includes("ward") ? "ward" : "district";
-      onSelect(feature, type);
-    }
-  };
-
-  const onHover = (e) => {
-    const feature = e.features?.[0];
-    setHoveredFeature(
-      feature ? { id: feature.id, properties: feature.properties } : null,
-    );
-  };
-
   return (
     <>
       {mask && (
@@ -126,21 +108,21 @@ const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
       )}
 
       {districts && (
-        <Source id="districts-source" type="geojson" data={districts}>
-          <Layer
-            {...districtFillStyle}
-            onClick={onClick}
-            onMouseMove={onHover}
-            onMouseLeave={() => setHoveredFeature(null)}
-          />
+        <Source
+          id="districts-source"
+          type="geojson"
+          data={districts}
+          promoteId="id"
+        >
+          <Layer {...districtFillStyle} />
           <Layer {...districtLineStyle} />
         </Source>
       )}
 
       {wards && (
-        <Source id="wards-source" type="geojson" data={wards}>
+        <Source id="wards-source" type="geojson" data={wards} promoteId="id">
           <Layer {...wardFillStyle} />
-          <Layer {...wardLineStyle} onClick={onClick} />
+          <Layer {...wardLineStyle} />
         </Source>
       )}
     </>

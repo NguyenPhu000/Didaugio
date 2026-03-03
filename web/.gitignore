@@ -30,3 +30,8 @@ dist-ssr
 .gemini/
 .agent/
 .cursorrules
+test
+types
+.env
+.env
+vitest.config.js

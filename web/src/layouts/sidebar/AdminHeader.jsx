@@ -37,7 +37,9 @@ const ROUTE_LABELS = {
   [ADMIN_ROUTES.PERMISSIONS]: "Quyền hạn",
   [ADMIN_ROUTES.AUDIT_LOGS]: "Nhật ký",
   [ADMIN_ROUTES.MAP]: "Bản đồ",
+  [ADMIN_ROUTES.PLACES_PENDING]: "Duyệt địa điểm",
   [ADMIN_ROUTES.PROFILE]: "Hồ sơ",
+  [ADMIN_ROUTES.SETTINGS]: "Cài đặt",
 };
 
 function AdminHeader() {

@@ -3,6 +3,7 @@ import {
   useEffect,
   useMemo,
   useCallback,
+  useDeferredValue,
   lazy,
   Suspense,
   useRef,
@@ -21,6 +22,7 @@ import {
   DISTRICT_COLORS,
 } from "@/modules/map";
 import DistrictLabels from "@/modules/map/components/DistrictLabels";
+import WardLabels from "@/modules/map/components/WardLabels";
 import {
   Search,
   MapIcon,
@@ -29,155 +31,28 @@ import {
   X,
   Maximize2,
   Minimize2,
-  SlidersHorizontal,
-  ChevronRight,
-  Star,
   Eye,
-  Navigation,
   BarChart3,
   Filter,
   RefreshCw,
   Layers,
+  AlertTriangle,
+  Route,
+  Navigation2,
+  Flag,
 } from "lucide-react";
+
+import PlaceCard from "./map/PlaceCard";
+import DistrictRow from "./map/DistrictRow";
+import FilterPanel from "./map/FilterPanel";
+import MapListView from "./map/MapListView";
 
 const PlaceDetailDialog = lazy(
   () => import("@/components/place/PlaceDetailDialog"),
 );
 
-// ── Category icon map (matches PlaceMarkers config) ─────────────────────────
-import {
-  Utensils,
-  Hotel,
-  TreePine,
-  ShoppingBag,
-  Landmark,
-  Coffee,
-  Tent,
-  Leaf,
-} from "lucide-react";
+const FETCH_LIMIT = 500;
 
-const CAT_ICONS = {
-  1: Utensils,
-  2: Hotel,
-  3: Landmark,
-  4: ShoppingBag,
-  5: TreePine,
-  6: Coffee,
-  7: Tent,
-  8: Leaf,
-  13: Utensils,
-};
-const CatIcon = ({ id, className }) => {
-  const Icon = CAT_ICONS[id] || MapPin;
-  return <Icon className={className} />;
-};
-
-const PRICE_BADGE = {
-  FREE: { label: "Miễn phí", cls: "bg-green-100 text-green-700" },
-  BUDGET: { label: "Bình dân", cls: "bg-blue-100 text-blue-700" },
-  MODERATE: { label: "Trung bình", cls: "bg-amber-100 text-amber-700" },
-  EXPENSIVE: { label: "Cao cấp", cls: "bg-orange-100 text-orange-700" },
-  LUXURY: { label: "Sang trọng", cls: "bg-purple-100 text-purple-700" },
-};
-
-// ── Place card in sidebar ────────────────────────────────────────────────────
-const PlaceCard = ({ place, onClick }) => {
-  const price = PRICE_BADGE[place.priceRange];
-  const rating = Number(place.averageRating ?? place.ratingAvg ?? 0);
-  const imgSrc = place.thumbnail || place.images?.[0]?.url;
-
-  return (
-    <button
-      onClick={() => onClick(place)}
-      className="w-full text-left flex gap-3 p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors group"
-    >
-      <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
-        {imgSrc ? (
-          <img src={imgSrc} className="w-full h-full object-cover" alt="" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <MapPin className="h-5 w-5 text-gray-300" />
-          </div>
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[12px] font-bold text-gray-900 truncate leading-tight">
-          {place.name}
-        </p>
-        {place.address && (
-          <p className="text-[11px] text-gray-400 truncate mt-0.5 flex items-center gap-1">
-            <Navigation className="h-2.5 w-2.5 shrink-0" />
-            {place.address}
-          </p>
-        )}
-        <div className="flex items-center gap-2 mt-1.5">
-          {rating > 0 && (
-            <span className="flex items-center gap-0.5">
-              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-              <span className="text-[11px] font-bold text-amber-600">
-                {rating.toFixed(1)}
-              </span>
-            </span>
-          )}
-          {price && (
-            <span
-              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${price.cls}`}
-            >
-              {price.label}
-            </span>
-          )}
-          {place.isFeatured && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
-              ★ NỔI BẬT
-            </span>
-          )}
-        </div>
-      </div>
-      <ChevronRight className="h-4 w-4 text-gray-300 self-center group-hover:text-gray-600 transition-colors shrink-0" />
-    </button>
-  );
-};
-
-// ── District row ─────────────────────────────────────────────────────────────
-const DistrictRow = ({ name, count, total, color, active, onClick }) => {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 text-left transition-all ${
-        active ? "bg-gray-900 text-white" : "hover:bg-gray-50"
-      }`}
-    >
-      <span
-        className="w-2.5 h-2.5 rounded-full shrink-0"
-        style={{ backgroundColor: active ? "#facc15" : color }}
-      />
-      <span
-        className={`flex-1 text-[12px] font-bold uppercase tracking-wide truncate ${active ? "text-white" : "text-gray-700"}`}
-      >
-        {name}
-      </span>
-      <div className="flex items-center gap-2 shrink-0">
-        <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{
-              width: `${pct}%`,
-              backgroundColor: active ? "#facc15" : color,
-            }}
-          />
-        </div>
-        <span
-          className={`text-[11px] font-mono w-5 text-right ${active ? "text-yellow-400" : "text-gray-500"}`}
-        >
-          {count}
-        </span>
-      </div>
-    </button>
-  );
-};
-
-// ── Main page content ────────────────────────────────────────────────────────
 const MapPageContent = () => {
   const {
     flyTo,
@@ -185,8 +60,12 @@ const MapPageContent = () => {
     selectedDistrict,
     resetSelection,
     setFilteredPlaces,
+    setOnSelectPlace,
+    routingMode,
+    setRoutingMode,
+    routing,
   } = useMapContext();
-  const { districts, wards, canThoMask, loading } = useMapData();
+  const { districts, wards, canThoMask, loading, error, retry } = useMapData();
   const { places, fetchPlaces } = usePlaceStore();
   const { categories, fetchCategories } = useCategoryStore();
 
@@ -194,20 +73,28 @@ const MapPageContent = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedPrice, setSelectedPrice] = useState("all");
   const [onlyFeatured, setOnlyFeatured] = useState(false);
-  const [viewMode, setViewMode] = useState("map"); // "map" | "list"
+  const [viewMode, setViewMode] = useState("map");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [panelTab, setPanelTab] = useState("places"); // "places" | "districts" | "filters"
+  const [panelTab, setPanelTab] = useState("places");
   const [fullscreen, setFullscreen] = useState(false);
   const [selectedPlaceDetail, setSelectedPlaceDetail] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const containerRef = useRef(null);
 
   useEffect(() => {
-    fetchPlaces({ limit: 500, status: "approved" });
+    fetchPlaces({ limit: FETCH_LIMIT, status: "approved" });
     if (!categories.length) fetchCategories();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fullscreen API
+  // Register the "open detail" handler so PlaceMarkers popup button works
+  useEffect(() => {
+    setOnSelectPlace((place) => {
+      setSelectedPlaceDetail(place);
+      setIsDetailOpen(true);
+    });
+    return () => setOnSelectPlace(null);
+  }, [setOnSelectPlace]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen?.();
@@ -226,43 +113,48 @@ const MapPageContent = () => {
 
   const districtCentroids = useMemo(() => {
     if (!districts?.features) return {};
-    const m = {};
+    const map = {};
     districts.features.forEach((f) => {
       try {
         if (f.geometry?.type === "Point") {
-          m[f.properties.id] = {
+          map[f.properties.id] = {
             lat: f.geometry.coordinates[1],
             lng: f.geometry.coordinates[0],
           };
         } else if (f.geometry) {
           const c = turfCentroid(f);
-          m[f.properties.id] = {
+          map[f.properties.id] = {
             lat: c.geometry.coordinates[1],
             lng: c.geometry.coordinates[0],
           };
         }
       } catch {}
     });
-    return m;
+    return map;
   }, [districts]);
 
+  // Defer the search query so typing doesn't block map interactions
+  const deferredSearch = useDeferredValue(searchQuery);
+
   const filteredPlaces = useMemo(() => {
-    let r = places;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      r = r.filter(
+    let result = places;
+    if (deferredSearch.trim()) {
+      const q = deferredSearch.toLowerCase();
+      result = result.filter(
         (p) =>
           p.name?.toLowerCase().includes(q) ||
           p.address?.toLowerCase().includes(q),
       );
     }
     if (selectedCategory !== "all")
-      r = r.filter((p) => p.categoryId?.toString() === selectedCategory);
+      result = result.filter(
+        (p) => p.categoryId?.toString() === selectedCategory,
+      );
     if (selectedPrice !== "all")
-      r = r.filter((p) => p.priceRange === selectedPrice);
-    if (onlyFeatured) r = r.filter((p) => p.isFeatured);
-    return r;
-  }, [places, searchQuery, selectedCategory, selectedPrice, onlyFeatured]);
+      result = result.filter((p) => p.priceRange === selectedPrice);
+    if (onlyFeatured) result = result.filter((p) => p.isFeatured);
+    return result;
+  }, [places, deferredSearch, selectedCategory, selectedPrice, onlyFeatured]);
 
   useEffect(() => {
     setFilteredPlaces(filteredPlaces);
@@ -303,7 +195,7 @@ const MapPageContent = () => {
   const displayPlaces = useMemo(() => {
     if (selectedDistrictId)
       return filteredPlaces.filter((p) => p.districtId === selectedDistrictId);
-    return filteredPlaces.slice(0, 80);
+    return filteredPlaces;
   }, [filteredPlaces, selectedDistrictId]);
 
   const resetFilters = () => {
@@ -327,7 +219,7 @@ const MapPageContent = () => {
         ref={containerRef}
         className={`bg-gray-100 font-sans flex flex-col ${fullscreen ? "fixed inset-0 z-[9999]" : "h-screen"}`}
       >
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="h-12 bg-white border-b border-gray-200 flex items-center justify-between px-4 flex-shrink-0 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gray-900 text-white flex items-center justify-center rounded-lg">
@@ -340,13 +232,12 @@ const MapPageContent = () => {
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
                 <span className="text-[9px] font-mono text-gray-400 uppercase tracking-widest">
-                  Cần Thơ • 9 Quận/Huyện
+                  Cần Thơ • {districtList.length || 9} Quận/Huyện
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Search */}
           <div className="flex-1 max-w-md mx-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
@@ -367,7 +258,6 @@ const MapPageContent = () => {
             </div>
           </div>
 
-          {/* Controls */}
           <div className="flex items-center gap-1.5">
             {hasActiveFilters && (
               <button
@@ -377,6 +267,17 @@ const MapPageContent = () => {
                 <RefreshCw className="h-3 w-3" /> Xoá lọc
               </button>
             )}
+            <button
+              onClick={() => setRoutingMode((v) => !v)}
+              className={`h-8 w-8 rounded-lg flex items-center justify-center border transition-colors ${
+                routingMode
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "border-gray-200 hover:bg-gray-100"
+              }`}
+              title="Chỉ đường"
+            >
+              <Route className="h-4 w-4" />
+            </button>
             <button
               onClick={() => setViewMode(viewMode === "map" ? "list" : "map")}
               className={`h-8 w-8 rounded-lg flex items-center justify-center border transition-colors ${viewMode === "list" ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 hover:bg-gray-100"}`}
@@ -407,12 +308,80 @@ const MapPageContent = () => {
           </div>
         </div>
 
-        {/* ── Body ── */}
+        {/* Routing bar */}
+        {routingMode && (
+          <div className="flex items-center gap-3 px-4 py-2 bg-blue-950 border-b border-blue-800 flex-shrink-0">
+            {/* Origin */}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+                <Navigation2 className="w-3 h-3 text-white fill-white" />
+              </div>
+              <span className="text-[12px] text-blue-100 font-medium truncate">
+                {routing.origin?.name ?? (
+                  <span className="text-blue-400 italic">
+                    Chọn điểm đầu từ popup
+                  </span>
+                )}
+              </span>
+            </div>
+
+            <span className="text-blue-500 shrink-0">→</span>
+
+            {/* Destination */}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center shrink-0">
+                <Flag className="w-3 h-3 text-white fill-white" />
+              </div>
+              <span className="text-[12px] text-blue-100 font-medium truncate">
+                {routing.destination?.name ?? (
+                  <span className="text-blue-400 italic">
+                    Chọn điểm đến từ popup
+                  </span>
+                )}
+              </span>
+            </div>
+
+            {/* Route info */}
+            {routing.routeInfo && (
+              <div className="flex items-center gap-3 shrink-0 bg-blue-900/60 rounded-lg px-3 py-1">
+                <span className="text-[12px] font-black text-white">
+                  {routing.routeInfo.distanceLabel}
+                </span>
+                <span className="text-[10px] text-blue-300">
+                  {routing.routeInfo.durationLabel}
+                </span>
+              </div>
+            )}
+
+            {routing.loading && (
+              <span className="text-[11px] text-blue-300 italic shrink-0">
+                Đang tìm đường…
+              </span>
+            )}
+            {routing.error && (
+              <span className="text-[11px] text-red-400 shrink-0">
+                {routing.error}
+              </span>
+            )}
+
+            <button
+              onClick={() => {
+                routing.clearRoute();
+                setRoutingMode(false);
+              }}
+              className="shrink-0 text-blue-400 hover:text-white transition-colors"
+              title="Đóng chỉ đường"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Body */}
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar */}
           {sidebarOpen && (
             <div className="w-72 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 overflow-hidden shadow-sm">
-              {/* Stats bar */}
               <div className="grid grid-cols-3 border-b border-gray-100">
                 {[
                   { label: "Địa điểm", value: places.length, icon: MapPin },
@@ -441,7 +410,6 @@ const MapPageContent = () => {
                 ))}
               </div>
 
-              {/* Tab bar */}
               <div className="flex border-b border-gray-200 bg-gray-50">
                 {[
                   { id: "places", label: "Địa điểm", icon: MapPin },
@@ -466,7 +434,7 @@ const MapPageContent = () => {
                 ))}
               </div>
 
-              {/* Panel: Places */}
+              {/* Places panel */}
               {panelTab === "places" && (
                 <div className="flex flex-col flex-1 overflow-hidden">
                   <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
@@ -510,12 +478,12 @@ const MapPageContent = () => {
                 </div>
               )}
 
-              {/* Panel: Districts */}
+              {/* Districts panel */}
               {panelTab === "districts" && (
                 <div className="flex flex-col flex-1 overflow-hidden">
                   <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
                     <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
-                      9 Quận / Huyện
+                      {districtList.length} Quận / Huyện
                     </span>
                     {selectedDistrictId && (
                       <button
@@ -541,7 +509,6 @@ const MapPageContent = () => {
                         onClick={() => handleDistrictClick(d)}
                       />
                     ))}
-                    {/* Summary */}
                     <div className="mt-2 mx-4 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
                       <p className="text-[11px] font-bold text-gray-500 uppercase mb-2">
                         Phân bố địa điểm
@@ -579,129 +546,20 @@ const MapPageContent = () => {
                 </div>
               )}
 
-              {/* Panel: Filters */}
+              {/* Filters panel */}
               {panelTab === "filters" && (
-                <div className="flex-1 overflow-y-auto p-4 space-y-5">
-                  {/* Category filter */}
-                  <div>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
-                      Danh mục
-                    </p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <button
-                        onClick={() => setSelectedCategory("all")}
-                        className={`flex items-center gap-2 p-2 rounded-lg border text-left text-[11px] font-bold transition-all ${
-                          selectedCategory === "all"
-                            ? "bg-gray-900 text-white border-gray-900"
-                            : "border-gray-200 text-gray-600 hover:border-gray-400"
-                        }`}
-                      >
-                        <Layers className="h-3.5 w-3.5" /> Tất cả
-                      </button>
-                      {categories.map((cat) => (
-                        <button
-                          key={cat.id}
-                          onClick={() =>
-                            setSelectedCategory(
-                              selectedCategory === cat.id.toString()
-                                ? "all"
-                                : cat.id.toString(),
-                            )
-                          }
-                          className={`flex items-center gap-2 p-2 rounded-lg border text-left text-[11px] font-bold transition-all ${
-                            selectedCategory === cat.id.toString()
-                              ? "bg-gray-900 text-white border-gray-900"
-                              : "border-gray-200 text-gray-600 hover:border-gray-400"
-                          }`}
-                        >
-                          <CatIcon
-                            id={cat.id}
-                            className="h-3.5 w-3.5 shrink-0"
-                          />
-                          <span className="truncate">{cat.name}</span>
-                          <span className="ml-auto text-[9px] opacity-60 font-mono">
-                            {
-                              places.filter((p) => p.categoryId === cat.id)
-                                .length
-                            }
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Price filter */}
-                  <div>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
-                      Mức giá
-                    </p>
-                    <div className="space-y-1">
-                      {[
-                        { value: "all", label: "Tất cả mức giá" },
-                        { value: "FREE", label: "Miễn phí" },
-                        { value: "BUDGET", label: "Bình dân" },
-                        { value: "MODERATE", label: "Trung bình" },
-                        { value: "EXPENSIVE", label: "Cao cấp" },
-                        { value: "LUXURY", label: "Sang trọng" },
-                      ].map(({ value, label }) => (
-                        <button
-                          key={value}
-                          onClick={() => setSelectedPrice(value)}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-[12px] font-medium transition-all ${
-                            selectedPrice === value
-                              ? "bg-gray-900 text-white border-gray-900"
-                              : "border-gray-200 text-gray-600 hover:border-gray-400"
-                          }`}
-                        >
-                          {label}
-                          {value !== "all" && (
-                            <span
-                              className={`text-[10px] font-mono ${selectedPrice === value ? "text-gray-400" : "text-gray-400"}`}
-                            >
-                              {
-                                places.filter((p) => p.priceRange === value)
-                                  .length
-                              }
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Featured toggle */}
-                  <div>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
-                      Khác
-                    </p>
-                    <button
-                      onClick={() => setOnlyFeatured((v) => !v)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-[12px] font-medium transition-all ${
-                        onlyFeatured
-                          ? "bg-amber-50 border-amber-300 text-amber-800"
-                          : "border-gray-200 text-gray-600 hover:border-gray-400"
-                      }`}
-                    >
-                      <Star
-                        className={`h-4 w-4 ${onlyFeatured ? "fill-amber-400 text-amber-400" : "text-gray-400"}`}
-                      />
-                      Chỉ hiện nổi bật
-                      <span className="ml-auto text-[10px] font-mono text-gray-400">
-                        {places.filter((p) => p.isFeatured).length}
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Reset */}
-                  {hasActiveFilters && (
-                    <button
-                      onClick={resetFilters}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 border border-red-200 text-red-600 bg-red-50 rounded-lg text-[12px] font-bold hover:bg-red-100 transition-colors"
-                    >
-                      <RefreshCw className="h-3.5 w-3.5" /> Xoá tất cả bộ lọc
-                    </button>
-                  )}
-                </div>
+                <FilterPanel
+                  categories={categories}
+                  places={places}
+                  selectedCategory={selectedCategory}
+                  setSelectedCategory={setSelectedCategory}
+                  selectedPrice={selectedPrice}
+                  setSelectedPrice={setSelectedPrice}
+                  onlyFeatured={onlyFeatured}
+                  setOnlyFeatured={setOnlyFeatured}
+                  hasActiveFilters={hasActiveFilters}
+                  onResetFilters={resetFilters}
+                />
               )}
             </div>
           )}
@@ -718,21 +576,37 @@ const MapPageContent = () => {
                     </p>
                   </div>
                 </div>
+              ) : error ? (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 gap-3">
+                  <AlertTriangle className="h-10 w-10 text-red-400" />
+                  <p className="text-sm font-medium text-gray-600">
+                    Không tải được dữ liệu bản đồ
+                  </p>
+                  <button
+                    onClick={retry}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Thử lại
+                  </button>
+                </div>
               ) : (
-                <MapBase className="w-full h-full">
+                <MapBase
+                  className="w-full h-full"
+                  onBoundaryClick={(f, t) => selectArea(f, t)}
+                >
                   <BoundaryLayer
                     mask={canThoMask}
                     districts={districts}
                     wards={wards}
-                    onSelect={(f, t) => selectArea(f, t)}
                   />
                   <PlaceMarkers />
                   {districts && <DistrictLabels districts={districts} />}
+                  {wards && <WardLabels wards={wards} />}
                   <MapControls />
                 </MapBase>
               )}
 
-              {/* Map overlay info pill */}
               <div className="absolute bottom-10 left-4 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full px-3 py-1.5 flex items-center gap-2 text-[11px] font-medium text-gray-600 shadow-sm pointer-events-none">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                 <span>
@@ -752,81 +626,11 @@ const MapPageContent = () => {
               </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-auto bg-gray-50 p-4">
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                {displayPlaces.map((place) => {
-                  const imgSrc = place.thumbnail || place.images?.[0]?.url;
-                  const rating = Number(
-                    place.averageRating ?? place.ratingAvg ?? 0,
-                  );
-                  const price = PRICE_BADGE[place.priceRange];
-                  return (
-                    <div
-                      key={place.id}
-                      onClick={() => handlePlaceFly(place)}
-                      className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group"
-                    >
-                      <div className="h-36 overflow-hidden relative bg-gray-100">
-                        {imgSrc ? (
-                          <img
-                            src={imgSrc}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            alt=""
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <MapPin className="h-10 w-10 text-gray-200" />
-                          </div>
-                        )}
-                        {place.category?.name && (
-                          <span className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                            {place.category.name}
-                          </span>
-                        )}
-                        {place.isFeatured && (
-                          <span className="absolute top-2 right-2 bg-amber-400 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                            ★
-                          </span>
-                        )}
-                      </div>
-                      <div className="p-3">
-                        <p className="text-[13px] font-bold text-gray-900 truncate">
-                          {place.name}
-                        </p>
-                        {place.address && (
-                          <p className="text-[11px] text-gray-400 truncate mt-0.5">
-                            {place.address}
-                          </p>
-                        )}
-                        <div className="flex items-center justify-between mt-2">
-                          {rating > 0 ? (
-                            <span className="flex items-center gap-0.5">
-                              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                              <span className="text-[11px] font-bold text-amber-600">
-                                {rating.toFixed(1)}
-                              </span>
-                            </span>
-                          ) : (
-                            <span />
-                          )}
-                          {price && (
-                            <span
-                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${price.cls}`}
-                            >
-                              {price.label}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <MapListView places={displayPlaces} onPlaceClick={handlePlaceFly} />
           )}
         </div>
 
-        {/* ── Status bar ── */}
+        {/* Status bar */}
         <div className="h-7 bg-gray-900 flex items-center justify-between px-4 flex-shrink-0">
           <div className="flex items-center gap-4 text-[10px] font-mono text-gray-400">
             <span>
@@ -844,7 +648,7 @@ const MapPageContent = () => {
             )}
           </div>
           <span className="text-[10px] font-mono text-gray-500">
-            CẦN THƠ — 9 QUẬN/HUYỆN
+            CẦN THƠ — {districtList.length || 9} QUẬN/HUYỆN
           </span>
         </div>
       </div>

@@ -1,17 +1,8 @@
 import prisma from "../config/prismaClient.js";
-import { PLACE_STATUS, PAGINATION } from "../config/constants.js";
+import { PLACE_STATUS, PAGINATION, ROLES } from "../config/constants.js";
 import { ERROR_MESSAGES, ERROR_CODES } from "../config/messages.js";
 import eventEmitter, { EVENTS } from "../utils/eventEmitter.js";
 import ServiceError from "../utils/serviceError.js";
-
-/**
- * PLACE SERVICE
- * Quản lý địa điểm - CRUD operations
- */
-
-// =============================================================================
-// HELPER FUNCTIONS
-// =============================================================================
 
 /**
  * Generate slug từ tên
@@ -115,10 +106,6 @@ const defaultInclude = {
   },
 };
 
-// =============================================================================
-// CRUD OPERATIONS
-// =============================================================================
-
 /**
  * Lấy danh sách địa điểm (có filter, search, pagination)
  */
@@ -134,6 +121,7 @@ export const getAllPlaces = async (filters = {}) => {
     search,
     priceRange,
     minRating,
+    ownerUserId,
     sortBy = "newest",
     page = PAGINATION.DEFAULT_PAGE,
     limit = PAGINATION.DEFAULT_LIMIT,
@@ -153,16 +141,35 @@ export const getAllPlaces = async (filters = {}) => {
   if (isVerified !== undefined)
     where.isVerified = isVerified === "true" || isVerified === true;
   if (createdBy) where.createdBy = parseInt(createdBy);
+  if (filters.businessId && !ownerUserId)
+    where.businessId = parseInt(filters.businessId);
   if (priceRange) where.priceRange = priceRange;
   if (minRating) where.ratingAvg = { gte: parseFloat(minRating) };
 
+  const ownershipOr = [];
+  if (ownerUserId) {
+    ownershipOr.push({ createdBy: parseInt(ownerUserId) });
+  }
+  if (filters.businessId) {
+    ownershipOr.push({ businessId: parseInt(filters.businessId) });
+  }
+
   // Search
+  let searchOr = null;
   if (search) {
-    where.OR = [
+    searchOr = [
       { name: { contains: search, mode: "insensitive" } },
       { shortDescription: { contains: search, mode: "insensitive" } },
       { address: { contains: search, mode: "insensitive" } },
     ];
+  }
+
+  if (ownershipOr.length > 0 && searchOr) {
+    where.AND = [{ OR: ownershipOr }, { OR: searchOr }];
+  } else if (ownershipOr.length > 0) {
+    where.OR = ownershipOr;
+  } else if (searchOr) {
+    where.OR = searchOr;
   }
 
   // Sorting
@@ -449,7 +456,17 @@ export const createPlace = async (data, userId) => {
     openingHours = [],
     amenities = [],
     status = PLACE_STATUS.PENDING,
+    businessId,
   } = data;
+
+  const ownedBusiness = await prisma.business.findUnique({
+    where: { ownerId: userId },
+    select: { id: true },
+  });
+
+  const resolvedBusinessId = businessId
+    ? parseInt(businessId)
+    : ownedBusiness?.id || null;
 
   // Basic Validation
   if (
@@ -539,6 +556,7 @@ export const createPlace = async (data, userId) => {
           priceFrom: priceFrom ? parseInt(priceFrom) : null,
           priceTo: priceTo ? parseInt(priceTo) : null,
           status,
+          businessId: resolvedBusinessId,
           createdBy: userId,
         },
       });
@@ -636,7 +654,7 @@ export const createPlace = async (data, userId) => {
 /**
  * Cập nhật địa điểm
  */
-export const updatePlace = async (id, data, userId) => {
+export const updatePlace = async (id, data, userId, userRoleId) => {
   const {
     name,
     slug: customSlug,
@@ -712,6 +730,13 @@ export const updatePlace = async (id, data, userId) => {
       updateData.priceFrom = priceFrom ? parseInt(priceFrom) : null;
     if (priceTo !== undefined)
       updateData.priceTo = priceTo ? parseInt(priceTo) : null;
+
+    if (userRoleId === ROLES.BUSINESS) {
+      updateData.status = PLACE_STATUS.PENDING;
+      updateData.approvedBy = null;
+      updateData.approvedAt = null;
+      updateData.rejectionReason = null;
+    }
 
     await tx.place.update({
       where: { id },
@@ -940,10 +965,6 @@ export const hardDeletePlace = async (id) => {
   return { success: true, message: "Xóa vĩnh viễn địa điểm thành công" };
 };
 
-// =============================================================================
-// STATUS MANAGEMENT
-// =============================================================================
-
 /**
  * Duyệt địa điểm
  */
@@ -1030,13 +1051,29 @@ export const rejectPlace = async (id, userId, reason) => {
 /**
  * Đổi trạng thái
  */
-export const updateStatus = async (id, status) => {
+export const updateStatus = async (id, status, userRoleId) => {
+  if (userRoleId === ROLES.BUSINESS) {
+    throw new ServiceError(
+      ERROR_CODES.FORBIDDEN,
+      "Business không được phép duyệt hoặc đổi trạng thái địa điểm",
+      403,
+    );
+  }
+
   const validStatuses = Object.values(PLACE_STATUS);
   if (!validStatuses.includes(status)) {
     throw new ServiceError(
       ERROR_CODES.INVALID_INPUT,
       `Trạng thái không hợp lệ. Các trạng thái hợp lệ: ${validStatuses.join(", ")}`,
       400,
+    );
+  }
+
+  if (status === PLACE_STATUS.APPROVED || status === PLACE_STATUS.REJECTED) {
+    throw new ServiceError(
+      ERROR_CODES.FORBIDDEN,
+      "Không thể duyệt/từ chối qua endpoint đổi trạng thái. Vui lòng dùng endpoint moderation.",
+      403,
     );
   }
 
@@ -1124,10 +1161,6 @@ export const submitForReview = async (id) => {
 
   return place;
 };
-
-// =============================================================================
-// IMAGE MANAGEMENT
-// =============================================================================
 
 /**
  * Thêm ảnh cho địa điểm
@@ -1304,10 +1337,6 @@ export const reorderImages = async (placeId, imageOrders) => {
 
   return { success: true };
 };
-
-// =============================================================================
-// STATISTICS
-// =============================================================================
 
 /**
  * Thống kê địa điểm

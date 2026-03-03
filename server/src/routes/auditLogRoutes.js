@@ -6,7 +6,7 @@ import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
 
 const router = express.Router();
 
-// 🔒 SECURITY: Block GUEST role from audit logs
+// ECURITY: Block GUEST role from audit logs
 router.use(authenticate, blockGuestFromAdmin);
 
 /**

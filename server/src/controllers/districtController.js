@@ -1,15 +1,6 @@
 import * as districtService from "../services/districtService.js";
 
 /**
- * DISTRICT CONTROLLER
- * REST API cho địa lý Cần Thơ
- */
-
-// =============================================================================
-// DISTRICT (QUẬN/HUYỆN)
-// =============================================================================
-
-/**
  * GET /api/districts - Lấy danh sách quận/huyện
  */
 export const getDistricts = async (req, res) => {
@@ -95,10 +86,6 @@ export const getDistrictByCode = async (req, res) => {
     });
   }
 };
-
-// =============================================================================
-// WARD (PHƯỜNG/XÃ)
-// =============================================================================
 
 /**
  * GET /api/districts/:id/wards - Lấy phường/xã theo quận
@@ -218,10 +205,6 @@ export const getWardByCode = async (req, res) => {
     });
   }
 };
-
-// =============================================================================
-// HELPERS
-// =============================================================================
 
 /**
  * GET /api/address/search - Tìm kiếm địa chỉ

@@ -1,6 +1,11 @@
 import client from "../../../api/client";
 import { ENDPOINTS } from "../../../api/endpoints";
 
-/** Home data: categories + featuredPlaces + banners */
 export const getHomeApi = (params) =>
-  client.get(ENDPOINTS.app.home, { params });
+  client.get(ENDPOINTS.places.home, { params });
+
+export const getDistrictsGeoJSON = () =>
+  client.get(ENDPOINTS.boundaries.districts);
+
+export const getWardsGeoJSON = () =>
+  client.get(ENDPOINTS.boundaries.wards);

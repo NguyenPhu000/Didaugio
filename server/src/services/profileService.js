@@ -1,9 +1,6 @@
 import prisma from "../config/prismaClient.js";
 import { updateProfileSchema } from "../models/schemas/authSchema.js";
 
-// PROFILE SERVICE
-// Quản lý thông tin profile người dùng
-
 class ServiceError extends Error {
   constructor(message, statusCode = 400, errorCode = "SERVICE_ERROR") {
     super(message);
@@ -12,9 +9,6 @@ class ServiceError extends Error {
   }
 }
 
-// =============================================================================
-// GET PROFILE
-// =============================================================================
 export const getProfile = async (userId) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -34,9 +28,6 @@ export const getProfile = async (userId) => {
   return userWithoutPassword;
 };
 
-// =============================================================================
-// UPDATE PROFILE
-// =============================================================================
 export const updateProfile = async (userId, data) => {
   // Validate input
   const validated = updateProfileSchema.parse(data);
@@ -104,9 +95,6 @@ export const updateProfile = async (userId, data) => {
   return userWithoutPassword;
 };
 
-// =============================================================================
-// UPDATE AVATAR
-// =============================================================================
 export const updateAvatar = async (userId, avatarUrl) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -136,9 +124,6 @@ export const updateAvatar = async (userId, avatarUrl) => {
   return { avatar: updatedProfile.avatar };
 };
 
-// =============================================================================
-// UPDATE NOTIFICATION SETTINGS
-// =============================================================================
 export const updateNotificationSettings = async (userId, settings) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -168,9 +153,6 @@ export const updateNotificationSettings = async (userId, settings) => {
   return { notificationSettings: updatedProfile.notificationSettings };
 };
 
-// =============================================================================
-// UPDATE TRAVEL PREFERENCES
-// =============================================================================
 export const updateTravelPreferences = async (userId, preferences) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },

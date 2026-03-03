@@ -1,8 +1,3 @@
-/**
- * PLACE CONSTANTS
- * Centralized constants for place management
- */
-
 export const PRICE_RANGES = [
   {
     value: "FREE",

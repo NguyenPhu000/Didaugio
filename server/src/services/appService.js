@@ -85,10 +85,6 @@ export const getHomeData = async (query = {}) => {
   };
 };
 
-/**
- * Search / list approved places with optional text search, category and district filters.
- * Supports standard page-based pagination.
- */
 export const searchPlaces = async (query = {}) => {
   const { page, limit, skip } = parsePagination(query);
 
@@ -563,7 +559,6 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
     notes,
   } = preferences;
 
-  // Fetch relevant places from DB matching the preferences
   const where = { ...approvedPlaceWhere };
   if (categoryId) where.categoryId = toInt(categoryId);
 
@@ -599,7 +594,6 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
     errorMessage = err.message;
     throw err;
   } finally {
-    // Log AI prompt history regardless of success/failure
     await prisma.aiPromptHistory
       .create({
         data: {
@@ -616,15 +610,13 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
           errorMessage,
         },
       })
-      .catch(() => {}); // Non-blocking — don't fail if logging fails
+      .catch(() => {});
   }
 
   const itinerary = geminiResult.parsed;
 
-  // Build valid placeId set for safety
   const placeIdSet = new Set(places.map((p) => p.id));
 
-  // Persist trip + destinations in a transaction
   const trip = await prisma.$transaction(async (tx) => {
     const created = await tx.trip.create({
       data: {
@@ -641,7 +633,6 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       },
     });
 
-    // Flatten all destinations across days
     const allDestinations = (itinerary.days || [])
       .flatMap((day) =>
         (day.destinations || []).map((dest) => ({

@@ -17,14 +17,10 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
+  resendVerificationPublicSchema,
 } from "../models/schemas/authSchema.js";
 import * as emailVerificationService from "./emailVerificationService.js";
 import * as passwordResetService from "./passwordResetService.js";
-
-// =============================================================================
-// AUTH SERVICE
-// Hệ thống xác thực JWT hoàn chỉnh
-// =============================================================================
 
 class ServiceError extends Error {
   constructor(
@@ -38,9 +34,6 @@ class ServiceError extends Error {
   }
 }
 
-// =============================================================================
-// CONFIG
-// =============================================================================
 const JWT_SECRET = process.env.JWT_SECRET || "didaugio-secret-key-2026";
 const ACCESS_TOKEN_EXPIRES = process.env.ACCESS_TOKEN_EXPIRES || "15m";
 const REFRESH_TOKEN_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -48,10 +41,8 @@ const REFRESH_TOKEN_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 // Account lockout config
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
-
-// =============================================================================
-// HELPER FUNCTIONS
-// =============================================================================
+const RESEND_VERIFICATION_GENERIC_MESSAGE =
+  "Nếu email tồn tại và chưa xác thực, hệ thống đã gửi lại email xác thực.";
 
 const generateAccessToken = (payload) => {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES });
@@ -74,7 +65,7 @@ const getUserPermissionNames = async (userId, roleId) => {
     return [];
   }
 
-  if (roleId === 1) {
+  if (roleId === ROLES.SUPER_ADMIN) {
     return ["*"];
   }
 
@@ -105,9 +96,6 @@ const getUserPermissionNames = async (userId, roleId) => {
   );
 };
 
-// =============================================================================
-// ĐĂNG KÝ
-// =============================================================================
 export const register = async (data) => {
   const validated = registerSchema.parse(data);
 
@@ -178,9 +166,6 @@ export const register = async (data) => {
   };
 };
 
-// =============================================================================
-// ĐĂNG NHẬP
-// =============================================================================
 export const login = async (data, clientInfo = {}) => {
   const validated = loginSchema.parse(data);
 
@@ -271,6 +256,14 @@ export const login = async (data, clientInfo = {}) => {
     throw new ServiceError("Tài khoản đã bị cấm", 403, "ACCOUNT_BANNED");
   }
 
+  if (!user.emailVerified) {
+    throw new ServiceError(
+      "Email chưa được xác thực. Vui lòng kiểm tra hộp thư và xác thực trước khi đăng nhập.",
+      403,
+      "EMAIL_NOT_VERIFIED",
+    );
+  }
+
   // Reset lockout
   await prisma.user.update({
     where: { id: user.id },
@@ -328,9 +321,6 @@ export const login = async (data, clientInfo = {}) => {
   };
 };
 
-// =============================================================================
-// REFRESH TOKEN
-// =============================================================================
 export const refreshAccessToken = async (data) => {
   const validated = refreshTokenSchema.parse(data);
   const hashedToken = hashToken(validated.refreshToken);
@@ -395,9 +385,6 @@ export const refreshAccessToken = async (data) => {
   };
 };
 
-// =============================================================================
-// LOGOUT
-// =============================================================================
 export const logout = async (refreshToken) => {
   if (!refreshToken) {
     return { message: SUCCESS_MESSAGES.ACTION_SUCCESS };
@@ -420,9 +407,6 @@ export const logoutAll = async (userId) => {
   return { message: SUCCESS_MESSAGES.ACTION_SUCCESS };
 };
 
-// =============================================================================
-// GET ME
-// =============================================================================
 export const getMe = async (userId) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -449,9 +433,6 @@ export const getMe = async (userId) => {
   };
 };
 
-// =============================================================================
-// PASSWORD OPERATIONS
-// =============================================================================
 export const changePassword = async (userId, data) => {
   const validated = changePasswordSchema.parse(data);
 
@@ -520,9 +501,6 @@ export const resetPassword = async (data) => {
   };
 };
 
-// =============================================================================
-// EMAIL VERIFICATION
-// =============================================================================
 export const verifyEmail = async (data) => {
   const validated = verifyEmailSchema.parse(data);
 
@@ -553,9 +531,42 @@ export const resendVerificationEmail = async (userId) => {
   }
 };
 
-// =============================================================================
-// SESSIONS
-// =============================================================================
+export const resendVerificationEmailPublic = async (data) => {
+  const validated = resendVerificationPublicSchema.parse(data);
+
+  const user = await prisma.user.findUnique({
+    where: { email: validated.email },
+    include: {
+      profile: {
+        select: {
+          fullName: true,
+        },
+      },
+    },
+  });
+
+  if (!user || user.emailVerified) {
+    return { message: RESEND_VERIFICATION_GENERIC_MESSAGE };
+  }
+
+  try {
+    await emailVerificationService.create({
+      userId: user.id,
+      email: user.email,
+      name: user.profile?.fullName || user.email,
+    });
+  } catch (error) {
+    console.error("Failed to resend verification email (public):", error);
+    throw new ServiceError(
+      "Không thể gửi email xác thực lúc này. Vui lòng thử lại sau.",
+      500,
+      "RESEND_FAILED",
+    );
+  }
+
+  return { message: RESEND_VERIFICATION_GENERIC_MESSAGE };
+};
+
 export const getSessions = async (userId) => {
   return await prisma.userSession.findMany({
     where: {
@@ -594,10 +605,6 @@ export const revokeSession = async (userId, sessionId) => {
 
   return { message: SUCCESS_MESSAGES.ACTION_SUCCESS };
 };
-
-// =============================================================================
-// ĐĂNG NHẬP BẰNG GOOGLE
-// =============================================================================
 
 /**
  * Xác thực Google id_token và tạo phiên đăng nhập
@@ -671,11 +678,25 @@ export const loginWithGoogle = async (idToken, clientInfo = {}) => {
       include: { role: true, profile: true },
     });
   } else {
-    // Cập nhật avatar nếu chưa có
-    if (picture && !user.profile?.avatar) {
-      await prisma.userProfile.update({
-        where: { userId: user.id },
-        data: { avatar: picture },
+    const shouldUpdateAvatar = picture && !user.profile?.avatar;
+    const shouldVerifyEmail = !user.emailVerified;
+
+    if (shouldUpdateAvatar || shouldVerifyEmail) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          ...(shouldVerifyEmail ? { emailVerified: true } : {}),
+          ...(shouldUpdateAvatar
+            ? {
+                profile: {
+                  update: {
+                    avatar: picture,
+                  },
+                },
+              }
+            : {}),
+        },
+        include: { role: true, profile: true },
       });
     }
   }
@@ -767,6 +788,7 @@ export default {
   resetPassword,
   verifyEmail,
   resendVerificationEmail,
+  resendVerificationEmailPublic,
   getSessions,
   revokeSession,
   loginWithGoogle,

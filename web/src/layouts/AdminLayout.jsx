@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
@@ -13,8 +14,10 @@ import {
   SidebarInset,
 } from "@/components/animate-ui/components/radix/sidebar";
 import AnimatedIcon from "@/components/ui/animated-icon";
-import { AUTH_ROUTES, ADMIN_ROUTES } from "@/constants/routes";
+import { AUTH_ROUTES, ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
+import { ROLES } from "@/constants";
 import { APP_META } from "@/constants/brand";
+import * as placeService from "@/apis/placeService";
 
 // Extracted sub-components
 import {
@@ -23,6 +26,7 @@ import {
   CustomSidebarRail,
   AdminHeader,
   menuData,
+  filterMenuByRole,
 } from "./sidebar";
 
 /**
@@ -33,11 +37,73 @@ import {
 const AdminLayout = ({ children }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const [pendingPlacesCount, setPendingPlacesCount] = useState(0);
 
   const handleLogout = () => {
     logout();
     navigate(AUTH_ROUTES.LOGIN);
   };
+
+  useEffect(() => {
+    if (user?.roleId === ROLES.BUSINESS) return;
+    let disposed = false;
+
+    const loadPendingCount = async () => {
+      try {
+        const response = await placeService.getAllPlaces({
+          status: "pending",
+          page: 1,
+          limit: 1,
+        });
+        if (disposed) return;
+        const total =
+          response?.pagination?.total ?? response?.data?.length ?? 0;
+        setPendingPlacesCount(Number(total) || 0);
+      } catch {
+        if (!disposed) setPendingPlacesCount(0);
+      }
+    };
+
+    loadPendingCount();
+    const timer = setInterval(loadPendingCount, 60000);
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+    };
+  }, [user?.roleId]);
+
+  const menuDataView = useMemo(() => {
+    const filtered = filterMenuByRole(menuData, user?.roleId);
+
+    if (filtered.main && user?.roleId === ROLES.BUSINESS) {
+      filtered.main = filtered.main.map((item) =>
+        item.title === "Dashboard"
+          ? { ...item, url: BUSINESS_ROUTES.DASHBOARD }
+          : item,
+      );
+    }
+
+    if (filtered.management) {
+      filtered.management = filtered.management.map((item) => {
+        if (item.title !== "Địa điểm" || !item.items) return item;
+        return {
+          ...item,
+          items: item.items.map((sub) => {
+            if (sub.url !== ADMIN_ROUTES.PLACES_PENDING) return sub;
+            return {
+              ...sub,
+              badge:
+                pendingPlacesCount > 0
+                  ? { text: String(pendingPlacesCount) }
+                  : null,
+            };
+          }),
+        };
+      });
+    }
+
+    return filtered;
+  }, [pendingPlacesCount, user?.roleId]);
 
   return (
     <SidebarProvider>
@@ -50,7 +116,13 @@ const AdminLayout = ({ children }) => {
                 asChild
                 className="hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!p-2"
               >
-                <Link to={ADMIN_ROUTES.DASHBOARD}>
+                <Link
+                  to={
+                    user?.roleId === ROLES.BUSINESS
+                      ? BUSINESS_ROUTES.DASHBOARD
+                      : ADMIN_ROUTES.DASHBOARD
+                  }
+                >
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                     <AnimatedIcon
                       icon={MapPin}
@@ -70,11 +142,13 @@ const AdminLayout = ({ children }) => {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent className="px-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <NavMain items={menuData.main} label="Main" />
-          <NavMain items={menuData.management} label="Management" />
-          <NavMain items={menuData.users} label="Users" />
-          <NavMain items={menuData.system} label="System" />
-          <NavMain items={menuData.settings} label="Settings" />
+          {menuDataView.main && <NavMain items={menuDataView.main} label="Main" />}
+          {menuDataView.management && <NavMain items={menuDataView.management} label="Quản lý" />}
+          {menuDataView.business && <NavMain items={menuDataView.business} label="Doanh nghiệp" />}
+          {menuDataView.adminBusiness && <NavMain items={menuDataView.adminBusiness} label="Business" />}
+          {menuDataView.users && <NavMain items={menuDataView.users} label="Users" />}
+          {menuDataView.system && <NavMain items={menuDataView.system} label="System" />}
+          {menuDataView.settings && <NavMain items={menuDataView.settings} label="Settings" />}
         </SidebarContent>
         <SidebarFooter className="p-2">
           <NavUser user={user} onLogout={handleLogout} />

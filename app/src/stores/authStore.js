@@ -12,14 +12,9 @@ export const useAuthStore = create((set, get) => ({
   isHydrated: false,
   isGuest: false,
 
-  /** Enter guest mode without login */
   enterGuestMode: () => set({ isGuest: true }),
   exitGuestMode: () => set({ isGuest: false }),
-
-  /** Whether there is an active authenticated session */
   isAuthenticated: () => !!get().accessToken,
-
-  /** Update user object in memory only (background refresh) */
   setUser: (user) => set({ user }),
 
   hydrate: async () => {

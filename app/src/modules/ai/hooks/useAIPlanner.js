@@ -1,7 +1,3 @@
-/**
- * useAIPlanner — manages AI trip generation state.
- * Integrates with POST /app/me/trips/generate via useMutation.
- */
 import { useState, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { generateTripApi, getMyTripsApi } from "../api/aiApi";
@@ -15,7 +11,6 @@ export function useAIPlanner() {
     onSuccess: (response) => {
       const trip = response?.data;
       if (trip) {
-        // Build a readable summary message
         const destCount = trip.destinations?.length || 0;
         const assistantMsg = {
           id: Date.now().toString(),
@@ -31,7 +26,6 @@ export function useAIPlanner() {
           createdAt: new Date(),
         };
         setMessages((prev) => [...prev, assistantMsg]);
-        // Invalidate trips list so MyTrips tab updates
         queryClient.invalidateQueries({ queryKey: ["my-trips"] });
       }
     },
@@ -84,7 +78,6 @@ export function useAIPlanner() {
   };
 }
 
-/** Query for user's saved trips list */
 export function useMyTrips(params = {}) {
   return useQuery({
     queryKey: ["my-trips", params],
