@@ -7,13 +7,26 @@ import {
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
 import { checkPlaceOwnership } from "../middlewares/placeMiddleware.js";
-import { validateBody, validateQuery } from "../middlewares/validateSchema.js";
+import {
+  validateBody,
+  validateQuery,
+  validateParams,
+} from "../middlewares/validateSchema.js";
 import {
   createPlaceSchema,
   updatePlaceSchema,
   getPlacesQuerySchema,
   nearbyPlacesQuerySchema,
-  approvePlaceSchema,
+  placeIdParamSchema,
+  placeIdAndImageIdParamSchema,
+  placeSlugParamSchema,
+  placeCheckSlugQuerySchema,
+  rejectPlaceSchema,
+  updatePlaceStatusSchema,
+  toggleFeaturedSchema,
+  addPlaceImagesSchema,
+  reorderPlaceImagesSchema,
+  createPlaceReviewSchema,
 } from "../models/schemas/placeSchema.js";
 
 const router = express.Router();
@@ -30,7 +43,12 @@ router.get(
 
 router.get("/stats", placeController.getStats);
 
-router.get("/check-slug/:slug", placeController.checkSlug);
+router.get(
+  "/check-slug/:slug",
+  validateParams(placeSlugParamSchema),
+  validateQuery(placeCheckSlugQuerySchema),
+  placeController.checkSlug,
+);
 
 router.get(
   "/nearby",
@@ -38,12 +56,30 @@ router.get(
   placeController.getNearbyPlaces,
 );
 
-router.get("/slug/:slug", placeController.getPlaceBySlug);
+router.get(
+  "/slug/:slug",
+  validateParams(placeSlugParamSchema),
+  placeController.getPlaceBySlug,
+);
 
-router.get("/:id", placeController.getPlaceById);
+router.get(
+  "/:id",
+  validateParams(placeIdParamSchema),
+  placeController.getPlaceById,
+);
 
-router.get("/:id/reviews", placeController.getPlaceReviews);
-router.post("/:id/reviews", authenticate, placeController.createReview);
+router.get(
+  "/:id/reviews",
+  validateParams(placeIdParamSchema),
+  placeController.getPlaceReviews,
+);
+router.post(
+  "/:id/reviews",
+  authenticate,
+  validateParams(placeIdParamSchema),
+  validateBody(createPlaceReviewSchema),
+  placeController.createReview,
+);
 
 router.post(
   "/",
@@ -67,6 +103,7 @@ router.put(
   "/:id",
   authenticate,
   requirePermission("places.edit"),
+  validateParams(placeIdParamSchema),
   checkPlaceOwnership,
   validateBody(updatePlaceSchema),
   auditLog({
@@ -82,6 +119,7 @@ router.delete(
   "/:id",
   authenticate,
   requirePermission("places.delete"),
+  validateParams(placeIdParamSchema),
   checkPlaceOwnership,
   auditLog({
     action: "DELETE",
@@ -95,6 +133,7 @@ router.post(
   "/:id/submit",
   authenticate,
   requirePermission("places.edit"),
+  validateParams(placeIdParamSchema),
   checkPlaceOwnership,
   auditLog({
     action: "SUBMIT_REVIEW",
@@ -108,6 +147,7 @@ router.put(
   "/:id/approve",
   authenticate,
   requirePermission("places.approve"),
+  validateParams(placeIdParamSchema),
   auditLog({
     action: "APPROVE",
     tableName: "places",
@@ -120,6 +160,8 @@ router.put(
   "/:id/reject",
   authenticate,
   requirePermission("places.reject"),
+  validateParams(placeIdParamSchema),
+  validateBody(rejectPlaceSchema),
   auditLog({
     action: "REJECT",
     tableName: "places",
@@ -133,6 +175,8 @@ router.put(
   "/:id/status",
   authenticate,
   requirePermission("places.edit"),
+  validateParams(placeIdParamSchema),
+  validateBody(updatePlaceStatusSchema),
   auditLog({
     action: "UPDATE_STATUS",
     tableName: "places",
@@ -146,6 +190,8 @@ router.put(
   "/:id/feature",
   authenticate,
   requirePermission("places.feature"),
+  validateParams(placeIdParamSchema),
+  validateBody(toggleFeaturedSchema),
   auditLog({
     action: "TOGGLE_FEATURED",
     tableName: "places",
@@ -159,6 +205,8 @@ router.post(
   "/:id/images",
   authenticate,
   requirePermission("places.manage_images"),
+  validateParams(placeIdParamSchema),
+  validateBody(addPlaceImagesSchema),
   checkPlaceOwnership,
   placeController.addImages,
 );
@@ -167,6 +215,8 @@ router.put(
   "/:id/images/reorder",
   authenticate,
   requirePermission("places.manage_images"),
+  validateParams(placeIdParamSchema),
+  validateBody(reorderPlaceImagesSchema),
   checkPlaceOwnership,
   placeController.reorderImages,
 );
@@ -175,6 +225,7 @@ router.put(
   "/:id/images/:imageId/cover",
   authenticate,
   requirePermission("places.manage_images"),
+  validateParams(placeIdAndImageIdParamSchema),
   checkPlaceOwnership,
   placeController.setCoverImage,
 );
@@ -183,6 +234,7 @@ router.delete(
   "/:id/images/:imageId",
   authenticate,
   requirePermission("places.manage_images"),
+  validateParams(placeIdAndImageIdParamSchema),
   checkPlaceOwnership,
   placeController.deleteImage,
 );

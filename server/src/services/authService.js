@@ -21,20 +21,16 @@ import {
 } from "../models/schemas/authSchema.js";
 import * as emailVerificationService from "./emailVerificationService.js";
 import * as passwordResetService from "./passwordResetService.js";
+import ServiceError from "../utils/serviceError.js";
 
-class ServiceError extends Error {
-  constructor(
-    message,
-    statusCode = 400,
-    errorCode = ERROR_CODES.VALIDATION_ERROR,
-  ) {
-    super(message);
-    this.statusCode = statusCode;
-    this.errorCode = errorCode;
-  }
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new ServiceError(
+    "Thiếu cấu hình JWT_SECRET",
+    500,
+    ERROR_CODES.INTERNAL_ERROR,
+  );
 }
-
-const JWT_SECRET = process.env.JWT_SECRET || "didaugio-secret-key-2026";
 const ACCESS_TOKEN_EXPIRES = process.env.ACCESS_TOKEN_EXPIRES || "15m";
 const REFRESH_TOKEN_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 

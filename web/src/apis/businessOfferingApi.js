@@ -1,9 +1,22 @@
+/**
+ * Business Offering API - Dịch vụ/sản phẩm doanh nghiệp cung cấp (CRUD)
+ * Base: /api/business/services
+ * (Phân biệt với "Service layer" Backend — đây là file gọi HTTP API)
+ */
 import api from "@/constants/api";
 
 const BASE_URL = "/business/services";
 
+const sanitizeParams = (params = {}) =>
+  Object.entries(params).reduce((acc, [key, value]) => {
+    if (value !== "" && value !== null && value !== undefined) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+
 export const getAll = async (params = {}) => {
-  const response = await api.get(BASE_URL, { params });
+  const response = await api.get(BASE_URL, { params: sanitizeParams(params) });
   return response;
 };
 

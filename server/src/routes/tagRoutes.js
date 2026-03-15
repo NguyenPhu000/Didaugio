@@ -3,6 +3,21 @@ import * as tagController from "../controllers/tagController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
 import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "../middlewares/validateSchema.js";
+import {
+  bulkCreateTagsSchema,
+  createTagSchema,
+  getPopularTagsQuerySchema,
+  getTagsQuerySchema,
+  tagIdParamSchema,
+  tagSlugParamSchema,
+  tagSuggestParamSchema,
+  updateTagSchema,
+} from "../models/schemas/tagSchema.js";
 
 const router = express.Router();
 
@@ -12,11 +27,23 @@ const router = express.Router();
  */
 
 // Public routes
-router.get("/", tagController.getTags);
-router.get("/popular", tagController.getPopularTags);
-router.get("/suggest/:categoryId", tagController.getSuggestedTagsByCategory);
-router.get("/slug/:slug", tagController.getTagBySlug);
-router.get("/:id", tagController.getTagById);
+router.get("/", validateQuery(getTagsQuerySchema), tagController.getTags);
+router.get(
+  "/popular",
+  validateQuery(getPopularTagsQuerySchema),
+  tagController.getPopularTags,
+);
+router.get(
+  "/suggest/:categoryId",
+  validateParams(tagSuggestParamSchema),
+  tagController.getSuggestedTagsByCategory,
+);
+router.get(
+  "/slug/:slug",
+  validateParams(tagSlugParamSchema),
+  tagController.getTagBySlug,
+);
+router.get("/:id", validateParams(tagIdParamSchema), tagController.getTagById);
 
 // Admin routes - Require authentication + permission
 router.post(
@@ -24,6 +51,7 @@ router.post(
   authenticate,
   blockGuestFromAdmin,
   requirePermission("tag.create"),
+  validateBody(createTagSchema),
   tagController.createTag,
 );
 
@@ -32,6 +60,7 @@ router.post(
   authenticate,
   blockGuestFromAdmin,
   requirePermission("tag.create"),
+  validateBody(bulkCreateTagsSchema),
   tagController.bulkCreateTags,
 );
 
@@ -40,6 +69,8 @@ router.put(
   authenticate,
   blockGuestFromAdmin,
   requirePermission("tag.update"),
+  validateParams(tagIdParamSchema),
+  validateBody(updateTagSchema),
   tagController.updateTag,
 );
 
@@ -48,6 +79,7 @@ router.delete(
   authenticate,
   blockGuestFromAdmin,
   requirePermission("tag.delete"),
+  validateParams(tagIdParamSchema),
   tagController.deleteTag,
 );
 
@@ -56,6 +88,7 @@ router.post(
   authenticate,
   blockGuestFromAdmin,
   requirePermission("tag.update"),
+  validateParams(tagIdParamSchema),
   tagController.recalculateUsageCount,
 );
 

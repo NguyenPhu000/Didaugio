@@ -17,6 +17,9 @@ export const registerBusinessSchema = z.object({
   bankName: z.string().max(100).optional().nullable(),
   bankAccountNumber: z.string().max(30).optional().nullable(),
   bankAccountOwner: z.string().max(100).optional().nullable(),
+  fullName: z.string().max(120).optional().nullable(),
+  phone: z.string().max(20).optional().nullable(),
+  address: z.string().max(255).optional().nullable(),
 });
 
 export const updateBusinessSchema = z.object({
@@ -27,6 +30,9 @@ export const updateBusinessSchema = z.object({
   bankName: z.string().max(100).optional().nullable(),
   bankAccountNumber: z.string().max(30).optional().nullable(),
   bankAccountOwner: z.string().max(100).optional().nullable(),
+  fullName: z.string().max(120).optional().nullable(),
+  phone: z.string().max(20).optional().nullable(),
+  address: z.string().max(255).optional().nullable(),
 });
 
 export const approveBusinessSchema = z.preprocess(
@@ -43,8 +49,17 @@ export const rejectBusinessSchema = z.object({
     .max(500, "Lý do từ chối không được quá 500 ký tự"),
 });
 
+export const signBusinessContractSchema = z
+  .object({
+    acceptedTerms: z.literal(true).optional(),
+  })
+  .default({});
+
 export const getBusinessesQuerySchema = paginationLargeSchema.extend({
   search: z.string().max(200).optional(),
-  status: z.enum(["all", "pending", "approved", "rejected"]).optional(),
+  status: z
+    .enum(["all", "pending", "approved", "rejected", "suspended"])
+    .optional(),
+  contractSigned: z.coerce.boolean().optional(),
   sortBy: z.enum(["newest", "oldest", "name"]).default("newest"),
 });

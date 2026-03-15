@@ -1,3 +1,7 @@
+/**
+ * Business Offering Service - CRUD dịch vụ/sản phẩm mà doanh nghiệp cung cấp
+ * (Entity: BusinessService trong Prisma)
+ */
 import prisma from "../config/prismaClient.js";
 import { PAGINATION, ROLES } from "../config/constants.js";
 
@@ -12,17 +16,17 @@ const toIntOrNull = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const serializeService = (service) => {
-  if (!service) return null;
+const serializeOffering = (offering) => {
+  if (!offering) return null;
 
   return {
-    ...service,
-    discountPrice: service.salePrice ?? null,
-    duration: service.durationMinutes ?? null,
+    ...offering,
+    discountPrice: offering.salePrice ?? null,
+    duration: offering.durationMinutes ?? null,
   };
 };
 
-const mapServiceInputToPrisma = (data = {}) => {
+const mapInputToPrisma = (data = {}) => {
   const mapped = { ...data };
 
   if ("discountPrice" in mapped) {
@@ -75,6 +79,9 @@ export const getAll = async (params = {}, userId, roleId) => {
   if (params.search) {
     where.name = { contains: params.search, mode: "insensitive" };
   }
+  if (params.placeId) {
+    where.placeId = parseInt(params.placeId);
+  }
   if (params.isActive !== undefined) {
     where.isActive = params.isActive === "true" || params.isActive === true;
   }
@@ -101,13 +108,13 @@ export const getAll = async (params = {}, userId, roleId) => {
   ]);
 
   return {
-    data: data.map(serializeService),
+    data: data.map(serializeOffering),
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
   };
 };
 
 export const getById = async (id) => {
-  const service = await prisma.businessService.findUnique({
+  const offering = await prisma.businessService.findUnique({
     where: { id: parseInt(id) },
     include: {
       ...defaultInclude,
@@ -115,13 +122,13 @@ export const getById = async (id) => {
     },
   });
 
-  if (!service) {
+  if (!offering) {
     const error = new Error("Dịch vụ không tồn tại");
     error.statusCode = 404;
     throw error;
   }
 
-  return serializeService(service);
+  return serializeOffering(offering);
 };
 
 export const create = async (data, userId) => {
@@ -136,16 +143,19 @@ export const create = async (data, userId) => {
     throw error;
   }
 
-  const mappedData = mapServiceInputToPrisma(data);
+  const mappedData = mapInputToPrisma(data);
 
   let placeId = mappedData.placeId;
 
+  // Query tìm place theo businessId HOẶC createdBy (xử lý trường hợp place tạo trước khi đăng ký business)
+  const placeWhere = {
+    deletedAt: null,
+    OR: [{ businessId: business.id }, { createdBy: userId }],
+  };
+
   if (!placeId) {
     const firstPlace = await prisma.place.findFirst({
-      where: {
-        businessId: business.id,
-        deletedAt: null,
-      },
+      where: placeWhere,
       select: { id: true },
       orderBy: { createdAt: "asc" },
     });
@@ -159,11 +169,24 @@ export const create = async (data, userId) => {
     }
 
     placeId = firstPlace.id;
+  } else {
+    // Validate place thuộc về business này
+    const validPlace = await prisma.place.findFirst({
+      where: { id: parseInt(placeId), ...placeWhere },
+      select: { id: true },
+    });
+    if (!validPlace) {
+      const error = new Error(
+        "Địa điểm không tồn tại hoặc không thuộc doanh nghiệp của bạn",
+      );
+      error.statusCode = 400;
+      throw error;
+    }
   }
 
   delete mappedData.placeId;
 
-  const service = await prisma.businessService.create({
+  const offering = await prisma.businessService.create({
     data: {
       ...mappedData,
       place: {
@@ -176,11 +199,11 @@ export const create = async (data, userId) => {
     include: defaultInclude,
   });
 
-  return serializeService(service);
+  return serializeOffering(offering);
 };
 
 export const update = async (id, data) => {
-  const mappedData = mapServiceInputToPrisma(data);
+  const mappedData = mapInputToPrisma(data);
 
   const placeId = mappedData.placeId;
   if (placeId) {
@@ -190,13 +213,13 @@ export const update = async (id, data) => {
   }
   delete mappedData.placeId;
 
-  const service = await prisma.businessService.update({
+  const offering = await prisma.businessService.update({
     where: { id: parseInt(id) },
     data: mappedData,
     include: defaultInclude,
   });
 
-  return serializeService(service);
+  return serializeOffering(offering);
 };
 
 export const remove = async (id) => {

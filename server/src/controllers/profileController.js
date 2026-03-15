@@ -1,5 +1,6 @@
 import profileService from "../services/profileService.js";
 import appService from "../services/appService.js";
+import { ERROR_CODES } from "../config/messages.js";
 
 /**
  * GET /api/profile
@@ -26,7 +27,7 @@ export const updateProfile = async (req, res, next) => {
   try {
     const updatedProfile = await profileService.updateProfile(
       req.user.userId,
-      req.body
+      req.body,
     );
     res.json({
       success: true,
@@ -47,7 +48,7 @@ export const updateAvatar = async (req, res, next) => {
     const { avatarUrl } = req.body;
     const result = await profileService.updateAvatar(
       req.user.userId,
-      avatarUrl
+      avatarUrl,
     );
     res.json({
       success: true,
@@ -67,7 +68,7 @@ export const updateNotificationSettings = async (req, res, next) => {
   try {
     const result = await profileService.updateNotificationSettings(
       req.user.userId,
-      req.body
+      req.body,
     );
     res.json({
       success: true,
@@ -87,7 +88,7 @@ export const updateTravelPreferences = async (req, res, next) => {
   try {
     const result = await profileService.updateTravelPreferences(
       req.user.userId,
-      req.body
+      req.body,
     );
     res.json({
       success: true,
@@ -109,7 +110,11 @@ const parseId = (raw) => {
 export const getProfileSummary = async (req, res, next) => {
   try {
     const data = await appService.getMyProfileSummary(getUserId(req));
-    res.json({ success: true, data });
+    res.json({
+      success: true,
+      data,
+      message: "Lấy tổng quan hồ sơ thành công",
+    });
   } catch (error) {
     next(error);
   }
@@ -118,7 +123,12 @@ export const getProfileSummary = async (req, res, next) => {
 export const getSavedPlaces = async (req, res, next) => {
   try {
     const result = await appService.getMySavedPlaces(getUserId(req), req.query);
-    res.json({ success: true, data: result.data, pagination: result.pagination });
+    res.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+      message: "Lấy danh sách địa điểm đã lưu thành công",
+    });
   } catch (error) {
     next(error);
   }
@@ -127,9 +137,20 @@ export const getSavedPlaces = async (req, res, next) => {
 export const savePlace = async (req, res, next) => {
   try {
     const placeId = parseId(req.params.placeId);
-    if (!placeId) return res.status(400).json({ success: false, message: "ID địa điểm không hợp lệ" });
+    if (!placeId) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID địa điểm không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
 
-    const data = await appService.savePlace(getUserId(req), placeId, req.body?.note || null);
+    const data = await appService.savePlace(
+      getUserId(req),
+      placeId,
+      req.body?.note || null,
+    );
     res.status(201).json({ success: true, data, message: "Đã lưu địa điểm" });
   } catch (error) {
     next(error);
@@ -139,7 +160,14 @@ export const savePlace = async (req, res, next) => {
 export const unsavePlace = async (req, res, next) => {
   try {
     const placeId = parseId(req.params.placeId);
-    if (!placeId) return res.status(400).json({ success: false, message: "ID địa điểm không hợp lệ" });
+    if (!placeId) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID địa điểm không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
 
     await appService.unsavePlace(getUserId(req), placeId);
     res.json({ success: true, data: null, message: "Đã bỏ lưu địa điểm" });
@@ -151,7 +179,12 @@ export const unsavePlace = async (req, res, next) => {
 export const getMyTrips = async (req, res, next) => {
   try {
     const result = await appService.getMyTrips(getUserId(req), req.query);
-    res.json({ success: true, data: result.data, pagination: result.pagination });
+    res.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+      message: "Lấy danh sách chuyến đi thành công",
+    });
   } catch (error) {
     next(error);
   }
@@ -159,8 +192,15 @@ export const getMyTrips = async (req, res, next) => {
 
 export const generateTrip = async (req, res, next) => {
   try {
-    const trip = await appService.generateAndSaveTrip(getUserId(req), req.body || {});
-    res.status(201).json({ success: true, data: trip });
+    const trip = await appService.generateAndSaveTrip(
+      getUserId(req),
+      req.body || {},
+    );
+    res.status(201).json({
+      success: true,
+      data: trip,
+      message: "Tạo chuyến đi thành công",
+    });
   } catch (error) {
     next(error);
   }

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import * as businessService from "@/apis/businessService";
+import * as businessApi from "@/apis/businessApi";
 
 const useBusinessStore = create(
   devtools(
@@ -15,7 +15,7 @@ const useBusinessStore = create(
       fetchProfile: async () => {
         set({ loading: true, error: null });
         try {
-          const response = await businessService.getProfile();
+          const response = await businessApi.getProfile();
           set({ business: response.data || null, loading: false });
           return response.data;
         } catch (error) {
@@ -31,7 +31,7 @@ const useBusinessStore = create(
       registerBusiness: async (data) => {
         set({ loading: true, error: null });
         try {
-          const response = await businessService.register(data);
+          const response = await businessApi.register(data);
           set({ business: response.data, loading: false });
           return response;
         } catch (error) {
@@ -43,7 +43,7 @@ const useBusinessStore = create(
       updateProfile: async (data) => {
         set({ loading: true, error: null });
         try {
-          const response = await businessService.updateProfile(data);
+          const response = await businessApi.updateProfile(data);
           set({ business: response.data, loading: false });
           return response;
         } catch (error) {
@@ -54,7 +54,7 @@ const useBusinessStore = create(
 
       fetchDashboard: async () => {
         try {
-          const response = await businessService.getDashboard();
+          const response = await businessApi.getDashboard();
           set({ dashboardStats: response.data });
           return response.data;
         } catch (error) {
@@ -66,7 +66,7 @@ const useBusinessStore = create(
       fetchAll: async (params = {}) => {
         set({ loading: true, error: null });
         try {
-          const response = await businessService.getAll(params);
+          const response = await businessApi.getAll(params);
           set({
             businesses: response.data || [],
             pagination: response.pagination || get().pagination,
@@ -82,7 +82,7 @@ const useBusinessStore = create(
       approveBusiness: async (id) => {
         set({ loading: true, error: null });
         try {
-          const response = await businessService.approve(id);
+          const response = await businessApi.approve(id);
           await get().fetchAll();
           set({ loading: false });
           return response;
@@ -95,7 +95,7 @@ const useBusinessStore = create(
       rejectBusiness: async (id, reason) => {
         set({ loading: true, error: null });
         try {
-          const response = await businessService.reject(id, reason);
+          const response = await businessApi.reject(id, reason);
           await get().fetchAll();
           set({ loading: false });
           return response;

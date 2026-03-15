@@ -1,29 +1,37 @@
 import * as voucherService from "../services/voucherService.js";
 
-export const getAll = async (req, res) => {
+export const getAll = async (req, res, next) => {
   try {
     const result = await voucherService.getAll(
       req.query,
       req.user.userId,
       req.user.roleId,
     );
-    res.json({ success: true, data: result.data, pagination: result.pagination });
+    res.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+      message: "Lấy danh sách voucher thành công",
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getById = async (req, res) => {
+export const getById = async (req, res, next) => {
   try {
     const voucher = await voucherService.getById(req.params.id);
-    res.json({ success: true, data: voucher });
+    res.json({
+      success: true,
+      data: voucher,
+      message: "Lấy chi tiết voucher thành công",
+    });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const create = async (req, res) => {
+export const create = async (req, res, next) => {
   try {
     const voucher = await voucherService.create(req.body, req.user.userId);
     res.status(201).json({
@@ -32,12 +40,11 @@ export const create = async (req, res) => {
       data: voucher,
     });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const update = async (req, res) => {
+export const update = async (req, res, next) => {
   try {
     const voucher = await voucherService.update(req.params.id, req.body);
     res.json({
@@ -46,32 +53,33 @@ export const update = async (req, res) => {
       data: voucher,
     });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const remove = async (req, res) => {
+export const remove = async (req, res, next) => {
   try {
     await voucherService.remove(req.params.id);
     res.json({ success: true, message: "Xóa voucher thành công" });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getUsageStats = async (req, res) => {
+export const getUsageStats = async (req, res, next) => {
   try {
     const stats = await voucherService.getUsageStats(req.params.id);
-    res.json({ success: true, data: stats });
+    res.json({
+      success: true,
+      data: stats,
+      message: "Lấy thống kê sử dụng voucher thành công",
+    });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const bulkDeactivate = async (req, res) => {
+export const bulkDeactivate = async (req, res, next) => {
   try {
     const result = await voucherService.bulkDeactivate(
       req.body.voucherIds,
@@ -83,6 +91,6 @@ export const bulkDeactivate = async (req, res) => {
       data: result,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };

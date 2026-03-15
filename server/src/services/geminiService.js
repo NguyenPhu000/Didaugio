@@ -3,6 +3,8 @@
  * Uses @google/generative-ai SDK.
  */
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { ERROR_CODES } from "../config/messages.js";
+import ServiceError from "../utils/serviceError.js";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const MODEL_NAME = "gemini-1.5-flash";
@@ -76,7 +78,11 @@ Chỉ dùng địa điểm có trong danh sách trên (dùng đúng ID). Trả v
  */
 export async function generateItinerary(preferences, places) {
   if (!GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY không được cấu hình");
+    throw new ServiceError(
+      "GEMINI_API_KEY không được cấu hình",
+      500,
+      ERROR_CODES.INTERNAL_ERROR,
+    );
   }
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -98,8 +104,10 @@ export async function generateItinerary(preferences, places) {
   try {
     parsed = JSON.parse(jsonText);
   } catch {
-    throw new Error(
+    throw new ServiceError(
       `Gemini trả về JSON không hợp lệ: ${jsonText.slice(0, 200)}`,
+      502,
+      ERROR_CODES.VALIDATION_ERROR,
     );
   }
 

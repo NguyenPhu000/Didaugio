@@ -1,5 +1,7 @@
 import prisma from "../config/prismaClient.js";
 import { PAGINATION, ROLES } from "../config/constants.js";
+import { ERROR_CODES } from "../config/messages.js";
+import ServiceError from "../utils/serviceError.js";
 
 const defaultInclude = {
   _count: { select: { bookings: true } },
@@ -136,9 +138,7 @@ export const getById = async (id) => {
   });
 
   if (!voucher) {
-    throw Object.assign(new Error("Voucher không tồn tại"), {
-      statusCode: 404,
-    });
+    throw new ServiceError("Voucher không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
   return serializeVoucher(voucher);
@@ -151,18 +151,18 @@ export const create = async (data, userId) => {
   });
 
   if (!business) {
-    throw Object.assign(new Error("Bạn chưa đăng ký doanh nghiệp"), {
-      statusCode: 403,
-    });
+    throw new ServiceError(
+      "Bạn chưa đăng ký doanh nghiệp",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
   }
 
   const existing = await prisma.voucher.findFirst({
     where: { code: data.code, businessId: business.id },
   });
   if (existing) {
-    throw Object.assign(new Error("Mã voucher đã tồn tại"), {
-      statusCode: 400,
-    });
+    throw new ServiceError("Mã voucher đã tồn tại", 400, ERROR_CODES.EXISTED);
   }
 
   const mappedData = mapVoucherInputToPrisma(data, true);
@@ -203,9 +203,11 @@ export const remove = async (id) => {
   });
 
   if (bookingCount > 0) {
-    throw Object.assign(new Error("Không thể xóa voucher đang được sử dụng"), {
-      statusCode: 400,
-    });
+    throw new ServiceError(
+      "Không thể xóa voucher đang được sử dụng",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
   }
 
   await prisma.voucher.delete({ where: { id: parseInt(id) } });
@@ -225,9 +227,7 @@ export const getUsageStats = async (id) => {
   });
 
   if (!voucher) {
-    throw Object.assign(new Error("Voucher không tồn tại"), {
-      statusCode: 404,
-    });
+    throw new ServiceError("Voucher không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
   const serialized = serializeVoucher(voucher);

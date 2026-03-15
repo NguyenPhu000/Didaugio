@@ -11,11 +11,20 @@ export const createVoucherSchema = z.object({
   discountType: z.enum(["percentage", "fixed"], {
     required_error: "Loại giảm giá không được để trống",
   }),
-  discountValue: z.number({ required_error: "Giá trị giảm không được để trống" }).min(0),
+  discountValue: z
+    .number({ required_error: "Giá trị giảm không được để trống" })
+    .min(0),
   minOrderValue: z.number().min(0).default(0),
   maxDiscount: z.number().min(0).optional().nullable(),
   maxUsage: z.number().int().min(1).default(100),
   maxUsagePerUser: z.number().int().min(1).default(1),
+  applicableServices: z
+    .object({
+      placeIds: z.array(z.number().int().positive()).optional(),
+      serviceIds: z.array(z.number().int().positive()).optional(),
+    })
+    .nullable()
+    .optional(),
   startDate: z.string().datetime().optional().nullable(),
   endDate: z.string().datetime().optional().nullable(),
   isActive: z.boolean().default(true),
@@ -30,6 +39,13 @@ export const updateVoucherSchema = z.object({
   maxDiscount: z.number().min(0).optional().nullable(),
   maxUsage: z.number().int().min(1).optional(),
   maxUsagePerUser: z.number().int().min(1).optional(),
+  applicableServices: z
+    .object({
+      placeIds: z.array(z.number().int().positive()).optional(),
+      serviceIds: z.array(z.number().int().positive()).optional(),
+    })
+    .nullable()
+    .optional(),
   startDate: z.string().datetime().optional().nullable(),
   endDate: z.string().datetime().optional().nullable(),
   isActive: z.boolean().optional(),

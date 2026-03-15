@@ -20,17 +20,16 @@ import wardRoutes from "./routes/wardRoutes.js";
 import boundaryRoutes from "./routes/boundaryRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
 import businessRoutes from "./routes/businessRoutes.js";
-import businessServiceRoutes from "./routes/businessServiceRoutes.js";
+import businessOfferingRoutes from "./routes/businessOfferingRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import voucherRoutes from "./routes/voucherRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
+import feedbackRoutes from "./routes/feedbackRoutes.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import { authLimiter, apiLimiter } from "./middlewares/rateLimitMiddleware.js";
 import logger from "./config/logger.js";
 import prisma from "./config/prismaClient.js";
 import { initNotificationService } from "./services/notificationService.js";
-import { authenticateOptional } from "./middlewares/authMiddleware.js";
-import appService from "./services/appService.js";
 
 dotenv.config();
 
@@ -43,7 +42,9 @@ app.use(express.json({ limit: BODY_LIMIT }));
 app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true }));
 app.use(
   cors({
-    origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(",") : "*",
+    origin: process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(",")
+      : "*",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   }),
@@ -69,31 +70,14 @@ app.use("/api/districts", districtRoutes);
 app.use("/api/wards", wardRoutes);
 app.use("/api/boundaries", boundaryRoutes);
 app.use("/api/settings", settingsRoutes);
-app.use("/api/business/services", businessServiceRoutes);
+app.use("/api/business/services", businessOfferingRoutes);
 app.use("/api/business/bookings", bookingRoutes);
 app.use("/api/business/vouchers", voucherRoutes);
 app.use("/api/business/reviews", reviewRoutes);
 app.use("/api/business", businessRoutes);
+app.use("/api/feedback", feedbackRoutes);
 app.use("/api", userPermissionRoutes);
 app.use("/api", userRoutes);
-
-app.post("/api/feedback", authenticateOptional, async (req, res) => {
-  try {
-    const userId = req.user?.userId || req.user?.id || null;
-    const data = await appService.submitFeedback({
-      userId,
-      reportType: req.body?.reportType,
-      title: req.body?.title,
-      content: req.body?.content,
-      targetType: req.body?.targetType,
-      targetId: req.body?.targetId,
-      screenshot: req.body?.screenshot,
-    });
-    res.status(201).json({ success: true, data, message: "Gửi phản hồi thành công" });
-  } catch (error) {
-    res.status(error.statusCode || 500).json({ success: false, message: error.message || "Không thể gửi phản hồi" });
-  }
-});
 
 app.get("/", async (req, res) => {
   try {

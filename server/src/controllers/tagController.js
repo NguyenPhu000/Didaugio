@@ -1,4 +1,5 @@
 import * as tagService from "../services/tagService.js";
+import { ERROR_CODES } from "../config/messages.js";
 
 /**
  * TAG CONTROLLER
@@ -6,7 +7,7 @@ import * as tagService from "../services/tagService.js";
  */
 
 // GET /api/tags - Lấy danh sách tags
-export const getTags = async (req, res) => {
+export const getTags = async (req, res, next) => {
   try {
     const { tagType, isActive, search, sortBy } = req.query;
 
@@ -21,91 +22,75 @@ export const getTags = async (req, res) => {
       success: true,
       data: tags,
       total: tags.length,
+      message: "Lấy danh sách tag thành công",
     });
   } catch (error) {
-    console.error("Error in getTags:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch tags",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // GET /api/tags/popular - Lấy popular tags
-export const getPopularTags = async (req, res) => {
+export const getPopularTags = async (req, res, next) => {
   try {
     const { limit = 20, tagType } = req.query;
 
-    const tags = await tagService.getPopularTags(parseInt(limit), tagType);
+    const tags = await tagService.getPopularTags(limit, tagType);
 
     res.json({
       success: true,
       data: tags,
+      message: "Lấy danh sách tag phổ biến thành công",
     });
   } catch (error) {
-    console.error("Error in getPopularTags:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch popular tags",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // GET /api/tags/suggest/:categoryId - Lấy suggested tags theo category
-export const getSuggestedTagsByCategory = async (req, res) => {
+export const getSuggestedTagsByCategory = async (req, res, next) => {
   try {
     const { categoryId } = req.params;
 
-    const tags = await tagService.getSuggestedTagsByCategory(
-      parseInt(categoryId)
-    );
+    const tags = await tagService.getSuggestedTagsByCategory(categoryId);
 
     res.json({
       success: true,
       data: tags,
+      message: "Lấy tag gợi ý theo danh mục thành công",
     });
   } catch (error) {
-    console.error("Error in getSuggestedTagsByCategory:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch suggested tags",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // GET /api/tags/:id - Lấy tag theo ID
-export const getTagById = async (req, res) => {
+export const getTagById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const tag = await tagService.getTagById(parseInt(id));
+    const tag = await tagService.getTagById(id);
 
     if (!tag) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Tag not found",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
     res.json({
       success: true,
       data: tag,
+      message: "Lấy chi tiết tag thành công",
     });
   } catch (error) {
-    console.error("Error in getTagById:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch tag",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // GET /api/tags/slug/:slug - Lấy tag theo slug
-export const getTagBySlug = async (req, res) => {
+export const getTagBySlug = async (req, res, next) => {
   try {
     const { slug } = req.params;
 
@@ -114,36 +99,26 @@ export const getTagBySlug = async (req, res) => {
     if (!tag) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Tag not found",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
     res.json({
       success: true,
       data: tag,
+      message: "Lấy tag theo slug thành công",
     });
   } catch (error) {
-    console.error("Error in getTagBySlug:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch tag",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // POST /api/tags - Tạo tag mới
-export const createTag = async (req, res) => {
+export const createTag = async (req, res, next) => {
   try {
     const { name, slug, tagType, icon, color } = req.body;
-
-    // Validation
-    if (!name || !slug) {
-      return res.status(400).json({
-        success: false,
-        message: "Name and slug are required",
-      });
-    }
 
     const tag = await tagService.createTag({
       name,
@@ -159,37 +134,14 @@ export const createTag = async (req, res) => {
       data: tag,
     });
   } catch (error) {
-    console.error("Error in createTag:", error);
-
-    if (
-      error.message.includes("already exists") ||
-      error.message.includes("Invalid tag type")
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to create tag",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // POST /api/tags/bulk - Tạo nhiều tags cùng lúc
-export const bulkCreateTags = async (req, res) => {
+export const bulkCreateTags = async (req, res, next) => {
   try {
     const { tags } = req.body;
-
-    if (!Array.isArray(tags) || tags.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "tags must be a non-empty array",
-      });
-    }
 
     const created = await tagService.bulkCreateTags(tags);
 
@@ -199,22 +151,17 @@ export const bulkCreateTags = async (req, res) => {
       data: created,
     });
   } catch (error) {
-    console.error("Error in bulkCreateTags:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create tags",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // PUT /api/tags/:id - Update tag
-export const updateTag = async (req, res) => {
+export const updateTag = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, slug, tagType, icon, color, isActive } = req.body;
 
-    const tag = await tagService.updateTag(parseInt(id), {
+    const tag = await tagService.updateTag(id, {
       name,
       slug,
       tagType,
@@ -229,62 +176,33 @@ export const updateTag = async (req, res) => {
       data: tag,
     });
   } catch (error) {
-    console.error("Error in updateTag:", error);
-
-    if (
-      error.message.includes("not found") ||
-      error.message.includes("already exists") ||
-      error.message.includes("Invalid tag type")
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to update tag",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // DELETE /api/tags/:id - Xóa tag
-export const deleteTag = async (req, res) => {
+export const deleteTag = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const result = await tagService.deleteTag(parseInt(id));
+    const result = await tagService.deleteTag(id);
 
-    res.json(result);
-  } catch (error) {
-    console.error("Error in deleteTag:", error);
-
-    if (
-      error.message.includes("not found") ||
-      error.message.includes("Cannot delete")
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete tag",
-      error: error.message,
+    res.json({
+      success: true,
+      data: null,
+      message: result.message,
     });
+  } catch (error) {
+    next(error);
   }
 };
 
 // POST /api/tags/:id/recalculate - Sync lại usage count
-export const recalculateUsageCount = async (req, res) => {
+export const recalculateUsageCount = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const tag = await tagService.recalculateUsageCount(parseInt(id));
+    const tag = await tagService.recalculateUsageCount(id);
 
     res.json({
       success: true,
@@ -292,12 +210,7 @@ export const recalculateUsageCount = async (req, res) => {
       data: tag,
     });
   } catch (error) {
-    console.error("Error in recalculateUsageCount:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to recalculate usage count",
-      error: error.message,
-    });
+    next(error);
   }
 };
 

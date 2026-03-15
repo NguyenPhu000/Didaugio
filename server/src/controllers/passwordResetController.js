@@ -1,4 +1,5 @@
 import * as passwordResetService from "../services/passwordResetService.js";
+import { ERROR_CODES } from "../config/messages.js";
 import {
   passwordResetQuerySchema,
   createPasswordResetSchema,
@@ -15,7 +16,9 @@ export const getAll = async (req, res, next) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "Dữ liệu không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
         errors: validation.error.errors,
       });
     }
@@ -26,6 +29,7 @@ export const getAll = async (req, res, next) => {
       success: true,
       data: result.data,
       pagination: result.pagination,
+      message: "Lấy danh sách yêu cầu đặt lại mật khẩu thành công",
     });
   } catch (error) {
     next(error);
@@ -42,7 +46,9 @@ export const create = async (req, res, next) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "Dữ liệu không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
         errors: validation.error.errors,
       });
     }
@@ -50,7 +56,7 @@ export const create = async (req, res, next) => {
     const ipAddress = req.ip || req.connection.remoteAddress;
     const reset = await passwordResetService.create(
       validation.data.email,
-      ipAddress
+      ipAddress,
     );
 
     res.json({
@@ -73,19 +79,22 @@ export const reset = async (req, res, next) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "Dữ liệu không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
         errors: validation.error.errors,
       });
     }
 
     const result = await passwordResetService.reset(
       validation.data.token,
-      validation.data.newPassword
+      validation.data.newPassword,
     );
 
     res.json({
       success: true,
       message: result.message,
+      data: null,
     });
   } catch (error) {
     next(error);

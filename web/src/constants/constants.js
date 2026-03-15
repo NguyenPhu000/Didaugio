@@ -25,7 +25,7 @@ export const ROLES = {
 export const ROLE_NAMES = {
   [ROLES.SUPER_ADMIN]: "Super Admin",
   [ROLES.ADMIN]: "Admin",
-  [ROLES.BUSINESS]: "Business Owner",
+  [ROLES.BUSINESS]: "Business",
   [ROLES.STAFF]: "Staff",
   [ROLES.USER]: "User",
   [ROLES.GUEST]: "Guest",

@@ -56,20 +56,22 @@ const StatsCard = ({
   textColor = "text-black",
 }) => (
   <div
-    className={`border border-black p-4 relative overflow-hidden group hover:shadow-hard transition-all ${color}`}
+    className={`border border-black p-5 relative overflow-hidden group hover:shadow-hard transition-all ${color}`}
   >
-    <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-      <Icon className="w-24 h-24" />
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-10 pointer-events-none">
+      <Icon className="w-32 h-32" />
     </div>
-    <div className="relative z-10">
-      <div className="flex justify-between items-start mb-4">
-        <div className="tim-meta border border-black px-1.5 py-0.5 bg-white text-black">
+    <div className="relative z-10 flex flex-col h-full justify-between gap-6">
+      <div className="flex justify-between items-start">
+        <div className="px-2 py-0.5 border border-black bg-white text-black font-mono text-xs font-bold tracking-widest">
           {serial}
         </div>
-        <Icon className={`w-5 h-5 ${textColor}`} />
+        <Icon className={`w-6 h-6 ${textColor}`} />
       </div>
-      <div className={`tim-stats mb-1 ${textColor}`}>{value}</div>
-      <div className={`tim-table-header ${textColor}`}>{title}</div>
+      <div>
+        <div className={`text-4xl md:text-5xl font-black tracking-tighter mb-1 ${textColor}`}>{value}</div>
+        <div className="font-mono text-[11px] font-bold uppercase tracking-widest text-gray-700">{title}</div>
+      </div>
     </div>
   </div>
 );
@@ -254,41 +256,40 @@ export default function CategoryManagementPage() {
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-6">
-          <div className="flex items-center gap-6">
-            <div className="accent-bar h-16"></div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-black pb-8">
+          <div className="flex items-start gap-4">
+            <div className="w-1.5 h-16 bg-yellow-400"></div>
             <div>
-              <h1 className="tim-title">QUẢN LÝ DANH MỤC</h1>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1">
+              <h1 className="text-4xl md:text-5xl uppercase font-black tracking-tight mb-2">QUẢN LÝ DANH MỤC</h1>
+              <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-1">
+                <span className="bg-black text-white px-2.5 py-0.5 text-xs font-mono font-bold tracking-widest uppercase">
                   TAXONOMY // CATEGORIES
                 </span>
-                <p className="tim-meta">PHÂN LOẠI VÀ TỔ CHỨC DỮ LIỆU</p>
+                <span className="text-gray-500 font-mono text-xs font-bold tracking-widest uppercase">
+                  PHÂN LOẠI VÀ TỔ CHỨC DỮ LIỆU
+                </span>
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button
+          <div className="flex gap-4 shrink-0 mt-4 md:mt-0">
+            <button
               onClick={handleRefresh}
-              variant="outline"
-              className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
+              className="h-12 w-12 flex items-center justify-center border border-black bg-white hover:bg-gray-100 transition-colors"
             >
-              <RefreshCw
-                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-              />
-            </Button>
-            <Button
+              <RefreshCw className={`h-5 w-5 text-black ${loading ? "animate-spin" : ""}`} />
+            </button>
+            <button
               onClick={handleAddRoot}
-              className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
+              className="h-12 px-6 flex items-center gap-2 border border-black bg-black text-white font-mono text-sm font-bold tracking-widest uppercase hover:bg-yellow-400 hover:text-black transition-colors"
             >
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               TẠO DANH MỤC GỐC
-            </Button>
+            </button>
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8">
           <StatsCard
             title="TỔNG DANH MỤC"
             value={actualTotalCategories}
@@ -300,14 +301,14 @@ export default function CategoryManagementPage() {
             value={actualActiveCount}
             icon={Eye}
             serial="CAT-002"
-            textColor="text-green-600"
+            textColor="text-emerald-500"
           />
           <StatsCard
             title="ĐANG ẨN"
             value={actualHiddenCount}
             icon={EyeOff}
             serial="CAT-003"
-            textColor="text-gray-500"
+            textColor="text-gray-400"
           />
           <StatsCard
             title="TỔNG ĐỊA ĐIỂM"
@@ -321,52 +322,55 @@ export default function CategoryManagementPage() {
           />
         </div>
 
-        {/* Search & Filter */}
-        <div className="bg-white border border-black p-4 flex flex-col md:flex-row gap-4 shadow-sm">
-          <div className="flex-1 flex shadow-sm">
-            <div className="h-10 w-10 bg-black flex items-center justify-center text-white">
-              <Search className="h-4 w-4" />
+        {/* Search & Filter - Consolidated Bar */}
+        <div className="flex flex-col md:flex-row w-full border border-black bg-white min-h-[56px] shadow-sm mt-8">
+          {/* Search Input */}
+          <div className="flex flex-1 border-b md:border-b-0 md:border-r border-black group">
+            <div className="h-full w-14 bg-black flex items-center justify-center shrink-0">
+              <Search className="h-5 w-5 text-white" />
             </div>
-            <Input
+            <input
+              type="text"
               placeholder="TÌM KIẾM DANH MỤC..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 h-10 px-4 border-y border-r border-black font-mono text-sm uppercase focus:outline-none rounded-none focus-visible:ring-0"
+              className="flex-1 bg-zinc-50 px-4 font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400 transition-colors"
             />
           </div>
 
-          <div className="flex gap-4">
-            <Select
+          {/* Root Filter segment */}
+          <div className="flex relative border-b md:border-b-0 md:border-r border-black md:w-64">
+            <select
               value={selectedRootFilter}
-              onValueChange={setSelectedRootFilter}
+              onChange={(e) => setSelectedRootFilter(e.target.value)}
+              className="w-full h-full px-4 appearance-none outline-none font-mono text-xs uppercase cursor-pointer bg-white z-10 hover:bg-gray-50 focus:bg-yellow-50"
             >
-              <SelectTrigger className="w-[200px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white focus:ring-0">
-                <SelectValue placeholder="LỌC THEO DANH MỤC" />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border-black max-h-[300px]">
-                <SelectItem value="all">TẤT CẢ DANH MỤC</SelectItem>
-                {(categoryTree || []).map((root) => (
-                  <SelectItem
-                    key={root.id}
-                    value={root.id}
-                    className="font-mono text-xs uppercase"
-                  >
-                    {root.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <option value="all">TẤT CẢ DANH MỤC</option>
+              {(categoryTree || []).map((root) => (
+                <option key={root.id} value={root.id}>
+                  {root.name}
+                </option>
+              ))}
+            </select>
+            <div className="absolute right-4 top-0 bottom-0 flex items-center pointer-events-none">
+              <ChevronDown className="h-4 w-4 text-gray-400" />
+            </div>
+          </div>
 
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[180px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white focus:ring-0">
-                <SelectValue placeholder="TRẠNG THÁI" />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border-black">
-                <SelectItem value="all">TẤT CẢ TRẠNG THÁI</SelectItem>
-                <SelectItem value="active">ĐANG HIỂN THỊ</SelectItem>
-                <SelectItem value="hidden">ĐANG ẨN</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Status Filter segment */}
+          <div className="flex relative md:w-56">
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full h-full px-4 appearance-none outline-none font-mono text-xs uppercase cursor-pointer bg-white z-10 hover:bg-gray-50 focus:bg-yellow-50"
+            >
+              <option value="all">TẤT CẢ TRẠNG THÁI</option>
+              <option value="active">ĐANG HIỂN THỊ</option>
+              <option value="hidden">ĐANG ẨN</option>
+            </select>
+            <div className="absolute right-4 top-0 bottom-0 flex items-center pointer-events-none">
+              <ChevronDown className="h-4 w-4 text-gray-400" />
+            </div>
           </div>
         </div>
 
@@ -383,26 +387,22 @@ export default function CategoryManagementPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-black text-white font-mono text-sm uppercase tracking-wider">
-                    <th className="p-4 border-r border-gray-800">
+                  <tr className="bg-black text-white font-mono text-[11px] md:text-sm font-bold uppercase tracking-widest">
+                    <th className="p-4 border-r border-gray-800 text-left">
                       TÊN DANH MỤC / CẤP ĐỘ
                     </th>
-                    <th className="p-4 border-r border-gray-800 w-[150px]">
-                      ICON / HÌNH
-                    </th>
-                    <th className="p-4 border-r border-gray-800 w-[150px]">
+                    <th className="p-4 border-r border-gray-800 text-center w-[120px]">ICON / HÌNH</th>
+                    <th className="p-4 border-r border-gray-800 w-[150px] text-center">
                       SLUG
                     </th>
-                    <th className="p-4 border-r border-gray-800 w-[120px]">
-                      THỨ TỰ
-                    </th>
-                    <th className="p-4 border-r border-gray-800 w-[150px]">
+                    <th className="p-4 border-r border-gray-800 text-center w-[100px]">THỨ TỰ</th>
+                    <th className="p-4 border-r border-gray-800 w-[150px] text-center">
                       ĐỊA ĐIỂM
                     </th>
-                    <th className="p-4 border-r border-gray-800 w-[150px]">
+                    <th className="p-4 border-r border-gray-800 w-[150px] text-center">
                       TRẠNG THÁI
                     </th>
-                    <th className="p-4 text-right w-[100px]">THAO TÁC</th>
+                    <th className="p-4 text-center w-[100px]">THAO TÁC</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -423,12 +423,12 @@ export default function CategoryManagementPage() {
                                   e.stopPropagation();
                                   toggleExpand(cat.id);
                                 }}
-                                className="h-5 w-5 flex items-center justify-center border border-gray-300 bg-white hover:bg-black hover:text-white hover:border-black transition-all z-10"
+                                className="h-6 w-6 flex items-center justify-center border border-gray-300 bg-white hover:border-black transition-all z-10"
                               >
                                 {expandedRows[cat.id] !== false ? (
-                                  <ChevronDown className="h-3 w-3" />
+                                  <ChevronDown className="h-4 w-4 text-gray-600" />
                                 ) : (
-                                  <ChevronRight className="h-3 w-3" />
+                                  <ChevronRight className="h-4 w-4 text-gray-600" />
                                 )}
                               </button>
                             ) : (
@@ -439,15 +439,23 @@ export default function CategoryManagementPage() {
                               </div>
                             )}
                           </div>
-                          <span
-                            className={
-                              cat.level === 0
-                                ? "font-bold uppercase tracking-tight"
-                                : "text-gray-700 font-mono text-sm"
-                            }
-                          >
-                            {cat.name}
-                          </span>
+                          {/* Name */}
+<div className="flex items-center gap-2">
+  <span
+    className={
+      cat.level === 0
+        ? "font-black uppercase tracking-tight text-[15px]"
+        : "text-gray-700 font-bold text-sm"
+    }
+  >
+    {cat.name}
+  </span>
+  {cat.level === 0 && (
+    <span className="bg-black text-white px-1.5 py-[2px] text-[9px] font-mono tracking-widest ml-1">
+      ROOT
+    </span>
+  )}
+</div>
                           {cat.level === 0 && (
                             <span className="ml-2 text-[10px] bg-black text-white px-1.5 py-0.5 font-mono">
                               ROOT
@@ -455,7 +463,7 @@ export default function CategoryManagementPage() {
                           )}
                         </div>
                       </td>
-                      <td className="p-4 border-r border-gray-100">
+                      <td className="p-4 border-r border-gray-100 text-center">
                         <div className="flex justify-center">
                           {CATEGORY_ICON_MAP[cat.icon] ? (
                             (() => {
@@ -478,27 +486,20 @@ export default function CategoryManagementPage() {
                           )}
                         </div>
                       </td>
-                      <td className="p-4 border-r border-gray-100 font-mono text-xs text-gray-500">
+                      <td className="p-4 border-r border-gray-100 font-mono text-xs text-gray-500 lowercase max-w-[140px] truncate text-center mx-auto">
                         {cat.slug}
                       </td>
-                      <td className="p-4 border-r border-gray-100 font-mono text-sm">
-                        {cat.order || 0}
-                      </td>
-                      <td className="p-4 border-r border-gray-100">
-                        <Badge
-                          variant="outline"
-                          className="rounded-none border-gray-300 font-mono"
-                        >
-                          {cat._count?.places || 0} Places
-                        </Badge>
+                      <td className="p-4 border-r border-gray-100 font-mono font-bold text-[13px] text-center"> {cat.order || 0} </td>
+                      <td className="p-4 border-r border-gray-100 text-center">
+                        <span className="border border-gray-300 px-2 py-0.5 text-xs text-gray-600 font-mono inline-block"> {cat._count?.places || 0} Places </span>
                       </td>
                       <td className="p-4 border-r border-gray-100">
                         {cat.isHidden ? (
-                          <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase">
+                          <div className="flex items-center justify-center gap-2 text-xs font-bold text-gray-500 uppercase font-mono">
                             <EyeOff className="w-3 h-3" /> Ẩn
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2 text-xs font-bold text-green-600 uppercase">
+                          <div className="flex items-center justify-center gap-2 text-xs font-bold text-green-600 uppercase font-mono">
                             <Eye className="w-3 h-3" /> Hiển thị
                           </div>
                         )}
@@ -506,13 +507,9 @@ export default function CategoryManagementPage() {
                       <td className="p-4 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 rounded-none border border-transparent hover:border-black hover:bg-white"
-                            >
+                            <button className="h-8 w-8 text-black bg-transparent hover:bg-gray-100 flex items-center justify-center focus:outline-none m-auto">
                               <MoreHorizontal className="h-4 w-4" />
-                            </Button>
+                            </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
                             align="end"
@@ -593,8 +590,7 @@ export default function CategoryManagementPage() {
                 khỏi cơ sở dữ liệu?
               </p>
               <DialogFooter className="gap-2 sm:gap-0">
-                <Button
-                  variant="outline"
+                <Button variant="outline"
                   onClick={() => setDeleteDialogOpen(false)}
                   className="rounded-none border-black hover:bg-gray-100"
                 >

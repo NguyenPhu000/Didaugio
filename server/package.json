@@ -9,11 +9,12 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon --exec babel-node src/server.js",
-    "test:auth-email-flow": "node tests/test_auth_email_verification_flow.js",
     "test:business-smoke": "node tests/test_business_module_smoke.js",
+    "test:api-focused": "node tests/test_api_focused_contracts.js",
     "studio": "prisma studio --schema=prisma/schema.prisma --port 5555",
-    "seed:boundaries": "node src/scripts/seedBoundaries.js",
-    "seed:districts": "node src/scripts/seedDistricts.js"
+    "migrate:dev": "prisma migrate dev --schema=prisma/schema.prisma",
+    "migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
+    "generate": "prisma generate --schema=prisma/schema.prisma"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

@@ -16,6 +16,7 @@ import {
   AvatarImage,
 } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
+import { ROLES, ROLE_NAMES } from "@/constants/constants";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/animate-ui/components/radix/dropdown-menu";
 import { useNavigate, useLocation } from "react-router-dom";
-import { AUTH_ROUTES, ADMIN_ROUTES } from "@/constants/routes";
+import { AUTH_ROUTES, ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 
 const ROUTE_LABELS = {
   [ADMIN_ROUTES.DASHBOARD]: "Tổng quan",
@@ -40,6 +41,14 @@ const ROUTE_LABELS = {
   [ADMIN_ROUTES.PLACES_PENDING]: "Duyệt địa điểm",
   [ADMIN_ROUTES.PROFILE]: "Hồ sơ",
   [ADMIN_ROUTES.SETTINGS]: "Cài đặt",
+  [BUSINESS_ROUTES.DASHBOARD]: "Dashboard",
+  [BUSINESS_ROUTES.PROFILE]: "Hồ sơ Doanh nghiệp",
+  [BUSINESS_ROUTES.REGISTER]: "Đăng ký Cửa hàng",
+  [BUSINESS_ROUTES.SERVICES]: "Dịch vụ",
+  [BUSINESS_ROUTES.BOOKINGS]: "Lịch đặt",
+  [BUSINESS_ROUTES.VOUCHERS]: "Khuyến mãi",
+  [BUSINESS_ROUTES.REVENUE]: "Doanh thu",
+  [BUSINESS_ROUTES.REVIEWS]: "Đánh giá",
 };
 
 function AdminHeader() {
@@ -61,7 +70,8 @@ function AdminHeader() {
     year: "numeric",
   });
 
-  const pageLabel = ROUTE_LABELS[location.pathname] || "Quản trị";
+  const pageLabel =
+    ROUTE_LABELS[location.pathname] || ROLE_NAMES[user?.roleId] || "Quản trị";
 
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar px-6 shadow-sm">
@@ -72,7 +82,7 @@ function AdminHeader() {
         {/* Breadcrumb */}
         <div className="hidden md:flex items-center gap-1.5 text-xs font-mono">
           <span className="text-sidebar-foreground/40 uppercase tracking-wider">
-            Admin
+            {ROLE_NAMES[user?.roleId] || "Admin"}
           </span>
           <span className="text-sidebar-foreground/30">/</span>
           <span className="text-sidebar-foreground font-semibold uppercase tracking-wider">

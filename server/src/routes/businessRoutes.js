@@ -1,5 +1,24 @@
+/**
+ * Business Routes - Clean Architecture
+ * Tổ chức theo domain: Profile | Admin | Dashboard
+ */
 import express from "express";
-import * as businessController from "../controllers/businessController.js";
+import {
+  getProfile,
+  register,
+  updateProfile,
+  getMyPlaces,
+  signContract,
+} from "../controllers/business/businessProfileController.js";
+import {
+  getAll,
+  getById,
+  approve,
+  reject,
+  suspend,
+  reactivate,
+} from "../controllers/business/businessAdminController.js";
+import { getDashboard } from "../controllers/business/businessDashboardController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { hasPermission } from "../middlewares/permissionMiddleware.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
@@ -10,6 +29,7 @@ import {
   updateBusinessSchema,
   approveBusinessSchema,
   rejectBusinessSchema,
+  signBusinessContractSchema,
   getBusinessesQuerySchema,
 } from "../models/schemas/businessSchema.js";
 
@@ -17,7 +37,8 @@ const router = express.Router();
 
 router.use(authenticate);
 
-router.get("/profile", businessController.getProfile);
+// ========== Profile (Business Owner) ==========
+router.get("/profile", getProfile);
 
 router.post(
   "/register",
@@ -29,7 +50,7 @@ router.post(
     getRecordId: (req, body) => body?.data?.id,
     getNewData: (req) => ({ businessName: req.body.businessName }),
   }),
-  businessController.register,
+  register,
 );
 
 router.put(
@@ -41,19 +62,35 @@ router.put(
     tableName: "businesses",
     getNewData: (req) => req.body,
   }),
-  businessController.updateProfile,
+  updateProfile,
 );
 
-router.get("/dashboard", businessController.getDashboard);
+// ========== Dashboard (Business Owner) ==========
+router.get("/dashboard", getDashboard);
 
+// ========== My Places (Business Owner - for service creation) ==========
+router.get("/places", getMyPlaces);
+
+router.put(
+  "/profile/contract-sign",
+  validateBody(signBusinessContractSchema),
+  auditLog({
+    action: "SIGN_CONTRACT",
+    tableName: "businesses",
+    getNewData: () => ({ contractSigned: true }),
+  }),
+  signContract,
+);
+
+// ========== Admin (business.view, business.approve) ==========
 router.get(
   "/",
   hasPermission("business.view"),
   validateQuery(getBusinessesQuerySchema),
-  businessController.getAll,
+  getAll,
 );
 
-router.get("/:id", hasPermission("business.view"), businessController.getById);
+router.get("/:id", hasPermission("business.view"), getById);
 
 router.put(
   "/:id/approve",
@@ -64,7 +101,7 @@ router.put(
     tableName: "businesses",
     getNewData: (req) => ({ status: "approved" }),
   }),
-  businessController.approve,
+  approve,
 );
 
 router.put(
@@ -79,7 +116,29 @@ router.put(
       rejectionReason: req.body.rejectionReason,
     }),
   }),
-  businessController.reject,
+  reject,
+);
+
+router.put(
+  "/:id/suspend",
+  hasPermission("business.approve"),
+  auditLog({
+    action: "SUSPEND",
+    tableName: "businesses",
+    getNewData: () => ({ status: "suspended" }),
+  }),
+  suspend,
+);
+
+router.put(
+  "/:id/reactivate",
+  hasPermission("business.approve"),
+  auditLog({
+    action: "REACTIVATE",
+    tableName: "businesses",
+    getNewData: () => ({ status: "approved" }),
+  }),
+  reactivate,
 );
 
 export default router;

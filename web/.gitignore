@@ -35,3 +35,4 @@ types
 .env
 .env
 vitest.config.js
+.env

@@ -1,11 +1,19 @@
 import prisma from "../config/prismaClient.js";
 import { PAGINATION, ROLES, BOOKING_STATUS } from "../config/constants.js";
+import { ERROR_CODES } from "../config/messages.js";
 import eventEmitter, { EVENTS } from "../utils/eventEmitter.js";
 import { generateBookingQR } from "../utils/generateQR.js";
+import ServiceError from "../utils/serviceError.js";
 
 const defaultInclude = {
   service: {
-    select: { id: true, name: true, price: true, businessId: true },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      businessId: true,
+      place: { select: { id: true, name: true } },
+    },
   },
   user: {
     select: {
@@ -66,6 +74,12 @@ export const getAll = async (params = {}, userId, roleId) => {
 
   if (params.status && params.status !== "all") {
     where.status = params.status;
+  }
+  if (params.placeId) {
+    where.service = {
+      ...(where.service || {}),
+      placeId: parseInt(params.placeId),
+    };
   }
   if (params.search) {
     where.OR = [
@@ -178,9 +192,11 @@ export const confirm = async (bookingId, userId) => {
     });
 
     if (!existing || existing.status !== BOOKING_STATUS.PENDING) {
-      throw Object.assign(new Error("Booking không hợp lệ hoặc đã xử lý"), {
-        statusCode: 400,
-      });
+      throw new ServiceError(
+        "Booking không hợp lệ hoặc đã xử lý",
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
     }
 
     const qrCode = await generateBookingQR(existing.bookingCode, baseUrl);
@@ -218,9 +234,11 @@ export const cancel = async (bookingId, cancelReason, userId) => {
         existing.status,
       )
     ) {
-      throw Object.assign(new Error("Booking không hợp lệ hoặc đã xử lý"), {
-        statusCode: 400,
-      });
+      throw new ServiceError(
+        "Booking không hợp lệ hoặc đã xử lý",
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
     }
 
     return tx.booking.update({
@@ -287,6 +305,21 @@ export const complete = async (bookingId, userId) => {
 };
 
 export const markNoShow = async (bookingId, userId) => {
+  const existing = await prisma.booking.findUnique({
+    where: { id: parseInt(bookingId) },
+    select: { status: true },
+  });
+  if (!existing) {
+    throw new ServiceError("Booking không tồn tại", 404, ERROR_CODES.NOT_FOUND);
+  }
+  if (existing.status !== BOOKING_STATUS.CONFIRMED) {
+    const err = new ServiceError(
+      `Chỉ có thể đánh dấu không đến với booking đã xác nhận (hiện tại: ${existing.status})`,
+      422,
+    );
+    throw err;
+  }
+
   const booking = await prisma.booking.update({
     where: { id: parseInt(bookingId) },
     data: { status: BOOKING_STATUS.NO_SHOW },
@@ -336,15 +369,11 @@ export const getQR = async (bookingId) => {
   });
 
   if (!booking) {
-    throw Object.assign(new Error("Booking không tồn tại"), {
-      statusCode: 404,
-    });
+    throw new ServiceError("Booking không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
   if (!booking.qrCode) {
-    throw Object.assign(new Error("QR code chưa được tạo"), {
-      statusCode: 404,
-    });
+    throw new ServiceError("QR code chưa được tạo", 404, ERROR_CODES.NOT_FOUND);
   }
 
   return { bookingCode: booking.bookingCode, qrCode: booking.qrCode };

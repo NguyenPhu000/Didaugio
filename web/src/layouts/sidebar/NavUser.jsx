@@ -16,7 +16,7 @@ import {
 } from "@/components/animate-ui/components/radix/dropdown-menu";
 import AnimatedIcon from "@/components/ui/animated-icon";
 import { Avatar, AvatarFallback } from "@/components/ui";
-import { ROLE_NAMES } from "@/constants/constants";
+import { ROLE_NAMES, ROLES } from "@/constants/constants";
 import { ADMIN_ROUTES } from "@/constants/routes";
 
 /**
@@ -24,6 +24,7 @@ import { ADMIN_ROUTES } from "@/constants/routes";
  */
 function NavUser({ user, onLogout }) {
   const { isMobile } = useSidebar();
+  const isAdmin = [ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(user?.roleId);
 
   const getInitials = (email) => {
     return email ? email.charAt(0).toUpperCase() : "U";
@@ -88,16 +89,18 @@ function NavUser({ user, onLogout }) {
                 Hồ sơ
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to={ADMIN_ROUTES.SETTINGS} className="cursor-pointer">
-                <AnimatedIcon
-                  icon={Settings}
-                  className="mr-2 h-4 w-4"
-                  type="rotate"
-                />
-                Cài đặt
-              </Link>
-            </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem asChild>
+                <Link to={ADMIN_ROUTES.SETTINGS} className="cursor-pointer">
+                  <AnimatedIcon
+                    icon={Settings}
+                    className="mr-2 h-4 w-4"
+                    type="rotate"
+                  />
+                  Cài đặt
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive cursor-pointer"

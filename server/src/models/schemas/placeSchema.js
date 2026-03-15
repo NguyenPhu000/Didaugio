@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { paginationLargeSchema } from "./commonSchema.js";
+import { idSchema, paginationLargeSchema } from "./commonSchema.js";
 import { PLACE_IMAGE_LIMITS } from "../../config/constants.js";
 
 const TIME_REGEX = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
@@ -7,7 +7,13 @@ const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PHONE_REGEX = /^[0-9]{10,11}$/;
 const BASE64_IMAGE_REGEX = /^data:image\/(jpeg|jpg|png|gif|webp);base64,/;
 
-const PRICE_RANGE_VALUES = ["FREE", "BUDGET", "MODERATE", "EXPENSIVE", "LUXURY"];
+const PRICE_RANGE_VALUES = [
+  "FREE",
+  "BUDGET",
+  "MODERATE",
+  "EXPENSIVE",
+  "LUXURY",
+];
 
 const placeImageBaseSchema = z.object({
   caption: z.string().max(200).optional().nullable(),
@@ -121,7 +127,10 @@ export const createPlaceSchema = z.object({
   images: z
     .array(placeImageCreateSchema)
     .min(1, "Phải có ít nhất 1 hình ảnh")
-    .max(PLACE_IMAGE_LIMITS.MAX_IMAGES, `Tối đa ${PLACE_IMAGE_LIMITS.MAX_IMAGES} hình ảnh`),
+    .max(
+      PLACE_IMAGE_LIMITS.MAX_IMAGES,
+      `Tối đa ${PLACE_IMAGE_LIMITS.MAX_IMAGES} hình ảnh`,
+    ),
 
   openingHours: z.array(openingHourSchema).max(7).optional(),
   amenities: z.array(amenitySchema).max(20).optional(),
@@ -147,7 +156,11 @@ export const updatePlaceSchema = z.object({
   priceRange: z.enum(PRICE_RANGE_VALUES).optional().nullable(),
   priceFrom: z.number().int().min(0).optional().nullable(),
   priceTo: z.number().int().min(0).optional().nullable(),
-  images: z.array(placeImageUpdateSchema).min(1).max(PLACE_IMAGE_LIMITS.MAX_IMAGES).optional(),
+  images: z
+    .array(placeImageUpdateSchema)
+    .min(1)
+    .max(PLACE_IMAGE_LIMITS.MAX_IMAGES)
+    .optional(),
   openingHours: z.array(openingHourSchema).max(7).optional(),
   amenities: z.array(amenitySchema).max(20).optional(),
   tagIds: z.array(z.number().int().positive()).max(20).optional(),
@@ -159,11 +172,15 @@ export const getPlacesQuerySchema = paginationLargeSchema.extend({
   categoryId: z.coerce.number().int().positive().optional(),
   districtId: z.coerce.number().int().positive().optional(),
   wardId: z.coerce.number().int().positive().optional(),
-  status: z.enum(["all", "pending", "approved", "rejected", "draft"]).optional(),
+  status: z
+    .enum(["all", "pending", "approved", "rejected", "draft"])
+    .optional(),
   priceRange: z.enum(["all", ...PRICE_RANGE_VALUES]).optional(),
   isFeatured: z.coerce.boolean().optional(),
   isVerified: z.coerce.boolean().optional(),
-  sortBy: z.enum(["newest", "oldest", "rating", "views", "name"]).default("newest"),
+  sortBy: z
+    .enum(["newest", "oldest", "rating", "views", "name"])
+    .default("newest"),
   limit: z.coerce.number().int().min(1).max(500).default(10),
 });
 
@@ -188,6 +205,85 @@ export const approvePlaceSchema = z.object({
   rejectionReason: z.string().min(10).max(1000).optional().nullable(),
 });
 
+export const placeIdParamSchema = z.object({
+  id: idSchema,
+});
+
+export const placeIdAndImageIdParamSchema = z.object({
+  id: idSchema,
+  imageId: idSchema,
+});
+
+export const placeSlugParamSchema = z.object({
+  slug: z
+    .string({ required_error: "Slug không được để trống" })
+    .min(3)
+    .max(200)
+    .regex(SLUG_REGEX, "Slug chỉ được chứa chữ thường, số và dấu gạch ngang"),
+});
+
+export const placeCheckSlugQuerySchema = z.object({
+  excludeId: z.coerce.number().int().positive().optional(),
+});
+
+export const rejectPlaceSchema = z.object({
+  reason: z
+    .string({ required_error: "Vui lòng cung cấp lý do từ chối" })
+    .trim()
+    .min(1, "Vui lòng cung cấp lý do từ chối")
+    .max(1000),
+});
+
+export const updatePlaceStatusSchema = z.object({
+  status: z.enum(["pending", "approved", "rejected", "draft"], {
+    required_error: "Vui lòng cung cấp trạng thái mới",
+  }),
+});
+
+export const toggleFeaturedSchema = z.object({
+  isFeatured: z.boolean({
+    required_error: "isFeatured không được để trống",
+    invalid_type_error: "isFeatured phải là boolean",
+  }),
+});
+
+export const addPlaceImagesSchema = z.object({
+  images: z
+    .array(placeImageCreateSchema)
+    .min(1, "Vui lòng cung cấp danh sách ảnh")
+    .max(
+      PLACE_IMAGE_LIMITS.MAX_IMAGES,
+      `Tối đa ${PLACE_IMAGE_LIMITS.MAX_IMAGES} hình ảnh`,
+    ),
+});
+
+export const reorderPlaceImagesSchema = z.object({
+  imageOrders: z
+    .array(
+      z.object({
+        imageId: idSchema,
+        order: z.number().int().min(0),
+      }),
+    )
+    .min(1, "Vui lòng cung cấp thứ tự ảnh"),
+});
+
+export const createPlaceReviewSchema = z.object({
+  rating: z.coerce.number().int().min(1).max(5),
+  content: z.string().trim().max(2000).optional().nullable(),
+  media: z
+    .array(
+      z.object({
+        mediaData: z.string().min(1),
+        mediaType: z.string().trim().min(1).max(50),
+        caption: z.string().max(200).optional().nullable(),
+        order: z.number().int().min(0).optional(),
+      }),
+    )
+    .max(10)
+    .optional(),
+});
+
 export default {
   placeImageSchema,
   placeImageCreateSchema,
@@ -199,4 +295,14 @@ export default {
   getPlacesQuerySchema,
   nearbyPlacesQuerySchema,
   approvePlaceSchema,
+  placeIdParamSchema,
+  placeIdAndImageIdParamSchema,
+  placeSlugParamSchema,
+  placeCheckSlugQuerySchema,
+  rejectPlaceSchema,
+  updatePlaceStatusSchema,
+  toggleFeaturedSchema,
+  addPlaceImagesSchema,
+  reorderPlaceImagesSchema,
+  createPlaceReviewSchema,
 };

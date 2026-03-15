@@ -1,4 +1,6 @@
 import prisma from "../config/prismaClient.js";
+import { ERROR_CODES } from "../config/messages.js";
+import ServiceError from "../utils/serviceError.js";
 
 let cache = {
   districts: null,
@@ -138,9 +140,19 @@ export const getDistrictCentroid = async (code) => {
     },
   });
 
-  if (!district) throw new Error("District not found");
+  if (!district) {
+    throw new ServiceError(
+      "Không tìm thấy quận/huyện",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
+  }
   if (!district.latitude || !district.longitude)
-    throw new Error("District does not have centroid coordinates");
+    throw new ServiceError(
+      "Quận/huyện chưa có tọa độ trung tâm",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
 
   return {
     id: district.id,
@@ -170,7 +182,13 @@ export const getWardCentroid = async (id) => {
     },
   });
 
-  if (!ward) throw new Error("Ward not found");
+  if (!ward) {
+    throw new ServiceError(
+      "Không tìm thấy phường/xã",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
+  }
 
   return {
     id: ward.id,

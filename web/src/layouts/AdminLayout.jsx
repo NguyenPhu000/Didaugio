@@ -15,7 +15,7 @@ import {
 } from "@/components/animate-ui/components/radix/sidebar";
 import AnimatedIcon from "@/components/ui/animated-icon";
 import { AUTH_ROUTES, ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
-import { ROLES } from "@/constants";
+import { ROLES, ROLE_NAMES } from "@/constants/constants";
 import { APP_META } from "@/constants/brand";
 import * as placeService from "@/apis/placeService";
 
@@ -132,8 +132,10 @@ const AdminLayout = ({ children }) => {
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="font-semibold">{APP_META.NAME}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {APP_META.ADMIN_SUBTITLE}
+                    <span className="text-xs text-muted-foreground uppercase">
+                      {ROLE_NAMES[user?.roleId]
+                        ? `${ROLE_NAMES[user?.roleId]} TERMINAL`
+                        : APP_META.ADMIN_SUBTITLE}
                     </span>
                   </div>
                 </Link>
@@ -142,13 +144,27 @@ const AdminLayout = ({ children }) => {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent className="px-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {menuDataView.main && <NavMain items={menuDataView.main} label="Main" />}
-          {menuDataView.management && <NavMain items={menuDataView.management} label="Quản lý" />}
-          {menuDataView.business && <NavMain items={menuDataView.business} label="Doanh nghiệp" />}
-          {menuDataView.adminBusiness && <NavMain items={menuDataView.adminBusiness} label="Business" />}
-          {menuDataView.users && <NavMain items={menuDataView.users} label="Users" />}
-          {menuDataView.system && <NavMain items={menuDataView.system} label="System" />}
-          {menuDataView.settings && <NavMain items={menuDataView.settings} label="Settings" />}
+          {menuDataView.main && (
+            <NavMain items={menuDataView.main} label="Main" />
+          )}
+          {menuDataView.management && (
+            <NavMain items={menuDataView.management} label="Quản lý" />
+          )}
+          {menuDataView.business && (
+            <NavMain items={menuDataView.business} label="Doanh nghiệp" />
+          )}
+          {menuDataView.adminBusiness && (
+            <NavMain items={menuDataView.adminBusiness} label="Business" />
+          )}
+          {menuDataView.users && (
+            <NavMain items={menuDataView.users} label="Users" />
+          )}
+          {menuDataView.system && (
+            <NavMain items={menuDataView.system} label="System" />
+          )}
+          {menuDataView.settings && (
+            <NavMain items={menuDataView.settings} label="Settings" />
+          )}
         </SidebarContent>
         <SidebarFooter className="p-2">
           <NavUser user={user} onLogout={handleLogout} />

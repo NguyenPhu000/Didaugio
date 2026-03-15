@@ -12,14 +12,7 @@ import {
   createUserSchema,
   updateUserSchema,
 } from "../models/index.js";
-
-export class ServiceError extends Error {
-  constructor(message, statusCode = 500, errorCode = ERROR_CODES.SERVER_ERROR) {
-    super(message);
-    this.statusCode = statusCode;
-    this.errorCode = errorCode;
-  }
-}
+import ServiceError from "../utils/serviceError.js";
 
 export const getAllUsers = async (query = {}) => {
   const { page, limit } = paginationSchema.parse(query);

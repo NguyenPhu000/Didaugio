@@ -80,7 +80,10 @@ const DashboardPage = () => {
           fetchCategories(),
         ]);
 
-        if (user?.roleId === ROLES.SUPER_ADMIN || user?.roleId === ROLES.ADMIN) {
+        if (
+          user?.roleId === ROLES.SUPER_ADMIN ||
+          user?.roleId === ROLES.ADMIN
+        ) {
           try {
             const userRes = await userService.getAll({ limit: 1 });
             if (userRes.data?.total) setUserCount(userRes.data.total);
@@ -160,7 +163,10 @@ const DashboardPage = () => {
             <div className="accent-bar h-16" />
             <div>
               <div className="tim-meta mb-1 opacity-60">
-                XIN CHÀO, {user?.name?.toUpperCase() || "ADMIN"}
+                XIN CHÀO,{" "}
+                {user?.fullName?.toUpperCase() ||
+                  user?.username?.toUpperCase() ||
+                  "ADMIN"}
               </div>
               <h1 className="tim-title">TỔNG QUAN</h1>
               <div className="flex items-center gap-4 mt-2">

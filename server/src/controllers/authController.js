@@ -1,4 +1,5 @@
 import authService from "../services/authService.js";
+import { ERROR_CODES } from "../config/messages.js";
 
 // AUTH CONTROLLER
 
@@ -128,7 +129,7 @@ export const register = async (req, res, next) => {
     res.status(201).json({
       success: true,
       data: result,
-      message: "Dang ky thanh cong",
+      message: "Đăng ký thành công",
     });
   } catch (error) {
     next(error);
@@ -151,7 +152,7 @@ export const login = async (req, res, next) => {
     res.json({
       success: true,
       data: result,
-      message: "Dang nhap thanh cong",
+      message: "Đăng nhập thành công",
     });
   } catch (error) {
     next(error);
@@ -168,7 +169,7 @@ export const refreshToken = async (req, res, next) => {
     res.json({
       success: true,
       data: result,
-      message: "Refresh token thanh cong",
+      message: "Refresh token thành công",
     });
   } catch (error) {
     next(error);
@@ -185,7 +186,7 @@ export const getMe = async (req, res, next) => {
     res.json({
       success: true,
       data: user,
-      message: "Lay thong tin thanh cong",
+      message: "Lấy thông tin thành công",
     });
   } catch (error) {
     next(error);
@@ -342,7 +343,7 @@ export const getSessions = async (req, res, next) => {
     res.json({
       success: true,
       data: sessions,
-      message: "Lay danh sach session thanh cong",
+      message: "Lấy danh sách session thành công",
     });
   } catch (error) {
     next(error);
@@ -376,7 +377,9 @@ export const exchangeGoogleCode = async (req, res, next) => {
     if (!code || !redirectUri) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "code and redirectUri are required",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
       });
     }
 
@@ -397,9 +400,11 @@ export const exchangeGoogleCode = async (req, res, next) => {
     if (!tokenData.id_token) {
       return res.status(400).json({
         success: false,
+        data: null,
         message:
           tokenData.error_description ||
           "Không thể đổi code lấy token từ Google",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
       });
     }
 

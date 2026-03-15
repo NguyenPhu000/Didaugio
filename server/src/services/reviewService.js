@@ -1,12 +1,26 @@
 import prisma from "../config/prismaClient.js";
 import { PAGINATION, ROLES } from "../config/constants.js";
+import { ERROR_CODES } from "../config/messages.js";
 import eventEmitter, { EVENTS } from "../utils/eventEmitter.js";
+import ServiceError from "../utils/serviceError.js";
 
 const defaultInclude = {
-  user: { select: { id: true, fullName: true, avatar: true } },
+  user: {
+    select: {
+      id: true,
+      profile: { select: { fullName: true, avatar: true } },
+    },
+  },
   place: { select: { id: true, name: true } },
   replies: {
-    include: { user: { select: { id: true, fullName: true } } },
+    include: {
+      user: {
+        select: {
+          id: true,
+          profile: { select: { fullName: true } },
+        },
+      },
+    },
     orderBy: { createdAt: "asc" },
   },
 };
@@ -26,7 +40,8 @@ export const getAll = async (params = {}, userId, roleId) => {
       where: { ownerId: userId },
       select: { id: true },
     });
-    if (!business) return { data: [], pagination: { page, limit, total: 0, totalPages: 0 } };
+    if (!business)
+      return { data: [], pagination: { page, limit, total: 0, totalPages: 0 } };
 
     const placeIds = await prisma.place.findMany({
       where: { businessId: business.id, deletedAt: null },
@@ -75,7 +90,11 @@ export const getById = async (id) => {
   });
 
   if (!review) {
-    throw Object.assign(new Error("Đánh giá không tồn tại"), { statusCode: 404 });
+    throw new ServiceError(
+      "Đánh giá không tồn tại",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   return review;
@@ -88,7 +107,11 @@ export const reply = async (reviewId, content, userId) => {
   });
 
   if (!review) {
-    throw Object.assign(new Error("Đánh giá không tồn tại"), { statusCode: 404 });
+    throw new ServiceError(
+      "Đánh giá không tồn tại",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   const replyData = await prisma.reviewReply.create({
@@ -139,7 +162,9 @@ export const getStats = async (userId, roleId) => {
 
   return {
     total,
-    avgRating: avgResult._avg.rating ? Number(avgResult._avg.rating.toFixed(1)) : 0,
+    avgRating: avgResult._avg.rating
+      ? Number(avgResult._avg.rating.toFixed(1))
+      : 0,
     byRating: byRating.reduce(
       (acc, item) => ({ ...acc, [item.rating]: item._count.id }),
       {},

@@ -96,11 +96,6 @@ const defaultInclude = {
   },
   amenities: true,
   openingHours: true,
-  tagLinks: {
-    include: {
-      tag: true,
-    },
-  },
   _count: {
     select: { reviews: true, favorites: true, checkins: true },
   },

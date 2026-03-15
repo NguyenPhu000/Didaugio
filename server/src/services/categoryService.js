@@ -1,19 +1,16 @@
 import prisma from "../config/prismaClient.js";
 import { CATEGORY_LEVELS, MAX_CATEGORY_LEVEL } from "../config/constants.js";
-import { ERROR_MESSAGES, ERROR_CODES, SUCCESS_MESSAGES } from "../config/messages.js";
+import {
+  ERROR_MESSAGES,
+  ERROR_CODES,
+  SUCCESS_MESSAGES,
+} from "../config/messages.js";
+import ServiceError from "../utils/serviceError.js";
 
 /**
  * CATEGORY SERVICE
  * Quản lý danh mục phân cấp
  */
-
-class ServiceError extends Error {
-  constructor(message, statusCode = 400, errorCode = ERROR_CODES.VALIDATION_ERROR) {
-    super(message);
-    this.statusCode = statusCode;
-    this.errorCode = errorCode;
-  }
-}
 
 // Lấy tất cả categories (flat list)
 export const getAllCategories = async (filters = {}) => {
@@ -60,7 +57,7 @@ export const getAllCategories = async (filters = {}) => {
 // Lấy category tree (nested structure)
 export const getCategoryTree = async (
   parentId = null,
-  maxLevel = MAX_CATEGORY_LEVEL
+  maxLevel = MAX_CATEGORY_LEVEL,
 ) => {
   const buildTree = async (parent = null, currentLevel = 1) => {
     if (currentLevel > maxLevel) return [];
@@ -82,7 +79,7 @@ export const getCategoryTree = async (
       categories.map(async (category) => ({
         ...category,
         children: await buildTree(category.id, currentLevel + 1),
-      }))
+      })),
     );
 
     return tree;
@@ -149,7 +146,11 @@ export const getCategoryById = async (id) => {
   });
 
   if (!category) {
-    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   return category;
@@ -179,7 +180,11 @@ export const getCategoryBySlug = async (slug) => {
   });
 
   if (!category) {
-    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   return category;
@@ -199,13 +204,21 @@ export const createCategory = async (data) => {
     });
 
     if (!parent) {
-      throw new ServiceError(ERROR_MESSAGES.NOT_FOUND + " (Parent)", 404, ERROR_CODES.NOT_FOUND);
+      throw new ServiceError(
+        "Không tìm thấy danh mục cha",
+        404,
+        ERROR_CODES.NOT_FOUND,
+      );
     }
 
     level = parent.level + 1;
 
     if (level > MAX_CATEGORY_LEVEL) {
-      throw new ServiceError(`Maximum category level is ${MAX_CATEGORY_LEVEL}`);
+      throw new ServiceError(
+        `Danh mục chỉ hỗ trợ tối đa ${MAX_CATEGORY_LEVEL} cấp`,
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
     }
   }
 
@@ -262,7 +275,11 @@ export const updateCategory = async (id, data) => {
   });
 
   if (!existing) {
-    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   // Validate new parent (nếu có)
@@ -271,7 +288,11 @@ export const updateCategory = async (id, data) => {
     if (parentId === null) {
       level = CATEGORY_LEVELS.ROOT;
     } else if (parentId === id) {
-      throw new ServiceError("Category cannot be its own parent");
+      throw new ServiceError(
+        "Danh mục không thể là danh mục cha của chính nó",
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
     } else {
       const parent = await prisma.category.findUnique({
         where: { id: parentId },
@@ -279,20 +300,32 @@ export const updateCategory = async (id, data) => {
       });
 
       if (!parent) {
-        throw new ServiceError("Parent category not found", 404, ERROR_CODES.NOT_FOUND);
+        throw new ServiceError(
+          "Không tìm thấy danh mục cha",
+          404,
+          ERROR_CODES.NOT_FOUND,
+        );
       }
 
       level = parent.level + 1;
 
       if (level > MAX_CATEGORY_LEVEL) {
-        throw new ServiceError(`Maximum category level is ${MAX_CATEGORY_LEVEL}`);
+        throw new ServiceError(
+          `Danh mục chỉ hỗ trợ tối đa ${MAX_CATEGORY_LEVEL} cấp`,
+          400,
+          ERROR_CODES.VALIDATION_ERROR,
+        );
       }
 
       // Check circular reference
       const parentPath = await getCategoryPath(parentId);
       const isCircular = parentPath.some((node) => node.id === id);
       if (isCircular) {
-        throw new Error("Circular reference detected");
+        throw new ServiceError(
+          "Không thể cập nhật vì tạo vòng lặp danh mục",
+          400,
+          ERROR_CODES.VALIDATION_ERROR,
+        );
       }
     }
   }
@@ -304,7 +337,11 @@ export const updateCategory = async (id, data) => {
     });
 
     if (duplicateSlug) {
-      throw new ServiceError(ERROR_MESSAGES.EXISTED + " (Slug)", 400, ERROR_CODES.EXISTED);
+      throw new ServiceError(
+        ERROR_MESSAGES.EXISTED + " (Slug)",
+        400,
+        ERROR_CODES.EXISTED,
+      );
     }
   }
 
@@ -373,18 +410,26 @@ export const deleteCategory = async (id) => {
   });
 
   if (!category) {
-    throw new ServiceError(ERROR_MESSAGES.NOT_FOUND, 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      ERROR_MESSAGES.NOT_FOUND,
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   if (category._count.children > 0) {
     throw new ServiceError(
-      "Cannot delete category with children. Delete children first."
+      "Không thể xóa danh mục đang có danh mục con",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
     );
   }
 
   if (category._count.places > 0) {
     throw new ServiceError(
-      `Cannot delete category. ${category._count.places} places are using it.`
+      `Không thể xóa danh mục vì đang được ${category._count.places} địa điểm sử dụng`,
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
     );
   }
 
@@ -392,7 +437,7 @@ export const deleteCategory = async (id) => {
     where: { id },
   });
 
-  return { success: true, message: "Category deleted successfully" };
+  return { success: true, message: "Xóa danh mục thành công" };
 };
 
 // Lấy suggested tags cho category
@@ -415,7 +460,7 @@ export const getSuggestedTags = async (categoryId) => {
 export const assignTagsToCategory = async (
   categoryId,
   tagIds,
-  defaultTagIds = []
+  defaultTagIds = [],
 ) => {
   // Xóa tags cũ
   await prisma.categoryTag.deleteMany({

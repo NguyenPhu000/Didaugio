@@ -4,6 +4,7 @@ export const blockGuestFromAdmin = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
+      data: null,
       message: "Chưa xác thực. Vui lòng đăng nhập.",
       errorCode: "NOT_AUTHENTICATED",
     });
@@ -12,6 +13,7 @@ export const blockGuestFromAdmin = (req, res, next) => {
   if (req.user.roleId === ROLES.GUEST) {
     return res.status(403).json({
       success: false,
+      data: null,
       message: "Tài khoản Guest không có quyền truy cập khu vực quản trị",
       errorCode: "GUEST_NOT_ALLOWED",
     });
@@ -25,6 +27,7 @@ export const checkMinRole = (allowedRoles) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
+        data: null,
         message: "Chưa xác thực",
         errorCode: "NOT_AUTHENTICATED",
       });
@@ -35,6 +38,7 @@ export const checkMinRole = (allowedRoles) => {
     if (!allowedRoleIds.includes(req.user.roleId)) {
       return res.status(403).json({
         success: false,
+        data: null,
         message: `Yêu cầu quyền: ${allowedRoles.join(" hoặc ")}`,
         errorCode: "INSUFFICIENT_PERMISSION",
       });

@@ -1,4 +1,5 @@
 import { ZodError } from "zod";
+import { ERROR_CODES } from "../config/messages.js";
 
 export const validateSchema = (schema, source = "body") => {
   return async (req, res, next) => {
@@ -33,14 +34,18 @@ export const validateSchema = (schema, source = "body") => {
 
         return res.status(400).json({
           success: false,
+          data: null,
           message: "Dữ liệu không hợp lệ",
+          errorCode: ERROR_CODES.VALIDATION_ERROR,
           errors: formattedErrors,
         });
       }
 
       return res.status(500).json({
         success: false,
+        data: null,
         message: "Lỗi xử lý validation",
+        errorCode: ERROR_CODES.INTERNAL_ERROR,
         error: error.message,
       });
     }

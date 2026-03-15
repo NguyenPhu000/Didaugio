@@ -36,10 +36,14 @@ export const useMapData = () => {
       const districtsData = await districtsRes.json();
       const wardsData = await wardsRes.json();
 
-      setDistricts(districtsData);
-      setWards(wardsData);
+      // API wraps response in {success, data, message} envelope — unwrap
+      const districtsGeoJSON = districtsData.data ?? districtsData;
+      const wardsGeoJSON = wardsData.data ?? wardsData;
 
-      const mask = generateCanThoMask(districtsData);
+      setDistricts(districtsGeoJSON);
+      setWards(wardsGeoJSON);
+
+      const mask = generateCanThoMask(districtsGeoJSON);
       setCanThoMask(mask);
     } catch (err) {
       if (err.name !== "AbortError") {

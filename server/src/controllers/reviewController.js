@@ -1,29 +1,37 @@
 import * as reviewService from "../services/reviewService.js";
 
-export const getAll = async (req, res) => {
+export const getAll = async (req, res, next) => {
   try {
     const result = await reviewService.getAll(
       req.query,
       req.user.userId,
       req.user.roleId,
     );
-    res.json({ success: true, data: result.data, pagination: result.pagination });
+    res.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+      message: "Lấy danh sách đánh giá thành công",
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getById = async (req, res) => {
+export const getById = async (req, res, next) => {
   try {
     const review = await reviewService.getById(req.params.id);
-    res.json({ success: true, data: review });
+    res.json({
+      success: true,
+      data: review,
+      message: "Lấy chi tiết đánh giá thành công",
+    });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const reply = async (req, res) => {
+export const reply = async (req, res, next) => {
   try {
     const replyData = await reviewService.reply(
       req.params.id,
@@ -36,16 +44,22 @@ export const reply = async (req, res) => {
       data: replyData,
     });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getStats = async (req, res) => {
+export const getStats = async (req, res, next) => {
   try {
-    const stats = await reviewService.getStats(req.user.userId, req.user.roleId);
-    res.json({ success: true, data: stats });
+    const stats = await reviewService.getStats(
+      req.user.userId,
+      req.user.roleId,
+    );
+    res.json({
+      success: true,
+      data: stats,
+      message: "Lấy thống kê đánh giá thành công",
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };

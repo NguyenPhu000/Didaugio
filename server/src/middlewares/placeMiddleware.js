@@ -1,5 +1,6 @@
 import prisma from "../config/prismaClient.js";
 import { ROLES } from "../config/constants.js";
+import { ERROR_CODES } from "../config/messages.js";
 
 const EDITABLE_STATUSES = ["draft", "rejected"];
 
@@ -21,6 +22,7 @@ export const checkPlaceOwnership = async (req, res, next) => {
     if (!place) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Địa điểm không tồn tại",
         errorCode: "PLACE_NOT_FOUND",
       });
@@ -43,6 +45,7 @@ export const checkPlaceOwnership = async (req, res, next) => {
 
     return res.status(403).json({
       success: false,
+      data: null,
       message: "Bạn không có quyền truy cập địa điểm này",
       errorCode: "FORBIDDEN_NOT_OWNER",
     });
@@ -50,6 +53,7 @@ export const checkPlaceOwnership = async (req, res, next) => {
     console.error("Error in checkPlaceOwnership:", error);
     return res.status(500).json({
       success: false,
+      data: null,
       message: "Lỗi khi kiểm tra quyền truy cập",
       errorCode: "OWNERSHIP_CHECK_ERROR",
     });
@@ -73,13 +77,16 @@ export const checkPlaceEditable = async (req, res, next) => {
     if (!place) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Địa điểm không tồn tại",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
     if (!EDITABLE_STATUSES.includes(place.status)) {
       return res.status(403).json({
         success: false,
+        data: null,
         message: `Không thể chỉnh sửa địa điểm đang ở trạng thái: ${place.status}. Vui lòng liên hệ Admin.`,
         errorCode: "PLACE_NOT_EDITABLE",
       });
@@ -90,7 +97,9 @@ export const checkPlaceEditable = async (req, res, next) => {
     console.error("Error in checkPlaceEditable:", error);
     return res.status(500).json({
       success: false,
+      data: null,
       message: "Lỗi khi kiểm tra trạng thái địa điểm",
+      errorCode: ERROR_CODES.SERVER_ERROR,
     });
   }
 };
@@ -115,7 +124,9 @@ export const loadPlace = async (req, res, next) => {
     if (!place) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Địa điểm không tồn tại",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
@@ -125,7 +136,9 @@ export const loadPlace = async (req, res, next) => {
     console.error("Error in loadPlace:", error);
     return res.status(500).json({
       success: false,
+      data: null,
       message: "Lỗi khi tải thông tin địa điểm",
+      errorCode: ERROR_CODES.SERVER_ERROR,
     });
   }
 };

@@ -4,6 +4,17 @@ import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
 import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "../middlewares/validateSchema.js";
+import {
+  roleIdParamSchema,
+  roleListQuerySchema,
+  roleUpdatePermissionsBodySchema,
+  roleUsersQuerySchemaRoute,
+} from "../models/schemas/roleRouteSchema.js";
 
 const router = express.Router();
 
@@ -17,7 +28,7 @@ router.use(authenticate, blockGuestFromAdmin);
  */
 router.get(
   "/",
-  authenticate,
+  validateQuery(roleListQuerySchema),
   requirePermission("roles.view"),
   roleController.getRoles,
 );
@@ -29,7 +40,7 @@ router.get(
  */
 router.get(
   "/:id",
-  authenticate,
+  validateParams(roleIdParamSchema),
   requirePermission("roles.view_detail"),
   roleController.getRoleById,
 );
@@ -41,7 +52,7 @@ router.get(
  */
 router.get(
   "/:id/permissions",
-  authenticate,
+  validateParams(roleIdParamSchema),
   requirePermission("roles.view_detail"),
   roleController.getRolePermissions,
 );
@@ -54,7 +65,8 @@ router.get(
  */
 router.put(
   "/:id/permissions",
-  authenticate,
+  validateParams(roleIdParamSchema),
+  validateBody(roleUpdatePermissionsBodySchema),
   requirePermission("roles.manage_permissions"),
   auditLog({
     action: "UPDATE_PERMISSIONS",
@@ -73,7 +85,8 @@ router.put(
  */
 router.get(
   "/:id/users",
-  authenticate,
+  validateParams(roleIdParamSchema),
+  validateQuery(roleUsersQuerySchemaRoute),
   requirePermission("roles.view_users"),
   roleController.getRoleUsers,
 );

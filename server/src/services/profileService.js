@@ -1,13 +1,6 @@
 import prisma from "../config/prismaClient.js";
 import { updateProfileSchema } from "../models/schemas/authSchema.js";
-
-class ServiceError extends Error {
-  constructor(message, statusCode = 400, errorCode = "SERVICE_ERROR") {
-    super(message);
-    this.statusCode = statusCode;
-    this.errorCode = errorCode;
-  }
-}
+import ServiceError from "../utils/serviceError.js";
 
 export const getProfile = async (userId) => {
   const user = await prisma.user.findUnique({

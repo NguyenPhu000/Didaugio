@@ -1,52 +1,69 @@
 import * as bookingService from "../services/bookingService.js";
 
-export const getAll = async (req, res) => {
+export const getAll = async (req, res, next) => {
   try {
     const result = await bookingService.getAll(
       req.query,
       req.user.userId,
       req.user.roleId,
     );
-    res.json({ success: true, data: result.data, pagination: result.pagination });
+    res.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+      message: "Lấy danh sách booking thành công",
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getStats = async (req, res) => {
+export const getStats = async (req, res, next) => {
   try {
-    const stats = await bookingService.getStats(req.user.userId, req.user.roleId);
-    res.json({ success: true, data: stats });
+    const stats = await bookingService.getStats(
+      req.user.userId,
+      req.user.roleId,
+    );
+    res.json({
+      success: true,
+      data: stats,
+      message: "Lấy thống kê booking thành công",
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getById = async (req, res) => {
+export const getById = async (req, res, next) => {
   try {
     const booking = await bookingService.getById(req.params.id);
-    res.json({ success: true, data: booking });
+    res.json({
+      success: true,
+      data: booking,
+      message: "Lấy chi tiết booking thành công",
+    });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const confirm = async (req, res) => {
+export const confirm = async (req, res, next) => {
   try {
-    const booking = await bookingService.confirm(req.params.id, req.user.userId);
+    const booking = await bookingService.confirm(
+      req.params.id,
+      req.user.userId,
+    );
     res.json({
       success: true,
       message: "Xác nhận booking thành công",
       data: booking,
     });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const cancel = async (req, res) => {
+export const cancel = async (req, res, next) => {
   try {
     const booking = await bookingService.cancel(
       req.params.id,
@@ -59,26 +76,27 @@ export const cancel = async (req, res) => {
       data: booking,
     });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const complete = async (req, res) => {
+export const complete = async (req, res, next) => {
   try {
-    const booking = await bookingService.complete(req.params.id, req.user.userId);
+    const booking = await bookingService.complete(
+      req.params.id,
+      req.user.userId,
+    );
     res.json({
       success: true,
       message: "Hoàn thành booking thành công",
       data: booking,
     });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const markNoShow = async (req, res) => {
+export const markNoShow = async (req, res, next) => {
   try {
     const booking = await bookingService.markNoShow(
       req.params.id,
@@ -90,22 +108,24 @@ export const markNoShow = async (req, res) => {
       data: booking,
     });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getQR = async (req, res) => {
+export const getQR = async (req, res, next) => {
   try {
     const qr = await bookingService.getQR(req.params.id);
-    res.json({ success: true, data: qr });
+    res.json({
+      success: true,
+      data: qr,
+      message: "Lấy mã QR booking thành công",
+    });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const bulkConfirm = async (req, res) => {
+export const bulkConfirm = async (req, res, next) => {
   try {
     const results = await bookingService.bulkConfirm(
       req.body.bookingIds,
@@ -118,11 +138,11 @@ export const bulkConfirm = async (req, res) => {
       data: results,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const bulkCancel = async (req, res) => {
+export const bulkCancel = async (req, res, next) => {
   try {
     const results = await bookingService.bulkCancel(
       req.body.bookingIds,
@@ -136,6 +156,6 @@ export const bulkCancel = async (req, res) => {
       data: results,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };

@@ -5,6 +5,8 @@ import {
   validateUpdateRolePermissions,
   roleUsersQuerySchema,
 } from "../models/schemas/index.js";
+import { ERROR_CODES } from "../config/messages.js";
+import ServiceError from "../utils/serviceError.js";
 
 /**
  * Lấy danh sách tất cả vai trò
@@ -128,7 +130,11 @@ export const getRoleById = async (roleId) => {
   });
 
   if (!role) {
-    throw new Error("Không tìm thấy vai trò");
+    throw new ServiceError(
+      "Không tìm thấy vai trò",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   // Transform data
@@ -174,7 +180,11 @@ export const getRolePermissions = async (roleId) => {
   });
 
   if (!role) {
-    throw new Error("Không tìm thấy vai trò");
+    throw new ServiceError(
+      "Không tìm thấy vai trò",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   // Lấy tất cả permissions của role
@@ -233,7 +243,11 @@ export const updateRolePermissions = async (roleId, permissionData) => {
   });
 
   if (!role) {
-    throw new Error("Không tìm thấy vai trò");
+    throw new ServiceError(
+      "Không tìm thấy vai trò",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   // Kiểm tra tất cả permission IDs có tồn tại không
@@ -246,7 +260,11 @@ export const updateRolePermissions = async (roleId, permissionData) => {
     });
 
     if (existingPermissions.length !== permissionIds.length) {
-      throw new Error("Một số quyền không tồn tại trong hệ thống");
+      throw new ServiceError(
+        "Một số quyền không tồn tại trong hệ thống",
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
     }
   }
 
@@ -325,7 +343,11 @@ export const getRoleUsers = async (roleId, query = {}) => {
   });
 
   if (!role) {
-    throw new Error("Không tìm thấy vai trò");
+    throw new ServiceError(
+      "Không tìm thấy vai trò",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   // Xây dựng where clause

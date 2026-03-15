@@ -1,24 +1,42 @@
+/**
+ * Business Offering Routes - Dịch vụ/sản phẩm doanh nghiệp cung cấp (CRUD)
+ * Path: /api/business/services
+ */
 import express from "express";
-import * as controller from "../controllers/businessServiceController.js";
+import * as controller from "../controllers/businessOfferingController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
+import { hasPermission } from "../middlewares/permissionMiddleware.js";
 import { checkBusinessOwnership } from "../middlewares/businessOwnership.js";
-import { validateBody } from "../middlewares/validateSchema.js";
+import { validateBody, validateQuery } from "../middlewares/validateSchema.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
 import {
   createServiceSchema,
   updateServiceSchema,
+  getBusinessServicesQuerySchema,
 } from "../models/schemas/businessServiceSchema.js";
 
 const router = express.Router();
 
 router.use(authenticate);
 
-router.get("/", controller.getAll);
+// Business owner: business.manage_services | Admin: business.view_detail
+const serviceAccessPermission = [
+  "business.manage_services",
+  "business.view_detail",
+];
 
-router.get("/:id", controller.getById);
+router.get(
+  "/",
+  hasPermission(serviceAccessPermission),
+  validateQuery(getBusinessServicesQuerySchema),
+  controller.getAll,
+);
+
+router.get("/:id", hasPermission(serviceAccessPermission), controller.getById);
 
 router.post(
   "/",
+  hasPermission("business.manage_services"),
   validateBody(createServiceSchema),
   auditLog({
     action: "CREATE",
@@ -29,6 +47,7 @@ router.post(
   controller.create,
 );
 
+// checkBusinessOwnership: Middleware kiểm tra dịch vụ thuộc DN đang đăng nhập
 router.put(
   "/:id",
   checkBusinessOwnership("service"),

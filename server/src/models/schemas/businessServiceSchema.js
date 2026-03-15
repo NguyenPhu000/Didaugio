@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { paginationLargeSchema } from "./commonSchema.js";
 
 export const createServiceSchema = z.object({
   name: z
@@ -29,4 +30,20 @@ export const updateServiceSchema = z.object({
   maxCapacity: z.number().int().min(1).optional().nullable(),
   isActive: z.boolean().optional(),
   placeId: z.number().int().optional().nullable(),
+});
+
+export const getBusinessServicesQuerySchema = paginationLargeSchema.extend({
+  search: z.string().max(200).optional(),
+  businessId: z.coerce.number().int().positive().optional(),
+  placeId: z.coerce.number().int().positive().optional(),
+  isActive: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) =>
+      v === "true" ? true : v === "false" ? false : undefined,
+    ),
+  serviceType: z
+    .enum(["entry_ticket", "tour", "package", "service", "experience"])
+    .optional(),
+  sortBy: z.enum(["newest", "price_asc", "price_desc"]).default("newest"),
 });

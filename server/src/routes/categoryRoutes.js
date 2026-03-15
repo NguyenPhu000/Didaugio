@@ -4,21 +4,60 @@ import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
 import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "../middlewares/validateSchema.js";
+import {
+  assignCategoryTagsSchema,
+  categoryIdParamSchema,
+  categorySlugParamSchema,
+  createCategorySchema,
+  getCategoriesQuerySchema,
+  getCategoryTreeQuerySchema,
+  updateCategorySchema,
+} from "../models/schemas/categorySchema.js";
 
 const router = express.Router();
 
-router.get("/", categoryController.getCategories);
-router.get("/tree", categoryController.getCategoryTree);
-router.get("/slug/:slug", categoryController.getCategoryBySlug);
-router.get("/:id", categoryController.getCategoryById);
-router.get("/:id/path", categoryController.getCategoryPath);
-router.get("/:id/suggested-tags", categoryController.getSuggestedTags);
+router.get(
+  "/",
+  validateQuery(getCategoriesQuerySchema),
+  categoryController.getCategories,
+);
+router.get(
+  "/tree",
+  validateQuery(getCategoryTreeQuerySchema),
+  categoryController.getCategoryTree,
+);
+router.get(
+  "/slug/:slug",
+  validateParams(categorySlugParamSchema),
+  categoryController.getCategoryBySlug,
+);
+router.get(
+  "/:id",
+  validateParams(categoryIdParamSchema),
+  categoryController.getCategoryById,
+);
+router.get(
+  "/:id/path",
+  validateParams(categoryIdParamSchema),
+  categoryController.getCategoryPath,
+);
+router.get(
+  "/:id/suggested-tags",
+  validateParams(categoryIdParamSchema),
+  categoryController.getSuggestedTags,
+);
 
 router.post(
   "/",
   authenticate,
   blockGuestFromAdmin,
   requirePermission("category.create"),
+  validateBody(createCategorySchema),
   auditLog({
     action: "CREATE",
     tableName: "categories",
@@ -33,6 +72,8 @@ router.put(
   authenticate,
   blockGuestFromAdmin,
   requirePermission("category.update"),
+  validateParams(categoryIdParamSchema),
+  validateBody(updateCategorySchema),
   auditLog({
     action: "UPDATE",
     tableName: "categories",
@@ -47,6 +88,7 @@ router.delete(
   authenticate,
   blockGuestFromAdmin,
   requirePermission("category.delete"),
+  validateParams(categoryIdParamSchema),
   auditLog({
     action: "DELETE",
     tableName: "categories",
@@ -60,6 +102,8 @@ router.post(
   authenticate,
   blockGuestFromAdmin,
   requirePermission("category.update"),
+  validateParams(categoryIdParamSchema),
+  validateBody(assignCategoryTagsSchema),
   auditLog({
     action: "ASSIGN_TAGS",
     tableName: "categories",

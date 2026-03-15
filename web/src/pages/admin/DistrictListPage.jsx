@@ -12,6 +12,7 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  Loader2,
 } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import * as districtService from "@/apis/districtService";
@@ -82,15 +83,44 @@ const PlaceRow = ({ place, idx }) => {
   );
 };
 
-const DistrictRow = ({ district, places, maxCount }) => {
+const DistrictRow = ({ district, placeCount, maxCount }) => {
   const [open, setOpen] = useState(false);
-  const pct = maxCount > 0 ? Math.round((places.length / maxCount) * 100) : 0;
-  const sorted = [...places].sort((a, b) => a.name.localeCompare(b.name));
-  const approved = places.filter((p) => p.status === "approved").length;
-  const pending = places.filter((p) => p.status === "pending").length;
+  // null = not yet fetched, [] = fetched but empty, [...] = fetched with data
+  const [places, setPlaces] = useState(null);
+  const [loadingPlaces, setLoadingPlaces] = useState(false);
+
+  const pct = maxCount > 0 ? Math.round((placeCount / maxCount) * 100) : 0;
+  const sorted = places
+    ? [...places].sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+  const approved = places
+    ? places.filter((p) => p.status === "approved").length
+    : 0;
+  const pending = places
+    ? places.filter((p) => p.status === "pending").length
+    : 0;
+
+  const handleToggle = async (isOpen) => {
+    setOpen(isOpen);
+    if (isOpen && places === null) {
+      setLoadingPlaces(true);
+      try {
+        const res = await placeService.getAllPlaces({
+          districtId: district.id,
+          limit: 500,
+          page: 1,
+        });
+        setPlaces(res.data || []);
+      } catch {
+        setPlaces([]);
+      } finally {
+        setLoadingPlaces(false);
+      }
+    }
+  };
 
   return (
-    <Collapsible.Root open={open} onOpenChange={setOpen}>
+    <Collapsible.Root open={open} onOpenChange={handleToggle}>
       <Collapsible.Trigger asChild>
         <button
           className={`w-full text-left bg-white border border-black transition-all duration-200 group
@@ -109,7 +139,7 @@ const DistrictRow = ({ district, places, maxCount }) => {
                 <span className="font-bold text-sm uppercase tracking-wide">
                   {district.name}
                 </span>
-                {places.length === 0 && (
+                {placeCount === 0 && (
                   <span className="text-[10px] font-mono text-muted-foreground border border-dashed border-gray-300 px-1.5 py-0.5">
                     TRỐNG
                   </span>
@@ -136,9 +166,9 @@ const DistrictRow = ({ district, places, maxCount }) => {
             </div>
             <div
               className={`shrink-0 min-w-[2.5rem] text-center font-black font-mono text-lg leading-none px-3 py-1 border
-              ${places.length > 0 ? "bg-black text-primary border-black" : "bg-gray-100 text-gray-400 border-gray-200"}`}
+              ${placeCount > 0 ? "bg-black text-primary border-black" : "bg-gray-100 text-gray-400 border-gray-200"}`}
             >
-              {places.length}
+              {placeCount}
             </div>
           </div>
         </button>
@@ -146,7 +176,12 @@ const DistrictRow = ({ district, places, maxCount }) => {
 
       <Collapsible.Content>
         <div className="border border-t-0 border-black bg-white">
-          {sorted.length > 0 ? (
+          {loadingPlaces ? (
+            <div className="flex items-center justify-center gap-2 py-6 tim-meta">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              ĐANG TẢI...
+            </div>
+          ) : sorted.length > 0 ? (
             <>
               <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                 <span className="tim-meta">{sorted.length} ĐỊA ĐIỂM</span>
@@ -174,7 +209,6 @@ const DistrictRow = ({ district, places, maxCount }) => {
 
 const DistrictListPage = () => {
   const [districts, setDistricts] = useState([]);
-  const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("count_desc");
@@ -183,12 +217,8 @@ const DistrictListPage = () => {
     const load = async () => {
       try {
         setLoading(true);
-        const [distRes, placeRes] = await Promise.all([
-          districtService.getAllDistricts(),
-          placeService.getAllPlaces({ limit: 1000 }),
-        ]);
+        const distRes = await districtService.getAllDistricts();
         setDistricts(distRes.data || []);
-        setPlaces(placeRes.data || []);
       } catch (err) {
         console.error("Failed to load data", err);
       } finally {
@@ -198,38 +228,25 @@ const DistrictListPage = () => {
     load();
   }, []);
 
-  const placesByDistrict = useMemo(() => {
-    const map = {};
-    places.forEach((p) => {
-      const key = p.districtId ?? "none";
-      if (!map[key]) map[key] = [];
-      map[key].push(p);
-    });
-    return map;
-  }, [places]);
-
-  const unassigned = placesByDistrict["none"] || [];
-
   const filtered = useMemo(() => {
-    let list = districts.filter((d) =>
+    const list = districts.filter((d) =>
       d.name.toLowerCase().includes(search.toLowerCase()),
     );
     return list.sort((a, b) => {
-      const ca = (placesByDistrict[a.id] || []).length;
-      const cb = (placesByDistrict[b.id] || []).length;
+      const ca = a._count?.places || 0;
+      const cb = b._count?.places || 0;
       if (sort === "name_asc") return a.name.localeCompare(b.name);
       if (sort === "name_desc") return b.name.localeCompare(a.name);
       if (sort === "count_asc") return ca - cb;
       return cb - ca;
     });
-  }, [districts, placesByDistrict, search, sort]);
+  }, [districts, search, sort]);
 
-  const maxCount = Math.max(
-    ...filtered.map((d) => (placesByDistrict[d.id] || []).length),
-    1,
+  const maxCount = Math.max(...filtered.map((d) => d._count?.places || 0), 1);
+  const totalPlaces = districts.reduce(
+    (sum, d) => sum + (d._count?.places || 0),
+    0,
   );
-  const totalPlaces = places.length;
-  const assigned = places.filter((p) => p.districtId).length;
 
   const toggleSort = (field) =>
     setSort((prev) =>
@@ -272,17 +289,16 @@ const DistrictListPage = () => {
                 cls: "border-primary",
               },
               {
-                label: "ĐÃ PHÂN VÙNG",
-                value: assigned,
+                label: "CÓ ĐỊA ĐIỂM",
+                value: filtered.filter((d) => (d._count?.places || 0) > 0)
+                  .length,
                 cls: "border-emerald-500 text-emerald-700",
               },
               {
-                label: "CHƯA PHÂN VÙNG",
-                value: unassigned.length,
-                cls:
-                  unassigned.length > 0
-                    ? "border-yellow-400 text-yellow-700"
-                    : "border-gray-300 text-gray-400",
+                label: "TRỐNG",
+                value: filtered.filter((d) => (d._count?.places || 0) === 0)
+                  .length,
+                cls: "border-gray-300 text-gray-400",
               },
             ].map(({ label, value, cls }) => (
               <div
@@ -361,7 +377,7 @@ const DistrictListPage = () => {
               <DistrictRow
                 key={district.id}
                 district={district}
-                places={placesByDistrict[district.id] || []}
+                placeCount={district._count?.places || 0}
                 maxCount={maxCount}
               />
             ))}
@@ -370,41 +386,6 @@ const DistrictListPage = () => {
               <div className="py-12 text-center border border-dashed border-gray-300">
                 <Map className="h-8 w-8 mx-auto text-gray-300 mb-3" />
                 <p className="tim-meta">KHÔNG TÌM THẤY KHU VỰC PHÙ HỢP</p>
-              </div>
-            )}
-
-            {/* Unassigned section */}
-            {unassigned.length > 0 && !search && (
-              <div className="mt-6 pt-4 border-t border-dashed border-gray-300">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="h-4 w-4 text-yellow-500" />
-                  <span className="font-mono text-xs uppercase tracking-widest text-yellow-700 font-bold">
-                    CHƯA PHÂN VÙNG ({unassigned.length})
-                  </span>
-                </div>
-                <Collapsible.Root>
-                  <Collapsible.Trigger asChild>
-                    <button className="w-full text-left bg-yellow-50 border border-yellow-300 hover:border-yellow-500 transition-colors group">
-                      <div className="flex items-center gap-4 px-5 py-4">
-                        <ChevronRight className="h-4 w-4 text-yellow-500 group-data-[state=open]:hidden" />
-                        <ChevronDown className="h-4 w-4 text-yellow-500 hidden group-data-[state=open]:block" />
-                        <span className="flex-1 font-bold text-sm uppercase text-yellow-800">
-                          Địa điểm chưa được gán quận/huyện
-                        </span>
-                        <div className="bg-yellow-400 text-black font-black font-mono text-lg px-3 py-1 border border-yellow-500">
-                          {unassigned.length}
-                        </div>
-                      </div>
-                    </button>
-                  </Collapsible.Trigger>
-                  <Collapsible.Content>
-                    <div className="border border-t-0 border-yellow-300 bg-white">
-                      {unassigned.map((place, i) => (
-                        <PlaceRow key={place.id} place={place} idx={i} />
-                      ))}
-                    </div>
-                  </Collapsible.Content>
-                </Collapsible.Root>
               </div>
             )}
           </div>

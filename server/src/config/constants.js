@@ -16,8 +16,16 @@ export const ROLES = {
 
 // Số nhỏ hơn = quyền cao hơn
 export const ROLE_HIERARCHY = {
-  [ROLES.SUPER_ADMIN]: { name: "super_admin", level: 1, canManage: [ROLES.ADMIN, ROLES.BUSINESS, ROLES.STAFF, ROLES.USER] },
-  [ROLES.ADMIN]: { name: "admin", level: 2, canManage: [ROLES.BUSINESS, ROLES.STAFF, ROLES.USER] },
+  [ROLES.SUPER_ADMIN]: {
+    name: "super_admin",
+    level: 1,
+    canManage: [ROLES.ADMIN, ROLES.BUSINESS, ROLES.STAFF, ROLES.USER],
+  },
+  [ROLES.ADMIN]: {
+    name: "admin",
+    level: 2,
+    canManage: [ROLES.BUSINESS, ROLES.STAFF, ROLES.USER],
+  },
   [ROLES.BUSINESS]: { name: "business", level: 3, canManage: [] },
   [ROLES.STAFF]: { name: "staff", level: 4, canManage: [] },
   [ROLES.USER]: { name: "user", level: 5, canManage: [] },
@@ -43,6 +51,7 @@ export const BUSINESS_STATUS = {
   PENDING: "pending",
   APPROVED: "approved",
   REJECTED: "rejected",
+  SUSPENDED: "suspended",
 };
 
 export const SERVICE_TYPES = {

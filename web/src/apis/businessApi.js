@@ -1,7 +1,21 @@
+/**
+ * Business API - Profile, Admin, Dashboard
+ * Base: /api/business
+ * (Phân biệt với "Service layer" Backend — đây là file gọi HTTP API)
+ */
 import api from "@/constants/api";
 
 const BASE_URL = "/business";
 
+const sanitizeParams = (params = {}) =>
+  Object.entries(params).reduce((acc, [key, value]) => {
+    if (value !== "" && value !== null && value !== undefined) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+
+// Profile
 export const getProfile = async () => {
   const response = await api.get(`${BASE_URL}/profile`);
   return response;
@@ -17,23 +31,21 @@ export const updateProfile = async (data) => {
   return response;
 };
 
+// Dashboard
 export const getDashboard = async () => {
   const response = await api.get(`${BASE_URL}/dashboard`);
   return response;
 };
 
-export const getRevenue = async (params = {}) => {
-  const response = await api.get(`${BASE_URL}/revenue`, { params });
+// My Places (for service form dropdown)
+export const getMyPlaces = async () => {
+  const response = await api.get(`${BASE_URL}/places`);
   return response;
 };
 
-export const getTopServices = async (params = {}) => {
-  const response = await api.get(`${BASE_URL}/top-services`, { params });
-  return response;
-};
-
+// Admin
 export const getAll = async (params = {}) => {
-  const response = await api.get(BASE_URL, { params });
+  const response = await api.get(BASE_URL, { params: sanitizeParams(params) });
   return response;
 };
 
@@ -42,8 +54,8 @@ export const getById = async (id) => {
   return response;
 };
 
-export const approve = async (id) => {
-  const response = await api.put(`${BASE_URL}/${id}/approve`);
+export const approve = async (id, data = {}) => {
+  const response = await api.put(`${BASE_URL}/${id}/approve`, data);
   return response;
 };
 
@@ -59,8 +71,7 @@ export default {
   register,
   updateProfile,
   getDashboard,
-  getRevenue,
-  getTopServices,
+  getMyPlaces,
   getAll,
   getById,
   approve,

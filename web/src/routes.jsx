@@ -159,7 +159,7 @@ const AppRoutes = () => {
       <Route
         path={ADMIN_ROUTES.SETTINGS}
         element={
-          <ProtectedAdmin>
+          <ProtectedAdmin roles={adminRoles}>
             <SettingsPage />
           </ProtectedAdmin>
         }
