@@ -63,3 +63,33 @@ export const getStats = async (req, res, next) => {
     next(error);
   }
 };
+
+export const updateReply = async (req, res, next) => {
+  try {
+    const updated = await reviewService.updateReply(
+      req.params.replyId,
+      req.body.content,
+      req.user.userId,
+    );
+    res.json({
+      success: true,
+      data: updated,
+      message: "Cập nhật phản hồi thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteReply = async (req, res, next) => {
+  try {
+    await reviewService.deleteReply(req.params.replyId, req.user.userId);
+    res.json({
+      success: true,
+      data: null,
+      message: "Xóa phản hồi thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};

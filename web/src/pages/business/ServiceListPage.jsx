@@ -6,17 +6,55 @@ import {
   Pencil,
   Trash2,
   Search,
-  X,
   AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
+  Clock,
+  Tag,
+  Users,
+  CalendarCheck,
 } from "lucide-react";
 import * as businessOfferingApi from "@/apis/businessOfferingApi";
 import { getMyPlaces } from "@/apis/businessApi";
 import { SERVICE_TYPE_LABELS } from "@/constants/businessConstants";
-import PlaceAccordion from "@/components/business/PlaceAccordion";
+import {
+  SectionCard,
+  PageHeader,
+  EmptyState,
+  PageNav,
+  StatCard,
+  StatCardSkeleton,
+  SectionCardSkeleton,
+  TableRowSkeleton,
+  formatVND,
+  DESIGN,
+} from "@/components/business/DashboardWidgets";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/Dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/Label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
+
+// ─── Service Form Modal ─────────────────────────────────────────────────────
 
 const ServiceFormModal = ({
+  open,
   service,
   places = [],
   initialPlaceId = "",
@@ -55,262 +93,333 @@ const ServiceFormModal = ({
       await onSave(data);
       onClose();
     } catch (error) {
-      toast.error(error.message || "Có lỗi xảy ra", {
-        className: "border-2 border-black rounded-none font-mono font-bold",
-      });
+      toast.error(error.message || "Có lỗi xảy ra");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="bg-white border-4 border-black p-0 max-w-2xl w-full relative shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="p-4 border-b-4 border-black bg-primary flex items-center justify-between shrink-0">
-          <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-2">
-            <Ticket className="w-6 h-6" />
-            {service ? "CẬP NHẬT DỊCH VỤ" : "TẠO DỊCH VỤ MỚI"}
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-black hover:text-white transition-colors border-2 border-transparent hover:border-black"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Ticket className="h-5 w-5 text-primary" />
+            {service ? "Cập nhật dịch vụ" : "Tạo dịch vụ mới"}
+          </DialogTitle>
+          <DialogDescription>
+            Điền thông tin dịch vụ bên dưới và nhấn Lưu để hoàn tất.
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto">
-          <form id="service-form" onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label className="tim-meta text-xs font-bold uppercase tracking-wider">
-                TÊN DỊCH VỤ <span className="text-primary">*</span>
-              </label>
-              <input
-                className="w-full h-12 bg-white border-2 border-black px-4 font-mono text-sm focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+        <form
+          id="service-form"
+          onSubmit={handleSubmit}
+          className="space-y-4 overflow-y-auto py-2 pr-1"
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="svc-name">
+              Tên dịch vụ <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="svc-name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+              minLength={2}
+              placeholder="Nhập tên dịch vụ..."
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="svc-desc">Mô tả</Label>
+            <Textarea
+              id="svc-desc"
+              value={form.description}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
+              placeholder="Mô tả chi tiết về dịch vụ..."
+              className="min-h-[80px]"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="svc-place">
+              Địa điểm <span className="text-destructive">*</span>
+            </Label>
+            {places.length === 0 ? (
+              <div className="flex items-center gap-2 h-10 border border-destructive/50 rounded-md px-3 bg-destructive/5 text-sm text-destructive">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                Chưa có địa điểm — hãy tạo địa điểm trước
+              </div>
+            ) : (
+              <Select
+                value={form.placeId}
+                onValueChange={(v) => setForm({ ...form, placeId: v })}
                 required
-                minLength={2}
-                placeholder="Nhập tên..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="tim-meta text-xs font-bold uppercase tracking-wider">
-                MÔ TẢ
-              </label>
-              <textarea
-                className="w-full bg-white border-2 border-black p-4 font-mono text-sm focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary min-h-[100px] resize-y focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                value={form.description}
-                onChange={(e) =>
-                  setForm({ ...form, description: e.target.value })
-                }
-                placeholder="Viết mô tả chi tiết..."
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2 md:col-span-2">
-                <label className="tim-meta text-xs font-bold uppercase tracking-wider">
-                  ĐỊA ĐIỂM <span className="text-primary">*</span>
-                </label>
-                {places.length === 0 ? (
-                  <div className="flex items-center gap-2 h-12 border-2 border-red-400 px-4 bg-red-50 font-mono text-sm text-red-600">
-                    <AlertTriangle className="w-4 h-4 shrink-0" />
-                    Chưa có địa điểm nào — hãy tạo địa điểm trước
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <select
-                      className="w-full h-12 bg-white border-2 border-black px-4 font-mono text-sm appearance-none focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                      value={form.placeId}
-                      onChange={(e) =>
-                        setForm({ ...form, placeId: e.target.value })
-                      }
-                      required
-                    >
-                      <option value="">-- Chọn địa điểm --</option>
-                      {places.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none border-l-2 border-black bg-gray-50">
-                      ▼
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <label className="tim-meta text-xs font-bold uppercase tracking-wider">
-                  LOẠI DỊCH VỤ
-                </label>
-                <div className="relative">
-                  <select
-                    className="w-full h-12 bg-white border-2 border-black px-4 font-mono text-sm appearance-none focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                    value={form.serviceType}
-                    onChange={(e) =>
-                      setForm({ ...form, serviceType: e.target.value })
-                    }
-                  >
-                    {Object.entries(SERVICE_TYPE_LABELS).map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {v}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none border-l-2 border-black bg-gray-50">
-                    ▼
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="tim-meta text-xs font-bold uppercase tracking-wider">
-                  GIÁ GỐC (VND) <span className="text-primary">*</span>
-                </label>
-                <input
-                  type="number"
-                  className="w-full h-12 bg-white border-2 border-black px-4 font-mono text-sm focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                  value={form.price}
-                  onChange={(e) => setForm({ ...form, price: e.target.value })}
-                  min="0"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="tim-meta text-xs font-bold uppercase tracking-wider">
-                  GIÁ KHUYẾN MÃI (VND)
-                </label>
-                <input
-                  type="number"
-                  className="w-full h-12 bg-white border-2 border-black px-4 font-mono text-sm focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                  value={form.discountPrice}
-                  onChange={(e) =>
-                    setForm({ ...form, discountPrice: e.target.value })
-                  }
-                  min="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="tim-meta text-xs font-bold uppercase tracking-wider">
-                  THỜI LƯỢNG (PHÚT)
-                </label>
-                <input
-                  type="number"
-                  className="w-full h-12 bg-white border-2 border-black px-4 font-mono text-sm focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                  value={form.duration}
-                  onChange={(e) =>
-                    setForm({ ...form, duration: e.target.value })
-                  }
-                  min="1"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="tim-meta text-xs font-bold uppercase tracking-wider">
-                  SỨC CHỨA TỐI ĐA
-                </label>
-                <input
-                  type="number"
-                  className="w-full h-12 bg-white border-2 border-black px-4 font-mono text-sm focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                  value={form.maxCapacity}
-                  onChange={(e) =>
-                    setForm({ ...form, maxCapacity: e.target.value })
-                  }
-                  min="1"
-                  placeholder="Không giới hạn"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-4 border-2 border-black bg-gray-50">
-              <input
-                type="checkbox"
-                checked={form.isActive}
-                onChange={(e) =>
-                  setForm({ ...form, isActive: e.target.checked })
-                }
-                id="isActive"
-                className="w-6 h-6 border-2 border-black appearance-none checked:bg-black checked:before:content-['✓'] checked:before:text-white flex items-center justify-center font-bold cursor-pointer transition-colors"
-              />
-              <label
-                htmlFor="isActive"
-                className="font-bold text-sm uppercase tracking-widest cursor-pointer"
               >
-                TRẠNG THÁI HOẠT ĐỘNG
-              </label>
-            </div>
-          </form>
-        </div>
+                <SelectTrigger id="svc-place">
+                  <SelectValue placeholder="-- Chọn địa điểm --" />
+                </SelectTrigger>
+                <SelectContent>
+                  {places.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t-4 border-black bg-gray-100 flex gap-4 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-4 border-2 border-black font-black uppercase text-sm hover:bg-white transition-colors"
-          >
-            HỦY BỎ
-          </button>
-          <button
-            type="submit"
-            form="service-form"
-            disabled={saving}
-            className="flex-1 py-4 bg-black text-white font-black uppercase text-sm hover:bg-primary hover:text-black transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] border-2 border-black disabled:opacity-50"
-          >
-            {saving ? "ĐANG LƯU..." : "LƯU DỊCH VỤ"}
-          </button>
-        </div>
-      </div>
-    </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Loại dịch vụ</Label>
+              <Select
+                value={form.serviceType}
+                onValueChange={(v) => setForm({ ...form, serviceType: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(SERVICE_TYPE_LABELS).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="svc-price">
+                Giá gốc (VND) <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="svc-price"
+                type="number"
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                min="0"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="svc-discount">Giá khuyến mãi (VND)</Label>
+              <Input
+                id="svc-discount"
+                type="number"
+                value={form.discountPrice}
+                onChange={(e) =>
+                  setForm({ ...form, discountPrice: e.target.value })
+                }
+                min="0"
+                placeholder="Để trống nếu không có"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="svc-duration">Thời lượng (phút)</Label>
+              <Input
+                id="svc-duration"
+                type="number"
+                value={form.duration}
+                onChange={(e) => setForm({ ...form, duration: e.target.value })}
+                min="1"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="svc-capacity">Sức chứa tối đa</Label>
+              <Input
+                id="svc-capacity"
+                type="number"
+                value={form.maxCapacity}
+                onChange={(e) =>
+                  setForm({ ...form, maxCapacity: e.target.value })
+                }
+                min="1"
+                placeholder="Không giới hạn"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+            <Checkbox
+              id="svc-active"
+              checked={form.isActive}
+              onCheckedChange={(checked) =>
+                setForm({ ...form, isActive: !!checked })
+              }
+            />
+            <Label htmlFor="svc-active" className="cursor-pointer font-medium">
+              Dịch vụ đang hoạt động
+            </Label>
+          </div>
+        </form>
+
+        <DialogFooter className="shrink-0 gap-2 pt-2 border-t border-border">
+          <Button variant="outline" onClick={onClose}>
+            Hủy bỏ
+          </Button>
+          <Button type="submit" form="service-form" disabled={saving}>
+            {saving ? "Đang lưu..." : "Lưu dịch vụ"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-const ConfirmDeleteModal = ({ name, onConfirm, onCancel }) => (
-  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div className="bg-white border-4 border-black p-0 max-w-md w-full shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] animate-in fade-in zoom-in duration-200">
-      <div className="p-4 border-b-4 border-black bg-red-500 flex items-center gap-3">
-        <AlertTriangle className="w-6 h-6 text-white" />
-        <h3 className="text-xl font-black uppercase tracking-widest text-white">
-          XÁC NHẬN XÓA
-        </h3>
-      </div>
-      <div className="p-6 space-y-4">
-        <p className="font-mono text-sm">
+// ─── Confirm Delete Modal ─────────────────────────────────────────────────────
+
+const ConfirmDeleteModal = ({ name, open, onConfirm, onCancel }) => (
+  <Dialog open={open} onOpenChange={onCancel}>
+    <DialogContent className="max-w-md">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2 text-destructive">
+          <Trash2 className="h-5 w-5" />
+          Xác nhận xóa
+        </DialogTitle>
+        <DialogDescription>
           Bạn có chắc chắn muốn xóa dịch vụ{" "}
-          <span className="font-black">&quot;{name}&quot;</span>?
-        </p>
-        <p className="font-mono text-xs text-gray-500">
-          Hành động này không thể hoàn tác. Dịch vụ đang có booking chưa hoàn
-          thành sẽ không thể xóa.
-        </p>
+          <span className="font-semibold text-foreground">"{name}"</span>? Hành
+          động này không thể hoàn tác.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogFooter className="gap-2">
+        <Button variant="outline" onClick={onCancel}>
+          Hủy bỏ
+        </Button>
+        <Button variant="destructive" onClick={onConfirm}>
+          Xóa dịch vụ
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+);
+
+// ─── Service Item ─────────────────────────────────────────────────────────────
+
+const ServiceItem = ({ svc, onEdit, onDelete }) => (
+  <div className="[content-visibility:auto] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4 border-b border-border/60 last:border-0 group hover:bg-muted/30 px-1 -mx-1 rounded-lg transition-colors">
+    <div className="flex-1 min-w-0 space-y-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="font-semibold text-foreground text-sm leading-tight">
+          {svc.name}
+        </h3>
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+          {SERVICE_TYPE_LABELS[svc.serviceType] || svc.serviceType}
+        </span>
+        {!svc.isActive && (
+          <Badge
+            variant="outline"
+            className="text-[10px] text-destructive border-destructive/30"
+          >
+            Tạm dừng
+          </Badge>
+        )}
       </div>
-      <div className="p-4 border-t-4 border-black bg-gray-100 flex gap-4">
-        <button
-          onClick={onCancel}
-          className="flex-1 py-3 border-2 border-black font-black uppercase text-sm hover:bg-white transition-colors"
-        >
-          HỦY BỎ
-        </button>
-        <button
-          onClick={onConfirm}
-          className="flex-1 py-3 bg-red-500 text-white font-black uppercase text-sm hover:bg-red-600 border-2 border-red-700 transition-colors"
-        >
-          XÓA
-        </button>
+
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1 font-semibold">
+          {svc.discountPrice ? (
+            <>
+              <span className="line-through text-muted-foreground/60">
+                {formatVND(svc.price)}
+              </span>
+              <span className="text-emerald-600">
+                {formatVND(svc.discountPrice)}
+              </span>
+            </>
+          ) : (
+            <span className="text-foreground">{formatVND(svc.price)}</span>
+          )}
+        </div>
+        {svc.duration && (
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {svc.duration} phút
+          </div>
+        )}
+        {svc.maxCapacity && (
+          <div className="flex items-center gap-1">
+            <Users className="h-3 w-3" />
+            {svc.maxCapacity} người
+          </div>
+        )}
+        {svc._count?.bookings > 0 && (
+          <div className="flex items-center gap-1">
+            <CalendarCheck className="h-3 w-3" />
+            {svc._count.bookings} booking
+          </div>
+        )}
       </div>
+    </div>
+
+    <div className="flex items-center gap-1.5 shrink-0">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 p-0"
+        onClick={() => onEdit(svc)}
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+        onClick={() => onDelete(svc)}
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
     </div>
   </div>
 );
 
+// ─── Place Overview Card ─────────────────────────────────────────────────────
+
+const PlaceOverviewCard = ({ item, isSelected, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={cn(
+      DESIGN.card,
+      "p-4 text-left w-full transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
+      isSelected && "ring-2 ring-primary border-primary/50",
+    )}
+  >
+    <p className="font-semibold text-sm text-foreground truncate">
+      {item.placeName}
+    </p>
+    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      <span>
+        Tổng: <strong className="text-foreground">{item.total}</strong>
+      </span>
+      <span>
+        Hoạt động:{" "}
+        <strong className="text-emerald-600">{item.activeCount}</strong>
+      </span>
+      <span>
+        Khuyến mãi:{" "}
+        <strong className="text-amber-600">{item.discountedCount}</strong>
+      </span>
+      <span>
+        Booking: <strong className="text-blue-600">{item.bookingCount}</strong>
+      </span>
+    </div>
+  </button>
+);
+
+// ─── PAGE SIZE ───────────────────────────────────────────────────────────────
+
 const PAGE_SIZE = 10;
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 const ServiceListPage = () => {
   const [services, setServices] = useState([]);
@@ -324,7 +433,7 @@ const ServiceListPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [editService, setEditService] = useState(null);
   const [draftPlaceId, setDraftPlaceId] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(null); // { id, name }
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [expandedPlaces, setExpandedPlaces] = useState({});
 
   const loadServices = useCallback(async () => {
@@ -340,9 +449,7 @@ const ServiceListPage = () => {
       setTotalPages(response.pagination?.totalPages || 1);
       setTotal(response.pagination?.total || 0);
     } catch {
-      toast.error("Không thể tải danh sách dịch vụ", {
-        className: "border-2 border-black rounded-none font-mono font-bold",
-      });
+      toast.error("Không thể tải danh sách dịch vụ");
     } finally {
       setLoading(false);
     }
@@ -351,14 +458,11 @@ const ServiceListPage = () => {
   useEffect(() => {
     loadServices();
   }, [loadServices]);
-
   useEffect(() => {
     getMyPlaces()
       .then((res) => setPlaces(res.data || []))
       .catch(() => {});
   }, []);
-
-  // Reset về page 1 khi tìm kiếm thay đổi
   useEffect(() => {
     setPage(1);
   }, [search, selectedPlaceId]);
@@ -375,12 +479,10 @@ const ServiceListPage = () => {
 
   const placeOverview = useMemo(() => {
     return Object.entries(groupedServices).map(([placeKey, group]) => {
-      const activeCount = group.items.filter((item) => item.isActive).length;
-      const discountedCount = group.items.filter(
-        (item) => item.discountPrice,
-      ).length;
+      const activeCount = group.items.filter((i) => i.isActive).length;
+      const discountedCount = group.items.filter((i) => i.discountPrice).length;
       const bookingCount = group.items.reduce(
-        (sum, item) => sum + (item._count?.bookings || 0),
+        (s, i) => s + (i._count?.bookings || 0),
         0,
       );
       return {
@@ -396,17 +498,13 @@ const ServiceListPage = () => {
 
   const handleCreate = async (data) => {
     await businessOfferingApi.create(data);
-    toast.success("Tạo dịch vụ thành công", {
-      className: "border-2 border-black rounded-none font-mono font-bold",
-    });
+    toast.success("Tạo dịch vụ thành công");
     loadServices();
   };
 
   const handleUpdate = async (data) => {
     await businessOfferingApi.update(editService.id, data);
-    toast.success("Cập nhật dịch vụ thành công", {
-      className: "border-2 border-black rounded-none font-mono font-bold",
-    });
+    toast.success("Cập nhật dịch vụ thành công");
     setEditService(null);
     loadServices();
   };
@@ -416,388 +514,254 @@ const ServiceListPage = () => {
     setConfirmDelete(null);
     try {
       await businessOfferingApi.remove(id);
-      toast.success("Xóa dịch vụ thành công", {
-        className: "border-2 border-black rounded-none font-mono font-bold",
-      });
-      // Nếu trang hiện tại chỉ còn 1 item và không phải trang đầu, lùi 1 trang
-      if (services.length === 1 && page > 1) {
-        setPage((p) => p - 1);
-      } else {
-        loadServices();
-      }
+      toast.success("Xóa dịch vụ thành công");
+      if (services.length === 1 && page > 1) setPage((p) => p - 1);
+      else loadServices();
     } catch (error) {
-      toast.error(error.message || "Không thể xóa", {
-        className: "border-2 border-black rounded-none font-mono font-bold",
-      });
+      toast.error(error.message || "Không thể xóa");
     }
   };
 
-  const formatPrice = (price) =>
-    new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
+  const openCreate = (placeKey) => {
+    setEditService(null);
+    setDraftPlaceId(placeKey && placeKey !== "none" ? String(placeKey) : "");
+    setShowForm(true);
+  };
+
+  const openEdit = (svc) => {
+    setEditService(svc);
+    setDraftPlaceId("");
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditService(null);
+    setDraftPlaceId("");
+  };
+
+  // Stat summary
+  const totalActive = services.filter((s) => s.isActive).length;
+  const totalDiscounted = services.filter((s) => s.discountPrice).length;
 
   return (
-    <div className="min-h-screen p-6 lg:p-8 bg-background relative">
-      <div className="absolute inset-0 bg-grid-dots opacity-30 pointer-events-none" />
+    <div className="space-y-6 p-6 lg:p-8 min-h-screen">
+      {/* Header */}
+      <PageHeader
+        title="Quản lý dịch vụ"
+        subtitle="Tạo, chỉnh sửa và quản lý các dịch vụ của địa điểm bạn"
+        badge={total > 0 ? total : undefined}
+        action={
+          <Button onClick={() => openCreate("")} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Tạo dịch vụ mới
+          </Button>
+        }
+      />
 
-      <div className="relative z-10 max-w-[1200px] mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between border-b-4 border-black pb-6 gap-4">
-          <div className="flex items-center gap-6">
-            <div className="w-16 h-16 bg-primary border-4 border-black flex items-center justify-center shadow-hard rotate-3 hover:rotate-0 transition-transform">
-              <Ticket className="w-8 h-8 text-black" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-black uppercase tracking-tighter mb-2 hover:text-primary transition-colors">
-                DỊCH VỤ
-              </h1>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="tim-system bg-black text-white px-3 py-1 text-xs">
-                  PORTAL // SERVICES
-                </span>
-                {total > 0 && (
-                  <span className="tim-system border-2 border-black px-3 py-1 text-xs">
-                    {total} DỊCH VỤ
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 bg-black text-primary px-6 py-3 font-black text-sm uppercase tracking-widest hover:bg-primary hover:text-black border-4 border-transparent hover:border-black transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)]"
-          >
-            <Plus className="w-5 h-5" />
-            TẠO MỚI
-          </button>
-        </div>
-
-        {/* Toolbar */}
-        <div className="bg-white border-4 border-black p-4 flex flex-col md:flex-row gap-4 items-stretch md:items-center shadow-sm">
-          <div className="relative flex-1 max-w-md">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-              <Search className="w-5 h-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="TÌM TÊN DỊCH VỤ..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-12 bg-gray-50 border-2 border-black pl-12 pr-4 font-mono text-sm focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all placeholder:normal-case"
-            />
-          </div>
-
-          <div className="relative w-full md:w-[280px]">
-            <select
-              value={selectedPlaceId}
-              onChange={(e) => setSelectedPlaceId(e.target.value)}
-              className="w-full h-12 bg-white border-2 border-black px-4 pr-12 font-mono text-sm uppercase appearance-none focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary"
-            >
-              <option value="all">TẤT CẢ ĐỊA ĐIỂM</option>
-              {places.map((place) => (
-                <option key={place.id} value={String(place.id)}>
-                  {place.name}
-                </option>
-              ))}
-            </select>
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-xs">
-              ▼
-            </span>
-          </div>
-        </div>
-
-        {/* Place Overview */}
-        {placeOverview.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {placeOverview.map((item) => (
-              <button
-                key={item.placeKey}
-                type="button"
-                onClick={() =>
-                  setSelectedPlaceId(
-                    item.placeKey === "none" ? "all" : String(item.placeKey),
-                  )
-                }
-                className="text-left bg-white border-4 border-black p-4 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all"
-              >
-                <p className="font-black uppercase text-xs tracking-wide truncate">
-                  {item.placeName}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2 font-mono text-[11px]">
-                  <span className="border border-black px-2 py-1">
-                    Tổng: {item.total}
-                  </span>
-                  <span className="border border-black px-2 py-1">
-                    Hoạt động: {item.activeCount}
-                  </span>
-                  <span className="border border-black px-2 py-1">
-                    Đang KM: {item.discountedCount}
-                  </span>
-                  <span className="border border-black px-2 py-1">
-                    Booking: {item.bookingCount}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Data List */}
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {loading ? (
-          <div className="min-h-[40vh] flex flex-col items-center justify-center bg-white border-2 border-black border-dashed">
-            <div className="w-16 h-16 border-4 border-black border-t-primary rounded-none animate-spin mb-4" />
-            <span className="tim-system bg-black text-white px-4 py-2 animate-pulse">
-              ĐANG TẢI DỮ LIỆU [ _ ]
-            </span>
-          </div>
-        ) : services.length === 0 ? (
-          <div className="min-h-[40vh] flex flex-col items-center justify-center bg-white border-2 border-black border-dashed">
-            <div className="w-16 h-16 bg-gray-100 border-2 border-black flex items-center justify-center mb-4 rotate-12">
-              <AlertTriangle className="w-8 h-8 text-gray-400" />
-            </div>
-            <span className="text-gray-500 font-mono font-bold uppercase tracking-widest">
-              CHƯA CÓ DỊCH VỤ NÀO
-            </span>
-          </div>
+          Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
         ) : (
-          <div className="grid gap-4">
-            {Object.entries(groupedServices).map(([placeKey, group]) => (
-              <PlaceAccordion
-                key={placeKey}
-                title={group.label}
-                subtitle="Quản lý dịch vụ theo địa điểm"
-                count={group.items.length}
-                countLabel="dịch vụ"
-                expanded={expandedPlaces[placeKey] ?? true}
-                onToggle={() =>
-                  setExpandedPlaces((prev) => ({
-                    ...prev,
-                    [placeKey]: !(prev[placeKey] ?? true),
-                  }))
-                }
-                preview={[
-                  {
-                    label: "Hoạt động",
-                    value: group.items.filter((item) => item.isActive).length,
-                  },
-                  {
-                    label: "Đang KM",
-                    value: group.items.filter((item) => item.discountPrice)
-                      .length,
-                  },
-                ]}
-                actions={[
-                  <button
-                    key="create-service"
-                    type="button"
-                    onClick={() => {
-                      setEditService(null);
-                      setDraftPlaceId(
-                        placeKey === "none" ? "" : String(placeKey),
-                      );
-                      setShowForm(true);
-                    }}
-                    className="px-3 py-2 border-2 border-black text-xs font-black uppercase tracking-wider bg-white hover:bg-black hover:text-white transition-colors"
-                  >
-                    + Tạo dịch vụ cho địa điểm
-                  </button>,
-                  <button
-                    key="filter-place"
-                    type="button"
-                    onClick={() =>
-                      setSelectedPlaceId(
-                        placeKey === "none" ? "all" : String(placeKey),
-                      )
-                    }
-                    className="px-3 py-2 border-2 border-black text-xs font-black uppercase tracking-wider bg-white hover:bg-black hover:text-white transition-colors"
-                  >
-                    Lọc theo địa điểm này
-                  </button>,
-                ]}
-              >
-                {group.items.map((svc) => (
-                  <div
-                    key={svc.id}
-                    className="bg-white border-4 border-black p-6 relative group hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all duration-300"
-                  >
-                    <div className="absolute top-0 right-0 w-8 h-8 bg-grid-dots opacity-20" />
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-                      <div className="space-y-3 flex-1">
-                        <div className="flex flex-wrap items-center gap-3">
-                          <h3 className="font-black text-2xl uppercase tracking-tight">
-                            {svc.name}
-                          </h3>
-                          <span className="px-2 py-1 bg-black text-white text-[10px] font-mono font-bold tracking-widest">
-                            {(
-                              SERVICE_TYPE_LABELS[svc.serviceType] ||
-                              svc.serviceType
-                            ).toUpperCase()}
-                          </span>
-                          {!svc.isActive && (
-                            <span className="px-2 py-1 bg-red-500 text-white text-[10px] font-mono font-bold tracking-widest border border-red-700">
-                              TẠM DỪNG
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-4 text-sm font-mono">
-                          <div className="flex items-center gap-2">
-                            {svc.discountPrice ? (
-                              <>
-                                <span className="text-gray-400 line-through">
-                                  {formatPrice(svc.price)}
-                                </span>
-                                <span className="font-black text-emerald-600 text-lg">
-                                  {formatPrice(svc.discountPrice)}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="font-black text-lg">
-                                {formatPrice(svc.price)}
-                              </span>
-                            )}
-                          </div>
-
-                          {svc.duration && (
-                            <>
-                              <span className="text-gray-300">|</span>
-                              <span className="flex items-center gap-1 text-gray-600">
-                                ⏱ {svc.duration} PHÚT
-                              </span>
-                            </>
-                          )}
-
-                          {svc.maxCapacity && (
-                            <>
-                              <span className="text-gray-300">|</span>
-                              <span className="flex items-center gap-1 text-gray-600">
-                                👥 {svc.maxCapacity} NGƯỜI
-                              </span>
-                            </>
-                          )}
-
-                          {svc._count?.bookings > 0 && (
-                            <>
-                              <span className="text-gray-300">|</span>
-                              <span className="flex items-center gap-1 font-bold">
-                                ★ {svc._count.bookings} BOOKING
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => {
-                            setEditService(svc);
-                            setDraftPlaceId("");
-                            setShowForm(true);
-                          }}
-                          className="flex items-center justify-center w-12 h-12 bg-white border-2 border-black hover:bg-black hover:text-white transition-colors"
-                        >
-                          <Pencil className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setConfirmDelete({ id: svc.id, name: svc.name })
-                          }
-                          className="flex items-center justify-center w-12 h-12 bg-white border-2 border-black text-red-500 hover:bg-red-500 hover:text-white transition-colors"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </PlaceAccordion>
-            ))}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {!loading && totalPages > 1 && (
-          <div className="flex items-center justify-between bg-white border-4 border-black p-4">
-            <span className="font-mono text-xs">
-              TRANG {page} / {totalPages}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="w-10 h-10 flex items-center justify-center border-2 border-black hover:bg-black hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(
-                  (p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1,
-                )
-                .reduce((acc, p, idx, arr) => {
-                  if (idx > 0 && p - arr[idx - 1] > 1) {
-                    acc.push("...");
-                  }
-                  acc.push(p);
-                  return acc;
-                }, [])
-                .map((p, idx) =>
-                  p === "..." ? (
-                    <span
-                      key={`ellipsis-${idx}`}
-                      className="w-10 h-10 flex items-center justify-center font-mono text-sm"
-                    >
-                      …
-                    </span>
-                  ) : (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className={`w-10 h-10 flex items-center justify-center border-2 border-black font-mono text-sm font-bold transition-colors ${
-                        p === page
-                          ? "bg-black text-white"
-                          : "hover:bg-black hover:text-white"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ),
-                )}
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="w-10 h-10 flex items-center justify-center border-2 border-black hover:bg-black hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+          <>
+            <StatCard
+              title="Tổng dịch vụ"
+              value={total}
+              icon={Ticket}
+              iconColor="blue"
+            />
+            <StatCard
+              title="Đang hoạt động"
+              value={totalActive}
+              icon={CalendarCheck}
+              iconColor="emerald"
+            />
+            <StatCard
+              title="Đang khuyến mãi"
+              value={totalDiscounted}
+              icon={Tag}
+              iconColor="amber"
+            />
+            <StatCard
+              title="Địa điểm"
+              value={places.length}
+              icon={Users}
+              iconColor="violet"
+            />
+          </>
         )}
       </div>
 
-      {showForm && (
-        <ServiceFormModal
-          service={editService}
-          places={places}
-          initialPlaceId={draftPlaceId}
-          onSave={editService ? handleUpdate : handleCreate}
-          onClose={() => {
-            setShowForm(false);
-            setEditService(null);
-            setDraftPlaceId("");
-          }}
-        />
+      {/* Place Overview */}
+      {!loading && placeOverview.length > 0 && (
+        <SectionCard title="Tổng quan theo địa điểm" titleIcon={Ticket}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {placeOverview.map((item) => (
+              <PlaceOverviewCard
+                key={item.placeKey}
+                item={item}
+                isSelected={selectedPlaceId === String(item.placeKey)}
+                onClick={() =>
+                  setSelectedPlaceId((prev) =>
+                    prev === String(item.placeKey)
+                      ? "all"
+                      : item.placeKey === "none"
+                        ? "all"
+                        : String(item.placeKey),
+                  )
+                }
+              />
+            ))}
+          </div>
+        </SectionCard>
       )}
 
-      {confirmDelete && (
-        <ConfirmDeleteModal
-          name={confirmDelete.name}
-          onConfirm={handleDeleteConfirmed}
-          onCancel={() => setConfirmDelete(null)}
-        />
-      )}
+      {/* Toolbar + List */}
+      <SectionCard
+        title="Danh sách dịch vụ"
+        titleIcon={Ticket}
+        action={
+          <div className="flex gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Tìm tên dịch vụ..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-8 text-sm w-52"
+              />
+            </div>
+            <Select value={selectedPlaceId} onValueChange={setSelectedPlaceId}>
+              <SelectTrigger className="h-8 text-sm w-44">
+                <SelectValue placeholder="Tất cả địa điểm" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả địa điểm</SelectItem>
+                {places.map((place) => (
+                  <SelectItem key={place.id} value={String(place.id)}>
+                    {place.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        }
+      >
+        {loading ? (
+          <div className="space-y-0">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-4 py-4 border-b border-border/50 last:border-0"
+              >
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+                <Skeleton className="h-8 w-16 rounded-md" />
+              </div>
+            ))}
+          </div>
+        ) : services.length === 0 ? (
+          <EmptyState
+            icon={Ticket}
+            message="Chưa có dịch vụ nào. Nhấn 'Tạo dịch vụ mới' để bắt đầu."
+            action={
+              <Button
+                size="sm"
+                onClick={() => openCreate("")}
+                className="gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" /> Tạo dịch vụ
+              </Button>
+            }
+          />
+        ) : (
+          <div className="space-y-0">
+            {Object.entries(groupedServices).map(([placeKey, group]) => (
+              <div key={placeKey}>
+                {/* Place Group Header */}
+                <div
+                  className="flex items-center justify-between py-2 mb-1 cursor-pointer"
+                  onClick={() =>
+                    setExpandedPlaces((prev) => ({
+                      ...prev,
+                      [placeKey]: !(prev[placeKey] ?? true),
+                    }))
+                  }
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {group.label}
+                    </span>
+                    <span className="text-[10px] bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-medium">
+                      {group.items.length} dịch vụ
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openCreate(placeKey);
+                    }}
+                  >
+                    <Plus className="h-3 w-3" />
+                    Thêm vào đây
+                  </Button>
+                </div>
+
+                {(expandedPlaces[placeKey] ?? true) && (
+                  <div className="pl-2 border-l-2 border-border/60 ml-1 mb-4">
+                    {group.items.map((svc) => (
+                      <ServiceItem
+                        key={svc.id}
+                        svc={svc}
+                        onEdit={openEdit}
+                        onDelete={(s) =>
+                          setConfirmDelete({ id: s.id, name: s.name })
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && totalPages > 1 && (
+          <>
+            <div className="border-t border-border/60 mt-2 pt-2">
+              <PageNav
+                page={page}
+                totalPages={totalPages}
+                total={total}
+                onPageChange={setPage}
+              />
+            </div>
+          </>
+        )}
+      </SectionCard>
+
+      {/* Modals */}
+      <ServiceFormModal
+        open={showForm}
+        service={editService}
+        places={places}
+        initialPlaceId={draftPlaceId}
+        onSave={editService ? handleUpdate : handleCreate}
+        onClose={closeForm}
+      />
+
+      <ConfirmDeleteModal
+        open={!!confirmDelete}
+        name={confirmDelete?.name}
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 };

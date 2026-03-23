@@ -220,7 +220,7 @@ export const getUsageStats = async (id) => {
     select: {
       id: true,
       code: true,
-      maxUsage: true,
+      usageLimit: true,
       usageCount: true,
       _count: { select: { bookings: true } },
     },

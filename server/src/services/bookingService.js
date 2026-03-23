@@ -84,17 +84,18 @@ export const getAll = async (params = {}, userId, roleId) => {
   if (params.search) {
     where.OR = [
       { bookingCode: { contains: params.search, mode: "insensitive" } },
-      { user: { fullName: { contains: params.search, mode: "insensitive" } } },
+      { guestName: { contains: params.search, mode: "insensitive" } },
+      { guestPhone: { contains: params.search, mode: "insensitive" } },
     ];
   }
   if (params.fromDate) {
-    where.bookingDate = {
-      ...where.bookingDate,
+    where.useDate = {
+      ...where.useDate,
       gte: new Date(params.fromDate),
     };
   }
   if (params.toDate) {
-    where.bookingDate = { ...where.bookingDate, lte: new Date(params.toDate) };
+    where.useDate = { ...where.useDate, lte: new Date(params.toDate) };
   }
 
   const orderBy =
@@ -182,9 +183,6 @@ export const getStats = async (userId, roleId) => {
 };
 
 export const confirm = async (bookingId, userId) => {
-  const baseUrl =
-    process.env.APP_URL || process.env.WEB_URL || "https://didaugio.vn";
-
   const booking = await prisma.$transaction(async (tx) => {
     const existing = await tx.booking.findUnique({
       where: { id: parseInt(bookingId) },
@@ -199,14 +197,11 @@ export const confirm = async (bookingId, userId) => {
       );
     }
 
-    const qrCode = await generateBookingQR(existing.bookingCode, baseUrl);
-
     return tx.booking.update({
       where: { id: parseInt(bookingId) },
       data: {
         status: BOOKING_STATUS.CONFIRMED,
-        qrCode,
-        qrGeneratedAt: new Date(),
+        confirmedAt: new Date(),
       },
       include: defaultInclude,
     });
@@ -246,6 +241,7 @@ export const cancel = async (bookingId, cancelReason, userId) => {
       data: {
         status: BOOKING_STATUS.CANCELLED,
         cancelReason,
+        cancelledBy: String(userId),
         cancelledAt: new Date(),
       },
       include: defaultInclude,
@@ -363,18 +359,27 @@ export const bulkCancel = async (bookingIds, cancelReason, userId) => {
 };
 
 export const getQR = async (bookingId) => {
+  const baseUrl =
+    process.env.APP_URL || process.env.WEB_URL || "https://didaugio.vn";
+
   const booking = await prisma.booking.findUnique({
     where: { id: parseInt(bookingId) },
-    select: { id: true, bookingCode: true, qrCode: true, status: true },
+    select: { id: true, bookingCode: true, status: true },
   });
 
   if (!booking) {
     throw new ServiceError("Booking không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
-  if (!booking.qrCode) {
-    throw new ServiceError("QR code chưa được tạo", 404, ERROR_CODES.NOT_FOUND);
+  if (booking.status !== BOOKING_STATUS.CONFIRMED) {
+    throw new ServiceError(
+      "Chỉ booking đã xác nhận mới có QR code",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
   }
 
-  return { bookingCode: booking.bookingCode, qrCode: booking.qrCode };
+  const qrCode = await generateBookingQR(booking.bookingCode, baseUrl);
+
+  return { bookingCode: booking.bookingCode, qrCode };
 };

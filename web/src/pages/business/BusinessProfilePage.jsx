@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,8 +10,29 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  Edit3,
+  X,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import useBusinessStore from "@/stores/businessStore";
+import {
+  SectionCard,
+  PageHeader,
+  DESIGN,
+} from "@/components/business/DashboardWidgets";
+import { cn } from "@/lib/utils";
+
+// ─── Validation Schema ────────────────────────────────────────────────────────
 
 const profileSchema = z.object({
   businessName: z.string().min(2, "Tên doanh nghiệp phải có ít nhất 2 ký tự"),
@@ -29,123 +50,51 @@ const BUSINESS_TYPES = [
   { value: "company", label: "Công ty" },
 ];
 
-const SectionPanel = ({ title, icon: Icon, children, className = "" }) => (
-  <section className={`border-2 border-black bg-white ${className}`}>
-    <div className="flex items-center gap-3 px-6 py-4 border-b border-black bg-[#f8f8f8]">
-      {Icon && (
-        <div className="p-1.5 bg-white border border-black">
-          <Icon className="w-5 h-5" />
-        </div>
-      )}
-      <h2 className="text-lg md:text-xl uppercase tracking-widest font-black">
-        {title}
-      </h2>
-    </div>
-    <div className="p-6 md:p-7">{children}</div>
-  </section>
-);
+// ─── Status Banner ─────────────────────────────────────────────────────────────
 
-const InputField = ({ label, error, required, className = "", ...props }) => (
-  <div className={`space-y-2 ${className}`}>
-    <label className="font-mono text-[11px] md:text-xs font-bold uppercase tracking-widest text-gray-700 flex justify-between items-center gap-2">
-      <span>
-        {label} {required && <span className="text-red-600">*</span>}
-      </span>
-      {error && (
-        <span className="text-red-700 bg-red-50 px-2 py-0.5 border border-red-300 text-[10px]">
-          {error}
-        </span>
-      )}
-    </label>
-    <input
-      className={`w-full border-2 border-black p-3 font-mono text-sm md:text-base focus:outline-none ${error ? "bg-red-50" : "bg-white"} focus:bg-[#fffef6] transition-colors ${props.className || ""}`}
-      {...props}
-    />
-  </div>
-);
-
-const SelectField = ({ label, children, ...props }) => (
-  <div className="space-y-2">
-    <label className="font-mono text-[11px] md:text-xs font-bold uppercase tracking-widest text-gray-700">
-      {label}
-    </label>
-    <select
-      className="w-full border-2 border-black p-3 font-mono text-sm md:text-base focus:outline-none bg-white focus:bg-[#fffef6] transition-colors cursor-pointer"
-      {...props}
-    >
-      {children}
-    </select>
-  </div>
-);
-
-const BrutalistButton = ({
-  children,
-  variant = "primary",
-  className = "",
-  ...props
-}) => {
-  const variants = {
-    primary: "bg-black text-white hover:bg-[#1e1e1e]",
-    secondary: "bg-white text-black hover:bg-gray-100",
-  };
-  return (
-    <button
-      className={`font-mono uppercase font-bold tracking-widest text-sm px-6 py-3 border-2 border-black transition-colors ${variants[variant]} ${props.disabled ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
-      {...props}
-    >
-      <div className="flex items-center justify-center gap-3">{children}</div>
-    </button>
-  );
+const STATUS_CONFIG = {
+  pending: {
+    icon: Clock,
+    label: "Đang chờ duyệt",
+    description: "Hồ sơ đang được ban quản trị xét duyệt. Vui lòng chờ.",
+    className: "bg-amber-50 border-amber-200 text-amber-800",
+    iconClass: "text-amber-600",
+  },
+  approved: {
+    icon: CheckCircle2,
+    label: "Đã được duyệt",
+    description:
+      "Doanh nghiệp của bạn đã được xác minh. Bạn có thể sử dụng đầy đủ tính năng.",
+    className: "bg-emerald-50 border-emerald-200 text-emerald-800",
+    iconClass: "text-emerald-600",
+  },
+  rejected: {
+    icon: AlertCircle,
+    label: "Bị từ chối",
+    description: "Hồ sơ của bạn không hợp lệ hoặc thiếu thông tin.",
+    className: "bg-red-50 border-red-200 text-red-800",
+    iconClass: "text-red-600",
+  },
 };
 
 const StatusBanner = ({ status, reason }) => {
   if (!status) return null;
-
-  const statusConfig = {
-    pending: {
-      color: "bg-[#f5f4e8]",
-      textCol: "text-[#5f5531]",
-      icon: Clock,
-      label: "ĐANG CHỜ DUYỆT",
-      text: "Hồ sơ của bạn đang được ban quản trị xét duyệt. Vui lòng chờ.",
-    },
-    approved: {
-      color: "bg-[#eaf5ef]",
-      textCol: "text-[#205c3b]",
-      icon: CheckCircle2,
-      label: "ĐÃ ĐƯỢC DUYỆT",
-      text: "Doanh nghiệp của bạn hợp lệ. Hiện bạn có thể sử dụng tất cả các tính năng.",
-    },
-    rejected: {
-      color: "bg-[#f9ecec]",
-      textCol: "text-[#7d2d2d]",
-      icon: AlertCircle,
-      label: "BỊ TỪ CHỐI",
-      text: "Hồ sơ của bạn không hợp lệ hoặc thiếu thông tin.",
-    },
-  };
-
-  const cfg = statusConfig[status] || statusConfig.pending;
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
   const StatusIcon = cfg.icon;
-
   return (
     <div
-      className={`border-2 border-black p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-4 ${cfg.color} ${cfg.textCol || "text-black"}`}
+      className={cn(
+        "flex items-start gap-3 p-4 rounded-xl border",
+        cfg.className,
+      )}
     >
-      <div className="bg-white p-2 border border-black text-black">
-        <StatusIcon className="w-6 h-6" />
-      </div>
-      <div className="flex-1">
-        <h3 className="font-black uppercase tracking-widest text-base md:text-lg mb-1">
-          TRẠNG THÁI: {cfg.label}
-        </h3>
-        <p className="font-mono text-sm font-semibold">{cfg.text}</p>
+      <StatusIcon className={cn("h-5 w-5 shrink-0 mt-0.5", cfg.iconClass)} />
+      <div>
+        <p className="text-sm font-semibold">{cfg.label}</p>
+        <p className="text-xs opacity-80 mt-0.5">{cfg.description}</p>
         {status === "rejected" && reason && (
-          <div className="mt-4 p-3 bg-white text-[#7d2d2d] border border-[#d8a3a3] font-mono">
-            <p className="uppercase tracking-widest mb-1 text-xs font-bold">
-              LÝ DO TỪ CHỐI:
-            </p>
-            <p>{reason}</p>
+          <div className="mt-2 text-xs p-2 bg-white/60 rounded-md border border-current/20">
+            <strong>Lý do từ chối:</strong> {reason}
           </div>
         )}
       </div>
@@ -153,14 +102,44 @@ const StatusBanner = ({ status, reason }) => {
   );
 };
 
+// ─── Form Field ────────────────────────────────────────────────────────────────
+
+const FormField = ({ label, error, required, children }) => (
+  <div className="space-y-1.5">
+    <Label className="flex items-center gap-1">
+      {label}
+      {required && <span className="text-destructive">*</span>}
+    </Label>
+    {children}
+    {error && <p className="text-[11px] text-destructive">{error}</p>}
+  </div>
+);
+
+// ─── Loading Skeleton ─────────────────────────────────────────────────────────
+
+const ProfileSkeleton = () => (
+  <div className="space-y-6 p-6 lg:p-8">
+    <Skeleton className="h-8 w-64" />
+    <div className="grid lg:grid-cols-2 gap-4">
+      <Skeleton className="h-64 rounded-xl" />
+      <Skeleton className="h-64 rounded-xl" />
+    </div>
+  </div>
+);
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
 const BusinessProfilePage = () => {
   const { business, loading, updateProfile } = useBusinessStore();
   const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isDirty },
   } = useForm({
     resolver: zodResolver(profileSchema),
@@ -184,154 +163,267 @@ const BusinessProfilePage = () => {
     setSaving(true);
     try {
       await updateProfile(data);
-      toast.success("CẬP NHẬT HỒ SƠ THÀNH CÔNG");
+      toast.success("Cập nhật hồ sơ thành công");
       reset(data);
+      setIsEditing(false);
     } catch (error) {
-      toast.error(error.message || "KHÔNG THỂ CẬP NHẬT HỒ SƠ");
+      toast.error(error.message || "Không thể cập nhật hồ sơ");
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-16 h-16 border-8 border-black border-t-yellow-400 rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const handleCancel = () => {
+    reset();
+    setIsEditing(false);
+  };
+
+  if (loading) return <ProfileSkeleton />;
+
+  const businessTypeLabel = BUSINESS_TYPES.find(
+    (t) => t.value === business?.businessType,
+  )?.label;
+  const basicInfoRows = useMemo(
+    () => [
+      { label: "Tên doanh nghiệp", value: business?.businessName },
+      { label: "Loại hình", value: businessTypeLabel },
+      { label: "Số CCCD/CMND", value: business?.idCardNumber },
+      { label: "Mã số thuế", value: business?.taxCode },
+    ],
+    [
+      business?.businessName,
+      business?.idCardNumber,
+      business?.taxCode,
+      businessTypeLabel,
+    ],
+  );
+  const bankInfoRows = useMemo(
+    () => [
+      { label: "Ngân hàng", value: business?.bankName },
+      { label: "Số tài khoản", value: business?.bankAccountNumber },
+      { label: "Chủ tài khoản", value: business?.bankAccountOwner },
+    ],
+    [
+      business?.bankAccountNumber,
+      business?.bankAccountOwner,
+      business?.bankName,
+    ],
+  );
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12">
-      <div className="flex items-end justify-between border-b border-black pb-6">
-        <div className="flex items-center gap-6">
-          <div className="w-1.5 h-14 bg-yellow-400 hidden md:block" />
-          <div>
-            <h1 className="text-3xl md:text-5xl uppercase font-black tracking-tight">
-              HỒ SƠ DOANH NGHIỆP
-            </h1>
-            <div className="flex items-center gap-3 mt-2">
-              <span className="bg-black text-white px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest">
-                BUSINESS // PROFILE
-              </span>
-              <p className="font-mono text-[11px] md:text-xs font-bold text-gray-500 uppercase tracking-widest">
-                QUẢN LÝ THÔNG TIN PHÁP LÝ VÀ THANH TOÁN
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-6 p-6 lg:p-8 min-h-screen">
+      {/* Header */}
+      <PageHeader
+        title="Hồ sơ doanh nghiệp"
+        subtitle="Quản lý thông tin pháp lý và thanh toán"
+        action={
+          !isEditing ? (
+            <Button onClick={() => setIsEditing(true)} className="gap-2">
+              <Edit3 className="h-4 w-4" />
+              Chỉnh sửa
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={handleCancel} className="gap-2">
+              <X className="h-4 w-4" />
+              Hủy
+            </Button>
+          )
+        }
+      />
 
+      {/* Status Banner */}
       <StatusBanner
         status={business?.status}
         reason={business?.rejectionReason}
       />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        <div className="grid lg:grid-cols-2 gap-6">
-          <SectionPanel
-            title="Thông tin cơ bản"
-            icon={Building2}
-            className="bg-[#fdfdfd]"
-          >
-            <div className="space-y-6">
-              <InputField
-                label="Tên doanh nghiệp / Cửa hàng"
-                required
-                {...register("businessName")}
-                placeholder="VD: Cửa hàng Di Đâu Giờ"
-                error={errors.businessName?.message}
-              />
+      {!isEditing ? (
+        /* View Mode */
+        <div className="grid lg:grid-cols-2 gap-4">
+          <SectionCard title="Thông tin cơ bản" titleIcon={Building2}>
+            <div className="space-y-0">
+              {basicInfoRows.map(({ label, value }) => (
+                <div
+                  key={label}
+                  className="flex items-start justify-between py-2.5 border-b border-border/50 last:border-0"
+                >
+                  <span className="text-xs text-muted-foreground w-36 shrink-0">
+                    {label}
+                  </span>
+                  <span className="text-sm font-medium text-foreground text-right">
+                    {value || (
+                      <span className="text-muted-foreground/50 italic text-xs">
+                        Chưa cập nhật
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
 
-              <SelectField
-                label="Loại hình kinh doanh"
-                {...register("businessType")}
-              >
-                {BUSINESS_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </SelectField>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#fafafa] border border-black border-dashed">
-                <InputField
-                  label="Số CCCD/CMND"
+          <SectionCard title="Thông tin ngân hàng" titleIcon={CreditCard}>
+            <div className="space-y-0">
+              {bankInfoRows.map(({ label, value }) => (
+                <div
+                  key={label}
+                  className="flex items-start justify-between py-2.5 border-b border-border/50 last:border-0"
+                >
+                  <span className="text-xs text-muted-foreground w-36 shrink-0">
+                    {label}
+                  </span>
+                  <span className="text-sm font-medium text-foreground text-right">
+                    {value || (
+                      <span className="text-muted-foreground/50 italic text-xs">
+                        Chưa cập nhật
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        </div>
+      ) : (
+        /* Edit Mode */
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid lg:grid-cols-2 gap-4">
+            {/* Basic Info */}
+            <SectionCard title="Thông tin cơ bản" titleIcon={Building2}>
+              <div className="space-y-4">
+                <FormField
+                  label="Tên doanh nghiệp / Cửa hàng"
                   required
-                  {...register("idCardNumber")}
-                  placeholder="Số CCCD"
-                  error={errors.idCardNumber?.message}
-                />
-                <InputField
-                  label="Mã số thuế"
-                  {...register("taxCode")}
-                  placeholder="Mã số thuế"
-                />
+                  error={errors.businessName?.message}
+                >
+                  <Input
+                    {...register("businessName")}
+                    placeholder="VD: Cửa hàng Đi Đâu Giờ"
+                  />
+                </FormField>
+
+                <FormField label="Loại hình kinh doanh">
+                  <Select
+                    value={watch("businessType")}
+                    onValueChange={(v) =>
+                      setValue("businessType", v, { shouldDirty: true })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BUSINESS_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    label="Số CCCD/CMND"
+                    required
+                    error={errors.idCardNumber?.message}
+                  >
+                    <Input
+                      {...register("idCardNumber")}
+                      placeholder="Số CCCD"
+                    />
+                  </FormField>
+                  <FormField label="Mã số thuế" error={errors.taxCode?.message}>
+                    <Input {...register("taxCode")} placeholder="Mã số thuế" />
+                  </FormField>
+                </div>
               </div>
-            </div>
-          </SectionPanel>
+            </SectionCard>
 
-          <SectionPanel
-            title="Thông tin ngân hàng"
-            icon={CreditCard}
-            className="bg-[#fcfcef]"
-          >
-            <div className="space-y-6">
-              <div className="bg-white p-4 border border-black mb-6 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-[#2a8f65] flex-shrink-0 mt-0.5" />
-                <p className="font-mono font-bold text-xs md:text-sm leading-relaxed text-[#2f2f2f]">
-                  Thông tin tài khoản ngân hàng sẽ được dùng để{" "}
-                  <span className="text-[#205c3b] bg-[#eaf5ef] px-1 py-0.5">
-                    chuyển doanh thu hàng tháng
-                  </span>{" "}
-                  cho doanh nghiệp. Vui lòng nhập chính xác.
-                </p>
+            {/* Bank Info */}
+            <SectionCard title="Thông tin ngân hàng" titleIcon={CreditCard}>
+              <div className="space-y-4">
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 border border-blue-100 text-blue-700 text-xs">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <p>
+                    Thông tin tài khoản sẽ được dùng để{" "}
+                    <strong>chuyển doanh thu hàng tháng</strong>. Vui lòng nhập
+                    chính xác.
+                  </p>
+                </div>
+
+                <FormField label="Tên ngân hàng">
+                  <Input
+                    {...register("bankName")}
+                    placeholder="VD: Vietcombank, TPBank..."
+                  />
+                </FormField>
+
+                <FormField label="Số tài khoản">
+                  <Input
+                    {...register("bankAccountNumber")}
+                    placeholder="Số tài khoản"
+                  />
+                </FormField>
+
+                <FormField label="Chủ tài khoản (In hoa không dấu)">
+                  <Input
+                    {...register("bankAccountOwner")}
+                    placeholder="VD: NGUYEN VAN A"
+                  />
+                </FormField>
               </div>
-
-              <InputField
-                label="Tên Ngân hàng"
-                {...register("bankName")}
-                placeholder="VD: Vietcombank, TPBank..."
-              />
-
-              <InputField
-                label="Số tài khoản"
-                {...register("bankAccountNumber")}
-                placeholder="Số tài khoản"
-              />
-
-              <InputField
-                label="Chủ tài khoản (In hoa không dấu)"
-                {...register("bankAccountOwner")}
-                placeholder="VD: NGUYEN VAN A"
-              />
-            </div>
-          </SectionPanel>
-        </div>
-
-        <div className="sticky bottom-6 z-50 bg-white border-2 border-black p-3 md:p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="font-mono font-bold text-xs md:text-sm text-gray-600 w-full md:w-auto text-center md:text-left">
-            {isDirty ? (
-              <span className="text-[#8a6c16] flex items-center justify-center md:justify-start gap-2 uppercase tracking-wider">
-                <AlertCircle className="w-4 h-4" /> ĐÃ CÓ THAY ĐỔI CHƯA LƯU
-              </span>
-            ) : (
-              <span className="flex items-center justify-center md:justify-start gap-2 text-[#2a8f65] uppercase tracking-wider">
-                <CheckCircle2 className="w-4 h-4" /> TẤT CẢ THÔNG TIN ĐÃ ĐƯỢC
-                LƯU
-              </span>
-            )}
+            </SectionCard>
           </div>
-          <BrutalistButton
-            type="submit"
-            disabled={saving || !isDirty}
-            className="w-full md:w-auto"
-          >
-            <Save className="h-5 w-5" />
-            {saving ? "ĐANG LƯU..." : "LƯU THAY ĐỔI HỒ SƠ"}
-          </BrutalistButton>
-        </div>
-      </form>
+
+          {/* Sticky Footer */}
+          <div className="sticky bottom-6 z-50">
+            <div
+              className={cn(
+                DESIGN.card,
+                "p-3 flex items-center justify-between gap-3",
+              )}
+            >
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                {isDirty ? (
+                  <>
+                    <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                    <span className="text-amber-600">
+                      Có thay đổi chưa được lưu
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    <span className="text-emerald-600">
+                      Tất cả thông tin đã được lưu
+                    </span>
+                  </>
+                )}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancel}
+                >
+                  Hủy bỏ
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={saving || !isDirty}
+                  className="gap-2"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </form>
+      )}
     </div>
   );
 };

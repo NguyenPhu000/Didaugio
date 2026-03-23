@@ -1,21 +1,53 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
 import {
-  Ticket,
+  Tag,
   Plus,
   Pencil,
   Trash2,
   Search,
   ToggleLeft,
-  AlertTriangle,
+  Calendar,
+  BarChart3,
 } from "lucide-react";
-import { Button, Input, Card, CardContent } from "@/components/ui";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/Dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/Label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import * as voucherApi from "@/apis/voucherService";
 import { getMyPlaces } from "@/apis/businessApi";
 import * as businessOfferingApi from "@/apis/businessOfferingApi";
-import PlaceAccordion from "@/components/business/PlaceAccordion";
+import {
+  SectionCard,
+  PageHeader,
+  EmptyState,
+  DESIGN,
+  formatVND,
+  formatDate,
+} from "@/components/business/DashboardWidgets";
+import { cn } from "@/lib/utils";
 
-const VoucherFormModal = ({ voucher, places = [], onSave, onClose }) => {
+// ─── Voucher Form Modal ──────────────────────────────────────────────────────
+
+const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
   const [form, setForm] = useState({
     code: voucher?.code || "",
     name: voucher?.name || "",
@@ -64,49 +96,71 @@ const VoucherFormModal = ({ voucher, places = [], onSave, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4 max-h-[85vh] overflow-y-auto">
-        <h3 className="text-lg font-bold mb-4">
-          {voucher ? "Chỉnh sửa voucher" : "Tạo voucher mới"}
-        </h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Mã voucher *</label>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Tag className="h-5 w-5 text-primary" />
+            {voucher ? "Chỉnh sửa voucher" : "Tạo voucher mới"}
+          </DialogTitle>
+          <DialogDescription>
+            Điền thông tin voucher và nhấn Lưu để hoàn tất.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form
+          id="voucher-form"
+          onSubmit={handleSubmit}
+          className="space-y-4 overflow-y-auto py-2 pr-1"
+        >
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="vc-code">
+                Mã voucher <span className="text-destructive">*</span>
+              </Label>
               <Input
+                id="vc-code"
                 value={form.code}
-                onChange={(e) => setForm({ ...form, code: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, code: e.target.value.toUpperCase() })
+                }
                 required
                 disabled={!!voucher}
                 className="uppercase"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tên voucher</label>
+            <div className="space-y-1.5">
+              <Label htmlFor="vc-name">Tên voucher</Label>
               <Input
+                id="vc-name"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Loại giảm *</label>
-              <select
-                className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Loại giảm</Label>
+              <Select
                 value={form.discountType}
-                onChange={(e) =>
-                  setForm({ ...form, discountType: e.target.value })
-                }
+                onValueChange={(v) => setForm({ ...form, discountType: v })}
               >
-                <option value="percentage">Phần trăm (%)</option>
-                <option value="fixed">Cố định (VND)</option>
-              </select>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percentage">Phần trăm (%)</SelectItem>
+                  <SelectItem value="fixed">Cố định (VND)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Giá trị giảm *</label>
+            <div className="space-y-1.5">
+              <Label htmlFor="vc-val">
+                Giá trị giảm <span className="text-destructive">*</span>
+              </Label>
               <Input
+                id="vc-val"
                 type="number"
                 value={form.discountValue}
                 onChange={(e) =>
@@ -118,10 +172,11 @@ const VoucherFormModal = ({ voucher, places = [], onSave, onClose }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Đơn tối thiểu (VND)</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="vc-min">Đơn tối thiểu (VND)</Label>
               <Input
+                id="vc-min"
                 type="number"
                 value={form.minOrderValue}
                 onChange={(e) =>
@@ -130,9 +185,10 @@ const VoucherFormModal = ({ voucher, places = [], onSave, onClose }) => {
                 min="0"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Giảm tối đa (VND)</label>
+            <div className="space-y-1.5">
+              <Label htmlFor="vc-maxd">Giảm tối đa (VND)</Label>
               <Input
+                id="vc-maxd"
                 type="number"
                 value={form.maxDiscount}
                 onChange={(e) =>
@@ -143,19 +199,21 @@ const VoucherFormModal = ({ voucher, places = [], onSave, onClose }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Số lần dùng tối đa</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="vc-maxu">Số lần dùng tối đa</Label>
               <Input
+                id="vc-maxu"
                 type="number"
                 value={form.maxUsage}
                 onChange={(e) => setForm({ ...form, maxUsage: e.target.value })}
                 min="1"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tối đa / user</label>
+            <div className="space-y-1.5">
+              <Label htmlFor="vc-peruser">Tối đa / người dùng</Label>
               <Input
+                id="vc-peruser"
                 type="number"
                 value={form.maxUsagePerUser}
                 onChange={(e) =>
@@ -166,28 +224,31 @@ const VoucherFormModal = ({ voucher, places = [], onSave, onClose }) => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Áp dụng cho địa điểm</label>
-            <select
-              className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
+          <div className="space-y-1.5">
+            <Label>Áp dụng cho địa điểm</Label>
+            <Select
               value={form.appliesToPlaceId}
-              onChange={(e) =>
-                setForm({ ...form, appliesToPlaceId: e.target.value })
-              }
+              onValueChange={(v) => setForm({ ...form, appliesToPlaceId: v })}
             >
-              <option value="all">Tất cả địa điểm</option>
-              {places.map((place) => (
-                <option key={place.id} value={String(place.id)}>
-                  {place.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả địa điểm</SelectItem>
+                {places.map((p) => (
+                  <SelectItem key={p.id} value={String(p.id)}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ngày bắt đầu</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="vc-start">Ngày bắt đầu</Label>
               <Input
+                id="vc-start"
                 type="date"
                 value={form.startDate}
                 onChange={(e) =>
@@ -195,9 +256,10 @@ const VoucherFormModal = ({ voucher, places = [], onSave, onClose }) => {
                 }
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ngày kết thúc</label>
+            <div className="space-y-1.5">
+              <Label htmlFor="vc-end">Ngày kết thúc</Label>
               <Input
+                id="vc-end"
                 type="date"
                 value={form.endDate}
                 onChange={(e) => setForm({ ...form, endDate: e.target.value })}
@@ -205,43 +267,196 @@ const VoucherFormModal = ({ voucher, places = [], onSave, onClose }) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+            <Checkbox
+              id="vc-active"
               checked={form.isActive}
-              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-              id="voucherActive"
+              onCheckedChange={(checked) =>
+                setForm({ ...form, isActive: !!checked })
+              }
             />
-            <label htmlFor="voucherActive" className="text-sm">
-              Đang hoạt động
-            </label>
-          </div>
-
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" type="button" onClick={onClose}>
-              Hủy
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Đang lưu..." : "Lưu"}
-            </Button>
+            <Label htmlFor="vc-active" className="cursor-pointer">
+              Voucher đang hoạt động
+            </Label>
           </div>
         </form>
+
+        <DialogFooter className="shrink-0 gap-2 pt-2 border-t border-border">
+          <Button variant="outline" onClick={onClose}>
+            Hủy bỏ
+          </Button>
+          <Button type="submit" form="voucher-form" disabled={saving}>
+            {saving ? "Đang lưu..." : "Lưu voucher"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ─── Voucher Card ──────────────────────────────────────────────────────────────
+
+const VoucherCard = ({
+  voucher,
+  places,
+  selected,
+  onSelect,
+  onEdit,
+  onDelete,
+}) => {
+  const isExpired = voucher.endDate && new Date(voucher.endDate) < new Date();
+  const usagePct =
+    voucher.maxUsage > 0 ? (voucher.usageCount / voucher.maxUsage) * 100 : 0;
+
+  const discountLabel =
+    voucher.discountType === "percentage"
+      ? `${voucher.discountValue}%`
+      : formatVND(voucher.discountValue);
+
+  const placeNames =
+    Array.isArray(voucher?.applicableServices?.placeIds) &&
+    voucher.applicableServices.placeIds.length > 0
+      ? voucher.applicableServices.placeIds
+          .map((id) => places.find((p) => p.id === id)?.name || `#${id}`)
+          .join(", ")
+      : "Tất cả địa điểm";
+
+  return (
+    <div className={cn(DESIGN.card, "[content-visibility:auto] p-4 space-y-3")}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Checkbox
+            checked={selected}
+            onCheckedChange={() => onSelect(voucher.id)}
+          />
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono font-bold tracking-widest text-sm">
+                {voucher.code}
+              </span>
+              <Badge
+                variant="outline"
+                className="text-[10px] font-semibold text-emerald-600 border-emerald-200 bg-emerald-50"
+              >
+                -{discountLabel}
+              </Badge>
+              {!voucher.isActive && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] text-muted-foreground"
+                >
+                  Tạm dừng
+                </Badge>
+              )}
+              {isExpired && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] text-destructive border-destructive/30"
+                >
+                  Hết hạn
+                </Badge>
+              )}
+            </div>
+            {voucher.name && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {voucher.name}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-1 shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => onEdit(voucher)}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+            onClick={() => onDelete(voucher.id)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Usage progress */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            Đã dùng: {voucher.usageCount || 0}/{voucher.maxUsage}
+          </span>
+          <span>{usagePct.toFixed(0)}%</span>
+        </div>
+        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+          <div
+            className={cn(
+              "h-full rounded-full transition-all",
+              usagePct > 80 ? "bg-rose-500" : "bg-emerald-500",
+            )}
+            style={{ width: `${Math.min(usagePct, 100)}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <BarChart3 className="h-3 w-3" />
+          Địa điểm: {placeNames}
+        </span>
+        {voucher.endDate && (
+          <span className="flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
+            HSD: {formatDate(voucher.endDate)}
+          </span>
+        )}
       </div>
     </div>
   );
 };
 
+const ConfirmDeleteVoucherModal = ({ open, code, onConfirm, onCancel }) => (
+  <Dialog open={open} onOpenChange={onCancel}>
+    <DialogContent className="max-w-md">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2 text-destructive">
+          <Trash2 className="h-5 w-5" />
+          Xác nhận xóa voucher
+        </DialogTitle>
+        <DialogDescription>
+          Bạn có chắc chắn muốn xóa voucher{" "}
+          <span className="font-semibold text-foreground">{code || ""}</span>?
+          Hành động này không thể hoàn tác.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogFooter className="gap-2">
+        <Button variant="outline" onClick={onCancel}>
+          Hủy bỏ
+        </Button>
+        <Button variant="destructive" onClick={onConfirm}>
+          Xóa voucher
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+);
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
+
 const VoucherListPage = () => {
   const [vouchers, setVouchers] = useState([]);
   const [places, setPlaces] = useState([]);
-  const [serviceMap, setServiceMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedPlaceId, setSelectedPlaceId] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [editVoucher, setEditVoucher] = useState(null);
   const [selected, setSelected] = useState([]);
-  const [expandedPlaces, setExpandedPlaces] = useState({});
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const loadVouchers = useCallback(async () => {
     setLoading(true);
@@ -258,76 +473,25 @@ const VoucherListPage = () => {
   useEffect(() => {
     loadVouchers();
   }, [loadVouchers]);
-
   useEffect(() => {
     getMyPlaces()
       .then((res) => setPlaces(res.data || []))
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    businessOfferingApi
-      .getAll({ page: 1, limit: 500 })
-      .then((res) => {
-        const map = (res.data || []).reduce((acc, svc) => {
-          acc[String(svc.id)] = svc.name;
-          return acc;
-        }, {});
-        setServiceMap(map);
-      })
-      .catch(() => {});
-  }, []);
-
   const filteredVouchers = useMemo(() => {
     if (selectedPlaceId === "all") return vouchers;
-    return vouchers.filter((voucher) => {
-      const placeIds = voucher?.applicableServices?.placeIds || [];
+    return vouchers.filter((v) => {
+      const placeIds = v?.applicableServices?.placeIds || [];
       if (!Array.isArray(placeIds) || placeIds.length === 0) return true;
       return placeIds.includes(Number(selectedPlaceId));
     });
   }, [vouchers, selectedPlaceId]);
 
-  const groupedVouchers = useMemo(() => {
-    return filteredVouchers.reduce((acc, voucher) => {
-      const placeIds = voucher?.applicableServices?.placeIds;
-      if (Array.isArray(placeIds) && placeIds.length > 0) {
-        placeIds.forEach((placeId) => {
-          const placeName =
-            places.find((p) => p.id === placeId)?.name ||
-            `Địa điểm #${placeId}`;
-          const key = String(placeId);
-          if (!acc[key]) acc[key] = { label: placeName, items: [] };
-          acc[key].items.push(voucher);
-        });
-        return acc;
-      }
-
-      if (!acc.all) acc.all = { label: "Tất cả địa điểm", items: [] };
-      acc.all.items.push(voucher);
-      return acc;
-    }, {});
-  }, [filteredVouchers, places]);
-
-  const placeOverview = useMemo(() => {
-    return Object.entries(groupedVouchers).map(([placeKey, group]) => {
-      const activeCount = group.items.filter((item) => item.isActive).length;
-      const expiredCount = group.items.filter(
-        (item) => item.endDate && new Date(item.endDate) < new Date(),
-      ).length;
-      const usageTotal = group.items.reduce(
-        (sum, item) => sum + Number(item.usageCount || 0),
-        0,
-      );
-      return {
-        placeKey,
-        label: group.label,
-        total: group.items.length,
-        activeCount,
-        expiredCount,
-        usageTotal,
-      };
-    });
-  }, [groupedVouchers]);
+  const activeCount = filteredVouchers.filter((v) => v.isActive).length;
+  const expiredCount = filteredVouchers.filter(
+    (v) => v.endDate && new Date(v.endDate) < new Date(),
+  ).length;
 
   const handleCreate = async (data) => {
     await voucherApi.create(data);
@@ -343,7 +507,6 @@ const VoucherListPage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Bạn có chắc muốn xóa voucher này?")) return;
     try {
       await voucherApi.remove(id);
       toast.success("Xóa voucher thành công");
@@ -357,339 +520,178 @@ const VoucherListPage = () => {
     if (selected.length === 0) return;
     try {
       await voucherApi.bulkDeactivate(selected);
-      toast.success(`Đã deactivate ${selected.length} voucher`);
+      toast.success(`Đã tắt ${selected.length} voucher`);
       setSelected([]);
       loadVouchers();
     } catch (error) {
-      toast.error(error.message || "Không thể deactivate");
+      toast.error(error.message || "Không thể tắt voucher");
     }
   };
 
-  const handleDeactivateByPlace = async (placeKey, items) => {
-    const ids = items.filter((item) => item.isActive).map((item) => item.id);
-    if (ids.length === 0) {
-      toast.error("Không có voucher đang hoạt động để tắt");
-      return;
-    }
+  const toggleSelect = (id) =>
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
+    );
 
-    try {
-      await voucherApi.bulkDeactivate(ids);
-      toast.success(
-        `Đã tắt ${ids.length} voucher tại ${
-          placeKey === "all" ? "nhóm tất cả địa điểm" : "địa điểm này"
-        }`,
-      );
-      setSelected((prev) => prev.filter((id) => !ids.includes(id)));
-      loadVouchers();
-    } catch (error) {
-      toast.error(error.message || "Không thể deactivate theo địa điểm");
-    }
+  const openEdit = (v) => {
+    setEditVoucher(v);
+    setShowForm(true);
   };
-
-  const formatDiscount = (voucher) =>
-    voucher.discountType === "percentage"
-      ? `${voucher.discountValue}%`
-      : new Intl.NumberFormat("vi-VN", {
-          style: "currency",
-          currency: "VND",
-        }).format(voucher.discountValue);
-
-  const getServicePreview = (voucher) => {
-    const serviceIds = voucher?.applicableServices?.serviceIds || [];
-    if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
-      return "Áp dụng mọi dịch vụ";
-    }
-
-    const names = serviceIds
-      .slice(0, 2)
-      .map((id) => serviceMap[String(id)] || `#${id}`)
-      .join(", ");
-
-    if (serviceIds.length <= 2) return names;
-    return `${names} +${serviceIds.length - 2}`;
+  const closeForm = () => {
+    setShowForm(false);
+    setEditVoucher(null);
   };
 
   return (
-    <div className="min-h-screen p-6 lg:p-8 bg-background relative">
-      <div className="absolute inset-0 bg-grid-dots opacity-30 pointer-events-none" />
-
-      <div className="relative z-10 max-w-[1200px] mx-auto space-y-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between border-b-4 border-black pb-6 gap-4">
-          <div className="flex items-center gap-6">
-            <div className="w-16 h-16 bg-primary border-4 border-black flex items-center justify-center shadow-hard rotate-3 hover:rotate-0 transition-transform">
-              <Ticket className="w-8 h-8 text-black" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-black uppercase tracking-tighter mb-2 hover:text-primary transition-colors">
-                VOUCHER
-              </h1>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="tim-system bg-black text-white px-3 py-1 text-xs">
-                  PORTAL // VOUCHERS
-                </span>
-                {filteredVouchers.length > 0 && (
-                  <span className="tim-system border-2 border-black px-3 py-1 text-xs">
-                    {filteredVouchers.length} KẾT QUẢ
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
+    <div className="space-y-6 p-6 lg:p-8 min-h-screen">
+      {/* Header */}
+      <PageHeader
+        title="Quản lý voucher"
+        subtitle="Tạo và quản lý các mã giảm giá cho dịch vụ của bạn"
+        badge={
+          filteredVouchers.length > 0 ? filteredVouchers.length : undefined
+        }
+        action={
           <div className="flex gap-2">
             {selected.length > 0 && (
-              <Button variant="outline" onClick={handleBulkDeactivate}>
-                <ToggleLeft className="h-4 w-4 mr-2" /> Deactivate (
-                {selected.length})
+              <Button
+                variant="outline"
+                onClick={handleBulkDeactivate}
+                className="gap-2"
+              >
+                <ToggleLeft className="h-4 w-4" />
+                Tắt {selected.length} voucher
               </Button>
             )}
-            <Button onClick={() => setShowForm(true)}>
-              <Plus className="h-4 w-4 mr-2" /> Tạo voucher
+            <Button onClick={() => setShowForm(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Tạo voucher
             </Button>
           </div>
-        </div>
+        }
+      />
 
-        <div className="bg-white border-4 border-black p-4 flex flex-col md:flex-row gap-4 items-stretch md:items-center shadow-sm">
-          <div className="relative max-w-sm w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Tìm mã / tên voucher..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-
-          <div className="relative w-full md:w-[280px]">
-            <select
-              value={selectedPlaceId}
-              onChange={(e) => setSelectedPlaceId(e.target.value)}
-              className="w-full h-12 border-2 border-black px-3 pr-10 font-mono text-xs uppercase bg-white focus:outline-none focus:ring-4 focus:ring-primary/20"
+      {/* Quick Stats */}
+      {!loading && (
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            {
+              label: "Tổng voucher",
+              value: filteredVouchers.length,
+              color: "text-foreground",
+            },
+            {
+              label: "Đang hoạt động",
+              value: activeCount,
+              color: "text-emerald-600",
+            },
+            {
+              label: "Hết hạn",
+              value: expiredCount,
+              color: "text-destructive",
+            },
+          ].map(({ label, value, color }) => (
+            <div
+              key={label}
+              className={`rounded-xl border border-border/60 shadow-sm bg-card p-4 text-center`}
             >
-              <option value="all">Tất cả địa điểm</option>
-              {places.map((place) => (
-                <option key={place.id} value={String(place.id)}>
-                  {place.name}
-                </option>
-              ))}
-            </select>
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-xs">
-              ▼
-            </span>
-          </div>
+              <p className={`text-2xl font-bold ${color}`}>{value}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+            </div>
+          ))}
         </div>
+      )}
 
-        {placeOverview.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {placeOverview.map((item) => (
-              <button
-                key={item.placeKey}
-                type="button"
-                onClick={() =>
-                  setSelectedPlaceId(
-                    item.placeKey === "all" ? "all" : String(item.placeKey),
-                  )
-                }
-                className="text-left bg-white border-4 border-black p-4 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all"
-              >
-                <p className="font-black uppercase text-xs tracking-wide truncate">
-                  {item.label}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2 font-mono text-[11px]">
-                  <span className="border border-black px-2 py-1">
-                    Tổng: {item.total}
-                  </span>
-                  <span className="border border-black px-2 py-1">
-                    Active: {item.activeCount}
-                  </span>
-                  <span className="border border-black px-2 py-1">
-                    Hết hạn: {item.expiredCount}
-                  </span>
-                  <span className="border border-black px-2 py-1">
-                    Đã dùng: {item.usageTotal}
-                  </span>
-                </div>
-              </button>
-            ))}
+      {/* List */}
+      <SectionCard
+        title="Danh sách voucher"
+        titleIcon={Tag}
+        action={
+          <div className="flex gap-2">
+            <Select value={selectedPlaceId} onValueChange={setSelectedPlaceId}>
+              <SelectTrigger className="h-8 text-xs w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả địa điểm</SelectItem>
+                {places.map((p) => (
+                  <SelectItem key={p.id} value={String(p.id)}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Tìm mã / tên..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-8 text-xs w-40"
+              />
+            </div>
           </div>
-        )}
-
+        }
+      >
         {loading ? (
-          <div className="min-h-[35vh] flex flex-col items-center justify-center bg-white border-2 border-black border-dashed">
-            <div className="w-12 h-12 border-4 border-black border-t-primary rounded-none animate-spin mb-3" />
-            <span className="font-mono text-xs uppercase text-gray-500">
-              Đang tải voucher...
-            </span>
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 rounded-xl" />
+            ))}
           </div>
         ) : filteredVouchers.length === 0 ? (
-          <div className="min-h-[30vh] flex flex-col items-center justify-center bg-white border-2 border-black border-dashed">
-            <AlertTriangle className="w-10 h-10 text-gray-300 mb-3" />
-            <span className="text-gray-400 font-mono font-bold uppercase tracking-widest">
-              CHƯA CÓ VOUCHER NÀO
-            </span>
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {Object.entries(groupedVouchers).map(([placeKey, group]) => (
-              <PlaceAccordion
-                key={placeKey}
-                title={group.label}
-                subtitle="Theo dõi hiệu quả voucher theo địa điểm"
-                count={group.items.length}
-                countLabel="voucher"
-                expanded={expandedPlaces[placeKey] ?? true}
-                onToggle={() =>
-                  setExpandedPlaces((prev) => ({
-                    ...prev,
-                    [placeKey]: !(prev[placeKey] ?? true),
-                  }))
-                }
-                preview={[
-                  {
-                    label: "Active",
-                    value: group.items.filter((item) => item.isActive).length,
-                  },
-                  {
-                    label: "Expired",
-                    value: group.items.filter(
-                      (item) =>
-                        item.endDate && new Date(item.endDate) < new Date(),
-                    ).length,
-                  },
-                ]}
-                actions={[
-                  <button
-                    key="deactivate-by-place"
-                    type="button"
-                    onClick={() =>
-                      handleDeactivateByPlace(placeKey, group.items)
-                    }
-                    className="px-3 py-2 border-2 border-black text-xs font-black uppercase tracking-wider bg-white hover:bg-black hover:text-white transition-colors"
-                  >
-                    Deactivate toàn bộ voucher địa điểm
-                  </button>,
-                  <button
-                    key="filter-by-place"
-                    type="button"
-                    onClick={() =>
-                      setSelectedPlaceId(
-                        placeKey === "all" ? "all" : String(placeKey),
-                      )
-                    }
-                    className="px-3 py-2 border-2 border-black text-xs font-black uppercase tracking-wider bg-white hover:bg-black hover:text-white transition-colors"
-                  >
-                    Lọc theo địa điểm này
-                  </button>,
-                ]}
+          <EmptyState
+            icon={Tag}
+            message="Chưa có voucher nào. Nhấn 'Tạo voucher' để bắt đầu."
+            action={
+              <Button
+                size="sm"
+                onClick={() => setShowForm(true)}
+                className="gap-1.5"
               >
-                {group.items.map((voucher) => (
-                  <Card key={voucher.id}>
-                    <CardContent className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 border-2 border-black">
-                      <div className="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          checked={selected.includes(voucher.id)}
-                          onChange={() =>
-                            setSelected((prev) =>
-                              prev.includes(voucher.id)
-                                ? prev.filter((id) => id !== voucher.id)
-                                : [...prev, voucher.id],
-                            )
-                          }
-                          className="mt-1"
-                        />
-
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-mono font-black">
-                              {voucher.code}
-                            </span>
-                            {voucher.name && (
-                              <span className="text-sm text-gray-600">
-                                - {voucher.name}
-                              </span>
-                            )}
-                            {!voucher.isActive && (
-                              <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                                Tạm dừng
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="text-sm text-gray-600">
-                            Giảm: {formatDiscount(voucher)} | Đã dùng:{" "}
-                            {voucher.usageCount || 0}/{voucher.maxUsage}
-                            {voucher.endDate && (
-                              <span className="ml-2">
-                                | HSD:{" "}
-                                {new Date(voucher.endDate).toLocaleDateString(
-                                  "vi-VN",
-                                )}
-                              </span>
-                            )}
-                          </p>
-
-                          <p className="text-xs text-gray-500 font-mono">
-                            Địa điểm:{" "}
-                            {Array.isArray(
-                              voucher?.applicableServices?.placeIds,
-                            ) && voucher.applicableServices.placeIds.length > 0
-                              ? voucher.applicableServices.placeIds
-                                  .map(
-                                    (placeId) =>
-                                      places.find(
-                                        (place) => place.id === placeId,
-                                      )?.name || `#${placeId}`,
-                                  )
-                                  .join(", ")
-                              : "Tất cả địa điểm"}
-                          </p>
-
-                          <p className="text-xs text-gray-500 font-mono">
-                            Dịch vụ: {getServicePreview(voucher)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2 shrink-0">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setEditVoucher(voucher);
-                            setShowForm(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDelete(voucher.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </PlaceAccordion>
+                <Plus className="h-3.5 w-3.5" /> Tạo voucher
+              </Button>
+            }
+          />
+        ) : (
+          <div className="space-y-3">
+            {filteredVouchers.map((v) => (
+              <VoucherCard
+                key={v.id}
+                voucher={v}
+                places={places}
+                selected={selected.includes(v.id)}
+                onSelect={toggleSelect}
+                onEdit={openEdit}
+                onDelete={(id) =>
+                  setDeleteTarget(
+                    filteredVouchers.find((item) => item.id === id) || null,
+                  )
+                }
+              />
             ))}
           </div>
         )}
+      </SectionCard>
 
-        {showForm && (
-          <VoucherFormModal
-            voucher={editVoucher}
-            places={places}
-            onSave={editVoucher ? handleUpdate : handleCreate}
-            onClose={() => {
-              setShowForm(false);
-              setEditVoucher(null);
-            }}
-          />
-        )}
-      </div>
+      <VoucherFormModal
+        open={showForm}
+        voucher={editVoucher}
+        places={places}
+        onSave={editVoucher ? handleUpdate : handleCreate}
+        onClose={closeForm}
+      />
+
+      <ConfirmDeleteVoucherModal
+        open={!!deleteTarget}
+        code={deleteTarget?.code}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          await handleDelete(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 };

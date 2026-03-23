@@ -335,6 +335,35 @@
   background-color: #374151;
 }
 
+/* Shared shimmer skeleton for consistent loading states */
+@keyframes skeletonShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.45),
+    transparent
+  );
+  animation: skeletonShimmer 1.4s linear infinite;
+}
+
 .dark .maplibregl-ctrl-attrib {
   background-color: rgba(31, 41, 55, 0.8);
   color: #d1d5db;

@@ -171,3 +171,61 @@ export const getStats = async (userId, roleId) => {
     ),
   };
 };
+
+export const updateReply = async (replyId, content, userId) => {
+  const existing = await prisma.reviewReply.findUnique({
+    where: { id: parseInt(replyId) },
+    select: { id: true, userId: true, status: true },
+  });
+
+  if (!existing) {
+    throw new ServiceError(
+      "Phản hồi không tồn tại",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
+  }
+
+  if (existing.userId !== userId) {
+    throw new ServiceError(
+      "Bạn không có quyền sửa phản hồi này",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
+  }
+
+  return prisma.reviewReply.update({
+    where: { id: parseInt(replyId) },
+    data: { content },
+    include: {
+      user: { select: { id: true, profile: { select: { fullName: true } } } },
+    },
+  });
+};
+
+export const deleteReply = async (replyId, userId) => {
+  const existing = await prisma.reviewReply.findUnique({
+    where: { id: parseInt(replyId) },
+    select: { id: true, userId: true },
+  });
+
+  if (!existing) {
+    throw new ServiceError(
+      "Phản hồi không tồn tại",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
+  }
+
+  if (existing.userId !== userId) {
+    throw new ServiceError(
+      "Bạn không có quyền xóa phản hồi này",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
+  }
+
+  await prisma.reviewReply.delete({ where: { id: parseInt(replyId) } });
+  return true;
+};
+

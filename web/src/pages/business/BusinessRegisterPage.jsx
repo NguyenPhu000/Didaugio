@@ -5,9 +5,22 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import toast from "react-hot-toast";
 import { Store, ArrowRight } from "lucide-react";
-import { Button, Input, Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import useBusinessStore from "@/stores/businessStore";
 import { BUSINESS_ROUTES } from "@/constants/routes";
+import {
+  PageHeader,
+  SectionCard,
+} from "@/components/business/DashboardWidgets";
 
 const registerSchema = z.object({
   businessName: z.string().min(2, "Tên doanh nghiệp phải có ít nhất 2 ký tự"),
@@ -25,6 +38,17 @@ const BUSINESS_TYPES = [
   { value: "company", label: "Công ty" },
 ];
 
+const FormField = ({ label, required, error, children }) => (
+  <div className="space-y-1.5">
+    <Label className="flex items-center gap-1">
+      {label}
+      {required && <span className="text-destructive">*</span>}
+    </Label>
+    {children}
+    {error && <p className="text-[11px] text-destructive">{error}</p>}
+  </div>
+);
+
 const BusinessRegisterPage = () => {
   const navigate = useNavigate();
   const { registerBusiness } = useBusinessStore();
@@ -33,6 +57,8 @@ const BusinessRegisterPage = () => {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(registerSchema),
@@ -53,74 +79,78 @@ const BusinessRegisterPage = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Store className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Đăng ký doanh nghiệp</h1>
-      </div>
-      <p className="text-gray-600">
-        Điền thông tin doanh nghiệp để bắt đầu đăng địa điểm trên Đi Đâu Giờ.
-      </p>
+    <div className="space-y-6 p-6 lg:p-8 min-h-screen">
+      <PageHeader
+        title="Đăng ký doanh nghiệp"
+        subtitle="Điền thông tin để bắt đầu đăng địa điểm trên Đi Đâu Giờ"
+      />
 
-      <Card>
-        <CardContent className="pt-6">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tên doanh nghiệp *</label>
-              <Input {...register("businessName")} placeholder="Tên doanh nghiệp / cửa hàng" />
-              {errors.businessName && (
-                <p className="text-sm text-red-500">{errors.businessName.message}</p>
-              )}
-            </div>
+      <SectionCard title="Thông tin đăng ký" titleIcon={Store}>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <input type="hidden" {...register("businessType")} />
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Loại hình *</label>
-              <select
-                {...register("businessType")}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
+          <FormField
+            label="Tên doanh nghiệp"
+            required
+            error={errors.businessName?.message}
+          >
+            <Input
+              {...register("businessName")}
+              placeholder="Tên doanh nghiệp / cửa hàng"
+            />
+          </FormField>
+
+          <FormField label="Loại hình" required>
+            <Select
+              value={watch("businessType")}
+              onValueChange={(v) =>
+                setValue("businessType", v, { shouldDirty: true })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
                 {BUSINESS_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
                 ))}
-              </select>
-            </div>
+              </SelectContent>
+            </Select>
+          </FormField>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Số CCCD *</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              label="Số CCCD"
+              required
+              error={errors.idCardNumber?.message}
+            >
               <Input {...register("idCardNumber")} placeholder="Số CCCD/CMND" />
-              {errors.idCardNumber && (
-                <p className="text-sm text-red-500">{errors.idCardNumber.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Mã số thuế</label>
+            </FormField>
+            <FormField label="Mã số thuế" error={errors.taxCode?.message}>
               <Input {...register("taxCode")} placeholder="Nếu có" />
-            </div>
+            </FormField>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Tên ngân hàng</label>
-                <Input {...register("bankName")} placeholder="VD: Vietcombank" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Số tài khoản</label>
-                <Input {...register("bankAccountNumber")} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Chủ tài khoản</label>
-                <Input {...register("bankAccountOwner")} />
-              </div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormField label="Tên ngân hàng">
+              <Input {...register("bankName")} placeholder="VD: Vietcombank" />
+            </FormField>
+            <FormField label="Số tài khoản">
+              <Input {...register("bankAccountNumber")} />
+            </FormField>
+            <FormField label="Chủ tài khoản">
+              <Input {...register("bankAccountOwner")} />
+            </FormField>
+          </div>
 
-            <Button type="submit" disabled={isLoading} className="w-full">
-              {isLoading ? "Đang gửi..." : (
-                <>Đăng ký <ArrowRight className="ml-2 h-4 w-4" /></>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+          <Button type="submit" disabled={isLoading} className="w-full gap-2">
+            {isLoading ? "Đang gửi..." : "Đăng ký"}
+            {!isLoading && <ArrowRight className="h-4 w-4" />}
+          </Button>
+        </form>
+      </SectionCard>
     </div>
   );
 };
