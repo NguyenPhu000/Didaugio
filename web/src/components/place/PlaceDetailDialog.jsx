@@ -31,6 +31,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { PRICE_RANGE_LABELS } from "@/constants/constants";
+import { BUSINESS_STATUS_LABELS } from "@/constants/businessConstants";
 import { MapView } from "@/modules/map";
 import { cn } from "@/lib/utils";
 
@@ -318,6 +319,8 @@ const PlaceDetailDialog = ({
   onDelete,
   onApprove,
   onReject,
+  /** Admin: mở modal chi tiết doanh nghiệp (id) */
+  onViewBusinessDetails,
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const openStatus = useCurrentOpenStatus(place?.openingHours);
@@ -519,6 +522,40 @@ const PlaceDetailDialog = ({
                   <>
                     {/* Info grid */}
                     <div className="grid grid-cols-2 gap-3">
+                      {place.business?.id && (
+                        <div className="col-span-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl border-2 border-amber-300/80 bg-amber-50/90">
+                          <div className="flex gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-white border border-amber-200 shadow-sm flex items-center justify-center shrink-0">
+                              <Building2 className="w-5 h-5 text-amber-800" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-bold text-amber-900/70 uppercase tracking-widest">
+                                Doanh nghiệp sở hữu
+                              </p>
+                              <p className="text-sm font-bold text-gray-900 truncate">
+                                {place.business.businessName || "—"}
+                              </p>
+                              <p className="text-[11px] text-amber-900/80 mt-0.5">
+                                Trạng thái DN:{" "}
+                                {BUSINESS_STATUS_LABELS[place.business.status] ||
+                                  place.business.status ||
+                                  "—"}
+                              </p>
+                            </div>
+                          </div>
+                          {typeof onViewBusinessDetails === "function" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onViewBusinessDetails(place.business.id);
+                              }}
+                              className="shrink-0 rounded-lg border-2 border-amber-800 bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-amber-950 hover:bg-amber-100 transition-colors"
+                            >
+                              Chi tiết &amp; địa điểm DN
+                            </button>
+                          )}
+                        </div>
+                      )}
                       <div className="flex gap-3 items-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors">
                         <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center shrink-0">
                           <span className="text-lg">

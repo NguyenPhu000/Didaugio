@@ -15,7 +15,7 @@ import {
   userPermissionRoleIdParamSchema,
   userPermissionRoleUsersQuerySchema,
   userPermissionUserIdParamSchema,
-} from "../models/schemas/userPermissionSchema.js";
+} from "../models/index.js";
 
 const router = express.Router();
 

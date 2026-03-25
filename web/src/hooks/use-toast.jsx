@@ -1,19 +1,13 @@
+import { useCallback } from "react";
 import { toast as sonnerToast } from "sonner";
 
 /**
  * Custom hook wrapping sonner toast to match Shadcn UI toast pattern
  *
- * Usage:
- * const { toast } = useToast();
- *
- * toast({
- *   title: "Success",
- *   description: "Operation completed",
- *   variant: "default" | "destructive"
- * });
+ * `toast` được memo hóa — tránh useEffect(..., [toast]) chạy lại mỗi render.
  */
 export function useToast() {
-  const toast = ({ title, description, variant = "default" }) => {
+  const toast = useCallback(({ title, description, variant = "default" }) => {
     const message = (
       <div className="flex flex-col gap-1">
         {title && <div className="font-semibold">{title}</div>}
@@ -30,7 +24,7 @@ export function useToast() {
         duration: 3000,
       });
     }
-  };
+  }, []);
 
   return { toast };
 }

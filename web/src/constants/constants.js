@@ -35,6 +35,7 @@ export const BUSINESS_STATUS = {
   PENDING: "pending",
   APPROVED: "approved",
   REJECTED: "rejected",
+  SUSPENDED: "suspended",
 };
 
 export const SERVICE_TYPES = {

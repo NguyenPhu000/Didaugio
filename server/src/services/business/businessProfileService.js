@@ -341,7 +341,7 @@ export const updateProfile = async (data, userId) => {
   return mapProfileResponse(updated);
 };
 
-export const signContract = async (userId) => {
+export const signContract = async (userId, payload = {}) => {
   const business = await prisma.business.findUnique({
     where: { ownerId: userId },
     include: defaultInclude,
@@ -363,9 +363,27 @@ export const signContract = async (userId) => {
     return mapProfileResponse(business);
   }
 
+  const signedAt = payload.signedAt ? new Date(payload.signedAt) : new Date();
+
+  if (Number.isNaN(signedAt.getTime())) {
+    const error = new Error("Thời gian ký hợp đồng không hợp lệ");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const signerMetadata = {
+    ...(payload.signerMetadata || {}),
+    signatureData: payload.signatureData,
+  };
+
   const updated = await prisma.business.update({
     where: { id: business.id },
-    data: { contractSigned: true },
+    data: {
+      contractSigned: true,
+      contractSignedAt: signedAt,
+      contractVersion: payload.contractVersion || "v1",
+      signerMetadata,
+    },
     include: defaultInclude,
   });
 

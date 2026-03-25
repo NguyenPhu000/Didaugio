@@ -1,6 +1,14 @@
 import { z } from "zod";
 import { paginationLargeSchema } from "./commonSchema.js";
 
+const base64ImageSchema = z
+  .string()
+  .regex(
+    /^data:image\/(jpeg|jpg|png|webp);base64,/,
+    "Ảnh phải ở định dạng base64 data URI hợp lệ",
+  )
+  .max(8_000_000, "Ảnh quá lớn");
+
 export const createServiceSchema = z.object({
   name: z
     .string({ required_error: "Tên dịch vụ không được để trống" })
@@ -16,6 +24,8 @@ export const createServiceSchema = z.object({
   maxCapacity: z.number().int().min(1).optional().nullable(),
   isActive: z.boolean().default(true),
   placeId: z.number().int().optional().nullable(),
+  thumbnail: base64ImageSchema.optional().nullable(),
+  images: z.array(base64ImageSchema).max(10).optional().nullable(),
 });
 
 export const updateServiceSchema = z.object({
@@ -30,6 +40,8 @@ export const updateServiceSchema = z.object({
   maxCapacity: z.number().int().min(1).optional().nullable(),
   isActive: z.boolean().optional(),
   placeId: z.number().int().optional().nullable(),
+  thumbnail: base64ImageSchema.optional().nullable(),
+  images: z.array(base64ImageSchema).max(10).optional().nullable(),
 });
 
 export const getBusinessServicesQuerySchema = paginationLargeSchema.extend({

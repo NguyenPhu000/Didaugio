@@ -51,9 +51,27 @@ export const rejectBusinessSchema = z.object({
 
 export const signBusinessContractSchema = z
   .object({
-    acceptedTerms: z.literal(true).optional(),
+    acceptedTerms: z.literal(true, {
+      errorMap: () => ({ message: "Bạn cần đồng ý điều khoản hợp đồng" }),
+    }),
+    signatureData: z
+      .string({ required_error: "Chữ ký điện tử là bắt buộc" })
+      .min(64, "Dữ liệu chữ ký không hợp lệ")
+      .max(5_000_000, "Dữ liệu chữ ký vượt quá giới hạn")
+      .regex(
+        /^data:image\/(png|jpeg|jpg);base64,/,
+        "Chữ ký phải là ảnh base64",
+      ),
+    signedAt: z.coerce.date().optional(),
+    contractVersion: z.string().max(50).optional(),
+    signerMetadata: z
+      .object({
+        userAgent: z.string().max(1000).optional(),
+        timezone: z.string().max(120).optional(),
+      })
+      .optional(),
   })
-  .default({});
+  .strict();
 
 export const getBusinessesQuerySchema = paginationLargeSchema.extend({
   search: z.string().max(200).optional(),

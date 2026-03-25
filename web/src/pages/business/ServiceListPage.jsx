@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
+import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
   Ticket,
   Plus,
@@ -11,6 +12,7 @@ import {
   Tag,
   Users,
   CalendarCheck,
+  Image as ImageIcon,
 } from "lucide-react";
 import * as businessOfferingApi from "@/apis/businessOfferingApi";
 import { getMyPlaces } from "@/apis/businessApi";
@@ -49,7 +51,23 @@ import {
 import { Label } from "@/components/ui/Label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import FileUploader from "@/components/business/FileUploader";
 import { cn } from "@/lib/utils";
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Không thể đọc tệp ảnh"));
+    reader.readAsDataURL(file);
+  });
+
+const filesToDataUrls = async (files = []) => {
+  const results = await Promise.all(
+    files.map((file) => readFileAsDataUrl(file)),
+  );
+  return results.filter(Boolean);
+};
 
 // ─── Service Form Modal ─────────────────────────────────────────────────────
 
@@ -77,6 +95,14 @@ const ServiceFormModal = ({
     isActive: service?.isActive ?? true,
   });
   const [saving, setSaving] = useState(false);
+  const [thumbnailFiles, setThumbnailFiles] = useState([]);
+  const [galleryFiles, setGalleryFiles] = useState([]);
+
+  useEffect(() => {
+    if (!open) return;
+    setThumbnailFiles([]);
+    setGalleryFiles([]);
+  }, [open, service?.id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -90,10 +116,19 @@ const ServiceFormModal = ({
         maxCapacity: form.maxCapacity ? Number(form.maxCapacity) : null,
         placeId: form.placeId ? Number(form.placeId) : undefined,
       };
+
+      if (thumbnailFiles.length > 0) {
+        data.thumbnail = await readFileAsDataUrl(thumbnailFiles[0]);
+      }
+
+      if (galleryFiles.length > 0) {
+        data.images = await filesToDataUrls(galleryFiles);
+      }
+
       await onSave(data);
       onClose();
     } catch (error) {
-      toast.error(error.message || "Có lỗi xảy ra");
+      toastApiErrorIfNeeded(error, "Có lỗi xảy ra");
     } finally {
       setSaving(false);
     }
@@ -247,6 +282,63 @@ const ServiceFormModal = ({
             </div>
           </div>
 
+          <div className="space-y-3">
+            <FileUploader
+              label="Ảnh đại diện dịch vụ"
+              hint="Tối đa 1 ảnh, định dạng JPG/PNG/WebP"
+              maxFiles={1}
+              maxFileSize={5 * 1024 * 1024}
+              acceptTypes={["image/jpeg", "image/png", "image/webp"]}
+              value={thumbnailFiles}
+              onChange={setThumbnailFiles}
+              disabled={saving}
+            />
+            {!thumbnailFiles.length && !!service?.thumbnail && (
+              <div className="rounded-lg border border-border/60 p-2">
+                <p className="text-[11px] text-muted-foreground mb-1">
+                  Ảnh đại diện hiện tại
+                </p>
+                <img
+                  src={service.thumbnail}
+                  alt={service.name || "thumbnail"}
+                  className="h-28 w-full object-cover rounded-md"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <FileUploader
+              label="Bộ sưu tập ảnh"
+              hint="Tối đa 6 ảnh. Chọn ảnh mới sẽ thay thế bộ sưu tập cũ"
+              maxFiles={6}
+              maxFileSize={5 * 1024 * 1024}
+              acceptTypes={["image/jpeg", "image/png", "image/webp"]}
+              value={galleryFiles}
+              onChange={setGalleryFiles}
+              disabled={saving}
+            />
+            {!galleryFiles.length &&
+              Array.isArray(service?.images) &&
+              service.images.length > 0 && (
+                <div className="rounded-lg border border-border/60 p-2">
+                  <p className="text-[11px] text-muted-foreground mb-2">
+                    Bộ sưu tập hiện tại ({service.images.length} ảnh)
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {service.images.slice(0, 6).map((image, idx) => (
+                      <img
+                        key={`${idx}-${image.slice(0, 24)}`}
+                        src={image}
+                        alt={`service-${idx + 1}`}
+                        className="h-20 w-full object-cover rounded-md"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+          </div>
+
           <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
             <Checkbox
               id="svc-active"
@@ -306,57 +398,71 @@ const ConfirmDeleteModal = ({ name, open, onConfirm, onCancel }) => (
 
 const ServiceItem = ({ svc, onEdit, onDelete }) => (
   <div className="[content-visibility:auto] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4 border-b border-border/60 last:border-0 group hover:bg-muted/30 px-1 -mx-1 rounded-lg transition-colors">
-    <div className="flex-1 min-w-0 space-y-1.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <h3 className="font-semibold text-foreground text-sm leading-tight">
-          {svc.name}
-        </h3>
-        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-          {SERVICE_TYPE_LABELS[svc.serviceType] || svc.serviceType}
-        </span>
-        {!svc.isActive && (
-          <Badge
-            variant="outline"
-            className="text-[10px] text-destructive border-destructive/30"
-          >
-            Tạm dừng
-          </Badge>
+    <div className="flex-1 min-w-0 flex items-start gap-3">
+      <div className="h-14 w-14 rounded-lg border border-border/60 overflow-hidden bg-muted shrink-0 flex items-center justify-center">
+        {svc.thumbnail ? (
+          <img
+            src={svc.thumbnail}
+            alt={svc.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <ImageIcon className="h-4 w-4 text-muted-foreground" />
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1 font-semibold">
-          {svc.discountPrice ? (
-            <>
-              <span className="line-through text-muted-foreground/60">
-                {formatVND(svc.price)}
-              </span>
-              <span className="text-emerald-600">
-                {formatVND(svc.discountPrice)}
-              </span>
-            </>
-          ) : (
-            <span className="text-foreground">{formatVND(svc.price)}</span>
+      <div className="min-w-0 space-y-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="font-semibold text-foreground text-sm leading-tight">
+            {svc.name}
+          </h3>
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+            {SERVICE_TYPE_LABELS[svc.serviceType] || svc.serviceType}
+          </span>
+          {!svc.isActive && (
+            <Badge
+              variant="outline"
+              className="text-[10px] text-destructive border-destructive/30"
+            >
+              Tạm dừng
+            </Badge>
           )}
         </div>
-        {svc.duration && (
-          <div className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {svc.duration} phút
+
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1 font-semibold">
+            {svc.discountPrice ? (
+              <>
+                <span className="line-through text-muted-foreground/60">
+                  {formatVND(svc.price)}
+                </span>
+                <span className="text-emerald-600">
+                  {formatVND(svc.discountPrice)}
+                </span>
+              </>
+            ) : (
+              <span className="text-foreground">{formatVND(svc.price)}</span>
+            )}
           </div>
-        )}
-        {svc.maxCapacity && (
-          <div className="flex items-center gap-1">
-            <Users className="h-3 w-3" />
-            {svc.maxCapacity} người
-          </div>
-        )}
-        {svc._count?.bookings > 0 && (
-          <div className="flex items-center gap-1">
-            <CalendarCheck className="h-3 w-3" />
-            {svc._count.bookings} booking
-          </div>
-        )}
+          {svc.duration && (
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {svc.duration} phút
+            </div>
+          )}
+          {svc.maxCapacity && (
+            <div className="flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              {svc.maxCapacity} người
+            </div>
+          )}
+          {svc._count?.bookings > 0 && (
+            <div className="flex items-center gap-1">
+              <CalendarCheck className="h-3 w-3" />
+              {svc._count.bookings} booking
+            </div>
+          )}
+        </div>
       </div>
     </div>
 
@@ -518,7 +624,7 @@ const ServiceListPage = () => {
       if (services.length === 1 && page > 1) setPage((p) => p - 1);
       else loadServices();
     } catch (error) {
-      toast.error(error.message || "Không thể xóa");
+      toastApiErrorIfNeeded(error, "Không thể xóa");
     }
   };
 

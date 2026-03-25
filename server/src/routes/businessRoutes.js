@@ -24,6 +24,7 @@ import { hasPermission } from "../middlewares/permissionMiddleware.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
 import { validateBody, validateQuery } from "../middlewares/validateSchema.js";
 import { businessDocUpload } from "../middlewares/uploadMiddleware.js";
+import { requireActiveBusiness } from "../middlewares/requireActiveBusiness.js";
 import {
   registerBusinessSchema,
   updateBusinessSchema,
@@ -31,7 +32,7 @@ import {
   rejectBusinessSchema,
   signBusinessContractSchema,
   getBusinessesQuerySchema,
-} from "../models/schemas/businessSchema.js";
+} from "../models/index.js";
 
 const router = express.Router();
 
@@ -66,13 +67,14 @@ router.put(
 );
 
 // ========== Dashboard (Business Owner) ==========
-router.get("/dashboard", getDashboard);
+router.get("/dashboard", requireActiveBusiness(), getDashboard);
 
 // ========== My Places (Business Owner - for service creation) ==========
-router.get("/places", getMyPlaces);
+router.get("/places", requireActiveBusiness(), getMyPlaces);
 
 router.put(
   "/profile/contract-sign",
+  requireActiveBusiness(),
   validateBody(signBusinessContractSchema),
   auditLog({
     action: "SIGN_CONTRACT",

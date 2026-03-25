@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import {
@@ -7,14 +7,13 @@ import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
-  SidebarFooter,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarInset,
 } from "@/components/animate-ui/components/radix/sidebar";
 import AnimatedIcon from "@/components/ui/animated-icon";
-import { AUTH_ROUTES, ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
+import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES, ROLE_NAMES } from "@/constants/constants";
 import { APP_META } from "@/constants/brand";
 import * as placeService from "@/apis/placeService";
@@ -22,7 +21,6 @@ import * as placeService from "@/apis/placeService";
 // Extracted sub-components
 import {
   NavMain,
-  NavUser,
   CustomSidebarRail,
   AdminHeader,
   menuData,
@@ -35,14 +33,8 @@ import {
  * Sub-components extracted to layouts/sidebar/ for maintainability
  */
 const AdminLayout = ({ children }) => {
-  const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const [pendingPlacesCount, setPendingPlacesCount] = useState(0);
-
-  const handleLogout = () => {
-    logout();
-    navigate(AUTH_ROUTES.LOGIN);
-  };
 
   useEffect(() => {
     if (user?.roleId === ROLES.BUSINESS) return;
@@ -162,13 +154,7 @@ const AdminLayout = ({ children }) => {
           {menuDataView.system && (
             <NavMain items={menuDataView.system} label="System" />
           )}
-          {menuDataView.settings && (
-            <NavMain items={menuDataView.settings} label="Settings" />
-          )}
         </SidebarContent>
-        <SidebarFooter className="p-2">
-          <NavUser user={user} onLogout={handleLogout} />
-        </SidebarFooter>
       </Sidebar>
       <CustomSidebarRail />
       <SidebarInset>

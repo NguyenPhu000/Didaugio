@@ -25,6 +25,7 @@ import {
 import { loginHistoryService } from "@/apis";
 import { formatDate } from "@/utils/dateUtils";
 import { useAuthStore } from "@/stores/authStore";
+import TimStatsCard from "@/components/admin/TimStatsCard";
 
 const LoginHistoryPage = () => {
   const { user: currentUser } = useAuthStore();
@@ -220,44 +221,36 @@ const LoginHistoryPage = () => {
           </Button>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="tim-meta">TỔNG SỐ</span>
-              <Monitor className="h-5 w-5 text-gray-400" />
-            </div>
-            <div className="text-4xl font-black tracking-tighter">
-              {stats.total}
-            </div>
-          </div>
-          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all border-l-4 border-l-[#F3E600]">
-            <div className="flex items-center justify-between mb-2">
-              <span className="tim-meta">ĐANG HOẠT ĐỘNG</span>
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            </div>
-            <div className="text-4xl font-black tracking-tighter text-green-600">
-              {stats.active}
-            </div>
-          </div>
-          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="tim-meta">ĐÃ VÔ HIỆU</span>
-              <Ban className="h-5 w-5 text-gray-600" />
-            </div>
-            <div className="text-4xl font-black tracking-tighter text-gray-600">
-              {stats.revoked}
-            </div>
-          </div>
-          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="tim-meta">HẾT HẠN</span>
-              <XCircle className="h-5 w-5 text-red-600" />
-            </div>
-            <div className="text-4xl font-black tracking-tighter text-red-600">
-              {stats.expired}
-            </div>
-          </div>
+        {/* Thống kê nhanh */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <TimStatsCard
+            title="TỔNG SESSION"
+            value={stats.total}
+            icon={Monitor}
+            serial="LGN-001"
+          />
+          <TimStatsCard
+            title="ĐANG HOẠT ĐỘNG"
+            value={stats.active}
+            icon={CheckCircle}
+            serial="LGN-002"
+            textColor="text-emerald-600"
+          />
+          <TimStatsCard
+            title="ĐÃ VÔ HIỆU"
+            value={stats.revoked}
+            icon={Ban}
+            serial="LGN-003"
+            textColor="text-gray-500"
+          />
+          <TimStatsCard
+            title="HẾT HẠN"
+            value={stats.expired}
+            icon={XCircle}
+            serial="LGN-004"
+            color="bg-yellow-50"
+            textColor="text-red-600"
+          />
         </div>
 
         {/* Filter Bar */}

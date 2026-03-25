@@ -8,6 +8,8 @@ import {
   Input,
 } from "@/components/ui";
 import { Textarea } from "@/components/ui/textarea";
+import SettingSelectField from "./SettingSelectField";
+import { ROBOTS_POLICY_OPTIONS } from "../settingsSelectOptions";
 
 const SeoDisplayCard = ({ value, onChange }) => {
   return (
@@ -34,11 +36,12 @@ const SeoDisplayCard = ({ value, onChange }) => {
           onChange={(e) => onChange("metaDescriptionDefault", e.target.value)}
           placeholder="Meta description default"
         />
-        <Input
-          className="rounded-none border-black"
+        <SettingSelectField
+          id="settings-robots-policy"
+          label="Chính sách robots"
           value={value.robotsPolicy}
-          onChange={(e) => onChange("robotsPolicy", e.target.value)}
-          placeholder="Robots policy"
+          onChange={(v) => onChange("robotsPolicy", v)}
+          options={ROBOTS_POLICY_OPTIONS}
         />
         <div className="flex items-center justify-between border border-black px-3 py-2">
           <span className="font-mono text-[11px] uppercase">

@@ -5,7 +5,12 @@ import * as businessDashboardService from "../../services/business/businessDashb
 
 export const getDashboard = async (req, res, next) => {
   try {
-    const stats = await businessDashboardService.getDashboard(req.user.userId);
+    const { preset, dateFrom, dateTo } = req.query;
+    const stats = await businessDashboardService.getDashboard(req.user.userId, {
+      preset,
+      dateFrom,
+      dateTo,
+    });
     res.json({
       success: true,
       data: stats,

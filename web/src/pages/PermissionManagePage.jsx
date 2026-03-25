@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +26,9 @@ import {
   Edit,
   BarChart3,
   Layers,
+  Hash,
 } from "lucide-react";
+import TimStatsCard from "@/components/admin/TimStatsCard";
 
 export default function PermissionManagePage() {
   const [permissions, setPermissions] = useState({});
@@ -86,6 +88,18 @@ export default function PermissionManagePage() {
     return MODULE_ICON_MAP[module] || Shield;
   };
 
+  const maxPermissionsPerModule = useMemo(() => {
+    const vals = Object.values(permissions || {}).map((arr) =>
+      Array.isArray(arr) ? arr.length : 0,
+    );
+    return vals.length ? Math.max(...vals, 0) : 0;
+  }, [permissions]);
+
+  const avgPerModule =
+    stats.totalModules > 0
+      ? Math.round((stats.totalPermissions / stats.totalModules) * 10) / 10
+      : 0;
+
   // Helper to safely get nested values without errors
   const modules = Object.keys(permissions || {});
 
@@ -119,77 +133,34 @@ export default function PermissionManagePage() {
           </button>
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Total Permissions */}
-          <div className="bg-white border border-black p-6 hover:shadow-hard transition-all">
-            <div className="flex items-center justify-between">
-              <div className="h-12 w-12 bg-black text-white flex items-center justify-center">
-                <Shield className="h-6 w-6" />
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Tổng quyền
-                </p>
-                <h3 className="text-3xl font-bold text-black font-mono">
-                  {stats.totalPermissions}
-                </h3>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <p className="text-xs text-gray-500 font-mono uppercase">
-                Tổng số quyền hạn trong hệ thống
-              </p>
-            </div>
-          </div>
-
-          {/* Total Modules */}
-          <div className="bg-white border border-black p-6 hover:shadow-hard transition-all">
-            <div className="flex items-center justify-between">
-              <div className="h-12 w-12 bg-black text-white flex items-center justify-center">
-                <Layers className="h-6 w-6" />
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Modules
-                </p>
-                <h3 className="text-3xl font-bold text-black font-mono">
-                  {stats.totalModules}
-                </h3>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <p className="text-xs text-gray-500 font-mono uppercase">
-                Các phân hệ chức năng
-              </p>
-            </div>
-          </div>
-
-          {/* Avg Permissions */}
-          <div className="bg-white border border-black p-6 hover:shadow-hard transition-all">
-            <div className="flex items-center justify-between">
-              <div className="h-12 w-12 bg-black text-white flex items-center justify-center">
-                <BarChart3 className="h-6 w-6" />
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  TB/Module
-                </p>
-                <h3 className="text-3xl font-bold text-black font-mono">
-                  {stats.totalModules > 0
-                    ? Math.round(
-                        (stats.totalPermissions / stats.totalModules) * 10,
-                      ) / 10
-                    : 0}
-                </h3>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <p className="text-xs text-gray-500 font-mono uppercase">
-                Trung bình quyền/module
-              </p>
-            </div>
-          </div>
+        {/* Thống kê nhanh */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <TimStatsCard
+            title="TỔNG QUYỀN"
+            value={stats.totalPermissions}
+            icon={Shield}
+            serial="PRM-001"
+          />
+          <TimStatsCard
+            title="PHÂN HỆ (MODULE)"
+            value={stats.totalModules}
+            icon={Layers}
+            serial="PRM-002"
+            textColor="text-emerald-600"
+          />
+          <TimStatsCard
+            title="TB / MODULE"
+            value={avgPerModule}
+            icon={BarChart3}
+            serial="PRM-003"
+          />
+          <TimStatsCard
+            title="MAX QUYỀN / MODULE"
+            value={maxPermissionsPerModule}
+            icon={Hash}
+            serial="PRM-004"
+            color="bg-yellow-50"
+          />
         </div>
 
         {loading ? (

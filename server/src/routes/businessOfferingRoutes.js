@@ -7,17 +7,19 @@ import * as controller from "../controllers/businessOfferingController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { hasPermission } from "../middlewares/permissionMiddleware.js";
 import { checkBusinessOwnership } from "../middlewares/businessOwnership.js";
+import { requireActiveBusiness } from "../middlewares/requireActiveBusiness.js";
 import { validateBody, validateQuery } from "../middlewares/validateSchema.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
 import {
   createServiceSchema,
   updateServiceSchema,
   getBusinessServicesQuerySchema,
-} from "../models/schemas/businessServiceSchema.js";
+} from "../models/index.js";
 
 const router = express.Router();
 
 router.use(authenticate);
+router.use(requireActiveBusiness({ requireContractSigned: true }));
 
 // Business owner: business.manage_services | Admin: business.view_detail
 const serviceAccessPermission = [

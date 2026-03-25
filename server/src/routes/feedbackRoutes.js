@@ -2,7 +2,7 @@ import express from "express";
 import feedbackController from "../controllers/feedbackController.js";
 import { authenticateOptional } from "../middlewares/authMiddleware.js";
 import { validateBody } from "../middlewares/validateSchema.js";
-import { submitFeedbackSchema } from "../models/schemas/feedbackSchema.js";
+import { submitFeedbackSchema } from "../models/index.js";
 
 const router = express.Router();
 

@@ -5,7 +5,6 @@ import {
   ClipboardCheck,
   List,
   Users,
-  Settings,
   Building2,
   Tags,
   FolderTree,
@@ -88,8 +87,15 @@ const menuData = {
     {
       title: "Hồ sơ doanh nghiệp",
       icon: Store,
-      url: BUSINESS_ROUTES.PROFILE,
       roles: [R.BUSINESS],
+      items: [
+        { title: "Thông tin & giấy tờ", url: BUSINESS_ROUTES.PROFILE },
+        {
+          title: "Hợp đồng",
+          url: BUSINESS_ROUTES.PROFILE_CONTRACT,
+          icon: FileText,
+        },
+      ],
     },
     {
       title: "Dịch vụ",
@@ -103,6 +109,8 @@ const menuData = {
       roles: [R.BUSINESS],
       items: [
         { title: "Tất cả đặt chỗ", url: BUSINESS_ROUTES.BOOKINGS },
+        { title: "Lịch khung giờ", url: BUSINESS_ROUTES.BOOKING_SCHEDULE },
+        { title: "Xử lý nhanh & auto-duyệt", url: BUSINESS_ROUTES.BOOKING_QUICK },
       ],
     },
     {
@@ -172,14 +180,6 @@ const menuData = {
       ],
     },
   ],
-  settings: [
-    {
-      title: "Cài đặt",
-      icon: Settings,
-      url: ADMIN_ROUTES.SETTINGS,
-      roles: [R.SUPER_ADMIN, R.ADMIN],
-    },
-  ],
 };
 
 export const filterMenuByRole = (menu, roleId) => {
@@ -192,7 +192,9 @@ export const filterMenuByRole = (menu, roleId) => {
         const filteredSubs = item.items.filter(
           (sub) => !sub.roles || sub.roles.includes(roleId),
         );
-        return filteredSubs.length > 0 ? { ...item, items: filteredSubs } : null;
+        return filteredSubs.length > 0
+          ? { ...item, items: filteredSubs }
+          : null;
       })
       .filter(Boolean);
     if (filtered.length > 0) result[section] = filtered;

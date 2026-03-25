@@ -18,7 +18,7 @@ import {
   resetPasswordSchema,
   verifyEmailSchema,
   resendVerificationPublicSchema,
-} from "../models/schemas/authSchema.js";
+} from "../models/index.js";
 import * as emailVerificationService from "./emailVerificationService.js";
 import * as passwordResetService from "./passwordResetService.js";
 import ServiceError from "../utils/serviceError.js";

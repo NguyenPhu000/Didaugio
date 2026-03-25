@@ -13,6 +13,49 @@ import LogsMonitoringCard from "./components/LogsMonitoringCard";
 import OperationsCard from "./components/OperationsCard";
 import SeoDisplayCard from "./components/SeoDisplayCard";
 
+/** Map từ API có thể là number — input controlled cần string */
+const normalizeMapDefault = (input) => {
+  if (!input || typeof input !== "object") return input;
+  return {
+    ...input,
+    latitude:
+      input.latitude != null && input.latitude !== ""
+        ? String(input.latitude)
+        : "",
+    longitude:
+      input.longitude != null && input.longitude !== ""
+        ? String(input.longitude)
+        : "",
+    zoom:
+      input.zoom != null && input.zoom !== "" ? String(input.zoom) : "",
+  };
+};
+
+const mergeRemoteSettings = (prev, data) => {
+  if (!data || typeof data !== "object") return prev;
+  return {
+    ...prev,
+    ...data,
+    general: { ...prev.general, ...(data.general || {}) },
+    mapDefault: normalizeMapDefault({
+      ...prev.mapDefault,
+      ...(data.mapDefault || {}),
+    }),
+    email: { ...prev.email, ...(data.email || {}) },
+    security: { ...prev.security, ...(data.security || {}) },
+    modules: { ...prev.modules, ...(data.modules || {}) },
+    integrations: { ...prev.integrations, ...(data.integrations || {}) },
+    logs: { ...prev.logs, ...(data.logs || {}) },
+    operations: { ...prev.operations, ...(data.operations || {}) },
+    seo: { ...prev.seo, ...(data.seo || {}) },
+  };
+};
+
+const safeNum = (v, fallback = 0) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
 const SettingsPageContent = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -29,19 +72,7 @@ const SettingsPageContent = () => {
         const data = response?.data || {};
         if (disposed) return;
 
-        setSettings((prev) => ({
-          ...prev,
-          ...data,
-          general: { ...prev.general, ...(data.general || {}) },
-          mapDefault: { ...prev.mapDefault, ...(data.mapDefault || {}) },
-          email: { ...prev.email, ...(data.email || {}) },
-          security: { ...prev.security, ...(data.security || {}) },
-          modules: { ...prev.modules, ...(data.modules || {}) },
-          integrations: { ...prev.integrations, ...(data.integrations || {}) },
-          logs: { ...prev.logs, ...(data.logs || {}) },
-          operations: { ...prev.operations, ...(data.operations || {}) },
-          seo: { ...prev.seo, ...(data.seo || {}) },
-        }));
+        setSettings((prev) => mergeRemoteSettings(prev, data));
       } catch (error) {
         if (!disposed) {
           toast({
@@ -59,7 +90,7 @@ const SettingsPageContent = () => {
     return () => {
       disposed = true;
     };
-  }, [toast]);
+  }, []);
 
   const updateSectionField = (section, key, value) => {
     setSettings((prev) => ({
@@ -77,27 +108,32 @@ const SettingsPageContent = () => {
       const payload = {
         ...settings,
         mapDefault: {
-          latitude: Number(settings.mapDefault.latitude),
-          longitude: Number(settings.mapDefault.longitude),
-          zoom: Number(settings.mapDefault.zoom),
+          latitude: safeNum(settings.mapDefault?.latitude, 10.0452),
+          longitude: safeNum(settings.mapDefault?.longitude, 105.7469),
+          zoom: safeNum(settings.mapDefault?.zoom, 13),
         },
         security: {
           ...settings.security,
-          sessionTimeoutMinutes: Number(
-            settings.security.sessionTimeoutMinutes,
+          sessionTimeoutMinutes: safeNum(
+            settings.security?.sessionTimeoutMinutes,
+            30,
           ),
         },
         modules: {
           ...settings.modules,
-          maxUploadSizeMb: Number(settings.modules.maxUploadSizeMb),
+          maxUploadSizeMb: safeNum(settings.modules?.maxUploadSizeMb, 20),
         },
         logs: {
           ...settings.logs,
-          retentionDays: Number(settings.logs.retentionDays),
+          retentionDays: safeNum(settings.logs?.retentionDays, 30),
         },
       };
 
-      await settingsService.updateSettings(payload);
+      const res = await settingsService.updateSettings(payload);
+      const saved = res?.data;
+      if (saved) {
+        setSettings((prev) => mergeRemoteSettings(prev, saved));
+      }
 
       toast({
         title: "ĐÃ LƯU CẤU HÌNH",
@@ -108,7 +144,10 @@ const SettingsPageContent = () => {
       toast({
         variant: "destructive",
         title: "LỖI LƯU CẤU HÌNH",
-        description: error.message || "Không thể lưu cài đặt.",
+        description:
+          error.message ||
+          error?.data?.message ||
+          "Không thể lưu cài đặt. Kiểm tra quyền đăng nhập (Super Admin / Admin).",
       });
     } finally {
       setSaving(false);
@@ -127,16 +166,18 @@ const SettingsPageContent = () => {
               <h1 className="tim-title">CÀI ĐẶT HỆ THỐNG</h1>
               <div className="flex items-center gap-4 mt-2">
                 <span className="tim-system bg-black text-white px-2 py-1">
-                  SYSTEM // SETTINGS
+                  HỆ THỐNG // CẤU HÌNH
                 </span>
                 <p className="tim-meta">
-                  GENERAL, EMAIL, SECURITY, MODULES, INTEGRATIONS, LOGS, SEO
+                  Chung, bản đồ, email, bảo mật, module, tích hợp, nhật ký, vận
+                  hành, SEO
                 </p>
               </div>
             </div>
           </div>
 
           <Button
+            type="button"
             onClick={handleSave}
             disabled={loading || saving}
             className="h-11 rounded-none border border-black bg-black text-white hover:bg-[#F3E600] hover:text-black font-bold uppercase px-6"

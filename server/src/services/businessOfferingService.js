@@ -19,10 +19,16 @@ const toIntOrNull = (value) => {
 const serializeOffering = (offering) => {
   if (!offering) return null;
 
+  const normalizedImages = Array.isArray(offering.images)
+    ? offering.images.filter((item) => typeof item === "string")
+    : [];
+
   return {
     ...offering,
     discountPrice: offering.salePrice ?? null,
     duration: offering.durationMinutes ?? null,
+    thumbnail: offering.thumbnail ?? null,
+    images: normalizedImages,
   };
 };
 

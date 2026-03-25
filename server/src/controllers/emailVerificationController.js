@@ -4,8 +4,8 @@ import { ERROR_CODES } from "../config/messages.js";
 import {
   emailVerificationQuerySchema,
   createEmailVerificationSchema,
-  verifyEmailSchema,
-} from "../models/schemas/activitySchema.js";
+  activityVerifyEmailSchema as verifyEmailSchema,
+} from "../models/index.js";
 
 /**
  * GET /api/email-verifications

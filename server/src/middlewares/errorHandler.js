@@ -1,5 +1,6 @@
 import { ERROR_CODES } from "../config/messages.js";
 import { ZodError } from "zod";
+import multer from "multer";
 
 const errorHandler = (err, req, res, next) => {
   console.error(`[ERROR] ${err.message}`);
@@ -17,6 +18,33 @@ const errorHandler = (err, req, res, next) => {
           field: e.path?.join(".") || "",
           message: e.message,
         })) || [],
+    });
+  }
+
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        success: false,
+        data: null,
+        message: "Tệp tải lên vượt quá 10MB. Vui lòng chọn tệp nhỏ hơn",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    if (err.code === "LIMIT_UNEXPECTED_FILE") {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "Trường tệp không hợp lệ hoặc số lượng tệp vượt giới hạn",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      data: null,
+      message: err.message || "Dữ liệu tệp tải lên không hợp lệ",
+      errorCode: ERROR_CODES.VALIDATION_ERROR,
     });
   }
 

@@ -15,6 +15,34 @@ const sanitizeParams = (params = {}) =>
     return acc;
   }, {});
 
+const DOC_FILE_KEYS = ["idCardFront", "idCardBack", "businessLicense"];
+
+const isBrowserFile = (value) =>
+  typeof File !== "undefined" && value instanceof File;
+
+/** Gửi multipart đúng với multer + Cloudinary phía server */
+const appendBusinessMultipart = (formData, data) => {
+  for (const [key, value] of Object.entries(data)) {
+    if (value === undefined || value === null) continue;
+    if (DOC_FILE_KEYS.includes(key)) {
+      if (isBrowserFile(value)) formData.append(key, value);
+      continue;
+    }
+    formData.append(key, value === "" ? "" : String(value));
+  }
+};
+
+const formDataRequestConfig = {
+  transformRequest: [
+    (payload, headers) => {
+      if (payload instanceof FormData) {
+        delete headers["Content-Type"];
+      }
+      return payload;
+    },
+  ],
+};
+
 // Profile
 export const getProfile = async () => {
   const response = await api.get(`${BASE_URL}/profile`);
@@ -22,18 +50,42 @@ export const getProfile = async () => {
 };
 
 export const register = async (data) => {
-  const response = await api.post(`${BASE_URL}/register`, data);
+  const formData = new FormData();
+  appendBusinessMultipart(formData, data);
+  const response = await api.post(
+    `${BASE_URL}/register`,
+    formData,
+    formDataRequestConfig,
+  );
   return response;
 };
 
 export const updateProfile = async (data) => {
-  const response = await api.put(`${BASE_URL}/profile`, data);
+  const hasNewDoc = DOC_FILE_KEYS.some((key) => isBrowserFile(data[key]));
+  if (!hasNewDoc) {
+    const response = await api.put(`${BASE_URL}/profile`, data);
+    return response;
+  }
+  const formData = new FormData();
+  appendBusinessMultipart(formData, data);
+  const response = await api.put(
+    `${BASE_URL}/profile`,
+    formData,
+    formDataRequestConfig,
+  );
+  return response;
+};
+
+export const contractSign = async (data = {}) => {
+  const response = await api.put(`${BASE_URL}/profile/contract-sign`, data);
   return response;
 };
 
 // Dashboard
-export const getDashboard = async () => {
-  const response = await api.get(`${BASE_URL}/dashboard`);
+export const getDashboard = async (params = {}) => {
+  const response = await api.get(`${BASE_URL}/dashboard`, {
+    params: sanitizeParams(params),
+  });
   return response;
 };
 
@@ -66,14 +118,27 @@ export const reject = async (id, reason) => {
   return response;
 };
 
+export const suspend = async (id) => {
+  const response = await api.put(`${BASE_URL}/${id}/suspend`);
+  return response;
+};
+
+export const reactivate = async (id) => {
+  const response = await api.put(`${BASE_URL}/${id}/reactivate`);
+  return response;
+};
+
 export default {
   getProfile,
   register,
   updateProfile,
+  contractSign,
   getDashboard,
   getMyPlaces,
   getAll,
   getById,
   approve,
   reject,
+  suspend,
+  reactivate,
 };

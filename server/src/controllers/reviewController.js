@@ -93,3 +93,23 @@ export const deleteReply = async (req, res, next) => {
     next(error);
   }
 };
+
+export const moderateReply = async (req, res, next) => {
+  try {
+    const updated = await reviewService.moderateReply(
+      req.params.replyId,
+      req.body.status,
+      req.user.userId,
+    );
+    res.json({
+      success: true,
+      data: updated,
+      message:
+        req.body.status === "hidden"
+          ? "Đã ẩn phản hồi"
+          : "Đã hiển thị lại phản hồi",
+    });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -40,7 +40,7 @@ const ROUTE_LABELS = {
   [ADMIN_ROUTES.MAP]: "Bản đồ",
   [ADMIN_ROUTES.PLACES_PENDING]: "Duyệt địa điểm",
   [ADMIN_ROUTES.PROFILE]: "Hồ sơ",
-  [ADMIN_ROUTES.SETTINGS]: "Cài đặt",
+  [ADMIN_ROUTES.SETTINGS]: "Cài đặt hệ thống",
   [BUSINESS_ROUTES.DASHBOARD]: "Dashboard",
   [BUSINESS_ROUTES.PROFILE]: "Hồ sơ Doanh nghiệp",
   [BUSINESS_ROUTES.REGISTER]: "Đăng ký Cửa hàng",
@@ -70,8 +70,17 @@ function AdminHeader() {
     year: "numeric",
   });
 
-  const pageLabel =
-    ROUTE_LABELS[location.pathname] || ROLE_NAMES[user?.roleId] || "Quản trị";
+  const pageLabel = (() => {
+    if (
+      location.pathname === BUSINESS_ROUTES.PROFILE &&
+      new URLSearchParams(location.search).get("section") === "contract"
+    ) {
+      return "Hợp đồng";
+    }
+    return (
+      ROUTE_LABELS[location.pathname] || ROLE_NAMES[user?.roleId] || "Quản trị"
+    );
+  })();
 
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar px-6 shadow-sm">
@@ -154,9 +163,14 @@ function AdminHeader() {
             >
               <User className="h-4 w-4" /> Hồ sơ cá nhân
             </DropdownMenuItem>
-            <DropdownMenuItem className="focus:bg-sidebar-accent gap-2">
-              <Settings className="h-4 w-4" /> Cài đặt
-            </DropdownMenuItem>
+            {[ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(user?.roleId) && (
+              <DropdownMenuItem
+                onClick={() => navigate(ADMIN_ROUTES.SETTINGS)}
+                className="focus:bg-sidebar-accent gap-2"
+              >
+                <Settings className="h-4 w-4" /> Cài đặt hệ thống
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator className="bg-sidebar-border" />
             <DropdownMenuItem
               onClick={handleLogout}

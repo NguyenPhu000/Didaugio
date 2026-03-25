@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
   CalendarCheck,
   Check,
@@ -59,6 +60,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/Label";
 import { cn } from "@/lib/utils";
+import BulkActionBar from "@/components/business/BulkActionBar";
 
 // ─── Status Tabs Config ──────────────────────────────────────────────────────
 
@@ -169,7 +171,7 @@ const BookingItem = ({
             </span>
           </p>
           <p className="text-xs text-muted-foreground/70">
-            Ngày dùng: {formatDate(bk.bookingDate)} · Tạo:{" "}
+            Ngày dùng: {formatDate(bk.useDate || bk.bookingDate)} · Tạo:{" "}
             {formatDate(bk.createdAt)}
           </p>
         </div>
@@ -254,6 +256,7 @@ const BookingListPage = () => {
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState([]);
   const [cancelModal, setCancelModal] = useState(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
   const [isPendingTransition, startTransition] = useTransition();
 
   const loadBookings = useCallback(async () => {
@@ -311,7 +314,7 @@ const BookingListPage = () => {
       toast.success("Xác nhận thành công");
       refresh();
     } catch (error) {
-      toast.error(error.message || "Không thể xác nhận");
+      toastApiErrorIfNeeded(error, "Không thể xác nhận");
     }
   };
 
@@ -322,7 +325,7 @@ const BookingListPage = () => {
       setCancelModal(null);
       refresh();
     } catch (error) {
-      toast.error(error.message || "Không thể hủy");
+      toastApiErrorIfNeeded(error, "Không thể hủy");
     }
   };
 
@@ -332,7 +335,7 @@ const BookingListPage = () => {
       toast.success("Hoàn thành đặt chỗ");
       refresh();
     } catch (error) {
-      toast.error(error.message || "Không thể hoàn thành");
+      toastApiErrorIfNeeded(error, "Không thể hoàn thành");
     }
   };
 
@@ -342,19 +345,57 @@ const BookingListPage = () => {
       toast.success("Đánh dấu không đến");
       refresh();
     } catch (error) {
-      toast.error(error.message || "Không thể đánh dấu");
+      toastApiErrorIfNeeded(error, "Không thể đánh dấu");
     }
   };
 
   const handleBulkConfirm = async () => {
-    if (selected.length === 0) return;
+    if (pendingSelected.length === 0) return;
     try {
-      await bookingApi.bulkConfirm(selected);
-      toast.success(`Đã xác nhận ${selected.length} đặt chỗ`);
+      setBulkLoading(true);
+      await bookingApi.bulkConfirm(pendingSelected);
+      toast.success(`Đã xác nhận ${pendingSelected.length} đặt chỗ`);
       setSelected([]);
       refresh();
     } catch (error) {
-      toast.error(error.message);
+      toastApiErrorIfNeeded(error, "Không thể xác nhận hàng loạt");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkCancel = async (reason) => {
+    if (pendingSelected.length === 0) return;
+    if (!reason || reason.trim().length < 5) {
+      toast.error("Lý do hủy cần ít nhất 5 ký tự");
+      return;
+    }
+
+    try {
+      setBulkLoading(true);
+      const response = await bookingApi.bulkCancel(pendingSelected, reason);
+      const result = response?.data || {};
+      const successCount = Array.isArray(result.success)
+        ? result.success.length
+        : pendingSelected.length;
+      const failedCount = Array.isArray(result.failed)
+        ? result.failed.length
+        : 0;
+
+      if (failedCount > 0) {
+        toast.success(
+          `Đã hủy ${successCount} đặt chỗ, thất bại ${failedCount}`,
+        );
+      } else {
+        toast.success(`Đã hủy ${successCount} đặt chỗ`);
+      }
+
+      setSelected([]);
+      refresh();
+    } catch (error) {
+      toastApiErrorIfNeeded(error, "Không thể hủy hàng loạt");
+    } finally {
+      setBulkLoading(false);
     }
   };
 
@@ -605,6 +646,14 @@ const BookingListPage = () => {
         open={!!cancelModal}
         onConfirm={handleCancelConfirmed}
         onCancel={() => setCancelModal(null)}
+      />
+
+      <BulkActionBar
+        selectedCount={pendingSelected.length}
+        onBulkConfirm={handleBulkConfirm}
+        onBulkCancel={handleBulkCancel}
+        onClearSelection={() => setSelected([])}
+        loading={bulkLoading}
       />
     </div>
   );

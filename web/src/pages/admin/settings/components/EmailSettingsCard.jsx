@@ -8,6 +8,8 @@ import {
   Input,
   Button,
 } from "@/components/ui";
+import SettingSelectField from "./SettingSelectField";
+import { SMTP_PORT_OPTIONS } from "../settingsSelectOptions";
 
 const EmailSettingsCard = ({ value, onChange }) => {
   return (
@@ -28,11 +30,12 @@ const EmailSettingsCard = ({ value, onChange }) => {
             onChange={(e) => onChange("smtpHost", e.target.value)}
             placeholder="SMTP Host"
           />
-          <Input
-            className="rounded-none border-black"
-            value={value.smtpPort}
-            onChange={(e) => onChange("smtpPort", e.target.value)}
-            placeholder="SMTP Port"
+          <SettingSelectField
+            id="settings-smtp-port"
+            label="Cổng SMTP"
+            value={value.smtpPort != null ? String(value.smtpPort) : ""}
+            onChange={(v) => onChange("smtpPort", v)}
+            options={SMTP_PORT_OPTIONS}
           />
           <Input
             className="rounded-none border-black md:col-span-2"

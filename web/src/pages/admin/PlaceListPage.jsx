@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Search from "lucide-react/dist/esm/icons/search";
@@ -64,6 +64,8 @@ import { useToast } from "@/hooks/use-toast";
 import { PRICE_RANGE_LABELS } from "@/constants/constants";
 import { usePermission } from "@/hooks/usePermission";
 import { Textarea } from "@/components/ui/textarea";
+import TimStatsCard from "@/components/admin/TimStatsCard";
+import BusinessDetailModal from "@/components/admin/BusinessDetailModal";
 
 /**
  * PLACE LIST PAGE - T.I.M STYLE OVERHAUL (VIETNAMESE)
@@ -102,6 +104,7 @@ const PlaceListPage = ({
   const [districts, setDistricts] = useState([]);
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [viewBusinessId, setViewBusinessId] = useState(null);
   const [viewMode, setViewMode] = useState("grid"); // grid | list
   const searchDebounceRef = useRef(null);
   const [moderationDialog, setModerationDialog] = useState({
@@ -116,6 +119,7 @@ const PlaceListPage = ({
     search: searchParams.get("search") || "",
     categoryId: searchParams.get("categoryId") || "",
     districtId: searchParams.get("districtId") || "",
+    businessId: searchParams.get("businessId") || "",
     status: searchParams.get("status") || initialStatus,
     priceRange: searchParams.get("priceRange") || "",
     page: parseInt(searchParams.get("page")) || 1,
@@ -128,6 +132,7 @@ const PlaceListPage = ({
       search: searchParams.get("search") || "",
       categoryId: searchParams.get("categoryId") || "",
       districtId: searchParams.get("districtId") || "",
+      businessId: searchParams.get("businessId") || "",
       status: searchParams.get("status") || initialStatus,
       priceRange: searchParams.get("priceRange") || "",
       page: parseInt(searchParams.get("page")) || 1,
@@ -142,6 +147,7 @@ const PlaceListPage = ({
     if (apiFilters.status === "all") apiFilters.status = "";
     if (apiFilters.categoryId === "all") apiFilters.categoryId = "";
     if (apiFilters.districtId === "all") apiFilters.districtId = "";
+    if (!apiFilters.businessId) delete apiFilters.businessId;
 
     fetchPlaces(apiFilters);
   }, [filters]);
@@ -166,6 +172,7 @@ const PlaceListPage = ({
     if (newFilters.status && newFilters.status !== "all")
       params.status = newFilters.status;
     if (newFilters.priceRange) params.priceRange = newFilters.priceRange;
+    if (newFilters.businessId) params.businessId = newFilters.businessId;
     if (newFilters.page > 1) params.page = newFilters.page.toString();
     if (newFilters.limit !== 12) params.limit = newFilters.limit.toString();
     setSearchParams(params);
@@ -351,6 +358,14 @@ const PlaceListPage = ({
     }
   };
 
+  const placeStats = useMemo(() => {
+    const total = places.length;
+    const approved = places.filter((p) => p.status === "approved").length;
+    const pending = places.filter((p) => p.status === "pending").length;
+    const featured = places.filter((p) => p.isFeatured).length;
+    return { total, approved, pending, featured };
+  }, [places]);
+
   const getStatusBadge = (status) => {
     const statusConfig = {
       draft: {
@@ -416,52 +431,38 @@ const PlaceListPage = ({
           )}
         </div>
 
-        {/* Quick Stats Bar */}
-        {!loading &&
-          places.length > 0 &&
-          (() => {
-            const total = places.length;
-            const approved = places.filter(
-              (p) => p.status === "approved",
-            ).length;
-            const pending = places.filter((p) => p.status === "pending").length;
-            const featured = places.filter((p) => p.isFeatured).length;
-            const items = [
-              { label: "TỔNG", value: total, cls: "border-black" },
-              {
-                label: "ĐÃ DUYỆT",
-                value: approved,
-                cls: "border-emerald-500 text-emerald-700",
-              },
-              {
-                label: "CHỜ DUYỆT",
-                value: pending,
-                cls: "border-yellow-400 text-yellow-700",
-              },
-              {
-                label: "NỔI BẬT",
-                value: featured,
-                cls: "border-primary text-primary",
-              },
-            ];
-            return (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {items.map(({ label, value, cls }) => (
-                  <div
-                    key={label}
-                    className={`bg-white border-l-4 border border-black pl-4 py-3 pr-4 flex items-center justify-between ${cls}`}
-                  >
-                    <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                      {label}
-                    </span>
-                    <span className="font-black font-mono text-xl">
-                      {value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
+        {/* Thống kê nhanh (theo dữ liệu trang / bộ lọc hiện tại) */}
+        {!loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <TimStatsCard
+              title="TỔNG (TRANG)"
+              value={placeStats.total}
+              icon={MapPin}
+              serial="PLC-001"
+            />
+            <TimStatsCard
+              title="ĐÃ DUYỆT"
+              value={placeStats.approved}
+              icon={CheckCircle}
+              serial="PLC-002"
+              textColor="text-emerald-600"
+            />
+            <TimStatsCard
+              title="CHỜ DUYỆT"
+              value={placeStats.pending}
+              icon={Activity}
+              serial="PLC-003"
+              textColor="text-amber-600"
+            />
+            <TimStatsCard
+              title="NỔI BẬT"
+              value={placeStats.featured}
+              icon={Star}
+              serial="PLC-004"
+              color="bg-yellow-50"
+            />
+          </div>
+        )}
 
         {/* Filter Bar */}
         <div className="bg-white border border-black p-4 flex flex-col md:flex-row gap-4 shadow-sm">
@@ -856,8 +857,20 @@ const PlaceListPage = ({
               ? (place) => openModerationDialog(place, "rejected")
               : undefined
           }
+          onViewBusinessDetails={(id) => {
+            setDetailDialogOpen(false);
+            setViewBusinessId(id);
+          }}
         />
       </Suspense>
+
+      <BusinessDetailModal
+        open={viewBusinessId != null}
+        onOpenChange={(open) => {
+          if (!open) setViewBusinessId(null);
+        }}
+        businessId={viewBusinessId}
+      />
 
       <Dialog
         open={moderationDialog.open}

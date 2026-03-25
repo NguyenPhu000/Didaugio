@@ -10,7 +10,9 @@
   "scripts": {
     "start": "nodemon --exec babel-node src/server.js",
     "test:business-smoke": "node tests/test_business_module_smoke.js",
+    "test:business-portal-regression": "node tests/test_business_portal_regression.js",
     "test:api-focused": "node tests/test_api_focused_contracts.js",
+    "test:booking-use-date": "node tests/test_booking_use_date_list.js",
     "studio": "prisma studio --schema=prisma/schema.prisma --port 5555",
     "migrate:dev": "prisma migrate dev --schema=prisma/schema.prisma",
     "migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",

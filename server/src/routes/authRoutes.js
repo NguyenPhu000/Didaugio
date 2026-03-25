@@ -15,7 +15,7 @@ import {
   resetPasswordSchema,
   revokeSessionParamSchema,
   verifyEmailSchema,
-} from "../models/schemas/authSchema.js";
+} from "../models/index.js";
 
 const router = express.Router();
 

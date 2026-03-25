@@ -143,11 +143,10 @@ describe("SettingsPageContent", () => {
     await user.clear(zoomInput);
     await user.type(zoomInput, "15");
 
-    const timeoutInput = screen.getByPlaceholderText(
-      "Session timeout (minutes)",
-    );
-    await user.clear(timeoutInput);
-    await user.type(timeoutInput, "45");
+    const timeoutSelect = await screen.findByLabelText(/hết hạn phiên/i);
+    await user.click(timeoutSelect);
+    const option45 = await screen.findByRole("option", { name: /45 phút/i });
+    await user.click(option45);
 
     const uploadInput = screen.getByPlaceholderText("Max upload size (MB)");
     await user.clear(uploadInput);

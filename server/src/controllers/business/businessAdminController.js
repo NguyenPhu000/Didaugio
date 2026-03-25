@@ -10,6 +10,7 @@ export const getAll = async (req, res, next) => {
       success: true,
       data: result.data,
       pagination: result.pagination,
+      summary: result.summary,
       message: "Lấy danh sách doanh nghiệp thành công",
     });
   } catch (error) {

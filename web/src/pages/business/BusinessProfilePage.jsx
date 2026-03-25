@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import toast from "react-hot-toast";
+import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
   Save,
   CreditCard,
   Building2,
+  FileSignature,
   AlertCircle,
   CheckCircle2,
   Clock,
@@ -25,12 +28,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import useBusinessStore from "@/stores/businessStore";
+import * as businessApi from "@/apis/businessApi";
+import { BUSINESS_STATUS } from "@/constants/businessConstants";
 import {
   SectionCard,
   PageHeader,
   DESIGN,
 } from "@/components/business/DashboardWidgets";
 import { cn } from "@/lib/utils";
+import FileUploader from "@/components/business/FileUploader";
+import ContractSignModal from "@/components/business/ContractSignModal";
 
 // ─── Validation Schema ────────────────────────────────────────────────────────
 
@@ -74,6 +81,14 @@ const STATUS_CONFIG = {
     description: "Hồ sơ của bạn không hợp lệ hoặc thiếu thông tin.",
     className: "bg-red-50 border-red-200 text-red-800",
     iconClass: "text-red-600",
+  },
+  suspended: {
+    icon: AlertCircle,
+    label: "Tạm ngưng",
+    description:
+      "Tài khoản doanh nghiệp đang bị tạm ngưng. Vui lòng liên hệ ban quản trị.",
+    className: "bg-slate-100 border-slate-300 text-slate-800",
+    iconClass: "text-slate-600",
   },
 };
 
@@ -130,9 +145,18 @@ const ProfileSkeleton = () => (
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const BusinessProfilePage = () => {
-  const { business, loading, updateProfile } = useBusinessStore();
+  const [searchParams] = useSearchParams();
+  const contractSectionRef = useRef(null);
+  const { business, loading, updateProfile, fetchProfile } = useBusinessStore();
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [signOpen, setSignOpen] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [documentFiles, setDocumentFiles] = useState({
+    idCardFront: [],
+    idCardBack: [],
+    businessLicense: [],
+  });
 
   const {
     register,
@@ -159,15 +183,46 @@ const BusinessProfilePage = () => {
     }
   }, [business, reset]);
 
+  useEffect(() => {
+    if (business?.status === BUSINESS_STATUS.SUSPENDED) setIsEditing(false);
+  }, [business?.status]);
+
+  useEffect(() => {
+    if (searchParams.get("section") !== "contract" || !business) return;
+    const id = requestAnimationFrame(() => {
+      contractSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [searchParams, business]);
+
   const onSubmit = async (data) => {
     setSaving(true);
     try {
-      await updateProfile(data);
+      await updateProfile({
+        ...data,
+        ...(documentFiles.idCardFront[0]
+          ? { idCardFront: documentFiles.idCardFront[0] }
+          : {}),
+        ...(documentFiles.idCardBack[0]
+          ? { idCardBack: documentFiles.idCardBack[0] }
+          : {}),
+        ...(documentFiles.businessLicense[0]
+          ? { businessLicense: documentFiles.businessLicense[0] }
+          : {}),
+      });
       toast.success("Cập nhật hồ sơ thành công");
       reset(data);
+      setDocumentFiles({
+        idCardFront: [],
+        idCardBack: [],
+        businessLicense: [],
+      });
       setIsEditing(false);
     } catch (error) {
-      toast.error(error.message || "Không thể cập nhật hồ sơ");
+      toastApiErrorIfNeeded(error, "Không thể cập nhật hồ sơ");
     } finally {
       setSaving(false);
     }
@@ -175,6 +230,7 @@ const BusinessProfilePage = () => {
 
   const handleCancel = () => {
     reset();
+    setDocumentFiles({ idCardFront: [], idCardBack: [], businessLicense: [] });
     setIsEditing(false);
   };
 
@@ -209,6 +265,32 @@ const BusinessProfilePage = () => {
       business?.bankName,
     ],
   );
+  const hasDocumentChanges = useMemo(
+    () =>
+      documentFiles.idCardFront.length > 0 ||
+      documentFiles.idCardBack.length > 0 ||
+      documentFiles.businessLicense.length > 0,
+    [documentFiles],
+  );
+
+  const isSuspended = business?.status === BUSINESS_STATUS.SUSPENDED;
+  const canSignContract =
+    business?.status === BUSINESS_STATUS.APPROVED && !business?.contractSigned;
+
+  const handleSignContract = async (payload) => {
+    setSigning(true);
+    try {
+      await businessApi.contractSign(payload);
+      await fetchProfile();
+      toast.success("Đã ký hợp đồng thành công");
+      setSignOpen(false);
+    } catch (error) {
+      toastApiErrorIfNeeded(error, "Không thể ký hợp đồng");
+      throw error;
+    } finally {
+      setSigning(false);
+    }
+  };
 
   return (
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
@@ -217,7 +299,7 @@ const BusinessProfilePage = () => {
         title="Hồ sơ doanh nghiệp"
         subtitle="Quản lý thông tin pháp lý và thanh toán"
         action={
-          !isEditing ? (
+          isSuspended ? null : !isEditing ? (
             <Button onClick={() => setIsEditing(true)} className="gap-2">
               <Edit3 className="h-4 w-4" />
               Chỉnh sửa
@@ -283,6 +365,78 @@ const BusinessProfilePage = () => {
               ))}
             </div>
           </SectionCard>
+
+          <SectionCard title="Giấy tờ xác minh" titleIcon={CheckCircle2}>
+            <div className="space-y-2.5">
+              <div className="rounded-lg border border-border/60 p-3">
+                <p className="text-xs text-muted-foreground">
+                  CCCD/CMND mặt trước
+                </p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {business?.idCardFront ? "Đã tải lên" : "Chưa tải lên"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/60 p-3">
+                <p className="text-xs text-muted-foreground">
+                  CCCD/CMND mặt sau
+                </p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {business?.idCardBack ? "Đã tải lên" : "Chưa tải lên"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/60 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Giấy phép kinh doanh
+                </p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {business?.businessLicense ? "Đã tải lên" : "Chưa tải lên"}
+                </p>
+              </div>
+            </div>
+          </SectionCard>
+
+          <div
+            ref={contractSectionRef}
+            id="business-contract-section"
+            className="scroll-mt-24 lg:col-span-2"
+          >
+            <SectionCard title="Hợp đồng pháp lý" titleIcon={FileSignature}>
+              <div className="space-y-3">
+                <div className="rounded-lg border border-border/60 p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Trạng thái hợp đồng
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {business?.contractSigned ? "Đã ký" : "Chưa ký"}
+                  </p>
+                  {business?.contractVersion && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Phiên bản: {business.contractVersion}
+                    </p>
+                  )}
+                  {business?.contractSignedAt && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Ký lúc:{" "}
+                      {new Date(business.contractSignedAt).toLocaleString(
+                        "vi-VN",
+                      )}
+                    </p>
+                  )}
+                </div>
+
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={() => setSignOpen(true)}
+                  disabled={!canSignContract}
+                >
+                  {business?.contractSigned
+                    ? "Đã hoàn tất ký hợp đồng"
+                    : "Ký hợp đồng ngay"}
+                </Button>
+              </div>
+            </SectionCard>
+          </div>
         </div>
       ) : (
         /* Edit Mode */
@@ -374,6 +528,49 @@ const BusinessProfilePage = () => {
                 </FormField>
               </div>
             </SectionCard>
+
+            <SectionCard
+              title="Cập nhật giấy tờ xác minh"
+              titleIcon={CheckCircle2}
+            >
+              <div className="space-y-4">
+                <FileUploader
+                  label="CCCD/CMND mặt trước"
+                  maxFiles={1}
+                  value={documentFiles.idCardFront}
+                  onChange={(files) =>
+                    setDocumentFiles((prev) => ({
+                      ...prev,
+                      idCardFront: files,
+                    }))
+                  }
+                  hint="Tùy chọn thay thế tệp hiện tại, tối đa 10MB"
+                />
+
+                <FileUploader
+                  label="CCCD/CMND mặt sau"
+                  maxFiles={1}
+                  value={documentFiles.idCardBack}
+                  onChange={(files) =>
+                    setDocumentFiles((prev) => ({ ...prev, idCardBack: files }))
+                  }
+                  hint="Tùy chọn thay thế tệp hiện tại, tối đa 10MB"
+                />
+
+                <FileUploader
+                  label="Giấy phép kinh doanh"
+                  maxFiles={1}
+                  value={documentFiles.businessLicense}
+                  onChange={(files) =>
+                    setDocumentFiles((prev) => ({
+                      ...prev,
+                      businessLicense: files,
+                    }))
+                  }
+                  hint="Tùy chọn thay thế tệp hiện tại, tối đa 10MB"
+                />
+              </div>
+            </SectionCard>
           </div>
 
           {/* Sticky Footer */}
@@ -413,7 +610,7 @@ const BusinessProfilePage = () => {
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={saving || !isDirty}
+                  disabled={saving || (!isDirty && !hasDocumentChanges)}
                   className="gap-2"
                 >
                   <Save className="h-3.5 w-3.5" />
@@ -424,6 +621,14 @@ const BusinessProfilePage = () => {
           </div>
         </form>
       )}
+
+      <ContractSignModal
+        open={signOpen}
+        onOpenChange={setSignOpen}
+        onSubmit={handleSignContract}
+        loading={signing}
+        contractVersion={business?.contractVersion || "v1"}
+      />
     </div>
   );
 };

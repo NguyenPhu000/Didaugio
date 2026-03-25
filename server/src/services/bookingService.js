@@ -1,9 +1,20 @@
 import prisma from "../config/prismaClient.js";
-import { PAGINATION, ROLES, BOOKING_STATUS } from "../config/constants.js";
+import {
+  PAGINATION,
+  ROLES,
+  BOOKING_STATUS,
+  PAYMENT_STATUS,
+} from "../config/constants.js";
 import { ERROR_CODES } from "../config/messages.js";
 import eventEmitter, { EVENTS } from "../utils/eventEmitter.js";
 import { generateBookingQR } from "../utils/generateQR.js";
 import ServiceError from "../utils/serviceError.js";
+import { combineUseDateAndTime } from "../utils/bookingTimeSlot.js";
+import { checkAvailability, lockBookingRow } from "./bookingAvailability.js";
+import {
+  appendBookingActionLog,
+  BOOKING_ACTION,
+} from "./bookingActionLogService.js";
 
 const defaultInclude = {
   service: {
@@ -29,7 +40,7 @@ const defaultInclude = {
   },
 };
 
-const serializeBookingUser = (booking) => {
+export const serializeBookingUser = (booking) => {
   if (!booking?.user) return booking;
 
   const { user, ...rest } = booking;
@@ -89,20 +100,24 @@ export const getAll = async (params = {}, userId, roleId) => {
     ];
   }
   if (params.fromDate) {
+    const fromDate = new Date(params.fromDate);
+    fromDate.setUTCHours(0, 0, 0, 0);
     where.useDate = {
       ...where.useDate,
-      gte: new Date(params.fromDate),
+      gte: fromDate,
     };
   }
   if (params.toDate) {
-    where.useDate = { ...where.useDate, lte: new Date(params.toDate) };
+    const toDate = new Date(params.toDate);
+    toDate.setUTCHours(23, 59, 59, 999);
+    where.useDate = { ...where.useDate, lte: toDate };
   }
 
   const orderBy =
     params.sortBy === "oldest"
       ? { createdAt: "asc" }
-      : params.sortBy === "booking_date"
-        ? { bookingDate: "desc" }
+      : ["booking_date", "use_date"].includes(params.sortBy)
+        ? [{ useDate: "desc" }, { createdAt: "desc" }]
         : { createdAt: "desc" };
 
   const [data, total] = await Promise.all([
@@ -138,6 +153,19 @@ export const getById = async (id) => {
           code: true,
           discountType: true,
           discountValue: true,
+        },
+      },
+      payment: {
+        select: {
+          id: true,
+          amount: true,
+          paymentMethod: true,
+          transactionRef: true,
+          status: true,
+          paidAt: true,
+          refundAmount: true,
+          refundedAt: true,
+          refundReason: true,
         },
       },
     },
@@ -184,6 +212,7 @@ export const getStats = async (userId, roleId) => {
 
 export const confirm = async (bookingId, userId) => {
   const booking = await prisma.$transaction(async (tx) => {
+    await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
       where: { id: parseInt(bookingId) },
       include: { service: true, user: true },
@@ -197,7 +226,25 @@ export const confirm = async (bookingId, userId) => {
       );
     }
 
-    return tx.booking.update({
+    const at = existing.bookingAt
+      ? new Date(existing.bookingAt)
+      : combineUseDateAndTime(existing.useDate, existing.useTime);
+
+    const avail = await checkAvailability(tx, {
+      serviceId: existing.serviceId,
+      bookingAt: at,
+      quantity: existing.quantity,
+      excludeBookingId: existing.id,
+    });
+    if (!avail.ok) {
+      throw new ServiceError(
+        "Không đủ slot trong khung giờ này",
+        409,
+        ERROR_CODES.CONFLICT,
+      );
+    }
+
+    const updated = await tx.booking.update({
       where: { id: parseInt(bookingId) },
       data: {
         status: BOOKING_STATUS.CONFIRMED,
@@ -205,6 +252,15 @@ export const confirm = async (bookingId, userId) => {
       },
       include: defaultInclude,
     });
+
+    await appendBookingActionLog(tx, {
+      bookingId: updated.id,
+      action: BOOKING_ACTION.APPROVE,
+      actorUserId: userId,
+      metadata: { source: "confirm" },
+    });
+
+    return updated;
   });
 
   eventEmitter.emit(EVENTS.BOOKING.CONFIRMED, {
@@ -219,6 +275,7 @@ export const confirm = async (bookingId, userId) => {
 
 export const cancel = async (bookingId, cancelReason, userId) => {
   const booking = await prisma.$transaction(async (tx) => {
+    await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
       where: { id: parseInt(bookingId) },
     });
@@ -236,7 +293,7 @@ export const cancel = async (bookingId, cancelReason, userId) => {
       );
     }
 
-    return tx.booking.update({
+    const updated = await tx.booking.update({
       where: { id: parseInt(bookingId) },
       data: {
         status: BOOKING_STATUS.CANCELLED,
@@ -246,6 +303,15 @@ export const cancel = async (bookingId, cancelReason, userId) => {
       },
       include: defaultInclude,
     });
+
+    await appendBookingActionLog(tx, {
+      bookingId: updated.id,
+      action: BOOKING_ACTION.REJECT,
+      actorUserId: userId,
+      metadata: { cancelReason },
+    });
+
+    return updated;
   });
 
   eventEmitter.emit(EVENTS.BOOKING.CANCELLED, {
@@ -382,4 +448,249 @@ export const getQR = async (bookingId) => {
   const qrCode = await generateBookingQR(booking.bookingCode, baseUrl);
 
   return { bookingCode: booking.bookingCode, qrCode };
+};
+
+export const markPaid = async (bookingId, payload = {}, userId) => {
+  const id = parseInt(bookingId);
+  if (Number.isNaN(id)) {
+    throw new ServiceError(
+      "Booking không hợp lệ",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+
+  const booking = await prisma.$transaction(async (tx) => {
+    const existing = await tx.booking.findUnique({
+      where: { id },
+      include: { payment: true },
+    });
+
+    if (!existing) {
+      throw new ServiceError(
+        "Booking không tồn tại",
+        404,
+        ERROR_CODES.NOT_FOUND,
+      );
+    }
+
+    if (
+      [BOOKING_STATUS.CANCELLED, BOOKING_STATUS.NO_SHOW].includes(
+        existing.status,
+      )
+    ) {
+      throw new ServiceError(
+        "Không thể xác nhận thanh toán cho booking đã hủy hoặc không đến",
+        422,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
+
+    if (
+      [PAYMENT_STATUS.PAID, PAYMENT_STATUS.FULLY_REFUNDED].includes(
+        existing.paymentStatus,
+      )
+    ) {
+      throw new ServiceError(
+        "Booking đã được cập nhật thanh toán trước đó",
+        422,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
+
+    const amount = payload.amount
+      ? parseInt(payload.amount)
+      : existing.finalPrice;
+    const paidAt = payload.paidAt ? new Date(payload.paidAt) : new Date();
+    const paymentMethod = payload.paymentMethod || "manual";
+    const transactionRef = payload.transactionRef || null;
+
+    if (Number.isNaN(amount) || amount <= 0) {
+      throw new ServiceError(
+        "Số tiền thanh toán không hợp lệ",
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
+
+    if (Number.isNaN(paidAt.getTime())) {
+      throw new ServiceError(
+        "Thời gian thanh toán không hợp lệ",
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
+
+    const paymentData = {
+      method: "manual",
+      actorUserId: userId,
+      note: payload.note || null,
+    };
+
+    if (existing.payment) {
+      await tx.payment.update({
+        where: { bookingId: id },
+        data: {
+          amount,
+          paymentMethod,
+          transactionRef,
+          status: "paid",
+          paidAt,
+          paymentData,
+        },
+      });
+    } else {
+      await tx.payment.create({
+        data: {
+          bookingId: id,
+          userId: existing.userId,
+          amount,
+          paymentMethod,
+          transactionRef,
+          status: "paid",
+          paidAt,
+          paymentData,
+        },
+      });
+    }
+
+    return tx.booking.update({
+      where: { id },
+      data: {
+        paymentStatus: PAYMENT_STATUS.PAID,
+      },
+      include: {
+        ...defaultInclude,
+        payment: true,
+      },
+    });
+  });
+
+  return serializeBookingUser(booking);
+};
+
+export const refund = async (bookingId, payload = {}, userId) => {
+  const id = parseInt(bookingId);
+  if (Number.isNaN(id)) {
+    throw new ServiceError(
+      "Booking không hợp lệ",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+
+  const booking = await prisma.$transaction(async (tx) => {
+    const existing = await tx.booking.findUnique({
+      where: { id },
+      include: { payment: true },
+    });
+
+    if (!existing) {
+      throw new ServiceError(
+        "Booking không tồn tại",
+        404,
+        ERROR_CODES.NOT_FOUND,
+      );
+    }
+
+    if (!existing.payment) {
+      throw new ServiceError(
+        "Booking chưa có giao dịch thanh toán để hoàn tiền",
+        422,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
+
+    if (
+      ![
+        PAYMENT_STATUS.PAID,
+        PAYMENT_STATUS.PARTIALLY_REFUNDED,
+        PAYMENT_STATUS.FULLY_REFUNDED,
+      ].includes(existing.paymentStatus)
+    ) {
+      throw new ServiceError(
+        "Booking chưa ở trạng thái có thể hoàn tiền",
+        422,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
+
+    if (existing.paymentStatus === PAYMENT_STATUS.FULLY_REFUNDED) {
+      throw new ServiceError(
+        "Booking đã hoàn tiền toàn phần",
+        422,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
+
+    const refundAmount = parseInt(payload.refundAmount);
+    const alreadyRefunded = existing.payment.refundAmount || 0;
+    const paidAmount = existing.payment.amount || existing.finalPrice;
+    const refundableAmount = paidAmount - alreadyRefunded;
+
+    if (Number.isNaN(refundAmount) || refundAmount <= 0) {
+      throw new ServiceError(
+        "Số tiền hoàn không hợp lệ",
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
+
+    if (refundAmount > refundableAmount) {
+      throw new ServiceError(
+        `Số tiền hoàn vượt quá phần còn lại (${refundableAmount})`,
+        422,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
+
+    const totalRefunded = alreadyRefunded + refundAmount;
+    const refundedAt = payload.refundedAt
+      ? new Date(payload.refundedAt)
+      : new Date();
+    if (Number.isNaN(refundedAt.getTime())) {
+      throw new ServiceError(
+        "Thời gian hoàn tiền không hợp lệ",
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
+
+    const nextPaymentStatus =
+      totalRefunded >= paidAmount
+        ? PAYMENT_STATUS.FULLY_REFUNDED
+        : PAYMENT_STATUS.PARTIALLY_REFUNDED;
+
+    const nextPaymentData = {
+      ...(existing.payment.paymentData || {}),
+      lastRefundBy: userId,
+      lastRefundAt: refundedAt,
+    };
+
+    await tx.payment.update({
+      where: { bookingId: id },
+      data: {
+        refundAmount: totalRefunded,
+        refundedAt,
+        refundReason:
+          payload.refundReason || existing.payment.refundReason || null,
+        status:
+          nextPaymentStatus === PAYMENT_STATUS.FULLY_REFUNDED
+            ? "fully_refunded"
+            : "partially_refunded",
+        paymentData: nextPaymentData,
+      },
+    });
+
+    return tx.booking.update({
+      where: { id },
+      data: { paymentStatus: nextPaymentStatus },
+      include: {
+        ...defaultInclude,
+        payment: true,
+      },
+    });
+  });
+
+  return serializeBookingUser(booking);
 };

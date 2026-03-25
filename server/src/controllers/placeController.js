@@ -25,6 +25,8 @@ export const getPlaces = async (req, res, next) => {
       limit,
     } = req.query;
 
+    let businessId = req.query.businessId;
+
     const filters = {
       categoryId,
       districtId,
@@ -40,6 +42,14 @@ export const getPlaces = async (req, res, next) => {
       page,
       limit,
     };
+
+    if (
+      businessId &&
+      req.user?.roleId != null &&
+      req.user.roleId <= ROLES.ADMIN
+    ) {
+      filters.businessId = parseInt(businessId, 10);
+    }
 
     if (req.user?.roleId === ROLES.BUSINESS) {
       filters.ownerUserId = req.user.userId;

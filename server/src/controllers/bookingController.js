@@ -1,4 +1,91 @@
 import * as bookingService from "../services/bookingService.js";
+import * as bookingScheduleService from "../services/bookingScheduleService.js";
+import { resolveBusinessId } from "../utils/businessScope.js";
+import { ERROR_CODES } from "../config/messages.js";
+
+export const getSchedule = async (req, res, next) => {
+  try {
+    const date = req.query.date;
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "Thiếu tham số date (YYYY-MM-DD)",
+        errorCode: ERROR_CODES.MISSING_PARAMS,
+      });
+    }
+    const businessId = await resolveBusinessId(req);
+    if (!businessId) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "Thiếu businessId (admin) hoặc chưa có hồ sơ doanh nghiệp",
+        errorCode: ERROR_CODES.MISSING_PARAMS,
+      });
+    }
+    const data = await bookingScheduleService.getScheduleByDate(
+      businessId,
+      String(date),
+    );
+    res.json({
+      success: true,
+      data,
+      message: "Lấy lịch đặt chỗ thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const reschedule = async (req, res, next) => {
+  try {
+    const booking = await bookingScheduleService.rescheduleBooking(
+      req.params.id,
+      req.body.bookingTime,
+      req.user.userId,
+    );
+    res.json({
+      success: true,
+      data: booking,
+      message: "Đổi lịch thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const quickApprove = async (req, res, next) => {
+  try {
+    const booking = await bookingScheduleService.quickApproveBooking(
+      req.params.id,
+      req.user.userId,
+    );
+    res.json({
+      success: true,
+      data: booking,
+      message: "Đã duyệt nhanh",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const quickReject = async (req, res, next) => {
+  try {
+    const booking = await bookingScheduleService.quickRejectBooking(
+      req.params.id,
+      req.body.cancelReason,
+      req.user.userId,
+    );
+    res.json({
+      success: true,
+      data: booking,
+      message: "Đã từ chối nhanh",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getAll = async (req, res, next) => {
   try {
@@ -154,6 +241,40 @@ export const bulkCancel = async (req, res, next) => {
       success: true,
       message: `Đã hủy ${successCount}/${results.length} booking`,
       data: results,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markPaid = async (req, res, next) => {
+  try {
+    const booking = await bookingService.markPaid(
+      req.params.id,
+      req.body,
+      req.user.userId,
+    );
+    res.json({
+      success: true,
+      message: "Cập nhật thanh toán thành công",
+      data: booking,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const refund = async (req, res, next) => {
+  try {
+    const booking = await bookingService.refund(
+      req.params.id,
+      req.body,
+      req.user.userId,
+    );
+    res.json({
+      success: true,
+      message: "Hoàn tiền thành công",
+      data: booking,
     });
   } catch (error) {
     next(error);

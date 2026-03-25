@@ -1,5 +1,5 @@
 import prisma from "../config/prismaClient.js";
-import { updateProfileSchema } from "../models/schemas/authSchema.js";
+import { updateProfileSchema } from "../models/index.js";
 import ServiceError from "../utils/serviceError.js";
 
 export const getProfile = async (userId) => {

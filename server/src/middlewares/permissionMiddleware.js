@@ -6,7 +6,6 @@ const SYSTEM_RESTRICTED_PERMISSIONS = {
   [ROLES.ADMIN]: new Set([
     "roles.manage_permissions",
     "roles.assign_to_users",
-    "settings.update",
   ]),
   [ROLES.BUSINESS]: new Set([
     "places.approve",

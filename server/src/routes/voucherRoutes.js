@@ -2,17 +2,19 @@ import express from "express";
 import * as controller from "../controllers/voucherController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { checkBusinessOwnership } from "../middlewares/businessOwnership.js";
+import { requireActiveBusiness } from "../middlewares/requireActiveBusiness.js";
 import { validateBody } from "../middlewares/validateSchema.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
 import {
   createVoucherSchema,
   updateVoucherSchema,
   bulkDeactivateSchema,
-} from "../models/schemas/voucherSchema.js";
+} from "../models/index.js";
 
 const router = express.Router();
 
 router.use(authenticate);
+router.use(requireActiveBusiness({ requireContractSigned: true }));
 
 router.get("/", controller.getAll);
 
@@ -36,7 +38,11 @@ router.post(
 );
 
 router.get("/:id", controller.getById);
-router.get("/:id/usage", checkBusinessOwnership("voucher"), controller.getUsageStats);
+router.get(
+  "/:id/usage",
+  checkBusinessOwnership("voucher"),
+  controller.getUsageStats,
+);
 
 router.put(
   "/:id",

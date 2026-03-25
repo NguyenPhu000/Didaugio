@@ -5,9 +5,10 @@ import {
   CardHeader,
   CardTitle,
   Checkbox,
-  Input,
 } from "@/components/ui";
 import { Textarea } from "@/components/ui/textarea";
+import SettingSelectField from "./SettingSelectField";
+import { BACKUP_FREQUENCY_OPTIONS } from "../settingsSelectOptions";
 
 const OperationsCard = ({ value, onChange }) => {
   return (
@@ -31,11 +32,12 @@ const OperationsCard = ({ value, onChange }) => {
             className="rounded-none border-black data-[state=checked]:bg-black data-[state=checked]:text-white"
           />
         </div>
-        <Input
-          className="rounded-none border-black"
+        <SettingSelectField
+          id="settings-backup-frequency"
+          label="Tần suất backup"
           value={value.backupFrequency}
-          onChange={(e) => onChange("backupFrequency", e.target.value)}
-          placeholder="Backup frequency"
+          onChange={(v) => onChange("backupFrequency", v)}
+          options={BACKUP_FREQUENCY_OPTIONS}
         />
         <Textarea
           rows={3}

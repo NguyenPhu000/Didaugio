@@ -53,7 +53,15 @@ export const getAll = async (params = {}, userId, roleId) => {
   if (params.search) {
     where.OR = [
       { content: { contains: params.search, mode: "insensitive" } },
-      { user: { fullName: { contains: params.search, mode: "insensitive" } } },
+      {
+        user: {
+          profile: {
+            is: {
+              fullName: { contains: params.search, mode: "insensitive" },
+            },
+          },
+        },
+      },
     ];
   }
   if (params.rating) {
@@ -120,7 +128,9 @@ export const reply = async (reviewId, content, userId) => {
       userId,
       content,
     },
-    include: { user: { select: { id: true, fullName: true } } },
+    include: {
+      user: { select: { id: true, profile: { select: { fullName: true } } } },
+    },
   });
 
   eventEmitter.emit(EVENTS.REVIEW.REPLIED, {
@@ -229,3 +239,33 @@ export const deleteReply = async (replyId, userId) => {
   return true;
 };
 
+export const moderateReply = async (replyId, status, userId) => {
+  const existing = await prisma.reviewReply.findUnique({
+    where: { id: parseInt(replyId) },
+    select: { id: true, userId: true, status: true },
+  });
+
+  if (!existing) {
+    throw new ServiceError(
+      "Phản hồi không tồn tại",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
+  }
+
+  if (existing.userId !== userId) {
+    throw new ServiceError(
+      "Bạn không có quyền moderation phản hồi này",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
+  }
+
+  return prisma.reviewReply.update({
+    where: { id: parseInt(replyId) },
+    data: { status },
+    include: {
+      user: { select: { id: true, profile: { select: { fullName: true } } } },
+    },
+  });
+};

@@ -11,7 +11,7 @@ import {
   getDistrictsQuerySchema,
   getWardsByDistrictQuerySchema,
   lookupDistrictBodySchema,
-} from "../models/schemas/districtSchema.js";
+} from "../models/index.js";
 
 const router = express.Router();
 

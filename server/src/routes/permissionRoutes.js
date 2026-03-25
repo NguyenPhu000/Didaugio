@@ -7,7 +7,7 @@ import { validateQuery } from "../middlewares/validateSchema.js";
 import {
   permissionByModuleQuerySchemaRoute,
   permissionListQuerySchemaRoute,
-} from "../models/schemas/permissionRouteSchema.js";
+} from "../models/index.js";
 
 const router = express.Router();
 

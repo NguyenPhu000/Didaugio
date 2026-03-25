@@ -14,7 +14,7 @@ import {
   roleListQuerySchema,
   roleUpdatePermissionsBodySchema,
   roleUsersQuerySchemaRoute,
-} from "../models/schemas/roleRouteSchema.js";
+} from "../models/index.js";
 
 const router = express.Router();
 

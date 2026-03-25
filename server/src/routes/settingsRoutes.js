@@ -1,40 +1,16 @@
 import express from "express";
 import { authenticate } from "../middlewares/authMiddleware.js";
-import { requirePermission } from "../middlewares/permissionMiddleware.js";
-import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
+import { blockGuestFromAdmin, checkMinRole } from "../middlewares/blockGuestFromAdmin.js";
+import * as settingsController from "../controllers/settingsController.js";
 
 const router = express.Router();
 
 router.use(authenticate, blockGuestFromAdmin);
 
-router.get(
-  "/",
-  authenticate,
-  requirePermission("settings.view"),
-  async (req, res) => {
-    res.json({
-      success: true,
-      data: {
-        siteName: "Đi Đâu Giờ?",
-        siteDescription: "Khám phá Cần Thơ",
-        version: "1.0.0",
-      },
-      message: "Settings retrieved successfully",
-    });
-  },
-);
+/** Chỉ Super Admin & Admin (không dùng permission settings.* để tránh 403 khi chưa gán quyền trong DB) */
+const onlySettingsAdmins = checkMinRole(["SUPER_ADMIN", "ADMIN"]);
 
-router.put(
-  "/",
-  authenticate,
-  requirePermission("settings.update"),
-  async (req, res) => {
-    res.json({
-      success: true,
-      data: req.body,
-      message: "Settings updated successfully",
-    });
-  },
-);
+router.get("/", onlySettingsAdmins, settingsController.getSettings);
+router.put("/", onlySettingsAdmins, settingsController.updateSettings);
 
 export default router;

@@ -37,6 +37,8 @@ import {
 } from "@/pages";
 import BookingListPage from "@/pages/business/BookingListPage";
 import BookingDetailPage from "@/pages/business/BookingDetailPage";
+import BookingSchedulePage from "@/pages/business/BookingSchedulePage";
+import BookingQuickProcessPage from "@/pages/business/BookingQuickProcessPage";
 import VoucherListPage from "@/pages/business/VoucherListPage";
 import BusinessDashboardPage from "@/pages/business/BusinessDashboardPage";
 import RevenuePage from "@/pages/business/RevenuePage";
@@ -351,6 +353,30 @@ const AppRoutes = () => {
       />
 
       <Route
+        path={BUSINESS_ROUTES.BOOKING_SCHEDULE}
+        element={
+          <ProtectedRoute roles={[ROLES.BUSINESS]}>
+            <AdminLayout>
+              <BusinessGuard>
+                <BookingSchedulePage />
+              </BusinessGuard>
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={BUSINESS_ROUTES.BOOKING_QUICK}
+        element={
+          <ProtectedRoute roles={[ROLES.BUSINESS]}>
+            <AdminLayout>
+              <BusinessGuard>
+                <BookingQuickProcessPage />
+              </BusinessGuard>
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path={BUSINESS_ROUTES.BOOKINGS}
         element={
           <ProtectedRoute roles={[ROLES.BUSINESS]}>
@@ -363,7 +389,7 @@ const AppRoutes = () => {
         }
       />
       <Route
-        path="/business/bookings/:id"
+        path={BUSINESS_ROUTES.BOOKING_DETAIL(":id")}
         element={
           <ProtectedRoute roles={[ROLES.BUSINESS]}>
             <AdminLayout>
@@ -436,6 +462,20 @@ const AppRoutes = () => {
               </BusinessGuard>
             </AdminLayout>
           </ProtectedRoute>
+        }
+      />
+
+      {/* Legacy: hợp đồng gộp vào Hồ sơ (Phương án A) */}
+      <Route
+        path="/business/contracts"
+        element={
+          <Navigate to={`${BUSINESS_ROUTES.PROFILE}?section=contract`} replace />
+        }
+      />
+      <Route
+        path="/business/contracts/:id"
+        element={
+          <Navigate to={`${BUSINESS_ROUTES.PROFILE}?section=contract`} replace />
         }
       />
 

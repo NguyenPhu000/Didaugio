@@ -35,7 +35,7 @@ const adminListSelect = {
   createdAt: true,
   updatedAt: true,
   owner: defaultInclude.owner,
-  _count: { select: { places: true, services: true } },
+  _count: { select: { places: true, services: true, vouchers: true } },
 };
 
 const ensurePendingForReview = (business) => {
@@ -64,6 +64,42 @@ const ensureSuspendedForReactivate = (business) => {
     error.statusCode = 422;
     throw error;
   }
+};
+
+/** Gắn số đặt chỗ theo từng business (qua business_services) — không gồm số tiền/doanh thu. */
+const attachBookingCounts = async (rows) => {
+  if (!rows?.length) return rows;
+  const ids = rows.map((b) => b.id);
+  const grouped = await prisma.booking.groupBy({
+    by: ["serviceId"],
+    where: { service: { businessId: { in: ids } } },
+    _count: { _all: true },
+  });
+  if (!grouped.length) {
+    return rows.map((b) => ({
+      ...b,
+      _count: { ...b._count, bookings: 0 },
+    }));
+  }
+  const serviceIds = grouped.map((r) => r.serviceId);
+  const services = await prisma.businessService.findMany({
+    where: { id: { in: serviceIds } },
+    select: { id: true, businessId: true },
+  });
+  const serviceToBusiness = new Map(services.map((s) => [s.id, s.businessId]));
+  const byBusiness = new Map();
+  for (const row of grouped) {
+    const bid = serviceToBusiness.get(row.serviceId);
+    if (bid == null) continue;
+    byBusiness.set(bid, (byBusiness.get(bid) || 0) + row._count._all);
+  }
+  return rows.map((b) => ({
+    ...b,
+    _count: {
+      ...b._count,
+      bookings: byBusiness.get(b.id) || 0,
+    },
+  }));
 };
 
 export const getAll = async (params = {}) => {
@@ -102,33 +138,84 @@ export const getAll = async (params = {}) => {
         ? { businessName: "asc" }
         : { createdAt: "desc" };
 
-  const [rawData, total] = await Promise.all([
-    prisma.business.findMany({
-      where,
-      select: adminListSelect,
-      skip,
-      take: limit,
-      orderBy,
-    }),
-    prisma.business.count({ where }),
-  ]);
+  /** Cùng bộ lọc tìm kiếm / hợp đồng, bỏ lọc trạng thái — để thống kê 4 thẻ luôn đầy đủ */
+  const summaryWhere = { ...where };
+  delete summaryWhere.status;
 
-  const data = rawData.map(serializeBusiness);
+  const [rawData, total, statusGroups, totalInSummary, totalPlacesSummary] =
+    await Promise.all([
+      prisma.business.findMany({
+        where,
+        select: adminListSelect,
+        skip,
+        take: limit,
+        orderBy,
+      }),
+      prisma.business.count({ where }),
+      prisma.business.groupBy({
+        by: ["status"],
+        where: summaryWhere,
+        _count: { _all: true },
+      }),
+      prisma.business.count({ where: summaryWhere }),
+      prisma.place.count({
+        where: {
+          deletedAt: null,
+          businessId: { not: null },
+          business: { is: summaryWhere },
+        },
+      }),
+    ]);
+
+  const byStatus = Object.fromEntries(
+    statusGroups.map((g) => [g.status, g._count._all]),
+  );
+
+  const summary = {
+    totalBusinesses: totalInSummary,
+    pending: byStatus.pending ?? 0,
+    approved: byStatus.approved ?? 0,
+    rejected: byStatus.rejected ?? 0,
+    suspended: byStatus.suspended ?? 0,
+    totalPlaces: totalPlacesSummary,
+  };
+
+  const withCounts = await attachBookingCounts(rawData);
+  const data = withCounts.map(serializeBusiness);
 
   return {
     data,
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    summary,
   };
 };
 
 export const getById = async (id) => {
-  const business = await prisma.business.findUnique({
-    where: { id: parseInt(id) },
-    include: {
-      ...defaultInclude,
-      _count: { select: { places: true, services: true, vouchers: true } },
-    },
-  });
+  const idNum = parseInt(id, 10);
+  const [business, bookingCount] = await Promise.all([
+    prisma.business.findUnique({
+      where: { id: idNum },
+      include: {
+        ...defaultInclude,
+        _count: { select: { places: true, services: true, vouchers: true } },
+        places: {
+          orderBy: [{ updatedAt: "desc" }],
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+            address: true,
+            district: { select: { id: true, name: true } },
+            category: { select: { id: true, name: true } },
+          },
+        },
+      },
+    }),
+    prisma.booking.count({
+      where: { service: { businessId: idNum } },
+    }),
+  ]);
 
   if (!business) {
     const error = new Error("Doanh nghiệp không tồn tại");
@@ -136,7 +223,10 @@ export const getById = async (id) => {
     throw error;
   }
 
-  return serializeBusiness(business);
+  return serializeBusiness({
+    ...business,
+    _count: { ...business._count, bookings: bookingCount },
+  });
 };
 
 export const approve = async (id, data = {}, approvedBy) => {

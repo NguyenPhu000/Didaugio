@@ -7,13 +7,16 @@ import {
   SortAsc,
   SortDesc,
   Map,
+  MapPin,
   AlertCircle,
   Star,
   CheckCircle,
   Clock,
   XCircle,
   Loader2,
+  EyeOff,
 } from "lucide-react";
+import TimStatsCard from "@/components/admin/TimStatsCard";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import * as districtService from "@/apis/districtService";
 import * as placeService from "@/apis/placeService";
@@ -274,43 +277,40 @@ const DistrictListPage = () => {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Thống kê nhanh */}
         {!loading && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              {
-                label: "KHU VỰC",
-                value: districts.length,
-                cls: "border-black",
-              },
-              {
-                label: "TỔNG ĐỊA ĐIỂM",
-                value: totalPlaces,
-                cls: "border-primary",
-              },
-              {
-                label: "CÓ ĐỊA ĐIỂM",
-                value: filtered.filter((d) => (d._count?.places || 0) > 0)
-                  .length,
-                cls: "border-emerald-500 text-emerald-700",
-              },
-              {
-                label: "TRỐNG",
-                value: filtered.filter((d) => (d._count?.places || 0) === 0)
-                  .length,
-                cls: "border-gray-300 text-gray-400",
-              },
-            ].map(({ label, value, cls }) => (
-              <div
-                key={label}
-                className={`bg-white border-l-4 border border-black pl-4 py-3 pr-4 flex items-center justify-between ${cls}`}
-              >
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  {label}
-                </span>
-                <span className="font-black font-mono text-xl">{value}</span>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <TimStatsCard
+              title="KHU VỰC"
+              value={districts.length}
+              icon={Map}
+              serial="DST-001"
+            />
+            <TimStatsCard
+              title="TỔNG ĐỊA ĐIỂM"
+              value={totalPlaces}
+              icon={MapPin}
+              serial="DST-002"
+              color="bg-yellow-50"
+            />
+            <TimStatsCard
+              title="CÓ ĐỊA ĐIỂM"
+              value={
+                filtered.filter((d) => (d._count?.places || 0) > 0).length
+              }
+              icon={CheckCircle}
+              serial="DST-003"
+              textColor="text-emerald-600"
+            />
+            <TimStatsCard
+              title="KHU TRỐNG"
+              value={
+                filtered.filter((d) => (d._count?.places || 0) === 0).length
+              }
+              icon={EyeOff}
+              serial="DST-004"
+              textColor="text-gray-400"
+            />
           </div>
         )}
 

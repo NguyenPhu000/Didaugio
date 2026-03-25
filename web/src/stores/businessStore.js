@@ -9,7 +9,12 @@ const useBusinessStore = create(
       businesses: [],
       loading: false,
       error: null,
+      /** Thống kê nhanh (theo bộ lọc tìm kiếm, không theo tab trạng thái) */
+      summary: null,
       pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+      /** Tham số lần gọi `getAll` gần nhất (để refetch sau duyệt/từ chối/tạm ngưng/kích hoạt) */
+      listQueryParams: {},
+      /** Cùng nguồn với `fetchDashboard` — dùng chung cho Dashboard + Revenue (tránh gọi getProfile trùng với BusinessGuard) */
       dashboardStats: null,
 
       fetchProfile: async () => {
@@ -70,7 +75,9 @@ const useBusinessStore = create(
           set({
             businesses: response.data || [],
             pagination: response.pagination || get().pagination,
+            summary: response.summary ?? null,
             loading: false,
+            listQueryParams: { ...params },
           });
           return response.data;
         } catch (error) {
@@ -79,11 +86,14 @@ const useBusinessStore = create(
         }
       },
 
-      approveBusiness: async (id) => {
+      refetchBusinessList: async () =>
+        get().fetchAll(get().listQueryParams || {}),
+
+      approveBusiness: async (id, payload = {}) => {
         set({ loading: true, error: null });
         try {
-          const response = await businessApi.approve(id);
-          await get().fetchAll();
+          const response = await businessApi.approve(id, payload);
+          await get().refetchBusinessList();
           set({ loading: false });
           return response;
         } catch (error) {
@@ -96,7 +106,33 @@ const useBusinessStore = create(
         set({ loading: true, error: null });
         try {
           const response = await businessApi.reject(id, reason);
-          await get().fetchAll();
+          await get().refetchBusinessList();
+          set({ loading: false });
+          return response;
+        } catch (error) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+
+      suspendBusiness: async (id) => {
+        set({ loading: true, error: null });
+        try {
+          const response = await businessApi.suspend(id);
+          await get().refetchBusinessList();
+          set({ loading: false });
+          return response;
+        } catch (error) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+
+      reactivateBusiness: async (id) => {
+        set({ loading: true, error: null });
+        try {
+          const response = await businessApi.reactivate(id);
+          await get().refetchBusinessList();
           set({ loading: false });
           return response;
         } catch (error) {
@@ -113,6 +149,8 @@ const useBusinessStore = create(
           loading: false,
           error: null,
           dashboardStats: null,
+          listQueryParams: {},
+          summary: null,
         }),
     }),
     { name: "BusinessStore" },

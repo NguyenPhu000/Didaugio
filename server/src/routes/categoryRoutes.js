@@ -17,7 +17,7 @@ import {
   getCategoriesQuerySchema,
   getCategoryTreeQuerySchema,
   updateCategorySchema,
-} from "../models/schemas/categorySchema.js";
+} from "../models/index.js";
 
 const router = express.Router();
 

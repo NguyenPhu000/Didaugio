@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import useTagStore from "@/stores/tagStore";
 import TagList from "@/components/tag/TagList";
 import TagFormDialog from "@/components/tag/TagFormDialog";
+import TimStatsCard from "@/components/admin/TimStatsCard";
 
 /**
  * TAG MANAGEMENT PAGE - T.I.M STYLE OVERHAUL (VIETNAMESE)
@@ -46,35 +47,6 @@ const TAG_TYPES = {
   time: "Thời gian",
   ai_signal: "AI Signal",
 };
-
-// Custom Stats Card Component
-const StatsCard = ({ title, value, icon: Icon, serial }) => (
-  <div className="relative bg-white border border-black p-6 group hover:shadow-hard transition-all duration-300">
-    {/* Serial Number */}
-    <div className="absolute top-2 right-2 text-[8px] font-mono text-gray-400">
-      {serial}
-    </div>
-    {/* Corner Accent */}
-    <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-primary"></div>
-
-    <div className="flex justify-between items-start">
-      <div>
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">
-          {title}
-        </h3>
-        <div className="text-5xl font-black tracking-tighter text-foreground font-technical">
-          {value}
-        </div>
-      </div>
-      <div className="p-2 bg-gray-50 border border-gray-100">
-        <Icon className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors" />
-      </div>
-    </div>
-
-    {/* Bottom decorative line */}
-    <div className="absolute bottom-0 left-0 w-full h-[2px] bg-black scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-  </div>
-);
 
 export default function TagManagementPage() {
   const { tags, loading, fetchTags, deleteTag } = useTagStore();
@@ -186,31 +158,33 @@ export default function TagManagementPage() {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid gap-6 md:grid-cols-4">
-          <StatsCard
-            title="TỔNG SỐ LƯỢNG"
+        {/* Thống kê nhanh */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <TimStatsCard
+            title="TỔNG THẺ"
             value={tags.length}
             icon={Layers}
-            serial="REF-001"
+            serial="TAG-001"
           />
-          <StatsCard
+          <TimStatsCard
             title="ĐANG HOẠT ĐỘNG"
             value={tags.filter((t) => t.isActive).length}
             icon={Activity}
-            serial="REF-002"
+            serial="TAG-002"
+            textColor="text-emerald-600"
           />
-          <StatsCard
+          <TimStatsCard
             title="TỔNG LƯỢT DÙNG"
             value={tags.reduce((sum, t) => sum + (t.usageCount || 0), 0)}
             icon={BarChart3}
-            serial="REF-003"
+            serial="TAG-003"
           />
-          <StatsCard
-            title="PHÂN LOẠI"
+          <TimStatsCard
+            title="LOẠI THẺ (NHÓM)"
             value={new Set(tags.map((t) => t.tagType)).size}
             icon={TagIcon}
-            serial="REF-004"
+            serial="TAG-004"
+            color="bg-yellow-50"
           />
         </div>
 

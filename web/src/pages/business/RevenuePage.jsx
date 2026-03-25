@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
 import { BarChart3, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
-import * as businessApi from "@/apis/businessApi";
+import useBusinessStore from "@/stores/businessStore";
 import { BOOKING_STATUS } from "@/constants/constants";
 import {
   PageHeader,
@@ -38,22 +37,31 @@ const STATUS_ROWS = [
 ];
 
 const RevenuePage = () => {
-  const [stats, setStats] = useState(null);
+  const dashboardStats = useBusinessStore((s) => s.dashboardStats);
+  const fetchDashboard = useBusinessStore((s) => s.fetchDashboard);
   const [loading, setLoading] = useState(true);
 
+  const stats = dashboardStats;
+  const overview = stats?.overview || stats || {};
+
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       try {
-        const response = await businessApi.getDashboard();
-        setStats(response.data);
-      } catch {
-        toast.error("Không thể tải dữ liệu doanh thu");
+        await fetchDashboard();
+      } catch (error) {
+        if (!cancelled) {
+          toastApiErrorIfNeeded(error, "Không thể tải dữ liệu doanh thu");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     load();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchDashboard]);
 
   return (
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
@@ -71,21 +79,25 @@ const RevenuePage = () => {
           <>
             <StatCard
               title="Tổng doanh thu"
-              value={formatVND(stats?.totalRevenue)}
+              value={formatVND(
+                overview?.totalRevenue ?? stats?.totalRevenue,
+              )}
               icon={TrendingUp}
               iconColor="emerald"
               description="Từ tất cả booking hoàn thành"
             />
             <StatCard
               title="Hoa hồng hệ thống"
-              value={`-${formatVND(stats?.totalCommission)}`}
+              value={`-${formatVND(
+                overview?.totalCommission ?? stats?.totalCommission,
+              )}`}
               icon={TrendingDown}
               iconColor="rose"
               description="Phí nền tảng tính trên doanh thu"
             />
             <StatCard
               title="Doanh thu ròng"
-              value={formatVND(stats?.netRevenue)}
+              value={formatVND(overview?.netRevenue ?? stats?.netRevenue)}
               icon={DollarSign}
               iconColor="amber"
               description="Sau khi trừ hoa hồng"
@@ -107,8 +119,10 @@ const RevenuePage = () => {
               <StatusProgressRow
                 key={key}
                 label={label}
-                count={stats?.bookingsByStatus?.[key] || 0}
-                total={stats?.bookingsCount || 0}
+                count={overview?.bookingsByStatus?.[key] || 0}
+                total={
+                  overview?.bookingsTotal ?? stats?.bookingsCount ?? 0
+                }
                 colorClass={colorClass}
               />
             ))}
@@ -116,7 +130,7 @@ const RevenuePage = () => {
           <div className="mt-5 pt-4 border-t border-border/60 flex items-center justify-between text-sm">
             <span className="font-medium text-muted-foreground">Tổng cộng</span>
             <span className="font-bold text-foreground">
-              {stats?.bookingsCount || 0} đặt chỗ
+              {overview?.bookingsTotal ?? stats?.bookingsCount ?? 0} đặt chỗ
             </span>
           </div>
         </SectionCard>

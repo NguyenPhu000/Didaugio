@@ -3,7 +3,7 @@ import { ERROR_CODES } from "../config/messages.js";
 import {
   loginHistoryQuerySchema,
   revokeSessionSchema,
-} from "../models/schemas/activitySchema.js";
+} from "../models/index.js";
 
 /**
  * GET /api/login-history

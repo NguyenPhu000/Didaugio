@@ -16,6 +16,12 @@ export const updateReplySchema = z.object({
     .trim(),
 });
 
+export const moderateReplySchema = z.object({
+  status: z.enum(["visible", "hidden"], {
+    required_error: "Trạng thái moderation là bắt buộc",
+  }),
+});
+
 export const reviewIdParamSchema = z.object({
   id: z.coerce.number().int().positive("ID đánh giá không hợp lệ"),
 });

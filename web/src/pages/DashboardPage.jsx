@@ -27,8 +27,8 @@ import { ADMIN_ROUTES } from "@/constants/routes";
 import { INTERVALS } from "@/constants/timing";
 
 // Sub-components
+import TimStatsCard from "@/components/admin/TimStatsCard";
 import {
-  TimStatsCard,
   DashboardDataStatus,
   DashboardCategories,
   DashboardCharts,
@@ -194,42 +194,34 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Thống kê nhanh — đồng bộ kiểu danh mục */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <TimStatsCard
-            label="TỔNG ĐỊA ĐIỂM"
+            title="TỔNG ĐỊA ĐIỂM"
             value={stats.total}
             icon={Building2}
             serial="DAT-001"
-            subValue={`+${places.filter((p) => new Date(p.createdAt) > new Date(Date.now() - 86400000)).length}`}
-            subLabel="MỚI"
-            status="positive"
           />
           <TimStatsCard
-            label="LƯỢT TRUY CẬP"
-            value={(stats.totalViews / 1000).toFixed(1) + "K"}
+            title="LƯỢT XEM (ƯỚC LƯỢNG)"
+            value={`${(stats.totalViews / 1000).toFixed(1)}K`}
             icon={Activity}
             serial="ANA-002"
-            subValue="--.-%"
-            subLabel="TRUNG BÌNH"
-            status="neutral"
+            textColor="text-emerald-600"
           />
           <TimStatsCard
-            label="ĐÁNH GIÁ TB"
+            title="ĐÁNH GIÁ TB"
             value={stats.avgRating}
             icon={TrendingUp}
             serial="QOS-003"
-            subValue="NGƯỜI DÙNG"
-            subLabel="RATING"
-            status="positive"
+            textColor="text-amber-600"
           />
           <TimStatsCard
-            label="NGƯỜI DÙNG"
+            title="NGƯỜI DÙNG"
             value={userCount}
             icon={Users}
             serial="USR-004"
-            subValue="TỔNG SỐ"
-            status="neutral"
+            color="bg-yellow-50"
           />
         </div>
 

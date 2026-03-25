@@ -172,6 +172,8 @@ export const getPlacesQuerySchema = paginationLargeSchema.extend({
   categoryId: z.coerce.number().int().positive().optional(),
   districtId: z.coerce.number().int().positive().optional(),
   wardId: z.coerce.number().int().positive().optional(),
+  /** Admin: lọc địa điểm theo doanh nghiệp */
+  businessId: z.coerce.number().int().positive().optional(),
   status: z
     .enum(["all", "pending", "approved", "rejected", "draft"])
     .optional(),

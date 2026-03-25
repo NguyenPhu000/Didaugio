@@ -5,7 +5,7 @@ import {
   boundaryDistrictCodeParamSchema,
   boundaryWardIdParamSchema,
   invalidateBoundaryCacheSchema,
-} from "../models/schemas/boundarySchema.js";
+} from "../models/index.js";
 
 const router = express.Router();
 

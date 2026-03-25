@@ -1,5 +1,5 @@
 import * as auditLogService from "../services/auditLogService.js";
-import { auditLogQuerySchema } from "../models/schemas/activitySchema.js";
+import { auditLogQuerySchema } from "../models/index.js";
 import { ERROR_CODES } from "../config/messages.js";
 
 /**

@@ -1,6 +1,6 @@
 // =============================================================================
 // PRISMA SCHEMA - DU AN "DI DAU GIO?"
-// Tong so bang: 39
+// Tong so bang: 45
 // Cap nhat: 17/03/2026
 // =============================================================================
 
@@ -11,6 +11,24 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  completed
+  cancelled
+  no_show
+}
+
+enum BookingAction {
+  approve
+  reject
+  reschedule
+  quick_approve
+  quick_reject
+  auto_approve
+  auto_approve_failed
 }
 
 // =============================================================================
@@ -113,6 +131,7 @@ model User {
   banners            BannerMarketing[]
   notifications      NotificationGlobal[]
   systemConfigs      SystemConfig[]
+  bookingActionLogs  BookingActionLog[]
 
   @@map("users")
 }
@@ -737,6 +756,9 @@ model Business {
   bankAccount     String?   @map("bank_account")
   bankOwner       String?   @map("bank_owner")
   contractSigned  Boolean   @default(false) @map("contract_signed")
+  contractSignedAt DateTime? @map("contract_signed_at")
+  contractVersion  String?   @map("contract_version")
+  signerMetadata   Json?     @map("signer_metadata")
   commissionRate  Decimal   @default(10.00) @map("commission_rate") @db.Decimal(4, 2)
   status          String    @default("pending")
   rejectionReason String?   @map("rejection_reason") @db.Text
@@ -749,6 +771,8 @@ model Business {
   places   Place[]
   services BusinessService[]
   vouchers Voucher[]
+  bookings Booking[]
+  autoApproveRules AutoApproveRule[]
 
   @@map("businesses")
 }
@@ -807,45 +831,82 @@ model Voucher {
   @@map("vouchers")
 }
 
-model Booking {
-  id               Int       @id @default(autoincrement())
-  bookingCode      String    @unique @map("booking_code")
-  userId           Int       @map("user_id")
-  serviceId        Int       @map("service_id")
-  quantity         Int       @default(1)
-  useDate          DateTime  @map("use_date") @db.Date
-  useTime          String?   @map("use_time")
-  guestName        String    @map("guest_name")
-  guestPhone       String    @map("guest_phone")
-  guestEmail       String?   @map("guest_email")
-  guestNote        String?   @map("guest_note") @db.Text
-  originalPrice    Int       @map("original_price")
-  discountAmount   Int       @default(0) @map("discount_amount")
-  voucherId        Int?      @map("voucher_id")
-  finalPrice       Int       @map("final_price")
-  commissionAmount Int       @default(0) @map("commission_amount")
-  paymentStatus    String    @default("unpaid") @map("payment_status")
-  status           String    @default("pending")
-  cancelReason     String?   @map("cancel_reason") @db.Text
-  cancelledBy      String?   @map("cancelled_by")
-  cancelledAt      DateTime? @map("cancelled_at")
-  confirmedAt      DateTime? @map("confirmed_at")
-  completedAt      DateTime? @map("completed_at")
-  businessNote     String?   @map("business_note") @db.Text
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-  deletedAt        DateTime? @map("deleted_at")
+model AutoApproveRule {
+  id          Int      @id @default(autoincrement())
+  businessId  Int      @map("business_id")
+  priority    Int      @default(0)
+  conditions  Json
+  isActive    Boolean  @default(true) @map("is_active")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  user    User            @relation(fields: [userId], references: [id])
-  service BusinessService @relation(fields: [serviceId], references: [id])
-  voucher Voucher?        @relation(fields: [voucherId], references: [id])
-  payment Payment?
-  reviews Review[]
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, isDeleted, isActive])
+  @@map("auto_approve_rules")
+}
+
+model BookingActionLog {
+  id          Int           @id @default(autoincrement())
+  bookingId   Int           @map("booking_id")
+  action      BookingAction
+  actorUserId Int?          @map("actor_user_id")
+  metadata    Json?
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  actor   User?   @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@index([createdAt])
+  @@map("booking_action_logs")
+}
+
+model Booking {
+  id               Int           @id @default(autoincrement())
+  bookingCode      String        @unique @map("booking_code")
+  userId           Int           @map("user_id")
+  serviceId        Int           @map("service_id")
+  businessId       Int           @map("business_id")
+  bookingAt        DateTime?     @map("booking_at")
+  quantity         Int           @default(1)
+  useDate          DateTime      @map("use_date") @db.Date
+  useTime          String?       @map("use_time")
+  guestName        String        @map("guest_name")
+  guestPhone       String        @map("guest_phone")
+  guestEmail       String?       @map("guest_email")
+  guestNote        String?       @map("guest_note") @db.Text
+  originalPrice    Int           @map("original_price")
+  discountAmount   Int           @default(0) @map("discount_amount")
+  voucherId        Int?          @map("voucher_id")
+  finalPrice       Int           @map("final_price")
+  commissionAmount Int           @default(0) @map("commission_amount")
+  paymentStatus    String        @default("unpaid") @map("payment_status")
+  status           BookingStatus @default(pending)
+  cancelReason     String?       @map("cancel_reason") @db.Text
+  cancelledBy      String?       @map("cancelled_by")
+  cancelledAt      DateTime?     @map("cancelled_at")
+  confirmedAt      DateTime?     @map("confirmed_at")
+  completedAt      DateTime?     @map("completed_at")
+  businessNote     String?       @map("business_note") @db.Text
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  deletedAt        DateTime?     @map("deleted_at")
+
+  user       User            @relation(fields: [userId], references: [id])
+  service    BusinessService @relation(fields: [serviceId], references: [id])
+  business   Business        @relation(fields: [businessId], references: [id])
+  voucher    Voucher?        @relation(fields: [voucherId], references: [id])
+  payment    Payment?
+  reviews    Review[]
+  actionLogs BookingActionLog[]
 
   @@index([userId])
   @@index([serviceId])
   @@index([status])
   @@index([useDate])
+  @@index([businessId, bookingAt])
   @@map("bookings")
 }
 

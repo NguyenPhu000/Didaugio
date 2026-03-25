@@ -6,6 +6,11 @@ import {
   CardTitle,
   Input,
 } from "@/components/ui";
+import SettingSelectField from "./SettingSelectField";
+import {
+  ANALYTICS_PROVIDER_OPTIONS,
+  PAYMENT_PROVIDER_OPTIONS,
+} from "../settingsSelectOptions";
 
 const IntegrationsCard = ({ value, onChange }) => {
   return (
@@ -37,17 +42,19 @@ const IntegrationsCard = ({ value, onChange }) => {
           onChange={(e) => onChange("webhookEndpoint", e.target.value)}
           placeholder="Webhook Endpoint"
         />
-        <Input
-          className="rounded-none border-black"
+        <SettingSelectField
+          id="settings-analytics-provider"
+          label="Analytics"
           value={value.analyticsProvider}
-          onChange={(e) => onChange("analyticsProvider", e.target.value)}
-          placeholder="Analytics Provider"
+          onChange={(v) => onChange("analyticsProvider", v)}
+          options={ANALYTICS_PROVIDER_OPTIONS}
         />
-        <Input
-          className="rounded-none border-black"
+        <SettingSelectField
+          id="settings-payment-provider"
+          label="Cổng thanh toán"
           value={value.paymentProvider}
-          onChange={(e) => onChange("paymentProvider", e.target.value)}
-          placeholder="Payment Provider"
+          onChange={(v) => onChange("paymentProvider", v)}
+          options={PAYMENT_PROVIDER_OPTIONS}
         />
       </CardContent>
     </Card>

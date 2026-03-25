@@ -46,9 +46,13 @@ export const ADMIN_ROUTES = {
 export const BUSINESS_ROUTES = {
   DASHBOARD: "/business/dashboard",
   PROFILE: "/business/profile",
+  /** Deep link: mục Hợp đồng trong Hồ sơ (một bản ghi Business, không còn /business/contracts) */
+  PROFILE_CONTRACT: "/business/profile?section=contract",
   REGISTER: "/business/register",
   SERVICES: "/business/services",
   BOOKINGS: "/business/bookings",
+  BOOKING_SCHEDULE: "/business/bookings/schedule",
+  BOOKING_QUICK: "/business/bookings/quick",
   BOOKING_DETAIL: (id) => `/business/bookings/${id}`,
   VOUCHERS: "/business/vouchers",
   REVENUE: "/business/revenue",

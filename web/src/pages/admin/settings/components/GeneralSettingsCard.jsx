@@ -8,6 +8,13 @@ import {
   Input,
 } from "@/components/ui";
 import { Textarea } from "@/components/ui/textarea";
+import SettingSelectField from "./SettingSelectField";
+import {
+  CURRENCY_OPTIONS,
+  DATE_FORMAT_OPTIONS,
+  LANGUAGE_OPTIONS,
+  TIMEZONE_OPTIONS,
+} from "../settingsSelectOptions";
 
 const GeneralSettingsCard = ({ value, onChange }) => {
   return (
@@ -41,29 +48,33 @@ const GeneralSettingsCard = ({ value, onChange }) => {
             onChange={(e) => onChange("baseUrl", e.target.value)}
             placeholder="Base URL"
           />
-          <Input
-            className="rounded-none border-black"
+          <SettingSelectField
+            id="settings-currency"
+            label="Đơn vị tiền tệ"
             value={value.currency}
-            onChange={(e) => onChange("currency", e.target.value)}
-            placeholder="Đơn vị tiền tệ"
+            onChange={(v) => onChange("currency", v)}
+            options={CURRENCY_OPTIONS}
           />
-          <Input
-            className="rounded-none border-black"
+          <SettingSelectField
+            id="settings-language"
+            label="Ngôn ngữ"
             value={value.language}
-            onChange={(e) => onChange("language", e.target.value)}
-            placeholder="Ngôn ngữ"
+            onChange={(v) => onChange("language", v)}
+            options={LANGUAGE_OPTIONS}
           />
-          <Input
-            className="rounded-none border-black"
+          <SettingSelectField
+            id="settings-timezone"
+            label="Múi giờ"
             value={value.timezone}
-            onChange={(e) => onChange("timezone", e.target.value)}
-            placeholder="Múi giờ"
+            onChange={(v) => onChange("timezone", v)}
+            options={TIMEZONE_OPTIONS}
           />
-          <Input
-            className="rounded-none border-black"
+          <SettingSelectField
+            id="settings-date-format"
+            label="Định dạng ngày"
             value={value.dateFormat}
-            onChange={(e) => onChange("dateFormat", e.target.value)}
-            placeholder="Định dạng ngày giờ"
+            onChange={(v) => onChange("dateFormat", v)}
+            options={DATE_FORMAT_OPTIONS}
           />
           <Input
             className="rounded-none border-black"

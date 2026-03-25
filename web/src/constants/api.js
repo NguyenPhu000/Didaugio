@@ -3,7 +3,13 @@ import { API_BASE_URL } from "./constants";
 import { useAuthStore } from "@/stores/authStore";
 import { AUTH_ROUTES } from "./routes";
 import { API_TIMEOUT } from "./timing";
+import { applyBusinessApiErrorUx } from "@/utils/businessApiErrorUx";
 
+/**
+ * Instance axios dùng chung. Trên response lỗi, có thể truyền:
+ * `{ skipBusinessErrorUX: true }` trong config để bỏ qua toast/redirect mã cổng doanh nghiệp
+ * (NO_BUSINESS_PROFILE, BUSINESS_SUSPENDED, …) — dùng khi tự xử lý trong caller.
+ */
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
@@ -124,6 +130,13 @@ api.interceptors.response.use(
     apiError.status = response?.status;
     apiError.errorCode = response?.data?.errorCode;
     apiError.data = response?.data;
+
+    if (
+      !originalRequest?.skipBusinessErrorUX &&
+      applyBusinessApiErrorUx(apiError)
+    ) {
+      // Đã toast (+ redirect tuỳ mã); error.globalBusinessUxHandled = true
+    }
 
     return Promise.reject(apiError);
   },

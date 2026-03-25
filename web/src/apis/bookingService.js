@@ -12,6 +12,30 @@ export const getStats = async () => {
   return response;
 };
 
+export const getSchedule = async (params = {}) => {
+  const response = await api.get(`${BASE_URL}/schedule`, { params });
+  return response;
+};
+
+export const reschedule = async (id, bookingTime) => {
+  const response = await api.patch(`${BASE_URL}/${id}/reschedule`, {
+    bookingTime,
+  });
+  return response;
+};
+
+export const quickApprove = async (id) => {
+  const response = await api.post(`${BASE_URL}/${id}/quick-approve`);
+  return response;
+};
+
+export const quickReject = async (id, cancelReason) => {
+  const response = await api.post(`${BASE_URL}/${id}/quick-reject`, {
+    cancelReason,
+  });
+  return response;
+};
+
 export const getById = async (id) => {
   const response = await api.get(`${BASE_URL}/${id}`);
   return response;
@@ -55,9 +79,26 @@ export const bulkCancel = async (bookingIds, cancelReason) => {
   return response;
 };
 
+export const markPaid = async (id, data = {}) => {
+  const response = await api.put(`${BASE_URL}/${id}/payment`, {
+    status: "paid",
+    ...data,
+  });
+  return response;
+};
+
+export const refund = async (id, data = {}) => {
+  const response = await api.put(`${BASE_URL}/${id}/refund`, data);
+  return response;
+};
+
 export default {
   getAll,
   getStats,
+  getSchedule,
+  reschedule,
+  quickApprove,
+  quickReject,
   getById,
   confirm,
   cancel,
@@ -66,4 +107,6 @@ export default {
   getQR,
   bulkConfirm,
   bulkCancel,
+  markPaid,
+  refund,
 };

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
+import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
   Tag,
   Plus,
@@ -89,7 +90,7 @@ const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
       await onSave(data);
       onClose();
     } catch (error) {
-      toast.error(error.message || "Có lỗi xảy ra");
+      toastApiErrorIfNeeded(error, "Có lỗi xảy ra");
     } finally {
       setSaving(false);
     }
@@ -512,7 +513,7 @@ const VoucherListPage = () => {
       toast.success("Xóa voucher thành công");
       loadVouchers();
     } catch (error) {
-      toast.error(error.message || "Không thể xóa");
+      toastApiErrorIfNeeded(error, "Không thể xóa");
     }
   };
 
@@ -524,7 +525,7 @@ const VoucherListPage = () => {
       setSelected([]);
       loadVouchers();
     } catch (error) {
-      toast.error(error.message || "Không thể tắt voucher");
+      toastApiErrorIfNeeded(error, "Không thể tắt voucher");
     }
   };
 

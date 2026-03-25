@@ -239,6 +239,9 @@ export const getAllPlaces = async (filters = {}) => {
         _count: {
           select: { reviews: true, favorites: true },
         },
+        business: {
+          select: { id: true, businessName: true, status: true },
+        },
       },
       orderBy,
       skip,

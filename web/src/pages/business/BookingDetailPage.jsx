@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
   ArrowLeft,
   Check,
@@ -12,6 +13,9 @@ import {
   Ticket,
   DollarSign,
   Tag,
+  Wallet,
+  RotateCcw,
+  Clock3,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -112,6 +116,187 @@ const CancelDialog = ({ open, onClose, onConfirm }) => {
   );
 };
 
+const MarkPaidDialog = ({ open, onClose, onConfirm, loading }) => {
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    if (open) setNote("");
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Xác nhận thanh toán</DialogTitle>
+          <DialogDescription>
+            Đánh dấu booking đã thanh toán thủ công.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-1.5">
+          <Label>Ghi chú (tuỳ chọn)</Label>
+          <Textarea
+            placeholder="Ví dụ: Khách đã chuyển khoản"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            className="min-h-[80px]"
+          />
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Quay lại
+          </Button>
+          <Button onClick={() => onConfirm(note.trim())} loading={loading}>
+            Xác nhận đã thanh toán
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const RefundDialog = ({ open, onClose, onConfirm, loading, maxAmount }) => {
+  const [reason, setReason] = useState("");
+  const [amount, setAmount] = useState(maxAmount || 0);
+
+  useEffect(() => {
+    if (open) {
+      setReason("");
+      setAmount(maxAmount || 0);
+    }
+  }, [open, maxAmount]);
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-destructive">Hoàn tiền</DialogTitle>
+          <DialogDescription>
+            Nhập số tiền hoàn và lý do để lưu lại lịch sử giao dịch.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-1.5">
+          <Label>Số tiền hoàn (VND)</Label>
+          <input
+            type="number"
+            min={1}
+            max={maxAmount || undefined}
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value || 0))}
+            className="h-10 w-full rounded-md border border-border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Tối đa: {formatVND(maxAmount || 0)}
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Lý do hoàn tiền</Label>
+          <Textarea
+            placeholder="Nhập lý do..."
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            className="min-h-[90px]"
+          />
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Quay lại
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              if (reason.trim().length < 5) {
+                toast.error("Lý do hoàn tiền cần ít nhất 5 ký tự");
+                return;
+              }
+              if (!amount || amount <= 0) {
+                toast.error("Số tiền hoàn phải lớn hơn 0");
+                return;
+              }
+              if (maxAmount && amount > maxAmount) {
+                toast.error("Số tiền hoàn vượt quá giá trị thanh toán");
+                return;
+              }
+              onConfirm({ reason: reason.trim(), amount });
+            }}
+            loading={loading}
+          >
+            Xác nhận hoàn tiền
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const PaymentTimeline = ({ booking }) => {
+  const paymentStatus = String(
+    booking?.paymentStatus || "unpaid",
+  ).toLowerCase();
+  const paidAt = booking?.paidAt || booking?.payment?.paidAt;
+  const refundedAt = booking?.refundedAt || booking?.payment?.refundedAt;
+  const refundAmount =
+    Number(booking?.refundAmount || booking?.payment?.refundAmount || 0) || 0;
+  const totalAmount = Number(booking?.finalPrice || 0) || 0;
+  const isPartialRefund =
+    paymentStatus.includes("partial") ||
+    (refundAmount > 0 && totalAmount > 0 && refundAmount < totalAmount);
+
+  const events = [
+    {
+      key: "created",
+      title: "Tạo đặt chỗ",
+      subtitle: "Booking được khởi tạo",
+      at: booking?.createdAt,
+    },
+  ];
+
+  if (paidAt || paymentStatus === "paid") {
+    events.push({
+      key: "paid",
+      title: "Đã thanh toán",
+      subtitle: "Xác nhận thanh toán thủ công",
+      at: paidAt,
+    });
+  }
+
+  if (refundedAt || paymentStatus.includes("refund") || refundAmount > 0) {
+    events.push({
+      key: "refund",
+      title: isPartialRefund ? "Hoàn tiền một phần" : "Đã hoàn tiền",
+      subtitle:
+        refundAmount > 0 ? `Giá trị hoàn: ${formatVND(refundAmount)}` : "",
+      at: refundedAt,
+    });
+  }
+
+  return (
+    <div className="space-y-3">
+      {events.map((event, index) => (
+        <div key={event.key} className="flex items-start gap-3">
+          <div className="flex flex-col items-center">
+            <div className="h-2.5 w-2.5 rounded-full bg-primary mt-1" />
+            {index < events.length - 1 && (
+              <div className="mt-1 h-7 w-px bg-border" />
+            )}
+          </div>
+          <div className="space-y-0.5 pb-2">
+            <p className="text-sm font-medium text-foreground">{event.title}</p>
+            {event.subtitle && (
+              <p className="text-xs text-muted-foreground">{event.subtitle}</p>
+            )}
+            <p className="text-xs text-muted-foreground/80">
+              {event.at ? formatDateTime(event.at) : "Chưa có thời gian"}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const BookingDetailPage = () => {
@@ -121,6 +306,8 @@ const BookingDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [qrCode, setQrCode] = useState(null);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [markPaidOpen, setMarkPaidOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   const loadBooking = useCallback(async () => {
@@ -128,8 +315,8 @@ const BookingDetailPage = () => {
     try {
       const response = await bookingApi.getById(id);
       setBooking(response.data);
-    } catch {
-      toast.error("Không thể tải thông tin đặt chỗ");
+    } catch (error) {
+      toastApiErrorIfNeeded(error, "Không thể tải thông tin đặt chỗ");
     } finally {
       setLoading(false);
     }
@@ -154,7 +341,7 @@ const BookingDetailPage = () => {
       toast.success("Xác nhận thành công");
       await Promise.all([loadBooking(), loadQR()]);
     } catch (error) {
-      toast.error(error.message);
+      toastApiErrorIfNeeded(error, "Không thể xác nhận");
     } finally {
       setActionLoading(false);
     }
@@ -168,7 +355,7 @@ const BookingDetailPage = () => {
       setCancelOpen(false);
       await loadBooking();
     } catch (error) {
-      toast.error(error.message);
+      toastApiErrorIfNeeded(error, "Không thể hủy");
     } finally {
       setActionLoading(false);
     }
@@ -181,7 +368,7 @@ const BookingDetailPage = () => {
       toast.success("Hoàn thành đặt chỗ");
       await loadBooking();
     } catch (error) {
-      toast.error(error.message);
+      toastApiErrorIfNeeded(error, "Không thể hoàn thành");
     } finally {
       setActionLoading(false);
     }
@@ -194,7 +381,42 @@ const BookingDetailPage = () => {
       toast.success("Đánh dấu không đến");
       await loadBooking();
     } catch (error) {
-      toast.error(error.message);
+      toastApiErrorIfNeeded(error, "Không thể đánh dấu");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleMarkPaid = async (note) => {
+    setActionLoading(true);
+    try {
+      await bookingApi.markPaid(id, {
+        note,
+        paidAt: new Date().toISOString(),
+      });
+      toast.success("Đã cập nhật trạng thái thanh toán");
+      setMarkPaidOpen(false);
+      await loadBooking();
+    } catch (error) {
+      toastApiErrorIfNeeded(error, "Không thể xác nhận thanh toán");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRefund = async ({ reason, amount }) => {
+    setActionLoading(true);
+    try {
+      await bookingApi.refund(id, {
+        refundReason: reason,
+        refundAmount: amount,
+        refundedAt: new Date().toISOString(),
+      });
+      toast.success("Đã xử lý hoàn tiền");
+      setRefundOpen(false);
+      await loadBooking();
+    } catch (error) {
+      toastApiErrorIfNeeded(error, "Không thể hoàn tiền");
     } finally {
       setActionLoading(false);
     }
@@ -220,6 +442,12 @@ const BookingDetailPage = () => {
 
   const isPending = booking.status === BOOKING_STATUS.PENDING;
   const isConfirmed = booking.status === BOOKING_STATUS.CONFIRMED;
+  const paymentStatus = String(
+    booking?.paymentStatus || "unpaid",
+  ).toLowerCase();
+  const canMarkPaid =
+    paymentStatus !== "paid" && !paymentStatus.includes("refund");
+  const canRefund = paymentStatus === "paid";
 
   return (
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
@@ -357,6 +585,50 @@ const BookingDetailPage = () => {
 
         {/* Right: Action panel + QR + Voucher */}
         <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
+          <SectionCard title="Thanh toán thủ công" titleIcon={Wallet}>
+            <div className="space-y-3">
+              <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Trạng thái thanh toán
+                </p>
+                <p className="mt-1 text-sm font-semibold text-foreground uppercase">
+                  {paymentStatus === "paid"
+                    ? "Đã thanh toán"
+                    : paymentStatus.includes("refund")
+                      ? "Đã hoàn tiền"
+                      : "Chưa thanh toán"}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setMarkPaidOpen(true)}
+                  disabled={!canMarkPaid || actionLoading}
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Xác nhận thanh toán
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="gap-1.5"
+                  onClick={() => setRefundOpen(true)}
+                  disabled={!canRefund || actionLoading}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Hoàn tiền
+                </Button>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Timeline thanh toán" titleIcon={Clock3}>
+            <PaymentTimeline booking={booking} />
+          </SectionCard>
+
           {/* QR Code */}
           {qrCode && (
             <SectionCard title="Mã QR xác nhận" titleIcon={QrCode}>
@@ -398,6 +670,21 @@ const BookingDetailPage = () => {
         open={cancelOpen}
         onClose={() => setCancelOpen(false)}
         onConfirm={handleCancel}
+      />
+
+      <MarkPaidDialog
+        open={markPaidOpen}
+        onClose={() => setMarkPaidOpen(false)}
+        onConfirm={handleMarkPaid}
+        loading={actionLoading}
+      />
+
+      <RefundDialog
+        open={refundOpen}
+        onClose={() => setRefundOpen(false)}
+        onConfirm={handleRefund}
+        loading={actionLoading}
+        maxAmount={Number(booking?.finalPrice || 0)}
       />
     </div>
   );

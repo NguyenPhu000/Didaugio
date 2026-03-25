@@ -4,7 +4,7 @@ import {
   validateRoleQuery,
   validateUpdateRolePermissions,
   roleUsersQuerySchema,
-} from "../models/schemas/index.js";
+} from "../models/index.js";
 import { ERROR_CODES } from "../config/messages.js";
 import ServiceError from "../utils/serviceError.js";
 

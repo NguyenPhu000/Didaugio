@@ -1,5 +1,6 @@
 /**
- * Business module constants - Không hardcode, đồng bộ với server
+ * Business module constants — đồng bộ giá trị với server.
+ * UI/module business: import `BUSINESS_STATUS` / nhãn từ file này (không import trực tiếp `BUSINESS_STATUS` từ `constants.js`).
  */
 import { BUSINESS_STATUS, SERVICE_TYPES } from "./constants.js";
 
@@ -23,6 +24,7 @@ export const BUSINESS_STATUS_LABELS = {
   [BUSINESS_STATUS.PENDING]: "Đang chờ duyệt",
   [BUSINESS_STATUS.APPROVED]: "Đã duyệt",
   [BUSINESS_STATUS.REJECTED]: "Bị từ chối",
+  [BUSINESS_STATUS.SUSPENDED]: "Tạm ngưng",
 };
 
 export const SERVICE_TYPE_LABELS = {

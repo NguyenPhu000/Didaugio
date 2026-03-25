@@ -3,8 +3,8 @@ import { ERROR_CODES } from "../config/messages.js";
 import {
   passwordResetQuerySchema,
   createPasswordResetSchema,
-  resetPasswordSchema,
-} from "../models/schemas/activitySchema.js";
+  activityResetPasswordSchema as resetPasswordSchema,
+} from "../models/index.js";
 
 /**
  * GET /api/password-resets

@@ -6,6 +6,7 @@ import {
   useTransition,
 } from "react";
 import toast from "react-hot-toast";
+import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
   Star,
   Search,
@@ -13,6 +14,11 @@ import {
   Send,
   X,
   MessagesSquare,
+  Pencil,
+  Trash2,
+  Eye,
+  EyeOff,
+  Loader2,
 } from "lucide-react";
 import api from "@/constants/api";
 import { getMyPlaces } from "@/apis/businessApi";
@@ -61,11 +67,20 @@ const ReviewCard = ({
   review,
   replyingTo,
   replyContent,
+  editingReplyId,
+  editContent,
   sending,
+  actionLoadingByReply,
   onStartReply,
   onCancelReply,
   onContentChange,
   onSendReply,
+  onStartEditReply,
+  onCancelEditReply,
+  onEditContentChange,
+  onSaveEditReply,
+  onDeleteReply,
+  onModerateReply,
 }) => {
   const formatDate = (date) =>
     date ? new Date(date).toLocaleDateString("vi-VN") : "";
@@ -115,17 +130,104 @@ const ReviewCard = ({
         <div className="ml-6 pl-4 border-l-2 border-primary/30 space-y-3">
           {review.replies.map((reply) => (
             <div key={reply.id}>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-primary">
-                  {reply.user?.profile?.fullName || "Doanh nghiệp"}
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {formatDate(reply.createdAt)}
-                </span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-primary">
+                    {reply.user?.profile?.fullName || "Doanh nghiệp"}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {formatDate(reply.createdAt)}
+                  </span>
+                  {reply.status === "hidden" && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] border-amber-300 text-amber-700 bg-amber-50"
+                    >
+                      Đã ẩn
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => onStartEditReply(reply)}
+                    disabled={
+                      !!actionLoadingByReply[reply.id] ||
+                      editingReplyId === reply.id
+                    }
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() =>
+                      onModerateReply(
+                        reply.id,
+                        reply.status === "hidden" ? "visible" : "hidden",
+                      )
+                    }
+                    disabled={!!actionLoadingByReply[reply.id]}
+                  >
+                    {actionLoadingByReply[reply.id] ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : reply.status === "hidden" ? (
+                      <Eye className="h-3.5 w-3.5" />
+                    ) : (
+                      <EyeOff className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                    onClick={() => onDeleteReply(reply.id)}
+                    disabled={!!actionLoadingByReply[reply.id]}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                {reply.content}
-              </p>
+
+              {editingReplyId === reply.id ? (
+                <div className="mt-1 flex gap-2 items-start">
+                  <Textarea
+                    value={editContent}
+                    onChange={(e) => onEditContentChange(e.target.value)}
+                    rows={2}
+                    className="flex-1 text-xs"
+                  />
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => onSaveEditReply(reply.id)}
+                      disabled={!!actionLoadingByReply[reply.id]}
+                    >
+                      {actionLoadingByReply[reply.id] ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Send className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={onCancelEditReply}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  {reply.content}
+                </p>
+              )}
             </div>
           ))}
         </div>
@@ -214,6 +316,9 @@ const ReviewListPage = () => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyContent, setReplyContent] = useState("");
   const [sending, setSending] = useState(false);
+  const [editingReplyId, setEditingReplyId] = useState(null);
+  const [editContent, setEditContent] = useState("");
+  const [actionLoadingByReply, setActionLoadingByReply] = useState({});
   const [isPendingTransition, startTransition] = useTransition();
 
   const loadReviews = useCallback(async () => {
@@ -229,8 +334,8 @@ const ReviewListPage = () => {
         },
       });
       setReviews(response.data || []);
-    } catch {
-      toast.error("Không thể tải danh sách đánh giá");
+    } catch (error) {
+      toastApiErrorIfNeeded(error, "Không thể tải danh sách đánh giá");
     } finally {
       setLoading(false);
     }
@@ -287,11 +392,78 @@ const ReviewListPage = () => {
       toast.success("Phản hồi thành công");
       setReplyingTo(null);
       setReplyContent("");
-      loadReviews();
+      await loadReviews();
     } catch (error) {
-      toast.error(error.message || "Không thể phản hồi");
+      toastApiErrorIfNeeded(error, "Không thể phản hồi");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleStartEditReply = (reply) => {
+    setEditingReplyId(reply.id);
+    setEditContent(reply.content || "");
+  };
+
+  const handleCancelEditReply = () => {
+    setEditingReplyId(null);
+    setEditContent("");
+  };
+
+  const handleSaveEditReply = async (reviewId, replyId) => {
+    if (!editContent.trim()) {
+      toast.error("Nội dung phản hồi không được trống");
+      return;
+    }
+
+    setActionLoadingByReply((prev) => ({ ...prev, [replyId]: true }));
+    try {
+      await api.put(`${REVIEW_API}/${reviewId}/replies/${replyId}`, {
+        content: editContent,
+      });
+      toast.success("Cập nhật phản hồi thành công");
+      handleCancelEditReply();
+      await loadReviews();
+    } catch (error) {
+      toastApiErrorIfNeeded(error, "Không thể cập nhật phản hồi");
+    } finally {
+      setActionLoadingByReply((prev) => ({ ...prev, [replyId]: false }));
+    }
+  };
+
+  const handleDeleteReply = async (reviewId, replyId) => {
+    setActionLoadingByReply((prev) => ({ ...prev, [replyId]: true }));
+    try {
+      await api.delete(`${REVIEW_API}/${reviewId}/replies/${replyId}`);
+      toast.success("Xóa phản hồi thành công");
+      if (editingReplyId === replyId) {
+        handleCancelEditReply();
+      }
+      await loadReviews();
+    } catch (error) {
+      toastApiErrorIfNeeded(error, "Không thể xóa phản hồi");
+    } finally {
+      setActionLoadingByReply((prev) => ({ ...prev, [replyId]: false }));
+    }
+  };
+
+  const handleModerateReply = async (reviewId, replyId, status) => {
+    setActionLoadingByReply((prev) => ({ ...prev, [replyId]: true }));
+    try {
+      await api.patch(
+        `${REVIEW_API}/${reviewId}/replies/${replyId}/moderation`,
+        {
+          status,
+        },
+      );
+      toast.success(
+        status === "hidden" ? "Đã ẩn phản hồi" : "Đã hiển thị phản hồi",
+      );
+      await loadReviews();
+    } catch (error) {
+      toastApiErrorIfNeeded(error, "Không thể moderation phản hồi");
+    } finally {
+      setActionLoadingByReply((prev) => ({ ...prev, [replyId]: false }));
     }
   };
 
@@ -439,7 +611,10 @@ const ReviewListPage = () => {
                         review={review}
                         replyingTo={replyingTo}
                         replyContent={replyContent}
+                        editingReplyId={editingReplyId}
+                        editContent={editContent}
                         sending={sending}
+                        actionLoadingByReply={actionLoadingByReply}
                         onStartReply={setReplyingTo}
                         onCancelReply={() => {
                           setReplyingTo(null);
@@ -447,6 +622,18 @@ const ReviewListPage = () => {
                         }}
                         onContentChange={setReplyContent}
                         onSendReply={handleReply}
+                        onStartEditReply={handleStartEditReply}
+                        onCancelEditReply={handleCancelEditReply}
+                        onEditContentChange={setEditContent}
+                        onSaveEditReply={(replyId) =>
+                          handleSaveEditReply(review.id, replyId)
+                        }
+                        onDeleteReply={(replyId) =>
+                          handleDeleteReply(review.id, replyId)
+                        }
+                        onModerateReply={(replyId, status) =>
+                          handleModerateReply(review.id, replyId, status)
+                        }
                       />
                     ))}
                   </div>

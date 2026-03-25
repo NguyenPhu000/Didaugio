@@ -46,35 +46,7 @@ import useCategoryStore from "@/stores/categoryStore";
 import CategoryFormDialog from "@/components/category/CategoryFormDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import { CATEGORY_ICON_MAP } from "@/constants/categoryConstants";
-
-const StatsCard = ({
-  title,
-  value,
-  icon: Icon,
-  serial,
-  color = "bg-white",
-  textColor = "text-black",
-}) => (
-  <div
-    className={`border border-black p-5 relative overflow-hidden group hover:shadow-hard transition-all ${color}`}
-  >
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-10 pointer-events-none">
-      <Icon className="w-32 h-32" />
-    </div>
-    <div className="relative z-10 flex flex-col h-full justify-between gap-6">
-      <div className="flex justify-between items-start">
-        <div className="px-2 py-0.5 border border-black bg-white text-black font-mono text-xs font-bold tracking-widest">
-          {serial}
-        </div>
-        <Icon className={`w-6 h-6 ${textColor}`} />
-      </div>
-      <div>
-        <div className={`text-4xl md:text-5xl font-black tracking-tighter mb-1 ${textColor}`}>{value}</div>
-        <div className="font-mono text-[11px] font-bold uppercase tracking-widest text-gray-700">{title}</div>
-      </div>
-    </div>
-  </div>
-);
+import TimStatsCard from "@/components/admin/TimStatsCard";
 
 /**
  * CATEGORY MANAGEMENT PAGE - T.I.M STYLE
@@ -290,27 +262,27 @@ export default function CategoryManagementPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8">
-          <StatsCard
+          <TimStatsCard
             title="TỔNG DANH MỤC"
             value={actualTotalCategories}
             icon={FolderTree}
             serial="CAT-001"
           />
-          <StatsCard
+          <TimStatsCard
             title="ĐANG HIỂN THỊ"
             value={actualActiveCount}
             icon={Eye}
             serial="CAT-002"
             textColor="text-emerald-500"
           />
-          <StatsCard
+          <TimStatsCard
             title="ĐANG ẨN"
             value={actualHiddenCount}
             icon={EyeOff}
             serial="CAT-003"
             textColor="text-gray-400"
           />
-          <StatsCard
+          <TimStatsCard
             title="TỔNG ĐỊA ĐIỂM"
             value={filteredFlatCategories.reduce(
               (acc, curr) => acc + (curr._count?.places || 0),

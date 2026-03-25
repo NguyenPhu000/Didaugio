@@ -27,7 +27,7 @@ import {
   addPlaceImagesSchema,
   reorderPlaceImagesSchema,
   createPlaceReviewSchema,
-} from "../models/schemas/placeSchema.js";
+} from "../models/index.js";
 
 const router = express.Router();
 

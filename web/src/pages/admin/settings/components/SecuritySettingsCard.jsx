@@ -5,8 +5,9 @@ import {
   CardHeader,
   CardTitle,
   Checkbox,
-  Input,
 } from "@/components/ui";
+import SettingSelectField from "./SettingSelectField";
+import { SESSION_TIMEOUT_OPTIONS } from "../settingsSelectOptions";
 
 const SecuritySettingsCard = ({ value, onChange }) => {
   const toggles = [
@@ -28,12 +29,16 @@ const SecuritySettingsCard = ({ value, onChange }) => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Input
-          type="number"
-          className="rounded-none border-black"
-          value={value.sessionTimeoutMinutes}
-          onChange={(e) => onChange("sessionTimeoutMinutes", e.target.value)}
-          placeholder="Session timeout (minutes)"
+        <SettingSelectField
+          id="settings-session-timeout"
+          label="Hết hạn phiên (phút)"
+          value={
+            value.sessionTimeoutMinutes != null
+              ? String(value.sessionTimeoutMinutes)
+              : ""
+          }
+          onChange={(v) => onChange("sessionTimeoutMinutes", v)}
+          options={SESSION_TIMEOUT_OPTIONS}
         />
 
         <div className="grid grid-cols-1 gap-2">

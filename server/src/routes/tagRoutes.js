@@ -17,7 +17,7 @@ import {
   tagSlugParamSchema,
   tagSuggestParamSchema,
   updateTagSchema,
-} from "../models/schemas/tagSchema.js";
+} from "../models/index.js";
 
 const router = express.Router();
 
