@@ -1,9 +1,3 @@
-/**
- * ROUTE CONSTANTS
- * Centralized route path definitions to avoid hardcoded strings
- */
-
-// Auth routes (public)
 export const AUTH_ROUTES = {
   LOGIN: "/login",
   REGISTER: "/register",
@@ -13,7 +7,6 @@ export const AUTH_ROUTES = {
   RESEND_VERIFICATION: "/resend-verification",
 };
 
-// Auth routes with /auth prefix (aliases)
 export const AUTH_PREFIX_ROUTES = {
   LOGIN: "/auth/login",
   REGISTER: "/auth/register",
@@ -23,13 +16,11 @@ export const AUTH_PREFIX_ROUTES = {
   RESEND_VERIFICATION: "/auth/resend-verification",
 };
 
-// Admin / Protected routes
 export const ADMIN_ROUTES = {
   DASHBOARD: "/dashboard",
   PROFILE: "/profile",
   SETTINGS: "/settings",
 
-  // Management
   USERS: "/users",
   ROLES: "/roles",
   PERMISSIONS: "/permissions",
@@ -37,21 +28,37 @@ export const ADMIN_ROUTES = {
   TAGS: "/tags",
   DISTRICTS: "/districts",
 
-  // Places
   MAP: "/admin/map",
   PLACES: "/admin/places",
+  PLACES_PENDING: "/admin/places/pending",
   PLACES_NEW: "/admin/places/new",
   PLACES_EDIT: (id) => `/admin/places/edit/${id}`,
 
-  // System
+  BUSINESS_LIST: "/admin/business",
+  BUSINESS_PENDING: "/admin/business/pending",
+
   EMAIL_VERIFICATIONS: "/email-verifications",
   PASSWORD_RESETS: "/password-resets",
   AUDIT_LOGS: "/audit-logs",
   LOGIN_HISTORY: "/login-history",
 };
 
-// Places alias
+export const BUSINESS_ROUTES = {
+  DASHBOARD: "/business/dashboard",
+  PROFILE: "/business/profile",
+  /** Deep link: mục Hợp đồng trong Hồ sơ (một bản ghi Business, không còn /business/contracts) */
+  PROFILE_CONTRACT: "/business/profile?section=contract",
+  REGISTER: "/business/register",
+  SERVICES: "/business/services",
+  BOOKINGS: "/business/bookings",
+  BOOKING_SCHEDULE: "/business/bookings/schedule",
+  BOOKING_QUICK: "/business/bookings/quick",
+  BOOKING_DETAIL: (id) => `/business/bookings/${id}`,
+  VOUCHERS: "/business/vouchers",
+  REVENUE: "/business/revenue",
+  REVIEWS: "/business/reviews",
+};
+
 export const PLACES_ALIAS = "/places";
 
-// Root redirect target
 export const DEFAULT_REDIRECT = ADMIN_ROUTES.DASHBOARD;

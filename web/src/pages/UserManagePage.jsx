@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { userService } from "@/apis/userService";
 import { ROLES } from "@/constants/constants";
 import UserFormModal from "@/components/user/UserFormModal";
 import UserDetailModal from "@/components/user/UserDetailModal";
+import TimStatsCard from "@/components/admin/TimStatsCard";
 import {
   Users,
   Search,
@@ -236,6 +237,17 @@ const UserManagePage = () => {
     );
   };
 
+  const userStats = useMemo(() => {
+    const isActive = (u) =>
+      u.status === "active" || u.status === 1 || u.status === true;
+    return {
+      total: pagination.total,
+      active: users.filter(isActive).length,
+      locked: users.filter((u) => !isActive(u)).length,
+      onPage: users.length,
+    };
+  }, [users, pagination.total]);
+
   const getStatusBadge = (status) => {
     const active = status === "active" || status === 1 || status === true;
     return active ? (
@@ -291,6 +303,39 @@ const UserManagePage = () => {
             </Button>
           </div>
         </div>
+
+        {/* Thống kê nhanh (tổng từ API; chi tiết trạng thái theo trang hiện tại) */}
+        {!loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <TimStatsCard
+              title="TỔNG NGƯỜI DÙNG"
+              value={userStats.total}
+              icon={Users}
+              serial="USR-001"
+            />
+            <TimStatsCard
+              title="HOẠT ĐỘNG (TRANG)"
+              value={userStats.active}
+              icon={UserCheck}
+              serial="USR-002"
+              textColor="text-emerald-600"
+            />
+            <TimStatsCard
+              title="ĐÃ KHÓA (TRANG)"
+              value={userStats.locked}
+              icon={UserX}
+              serial="USR-003"
+              textColor="text-gray-500"
+            />
+            <TimStatsCard
+              title="BẢN GHI TRANG"
+              value={userStats.onPage}
+              icon={Activity}
+              serial="USR-004"
+              color="bg-yellow-50"
+            />
+          </div>
+        )}
 
         {/* Filters */}
         <div className="bg-white border border-black p-4 flex flex-col md:flex-row gap-4 shadow-sm">

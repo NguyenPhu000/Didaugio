@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuthStore } from "@/stores/authStore";
 import { ProtectedRoute } from "@/layouts";
 import { AdminLayout } from "@/layouts";
 import { ROLES } from "@/constants";
@@ -6,14 +7,15 @@ import {
   AUTH_ROUTES,
   AUTH_PREFIX_ROUTES,
   ADMIN_ROUTES,
+  BUSINESS_ROUTES,
   PLACES_ALIAS,
-  DEFAULT_REDIRECT,
 } from "@/constants/routes";
 import {
   DashboardPage,
   LoginPage,
   RegisterPage,
   ProfilePage,
+  SettingsPage,
   UserManagePage,
   EmailVerificationPage,
   PasswordResetPage,
@@ -22,17 +24,52 @@ import {
   NotFoundPage,
   PlaceWizardPage,
   PlaceListPage,
+  PlacePendingPage,
   MapPage,
   CategoryManagementPage,
   TagManagementPage,
   DistrictListPage,
+  BusinessListPage,
+  BusinessPendingPage,
+  BusinessProfilePage,
+  BusinessRegisterPage,
+  ServiceListPage,
 } from "@/pages";
+import BookingListPage from "@/pages/business/BookingListPage";
+import BookingDetailPage from "@/pages/business/BookingDetailPage";
+import BookingSchedulePage from "@/pages/business/BookingSchedulePage";
+import BookingQuickProcessPage from "@/pages/business/BookingQuickProcessPage";
+import VoucherListPage from "@/pages/business/VoucherListPage";
+import BusinessDashboardPage from "@/pages/business/BusinessDashboardPage";
+import RevenuePage from "@/pages/business/RevenuePage";
+import ReviewListPage from "@/pages/business/ReviewListPage";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
 import VerifyEmailPublicPage from "@/pages/auth/VerifyEmailPublicPage";
 import ResendVerificationPage from "@/pages/auth/ResendVerificationPage";
 import RoleManagePage from "@/pages/RoleManagePage";
 import PermissionManagePage from "@/pages/PermissionManagePage";
+import BusinessGuard from "@/components/business/BusinessGuard";
+
+/** Redirect / to correct dashboard based on role */
+const RootRedirect = () => {
+  const { user, isAuthenticated } = useAuthStore();
+  if (!isAuthenticated) return <Navigate to={AUTH_ROUTES.LOGIN} replace />;
+  const to =
+    user?.roleId === ROLES.BUSINESS
+      ? BUSINESS_ROUTES.DASHBOARD
+      : ADMIN_ROUTES.DASHBOARD;
+  return <Navigate to={to} replace />;
+};
+
+/** Business thấy BusinessDashboard, Admin/Staff thấy DashboardPage */
+const DashboardGate = () => {
+  const { user } = useAuthStore();
+  if (user?.roleId === ROLES.BUSINESS) {
+    return <Navigate to={BUSINESS_ROUTES.DASHBOARD} replace />;
+  }
+  return <DashboardPage />;
+};
 
 /**
  * Route configuration helpers
@@ -97,17 +134,17 @@ const AppRoutes = () => {
         element={<ResendVerificationPage />}
       />
 
-      {/* Redirect root to dashboard */}
-      <Route path="/" element={<Navigate to={DEFAULT_REDIRECT} replace />} />
+      {/* Redirect root to dashboard - Business -> business dashboard */}
+      <Route path="/" element={<RootRedirect />} />
 
       {/* ===== Protected routes ===== */}
 
-      {/* Dashboard */}
+      {/* Dashboard - Business redirect to business dashboard */}
       <Route
         path={ADMIN_ROUTES.DASHBOARD}
         element={
           <ProtectedAdmin roles={allStaffRoles}>
-            <DashboardPage />
+            <DashboardGate />
           </ProtectedAdmin>
         }
       />
@@ -124,8 +161,17 @@ const AppRoutes = () => {
       <Route
         path={ADMIN_ROUTES.SETTINGS}
         element={
-          <ProtectedAdmin>
-            <ProfilePage />
+          <ProtectedAdmin roles={adminRoles}>
+            <SettingsPage />
+          </ProtectedAdmin>
+        }
+      />
+
+      <Route
+        path={ADMIN_ROUTES.PLACES_PENDING}
+        element={
+          <ProtectedAdmin roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF]}>
+            <PlacePendingPage />
           </ProtectedAdmin>
         }
       />
@@ -261,6 +307,175 @@ const AppRoutes = () => {
           <ProtectedAdmin roles={placeRoles}>
             <PlaceWizardPage />
           </ProtectedAdmin>
+        }
+      />
+
+      {/* ===== Admin Business Management ===== */}
+      <Route
+        path={ADMIN_ROUTES.BUSINESS_LIST}
+        element={
+          <ProtectedAdmin roles={adminRoles}>
+            <BusinessListPage />
+          </ProtectedAdmin>
+        }
+      />
+      <Route
+        path={ADMIN_ROUTES.BUSINESS_PENDING}
+        element={
+          <ProtectedAdmin roles={adminRoles}>
+            <BusinessPendingPage />
+          </ProtectedAdmin>
+        }
+      />
+
+      {/* ===== Business Portal Routes ===== */}
+      <Route
+        path={BUSINESS_ROUTES.REGISTER}
+        element={
+          <ProtectedRoute roles={[ROLES.BUSINESS]}>
+            <AdminLayout>
+              <BusinessRegisterPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={BUSINESS_ROUTES.PROFILE}
+        element={
+          <ProtectedRoute roles={[ROLES.BUSINESS]}>
+            <AdminLayout>
+              <BusinessGuard allowWhenPendingOrRejected>
+                <BusinessProfilePage />
+              </BusinessGuard>
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={BUSINESS_ROUTES.BOOKING_SCHEDULE}
+        element={
+          <ProtectedRoute roles={[ROLES.BUSINESS]}>
+            <AdminLayout>
+              <BusinessGuard>
+                <BookingSchedulePage />
+              </BusinessGuard>
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={BUSINESS_ROUTES.BOOKING_QUICK}
+        element={
+          <ProtectedRoute roles={[ROLES.BUSINESS]}>
+            <AdminLayout>
+              <BusinessGuard>
+                <BookingQuickProcessPage />
+              </BusinessGuard>
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={BUSINESS_ROUTES.BOOKINGS}
+        element={
+          <ProtectedRoute roles={[ROLES.BUSINESS]}>
+            <AdminLayout>
+              <BusinessGuard>
+                <BookingListPage />
+              </BusinessGuard>
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={BUSINESS_ROUTES.BOOKING_DETAIL(":id")}
+        element={
+          <ProtectedRoute roles={[ROLES.BUSINESS]}>
+            <AdminLayout>
+              <BusinessGuard>
+                <BookingDetailPage />
+              </BusinessGuard>
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={BUSINESS_ROUTES.DASHBOARD}
+        element={
+          <ProtectedRoute roles={[ROLES.BUSINESS]}>
+            <AdminLayout>
+              <BusinessGuard>
+                <BusinessDashboardPage />
+              </BusinessGuard>
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={BUSINESS_ROUTES.REVENUE}
+        element={
+          <ProtectedRoute roles={[ROLES.BUSINESS]}>
+            <AdminLayout>
+              <BusinessGuard>
+                <RevenuePage />
+              </BusinessGuard>
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={BUSINESS_ROUTES.REVIEWS}
+        element={
+          <ProtectedRoute roles={[ROLES.BUSINESS]}>
+            <AdminLayout>
+              <BusinessGuard>
+                <ReviewListPage />
+              </BusinessGuard>
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={BUSINESS_ROUTES.VOUCHERS}
+        element={
+          <ProtectedRoute roles={[ROLES.BUSINESS]}>
+            <AdminLayout>
+              <BusinessGuard>
+                <VoucherListPage />
+              </BusinessGuard>
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={BUSINESS_ROUTES.SERVICES}
+        element={
+          <ProtectedRoute roles={[ROLES.BUSINESS]}>
+            <AdminLayout>
+              <BusinessGuard>
+                <ServiceListPage />
+              </BusinessGuard>
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Legacy: hợp đồng gộp vào Hồ sơ (Phương án A) */}
+      <Route
+        path="/business/contracts"
+        element={
+          <Navigate to={`${BUSINESS_ROUTES.PROFILE}?section=contract`} replace />
+        }
+      />
+      <Route
+        path="/business/contracts/:id"
+        element={
+          <Navigate to={`${BUSINESS_ROUTES.PROFILE}?section=contract`} replace />
         }
       />
 

@@ -2,11 +2,7 @@ import prisma from "../config/prismaClient.js";
 import {
   validatePermissionQuery,
   validatePermissionByModuleQuery,
-} from "../models/schemas/index.js";
-
-// =============================================================================
-// PERMISSION SERVICE - BUSINESS LOGIC
-// =============================================================================
+} from "../models/index.js";
 
 /**
  * Lấy danh sách tất cả permissions

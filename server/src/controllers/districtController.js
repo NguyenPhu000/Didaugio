@@ -1,18 +1,10 @@
 import * as districtService from "../services/districtService.js";
-
-/**
- * DISTRICT CONTROLLER
- * REST API cho địa lý Cần Thơ
- */
-
-// =============================================================================
-// DISTRICT (QUẬN/HUYỆN)
-// =============================================================================
+import { ERROR_CODES } from "../config/messages.js";
 
 /**
  * GET /api/districts - Lấy danh sách quận/huyện
  */
-export const getDistricts = async (req, res) => {
+export const getDistricts = async (req, res, next) => {
   try {
     const { isActive, search } = req.query;
 
@@ -25,21 +17,17 @@ export const getDistricts = async (req, res) => {
       success: true,
       data: districts,
       total: districts.length,
+      message: "Lấy danh sách quận/huyện thành công",
     });
   } catch (error) {
-    console.error("Error in getDistricts:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể lấy danh sách quận/huyện",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * GET /api/districts/:id - Lấy quận/huyện theo ID
  */
-export const getDistrictById = async (req, res) => {
+export const getDistrictById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -48,28 +36,26 @@ export const getDistrictById = async (req, res) => {
     if (!district) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Không tìm thấy quận/huyện",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
     res.json({
       success: true,
       data: district,
+      message: "Lấy chi tiết quận/huyện thành công",
     });
   } catch (error) {
-    console.error("Error in getDistrictById:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể lấy thông tin quận/huyện",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * GET /api/districts/code/:code - Lấy quận/huyện theo code
  */
-export const getDistrictByCode = async (req, res) => {
+export const getDistrictByCode = async (req, res, next) => {
   try {
     const { code } = req.params;
 
@@ -78,32 +64,26 @@ export const getDistrictByCode = async (req, res) => {
     if (!district) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Không tìm thấy quận/huyện",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
     res.json({
       success: true,
       data: district,
+      message: "Lấy quận/huyện theo mã thành công",
     });
   } catch (error) {
-    console.error("Error in getDistrictByCode:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể lấy thông tin quận/huyện",
-      error: error.message,
-    });
+    next(error);
   }
 };
-
-// =============================================================================
-// WARD (PHƯỜNG/XÃ)
-// =============================================================================
 
 /**
  * GET /api/districts/:id/wards - Lấy phường/xã theo quận
  */
-export const getWardsByDistrict = async (req, res) => {
+export const getWardsByDistrict = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { isActive, search, wardType } = req.query;
@@ -118,21 +98,17 @@ export const getWardsByDistrict = async (req, res) => {
       success: true,
       data: wards,
       total: wards.length,
+      message: "Lấy danh sách phường/xã theo quận/huyện thành công",
     });
   } catch (error) {
-    console.error("Error in getWardsByDistrict:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể lấy danh sách phường/xã",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * GET /api/wards - Lấy tất cả phường/xã
  */
-export const getAllWards = async (req, res) => {
+export const getAllWards = async (req, res, next) => {
   try {
     const { isActive, wardType, search, page, limit } = req.query;
 
@@ -148,21 +124,17 @@ export const getAllWards = async (req, res) => {
       success: true,
       data: result.data,
       pagination: result.pagination,
+      message: "Lấy danh sách phường/xã thành công",
     });
   } catch (error) {
-    console.error("Error in getAllWards:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể lấy danh sách phường/xã",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * GET /api/wards/:id - Lấy phường/xã theo ID
  */
-export const getWardById = async (req, res) => {
+export const getWardById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -171,28 +143,26 @@ export const getWardById = async (req, res) => {
     if (!ward) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Không tìm thấy phường/xã",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
     res.json({
       success: true,
       data: ward,
+      message: "Lấy chi tiết phường/xã thành công",
     });
   } catch (error) {
-    console.error("Error in getWardById:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể lấy thông tin phường/xã",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * GET /api/wards/code/:code - Lấy phường/xã theo code
  */
-export const getWardByCode = async (req, res) => {
+export const getWardByCode = async (req, res, next) => {
   try {
     const { code } = req.params;
 
@@ -201,32 +171,26 @@ export const getWardByCode = async (req, res) => {
     if (!ward) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Không tìm thấy phường/xã",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
     res.json({
       success: true,
       data: ward,
+      message: "Lấy phường/xã theo mã thành công",
     });
   } catch (error) {
-    console.error("Error in getWardByCode:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể lấy thông tin phường/xã",
-      error: error.message,
-    });
+    next(error);
   }
 };
-
-// =============================================================================
-// HELPERS
-// =============================================================================
 
 /**
  * GET /api/address/search - Tìm kiếm địa chỉ
  */
-export const searchAddress = async (req, res) => {
+export const searchAddress = async (req, res, next) => {
   try {
     const { q, limit } = req.query;
 
@@ -234,65 +198,62 @@ export const searchAddress = async (req, res) => {
       return res.json({
         success: true,
         data: [],
+        message: "Không có kết quả tìm kiếm địa chỉ",
       });
     }
 
     const results = await districtService.searchAddress(
       q,
-      limit ? parseInt(limit) : 10
+      limit ? parseInt(limit) : 10,
     );
 
     res.json({
       success: true,
       data: results,
+      message: "Tìm kiếm địa chỉ thành công",
     });
   } catch (error) {
-    console.error("Error in searchAddress:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể tìm kiếm địa chỉ",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * POST /api/districts/lookup - Tìm quận/huyện theo tọa độ
  */
-export const lookupDistrict = async (req, res) => {
+export const lookupDistrict = async (req, res, next) => {
   try {
     const { latitude, longitude } = req.body;
 
     if (!latitude || !longitude) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "Vui lòng cung cấp tọa độ (latitude, longitude)",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
       });
     }
 
     const district = await districtService.lookupDistrict(
       parseFloat(latitude),
-      parseFloat(longitude)
+      parseFloat(longitude),
     );
 
     if (!district) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Không tìm thấy quận/huyện tại vị trí này",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
     res.json({
       success: true,
       data: district,
+      message: "Tra cứu quận/huyện theo tọa độ thành công",
     });
   } catch (error) {
-    console.error("Error in lookupDistrict:", error);
-    res.status(500).json({
-      success: false,
-      message: "Lỗi khi tìm kiếm quận/huyện",
-      error: error.message,
-    });
+    next(error);
   }
 };
 

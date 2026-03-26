@@ -14,14 +14,14 @@ router.use(authenticate, blockGuestFromAdmin);
  * @access  Private (Admin hoặc User xem history của mình)
  * @query   page, limit, userId, deviceName, isActive
  */
-router.get("/", authenticate, loginHistoryController.getAll);
+router.get("/", loginHistoryController.getAll);
 
 /**
  * @route   GET /api/login-history/:id
  * @desc    Lấy chi tiết một login session
  * @access  Private (Admin hoặc User xem session của mình)
  */
-router.get("/:id", authenticate, loginHistoryController.getById);
+router.get("/:id", loginHistoryController.getById);
 
 /**
  * @route   POST /api/login-history/revoke
@@ -29,7 +29,7 @@ router.get("/:id", authenticate, loginHistoryController.getById);
  * @access  Private (Admin hoặc User revoke session của mình)
  * @body    { sessionId }
  */
-router.post("/revoke", authenticate, loginHistoryController.revoke);
+router.post("/revoke", loginHistoryController.revoke);
 
 /**
  * @route   POST /api/login-history/revoke-all/:userId
@@ -39,7 +39,6 @@ router.post("/revoke", authenticate, loginHistoryController.revoke);
  */
 router.post(
   "/revoke-all/:userId",
-  authenticate,
   loginHistoryController.revokeAll,
 );
 

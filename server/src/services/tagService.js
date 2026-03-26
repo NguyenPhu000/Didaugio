@@ -1,5 +1,7 @@
 import prisma from "../config/prismaClient.js";
 import { TAG_TYPES } from "../config/constants.js";
+import { ERROR_CODES } from "../config/messages.js";
+import ServiceError from "../utils/serviceError.js";
 
 /**
  * TAG SERVICE
@@ -102,14 +104,16 @@ export const createTag = async (data) => {
   });
 
   if (existing) {
-    throw new Error("Slug already exists");
+    throw new ServiceError("Slug đã tồn tại", 400, ERROR_CODES.EXISTED);
   }
 
   // Validate tagType
   const validTypes = Object.values(TAG_TYPES);
   if (!validTypes.includes(tagType)) {
-    throw new Error(
-      `Invalid tag type. Must be one of: ${validTypes.join(", ")}`
+    throw new ServiceError(
+      `Loại tag không hợp lệ. Chỉ chấp nhận: ${validTypes.join(", ")}`,
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
     );
   }
 
@@ -139,7 +143,7 @@ export const updateTag = async (id, data) => {
   });
 
   if (!existing) {
-    throw new Error("Tag not found");
+    throw new ServiceError("Không tìm thấy tag", 404, ERROR_CODES.NOT_FOUND);
   }
 
   // Check unique slug (nếu thay đổi)
@@ -149,7 +153,7 @@ export const updateTag = async (id, data) => {
     });
 
     if (duplicateSlug) {
-      throw new Error("Slug already exists");
+      throw new ServiceError("Slug đã tồn tại", 400, ERROR_CODES.EXISTED);
     }
   }
 
@@ -157,8 +161,10 @@ export const updateTag = async (id, data) => {
   if (tagType) {
     const validTypes = Object.values(TAG_TYPES);
     if (!validTypes.includes(tagType)) {
-      throw new Error(
-        `Invalid tag type. Must be one of: ${validTypes.join(", ")}`
+      throw new ServiceError(
+        `Loại tag không hợp lệ. Chỉ chấp nhận: ${validTypes.join(", ")}`,
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
       );
     }
   }
@@ -197,12 +203,14 @@ export const deleteTag = async (id) => {
   });
 
   if (!tag) {
-    throw new Error("Tag not found");
+    throw new ServiceError("Không tìm thấy tag", 404, ERROR_CODES.NOT_FOUND);
   }
 
   if (tag._count.placeTagLinks > 0) {
-    throw new Error(
-      `Cannot delete tag. ${tag._count.placeTagLinks} places are using it.`
+    throw new ServiceError(
+      `Không thể xóa tag vì đang được ${tag._count.placeTagLinks} địa điểm sử dụng`,
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
     );
   }
 
@@ -210,7 +218,7 @@ export const deleteTag = async (id) => {
     where: { id },
   });
 
-  return { success: true, message: "Tag deleted successfully" };
+  return { success: true, message: "Xóa tag thành công" };
 };
 
 // Lấy suggested tags theo category
@@ -308,8 +316,8 @@ export const bulkCreateTags = async (tags) => {
           usageCount: 0,
           isActive: true,
         },
-      })
-    )
+      }),
+    ),
   );
 
   return created;

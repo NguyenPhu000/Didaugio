@@ -10,17 +10,26 @@ export const ROLES = {
   ADMIN: 2,
   BUSINESS: 3,
   STAFF: 4,
-  GUEST: 5,
+  USER: 5,
+  GUEST: 6,
 };
 
-// Hierarchy: Số nhỏ hơn = quyền cao hơn
-// Super Admin (1) > Admin (2) > Business (3) > Staff (4) > Guest (5)
+// Số nhỏ hơn = quyền cao hơn
 export const ROLE_HIERARCHY = {
-  1: { name: "super_admin", level: 1, canManage: [2, 3, 4, 5] }, // Quản lý được tất cả trừ Super Admin
-  2: { name: "admin", level: 2, canManage: [3, 4, 5] },          // Quản lý được Business, Staff, Guest
-  3: { name: "business", level: 3, canManage: [] },              // Không quản lý ai
-  4: { name: "staff", level: 4, canManage: [] },                 // Không quản lý ai
-  5: { name: "guest", level: 5, canManage: [] },                 // Không quản lý ai
+  [ROLES.SUPER_ADMIN]: {
+    name: "super_admin",
+    level: 1,
+    canManage: [ROLES.ADMIN, ROLES.BUSINESS, ROLES.STAFF, ROLES.USER],
+  },
+  [ROLES.ADMIN]: {
+    name: "admin",
+    level: 2,
+    canManage: [ROLES.BUSINESS, ROLES.STAFF, ROLES.USER],
+  },
+  [ROLES.BUSINESS]: { name: "business", level: 3, canManage: [] },
+  [ROLES.STAFF]: { name: "staff", level: 4, canManage: [] },
+  [ROLES.USER]: { name: "user", level: 5, canManage: [] },
+  [ROLES.GUEST]: { name: "guest", level: 6, canManage: [] },
 };
 
 export const BOOKING_STATUS = {
@@ -38,6 +47,21 @@ export const PAYMENT_STATUS = {
   FULLY_REFUNDED: "fully_refunded",
 };
 
+export const BUSINESS_STATUS = {
+  PENDING: "pending",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+  SUSPENDED: "suspended",
+};
+
+export const SERVICE_TYPES = {
+  ENTRY_TICKET: "entry_ticket",
+  TOUR: "tour",
+  PACKAGE: "package",
+  SERVICE: "service",
+  EXPERIENCE: "experience",
+};
+
 export const PLACE_STATUS = {
   DRAFT: "draft",
   PENDING: "pending",
@@ -46,23 +70,12 @@ export const PLACE_STATUS = {
   HIDDEN: "hidden",
 };
 
-export const ERROR_CODES = {
-  VALIDATION_ERROR: "VALIDATION_ERROR",
-  NOT_FOUND: "NOT_FOUND",
-  UNAUTHORIZED: "UNAUTHORIZED",
-  FORBIDDEN: "FORBIDDEN",
-  INTERNAL_ERROR: "INTERNAL_ERROR",
-  DATABASE_ERROR: "DATABASE_ERROR",
-  DUPLICATE_ERROR: "DUPLICATE_ERROR",
-};
-
 export const PAGINATION = {
   DEFAULT_PAGE: 1,
   DEFAULT_LIMIT: 10,
-  MAX_LIMIT: 100,
+  MAX_LIMIT: 500,
 };
 
-// Category levels
 export const CATEGORY_LEVELS = {
   ROOT: 1,
   LEVEL_2: 2,
@@ -71,7 +84,6 @@ export const CATEGORY_LEVELS = {
 
 export const MAX_CATEGORY_LEVEL = 3;
 
-// Tag types
 export const TAG_TYPES = {
   GENERAL: "general",
   FEATURE: "feature",
@@ -81,7 +93,6 @@ export const TAG_TYPES = {
   ATMOSPHERE: "atmosphere",
 };
 
-// Price range
 export const PRICE_RANGE = {
   FREE: "FREE",
   BUDGET: "BUDGET",
@@ -90,7 +101,6 @@ export const PRICE_RANGE = {
   LUXURY: "LUXURY",
 };
 
-// Days of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
 export const DAY_OF_WEEK = {
   SUNDAY: 0,
   MONDAY: 1,
@@ -111,8 +121,7 @@ export const DAY_OF_WEEK_NAMES = {
   6: "Thứ 7",
 };
 
-// Place image limits
 export const PLACE_IMAGE_LIMITS = {
   MAX_IMAGES: 10,
-  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+  MAX_FILE_SIZE: 5 * 1024 * 1024,
 };

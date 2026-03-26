@@ -12,3 +12,9 @@ export const paginationSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10),
 });
+
+// Extended pagination allowing larger limit (for map/bulk use cases)
+export const paginationLargeSchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(500).default(10),
+});

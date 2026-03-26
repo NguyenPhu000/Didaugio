@@ -1,15 +1,6 @@
 import prisma from "../config/prismaClient.js";
 
 /**
- * DISTRICT SERVICE
- * Quản lý địa lý Cần Thơ (Quận/Huyện, Phường/Xã)
- */
-
-// =============================================================================
-// DISTRICT (QUẬN/HUYỆN)
-// =============================================================================
-
-/**
  * Lấy tất cả quận/huyện
  */
 export const getAllDistricts = async (filters = {}) => {
@@ -80,10 +71,6 @@ export const getDistrictByCode = async (code) => {
 
   return district;
 };
-
-// =============================================================================
-// WARD (PHƯỜNG/XÃ)
-// =============================================================================
 
 /**
  * Lấy tất cả phường/xã theo quận
@@ -218,10 +205,6 @@ export const getAllWards = async (filters = {}) => {
   };
 };
 
-// =============================================================================
-// LOOKUP DISTRICT BY LAT/LNG (DB-based)
-// =============================================================================
-
 /**
  * Haversine distance (km) between two lat/lng points
  */
@@ -276,10 +259,6 @@ export const lookupDistrict = async (lat, lng) => {
   // Return full district with wards
   return getDistrictByCode(closest.code);
 };
-
-// =============================================================================
-// HELPERS
-// =============================================================================
 
 /**
  * GET /api/address/search - Tìm kiếm địa chỉ

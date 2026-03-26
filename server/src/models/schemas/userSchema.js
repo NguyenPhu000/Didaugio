@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { idSchema, paginationSchema } from "./commonSchema.js";
+import { paginationSchema } from "./commonSchema.js";
+import { ROLES } from "../../config/constants.js";
+
+const NON_ASSIGNABLE_ROLES = [ROLES.USER, ROLES.GUEST];
 
 export const userStatusEnum = z.enum(["active", "inactive", "banned"]);
 
@@ -21,12 +24,11 @@ export const createUserSchema = z.object({
     .number()
     .int()
     .positive()
-    .default(3) // Default to BUSINESS (roleId: 3)
-    .refine((val) => val !== 5, {
-      message: "GUEST role (5) cannot be assigned. GUEST is mobile-only.",
+    .default(ROLES.BUSINESS)
+    .refine((val) => !NON_ASSIGNABLE_ROLES.includes(val), {
+      message: "USER/GUEST role không thể gán qua admin",
     }),
 
-  // Profile fields (optional for create)
   fullName: z.string().max(100).optional(),
   phone: z.string().max(20).optional(),
   gender: z.enum(["male", "female", "other"]).optional(),
@@ -57,14 +59,12 @@ export const updateUserSchema = z.object({
     .number()
     .int()
     .positive()
-    .refine((val) => val !== 5, {
-      message: "GUEST role (5) cannot be assigned. GUEST is mobile-only.",
+    .refine((val) => !NON_ASSIGNABLE_ROLES.includes(val), {
+      message: "USER/GUEST role không thể gán qua admin",
     })
     .optional(),
 
   emailVerified: z.boolean().optional(),
-
-  // Profile fields
   fullName: z.string().max(100).optional(),
   phone: z.string().max(20).optional(),
   gender: z.enum(["male", "female", "other"]).optional(),

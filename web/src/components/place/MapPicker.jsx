@@ -38,8 +38,8 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
   // Local state for UI only (marker position)
   // We keep marker separate from viewState mostly, unless synced.
   const [marker, setMarker] = useState(() => ({
-    latitude: latitude || CAN_THO_CENTER.lat,
-    longitude: longitude || CAN_THO_CENTER.lng,
+    latitude: Number(latitude) || CAN_THO_CENTER.lat,
+    longitude: Number(longitude) || CAN_THO_CENTER.lng,
   }));
 
   const [showManualInput, setShowManualInput] = useState(false);
@@ -66,7 +66,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
   // Sync props to state (Marker only)
   useEffect(() => {
     if (latitude && longitude) {
-      setMarker({ latitude, longitude });
+      setMarker({ latitude: Number(latitude), longitude: Number(longitude) });
     }
   }, [latitude, longitude]);
 
@@ -272,13 +272,13 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
             <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100">
               <span className="text-xs font-medium text-slate-500">Lat</span>
               <span className="text-sm font-mono font-bold text-slate-700">
-                {marker.latitude.toFixed(6)}
+                {Number(marker.latitude).toFixed(6)}
               </span>
             </div>
             <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100">
               <span className="text-xs font-medium text-slate-500">Lng</span>
               <span className="text-sm font-mono font-bold text-slate-700">
-                {marker.longitude.toFixed(6)}
+                {Number(marker.longitude).toFixed(6)}
               </span>
             </div>
           </div>

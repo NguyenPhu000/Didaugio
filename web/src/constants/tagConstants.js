@@ -1,8 +1,3 @@
-/**
- * TAG CONSTANTS
- * Centralized constants for tag management
- */
-
 export const TAG_TYPES = {
   general: "General",
   food: "Food",

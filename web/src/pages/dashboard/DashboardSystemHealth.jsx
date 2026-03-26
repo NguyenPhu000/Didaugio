@@ -1,54 +1,81 @@
-import { BRAND_COLORS } from "@/constants/brand";
+import Cpu from "lucide-react/dist/esm/icons/cpu";
+import Database from "lucide-react/dist/esm/icons/database";
+import HardDrive from "lucide-react/dist/esm/icons/hard-drive";
+import Zap from "lucide-react/dist/esm/icons/zap";
+import Users from "lucide-react/dist/esm/icons/users";
 
-/**
- * DashboardSystemHealth - Real-time system health monitor panel
- */
+const barColor = (v) => {
+  if (v >= 80) return "bg-red-500";
+  if (v >= 60) return "bg-yellow-400";
+  return "bg-emerald-500";
+};
 
-const HealthBar = ({ label, value, color }) => (
-  <div>
-    <div className="flex justify-between mb-2">
-      <span className="tim-meta">{label}</span>
-      <span className="font-mono text-sm font-black">{value}%</span>
+const textColor = (v) => {
+  if (v >= 80) return "text-red-500";
+  if (v >= 60) return "text-yellow-500";
+  return "text-emerald-600";
+};
+
+const HealthBar = ({ icon: Icon, label, value, unit = "%" }) => (
+  <div className="space-y-1.5">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="tim-meta">{label}</span>
+      </div>
+      <span className={`font-mono text-sm font-black ${textColor(value)}`}>
+        {value}
+        {unit}
+      </span>
     </div>
-    <div className="h-3 bg-gray-200 border border-black">
+    <div className="h-2 bg-gray-100 border border-gray-200 overflow-hidden">
       <div
-        className={`h-full ${color} transition-all duration-500`}
-        style={{ width: `${value}%` }}
+        className={`h-full ${barColor(value)} transition-all duration-700`}
+        style={{ width: `${Math.min(value, 100)}%` }}
       />
     </div>
   </div>
 );
 
 const DashboardSystemHealth = () => {
-  // These would come from a real monitoring API in production
   const metrics = [
-    { label: "CPU USAGE", value: 24, color: "bg-tim-yellow" },
-    { label: "MEMORY", value: 68, color: "bg-yellow-500" },
-    { label: "DATABASE LOAD", value: 42, color: "bg-green-500" },
-    { label: "API RESPONSE", value: 12.5, color: "bg-blue-500" },
+    { icon: Cpu, label: "CPU USAGE", value: 24 },
+    { icon: HardDrive, label: "MEMORY", value: 68 },
+    { icon: Database, label: "DATABASE LOAD", value: 42 },
+    { icon: Zap, label: "API RESPONSE", value: 12.5 },
   ];
 
+  const onlineUsers = Math.floor(Math.random() * 50) + 10;
+  const allOk = metrics.every((m) => m.value < 80);
+
   return (
-    <div className="p-6 space-y-4">
-      {metrics.map((metric) => (
-        <HealthBar key={metric.label} {...metric} />
+    <div className="p-6 space-y-5">
+      {metrics.map((m) => (
+        <HealthBar key={m.label} {...m} />
       ))}
 
-      {/* Online Users */}
-      <div className="pt-4 border-t-2 border-black mt-4">
+      <div className="pt-4 border-t border-dashed border-gray-200">
         <div className="flex items-center justify-between">
           <div>
-            <span className="tim-meta">USERS ONLINE</span>
-            <div className="text-3xl font-black font-mono mt-1">
-              {Math.floor(Math.random() * 50) + 10}
+            <div className="tim-meta mb-1">USERS ONLINE</div>
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <span className="text-2xl font-black font-mono">
+                {onlineUsers}
+              </span>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-xs font-mono uppercase">ACTIVE</span>
+          <div className="text-right">
+            <div
+              className={`inline-flex items-center gap-1.5 px-2 py-1 border text-[10px] font-mono font-bold uppercase
+              ${allOk ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-yellow-50 border-yellow-200 text-yellow-700"}`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full animate-pulse ${allOk ? "bg-emerald-500" : "bg-yellow-500"}`}
+              />
+              {allOk ? "OPTIMAL" : "WARNING"}
             </div>
-            <span className="text-xs text-gray-500 font-mono">NO OVERLOAD</span>
+            <div className="tim-meta mt-1">SERVER STATUS</div>
           </div>
         </div>
       </div>

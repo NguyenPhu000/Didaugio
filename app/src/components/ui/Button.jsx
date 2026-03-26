@@ -1,77 +1,70 @@
-import { TouchableOpacity, ActivityIndicator } from "react-native";
-import { styled } from "nativewind";
-import { Text } from "./Text";
+/**
+ * Button — reusable pressable button with variant support.
+ * Variants: primary | secondary | ghost | danger
+ * Sizes: sm | md | lg
+ */
+import { ActivityIndicator, Pressable, Text } from "react-native";
+import { cn } from "../../lib/cn";
+import {
+  btnVariantCls,
+  btnTextVariantCls,
+  btnSizeCls,
+  btnTextSizeCls,
+  primaryShadow,
+} from "./Button.styles";
+import { COLORS } from "../../constants/colors";
 
-const StyledTouchableOpacity = styled(TouchableOpacity);
-
-export const Button = ({
-  title,
+export function Button({
+  children,
   onPress,
   variant = "primary",
-  size = "medium",
-  loading = false,
+  size = "md",
   disabled = false,
-  className,
-  textClassName,
-  icon,
-  ...props
-}) => {
-  const getVariantStyle = () => {
-    switch (variant) {
-      case "secondary":
-        return "bg-secondary";
-      case "outline":
-        return "bg-transparent border border-primary";
-      case "ghost":
-        return "bg-transparent";
-      case "danger":
-        return "bg-error";
-      default:
-        return "bg-primary";
-    }
-  };
+  loading = false,
+  startIcon,
+  style,
+  textStyle,
+}) {
+  const containerCls = cn(
+    "flex-row items-center justify-center gap-2 rounded-2xl",
+    btnVariantCls[variant] ?? btnVariantCls.primary,
+    btnSizeCls[size] ?? btnSizeCls.md,
+    (disabled || loading) && "opacity-55",
+  );
 
-  const getSizeStyle = () => {
-    switch (size) {
-      case "small":
-        return "py-2 px-3";
-      case "large":
-        return "py-4 px-6";
-      default:
-        return "py-3 px-5";
-    }
-  };
+  const textCls = cn(
+    "font-bold",
+    btnTextVariantCls[variant] ?? btnTextVariantCls.primary,
+    btnTextSizeCls[size] ?? btnTextSizeCls.md,
+  );
 
-  const getTextStyle = () => {
-    switch (variant) {
-      case "outline":
-      case "ghost":
-        return "text-primary";
-      default:
-        return "text-white";
-    }
-  };
+  // Native shadow + pressed scale — these can’t be expressed in Tailwind on RN
+  const baseStyle = variant === "primary" ? primaryShadow : undefined;
 
   return (
-    <StyledTouchableOpacity
+    <Pressable
       onPress={onPress}
       disabled={disabled || loading}
-      className={`rounded-full flex-row items-center justify-center ${getVariantStyle()} ${getSizeStyle()} ${disabled ? "opacity-50" : ""} ${className}`}
-      activeOpacity={0.8}
-      {...props}
+      className={containerCls}
+      style={({ pressed }) => [
+        baseStyle,
+        pressed && { opacity: 0.88, transform: [{ scale: 0.99 }] },
+        style,
+      ]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === "outline" ? "#0077b8" : "white"} />
+        <ActivityIndicator
+          size="small"
+          color={variant === "primary" ? "#fff" : COLORS.primary}
+        />
       ) : (
         <>
-          {icon && <View className="mr-2">{icon}</View>}
-          <Text
-            className={`font-semibold text-center ${getTextStyle()} ${textClassName}`}
-          >
-            {title}
+          {startIcon}
+          <Text className={textCls} style={textStyle}>
+            {children}
           </Text>
         </>
       )}
-    </StyledTouchableOpacity>
+    </Pressable>
   );
-};
+}

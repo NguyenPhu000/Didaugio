@@ -3,7 +3,6 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import Filter from "lucide-react/dist/esm/icons/filter";
-import Activity from "lucide-react/dist/esm/icons/activity";
 import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 import Edit from "lucide-react/dist/esm/icons/edit";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
@@ -22,6 +21,7 @@ import {
 } from "@/components/ui";
 import auditLogService from "@/apis/auditLogService";
 import { formatDate, formatDateTime } from "@/utils/dateUtils";
+import TimStatsCard from "@/components/admin/TimStatsCard";
 
 const AuditLogsPage = () => {
   const [logs, setLogs] = useState([]);
@@ -141,55 +141,36 @@ const AuditLogsPage = () => {
           </Button>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white border-l-4 border-l-[#F3E600] border border-black p-6 shadow-sm hover:shadow-hard transition-all">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="tim-meta mb-2">TỔNG SỐ</p>
-                <p className="text-4xl font-black tracking-tighter">
-                  {stats.total}
-                </p>
-              </div>
-              <Activity className="h-6 w-6 text-gray-400" />
-            </div>
-          </div>
-
-          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="tim-meta mb-2">TẠO MỚI</p>
-                <p className="text-4xl font-black tracking-tighter">
-                  {stats.create}
-                </p>
-              </div>
-              <CheckCircle className="h-6 w-6 text-green-500" />
-            </div>
-          </div>
-
-          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="tim-meta mb-2">CẬP NHẬT</p>
-                <p className="text-4xl font-black tracking-tighter">
-                  {stats.update}
-                </p>
-              </div>
-              <Edit className="h-6 w-6 text-blue-500" />
-            </div>
-          </div>
-
-          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="tim-meta mb-2">XÓA</p>
-                <p className="text-4xl font-black tracking-tighter">
-                  {stats.delete}
-                </p>
-              </div>
-              <Trash2 className="h-6 w-6 text-red-500" />
-            </div>
-          </div>
+        {/* Thống kê nhanh (theo trang hiện tại) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <TimStatsCard
+            title="TỔNG GHI NHẬN"
+            value={stats.total}
+            icon={FileText}
+            serial="AUD-001"
+          />
+          <TimStatsCard
+            title="TẠO MỚI"
+            value={stats.create}
+            icon={CheckCircle}
+            serial="AUD-002"
+            textColor="text-emerald-600"
+          />
+          <TimStatsCard
+            title="CẬP NHẬT"
+            value={stats.update}
+            icon={Edit}
+            serial="AUD-003"
+            textColor="text-blue-600"
+          />
+          <TimStatsCard
+            title="XÓA"
+            value={stats.delete}
+            icon={Trash2}
+            serial="AUD-004"
+            color="bg-yellow-50"
+            textColor="text-red-600"
+          />
         </div>
 
         {/* Filter Bar */}

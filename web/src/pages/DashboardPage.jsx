@@ -22,15 +22,18 @@ import {
   Legend,
   Filler,
 } from "chart.js";
-import { PAGINATION } from "@/constants/constants";
+import { PAGINATION, ROLES } from "@/constants/constants";
 import { ADMIN_ROUTES } from "@/constants/routes";
 import { INTERVALS } from "@/constants/timing";
 
 // Sub-components
-import { TimStatsCard } from "./dashboard";
-import { DashboardDataStatus } from "./dashboard";
-import { DashboardCategories } from "./dashboard";
-import { DashboardCharts } from "./dashboard";
+import TimStatsCard from "@/components/admin/TimStatsCard";
+import {
+  DashboardDataStatus,
+  DashboardCategories,
+  DashboardCharts,
+  DashboardRecentPlaces,
+} from "./dashboard";
 
 // Register ChartJS components
 ChartJS.register(
@@ -77,22 +80,27 @@ const DashboardPage = () => {
           fetchCategories(),
         ]);
 
-        try {
-          const userRes = await userService.getAll({ limit: 1 });
-          if (userRes.data?.total) setUserCount(userRes.data.total);
-          else if (userRes.data?.users?.length)
-            setUserCount(userRes.data.users.length);
-          else if (Array.isArray(userRes.data))
-            setUserCount(userRes.data.length);
-        } catch (err) {
-          console.error("Failed to load user stats", err);
+        if (
+          user?.roleId === ROLES.SUPER_ADMIN ||
+          user?.roleId === ROLES.ADMIN
+        ) {
+          try {
+            const userRes = await userService.getAll({ limit: 1 });
+            if (userRes.data?.total) setUserCount(userRes.data.total);
+            else if (userRes.data?.users?.length)
+              setUserCount(userRes.data.users.length);
+            else if (Array.isArray(userRes.data))
+              setUserCount(userRes.data.length);
+          } catch (err) {
+            console.error("Failed to load user stats", err);
+          }
         }
       } finally {
         setLoading(false);
       }
     };
     loadData();
-  }, [fetchPlaces, fetchCategories]);
+  }, [fetchPlaces, fetchCategories, user?.roleId]);
 
   useEffect(() => {
     if (places.length > 0) {
@@ -100,10 +108,7 @@ const DashboardPage = () => {
       const pending = places.filter((p) => p.status === "pending").length;
       const rejected = places.filter((p) => p.status === "rejected").length;
       const featured = places.filter((p) => p.isFeatured).length;
-      const totalViews = places.reduce(
-        (sum, p) => sum + (p.viewCount || 0),
-        0,
-      );
+      const totalViews = places.reduce((sum, p) => sum + (p.viewCount || 0), 0);
       const ratingsSum = places.reduce(
         (sum, p) => sum + (p.averageRating || 0),
         0,
@@ -153,10 +158,16 @@ const DashboardPage = () => {
 
       <div className="relative z-10 space-y-12 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-black pb-6 gap-4">
           <div className="flex items-center gap-6">
-            <div className="accent-bar h-16"></div>
+            <div className="accent-bar h-16" />
             <div>
+              <div className="tim-meta mb-1 opacity-60">
+                XIN CHÀO,{" "}
+                {user?.fullName?.toUpperCase() ||
+                  user?.username?.toUpperCase() ||
+                  "ADMIN"}
+              </div>
               <h1 className="tim-title">TỔNG QUAN</h1>
               <div className="flex items-center gap-4 mt-2">
                 <span className="tim-system bg-black text-white px-2 py-1">
@@ -183,42 +194,34 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Thống kê nhanh — đồng bộ kiểu danh mục */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <TimStatsCard
-            label="TỔNG ĐỊA ĐIỂM"
+            title="TỔNG ĐỊA ĐIỂM"
             value={stats.total}
             icon={Building2}
             serial="DAT-001"
-            subValue={`+${places.filter((p) => new Date(p.createdAt) > new Date(Date.now() - 86400000)).length}`}
-            subLabel="MỚI"
-            status="positive"
           />
           <TimStatsCard
-            label="LƯỢT TRUY CẬP"
-            value={(stats.totalViews / 1000).toFixed(1) + "K"}
+            title="LƯỢT XEM (ƯỚC LƯỢNG)"
+            value={`${(stats.totalViews / 1000).toFixed(1)}K`}
             icon={Activity}
             serial="ANA-002"
-            subValue="--.-%"
-            subLabel="TRUNG BÌNH"
-            status="neutral"
+            textColor="text-emerald-600"
           />
           <TimStatsCard
-            label="ĐÁNH GIÁ TB"
+            title="ĐÁNH GIÁ TB"
             value={stats.avgRating}
             icon={TrendingUp}
             serial="QOS-003"
-            subValue="NGƯỜI DÙNG"
-            subLabel="RATING"
-            status="positive"
+            textColor="text-amber-600"
           />
           <TimStatsCard
-            label="NGƯỜI DÙNG"
+            title="NGƯỜI DÙNG"
             value={userCount}
             icon={Users}
             serial="USR-004"
-            subValue="TỔNG SỐ"
-            status="neutral"
+            color="bg-yellow-50"
           />
         </div>
 
@@ -234,6 +237,9 @@ const DashboardPage = () => {
           categories={categories}
           places={places}
         />
+
+        {/* Recent Places */}
+        <DashboardRecentPlaces places={places} />
       </div>
     </div>
   );

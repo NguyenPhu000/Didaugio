@@ -1,5 +1,7 @@
 import prisma from "../config/prismaClient.js";
 import { ROLE_HIERARCHY } from "../config/constants.js";
+import { ERROR_CODES } from "../config/messages.js";
+import ServiceError from "../utils/serviceError.js";
 
 /**
  * Lấy danh sách users trong một role với quyền custom
@@ -101,7 +103,7 @@ export async function getUserPermissions(userId) {
   });
 
   if (!user) {
-    throw new Error("User không tồn tại");
+    throw new ServiceError("User không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
   // Quyền từ role
@@ -168,15 +170,22 @@ export async function getUserPermissions(userId) {
  * @param {number[]} permissionIds - Danh sách permission IDs
  * @param {number} grantedById - User thực hiện cập nhật
  */
-export async function updateUserCustomPermissions(userId, permissionIds, grantedById) {
+export async function updateUserCustomPermissions(
+  userId,
+  permissionIds,
+  grantedById,
+) {
   // Kiểm tra hierarchy
   const [targetUser, granterUser] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { roleId: true } }),
-    prisma.user.findUnique({ where: { id: grantedById }, select: { roleId: true } }),
+    prisma.user.findUnique({
+      where: { id: grantedById },
+      select: { roleId: true },
+    }),
   ]);
 
   if (!targetUser || !granterUser) {
-    throw new Error("User không tồn tại");
+    throw new ServiceError("User không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
   // Check hierarchy
@@ -184,7 +193,11 @@ export async function updateUserCustomPermissions(userId, permissionIds, granted
   const targetLevel = ROLE_HIERARCHY[targetUser.roleId] || 0;
 
   if (granterLevel <= targetLevel) {
-    throw new Error("Bạn không có quyền chỉnh sửa quyền của user này");
+    throw new ServiceError(
+      "Bạn không có quyền chỉnh sửa quyền của user này",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
   }
 
   // Xóa tất cả quyền custom cũ
@@ -210,14 +223,18 @@ export async function updateUserCustomPermissions(userId, permissionIds, granted
 /**
  * Cập nhật quyền cho nhiều users cùng lúc
  */
-export async function bulkUpdateUserPermissions(userIds, permissionIds, grantedById) {
+export async function bulkUpdateUserPermissions(
+  userIds,
+  permissionIds,
+  grantedById,
+) {
   const granterUser = await prisma.user.findUnique({
     where: { id: grantedById },
     select: { roleId: true },
   });
 
   if (!granterUser) {
-    throw new Error("User không tồn tại");
+    throw new ServiceError("User không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
   const granterLevel = ROLE_HIERARCHY[granterUser.roleId] || 0;
@@ -231,7 +248,11 @@ export async function bulkUpdateUserPermissions(userIds, permissionIds, grantedB
   for (const user of targetUsers) {
     const targetLevel = ROLE_HIERARCHY[user.roleId] || 0;
     if (granterLevel <= targetLevel) {
-      throw new Error(`Bạn không có quyền chỉnh sửa quyền của user ID ${user.id}`);
+      throw new ServiceError(
+        `Bạn không có quyền chỉnh sửa quyền của user ID ${user.id}`,
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
     }
   }
 
@@ -267,18 +288,25 @@ export async function bulkUpdateUserPermissions(userIds, permissionIds, grantedB
 export async function removeUserCustomPermissions(userId, grantedById) {
   const [targetUser, granterUser] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { roleId: true } }),
-    prisma.user.findUnique({ where: { id: grantedById }, select: { roleId: true } }),
+    prisma.user.findUnique({
+      where: { id: grantedById },
+      select: { roleId: true },
+    }),
   ]);
 
   if (!targetUser || !granterUser) {
-    throw new Error("User không tồn tại");
+    throw new ServiceError("User không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
   const granterLevel = ROLE_HIERARCHY[granterUser.roleId] || 0;
   const targetLevel = ROLE_HIERARCHY[targetUser.roleId] || 0;
 
   if (granterLevel <= targetLevel) {
-    throw new Error("Bạn không có quyền xóa quyền của user này");
+    throw new ServiceError(
+      "Bạn không có quyền xóa quyền của user này",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
   }
 
   await prisma.userPermission.deleteMany({

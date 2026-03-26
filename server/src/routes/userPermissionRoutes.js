@@ -4,6 +4,18 @@ import { authenticate } from "../middlewares/authMiddleware.js";
 import { requirePermission } from "../middlewares/permissionMiddleware.js";
 import { checkRoleHierarchy } from "../middlewares/checkRoleHierarchy.js";
 import { blockGuestFromAdmin } from "../middlewares/blockGuestFromAdmin.js";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "../middlewares/validateSchema.js";
+import {
+  bulkUpdateUserPermissionsSchema,
+  updateUserCustomPermissionsSchema,
+  userPermissionRoleIdParamSchema,
+  userPermissionRoleUsersQuerySchema,
+  userPermissionUserIdParamSchema,
+} from "../models/index.js";
 
 const router = express.Router();
 
@@ -13,7 +25,8 @@ router.use(authenticate, blockGuestFromAdmin);
 // Lấy danh sách users trong role
 router.get(
   "/roles/:roleId/users",
-  authenticate,
+  validateParams(userPermissionRoleIdParamSchema),
+  validateQuery(userPermissionRoleUsersQuerySchema),
   requirePermission("users.view"),
   userPermissionController.getUsersByRole,
 );
@@ -21,7 +34,7 @@ router.get(
 // Lấy quyền của user
 router.get(
   "/users/:userId/permissions",
-  authenticate,
+  validateParams(userPermissionUserIdParamSchema),
   requirePermission("users.view"),
   userPermissionController.getUserPermissions,
 );
@@ -29,7 +42,8 @@ router.get(
 // Cập nhật quyền custom cho user
 router.put(
   "/users/:userId/permissions",
-  authenticate,
+  validateParams(userPermissionUserIdParamSchema),
+  validateBody(updateUserCustomPermissionsSchema),
   requirePermission("roles.assign_to_users"),
   checkRoleHierarchy,
   userPermissionController.updateUserCustomPermissions,
@@ -38,7 +52,7 @@ router.put(
 // Cập nhật quyền cho nhiều users
 router.post(
   "/users/permissions/bulk",
-  authenticate,
+  validateBody(bulkUpdateUserPermissionsSchema),
   requirePermission("roles.assign_to_users"),
   userPermissionController.bulkUpdateUserPermissions,
 );
@@ -46,7 +60,7 @@ router.post(
 // Xóa quyền custom của user
 router.delete(
   "/users/:userId/permissions",
-  authenticate,
+  validateParams(userPermissionUserIdParamSchema),
   requirePermission("roles.assign_to_users"),
   checkRoleHierarchy,
   userPermissionController.removeUserCustomPermissions,

@@ -2,6 +2,7 @@ import prisma from "../config/prismaClient.js";
 import {
   USER_STATUS,
   PAGINATION,
+  ROLES,
   ROLE_HIERARCHY,
 } from "../config/constants.js";
 import { ERROR_MESSAGES, ERROR_CODES } from "../config/messages.js";
@@ -11,22 +12,8 @@ import {
   createUserSchema,
   updateUserSchema,
 } from "../models/index.js";
+import ServiceError from "../utils/serviceError.js";
 
-// =============================================================================
-// LỚP LỖI TÙY CHỈNH
-// =============================================================================
-
-export class ServiceError extends Error {
-  constructor(message, statusCode = 500, errorCode = ERROR_CODES.SERVER_ERROR) {
-    super(message);
-    this.statusCode = statusCode;
-    this.errorCode = errorCode;
-  }
-}
-
-// =============================================================================
-// LẤY DANH SÁCH NGƯỜI DÙNG
-// =============================================================================
 export const getAllUsers = async (query = {}) => {
   const { page, limit } = paginationSchema.parse(query);
   const skip = (page - 1) * Math.min(limit, PAGINATION.MAX_LIMIT);
@@ -120,9 +107,6 @@ export const getAllUsers = async (query = {}) => {
   };
 };
 
-// =============================================================================
-// LẤY NGƯỜI DÙNG THEO ID
-// =============================================================================
 export const getUserById = async (id) => {
   const userId = idSchema.parse(id);
 
@@ -152,9 +136,6 @@ export const getUserById = async (id) => {
   return user;
 };
 
-// =============================================================================
-// TẠO NGƯỜI DÙNG
-// =============================================================================
 export const createUser = async (userData) => {
   const validatedData = createUserSchema.parse(userData);
   const {
@@ -170,13 +151,11 @@ export const createUser = async (userData) => {
     districtCode,
   } = validatedData;
 
-  // 🚫 BLOCK: GUEST role (5) cannot be created via web admin
-  // GUEST is reserved for mobile app only
-  if (roleId === 5) {
+  if (roleId === ROLES.USER || roleId === ROLES.GUEST) {
     throw new ServiceError(
-      "Cannot create GUEST role user. GUEST role is reserved for mobile app only.",
+      "USER/GUEST role cannot be created via web admin",
       400,
-      "GUEST_CREATION_NOT_ALLOWED",
+      "ROLE_CREATION_NOT_ALLOWED",
     );
   }
 
@@ -238,9 +217,6 @@ export const createUser = async (userData) => {
   return newUser;
 };
 
-// =============================================================================
-// CẬP NHẬT NGƯỜI DÙNG
-// =============================================================================
 export const updateUser = async (id, updateData) => {
   const userId = idSchema.parse(id);
   const validatedData = updateUserSchema.parse(updateData);
@@ -319,9 +295,6 @@ export const updateUser = async (id, updateData) => {
   return updatedUser;
 };
 
-// =============================================================================
-// XÓA NGƯỜI DÙNG
-// =============================================================================
 export const deleteUser = async (id) => {
   const userId = idSchema.parse(id);
 
@@ -362,9 +335,6 @@ export const deleteUser = async (id) => {
   return deletedUser;
 };
 
-// =============================================================================
-// CẬP NHẬT ROLE CỦA USER
-// =============================================================================
 export const updateUserRole = async (userId, newRoleId, currentUser) => {
   const validUserId = idSchema.parse(userId);
   const validRoleId = idSchema.parse(newRoleId);

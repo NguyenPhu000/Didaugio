@@ -1,65 +1,66 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { API_BASE_URL } from "@/constants/constants";
 import { MAP_API_PATHS } from "../config/mapConfig";
 import { generateCanThoMask } from "../utils/geoUtils";
 
-/**
- * useMapData — Fetches boundary GeoJSON from the API (DB-backed).
- * Replaces the old static-file approach.
- */
 export const useMapData = () => {
   const [districts, setDistricts] = useState(null);
   const [wards, setWards] = useState(null);
   const [canThoMask, setCanThoMask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const controllerRef = useRef(null);
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
+    controllerRef.current?.abort();
     const controller = new AbortController();
+    controllerRef.current = controller;
 
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    try {
+      setLoading(true);
+      setError(null);
 
-        const [districtsRes, wardsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}${MAP_API_PATHS.DISTRICTS_GEOJSON}`, {
-            signal: controller.signal,
-          }),
-          fetch(`${API_BASE_URL}${MAP_API_PATHS.WARDS_GEOJSON}`, {
-            signal: controller.signal,
-          }),
-        ]);
+      const [districtsRes, wardsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}${MAP_API_PATHS.DISTRICTS_GEOJSON}`, {
+          signal: controller.signal,
+        }),
+        fetch(`${API_BASE_URL}${MAP_API_PATHS.WARDS_GEOJSON}`, {
+          signal: controller.signal,
+        }),
+      ]);
 
-        if (!districtsRes.ok || !wardsRes.ok) {
-          throw new Error("Failed to fetch boundary data from API");
-        }
-
-        const districtsData = await districtsRes.json();
-        const wardsData = await wardsRes.json();
-
-        setDistricts(districtsData);
-        setWards(wardsData);
-
-        // Generate mask only if district data has polygon geometry
-        const mask = generateCanThoMask(districtsData);
-        setCanThoMask(mask);
-      } catch (err) {
-        if (err.name !== "AbortError") {
-          console.error("[useMapData] Error:", err);
-          setError(err);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+      if (!districtsRes.ok || !wardsRes.ok) {
+        throw new Error("Failed to fetch boundary data from API");
       }
-    };
 
-    fetchData();
+      const districtsData = await districtsRes.json();
+      const wardsData = await wardsRes.json();
 
-    return () => controller.abort();
+      // API wraps response in {success, data, message} envelope — unwrap
+      const districtsGeoJSON = districtsData.data ?? districtsData;
+      const wardsGeoJSON = wardsData.data ?? wardsData;
+
+      setDistricts(districtsGeoJSON);
+      setWards(wardsGeoJSON);
+
+      const mask = generateCanThoMask(districtsGeoJSON);
+      setCanThoMask(mask);
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        console.error("[useMapData] Error:", err);
+        setError(err);
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
+    }
   }, []);
 
-  return { districts, wards, canThoMask, loading, error };
+  useEffect(() => {
+    fetchData();
+    return () => controllerRef.current?.abort();
+  }, [fetchData]);
+
+  return { districts, wards, canThoMask, loading, error, retry: fetchData };
 };

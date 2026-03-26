@@ -1,31 +1,49 @@
 import express from "express";
 import * as districtController from "../controllers/districtController.js";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "../middlewares/validateSchema.js";
+import {
+  districtCodeParamSchema,
+  districtIdParamSchema,
+  getDistrictsQuerySchema,
+  getWardsByDistrictQuerySchema,
+  lookupDistrictBodySchema,
+} from "../models/index.js";
 
 const router = express.Router();
 
-/**
- * DISTRICT ROUTES
- * Base: /api/districts
- * All routes are public (không cần authentication)
- */
+router.get(
+  "/",
+  validateQuery(getDistrictsQuerySchema),
+  districtController.getDistricts,
+);
 
-// =============================================================================
-// DISTRICT (QUẬN/HUYỆN)
-// =============================================================================
+router.get(
+  "/code/:code",
+  validateParams(districtCodeParamSchema),
+  districtController.getDistrictByCode,
+);
 
-// GET /api/districts - Lấy danh sách quận/huyện
-router.get("/", districtController.getDistricts);
+router.get(
+  "/:id",
+  validateParams(districtIdParamSchema),
+  districtController.getDistrictById,
+);
 
-// GET /api/districts/code/:code - Lấy quận theo code (đặt trước :id để tránh conflict)
-router.get("/code/:code", districtController.getDistrictByCode);
+router.get(
+  "/:id/wards",
+  validateParams(districtIdParamSchema),
+  validateQuery(getWardsByDistrictQuerySchema),
+  districtController.getWardsByDistrict,
+);
 
-// GET /api/districts/:id - Lấy quận theo ID
-router.get("/:id", districtController.getDistrictById);
-
-// GET /api/districts/:id/wards - Lấy phường/xã theo quận
-router.get("/:id/wards", districtController.getWardsByDistrict);
-
-// POST /api/districts/lookup - Tìm quận theo tọa độ
-router.post("/lookup", districtController.lookupDistrict);
+router.post(
+  "/lookup",
+  validateBody(lookupDistrictBodySchema),
+  districtController.lookupDistrict,
+);
 
 export default router;

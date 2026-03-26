@@ -1,67 +1,58 @@
 import { Tabs } from "expo-router";
-import { Platform } from "react-native";
-import { View } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { COLORS } from "../../src/constants/colors";
 
-// You can import icons here locally or use a library like @expo/vector-icons
-// For now, I'll use simple text or placeholders if icons aren't available.
-// In a real app, use: import { MapPin, Compass, Sparkles, Heart, User } from "lucide-react-native";
+const TAB_BAR_HEIGHT = 60;
+const TAB_BAR_PADDING_BOTTOM = 6;
 
-export default function TabLayout() {
+const TabIcon = ({ name, color, size }) => (
+  <MaterialIcons name={name} size={size ?? 24} color={color} />
+);
+
+const TAB_SCREENS = [
+  { name: "map", title: "Bản đồ", icon: "map" },
+  { name: "explore", title: "Khám phá", icon: "explore" },
+  { name: "ai-planner", title: "AI", icon: "auto-awesome" },
+  { name: "saved", title: "Đã lưu", icon: "bookmark" },
+  { name: "profile", title: "Cá nhân", icon: "person" },
+];
+
+export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: {
-          backgroundColor: "#ffffff",
-          borderTopWidth: 1,
-          borderTopColor: "#e5e5e5",
-          height: Platform.OS === "ios" ? 85 : 60,
-          paddingBottom: Platform.OS === "ios" ? 30 : 10,
-          paddingTop: 10,
+          backgroundColor: COLORS.surface,
+          borderTopWidth: 0,
+          elevation: 12,
+          shadowColor: COLORS.text,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          height: TAB_BAR_HEIGHT,
+          paddingBottom: TAB_BAR_PADDING_BOTTOM,
         },
-        tabBarActiveTintColor: "#0077b8",
-        tabBarInactiveTintColor: "#a3a3a3",
         tabBarLabelStyle: {
-          fontFamily: "BeVietnamPro-Medium", // Will fallback if font not loaded
-          fontSize: 12,
+          fontSize: 11,
+          fontWeight: "600",
         },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Bản đồ",
-          // tabBarIcon: ({ color }) => <MapPin color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: "Khám phá",
-          // tabBarIcon: ({ color }) => <Compass color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="ai-planner"
-        options={{
-          title: "AI Plan",
-          // tabBarIcon: ({ color }) => <Sparkles color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="saved"
-        options={{
-          title: "Đã lưu",
-          // tabBarIcon: ({ color }) => <Heart color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Cá nhân",
-          // tabBarIcon: ({ color }) => <User color={color} />,
-        }}
-      />
+      {TAB_SCREENS.map((screen) => (
+        <Tabs.Screen
+          key={screen.name}
+          name={screen.name}
+          options={{
+            title: screen.title,
+            tabBarIcon: ({ color, size }) => (
+              <TabIcon name={screen.icon} color={color} size={size} />
+            ),
+          }}
+        />
+      ))}
     </Tabs>
   );
 }

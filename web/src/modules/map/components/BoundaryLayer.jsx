@@ -3,32 +3,12 @@ import { Source, Layer } from "../adapters";
 import { useMapContext } from "../context/MapProvider";
 import { MAP_THEME, LAYER_IDS } from "../config/mapConfig";
 
-const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
-  const { hoveredFeature, selectedDistrict, setHoveredFeature } =
-    useMapContext();
+const BoundaryLayer = ({ mask, districts, wards }) => {
+  const { selectedDistrict } = useMapContext();
 
-  const onClick = (e) => {
-    const feature = e.features?.[0];
-    if (feature && onSelect) {
-      const type = feature.layer.id.includes("ward") ? "ward" : "district";
-      onSelect(feature, type);
-    }
-  };
+  const selectedId = selectedDistrict?.properties?.id ?? null;
 
-  // 1. Mask Style
-  const maskLayerStyle = useMemo(
-    () => ({
-      id: LAYER_IDS.MASK,
-      type: "fill",
-      paint: {
-        "fill-color": MAP_THEME.MASK_COLOR,
-        "fill-opacity": MAP_THEME.MASK_OPACITY,
-      },
-    }),
-    [],
-  );
-
-  // 2. District Styles
+  // ── District fill — selected state via React, hover via GL feature-state ──
   const districtFillStyle = useMemo(
     () => ({
       id: LAYER_IDS.DISTRICT_FILL,
@@ -36,16 +16,16 @@ const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
       paint: {
         "fill-color": [
           "case",
-          ["==", ["get", "id"], selectedDistrict?.id || ""],
+          ["==", ["to-string", ["get", "id"]], String(selectedId)],
           MAP_THEME.DISTRICT.SELECTED_FILL,
-          ["==", ["get", "id"], hoveredFeature?.id || ""],
+          ["boolean", ["feature-state", "hover"], false],
           MAP_THEME.DISTRICT.HOVER_FILL,
-          MAP_THEME.DISTRICT.FILL_COLOR,
+          "rgba(0,0,0,0)",
         ],
-        "fill-outline-color": MAP_THEME.DISTRICT.LINE_COLOR,
+        "fill-opacity": 1,
       },
     }),
-    [selectedDistrict, hoveredFeature],
+    [selectedId],
   );
 
   const districtLineStyle = useMemo(
@@ -53,23 +33,35 @@ const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
       id: LAYER_IDS.DISTRICT_LINE,
       type: "line",
       paint: {
-        "line-color": MAP_THEME.DISTRICT.LINE_COLOR,
-        "line-width": MAP_THEME.DISTRICT.LINE_WIDTH,
+        "line-color": MAP_THEME.DISTRICT.STROKE_COLOR,
+        "line-width": [
+          "case",
+          ["==", ["to-string", ["get", "id"]], String(selectedId)],
+          MAP_THEME.DISTRICT.STROKE_WIDTH_SELECTED,
+          ["boolean", ["feature-state", "hover"], false],
+          MAP_THEME.DISTRICT.STROKE_WIDTH_HOVER,
+          MAP_THEME.DISTRICT.STROKE_WIDTH,
+        ],
+        "line-opacity": [
+          "case",
+          ["boolean", ["feature-state", "hover"], false],
+          1,
+          ["==", ["to-string", ["get", "id"]], String(selectedId)],
+          1,
+          0.65,
+        ],
       },
     }),
-    [],
+    [selectedId],
   );
 
-  // 3. Ward Styles (visible at zoom > 12)
-  const wardLineStyle = useMemo(
+  const maskLayerStyle = useMemo(
     () => ({
-      id: LAYER_IDS.WARD_LINE,
-      type: "line",
-      minzoom: 12,
+      id: LAYER_IDS.MASK,
+      type: "fill",
       paint: {
-        "line-color": MAP_THEME.WARD.LINE_COLOR,
-        "line-width": MAP_THEME.WARD.LINE_WIDTH,
-        "line-dasharray": [2, 1],
+        "fill-color": MAP_THEME.MASK_COLOR,
+        "fill-opacity": MAP_THEME.MASK_OPACITY,
       },
     }),
     [],
@@ -93,12 +85,19 @@ const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
     [],
   );
 
-  const onHover = (e) => {
-    const feature = e.features?.[0];
-    setHoveredFeature(
-      feature ? { id: feature.id, properties: feature.properties } : null,
-    );
-  };
+  const wardLineStyle = useMemo(
+    () => ({
+      id: LAYER_IDS.WARD_LINE,
+      type: "line",
+      minzoom: 12,
+      paint: {
+        "line-color": MAP_THEME.WARD.LINE_COLOR,
+        "line-width": MAP_THEME.WARD.LINE_WIDTH,
+        "line-dasharray": [4, 3],
+      },
+    }),
+    [],
+  );
 
   return (
     <>
@@ -109,14 +108,19 @@ const BoundaryLayer = ({ mask, districts, wards, onSelect }) => {
       )}
 
       {districts && (
-        <Source id="districts-source" type="geojson" data={districts}>
-          <Layer {...districtFillStyle} onClick={onClick} />
+        <Source
+          id="districts-source"
+          type="geojson"
+          data={districts}
+          promoteId="id"
+        >
+          <Layer {...districtFillStyle} />
           <Layer {...districtLineStyle} />
         </Source>
       )}
 
       {wards && (
-        <Source id="wards-source" type="geojson" data={wards}>
+        <Source id="wards-source" type="geojson" data={wards} promoteId="id">
           <Layer {...wardFillStyle} />
           <Layer {...wardLineStyle} />
         </Source>

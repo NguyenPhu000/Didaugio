@@ -1,13 +1,23 @@
 import * as turf from "@turf/turf";
 
+/** Module-level cache keyed by feature count + first feature id to detect data changes */
+let _maskCache = { key: null, result: null };
+
+const makeCacheKey = (features) =>
+  features.length + ":" + (features[0]?.properties?.id ?? "");
+
 /**
  * Generate a "fog" mask polygon that covers the entire world
  * EXCEPT the Can Tho region (union of all district polygons).
  *
  * Returns null if districts don't have polygon geometry.
+ * Result is cached at module level — only recomputed when data changes.
  */
 export const generateCanThoMask = (districtsGeoJSON) => {
   if (!districtsGeoJSON?.features?.length) return null;
+
+  const cacheKey = makeCacheKey(districtsGeoJSON.features);
+  if (_maskCache.key === cacheKey) return _maskCache.result;
 
   // Only works with Polygon/MultiPolygon features (not Point)
   const polygonFeatures = districtsGeoJSON.features.filter(
@@ -15,8 +25,12 @@ export const generateCanThoMask = (districtsGeoJSON) => {
       f.geometry?.type === "Polygon" || f.geometry?.type === "MultiPolygon",
   );
 
-  if (polygonFeatures.length === 0) return null;
+  if (polygonFeatures.length === 0) {
+    _maskCache = { key: cacheKey, result: null };
+    return null;
+  }
 
+  let result = null;
   try {
     const worldPolygon = turf.polygon([
       [
@@ -45,7 +59,7 @@ export const generateCanThoMask = (districtsGeoJSON) => {
     }
 
     if (canThoPolygon) {
-      return turf.difference(
+      result = turf.difference(
         turf.featureCollection([worldPolygon, canThoPolygon]),
       );
     }
@@ -53,5 +67,6 @@ export const generateCanThoMask = (districtsGeoJSON) => {
     console.error("[geoUtils] Error generating mask:", e);
   }
 
-  return null;
+  _maskCache = { key: cacheKey, result };
+  return result;
 };

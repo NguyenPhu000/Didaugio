@@ -1,8 +1,9 @@
 import * as loginHistoryService from "../services/loginHistoryService.js";
+import { ERROR_CODES } from "../config/messages.js";
 import {
   loginHistoryQuerySchema,
   revokeSessionSchema,
-} from "../models/schemas/activitySchema.js";
+} from "../models/index.js";
 
 /**
  * GET /api/login-history
@@ -14,7 +15,9 @@ export const getAll = async (req, res, next) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "Dữ liệu không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
         errors: validation.error.errors,
       });
     }
@@ -34,6 +37,7 @@ export const getAll = async (req, res, next) => {
       success: true,
       data: result.data,
       pagination: result.pagination,
+      message: "Lấy danh sách lịch sử đăng nhập thành công",
     });
   } catch (error) {
     next(error);
@@ -50,7 +54,9 @@ export const getById = async (req, res, next) => {
     if (isNaN(id)) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "Session ID không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
       });
     }
 
@@ -63,13 +69,16 @@ export const getById = async (req, res, next) => {
     if (roleId > 2 && session.userId !== currentUserId) {
       return res.status(403).json({
         success: false,
+        data: null,
         message: "Bạn không có quyền xem session này",
+        errorCode: ERROR_CODES.FORBIDDEN,
       });
     }
 
     res.json({
       success: true,
       data: session,
+      message: "Lấy chi tiết phiên đăng nhập thành công",
     });
   } catch (error) {
     next(error);
@@ -86,7 +95,9 @@ export const revoke = async (req, res, next) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "Dữ liệu không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
         errors: validation.error.errors,
       });
     }
@@ -96,14 +107,16 @@ export const revoke = async (req, res, next) => {
 
     // Lấy session để kiểm tra ownership
     const sessionToRevoke = await loginHistoryService.getById(
-      validation.data.sessionId
+      validation.data.sessionId,
     );
 
     // Nếu không phải admin (roleId <= 2) và session không thuộc user hiện tại
     if (roleId > 2 && sessionToRevoke.userId !== currentUserId) {
       return res.status(403).json({
         success: false,
+        data: null,
         message: "Bạn không có quyền vô hiệu hóa session này",
+        errorCode: ERROR_CODES.FORBIDDEN,
       });
     }
 
@@ -129,7 +142,9 @@ export const revokeAll = async (req, res, next) => {
     if (isNaN(userId)) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "User ID không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
       });
     }
 
@@ -141,7 +156,9 @@ export const revokeAll = async (req, res, next) => {
     if (roleId > 2 && userId !== currentUserId) {
       return res.status(403).json({
         success: false,
+        data: null,
         message: "Bạn không có quyền thực hiện thao tác này",
+        errorCode: ERROR_CODES.FORBIDDEN,
       });
     }
 
@@ -152,12 +169,13 @@ export const revokeAll = async (req, res, next) => {
 
     const result = await loginHistoryService.revokeAllExcept(
       userId,
-      currentSessionId
+      currentSessionId,
     );
 
     res.json({
       success: true,
       message: `Đã vô hiệu hóa ${result.count} sessions`,
+      data: result,
     });
   } catch (error) {
     next(error);

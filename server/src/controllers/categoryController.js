@@ -1,4 +1,5 @@
 import * as categoryService from "../services/categoryService.js";
+import { ERROR_CODES } from "../config/messages.js";
 
 /**
  * CATEGORY CONTROLLER
@@ -6,18 +7,17 @@ import * as categoryService from "../services/categoryService.js";
  */
 
 // GET /api/categories - Lấy danh sách categories
-export const getCategories = async (req, res) => {
+export const getCategories = async (req, res, next) => {
   try {
     const { parentId, level, isActive, search, format } = req.query;
 
     // Format: tree hoặc flat
     if (format === "tree") {
-      const tree = await categoryService.getCategoryTree(
-        parentId ? parseInt(parentId) : null
-      );
+      const tree = await categoryService.getCategoryTree(parentId || null);
       return res.json({
         success: true,
         data: tree,
+        message: "Lấy cây danh mục thành công",
       });
     }
 
@@ -33,71 +33,61 @@ export const getCategories = async (req, res) => {
       success: true,
       data: categories,
       total: categories.length,
+      message: "Lấy danh sách danh mục thành công",
     });
   } catch (error) {
-    console.error("Error in getCategories:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch categories",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // GET /api/categories/tree - Lấy category tree
-export const getCategoryTree = async (req, res) => {
+export const getCategoryTree = async (req, res, next) => {
   try {
     const { parentId, maxLevel } = req.query;
 
     const tree = await categoryService.getCategoryTree(
-      parentId ? parseInt(parentId) : null,
-      maxLevel ? parseInt(maxLevel) : undefined
+      parentId || null,
+      maxLevel,
     );
 
     res.json({
       success: true,
       data: tree,
+      message: "Lấy cây danh mục thành công",
     });
   } catch (error) {
-    console.error("Error in getCategoryTree:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch category tree",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // GET /api/categories/:id - Lấy category theo ID
-export const getCategoryById = async (req, res) => {
+export const getCategoryById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const category = await categoryService.getCategoryById(parseInt(id));
+    const category = await categoryService.getCategoryById(id);
 
     if (!category) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Category not found",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
     res.json({
       success: true,
       data: category,
+      message: "Lấy chi tiết danh mục thành công",
     });
   } catch (error) {
-    console.error("Error in getCategoryById:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch category",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // GET /api/categories/slug/:slug - Lấy category theo slug
-export const getCategoryBySlug = async (req, res) => {
+export const getCategoryBySlug = async (req, res, next) => {
   try {
     const { slug } = req.params;
 
@@ -106,65 +96,53 @@ export const getCategoryBySlug = async (req, res) => {
     if (!category) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Category not found",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
     res.json({
       success: true,
       data: category,
+      message: "Lấy danh mục theo slug thành công",
     });
   } catch (error) {
-    console.error("Error in getCategoryBySlug:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch category",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // GET /api/categories/:id/path - Lấy breadcrumb path
-export const getCategoryPath = async (req, res) => {
+export const getCategoryPath = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const path = await categoryService.getCategoryPath(parseInt(id));
+    const path = await categoryService.getCategoryPath(id);
 
     if (!path) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Category not found",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
     res.json({
       success: true,
       data: path,
+      message: "Lấy đường dẫn danh mục thành công",
     });
   } catch (error) {
-    console.error("Error in getCategoryPath:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch category path",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // POST /api/categories - Tạo category mới
-export const createCategory = async (req, res) => {
+export const createCategory = async (req, res, next) => {
   try {
     const { name, slug, icon, color, description, thumbnail, parentId, order } =
       req.body;
-
-    // Validation
-    if (!name || !slug) {
-      return res.status(400).json({
-        success: false,
-        message: "Name and slug are required",
-      });
-    }
 
     const category = await categoryService.createCategory({
       name,
@@ -173,8 +151,8 @@ export const createCategory = async (req, res) => {
       color,
       description,
       thumbnail,
-      parentId: parentId ? parseInt(parentId) : null,
-      order: order ? parseInt(order) : 0,
+      parentId: parentId || null,
+      order: order || 0,
     });
 
     res.status(201).json({
@@ -183,28 +161,12 @@ export const createCategory = async (req, res) => {
       data: category,
     });
   } catch (error) {
-    console.error("Error in createCategory:", error);
-
-    if (
-      error.message.includes("already exists") ||
-      error.message.includes("not found")
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to create category",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // PUT /api/categories/:id - Update category
-export const updateCategory = async (req, res) => {
+export const updateCategory = async (req, res, next) => {
   try {
     const { id } = req.params;
     const {
@@ -219,20 +181,15 @@ export const updateCategory = async (req, res) => {
       isActive,
     } = req.body;
 
-    const category = await categoryService.updateCategory(parseInt(id), {
+    const category = await categoryService.updateCategory(id, {
       name,
       slug,
       icon,
       color,
       description,
       thumbnail,
-      parentId:
-        parentId !== undefined
-          ? parentId
-            ? parseInt(parentId)
-            : null
-          : undefined,
-      order: order !== undefined ? parseInt(order) : undefined,
+      parentId,
+      order,
       isActive,
     });
 
@@ -242,94 +199,54 @@ export const updateCategory = async (req, res) => {
       data: category,
     });
   } catch (error) {
-    console.error("Error in updateCategory:", error);
-
-    if (
-      error.message.includes("not found") ||
-      error.message.includes("already exists") ||
-      error.message.includes("Circular")
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to update category",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // DELETE /api/categories/:id - Xóa category
-export const deleteCategory = async (req, res) => {
+export const deleteCategory = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const result = await categoryService.deleteCategory(parseInt(id));
+    const result = await categoryService.deleteCategory(id);
 
-    res.json(result);
-  } catch (error) {
-    console.error("Error in deleteCategory:", error);
-
-    if (
-      error.message.includes("not found") ||
-      error.message.includes("Cannot delete")
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete category",
-      error: error.message,
+    res.json({
+      success: true,
+      data: null,
+      message: result.message,
     });
+  } catch (error) {
+    next(error);
   }
 };
 
 // GET /api/categories/:id/suggested-tags - Lấy suggested tags
-export const getSuggestedTags = async (req, res) => {
+export const getSuggestedTags = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const tags = await categoryService.getSuggestedTags(parseInt(id));
+    const tags = await categoryService.getSuggestedTags(id);
 
     res.json({
       success: true,
       data: tags,
+      message: "Lấy danh sách tag gợi ý thành công",
     });
   } catch (error) {
-    console.error("Error in getSuggestedTags:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch suggested tags",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // POST /api/categories/:id/tags - Gán tags cho category
-export const assignTags = async (req, res) => {
+export const assignTags = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { tagIds, defaultTagIds } = req.body;
 
-    if (!Array.isArray(tagIds)) {
-      return res.status(400).json({
-        success: false,
-        message: "tagIds must be an array",
-      });
-    }
-
     const tags = await categoryService.assignTagsToCategory(
-      parseInt(id),
-      tagIds.map((tid) => parseInt(tid)),
-      defaultTagIds ? defaultTagIds.map((tid) => parseInt(tid)) : []
+      id,
+      tagIds,
+      defaultTagIds || [],
     );
 
     res.json({
@@ -338,12 +255,7 @@ export const assignTags = async (req, res) => {
       data: tags,
     });
   } catch (error) {
-    console.error("Error in assignTags:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to assign tags",
-      error: error.message,
-    });
+    next(error);
   }
 };
 

@@ -1,14 +1,7 @@
-/**
- * BOUNDARY SERVICE
- * Serves GeoJSON FeatureCollections built from database records.
- * Database is the single source of truth — no static file reads.
- */
-
 import prisma from "../config/prismaClient.js";
+import { ERROR_CODES } from "../config/messages.js";
+import ServiceError from "../utils/serviceError.js";
 
-// =============================================================================
-// IN-MEMORY CACHE (avoid hitting DB on every map load)
-// =============================================================================
 let cache = {
   districts: null,
   wards: null,
@@ -32,10 +25,6 @@ export const invalidateCache = (key = null) => {
     cache.timestamps = { districts: 0, wards: 0 };
   }
 };
-
-// =============================================================================
-// GEOJSON BUILDERS
-// =============================================================================
 
 /**
  * Build GeoJSON FeatureCollection for districts from DB
@@ -93,7 +82,8 @@ export const getWardsGeoJSON = async () => {
       wardType: true,
       latitude: true,
       longitude: true,
-      boundary: true,
+      // boundary omitted: Prisma client needs regeneration after column was added.
+      // Ward boundaries are not seeded yet so Point fallback is used anyway.
       district: {
         select: { id: true, name: true, code: true },
       },
@@ -109,6 +99,9 @@ export const getWardsGeoJSON = async () => {
         const lng = w.longitude ? parseFloat(w.longitude) : null;
         const lat = w.latitude ? parseFloat(w.latitude) : null;
 
+        const geometry =
+          lng && lat ? { type: "Point", coordinates: [lng, lat] } : null;
+
         return {
           type: "Feature",
           properties: {
@@ -121,9 +114,7 @@ export const getWardsGeoJSON = async () => {
             ward_type: w.wardType,
             level: "ward",
           },
-          geometry:
-            w.boundary ||
-            (lng && lat ? { type: "Point", coordinates: [lng, lat] } : null),
+          geometry,
         };
       })
       .filter((f) => f.geometry !== null),
@@ -133,10 +124,6 @@ export const getWardsGeoJSON = async () => {
   cache.timestamps.wards = Date.now();
   return geojson;
 };
-
-// =============================================================================
-// CENTROID SERVICES
-// =============================================================================
 
 /**
  * Lấy centroid của District theo code
@@ -153,9 +140,19 @@ export const getDistrictCentroid = async (code) => {
     },
   });
 
-  if (!district) throw new Error("District not found");
+  if (!district) {
+    throw new ServiceError(
+      "Không tìm thấy quận/huyện",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
+  }
   if (!district.latitude || !district.longitude)
-    throw new Error("District does not have centroid coordinates");
+    throw new ServiceError(
+      "Quận/huyện chưa có tọa độ trung tâm",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
 
   return {
     id: district.id,
@@ -185,7 +182,13 @@ export const getWardCentroid = async (id) => {
     },
   });
 
-  if (!ward) throw new Error("Ward not found");
+  if (!ward) {
+    throw new ServiceError(
+      "Không tìm thấy phường/xã",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
+  }
 
   return {
     id: ward.id,

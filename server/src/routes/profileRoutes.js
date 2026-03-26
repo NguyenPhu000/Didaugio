@@ -4,32 +4,29 @@ import { authenticate } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// =============================================================================
-// PROFILE ROUTES
-// Tất cả routes đều yêu cầu đăng nhập
-// =============================================================================
-
-// Lấy thông tin profile hiện tại
 router.get("/", authenticate, profileController.getProfile);
+router.get("/summary", authenticate, profileController.getProfileSummary);
 
-// Cập nhật thông tin profile
 router.put("/", authenticate, profileController.updateProfile);
-
-// Cập nhật avatar
 router.put("/avatar", authenticate, profileController.updateAvatar);
 
-// Cập nhật cài đặt thông báo
 router.put(
   "/notifications",
   authenticate,
-  profileController.updateNotificationSettings
+  profileController.updateNotificationSettings,
 );
 
-// Cập nhật sở thích du lịch
 router.put(
   "/travel-preferences",
   authenticate,
-  profileController.updateTravelPreferences
+  profileController.updateTravelPreferences,
 );
+
+router.get("/saved-places", authenticate, profileController.getSavedPlaces);
+router.post("/saved-places/:placeId", authenticate, profileController.savePlace);
+router.delete("/saved-places/:placeId", authenticate, profileController.unsavePlace);
+
+router.get("/trips", authenticate, profileController.getMyTrips);
+router.post("/trips/generate", authenticate, profileController.generateTrip);
 
 export default router;

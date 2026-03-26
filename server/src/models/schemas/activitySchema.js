@@ -1,9 +1,5 @@
 import { z } from "zod";
 
-// ============================================================================
-// AUDIT LOG SCHEMAS
-// ============================================================================
-
 export const auditLogQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10),
@@ -13,10 +9,6 @@ export const auditLogQuerySchema = z.object({
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
 });
-
-// ============================================================================
-// EMAIL VERIFICATION SCHEMAS
-// ============================================================================
 
 export const createEmailVerificationSchema = z.object({
   userId: z.number().int().positive(),
@@ -33,10 +25,6 @@ export const emailVerificationQuerySchema = z.object({
   userId: z.coerce.number().int().positive().optional(),
   status: z.enum(["pending", "verified", "expired"]).optional(),
 });
-
-// ============================================================================
-// PASSWORD RESET SCHEMAS
-// ============================================================================
 
 export const createPasswordResetSchema = z.object({
   email: z.string().email("Email không hợp lệ"),
@@ -56,10 +44,6 @@ export const passwordResetQuerySchema = z.object({
   userId: z.coerce.number().int().positive().optional(),
   status: z.enum(["pending", "used", "expired"]).optional(),
 });
-
-// ============================================================================
-// LOGIN HISTORY (USER SESSIONS) SCHEMAS
-// ============================================================================
 
 export const loginHistoryQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),

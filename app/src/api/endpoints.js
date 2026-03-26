@@ -1,0 +1,34 @@
+export const ENDPOINTS = {
+  auth: {
+    register: "/auth/register",
+    login: "/auth/login",
+    loginGoogle: "/auth/google",
+    exchangeGoogleCode: "/auth/google/exchange",
+    refresh: "/auth/refresh",
+    me: "/auth/me",
+    logout: "/auth/logout",
+  },
+  places: {
+    home: "/places/home",
+    list: "/places",
+    services: "/places/services",
+    detail: (id) => `/places/${id}`,
+    reviews: (id) => `/places/${id}/reviews`,
+  },
+  categories: {
+    list: "/categories",
+  },
+  profile: {
+    get: "/profile",
+    summary: "/profile/summary",
+    savedPlaces: "/profile/saved-places",
+    savedPlaceById: (placeId) => `/profile/saved-places/${placeId}`,
+    trips: "/profile/trips",
+    generateTrip: "/profile/trips/generate",
+  },
+  boundaries: {
+    districts: "/boundaries/districts",
+    wards: "/boundaries/wards",
+  },
+  feedback: "/feedback",
+};

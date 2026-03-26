@@ -1,17 +1,22 @@
 import api from "@/constants/api";
 
+const unwrapApiData = (response) => response?.data ?? response;
+
 export const permissionService = {
   getPermissions: async (params = {}) => {
-    return await api.get("/permissions", { params });
+    const response = await api.get("/permissions", { params });
+    return unwrapApiData(response);
   },
 
   getPermissionsByModule: async (includeRoles = false) => {
-    return await api.get("/permissions/by-module", {
+    const response = await api.get("/permissions/by-module", {
       params: { includeRoles },
     });
+    return unwrapApiData(response);
   },
 
   getModules: async () => {
-    return await api.get("/permissions/modules");
+    const response = await api.get("/permissions/modules");
+    return unwrapApiData(response);
   },
 };

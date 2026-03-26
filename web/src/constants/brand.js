@@ -1,11 +1,3 @@
-/**
- * BRAND & THEME CONSTANTS
- * Centralized brand colors and theme values
- * Note: Tailwind config uses CSS variables for primary/secondary etc.
- * These are for inline styles (e.g. Chart.js, dynamic style objects).
- */
-
-// Brand colors (hex values for JS-side usage: Chart.js, canvas, dynamic styles)
 export const BRAND_COLORS = {
   PRIMARY: "#F3E600", // T.I.M Yellow
   PRIMARY_RGB: "243, 230, 0",
@@ -15,9 +7,7 @@ export const BRAND_COLORS = {
   WHITE: "#FFFFFF",
 };
 
-// Chart.js specific theme (uses raw hex since Chart.js doesn't support Tailwind)
 export const CHART_THEME = {
-  // Tooltip
   tooltip: {
     backgroundColor: BRAND_COLORS.BLACK,
     titleColor: BRAND_COLORS.PRIMARY,
@@ -29,7 +19,6 @@ export const CHART_THEME = {
     bodyFont: { family: "monospace", size: 11 },
   },
 
-  // Legend
   legend: {
     font: { family: "monospace", size: 10, weight: "bold" },
     color: BRAND_COLORS.BLACK,
@@ -37,7 +26,6 @@ export const CHART_THEME = {
     padding: 15,
   },
 
-  // Scales
   scales: {
     yAxis: {
       grid: { color: "rgba(0, 0, 0, 0.1)", lineWidth: 1 },
@@ -54,7 +42,6 @@ export const CHART_THEME = {
     },
   },
 
-  // Dataset colors
   datasets: {
     primary: {
       borderColor: BRAND_COLORS.PRIMARY,
@@ -70,7 +57,6 @@ export const CHART_THEME = {
     },
   },
 
-  // Status colors for pie/doughnut charts
   statusColors: {
     approved: BRAND_COLORS.PRIMARY,
     pending: "#fbbf24",
@@ -78,7 +64,6 @@ export const CHART_THEME = {
   },
 };
 
-// App metadata
 export const APP_META = {
   NAME: "Di Dau Gio",
   FULL_NAME: "DI DAU GIO?",

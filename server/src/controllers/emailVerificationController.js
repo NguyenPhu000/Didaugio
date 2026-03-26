@@ -1,10 +1,11 @@
 import * as emailVerificationService from "../services/emailVerificationService.js";
 import prisma from "../config/prismaClient.js";
+import { ERROR_CODES } from "../config/messages.js";
 import {
   emailVerificationQuerySchema,
   createEmailVerificationSchema,
-  verifyEmailSchema,
-} from "../models/schemas/activitySchema.js";
+  activityVerifyEmailSchema as verifyEmailSchema,
+} from "../models/index.js";
 
 /**
  * GET /api/email-verifications
@@ -16,7 +17,9 @@ export const getAll = async (req, res, next) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "Dữ liệu không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
         errors: validation.error.errors,
       });
     }
@@ -27,6 +30,7 @@ export const getAll = async (req, res, next) => {
       success: true,
       data: result.data,
       pagination: result.pagination,
+      message: "Lấy danh sách xác thực email thành công",
     });
   } catch (error) {
     next(error);
@@ -43,7 +47,9 @@ export const create = async (req, res, next) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "Dữ liệu không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
         errors: validation.error.errors,
       });
     }
@@ -63,7 +69,9 @@ export const create = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Không tìm thấy user",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
@@ -93,13 +101,15 @@ export const verify = async (req, res, next) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "Dữ liệu không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
         errors: validation.error.errors,
       });
     }
 
     const verification = await emailVerificationService.verify(
-      validation.data.token
+      validation.data.token,
     );
 
     res.json({
@@ -122,7 +132,9 @@ export const resend = async (req, res, next) => {
     if (isNaN(userId)) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "User ID không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
       });
     }
 
@@ -148,7 +160,9 @@ export const manualVerify = async (req, res, next) => {
     if (isNaN(userId)) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "User ID không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
       });
     }
 

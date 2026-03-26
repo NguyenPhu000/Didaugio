@@ -19,10 +19,13 @@ import {
   CardDescription,
 } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
+import { ROLES } from "@/constants";
+import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { authService } from "@/apis/authService";
 import { loginSchema } from "@/schemas/auth";
+import GoogleLoginButton from "@/components/auth/GoogleLoginButton";
 
-// const loginSchema = z.object({...}); // Removed
+const HAS_GOOGLE_OAUTH = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -37,6 +40,33 @@ const LoginPage = () => {
     resolver: zodResolver(loginSchema),
   });
 
+  const handleGoogleSuccess = async (codeResponse) => {
+    setIsLoading(true);
+    try {
+      const response = await authService.googleLogin(
+        codeResponse.code,
+        window.location.origin,
+      );
+      if (response.success) {
+        setAuth(
+          response.data.user,
+          response.data.accessToken,
+          response.data.refreshToken,
+        );
+        toast.success("Đăng nhập Google thành công!");
+        const dashboardUrl =
+          response.data.user?.roleId === ROLES.BUSINESS
+            ? BUSINESS_ROUTES.DASHBOARD
+            : ADMIN_ROUTES.DASHBOARD;
+        navigate(dashboardUrl);
+      }
+    } catch (error) {
+      toast.error(error.message || "Đăng nhập Google thất bại");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
@@ -49,9 +79,23 @@ const LoginPage = () => {
           response.data.refreshToken,
         );
         toast.success("Đăng nhập thành công!");
-        navigate("/dashboard");
+        const dashboardUrl =
+          response.data.user?.roleId === ROLES.BUSINESS
+            ? BUSINESS_ROUTES.DASHBOARD
+            : ADMIN_ROUTES.DASHBOARD;
+        navigate(dashboardUrl);
       }
     } catch (error) {
+      if (error?.errorCode === "EMAIL_NOT_VERIFIED") {
+        toast.error(
+          "Email chưa xác thực. Vui lòng kiểm tra email hoặc gửi lại link xác thực.",
+        );
+        navigate(
+          `/resend-verification?email=${encodeURIComponent(data.email)}`,
+        );
+        return;
+      }
+
       toast.error(error.message || "Đăng nhập thất bại");
     } finally {
       setIsLoading(false);
@@ -182,6 +226,7 @@ const LoginPage = () => {
                   <Input
                     type="email"
                     placeholder="YOUR@EMAIL.COM"
+                    autoComplete="username"
                     className="rounded-none border-2 border-black h-12 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0 pl-4"
                     {...register("email")}
                   />
@@ -241,17 +286,32 @@ const LoginPage = () => {
               </Button>
             </form>
 
-            {/* Divider */}
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t-2 border-black border-dashed"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-4 text-gray-500 font-mono">
-                  OR
-                </span>
-              </div>
-            </div>
+            {HAS_GOOGLE_OAUTH && (
+              <>
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t-2 border-black border-dashed"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-4 text-gray-500 font-mono">
+                      OR
+                    </span>
+                  </div>
+                </div>
+
+                <GoogleLoginButton
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => toast.error("Đăng nhập Google thất bại")}
+                  disabled={isLoading}
+                />
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200"></div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Register Link */}
             <div className="text-center">

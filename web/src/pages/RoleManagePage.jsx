@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { roleService } from "@/apis/roleService";
 import { toast } from "sonner";
 import { RoleManagementModal } from "@/components/role/role-management-modal";
 import { Button } from "@/components/ui/Button";
+import TimStatsCard from "@/components/admin/TimStatsCard";
 import {
   RefreshCw,
   ShieldAlert,
@@ -11,6 +12,7 @@ import {
   User,
   Crown,
   Lock,
+  BarChart3,
 } from "lucide-react";
 
 // Lucide mapping
@@ -67,6 +69,15 @@ export default function RoleManagePage() {
 
   const filteredRoles = roles;
 
+  const roleStats = useMemo(() => {
+    const r = filteredRoles;
+    const totalUsers = r.reduce((s, x) => s + (x.userCount || 0), 0);
+    const totalPerms = r.reduce((s, x) => s + (x.permissionCount || 0), 0);
+    const avgUsers =
+      r.length > 0 ? Math.round((totalUsers / r.length) * 10) / 10 : 0;
+    return { count: r.length, totalUsers, totalPerms, avgUsers };
+  }, [filteredRoles]);
+
   const getRoleIcon = (roleName) => {
     // Normalize role name
     const key = roleName.toLowerCase().replace(/\s+/g, "_");
@@ -107,6 +118,37 @@ export default function RoleManagePage() {
             </Button>
           </div>
         </div>
+
+        {!loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <TimStatsCard
+              title="SỐ VAI TRÒ"
+              value={roleStats.count}
+              icon={ShieldAlert}
+              serial="ROL-001"
+            />
+            <TimStatsCard
+              title="TỔNG USER GÁN"
+              value={roleStats.totalUsers}
+              icon={Users}
+              serial="ROL-002"
+              textColor="text-emerald-600"
+            />
+            <TimStatsCard
+              title="TỔNG GÁN QUYỀN"
+              value={roleStats.totalPerms}
+              icon={Lock}
+              serial="ROL-003"
+            />
+            <TimStatsCard
+              title="TB USER / VAI TRÒ"
+              value={roleStats.avgUsers}
+              icon={BarChart3}
+              serial="ROL-004"
+              color="bg-yellow-50"
+            />
+          </div>
+        )}
 
         {/* Roles Grid */}
         {loading ? (

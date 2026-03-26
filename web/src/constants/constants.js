@@ -1,39 +1,51 @@
-// API Configuration
 export const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:8081/api";
 
-// Pagination
 export const PAGINATION = {
   DEFAULT_PAGE: 1,
   DEFAULT_LIMIT: 10,
   MAX_LIMIT: 100,
 };
 
-// User Status
 export const USER_STATUS = {
   ACTIVE: "active",
   INACTIVE: "inactive",
   BANNED: "banned",
 };
 
-// Roles
 export const ROLES = {
   SUPER_ADMIN: 1,
   ADMIN: 2,
   BUSINESS: 3,
   STAFF: 4,
-  GUEST: 5,
+  USER: 5,
+  GUEST: 6,
 };
 
 export const ROLE_NAMES = {
-  1: "Super Admin",
-  2: "Admin",
-  3: "Business Owner",
-  4: "Staff",
-  5: "Guest",
+  [ROLES.SUPER_ADMIN]: "Super Admin",
+  [ROLES.ADMIN]: "Admin",
+  [ROLES.BUSINESS]: "Business",
+  [ROLES.STAFF]: "Staff",
+  [ROLES.USER]: "User",
+  [ROLES.GUEST]: "Guest",
 };
 
-// Place Status
+export const BUSINESS_STATUS = {
+  PENDING: "pending",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+  SUSPENDED: "suspended",
+};
+
+export const SERVICE_TYPES = {
+  ENTRY_TICKET: "entry_ticket",
+  TOUR: "tour",
+  PACKAGE: "package",
+  SERVICE: "service",
+  EXPERIENCE: "experience",
+};
+
 export const PLACE_STATUS = {
   DRAFT: "draft",
   PENDING: "pending",
@@ -42,7 +54,6 @@ export const PLACE_STATUS = {
   HIDDEN: "hidden",
 };
 
-// Booking Status
 export const BOOKING_STATUS = {
   PENDING: "pending",
   CONFIRMED: "confirmed",
@@ -51,20 +62,22 @@ export const BOOKING_STATUS = {
   NO_SHOW: "no_show",
 };
 
-// Price Range
 export const PRICE_RANGE = {
-  CHEAP: "cheap",
-  MEDIUM: "medium",
-  EXPENSIVE: "expensive",
+  FREE: "FREE",
+  BUDGET: "BUDGET",
+  MODERATE: "MODERATE",
+  EXPENSIVE: "EXPENSIVE",
+  LUXURY: "LUXURY",
 };
 
 export const PRICE_RANGE_LABELS = {
-  cheap: "Bình dân",
-  medium: "Trung bình",
-  expensive: "Sang trọng",
+  FREE: "Miễn phí",
+  BUDGET: "Bình dân",
+  MODERATE: "Trung bình",
+  EXPENSIVE: "Cao cấp",
+  LUXURY: "Sang trọng",
 };
 
-// Days of week
 export const DAY_OF_WEEK = {
   SUNDAY: 0,
   MONDAY: 1,
@@ -85,13 +98,11 @@ export const DAY_OF_WEEK_NAMES = {
   6: "Thứ 7",
 };
 
-// Place Image Limits
 export const PLACE_IMAGE_LIMITS = {
   MAX_IMAGES: 10,
-  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+  MAX_FILE_SIZE: 5 * 1024 * 1024,
 };
 
-// Tag Types
 export const TAG_TYPES = {
   GENERAL: "general",
   FEATURE: "feature",
@@ -100,5 +111,3 @@ export const TAG_TYPES = {
   ACTIVITY: "activity",
   ATMOSPHERE: "atmosphere",
 };
-
-// Toast durations moved to constants/timing.js as TOAST_DURATION object

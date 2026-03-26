@@ -1,72 +1,111 @@
 import axios from "axios";
-import * as SecureStore from "expo-secure-store";
-import { Platform } from "react-native";
-import { API_BASE_URL, TIMEOUT } from "../../constants/api";
+import { API_BASE_URL, REQUEST_TIMEOUT } from "../constants/api";
+import { useAuthStore } from "../stores/authStore";
 
-// Create Axios instance
 const client = axios.create({
   baseURL: API_BASE_URL,
-  timeout: TIMEOUT,
+  timeout: REQUEST_TIMEOUT,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
 });
 
-// Request Interceptor
-client.interceptors.request.use(
-  async (config) => {
-    // Mobile-specific headers
-    config.headers["x-platform"] = Platform.OS;
-    config.headers["x-app-version"] = "1.0.0";
-
-    // Note: We'll inject the token from Zustand store in the actual API calls
-    // or use a separate helper to get the token if needed here.
-    // For now, let's assume the token is passed in headers or managed via store.
-    
-    // In a real app with Zustand, we might do:
-    // const token = useAuthStore.getState().accessToken;
-    // if (token) config.headers.Authorization = `Bearer ${token}`;
-
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+client.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().getAccessToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-);
+  return config;
+});
 
-// Response Interceptor
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 client.interceptors.response.use(
-  (response) => {
-    return response.data;
-  },
+  (response) => response.data,
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle network errors
-    if (!error.response) {
-      return Promise.reject({
-        message: "Không có kết nối mạng. Vui lòng kiểm tra lại.",
-        code: "NETWORK_ERROR",
-      });
+    if (error?.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      const store = useAuthStore.getState();
+      const refreshToken = store.refreshToken;
+
+      if (!refreshToken) {
+        await store.clearSession();
+        return Promise.reject(buildError(error));
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((newToken) => {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return client(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      isRefreshing = true;
+
+      try {
+        const res = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          { refreshToken },
+          { headers: { "Content-Type": "application/json" } },
+        );
+
+        const {
+          accessToken,
+          refreshToken: newRefreshToken,
+          user,
+        } = res.data?.data || res.data || {};
+
+        await store.setSession({
+          user: user || store.user,
+          accessToken,
+          refreshToken: newRefreshToken || refreshToken,
+        });
+
+        processQueue(null, accessToken);
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return client(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        await store.clearSession();
+        return Promise.reject(buildError(refreshError));
+      } finally {
+        isRefreshing = false;
+      }
     }
 
-    // Handle 401 Unauthorized (Token refresh logic would go here)
-    if (error.response.status === 401 && !originalRequest._retry) {
-      // TODO: Implement token refresh logic
-    }
-
-    // Format error response
-    const errorMessage =
-      error.response.data?.message || "Đã có lỗi xảy ra. Vui lòng thử lại.";
-    
-    return Promise.reject({
-      message: errorMessage,
-      code: error.response.data?.errorCode || "UNKNOWN_ERROR",
-      status: error.response.status,
-      data: error.response.data,
-    });
-  }
+    return Promise.reject(buildError(error));
+  },
 );
+
+function buildError(error) {
+  const message =
+    error?.response?.data?.message || "Đã có lỗi xảy ra. Vui lòng thử lại.";
+  return {
+    message,
+    status: error?.response?.status,
+    code: error?.response?.data?.errorCode || "UNKNOWN_ERROR",
+    raw: error,
+  };
+}
 
 export default client;

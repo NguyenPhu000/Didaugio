@@ -1,58 +1,43 @@
 import { z } from "zod";
 
-/**
- * Schema cho dang nhap
- */
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+
 export const loginSchema = z.object({
   email: z
-    .string({
-      required_error: "Email khong duoc de trong",
-    })
+    .string({ required_error: "Email khong duoc de trong" })
     .min(1, "Email khong duoc de trong")
     .email("Email khong hop le")
     .toLowerCase()
     .trim(),
 
   password: z
-    .string({
-      required_error: "Mat khau khong duoc de trong",
-    })
+    .string({ required_error: "Mat khau khong duoc de trong" })
     .min(1, "Mat khau khong duoc de trong"),
 
-  // Optional device info
   deviceId: z.string().optional(),
   deviceName: z.string().optional(),
 });
 
-/**
- * Schema cho dang ky
- */
 export const registerSchema = z
   .object({
     email: z
-      .string({
-        required_error: "Email khong duoc de trong",
-      })
+      .string({ required_error: "Email khong duoc de trong" })
       .min(1, "Email khong duoc de trong")
       .email("Email khong hop le")
       .toLowerCase()
       .trim(),
 
     password: z
-      .string({
-        required_error: "Mat khau khong duoc de trong",
-      })
+      .string({ required_error: "Mat khau khong duoc de trong" })
       .min(6, "Mat khau phai co it nhat 6 ky tu")
       .max(100, "Mat khau qua dai")
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Mat khau phai co it nhat 1 chu hoa, 1 chu thuong va 1 so"
+        PASSWORD_REGEX,
+        "Mat khau phai co it nhat 1 chu hoa, 1 chu thuong va 1 so",
       ),
 
     confirmPassword: z
-      .string({
-        required_error: "Xac nhan mat khau khong duoc de trong",
-      })
+      .string({ required_error: "Xac nhan mat khau khong duoc de trong" })
       .min(1, "Xac nhan mat khau khong duoc de trong"),
 
     fullName: z
@@ -66,32 +51,23 @@ export const registerSchema = z
     path: ["confirmPassword"],
   });
 
-/**
- * Schema cho doi mat khau
- */
 export const changePasswordSchema = z
   .object({
     currentPassword: z
-      .string({
-        required_error: "Mat khau hien tai khong duoc de trong",
-      })
+      .string({ required_error: "Mat khau hien tai khong duoc de trong" })
       .min(1, "Mat khau hien tai khong duoc de trong"),
 
     newPassword: z
-      .string({
-        required_error: "Mat khau moi khong duoc de trong",
-      })
+      .string({ required_error: "Mat khau moi khong duoc de trong" })
       .min(6, "Mat khau moi phai co it nhat 6 ky tu")
       .max(100, "Mat khau qua dai")
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Mat khau phai co it nhat 1 chu hoa, 1 chu thuong va 1 so"
+        PASSWORD_REGEX,
+        "Mat khau phai co it nhat 1 chu hoa, 1 chu thuong va 1 so",
       ),
 
     confirmPassword: z
-      .string({
-        required_error: "Xac nhan mat khau khong duoc de trong",
-      })
+      .string({ required_error: "Xac nhan mat khau khong duoc de trong" })
       .min(1, "Xac nhan mat khau khong duoc de trong"),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -99,57 +75,38 @@ export const changePasswordSchema = z
     path: ["confirmPassword"],
   });
 
-/**
- * Schema cho refresh token
- */
 export const refreshTokenSchema = z.object({
   refreshToken: z
-    .string({
-      required_error: "Refresh token khong duoc de trong",
-    })
+    .string({ required_error: "Refresh token khong duoc de trong" })
     .min(1, "Refresh token khong duoc de trong"),
 });
 
-/**
- * Schema cho forgot password
- */
 export const forgotPasswordSchema = z.object({
   email: z
-    .string({
-      required_error: "Email khong duoc de trong",
-    })
+    .string({ required_error: "Email khong duoc de trong" })
     .min(1, "Email khong duoc de trong")
     .email("Email khong hop le")
     .toLowerCase()
     .trim(),
 });
 
-/**
- * Schema cho reset password
- */
 export const resetPasswordSchema = z
   .object({
     token: z
-      .string({
-        required_error: "Token khong duoc de trong",
-      })
+      .string({ required_error: "Token khong duoc de trong" })
       .min(1, "Token khong duoc de trong"),
 
     newPassword: z
-      .string({
-        required_error: "Mat khau moi khong duoc de trong",
-      })
+      .string({ required_error: "Mat khau moi khong duoc de trong" })
       .min(6, "Mat khau moi phai co it nhat 6 ky tu")
       .max(100, "Mat khau qua dai")
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Mat khau phai co it nhat 1 chu hoa, 1 chu thuong va 1 so"
+        PASSWORD_REGEX,
+        "Mat khau phai co it nhat 1 chu hoa, 1 chu thuong va 1 so",
       ),
 
     confirmPassword: z
-      .string({
-        required_error: "Xac nhan mat khau khong duoc de trong",
-      })
+      .string({ required_error: "Xac nhan mat khau khong duoc de trong" })
       .min(1, "Xac nhan mat khau khong duoc de trong"),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -157,20 +114,49 @@ export const resetPasswordSchema = z
     path: ["confirmPassword"],
   });
 
-/**
- * Schema cho verify email
- */
 export const verifyEmailSchema = z.object({
   token: z
-    .string({
-      required_error: "Token khong duoc de trong",
-    })
+    .string({ required_error: "Token khong duoc de trong" })
     .min(1, "Token khong duoc de trong"),
 });
 
-/**
- * Schema cho cap nhat profile
- */
+export const resendVerificationPublicSchema = z.object({
+  email: z
+    .string({ required_error: "Email khong duoc de trong" })
+    .min(1, "Email khong duoc de trong")
+    .email("Email khong hop le")
+    .toLowerCase()
+    .trim(),
+});
+
+export const loginGoogleSchema = z.object({
+  idToken: z
+    .string({ required_error: "idToken khong duoc de trong" })
+    .min(1, "idToken khong duoc de trong"),
+});
+
+export const exchangeGoogleCodeSchema = z.object({
+  code: z
+    .string({ required_error: "code khong duoc de trong" })
+    .min(1, "code khong duoc de trong"),
+  redirectUri: z
+    .string({ required_error: "redirectUri khong duoc de trong" })
+    .url("redirectUri khong hop le"),
+});
+
+export const logoutSchema = z.object({
+  refreshToken: z
+    .string({ required_error: "Refresh token khong duoc de trong" })
+    .min(1, "Refresh token khong duoc de trong"),
+});
+
+export const revokeSessionParamSchema = z.object({
+  sessionId: z.coerce
+    .number()
+    .int()
+    .positive("sessionId phai la so nguyen duong"),
+});
+
 export const updateProfileSchema = z.object({
   fullName: z.string().min(2).max(100).optional(),
   phone: z.string().max(20).optional(),
@@ -188,5 +174,10 @@ export default {
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
+  resendVerificationPublicSchema,
+  loginGoogleSchema,
+  exchangeGoogleCodeSchema,
+  logoutSchema,
+  revokeSessionParamSchema,
   updateProfileSchema,
 };

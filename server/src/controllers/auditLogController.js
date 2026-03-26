@@ -1,5 +1,6 @@
 import * as auditLogService from "../services/auditLogService.js";
-import { auditLogQuerySchema } from "../models/schemas/activitySchema.js";
+import { auditLogQuerySchema } from "../models/index.js";
+import { ERROR_CODES } from "../config/messages.js";
 
 /**
  * GET /api/audit-logs
@@ -11,7 +12,9 @@ export const getAll = async (req, res, next) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "Dữ liệu không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
         errors: validation.error.errors,
       });
     }
@@ -22,6 +25,7 @@ export const getAll = async (req, res, next) => {
       success: true,
       data: result.data,
       pagination: result.pagination,
+      message: "Lấy danh sách nhật ký hệ thống thành công",
     });
   } catch (error) {
     next(error);
@@ -38,7 +42,9 @@ export const getById = async (req, res, next) => {
     if (isNaN(id)) {
       return res.status(400).json({
         success: false,
+        data: null,
         message: "ID không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
       });
     }
 
@@ -47,6 +53,7 @@ export const getById = async (req, res, next) => {
     res.json({
       success: true,
       data: log,
+      message: "Lấy chi tiết nhật ký hệ thống thành công",
     });
   } catch (error) {
     next(error);

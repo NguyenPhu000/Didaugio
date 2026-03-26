@@ -1,12 +1,33 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Dialog, DialogContent } from "@/components/ui";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogHeader,
+  DialogDescription,
+} from "@/components/ui";
 import { ROLES } from "@/constants/constants";
 import ProvinceDistrictSelect from "@/components/common/ProvinceDistrictSelect";
 import { userFormSchema } from "@/schemas/user";
 import { formatDateForInput } from "@/utils/dateUtils";
+import {
+  User,
+  Mail,
+  Lock,
+  Phone,
+  ShieldCheck,
+  CalendarDays,
+  Home,
+  Users,
+  ChevronDown,
+  X,
+  Check,
+  Plus,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 
 // Schema definition removed
 
@@ -108,266 +129,224 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
     }
   };
 
-  // Select className
-  const inputClassName =
-    "w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all text-slate-700 dark:text-slate-300 placeholder:text-slate-400";
+  // ─── field helpers ─────────────────────────────────────────────────────────
 
-  const selectClassName =
-    "w-full py-2.5 pl-10 pr-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 focus:ring-blue-600 focus:border-blue-600 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors appearance-none";
+  const Field = ({ label, required, error, icon: Icon, children }) => (
+    <div className="space-y-1.5">
+      <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        {Icon && (
+          <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+        )}
+        {children}
+      </div>
+      {error && (
+        <p className="flex items-center gap-1 text-xs text-red-600 font-semibold">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          {error}
+        </p>
+      )}
+    </div>
+  );
+
+  const inputCls = (hasError, hasIcon = true, disabled = false) =>
+    [
+      "w-full py-2.5 rounded-none border text-sm transition-all outline-none",
+      hasIcon ? "pl-9 pr-4" : "px-4",
+      "bg-white focus:bg-white",
+      hasError
+        ? "border-red-500 focus:border-red-600"
+        : "border-gray-300 focus:border-black",
+      disabled ? "opacity-60 cursor-not-allowed bg-gray-100" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+  const selectCls =
+    "w-full py-2.5 pl-9 pr-8 rounded-none border border-gray-300 bg-white text-sm text-gray-700 focus:border-black outline-none cursor-pointer appearance-none transition-all";
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-[500px] max-h-[90vh] overflow-hidden p-0 gap-0">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-              {isEdit ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-            >
-              <span className="material-icons-round text-slate-400">close</span>
-            </button>
-          </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {isEdit
-              ? "Điền thông tin để tạo tài khoản mới"
-              : "Điền thông tin để tạo tài khoản mới"}
-          </p>
-        </div>
-
-        {/* Form Content - Scrollable */}
-        <div className="px-6 py-5 overflow-y-auto max-h-[calc(90vh-180px)] custom-scrollbar">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Email */}
+      <DialogContent className="max-w-[560px] max-h-[92vh] overflow-hidden p-0 gap-0 rounded-none border border-black bg-white">
+        {/* ── Header ── */}
+        <DialogHeader className="relative px-6 py-5 border-b border-black bg-white">
+          <div className="absolute left-0 top-0 h-full w-1 bg-yellow-400" />
+          <div className="flex items-center gap-3 pr-8 pl-2">
+            <div className="w-9 h-9 border border-black bg-black flex items-center justify-center shrink-0">
+              {isEdit ? (
+                <User className="w-4.5 h-4.5 text-white" />
+              ) : (
+                <Plus className="w-4.5 h-4.5 text-white" />
+              )}
+            </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Email <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  <span className="material-icons-round text-lg">email</span>
-                </span>
+              <DialogTitle className="text-xl font-black text-black leading-tight uppercase tracking-tight">
+                {isEdit ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}
+              </DialogTitle>
+              <DialogDescription className="text-[11px] font-semibold text-gray-500 mt-0.5 uppercase tracking-wider">
+                {isEdit
+                  ? "Cập nhật thông tin tài khoản"
+                  : "Điền thông tin để tạo tài khoản mới"}
+              </DialogDescription>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 border border-gray-300 hover:border-black hover:bg-gray-100 flex items-center justify-center transition-colors"
+          >
+            <X className="w-4 h-4 text-gray-700" />
+          </button>
+        </DialogHeader>
+
+        {/* ── Scrollable form body ── */}
+        <div className="overflow-y-auto max-h-[calc(92vh-190px)] px-6 py-5 bg-white">
+          <form id="user-form" onSubmit={handleSubmit(onSubmit)}>
+            <div className="space-y-4">
+              {/* Email */}
+              <Field
+                label="Email"
+                required
+                error={errors.email?.message}
+                icon={Mail}
+              >
                 <input
                   type="email"
                   {...register("email")}
                   disabled={isEdit}
                   placeholder="example@didaugio.vn"
-                  className={`${inputClassName} ${
-                    errors.email ? "border-red-500 focus:border-red-500" : ""
-                  } ${isEdit ? "opacity-60 cursor-not-allowed" : ""}`}
+                  className={inputCls(!!errors.email, true, isEdit)}
                 />
-              </div>
-              {errors.email && (
-                <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
-                  <span className="material-icons-round text-sm">error</span>
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
+              </Field>
 
-            {/* Password - only for create */}
-            {!isEdit && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Mật khẩu <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <span className="material-icons-round text-lg">lock</span>
-                  </span>
+              {/* Password — create only */}
+              {!isEdit && (
+                <Field
+                  label="Mật khẩu"
+                  required
+                  error={errors.password?.message}
+                  icon={Lock}
+                >
                   <input
                     type="password"
                     {...register("password")}
                     placeholder="Tối thiểu 6 ký tự"
-                    className={`${inputClassName} ${
-                      errors.password
-                        ? "border-red-500 focus:border-red-500"
-                        : ""
-                    }`}
+                    className={inputCls(!!errors.password)}
                   />
-                </div>
-                {errors.password && (
-                  <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
-                    <span className="material-icons-round text-sm">error</span>
-                    {errors.password.message}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Full Name */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Họ và tên
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  <span className="material-icons-round text-lg">person</span>
-                </span>
-                <input
-                  {...register("fullName")}
-                  placeholder="Nguyễn Văn A"
-                  className={inputClassName}
-                />
-              </div>
-            </div>
-
-            {/* Phone */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Số điện thoại
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  <span className="material-icons-round text-lg">phone</span>
-                </span>
-                <input
-                  {...register("phone")}
-                  placeholder="0123456789"
-                  className={`${inputClassName} ${
-                    errors.phone ? "border-red-500 focus:border-red-500" : ""
-                  }`}
-                />
-              </div>
-              {errors.phone && (
-                <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
-                  <span className="material-icons-round text-sm">error</span>
-                  {errors.phone.message}
-                </p>
+                </Field>
               )}
-            </div>
 
-            {/* Role and Gender - 2 columns */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Role */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Vai trò <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10">
-                    <span className="material-icons-round text-lg">
-                      admin_panel_settings
-                    </span>
-                  </span>
-                  <select {...register("roleId")} className={selectClassName}>
-                    {/* GUEST role removed - mobile app only */}
+              {/* Full Name + Phone — 2 col */}
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Họ và tên" icon={User}>
+                  <input
+                    {...register("fullName")}
+                    placeholder="Nguyễn Văn A"
+                    className={inputCls(false)}
+                  />
+                </Field>
+
+                <Field
+                  label="Số điện thoại"
+                  error={errors.phone?.message}
+                  icon={Phone}
+                >
+                  <input
+                    {...register("phone")}
+                    placeholder="0123456789"
+                    className={inputCls(!!errors.phone)}
+                  />
+                </Field>
+              </div>
+
+              {/* Role + Gender — 2 col */}
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Vai trò" required icon={ShieldCheck}>
+                  <select {...register("roleId")} className={selectCls}>
                     <option value={ROLES.STAFF}>Staff</option>
                     <option value={ROLES.BUSINESS}>Business Owner</option>
                     <option value={ROLES.ADMIN}>Admin</option>
                     <option value={ROLES.SUPER_ADMIN}>Super Admin</option>
                   </select>
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                    <span className="material-icons-round text-lg">
-                      expand_more
-                    </span>
-                  </span>
-                </div>
-              </div>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                </Field>
 
-              {/* Gender */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Giới tính
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10">
-                    <span className="material-icons-round text-lg">wc</span>
-                  </span>
-                  <select {...register("gender")} className={selectClassName}>
+                <Field label="Giới tính" icon={Users}>
+                  <select {...register("gender")} className={selectCls}>
                     <option value="male">Nam</option>
                     <option value="female">Nữ</option>
                     <option value="other">Khác</option>
                   </select>
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                    <span className="material-icons-round text-lg">
-                      expand_more
-                    </span>
-                  </span>
-                </div>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                </Field>
               </div>
-            </div>
 
-            {/* Date of Birth */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Ngày sinh
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  <span className="material-icons-round text-lg">cake</span>
-                </span>
+              {/* Date of Birth */}
+              <Field label="Ngày sinh" icon={CalendarDays}>
                 <input
                   type="date"
                   {...register("dateOfBirth")}
-                  className={inputClassName}
+                  className={inputCls(false)}
                 />
-              </div>
-            </div>
+              </Field>
 
-            {/* Province and District */}
-            <ProvinceDistrictSelect
-              provinceCode={provinceCode}
-              districtCode={districtCode}
-              onProvinceChange={(code) => setValue("provinceCode", code)}
-              onDistrictChange={(code) => setValue("districtCode", code)}
-              errors={{
-                provinceCode: errors.provinceCode?.message,
-                districtCode: errors.districtCode?.message,
-              }}
-            />
+              {/* Province / District */}
+              <ProvinceDistrictSelect
+                provinceCode={provinceCode}
+                districtCode={districtCode}
+                onProvinceChange={(code) => setValue("provinceCode", code)}
+                onDistrictChange={(code) => setValue("districtCode", code)}
+                errors={{
+                  provinceCode: errors.provinceCode?.message,
+                  districtCode: errors.districtCode?.message,
+                }}
+              />
 
-            {/* Address */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Địa chỉ chi tiết
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  <span className="material-icons-round text-lg">home</span>
-                </span>
+              {/* Address */}
+              <Field label="Địa chỉ chi tiết" icon={Home}>
                 <input
                   {...register("address")}
                   placeholder="Số nhà, tên đường..."
-                  className={inputClassName}
+                  className={inputCls(false)}
                 />
-              </div>
+              </Field>
             </div>
           </form>
         </div>
 
-        {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+        {/* ── Footer ── */}
+        <div className="px-6 py-4 border-t border-black bg-white flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm text-sm font-medium disabled:opacity-50"
+            className="px-4 py-2 rounded-none border border-black bg-white text-black text-sm font-bold uppercase tracking-wide hover:bg-gray-100 transition-all disabled:opacity-50"
           >
             Hủy bỏ
           </button>
           <button
             type="submit"
-            onClick={handleSubmit(onSubmit)}
+            form="user-form"
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/30 text-sm font-medium disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2 rounded-none border border-black bg-black text-white text-sm font-bold uppercase tracking-wide transition-all hover:bg-gray-800 disabled:opacity-50"
           >
             {loading ? (
               <>
-                <span className="material-icons-round text-lg animate-spin">
-                  refresh
-                </span>
+                <Loader2 className="w-4 h-4 animate-spin" />
                 Đang xử lý...
+              </>
+            ) : isEdit ? (
+              <>
+                <Check className="w-4 h-4" />
+                Cập nhật
               </>
             ) : (
               <>
-                <span className="material-icons-round text-lg">
-                  {isEdit ? "check" : "add"}
-                </span>
-                {isEdit ? "Cập nhật" : "Thêm người dùng"}
+                <Plus className="w-4 h-4" />
+                Thêm người dùng
               </>
             )}
           </button>

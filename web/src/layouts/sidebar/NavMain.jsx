@@ -29,6 +29,20 @@ import {
   CollapsibleTrigger,
 } from "@radix-ui/react-collapsible";
 
+/** Khớp pathname + query (vd. ?section=contract) với vị trí hiện tại */
+function navTargetMatchesLocation(targetUrl, location) {
+  if (!targetUrl) return false;
+  const [path, queryString] = targetUrl.split("?");
+  if (location.pathname !== path) return false;
+  if (!queryString) return true;
+  const expected = new URLSearchParams(queryString);
+  const actual = new URLSearchParams(location.search);
+  for (const [k, v] of expected) {
+    if (actual.get(k) !== v) return false;
+  }
+  return true;
+}
+
 /**
  * NavMain - Sidebar navigation group with collapsible sub-menus
  */
@@ -44,8 +58,10 @@ function NavMain({ items, label }) {
         <SidebarMenu>
           {items.map((item) => {
             const isActive =
-              item.url === location.pathname ||
-              item.items?.some((sub) => sub.url === location.pathname);
+              navTargetMatchesLocation(item.url, location) ||
+              item.items?.some((sub) =>
+                navTargetMatchesLocation(sub.url, location),
+              );
 
             if (item.items) {
               if (isCollapsed) {
@@ -73,7 +89,7 @@ function NavMain({ items, label }) {
               <SimpleMenuItem
                 key={item.title}
                 item={item}
-                isActive={location.pathname === item.url}
+                isActive={navTargetMatchesLocation(item.url, location)}
               />
             );
           })}
@@ -115,7 +131,7 @@ function CollapsedMenuItem({ item, isActive, location }) {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           {item.items.map((subItem) => {
-            const isSubActive = location.pathname === subItem.url;
+            const isSubActive = navTargetMatchesLocation(subItem.url, location);
             return (
               <DropdownMenuItem key={subItem.url} asChild>
                 <Link
@@ -127,7 +143,22 @@ function CollapsedMenuItem({ item, isActive, location }) {
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                   )}
                 >
-                  {subItem.title}
+                  {subItem.icon && (
+                    <AnimatedIcon
+                      icon={subItem.icon}
+                      className="size-3.5 shrink-0"
+                      type={isSubActive ? "pulse" : "hover"}
+                    />
+                  )}
+                  <span className="flex-1">{subItem.title}</span>
+                  {subItem.badge?.text && (
+                    <Badge
+                      variant="secondary"
+                      className="h-4 px-1.5 text-[10px] font-semibold"
+                    >
+                      {subItem.badge.text}
+                    </Badge>
+                  )}
                 </Link>
               </DropdownMenuItem>
             );
@@ -163,12 +194,27 @@ function ExpandedMenuItem({ item, isActive, location }) {
         <CollapsibleContent>
           <SidebarMenuSub>
             {item.items.map((subItem) => {
-              const isSubActive = location.pathname === subItem.url;
+              const isSubActive = navTargetMatchesLocation(subItem.url, location);
               return (
                 <SidebarMenuSubItem key={subItem.url}>
                   <SidebarMenuSubButton asChild isActive={isSubActive}>
                     <Link to={subItem.url}>
-                      <span>{subItem.title}</span>
+                      {subItem.icon && (
+                        <AnimatedIcon
+                          icon={subItem.icon}
+                          className="size-3.5 shrink-0"
+                          type={isSubActive ? "pulse" : "hover"}
+                        />
+                      )}
+                      <span className="flex-1">{subItem.title}</span>
+                      {subItem.badge?.text && (
+                        <Badge
+                          variant="secondary"
+                          className="h-4 px-1.5 text-[10px] font-semibold"
+                        >
+                          {subItem.badge.text}
+                        </Badge>
+                      )}
                     </Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>

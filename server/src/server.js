@@ -1,6 +1,6 @@
 import express from "express";
-import bodyParser from "body-parser";
 import cors from "cors";
+import helmet from "helmet";
 import dotenv from "dotenv";
 import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -19,7 +19,16 @@ import districtRoutes from "./routes/districtRoutes.js";
 import wardRoutes from "./routes/wardRoutes.js";
 import boundaryRoutes from "./routes/boundaryRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
+import businessRoutes from "./routes/businessRoutes.js";
+import businessOfferingRoutes from "./routes/businessOfferingRoutes.js";
+import bookingRoutes from "./routes/bookingRoutes.js";
+import autoApproveRuleRoutes from "./routes/autoApproveRuleRoutes.js";
+import voucherRoutes from "./routes/voucherRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
+import feedbackRoutes from "./routes/feedbackRoutes.js";
 import errorHandler from "./middlewares/errorHandler.js";
+import { authLimiter, apiLimiter } from "./middlewares/rateLimitMiddleware.js";
+import logger from "./config/logger.js";
 import prisma from "./config/prismaClient.js";
 import { initNotificationService } from "./services/notificationService.js";
 
@@ -27,15 +36,26 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+const BODY_LIMIT = "100mb";
 
-// Middleware - Cấu hình cho Base64 images
-app.use(express.json({ limit: "100mb" }));
-app.use(express.urlencoded({ limit: "100mb", extended: true }));
-app.use(cors());
-app.use(bodyParser.json({ limit: "100mb" }));
-app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
+app.use(helmet());
+app.use(express.json({ limit: BODY_LIMIT }));
+app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true }));
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(",")
+      : "*",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  }),
+);
 
-// Routes
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
+app.use("/api/auth/google", authLimiter);
+app.use("/api", apiLimiter);
+
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/audit-logs", auditLogRoutes);
@@ -49,15 +69,18 @@ app.use("/api/tags", tagRoutes);
 app.use("/api/places", placeRoutes);
 app.use("/api/districts", districtRoutes);
 app.use("/api/wards", wardRoutes);
-app.use("/api/boundaries", boundaryRoutes); // Map boundaries & GeoJSON
-app.use("/api/settings", settingsRoutes); // System settings & configuration
+app.use("/api/boundaries", boundaryRoutes);
+app.use("/api/settings", settingsRoutes);
+app.use("/api/business/services", businessOfferingRoutes);
+app.use("/api/business/bookings", bookingRoutes);
+app.use("/api/business/booking-auto-rules", autoApproveRuleRoutes);
+app.use("/api/business/vouchers", voucherRoutes);
+app.use("/api/business/reviews", reviewRoutes);
+app.use("/api/business", businessRoutes);
+app.use("/api/feedback", feedbackRoutes);
 app.use("/api", userPermissionRoutes);
 app.use("/api", userRoutes);
 
-// Error Handling Middleware
-app.use(errorHandler);
-
-// Health check & Test Database Connection
 app.get("/", async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -80,12 +103,13 @@ app.get("/", async (req, res) => {
   }
 });
 
-// Initialize Services
+app.use(errorHandler);
+
 initNotificationService();
 
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+  logger.info(`Server is running on http://localhost:${PORT}`);
+  logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
 });
 
 export default app;

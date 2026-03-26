@@ -1,18 +1,13 @@
 import * as placeService from "../services/placeService.js";
-
-/**
- * PLACE CONTROLLER
- * REST API cho quản lý địa điểm
- */
-
-// =============================================================================
-// CRUD OPERATIONS
-// =============================================================================
+import { ERROR_CODES } from "../config/messages.js";
+import appService from "../services/appService.js";
+import prisma from "../config/prismaClient.js";
+import { ROLES } from "../config/constants.js";
 
 /**
  * GET /api/places - Lấy danh sách địa điểm
  */
-export const getPlaces = async (req, res) => {
+export const getPlaces = async (req, res, next) => {
   try {
     const {
       categoryId,
@@ -30,7 +25,9 @@ export const getPlaces = async (req, res) => {
       limit,
     } = req.query;
 
-    const result = await placeService.getAllPlaces({
+    let businessId = req.query.businessId;
+
+    const filters = {
       categoryId,
       districtId,
       wardId,
@@ -44,58 +41,98 @@ export const getPlaces = async (req, res) => {
       sortBy,
       page,
       limit,
-    });
+    };
+
+    if (
+      businessId &&
+      req.user?.roleId != null &&
+      req.user.roleId <= ROLES.ADMIN
+    ) {
+      filters.businessId = parseInt(businessId, 10);
+    }
+
+    if (req.user?.roleId === ROLES.BUSINESS) {
+      filters.ownerUserId = req.user.userId;
+      const business = await prisma.business.findUnique({
+        where: { ownerId: req.user.userId },
+        select: { id: true },
+      });
+      if (business) {
+        filters.businessId = business.id;
+      }
+    }
+
+    const result = await placeService.getAllPlaces(filters);
 
     res.json({
       success: true,
       data: result.data,
       pagination: result.pagination,
+      message: "Lấy danh sách địa điểm thành công",
     });
   } catch (error) {
-    console.error("Error in getPlaces:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể lấy danh sách địa điểm",
-      error: error.message,
+    next(error);
+  }
+};
+
+/**
+ * GET /api/places/nearby - Lấy danh sách địa điểm gần vị trí hiện tại
+ */
+export const getNearbyPlaces = async (req, res, next) => {
+  try {
+    const { latitude, longitude, radius, limit, categoryId } = req.query;
+
+    const places = await placeService.getNearbyPlaces({
+      latitude,
+      longitude,
+      radius,
+      limit,
+      categoryId,
     });
+
+    res.json({
+      success: true,
+      data: places,
+      message: "Lấy danh sách địa điểm gần bạn thành công",
+    });
+  } catch (error) {
+    next(error);
   }
 };
 
 /**
  * GET /api/places/:id - Lấy địa điểm theo ID
  */
-export const getPlaceById = async (req, res) => {
+export const getPlaceById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const incrementView = req.query.view === "true";
 
-    const place = await placeService.getPlaceById(parseInt(id), incrementView);
+    const place = await placeService.getPlaceById(id, incrementView);
 
     if (!place) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Không tìm thấy địa điểm",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
     res.json({
       success: true,
       data: place,
+      message: "Lấy chi tiết địa điểm thành công",
     });
   } catch (error) {
-    console.error("Error in getPlaceById:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể lấy thông tin địa điểm",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * GET /api/places/slug/:slug - Lấy địa điểm theo slug
  */
-export const getPlaceBySlug = async (req, res) => {
+export const getPlaceBySlug = async (req, res, next) => {
   try {
     const { slug } = req.params;
     const incrementView = req.query.view === "true";
@@ -105,55 +142,46 @@ export const getPlaceBySlug = async (req, res) => {
     if (!place) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Không tìm thấy địa điểm",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
     res.json({
       success: true,
       data: place,
+      message: "Lấy địa điểm theo slug thành công",
     });
   } catch (error) {
-    console.error("Error in getPlaceBySlug:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể lấy thông tin địa điểm",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * GET /api/places/check-slug/:slug - Kiểm tra slug tồn tại
  */
-export const checkSlug = async (req, res) => {
+export const checkSlug = async (req, res, next) => {
   try {
     const { slug } = req.params;
     const { excludeId } = req.query;
 
-    const exists = await placeService.checkSlugExists(
-      slug,
-      excludeId ? parseInt(excludeId) : null,
-    );
+    const exists = await placeService.checkSlugExists(slug, excludeId ?? null);
 
     res.json({
       success: true,
       data: { exists, slug },
+      message: "Kiểm tra slug thành công",
     });
   } catch (error) {
-    console.error("Error in checkSlug:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể kiểm tra slug",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * POST /api/places - Tạo địa điểm mới
  */
-export const createPlace = async (req, res) => {
+export const createPlace = async (req, res, next) => {
   try {
     const {
       name,
@@ -179,22 +207,6 @@ export const createPlace = async (req, res) => {
       amenities,
       status,
     } = req.body;
-
-    // Validation
-    if (
-      !name ||
-      !categoryId ||
-      !districtId ||
-      !address ||
-      !latitude ||
-      !longitude
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Thiếu thông tin bắt buộc: name, categoryId, districtId, address, latitude, longitude",
-      });
-    }
 
     const place = await placeService.createPlace(
       {
@@ -230,35 +242,23 @@ export const createPlace = async (req, res) => {
       data: place,
     });
   } catch (error) {
-    console.error("Error in createPlace:", error);
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({
-      success: false,
-      message: error.message || "Không thể tạo địa điểm",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * PUT /api/places/:id - Cập nhật địa điểm
  */
-export const updatePlace = async (req, res) => {
+export const updatePlace = async (req, res, next) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
 
-    if (!id || isNaN(parseInt(id))) {
-      return res.status(400).json({
-        success: false,
-        message: "ID địa điểm không hợp lệ",
-      });
-    }
-
     const place = await placeService.updatePlace(
-      parseInt(id),
+      id,
       updateData,
       req.user.userId,
+      req.user.roleId,
     );
 
     res.json({
@@ -267,69 +267,35 @@ export const updatePlace = async (req, res) => {
       data: place,
     });
   } catch (error) {
-    console.error("Error in updatePlace:", error);
-
-    if (error.message.includes("không tồn tại")) {
-      return res.status(404).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({
-      success: false,
-      message: error.message || "Không thể cập nhật địa điểm",
-      error: error.message,
-    });
+    next(error);
   }
 };
 /**
  * DELETE /api/places/:id - Xóa địa điểm (soft delete)
  */
-export const deletePlace = async (req, res) => {
+export const deletePlace = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const result = await placeService.deletePlace(parseInt(id));
+    const result = await placeService.deletePlace(id);
 
     res.json({
       success: true,
       message: result.message,
     });
   } catch (error) {
-    console.error("Error in deletePlace:", error);
-
-    if (error.message.includes("không tồn tại")) {
-      return res.status(404).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Không thể xóa địa điểm",
-      error: error.message,
-    });
+    next(error);
   }
 };
-
-// =============================================================================
-// STATUS MANAGEMENT
-// =============================================================================
 
 /**
  * PUT /api/places/:id/approve - Duyệt địa điểm
  */
-export const approvePlace = async (req, res) => {
+export const approvePlace = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const place = await placeService.approvePlace(
-      parseInt(id),
-      req.user.userId,
-    );
+    const place = await placeService.approvePlace(id, req.user.userId);
 
     res.json({
       success: true,
@@ -337,46 +303,19 @@ export const approvePlace = async (req, res) => {
       data: place,
     });
   } catch (error) {
-    console.error("Error in approvePlace:", error);
-
-    if (
-      error.message.includes("không tồn tại") ||
-      error.message.includes("đã được duyệt")
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Không thể duyệt địa điểm",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * PUT /api/places/:id/reject - Từ chối địa điểm
  */
-export const rejectPlace = async (req, res) => {
+export const rejectPlace = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
 
-    if (!reason) {
-      return res.status(400).json({
-        success: false,
-        message: "Vui lòng cung cấp lý do từ chối",
-      });
-    }
-
-    const place = await placeService.rejectPlace(
-      parseInt(id),
-      req.user.userId,
-      reason,
-    );
+    const place = await placeService.rejectPlace(id, req.user.userId, reason);
 
     res.json({
       success: true,
@@ -384,39 +323,19 @@ export const rejectPlace = async (req, res) => {
       data: place,
     });
   } catch (error) {
-    console.error("Error in rejectPlace:", error);
-
-    if (error.message.includes("không tồn tại")) {
-      return res.status(404).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Không thể từ chối địa điểm",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * PUT /api/places/:id/status - Đổi trạng thái
  */
-export const updateStatus = async (req, res) => {
+export const updateStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!status) {
-      return res.status(400).json({
-        success: false,
-        message: "Vui lòng cung cấp trạng thái mới",
-      });
-    }
-
-    const place = await placeService.updateStatus(parseInt(id), status);
+    const place = await placeService.updateStatus(id, status, req.user.roleId);
 
     res.json({
       success: true,
@@ -424,35 +343,19 @@ export const updateStatus = async (req, res) => {
       data: place,
     });
   } catch (error) {
-    console.error("Error in updateStatus:", error);
-
-    if (
-      error.message.includes("không tồn tại") ||
-      error.message.includes("không hợp lệ")
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Không thể cập nhật trạng thái",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * PUT /api/places/:id/feature - Đánh dấu nổi bật
  */
-export const toggleFeatured = async (req, res) => {
+export const toggleFeatured = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { isFeatured } = req.body;
 
-    const place = await placeService.toggleFeatured(parseInt(id), isFeatured);
+    const place = await placeService.toggleFeatured(id, isFeatured);
 
     res.json({
       success: true,
@@ -462,31 +365,18 @@ export const toggleFeatured = async (req, res) => {
       data: place,
     });
   } catch (error) {
-    console.error("Error in toggleFeatured:", error);
-
-    if (error.message.includes("không tồn tại")) {
-      return res.status(404).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Không thể cập nhật trạng thái nổi bật",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * POST /api/places/:id/submit - Gửi duyệt
  */
-export const submitForReview = async (req, res) => {
+export const submitForReview = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const place = await placeService.submitForReview(parseInt(id));
+    const place = await placeService.submitForReview(id);
 
     res.json({
       success: true,
@@ -494,50 +384,19 @@ export const submitForReview = async (req, res) => {
       data: place,
     });
   } catch (error) {
-    console.error("Error in submitForReview:", error);
-
-    if (
-      error.message.includes("không tồn tại") ||
-      error.message.includes("Chỉ có thể")
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Không thể gửi duyệt",
-      error: error.message,
-    });
+    next(error);
   }
 };
-
-// =============================================================================
-// IMAGE MANAGEMENT
-// =============================================================================
 
 /**
  * POST /api/places/:id/images - Thêm ảnh
  */
-export const addImages = async (req, res) => {
+export const addImages = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { images } = req.body;
 
-    if (!images || !Array.isArray(images) || images.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Vui lòng cung cấp danh sách ảnh",
-      });
-    }
-
-    const result = await placeService.addImages(
-      parseInt(id),
-      images,
-      req.user.userId,
-    );
+    const result = await placeService.addImages(id, images, req.user.userId);
 
     res.status(201).json({
       success: true,
@@ -545,148 +404,145 @@ export const addImages = async (req, res) => {
       data: result,
     });
   } catch (error) {
-    console.error("Error in addImages:", error);
-
-    if (
-      error.message.includes("không tồn tại") ||
-      error.message.includes("Tối đa")
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({
-      success: false,
-      message: error.message || "Không thể thêm ảnh",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * DELETE /api/places/:id/images/:imageId - Xóa ảnh
  */
-export const deleteImage = async (req, res) => {
+export const deleteImage = async (req, res, next) => {
   try {
     const { id, imageId } = req.params;
 
-    await placeService.deleteImage(parseInt(id), parseInt(imageId));
+    await placeService.deleteImage(id, imageId);
 
     res.json({
       success: true,
       message: "Xóa ảnh thành công",
     });
   } catch (error) {
-    console.error("Error in deleteImage:", error);
-
-    if (error.message.includes("không tồn tại")) {
-      return res.status(404).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({
-      success: false,
-      message: error.message || "Không thể xóa ảnh",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * PUT /api/places/:id/images/:imageId/cover - Đặt làm ảnh bìa
  */
-export const setCoverImage = async (req, res) => {
+export const setCoverImage = async (req, res, next) => {
   try {
     const { id, imageId } = req.params;
 
-    await placeService.setCoverImage(parseInt(id), parseInt(imageId));
+    await placeService.setCoverImage(id, imageId);
 
     res.json({
       success: true,
       message: "Đặt ảnh bìa thành công",
     });
   } catch (error) {
-    console.error("Error in setCoverImage:", error);
-
-    if (error.message.includes("không tồn tại")) {
-      return res.status(404).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Không thể đặt ảnh bìa",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
  * PUT /api/places/:id/images/reorder - Sắp xếp ảnh
  */
-export const reorderImages = async (req, res) => {
+export const reorderImages = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { imageOrders } = req.body;
 
-    if (!imageOrders || !Array.isArray(imageOrders)) {
-      return res.status(400).json({
-        success: false,
-        message: "Vui lòng cung cấp thứ tự ảnh",
-      });
-    }
-
-    await placeService.reorderImages(parseInt(id), imageOrders);
+    await placeService.reorderImages(id, imageOrders);
 
     res.json({
       success: true,
       message: "Sắp xếp ảnh thành công",
     });
   } catch (error) {
-    console.error("Error in reorderImages:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể sắp xếp ảnh",
-      error: error.message,
-    });
+    next(error);
   }
 };
-
-// =============================================================================
-// STATISTICS
-// =============================================================================
 
 /**
  * GET /api/places/stats - Thống kê địa điểm
  */
-export const getStats = async (req, res) => {
+export const getStats = async (req, res, next) => {
   try {
     const stats = await placeService.getPlaceStats();
 
     res.json({
       success: true,
       data: stats,
+      message: "Lấy thống kê địa điểm thành công",
     });
   } catch (error) {
-    console.error("Error in getStats:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể lấy thống kê",
-      error: error.message,
+    next(error);
+  }
+};
+
+const getUserId = (req) => req.user?.userId || req.user?.id || null;
+
+export const getHomeData = async (req, res, next) => {
+  try {
+    const data = await appService.getHomeData(req.query);
+    res.json({
+      success: true,
+      data,
+      message: "Lấy dữ liệu trang chủ thành công",
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getBusinessServices = async (req, res, next) => {
+  try {
+    const result = await appService.getServices(req.query);
+    res.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+      message: "Lấy danh sách dịch vụ thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPlaceReviews = async (req, res, next) => {
+  try {
+    const result = await appService.getPlaceReviews(req.params.id, req.query);
+    res.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+      message: "Lấy danh sách đánh giá địa điểm thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createReview = async (req, res, next) => {
+  try {
+    const review = await appService.createOrUpdateReview(
+      req.params.id,
+      getUserId(req),
+      req.body,
+    );
+    res.status(201).json({
+      success: true,
+      data: review,
+      message: "Gửi đánh giá thành công",
+    });
+  } catch (error) {
+    next(error);
   }
 };
 
 export default {
   getPlaces,
+  getNearbyPlaces,
   getPlaceById,
   getPlaceBySlug,
   checkSlug,
@@ -703,4 +559,8 @@ export default {
   setCoverImage,
   reorderImages,
   getStats,
+  getHomeData,
+  getBusinessServices,
+  getPlaceReviews,
+  createReview,
 };

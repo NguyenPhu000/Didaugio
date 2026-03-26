@@ -1,51 +1,62 @@
-/**
- * MAP MODULE CONFIGURATION
- * Single source of truth for all map constants, themes, and styles.
- * To change map behavior, only edit this file.
- */
+const ESRI_SATELLITE_TILES = [
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+];
+const ESRI_ATTRIBUTION =
+  "© Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN";
 
-// =============================================================================
-// MAP ENGINE & TILE SOURCES
-// =============================================================================
+const GLYPHS_URL =
+  "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf";
 
-/**
- * Available map styles — swap tile provider by changing DEFAULT_MAP_STYLE.
- * Supported alternatives can be added here.
- */
 export const MAP_STYLES = {
+  BLANK: {
+    version: 8,
+    name: "Thuần tú",
+    glyphs: GLYPHS_URL,
+    sources: {},
+    layers: [
+      {
+        id: "background",
+        type: "background",
+        paint: { "background-color": "#ffffff" },
+      },
+    ],
+  },
+
   OSM: {
     version: 8,
-    name: "Clean OSM",
+    name: "Bản đồ",
+    glyphs: GLYPHS_URL,
     sources: {
-      osm: {
+      voyager_base: {
         type: "raster",
         tiles: [
-          "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-          "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
-          "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          "https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
+          "https://b.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
+          "https://c.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
         ],
         tileSize: 256,
-        attribution: "&copy; OpenStreetMap contributors",
+        attribution: "&copy; CartoDB &copy; OpenStreetMap contributors",
+      },
+      voyager_labels: {
+        type: "raster",
+        tiles: [
+          "https://a.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+          "https://b.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+          "https://c.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+        ],
+        tileSize: 256,
       },
     },
     layers: [
-      {
-        id: "osm",
-        type: "raster",
-        source: "osm",
-        minzoom: 0,
-        maxzoom: 19,
-        paint: {
-          "raster-saturation": -0.2,
-          "raster-contrast": 0.1,
-        },
-      },
+      { id: "voyager-base", type: "raster", source: "voyager_base" },
+      { id: "voyager-labels", type: "raster", source: "voyager_labels" },
     ],
   },
 
   CARTO_LIGHT: {
     version: 8,
-    name: "CartoDB Light",
+    name: "Tối giản",
+    glyphs: GLYPHS_URL,
     sources: {
       carto: {
         type: "raster",
@@ -57,24 +68,76 @@ export const MAP_STYLES = {
         attribution: "&copy; CartoDB &copy; OSM contributors",
       },
     },
+    layers: [{ id: "carto", type: "raster", source: "carto" }],
+  },
+
+  ADMIN: {
+    version: 8,
+    name: "Hành chính",
+    glyphs: GLYPHS_URL,
+    sources: {
+      carto_nl: {
+        type: "raster",
+        tiles: [
+          "https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+          "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+        ],
+        tileSize: 256,
+        attribution: "&copy; CartoDB &copy; OSM contributors",
+      },
+    },
     layers: [
       {
-        id: "carto",
+        id: "carto_nl",
         type: "raster",
-        source: "carto",
-        minzoom: 0,
-        maxzoom: 19,
+        source: "carto_nl",
+        paint: { "raster-opacity": 0.55, "raster-saturation": -0.6 },
       },
+    ],
+  },
+
+  SATELLITE: {
+    version: 8,
+    name: "Vệ tinh",
+    glyphs: GLYPHS_URL,
+    sources: {
+      satellite: {
+        type: "raster",
+        tiles: ESRI_SATELLITE_TILES,
+        tileSize: 256,
+        attribution: ESRI_ATTRIBUTION,
+      },
+    },
+    layers: [{ id: "satellite", type: "raster", source: "satellite" }],
+  },
+
+  HYBRID: {
+    version: 8,
+    name: "Vệ tinh + Nhãn",
+    glyphs: GLYPHS_URL,
+    sources: {
+      satellite: {
+        type: "raster",
+        tiles: ESRI_SATELLITE_TILES,
+        tileSize: 256,
+        attribution: ESRI_ATTRIBUTION,
+      },
+      labels: {
+        type: "raster",
+        tiles: [
+          "https://basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+        ],
+        tileSize: 256,
+      },
+    },
+    layers: [
+      { id: "satellite", type: "raster", source: "satellite" },
+      { id: "labels", type: "raster", source: "labels" },
     ],
   },
 };
 
-/** Active style — change this to swap tile provider globally */
 export const DEFAULT_MAP_STYLE = MAP_STYLES.OSM;
-
-// =============================================================================
-// MAP REGION: CAN THO
-// =============================================================================
 
 export const CAN_THO_CENTER = {
   lat: 10.0345852,
@@ -83,8 +146,8 @@ export const CAN_THO_CENTER = {
 
 export const MAP_CONFIGS = {
   BOUNDS: [
-    [105.18, 9.9], // SW
-    [105.9, 10.4], // NE
+    [105.18, 9.85],
+    [106.0, 10.45],
   ],
   INITIAL_VIEW: {
     latitude: CAN_THO_CENTER.lat,
@@ -94,54 +157,114 @@ export const MAP_CONFIGS = {
     pitch: 0,
   },
   CONSTRAINTS: {
-    minZoom: 10,
-    maxZoom: 18,
-    dragRotate: false,
+    minZoom: 9,
+    maxZoom: 19,
+    dragRotate: true,
+    pitchWithRotate: true,
+    maxPitch: 60,
   },
 };
 
-// =============================================================================
-// VISUAL THEME
-// =============================================================================
+export const DISTRICT_COLORS = [
+  {
+    fill: "rgba(186,215,233,0.72)",
+    line: "#2B7CB8",
+    hover: "rgba(186,215,233,0.92)",
+    selected: "rgba(43,124,184,0.38)",
+  },
+  {
+    fill: "rgba(166,220,195,0.72)",
+    line: "#1E8A5E",
+    hover: "rgba(166,220,195,0.92)",
+    selected: "rgba(30,138,94,0.38)",
+  },
+  {
+    fill: "rgba(250,224,178,0.72)",
+    line: "#C47F17",
+    hover: "rgba(250,224,178,0.92)",
+    selected: "rgba(196,127,23,0.38)",
+  },
+  {
+    fill: "rgba(240,188,188,0.72)",
+    line: "#B83040",
+    hover: "rgba(240,188,188,0.92)",
+    selected: "rgba(184,48,64,0.38)",
+  },
+  {
+    fill: "rgba(208,195,232,0.72)",
+    line: "#6840A8",
+    hover: "rgba(208,195,232,0.92)",
+    selected: "rgba(104,64,168,0.38)",
+  },
+  {
+    fill: "rgba(178,226,218,0.72)",
+    line: "#1A8A7F",
+    hover: "rgba(178,226,218,0.92)",
+    selected: "rgba(26,138,127,0.38)",
+  },
+  {
+    fill: "rgba(248,203,168,0.72)",
+    line: "#B85520",
+    hover: "rgba(248,203,168,0.92)",
+    selected: "rgba(184,85,32,0.38)",
+  },
+  {
+    fill: "rgba(185,202,230,0.72)",
+    line: "#3450A0",
+    hover: "rgba(185,202,230,0.92)",
+    selected: "rgba(52,80,160,0.38)",
+  },
+  {
+    fill: "rgba(195,222,180,0.72)",
+    line: "#3A7830",
+    hover: "rgba(195,222,180,0.92)",
+    selected: "rgba(58,120,48,0.38)",
+  },
+];
+
+export function buildDistrictColorExpression(districtIds, colorKey, fallback) {
+  const expr = ["match", ["to-string", ["get", "id"]]];
+  districtIds.forEach((id, idx) => {
+    expr.push(String(id));
+    expr.push(DISTRICT_COLORS[idx % DISTRICT_COLORS.length][colorKey]);
+  });
+  expr.push(fallback);
+  return expr;
+}
 
 export const MAP_THEME = {
-  PRIMARY_BLUE: "#0E6BA8",
-  ACCENT_BLUE: "#A6E1FA",
+  PRIMARY_BLUE: "#334155",
+  ACCENT_BLUE: "#94a3b8",
 
-  MASK_COLOR: "rgba(240, 245, 250, 0.8)",
-  MASK_OPACITY: 1,
+  // Outside-Cần Thơ mask: very faint so it doesn't distract
+  MASK_COLOR: "#f1f5f9",
+  MASK_OPACITY: 0.75,
 
   DISTRICT: {
-    LINE_COLOR: "#0E6BA8",
-    LINE_WIDTH: 2,
-    FILL_COLOR: "rgba(14, 107, 168, 0.0)",
-    HOVER_FILL: "rgba(14, 107, 168, 0.05)",
-    SELECTED_FILL: "rgba(14, 107, 168, 0.1)",
+    // No fill used by default — outline only
+    STROKE_COLOR: "#334155",
+    STROKE_WIDTH: 1.8,
+    STROKE_WIDTH_HOVER: 2.8,
+    STROKE_WIDTH_SELECTED: 3.2,
+    HOVER_FILL: "rgba(51,65,85,0.05)",
+    SELECTED_FILL: "rgba(51,65,85,0.10)",
   },
 
   WARD: {
-    LINE_COLOR: "rgba(14, 107, 168, 0.3)",
-    LINE_WIDTH: 1,
-    HOVER_FILL: "rgba(14, 107, 168, 0.2)",
-    SELECTED_FILL: "rgba(14, 107, 168, 0.3)",
+    LINE_COLOR: "rgba(148,163,184,0.5)",
+    LINE_WIDTH: 0.7,
+    HOVER_FILL: "rgba(148,163,184,0.08)",
   },
 };
 
-// =============================================================================
-// LAYER IDS (for MapLibre source/layer references)
-// =============================================================================
-
 export const LAYER_IDS = {
   MASK: "world-mask",
+  DISTRICT_CASING: "district-casing",
   DISTRICT_LINE: "district-line",
   DISTRICT_FILL: "district-fill",
   WARD_LINE: "ward-line",
   WARD_FILL: "ward-fill",
 };
-
-// =============================================================================
-// API ENDPOINTS (appended to API_BASE_URL)
-// =============================================================================
 
 export const MAP_API_PATHS = {
   DISTRICTS_GEOJSON: "/boundaries/districts",

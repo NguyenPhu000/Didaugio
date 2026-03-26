@@ -21,16 +21,19 @@
  *   2. Update adapters/index.js to re-export it
  */
 
-// Main Components
 export { default as MapView } from "./components/MapView";
 export { default as MapBase } from "./components/MapBase";
 export { default as BoundaryLayer } from "./components/BoundaryLayer";
 export { default as PlaceMarkers } from "./components/PlaceMarkers";
 export { default as MapControls } from "./components/MapControls";
+export { default as DistrictLabels } from "./components/DistrictLabels";
+export { default as WardLabels } from "./components/WardLabels";
+export { default as RouteLayer } from "./components/RouteLayer";
 
 // Context & Hooks
 export { MapProvider, useMapContext } from "./context/MapProvider";
 export { useMapData } from "./hooks/useMapData";
+export { useRouting } from "./hooks/useRouting";
 
 // Configuration
 export {
@@ -41,6 +44,8 @@ export {
   MAP_THEME,
   LAYER_IDS,
   MAP_API_PATHS,
+  DISTRICT_COLORS,
+  buildDistrictColorExpression,
 } from "./config/mapConfig";
 
 // Adapter (for advanced custom map usage)
@@ -55,6 +60,14 @@ export {
   GeolocateControl,
   ENGINE_NAME,
 } from "./adapters";
+
+// Place map configuration
+export {
+  CATEGORY_CONFIG,
+  DEFAULT_CATEGORY,
+  getCategoryConfig,
+  PRICE_LABELS,
+} from "./config/placeMapConfig";
 
 // Utilities
 export { generateCanThoMask } from "./utils/geoUtils";

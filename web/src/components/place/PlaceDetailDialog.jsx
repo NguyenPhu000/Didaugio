@@ -1,45 +1,316 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/Dialog";
+import { ScrollArea } from "@/components/ui";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/Dialog";
-import {
-  Badge,
-  Button,
-  ScrollArea,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui";
-import MapPin from "lucide-react/dist/esm/icons/map-pin";
-import Clock from "lucide-react/dist/esm/icons/clock";
-import Phone from "lucide-react/dist/esm/icons/phone";
-import Globe from "lucide-react/dist/esm/icons/globe";
-import Star from "lucide-react/dist/esm/icons/star";
-import Eye from "lucide-react/dist/esm/icons/eye";
-import Edit from "lucide-react/dist/esm/icons/edit";
-import Trash2 from "lucide-react/dist/esm/icons/trash-2";
-import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
-import XCircle from "lucide-react/dist/esm/icons/x-circle";
-import Facebook from "lucide-react/dist/esm/icons/facebook";
-import GridIcon from "lucide-react/dist/esm/icons/grid";
-import Tag from "lucide-react/dist/esm/icons/tag";
-import Info from "lucide-react/dist/esm/icons/info";
-import Calendar from "lucide-react/dist/esm/icons/calendar";
-import User from "lucide-react/dist/esm/icons/user";
-import ExternalLink from "lucide-react/dist/esm/icons/external-link";
-import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
-import Mail from "lucide-react/dist/esm/icons/mail";
+  MapPin,
+  Clock,
+  Phone,
+  Globe,
+  Star,
+  Eye,
+  Edit,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  Facebook,
+  Calendar,
+  ExternalLink,
+  ShieldCheck,
+  Mail,
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
+  Navigation,
+  Info,
+  Layers,
+  Hash,
+  Building2,
+  ImageOff,
+  TrendingUp,
+  Award,
+  ArrowUpRight,
+} from "lucide-react";
 import { PRICE_RANGE_LABELS } from "@/constants/constants";
+import { BUSINESS_STATUS_LABELS } from "@/constants/businessConstants";
 import { MapView } from "@/modules/map";
 import { cn } from "@/lib/utils";
 
-/**
- * PlaceDetailDialog Component - T.I.M Style
- * Technical Industrial Minimalism - Vietnamese Version
- */
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const DAY_SHORT = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+const DAY_FULL = [
+  "Chủ nhật",
+  "Thứ Hai",
+  "Thứ Ba",
+  "Thứ Tư",
+  "Thứ Năm",
+  "Thứ Sáu",
+  "Thứ Bảy",
+];
+
+const STATUS_CFG = {
+  draft: {
+    label: "NHÁP",
+    bg: "bg-gray-100",
+    text: "text-gray-700",
+    dot: "bg-gray-400",
+    border: "border-gray-300",
+  },
+  pending: {
+    label: "CHỜ DUYỆT",
+    bg: "bg-amber-50",
+    text: "text-amber-800",
+    dot: "bg-amber-500",
+    border: "border-amber-200",
+  },
+  approved: {
+    label: "ĐÃ DUYỆT",
+    bg: "bg-emerald-50",
+    text: "text-emerald-800",
+    dot: "bg-emerald-500",
+    border: "border-emerald-200",
+  },
+  rejected: {
+    label: "TỪ CHỐI",
+    bg: "bg-red-50",
+    text: "text-red-800",
+    dot: "bg-red-500",
+    border: "border-red-200",
+  },
+  hidden: {
+    label: "ẨN",
+    bg: "bg-slate-100",
+    text: "text-slate-700",
+    dot: "bg-slate-400",
+    border: "border-slate-300",
+  },
+};
+
+const PRICE_CFG = {
+  FREE: {
+    label: "Miễn phí",
+    icon: "✦",
+    cls: "text-emerald-700 bg-emerald-50 border-emerald-200",
+  },
+  BUDGET: {
+    label: "Bình dân",
+    icon: "₫",
+    cls: "text-sky-700     bg-sky-50     border-sky-200",
+  },
+  MODERATE: {
+    label: "Trung bình",
+    icon: "₫₫",
+    cls: "text-amber-700  bg-amber-50   border-amber-200",
+  },
+  EXPENSIVE: {
+    label: "Cao cấp",
+    icon: "₫₫₫",
+    cls: "text-orange-700 bg-orange-50  border-orange-200",
+  },
+  LUXURY: {
+    label: "Sang trọng",
+    icon: "💎",
+    cls: "text-purple-700  bg-purple-50  border-purple-200",
+  },
+};
+
+// ─── Mini helpers ─────────────────────────────────────────────────────────────
+
+function useCurrentOpenStatus(openingHours) {
+  return useMemo(() => {
+    if (!openingHours?.length) return { known: false };
+    const now = new Date();
+    const today = now.getDay();
+    const hhmm = now.getHours() * 100 + now.getMinutes();
+    const todayH = openingHours.find((h) => h.dayOfWeek === today);
+    if (!todayH) return { known: false };
+    if (todayH.isClosed) return { known: true, open: false, todayHour: todayH };
+    const [oh, om] = (todayH.openTime || "00:00").split(":").map(Number);
+    const [ch, cm] = (todayH.closeTime || "23:59").split(":").map(Number);
+    return {
+      known: true,
+      open: hhmm >= oh * 100 + om && hhmm <= ch * 100 + cm,
+      todayHour: todayH,
+    };
+  }, [openingHours]);
+}
+
+function StarRow({ value, count }) {
+  const v = Math.min(5, Math.max(0, Number(value) || 0));
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <svg
+            key={n}
+            className={cn(
+              "w-4 h-4",
+              n <= Math.round(v)
+                ? "fill-amber-400 text-amber-400"
+                : "fill-gray-200 text-gray-200",
+            )}
+            viewBox="0 0 24 24"
+          >
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+          </svg>
+        ))}
+      </div>
+      <span className="text-base font-black text-gray-900">{v.toFixed(1)}</span>
+      <span className="text-sm text-gray-400">({count ?? 0} đánh giá)</span>
+    </div>
+  );
+}
+
+function InfoChip({ icon: Icon, children, href, className }) {
+  const inner = (
+    <div className={cn("flex items-center gap-2.5 group", className)}>
+      <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+        <Icon className="w-4 h-4 text-gray-500 group-hover:text-gray-700 transition-colors" />
+      </div>
+      <span className="text-sm text-gray-700 leading-snug">{children}</span>
+    </div>
+  );
+  if (href) {
+    return (
+      <a
+        href={href}
+        target={href.startsWith("http") ? "_blank" : "_self"}
+        rel="noreferrer"
+        className="hover:opacity-80 transition-opacity"
+      >
+        {inner}
+      </a>
+    );
+  }
+  return inner;
+}
+
+function SectionTitle({ icon: Icon, children }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-4">
+      <div className="w-7 h-7 rounded-lg bg-gray-900 flex items-center justify-center">
+        <Icon className="w-3.5 h-3.5 text-white" />
+      </div>
+      <h3 className="text-sm font-black uppercase tracking-tight text-gray-900">
+        {children}
+      </h3>
+      <div className="flex-1 h-px bg-gray-100" />
+    </div>
+  );
+}
+
+// ─── Image Gallery (Left panel) ───────────────────────────────────────────────
+
+function ImageGallery({ images, name, status, isFeatured }) {
+  const [idx, setIdx] = useState(0);
+  const imgs = Array.isArray(images) && images.length > 0 ? images : [];
+  const src = imgs[idx]?.imageData || imgs[idx]?.url;
+  const s = STATUS_CFG[status] || STATUS_CFG.draft;
+
+  return (
+    <div className="flex flex-col h-full bg-gray-950 rounded-l-2xl overflow-hidden">
+      {/* Main image */}
+      <div className="relative flex-1 min-h-0 overflow-hidden group">
+        {src ? (
+          <img
+            src={src}
+            alt={name}
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-gray-600">
+            <ImageOff className="w-14 h-14 opacity-20 mb-3" />
+            <span className="text-xs font-mono uppercase opacity-30">
+              Chưa có hình ảnh
+            </span>
+          </div>
+        )}
+
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/30 pointer-events-none" />
+
+        {/* Top-left: status + featured */}
+        <div className="absolute top-4 left-4 flex flex-col gap-2">
+          <div
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold backdrop-blur-md border",
+              s.bg,
+              s.text,
+              s.border,
+            )}
+          >
+            <span className={cn("w-1.5 h-1.5 rounded-full", s.dot)} />
+            {s.label}
+          </div>
+          {isFeatured && (
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-black">
+              <Award className="w-3 h-3" /> NỔI BẬT
+            </div>
+          )}
+        </div>
+
+        {/* Top-right: counter */}
+        {imgs.length > 0 && (
+          <div className="absolute top-4 right-4 bg-black/45 text-white text-[10px] font-mono px-2.5 py-1 rounded-lg backdrop-blur-sm">
+            {idx + 1} / {imgs.length}
+          </div>
+        )}
+
+        {/* Nav arrows */}
+        {imgs.length > 1 && (
+          <>
+            <button
+              onClick={() => setIdx((i) => (i - 1 + imgs.length) % imgs.length)}
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/65 flex items-center justify-center text-white backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setIdx((i) => (i + 1) % imgs.length)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/65 flex items-center justify-center text-white backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </>
+        )}
+
+        {/* Bottom: name overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
+          <p className="text-xl font-black tracking-tight leading-tight drop-shadow-lg line-clamp-2">
+            {name}
+          </p>
+        </div>
+      </div>
+
+      {/* Thumbnail strip */}
+      {imgs.length > 1 && (
+        <div className="h-20 bg-black/80 px-3 py-2 flex gap-2 overflow-x-auto">
+          {imgs.map((img, i) => (
+            <button
+              key={i}
+              onClick={() => setIdx(i)}
+              className={cn(
+                "flex-shrink-0 h-full w-[60px] rounded-lg overflow-hidden border-2 transition-all",
+                i === idx
+                  ? "border-white shadow-md scale-105"
+                  : "border-white/20 opacity-50 hover:opacity-80",
+              )}
+            >
+              <img
+                src={img.imageData || img.url}
+                alt={`Ảnh ${i + 1}`}
+                className="w-full h-full object-cover"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main dialog ──────────────────────────────────────────────────────────────
+
 const PlaceDetailDialog = ({
   place,
   open,
@@ -48,550 +319,729 @@ const PlaceDetailDialog = ({
   onDelete,
   onApprove,
   onReject,
+  /** Admin: mở modal chi tiết doanh nghiệp (id) */
+  onViewBusinessDetails,
 }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState("overview");
+  const openStatus = useCurrentOpenStatus(place?.openingHours);
 
   if (!place) return null;
 
-  const labels = {
-    draft: "NHÁP",
-    pending: "CHỜ DUYỆT",
-    approved: "ĐÃ DUYỆT",
-    rejected: "TỪ CHỐI",
-    hidden: "ẨN",
-  };
-
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      draft: "bg-gray-100 text-gray-600 border-gray-400",
-      pending: "bg-yellow-50 text-yellow-700 border-yellow-400",
-      approved: "bg-green-50 text-green-700 border-green-400",
-      rejected: "bg-red-50 text-red-700 border-red-400",
-      hidden: "bg-gray-200 text-gray-500 border-gray-400",
-    };
-
-    return (
-      <Badge
-        className={cn(
-          "rounded-none border font-mono uppercase text-[10px] px-2 py-0.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)]",
-          statusConfig[status] || statusConfig.draft,
-        )}
-      >
-        {labels[status]}
-      </Badge>
-    );
-  };
-
-  // Helper to get user display info
   const creatorData = place.createdByUser || place.user;
-  const creatorProfile = creatorData?.profile;
-
-  // Preferred Name: Profile FullName > User FullName > Username > Email > ID
+  const creatorPrf = creatorData?.profile;
   const creatorName =
-    creatorProfile?.fullName ||
+    creatorPrf?.fullName ||
     creatorData?.fullName ||
     creatorData?.username ||
     creatorData?.email ||
-    `USER #${place.createdBy}`;
-  const creatorAvatar = creatorProfile?.avatar || creatorData?.avatar;
-  const creatorInitial = creatorName
-    ? creatorName.charAt(0).toUpperCase()
-    : "?";
+    `#${place.createdBy}`;
+  const creatorAva = creatorPrf?.avatar || creatorData?.avatar;
+  const rating = Number(place.ratingAvg ?? place.averageRating ?? 0);
+  const priceInfo = PRICE_CFG[place.priceRange];
+  const phone = place.phone || place.phoneNumber;
+  const facebook = place.facebook || place.facebookUrl;
+
+  const hasAmenities = place.amenities?.length > 0;
+  const hasTags = place.tagLinks?.length > 0 || place.tags?.length > 0;
+  const tagList = place.tagLinks
+    ? place.tagLinks.map((l) => l.tag).filter(Boolean)
+    : place.tags || [];
+
+  const TABS = [
+    { id: "overview", label: "Tổng quan", icon: Info },
+    { id: "hours", label: "Giờ mở cửa", icon: Clock },
+    { id: "location", label: "Vị trí", icon: MapPin },
+    { id: "details", label: "Chi tiết", icon: Layers },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-full h-[85vh] max-h-[85vh] p-0 gap-0 overflow-hidden rounded-none border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col">
-        <div className="flex flex-1 min-h-0 flex-col md:flex-row overflow-hidden">
-          {/* Left Side - Image Gallery */}
-          <div className="w-full md:w-1/2 bg-gray-100 relative flex flex-col border-r-2 border-black overflow-hidden">
-            {place.images && place.images.length > 0 ? (
-              <>
-                {/* Main Image */}
-                <div className="flex-1 relative bg-black/5 overflow-hidden group min-h-0">
-                  <img
-                    src={place.images[currentImageIndex]?.imageData}
-                    alt={place.name}
-                    className="w-full h-full object-contain"
-                  />
-
-                  {/* Status & Featured Badges Overlay */}
-                  <div className="absolute top-4 left-4 flex flex-col gap-2">
-                    {getStatusBadge(place.status)}
-                    {place.isFeatured && (
-                      <Badge className="bg-black text-white border border-black rounded-none font-mono uppercase text-[10px] w-max shadow-[2px_2px_0px_0px_rgba(255,255,255,0.5)]">
-                        <Star className="w-3 h-3 mr-1 fill-white" />
-                        NỔI BẬT
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Image Counter */}
-                  <div className="absolute top-4 right-4 bg-black text-white px-2 py-1 text-[10px] font-mono border border-white">
-                    IMG: {currentImageIndex + 1}/{place.images.length}
-                  </div>
-                </div>
-
-                {/* Thumbnail Strip */}
-                {place.images.length > 1 && (
-                  <div className="h-24 p-2 bg-white border-t-2 border-black grid grid-rows-1">
-                    <ScrollArea className="h-full w-full">
-                      <div className="flex gap-2 h-full items-center px-1">
-                        {place.images.map((img, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setCurrentImageIndex(idx)}
-                            className={cn(
-                              "relative flex-shrink-0 w-20 h-16 border-2 transition-all",
-                              currentImageIndex === idx
-                                ? "border-black brightness-100 ring-1 ring-black ring-offset-1"
-                                : "border-gray-200 brightness-75 hover:border-black hover:brightness-90",
-                            )}
-                          >
-                            <img
-                              src={img.imageData}
-                              alt={`Thumbnail ${idx + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center bg-gray-50 border-r border-black">
-                <div className="border-2 border-black border-dashed p-8 rounded-full mb-4 opacity-20">
-                  <MapPin className="w-12 h-12 text-black" />
-                </div>
-                <p className="text-gray-400 font-mono text-xs uppercase">
-                  CHƯA CÓ HÌNH ẢNH
-                </p>
-              </div>
-            )}
+      <DialogContent className="max-w-[1100px] w-full h-[90vh] max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+        <DialogTitle className="sr-only">
+          {place.name} - Chi tiết địa điểm
+        </DialogTitle>
+        <div className="flex h-full overflow-hidden">
+          {/* ═══ LEFT panel: image gallery ═══ */}
+          <div className="w-[400px] flex-shrink-0 flex flex-col overflow-hidden">
+            <ImageGallery
+              images={place.images}
+              name={place.name}
+              status={place.status}
+              isFeatured={place.isFeatured}
+            />
           </div>
 
-          {/* Right Side - Information */}
-          <div className="w-full md:w-1/2 flex flex-col bg-white h-full overflow-hidden">
-            {/* Header */}
-            <DialogHeader className="p-6 border-b-2 border-black bg-white shrink-0">
-              <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-2 w-full">
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-black text-white hover:bg-black rounded-none font-mono text-[10px] uppercase px-2 py-0.5">
-                        {place.category?.name || "CHƯA PHÂN LOẠI"}
-                      </Badge>
-                      {place.isVerified && (
-                        <Badge className="bg-blue-600 text-white hover:bg-blue-700 rounded-none font-mono text-[10px] uppercase px-2 py-0.5 border-0 flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3" />
-                          ĐÃ XÁC MINH
-                        </Badge>
-                      )}
-                    </div>
-                    <DialogTitle className="text-2xl md:text-3xl font-black uppercase tracking-tighter leading-tight break-words pr-8">
-                      {place.name}
-                    </DialogTitle>
-                    {place.shortDescription && (
-                      <div className="font-mono text-sm text-gray-500 italic mt-1 border-l-2 border-black pl-2">
-                        "{place.shortDescription}"
-                      </div>
+          {/* ═══ RIGHT panel: information ═══ */}
+          <div className="flex-1 flex flex-col overflow-hidden bg-white">
+            {/* ── Header ── */}
+            <div className="px-7 pt-6 pb-4 border-b border-gray-100 flex-shrink-0">
+              {/* Badges row */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {place.category?.name && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-gray-900 text-white">
+                    {place.category.icon && <span>{place.category.icon}</span>}
+                    {place.category.name}
+                  </span>
+                )}
+                {place.isVerified && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                    <ShieldCheck className="w-3 h-3" /> Đã xác minh
+                  </span>
+                )}
+                {priceInfo && (
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border",
+                      priceInfo.cls,
                     )}
-                    <div className="flex items-center gap-4 text-xs font-mono text-gray-500 uppercase mt-2">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                        <span className="font-bold text-black">
-                          {place.ratingAvg
-                            ? parseFloat(place.ratingAvg).toFixed(1)
-                            : "0.0"}
-                        </span>
-                        <span>({place.ratingCount || 0} ĐÁNH GIÁ)</span>
-                      </div>
-                      <div className="w-[1px] h-4 bg-gray-300"></div>
-                      <div className="flex items-center gap-1">
-                        <Eye className="w-4 h-4" />
-                        <span>{place.viewCount || 0} LƯỢT XEM</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  >
+                    {priceInfo.icon} {priceInfo.label}
+                  </span>
+                )}
+              </div>
 
-                {/* Action Buttons Toolbar */}
-                <div className="flex gap-2 pt-2 border-t border-dashed border-gray-200 mt-2">
-                  {onEdit && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 border-black rounded-none hover:bg-black hover:text-white font-mono uppercase text-xs"
-                      onClick={() => onEdit(place)}
+              {/* Name */}
+              <h1 className="text-[22px] font-black text-gray-900 leading-tight tracking-tight mb-1.5 pr-2">
+                {place.name}
+              </h1>
+
+              {/* Short description */}
+              {place.shortDescription && (
+                <p className="text-sm text-gray-500 italic mb-3 line-clamp-2 leading-relaxed">
+                  {place.shortDescription}
+                </p>
+              )}
+
+              {/* Stats row */}
+              <div className="flex items-center gap-3 flex-wrap mb-4">
+                <StarRow value={rating} count={place.ratingCount} />
+                <div className="w-px h-5 bg-gray-200" />
+                <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                  <Eye className="w-4 h-4" />
+                  <span className="font-bold text-gray-800">
+                    {(place.viewCount || 0).toLocaleString()}
+                  </span>
+                  <span>lượt xem</span>
+                </div>
+                {openStatus.known && (
+                  <>
+                    <div className="w-px h-5 bg-gray-200" />
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 text-[12px] font-bold px-2.5 py-1 rounded-full",
+                        openStatus.open
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-red-50 text-red-600",
+                      )}
                     >
-                      <Edit className="w-3 h-3 mr-2" /> SỬA
-                    </Button>
+                      <span
+                        className={cn(
+                          "w-2 h-2 rounded-full",
+                          openStatus.open
+                            ? "bg-emerald-500 animate-pulse"
+                            : "bg-red-400",
+                        )}
+                      />
+                      {openStatus.open ? "Đang mở cửa" : "Đã đóng cửa"}
+                      {openStatus.todayHour &&
+                        !openStatus.todayHour.isClosed && (
+                          <span className="font-normal text-gray-500">
+                            · {openStatus.todayHour.openTime?.slice(0, 5)}–
+                            {openStatus.todayHour.closeTime?.slice(0, 5)}
+                          </span>
+                        )}
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              {(onEdit || onApprove || onReject || onDelete) && (
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(place)}
+                      className="inline-flex items-center gap-1.5 h-8 px-3.5 text-[12px] font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                    >
+                      <Edit className="w-3.5 h-3.5" /> Chỉnh sửa
+                    </button>
                   )}
                   {onApprove && place.status === "pending" && (
-                    <Button
-                      size="sm"
-                      className="h-8 bg-green-600 hover:bg-green-700 text-white border border-black rounded-none font-mono uppercase text-xs"
+                    <button
                       onClick={() => onApprove(place)}
+                      className="inline-flex items-center gap-1.5 h-8 px-3.5 text-[12px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
                     >
-                      <CheckCircle className="w-3 h-3 mr-2" /> DUYỆT
-                    </Button>
+                      <CheckCircle className="w-3.5 h-3.5" /> Duyệt
+                    </button>
                   )}
                   {onReject && place.status === "pending" && (
-                    <Button
-                      size="sm"
-                      className="h-8 bg-black hover:bg-red-700 text-white border border-black rounded-none font-mono uppercase text-xs"
+                    <button
                       onClick={() => onReject(place)}
+                      className="inline-flex items-center gap-1.5 h-8 px-3.5 text-[12px] font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
                     >
-                      <XCircle className="w-3 h-3 mr-2" /> TỪ CHỐI
-                    </Button>
+                      <XCircle className="w-3.5 h-3.5" /> Từ chối
+                    </button>
                   )}
                   {onDelete && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 w-8 p-0 border-black rounded-none hover:bg-red-600 hover:text-white hover:border-red-600 ml-auto"
+                    <button
                       onClick={() => onDelete(place)}
+                      className="ml-auto h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                      title="Xóa địa điểm"
                     >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   )}
                 </div>
-              </div>
-            </DialogHeader>
+              )}
+            </div>
 
-            {/* Content - Scrollable */}
+            {/* ── Tab bar ── */}
+            <div className="flex border-b border-gray-100 bg-gray-50/80 flex-shrink-0 px-3">
+              {TABS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-4 py-3 text-[12px] font-bold transition-all border-b-2 -mb-px",
+                    activeTab === id
+                      ? "border-gray-900 text-gray-900 bg-white rounded-t-lg"
+                      : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-white/60",
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* ── Scrollable tab content ── */}
             <ScrollArea className="flex-1 min-h-0">
-              <div className="p-6 space-y-8">
-                {/* 1. Metadata Grid - Redesigned */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-0 border border-black divide-y sm:divide-y-0 sm:divide-x divide-black bg-gray-50">
-                  {/* Category */}
-                  <div className="p-4 hover:bg-white transition-colors">
-                    <span className="text-[10px] font-bold uppercase text-gray-500 block mb-2 tracking-wider">
-                      DANH MỤC
-                    </span>
-                    <div className="font-mono text-sm font-bold flex items-center gap-2">
-                      {place.category?.icon ? (
-                        <span className="text-lg">{place.category.icon}</span>
-                      ) : (
-                        <GridIcon className="w-4 h-4 text-gray-400" />
-                      )}
-                      <span
-                        className="break-words leading-tight"
-                        title={place.category?.name}
-                      >
-                        {place.category?.name || "N/A"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* District */}
-                  <div className="p-4 hover:bg-white transition-colors">
-                    <span className="text-[10px] font-bold uppercase text-gray-500 block mb-2 tracking-wider">
-                      KHU VỰC
-                    </span>
-                    <div className="font-mono text-sm font-bold break-words leading-tight">
-                      {place.district?.name || "N/A"}
-                    </div>
-                  </div>
-
-                  {/* Price */}
-                  <div className="p-4 hover:bg-white transition-colors">
-                    <span className="text-[10px] font-bold uppercase text-gray-500 block mb-2 tracking-wider">
-                      MỨC GIÁ
-                    </span>
-                    <div className="font-mono text-sm font-bold flex flex-col">
-                      <div className="flex items-center gap-1 text-green-700">
-                        <span className="font-sans">₫</span>
-                        {place.priceRange
-                          ? PRICE_RANGE_LABELS[place.priceRange]
-                          : "CHƯA CẬP NHẬT"}
-                      </div>
-                      {(place.priceFrom || place.priceTo) && (
-                        <div className="text-[10px] text-gray-500 font-normal mt-1 border-t border-dashed border-gray-300 pt-1">
-                          {place.priceFrom
-                            ? new Intl.NumberFormat("vi-VN").format(
-                                place.priceFrom,
-                              )
-                            : "0"}
-                          {" - "}
-                          {place.priceTo
-                            ? new Intl.NumberFormat("vi-VN").format(
-                                place.priceTo,
-                              )
-                            : "∞"}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Creator */}
-                  <div className="p-4 hover:bg-white transition-colors">
-                    <span className="text-[10px] font-bold uppercase text-gray-500 block mb-2 tracking-wider">
-                      NGƯỜI ĐĂNG
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8 border border-black rounded-none shrink-0">
-                        <AvatarImage src={creatorAvatar} />
-                        <AvatarFallback className="rounded-none bg-black text-white font-mono text-xs">
-                          {creatorInitial}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div
-                        className="font-mono text-sm font-bold break-words leading-tight"
-                        title={creatorName}
-                      >
-                        {creatorName}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. Description & Price */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3 border-b-2 border-black pb-1 w-max">
-                    <Info className="w-4 h-4" />
-                    <h3 className="font-bold font-mono text-sm uppercase">
-                      MÔ TẢ
-                    </h3>
-                  </div>
-
-                  {/* Price Info */}
-                  {(place.priceRange || place.priceFrom || place.priceTo) && (
-                    <div className="mb-4 flex items-center gap-2 text-sm font-mono bg-yellow-50 border border-yellow-200 p-2 text-yellow-800">
-                      <span className="font-bold uppercase">Mức giá:</span>
-                      {place.priceRange ? (
-                        <span>{place.priceRange}</span>
-                      ) : (
-                        <span>
-                          {place.priceFrom?.toLocaleString()}đ -{" "}
-                          {place.priceTo?.toLocaleString()}đ
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="text-sm text-gray-800 font-mono leading-relaxed whitespace-pre-line bg-gray-50 border border-gray-200 p-4">
-                    {place.description ||
-                      place.shortDescription ||
-                      "[CHƯA CÓ NỘI DUNG MÔ TẢ]"}
-                  </div>
-                </div>
-
-                {/* 3. Contact & Location */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  {/* Contact Info */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-3 border-b-2 border-black pb-1 w-max">
-                      <Phone className="w-4 h-4" />
-                      <h3 className="font-bold font-mono text-sm uppercase">
-                        LIÊN HỆ
-                      </h3>
-                    </div>
-                    <div className="space-y-3 font-mono text-xs">
-                      <div className="flex gap-3 items-start">
-                        <MapPin className="w-4 h-4 shrink-0 mt-0.5" />
-                        <span className="break-words font-medium">
-                          {place.address}
-                          {place.ward && `, ${place.ward.name}`}
-                          {place.district && `, ${place.district.name}`}
-                        </span>
-                      </div>
-                      {place.phoneNumber && (
-                        <div className="flex gap-3 items-center">
-                          <Phone className="w-4 h-4 shrink-0" />
-                          <a
-                            href={`tel:${place.phoneNumber}`}
-                            className="hover:underline hover:text-blue-600 font-bold"
-                          >
-                            {place.phoneNumber}
-                          </a>
-                        </div>
-                      )}
-                      {place.email && (
-                        <div className="flex gap-3 items-center">
-                          <Mail className="w-4 h-4 shrink-0" />
-                          <a
-                            href={`mailto:${place.email}`}
-                            className="hover:underline hover:text-blue-600 truncate max-w-[200px]"
-                          >
-                            {place.email}
-                          </a>
-                        </div>
-                      )}
-                      {place.website && (
-                        <div className="flex gap-3 items-center">
-                          <Globe className="w-4 h-4 shrink-0" />
-                          <a
-                            href={place.website}
-                            target="_blank"
-                            className="hover:underline hover:text-blue-600 truncate max-w-[200px]"
-                          >
-                            {place.website}
-                          </a>
-                        </div>
-                      )}
-                      {place.facebookUrl && (
-                        <div className="flex gap-3 items-center">
-                          <Facebook className="w-4 h-4 shrink-0" />
-                          <a
-                            href={place.facebookUrl}
-                            target="_blank"
-                            className="hover:underline hover:text-blue-600 truncate max-w-[200px]"
-                          >
-                            Facebook Page
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Opening Hours */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-3 border-b-2 border-black pb-1 w-max">
-                      <Clock className="w-4 h-4" />
-                      <h3 className="font-bold font-mono text-sm uppercase">
-                        GIỜ HOẠT ĐỘNG
-                      </h3>
-                    </div>
-                    {place.openingHours && place.openingHours.length > 0 ? (
-                      <div className="space-y-1">
-                        {[...place.openingHours]
-                          .sort((a, b) => {
-                            const d1 = a.dayOfWeek === 0 ? 7 : a.dayOfWeek;
-                            const d2 = b.dayOfWeek === 0 ? 7 : b.dayOfWeek;
-                            return d1 - d2;
-                          })
-                          .map((hour, idx) => (
-                            <div
-                              key={idx}
-                              className="flex justify-between text-xs font-mono border-b border-dashed border-gray-200 pb-1 last:border-0 hover:bg-gray-50 px-1"
-                            >
-                              <span className="font-bold w-12">
-                                {
-                                  ["CN", "T2", "T3", "T4", "T5", "T6", "T7"][
-                                    hour.dayOfWeek
-                                  ]
-                                }
-                              </span>
-                              <span
-                                className={
-                                  hour.isClosed
-                                    ? "text-red-500 font-bold"
-                                    : "text-black"
-                                }
-                              >
-                                {hour.isClosed
-                                  ? "ĐÓNG CỬA"
-                                  : `${hour.openTime?.slice(0, 5)} - ${hour.closeTime?.slice(0, 5)}`}
-                              </span>
+              <div className="px-7 py-6 space-y-8">
+                {/* ═══ OVERVIEW ═══ */}
+                {activeTab === "overview" && (
+                  <>
+                    {/* Info grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {place.business?.id && (
+                        <div className="col-span-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl border-2 border-amber-300/80 bg-amber-50/90">
+                          <div className="flex gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-white border border-amber-200 shadow-sm flex items-center justify-center shrink-0">
+                              <Building2 className="w-5 h-5 text-amber-800" />
                             </div>
-                          ))}
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-bold text-amber-900/70 uppercase tracking-widest">
+                                Doanh nghiệp sở hữu
+                              </p>
+                              <p className="text-sm font-bold text-gray-900 truncate">
+                                {place.business.businessName || "—"}
+                              </p>
+                              <p className="text-[11px] text-amber-900/80 mt-0.5">
+                                Trạng thái DN:{" "}
+                                {BUSINESS_STATUS_LABELS[place.business.status] ||
+                                  place.business.status ||
+                                  "—"}
+                              </p>
+                            </div>
+                          </div>
+                          {typeof onViewBusinessDetails === "function" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onViewBusinessDetails(place.business.id);
+                              }}
+                              className="shrink-0 rounded-lg border-2 border-amber-800 bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-amber-950 hover:bg-amber-100 transition-colors"
+                            >
+                              Chi tiết &amp; địa điểm DN
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex gap-3 items-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center shrink-0">
+                          <span className="text-lg">
+                            {place.category?.icon || "📍"}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            Danh mục
+                          </p>
+                          <p className="text-sm font-bold text-gray-900 mt-0.5">
+                            {place.category?.name || "—"}
+                          </p>
+                        </div>
                       </div>
-                    ) : (
-                      <span className="text-xs font-mono italic text-gray-400">
-                        -- CHƯA CẬP NHẬT GIỜ --
-                      </span>
-                    )}
-                  </div>
-                </div>
 
-                {/* 4. Map */}
-                {place.latitude && place.longitude && (
-                  <div className="border-2 border-black p-1 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
-                    <div className="h-[200px] grayscale hover:grayscale-0 transition-all duration-500 border border-gray-200">
-                      <MapView
-                        places={[place]}
-                        showMarkers={true}
-                        interactive={false}
-                        initialViewState={{
-                          latitude: place.latitude,
-                          longitude: place.longitude,
-                          zoom: 14,
-                        }}
-                      />
+                      <div className="flex gap-3 items-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center shrink-0">
+                          <Navigation className="w-5 h-5 text-gray-500" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            Khu vực
+                          </p>
+                          <p className="text-sm font-bold text-gray-900 mt-0.5">
+                            {[place.ward?.name, place.district?.name]
+                              .filter(Boolean)
+                              .join(", ") || "—"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {place.priceRange && (
+                        <div className="flex gap-3 items-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors">
+                          <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center shrink-0">
+                            <DollarSign className="w-5 h-5 text-gray-500" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                              Mức giá
+                            </p>
+                            <p className="text-sm font-bold text-gray-900 mt-0.5">
+                              {PRICE_RANGE_LABELS[place.priceRange] ||
+                                place.priceRange}
+                            </p>
+                            {(place.priceFrom || place.priceTo) && (
+                              <p className="text-[11px] text-gray-400 mt-0.5">
+                                {place.priceFrom
+                                  ? new Intl.NumberFormat("vi-VN").format(
+                                      place.priceFrom,
+                                    )
+                                  : "0"}
+                                đ{" – "}
+                                {place.priceTo
+                                  ? new Intl.NumberFormat("vi-VN").format(
+                                      place.priceTo,
+                                    )
+                                  : "∞"}
+                                đ
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-3 items-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors">
+                        <div className="w-10 h-10 rounded-xl bg-gray-200 overflow-hidden border border-gray-200 shadow-sm shrink-0 flex items-center justify-center">
+                          {creatorAva ? (
+                            <img
+                              src={creatorAva}
+                              className="w-full h-full object-cover"
+                              alt=""
+                            />
+                          ) : (
+                            <span className="text-base font-black text-gray-500">
+                              {creatorName.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            Người đăng
+                          </p>
+                          <p className="text-sm font-bold text-gray-900 mt-0.5 truncate">
+                            {creatorName}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="bg-black text-white px-2 py-1.5 text-[10px] font-mono flex justify-between items-center mt-1">
-                      <span className="flex items-center gap-2">
-                        <MapPin className="w-3 h-3 text-white" />
-                        TỌA ĐỘ: {Number(place.latitude).toFixed(4)},{" "}
-                        {Number(place.longitude).toFixed(4)}
-                      </span>
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${place.latitude},${place.longitude}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="hover:underline flex items-center gap-1 hover:text-yellow-400 transition-colors"
-                      >
-                        MỞ GOOGLE MAPS <ExternalLink className="w-2 h-2" />
-                      </a>
+
+                    {/* Description */}
+                    {(place.description || place.shortDescription) && (
+                      <div>
+                        <SectionTitle icon={Info}>Mô tả</SectionTitle>
+                        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-gray-50 rounded-xl p-5 border border-gray-100">
+                          {place.description || place.shortDescription}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Contact */}
+                    <div>
+                      <SectionTitle icon={Phone}>Liên hệ</SectionTitle>
+                      <div className="space-y-3">
+                        {place.address && (
+                          <InfoChip icon={MapPin}>
+                            {place.address}
+                            {place.ward ? `, ${place.ward.name}` : ""}
+                            {place.district ? `, ${place.district.name}` : ""}
+                          </InfoChip>
+                        )}
+                        {phone && (
+                          <InfoChip icon={Phone} href={`tel:${phone}`}>
+                            <span className="font-semibold text-blue-600">
+                              {phone}
+                            </span>
+                          </InfoChip>
+                        )}
+                        {place.email && (
+                          <InfoChip icon={Mail} href={`mailto:${place.email}`}>
+                            <span className="text-blue-600 truncate">
+                              {place.email}
+                            </span>
+                          </InfoChip>
+                        )}
+                        {place.website && (
+                          <InfoChip icon={Globe} href={place.website}>
+                            <span className="text-blue-600 flex items-center gap-1 truncate">
+                              {place.website.replace(/^https?:\/\//, "")}
+                              <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
+                            </span>
+                          </InfoChip>
+                        )}
+                        {facebook && (
+                          <InfoChip icon={Facebook} href={facebook}>
+                            <span className="text-blue-600 flex items-center gap-1 truncate">
+                              {facebook.replace(
+                                /^https?:\/\/(www\.)?facebook\.com\//,
+                                "fb/",
+                              )}
+                              <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
+                            </span>
+                          </InfoChip>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
 
-                {/* 5. Amenities & Tags */}
-                <div className="space-y-6">
-                  {place.amenities && place.amenities.length > 0 && (
-                    <div>
-                      <span className="text-[10px] font-bold uppercase text-gray-500 block mb-2 tracking-wider">
-                        TIỆN ÍCH (AMENITIES)
-                      </span>
-                      <div className="flex flex-wrap gap-2">
-                        {place.amenities.map((amenity, idx) => (
-                          <div
-                            key={idx}
-                            className="border border-black px-3 py-1 text-[10px] font-mono uppercase bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)] flex items-center gap-1"
+                {/* ═══ HOURS ═══ */}
+                {activeTab === "hours" && (
+                  <>
+                    {/* Open/closed banner */}
+                    {openStatus.known && (
+                      <div
+                        className={cn(
+                          "flex items-start gap-4 p-5 rounded-2xl border",
+                          openStatus.open
+                            ? "bg-emerald-50 border-emerald-200"
+                            : "bg-red-50 border-red-200",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "w-3 h-3 rounded-full mt-1 shrink-0",
+                            openStatus.open
+                              ? "bg-emerald-500 animate-pulse"
+                              : "bg-red-400",
+                          )}
+                        />
+                        <div>
+                          <p
+                            className={cn(
+                              "font-black text-base",
+                              openStatus.open
+                                ? "text-emerald-800"
+                                : "text-red-700",
+                            )}
                           >
-                            <CheckCircle className="w-3 h-3 text-green-600" />
-                            <span className="font-bold">
-                              {amenity.amenityType}
+                            {openStatus.open
+                              ? "Hiện đang mở cửa"
+                              : "Hiện đã đóng cửa"}
+                          </p>
+                          {openStatus.todayHour &&
+                            !openStatus.todayHour.isClosed && (
+                              <p className="text-sm text-gray-500 mt-0.5">
+                                {DAY_FULL[new Date().getDay()]}:{" "}
+                                <span className="font-bold text-gray-800">
+                                  {openStatus.todayHour.openTime?.slice(0, 5)} –{" "}
+                                  {openStatus.todayHour.closeTime?.slice(0, 5)}
+                                </span>
+                              </p>
+                            )}
+                          {openStatus.todayHour?.isClosed && (
+                            <p className="text-sm text-gray-500 mt-0.5">
+                              Hôm nay ({DAY_FULL[new Date().getDay()]}) đóng cửa
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Hours list */}
+                    {place.openingHours?.length > 0 ? (
+                      <div>
+                        <SectionTitle icon={Clock}>Lịch hoạt động</SectionTitle>
+                        <div className="space-y-1.5">
+                          {[...place.openingHours]
+                            .sort((a, b) => {
+                              const da = a.dayOfWeek === 0 ? 7 : a.dayOfWeek;
+                              const db = b.dayOfWeek === 0 ? 7 : b.dayOfWeek;
+                              return da - db;
+                            })
+                            .map((h, i) => {
+                              const isToday =
+                                h.dayOfWeek === new Date().getDay();
+                              return (
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    "flex items-center justify-between px-4 py-3 rounded-xl transition-colors",
+                                    isToday
+                                      ? "bg-gray-900 text-white"
+                                      : "bg-gray-50 hover:bg-gray-100",
+                                  )}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <span
+                                      className={cn(
+                                        "w-7 text-xs font-black uppercase",
+                                        isToday
+                                          ? "text-yellow-400"
+                                          : "text-gray-400",
+                                      )}
+                                    >
+                                      {DAY_SHORT[h.dayOfWeek]}
+                                    </span>
+                                    <span
+                                      className={cn(
+                                        "text-sm font-semibold",
+                                        isToday
+                                          ? "text-white"
+                                          : "text-gray-700",
+                                      )}
+                                    >
+                                      {DAY_FULL[h.dayOfWeek]}
+                                    </span>
+                                    {isToday && (
+                                      <span className="text-[9px] bg-yellow-400 text-yellow-950 font-black px-2 py-0.5 rounded-full">
+                                        HÔM NAY
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span
+                                    className={cn(
+                                      "text-sm font-bold",
+                                      h.isClosed
+                                        ? isToday
+                                          ? "text-red-400"
+                                          : "text-red-500"
+                                        : isToday
+                                          ? "text-emerald-300"
+                                          : "text-gray-800",
+                                    )}
+                                  >
+                                    {h.isClosed
+                                      ? "Đóng cửa"
+                                      : `${h.openTime?.slice(0, 5)} – ${h.closeTime?.slice(0, 5)}`}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                        <Clock className="w-14 h-14 mb-4 opacity-15" />
+                        <p className="text-sm font-semibold">
+                          Chưa cập nhật giờ hoạt động
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* ═══ LOCATION ═══ */}
+                {activeTab === "location" && (
+                  <>
+                    {place.latitude && place.longitude ? (
+                      <>
+                        {/* Map */}
+                        <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+                          <div className="h-[280px]">
+                            <MapView
+                              places={[place]}
+                              showMarkers
+                              interactive
+                              initialViewState={{
+                                latitude: Number(place.latitude),
+                                longitude: Number(place.longitude),
+                                zoom: 15,
+                              }}
+                            />
+                          </div>
+                          <div className="bg-gray-900 px-5 py-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm font-mono">
+                              <MapPin className="w-4 h-4 text-gray-500" />
+                              <span className="text-white font-bold">
+                                {Number(place.latitude).toFixed(6)}
+                              </span>
+                              <span className="text-gray-600">,</span>
+                              <span className="text-white font-bold">
+                                {Number(place.longitude).toFixed(6)}
+                              </span>
+                            </div>
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${place.latitude},${place.longitude}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1.5 text-[12px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                            >
+                              Mở Google Maps{" "}
+                              <ArrowUpRight className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+                        </div>
+
+                        {/* Address breakdown */}
+                        <div>
+                          <SectionTitle icon={Navigation}>
+                            Địa chỉ đầy đủ
+                          </SectionTitle>
+                          <div className="space-y-3">
+                            {place.address && (
+                              <InfoChip icon={MapPin}>{place.address}</InfoChip>
+                            )}
+                            {place.ward && (
+                              <InfoChip icon={Building2}>
+                                <span className="text-gray-400 text-xs mr-1">
+                                  Phường/Xã:
+                                </span>
+                                {place.ward.name}
+                              </InfoChip>
+                            )}
+                            {place.district && (
+                              <InfoChip icon={Navigation}>
+                                <span className="text-gray-400 text-xs mr-1">
+                                  Quận/Huyện:
+                                </span>
+                                {place.district.name}
+                              </InfoChip>
+                            )}
+                            <InfoChip icon={MapPin}>
+                              <span className="text-gray-400 text-xs mr-1">
+                                Tọa độ:
+                              </span>
+                              <span className="font-mono">
+                                {Number(place.latitude).toFixed(6)},{" "}
+                                {Number(place.longitude).toFixed(6)}
+                              </span>
+                            </InfoChip>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                        <MapPin className="w-14 h-14 mb-4 opacity-15" />
+                        <p className="text-sm font-semibold">
+                          Chưa có thông tin vị trí
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* ═══ DETAILS ═══ */}
+                {activeTab === "details" && (
+                  <>
+                    {/* Amenities */}
+                    {hasAmenities && (
+                      <div>
+                        <SectionTitle icon={CheckCircle}>Tiện ích</SectionTitle>
+                        <div className="flex flex-wrap gap-2">
+                          {place.amenities.map((a, i) => (
+                            <div
+                              key={i}
+                              className="flex items-center gap-1.5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-[12px] font-medium text-gray-700 hover:border-gray-400 transition-colors"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                              <span className="font-bold">{a.amenityType}</span>
+                              {a.amenityValue && (
+                                <span className="text-gray-400">
+                                  · {a.amenityValue}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tags */}
+                    {hasTags && (
+                      <div>
+                        <SectionTitle icon={Hash}>Thẻ (Tags)</SectionTitle>
+                        <div className="flex flex-wrap gap-2">
+                          {tagList.map((tag, i) => (
+                            <span
+                              key={i}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-900 text-white text-[12px] font-bold rounded-xl hover:bg-gray-700 transition-colors"
+                            >
+                              <Hash className="w-3 h-3" />
+                              {tag.name}
                             </span>
-                            : {amenity.amenityValue}
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* System info */}
+                    <div>
+                      <SectionTitle icon={TrendingUp}>
+                        Thông tin hệ thống
+                      </SectionTitle>
+                      <div className="bg-gray-50 rounded-2xl p-5 space-y-2.5 border border-gray-100">
+                        {[
+                          { label: "ID", value: `#${place.id}` },
+                          { label: "Slug", value: place.slug || "—" },
+                          {
+                            label: "Trạng thái",
+                            value:
+                              STATUS_CFG[place.status]?.label || place.status,
+                          },
+                          {
+                            label: "Ngày tạo",
+                            value: place.createdAt
+                              ? new Date(place.createdAt).toLocaleString(
+                                  "vi-VN",
+                                )
+                              : "—",
+                          },
+                          {
+                            label: "Cập nhật",
+                            value: place.updatedAt
+                              ? new Date(place.updatedAt).toLocaleString(
+                                  "vi-VN",
+                                )
+                              : "—",
+                          },
+                          {
+                            label: "Lượt xem",
+                            value: (place.viewCount || 0).toLocaleString(),
+                          },
+                          {
+                            label: "Tổng đánh giá",
+                            value: `${place.ratingCount || 0} đánh giá · TB ${rating.toFixed(1)}/5`,
+                          },
+                        ].map(({ label, value }) => (
+                          <div
+                            key={label}
+                            className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0"
+                          >
+                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                              {label}
+                            </span>
+                            <span className="text-[12px] font-mono font-semibold text-gray-800">
+                              {value}
+                            </span>
                           </div>
                         ))}
                       </div>
                     </div>
-                  )}
 
-                  {(place.tagLinks?.length > 0 || place.tags?.length > 0) && (
-                    <div>
-                      <span className="text-[10px] font-bold uppercase text-gray-500 block mb-2 tracking-wider">
-                        THẺ (TAGS)
-                      </span>
-                      <div className="flex flex-wrap gap-2">
-                        {(place.tagLinks
-                          ? place.tagLinks.map((link) => link.tag)
-                          : place.tags || []
-                        )
-                          .filter(Boolean)
-                          .map((tag, idx) => (
-                            <span
-                              key={idx}
-                              className="bg-black text-white px-2 py-1 text-[10px] font-mono uppercase border border-black hover:bg-white hover:text-black transition-colors cursor-default"
-                            >
-                              #{tag.name}
-                            </span>
-                          ))}
+                    {/* Rejection reason */}
+                    {place.status === "rejected" && place.rejectionReason && (
+                      <div className="p-5 bg-red-50 border border-red-200 rounded-2xl">
+                        <p className="text-[11px] font-bold text-red-500 uppercase tracking-widest mb-2">
+                          Lý do từ chối
+                        </p>
+                        <p className="text-sm text-red-700 leading-relaxed">
+                          {place.rejectionReason}
+                        </p>
                       </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer Metadata */}
-                <div className="pt-6 border-t-2 border-black border-dashed mt-8">
-                  <div className="flex justify-between items-center text-[10px] font-mono text-gray-400 uppercase">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      NGÀY TẠO:{" "}
-                      {new Date(place.createdAt).toLocaleString("vi-VN")}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      CẬP NHẬT:{" "}
-                      {new Date(place.updatedAt).toLocaleString("vi-VN")}
-                    </div>
-                  </div>
-                </div>
+                    )}
+                  </>
+                )}
               </div>
             </ScrollArea>
           </div>

@@ -1,67 +1,51 @@
 import prisma from "../config/prismaClient.js";
 import { ROLES } from "../config/constants.js";
+import { ERROR_CODES } from "../config/messages.js";
 
-/**
- * PLACE MIDDLEWARE
- * Middleware kiểm tra quyền sở hữu địa điểm
- */
+const EDITABLE_STATUSES = ["draft", "rejected"];
 
-/**
- * Kiểm tra user có quyền truy cập place không
- * - Super Admin (1) và Admin (2): Truy cập tất cả
- * - Business (3): Chỉ truy cập place của mình hoặc business của mình
- * - Các role khác: Từ chối
- */
 export const checkPlaceOwnership = async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user.userId;
     const roleId = req.user.roleId;
 
-    // Admin+ có thể truy cập mọi place
     if (roleId <= ROLES.ADMIN) {
       return next();
     }
 
-    // Lấy thông tin place
     const place = await prisma.place.findUnique({
       where: { id: parseInt(id), deletedAt: null },
-      select: {
-        id: true,
-        createdBy: true,
-        businessId: true,
-      },
+      select: { id: true, createdBy: true, businessId: true },
     });
 
     if (!place) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Địa điểm không tồn tại",
         errorCode: "PLACE_NOT_FOUND",
       });
     }
 
-    // Kiểm tra ownership
-    // 1. Người tạo
     if (place.createdBy === userId) {
       return next();
     }
 
-    // 2. Business owner
     if (place.businessId) {
       const business = await prisma.business.findUnique({
         where: { id: place.businessId },
         select: { ownerId: true },
       });
 
-      if (business && business.ownerId === userId) {
+      if (business?.ownerId === userId) {
         return next();
       }
     }
 
-    // Không có quyền
     return res.status(403).json({
       success: false,
+      data: null,
       message: "Bạn không có quyền truy cập địa điểm này",
       errorCode: "FORBIDDEN_NOT_OWNER",
     });
@@ -69,23 +53,18 @@ export const checkPlaceOwnership = async (req, res, next) => {
     console.error("Error in checkPlaceOwnership:", error);
     return res.status(500).json({
       success: false,
+      data: null,
       message: "Lỗi khi kiểm tra quyền truy cập",
       errorCode: "OWNERSHIP_CHECK_ERROR",
     });
   }
 };
 
-/**
- * Kiểm tra place có đang ở trạng thái cho phép chỉnh sửa không
- * Chỉ cho phép chỉnh sửa khi: draft, rejected
- * Trừ Admin có thể chỉnh sửa mọi trạng thái
- */
 export const checkPlaceEditable = async (req, res, next) => {
   try {
     const { id } = req.params;
     const roleId = req.user.roleId;
 
-    // Admin có thể chỉnh sửa mọi lúc
     if (roleId <= ROLES.ADMIN) {
       return next();
     }
@@ -98,14 +77,16 @@ export const checkPlaceEditable = async (req, res, next) => {
     if (!place) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Địa điểm không tồn tại",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
-    const editableStatuses = ["draft", "rejected"];
-    if (!editableStatuses.includes(place.status)) {
+    if (!EDITABLE_STATUSES.includes(place.status)) {
       return res.status(403).json({
         success: false,
+        data: null,
         message: `Không thể chỉnh sửa địa điểm đang ở trạng thái: ${place.status}. Vui lòng liên hệ Admin.`,
         errorCode: "PLACE_NOT_EDITABLE",
       });
@@ -116,20 +97,17 @@ export const checkPlaceEditable = async (req, res, next) => {
     console.error("Error in checkPlaceEditable:", error);
     return res.status(500).json({
       success: false,
+      data: null,
       message: "Lỗi khi kiểm tra trạng thái địa điểm",
+      errorCode: ERROR_CODES.SERVER_ERROR,
     });
   }
 };
 
-/**
- * Middleware gắn place vào request để dùng trong controller
- */
 export const loadPlace = async (req, res, next) => {
   try {
-    const { id } = req.params;
-
     const place = await prisma.place.findUnique({
-      where: { id: parseInt(id), deletedAt: null },
+      where: { id: parseInt(req.params.id), deletedAt: null },
       include: {
         category: { select: { id: true, name: true } },
         district: { select: { id: true, name: true } },
@@ -146,7 +124,9 @@ export const loadPlace = async (req, res, next) => {
     if (!place) {
       return res.status(404).json({
         success: false,
+        data: null,
         message: "Địa điểm không tồn tại",
+        errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
 
@@ -156,13 +136,11 @@ export const loadPlace = async (req, res, next) => {
     console.error("Error in loadPlace:", error);
     return res.status(500).json({
       success: false,
+      data: null,
       message: "Lỗi khi tải thông tin địa điểm",
+      errorCode: ERROR_CODES.SERVER_ERROR,
     });
   }
 };
 
-export default {
-  checkPlaceOwnership,
-  checkPlaceEditable,
-  loadPlace,
-};
+export default { checkPlaceOwnership, checkPlaceEditable, loadPlace };
