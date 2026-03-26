@@ -128,9 +128,15 @@ export const getAll = async (params = {}, userId, roleId) => {
   };
 };
 
-export const getById = async (id) => {
-  const voucher = await prisma.voucher.findUnique({
-    where: { id: parseInt(id) },
+export const getById = async (id, options = {}) => {
+  const { businessId } = options;
+  const where = { id: parseInt(id) };
+  if (businessId != null) {
+    where.businessId = businessId;
+  }
+
+  const voucher = await prisma.voucher.findFirst({
+    where,
     include: {
       ...defaultInclude,
       business: { select: { id: true, businessName: true } },

@@ -119,9 +119,15 @@ export const getAll = async (params = {}, userId, roleId) => {
   };
 };
 
-export const getById = async (id) => {
-  const offering = await prisma.businessService.findUnique({
-    where: { id: parseInt(id) },
+export const getById = async (id, options = {}) => {
+  const { businessId } = options;
+  const where = { id: parseInt(id) };
+  if (businessId != null) {
+    where.businessId = businessId;
+  }
+
+  const offering = await prisma.businessService.findFirst({
+    where,
     include: {
       ...defaultInclude,
       business: { select: { id: true, businessName: true } },
@@ -208,7 +214,21 @@ export const create = async (data, userId) => {
   return serializeOffering(offering);
 };
 
-export const update = async (id, data) => {
+export const update = async (id, data, options = {}) => {
+  const { businessId } = options;
+  const parsedId = parseInt(id);
+  const where = { id: parsedId };
+  if (businessId != null) {
+    where.businessId = businessId;
+  }
+
+  const existing = await prisma.businessService.findFirst({ where });
+  if (!existing) {
+    const error = new Error("Dịch vụ không tồn tại");
+    error.statusCode = 404;
+    throw error;
+  }
+
   const mappedData = mapInputToPrisma(data);
 
   const placeId = mappedData.placeId;
@@ -220,7 +240,7 @@ export const update = async (id, data) => {
   delete mappedData.placeId;
 
   const offering = await prisma.businessService.update({
-    where: { id: parseInt(id) },
+    where: { id: existing.id },
     data: mappedData,
     include: defaultInclude,
   });
@@ -228,10 +248,24 @@ export const update = async (id, data) => {
   return serializeOffering(offering);
 };
 
-export const remove = async (id) => {
+export const remove = async (id, options = {}) => {
+  const { businessId } = options;
+  const parsedId = parseInt(id);
+  const where = { id: parsedId };
+  if (businessId != null) {
+    where.businessId = businessId;
+  }
+
+  const existing = await prisma.businessService.findFirst({ where });
+  if (!existing) {
+    const error = new Error("Dịch vụ không tồn tại");
+    error.statusCode = 404;
+    throw error;
+  }
+
   const bookingCount = await prisma.booking.count({
     where: {
-      serviceId: parseInt(id),
+      serviceId: existing.id,
       status: { in: ["pending", "confirmed"] },
     },
   });
@@ -244,6 +278,6 @@ export const remove = async (id) => {
     throw error;
   }
 
-  await prisma.businessService.delete({ where: { id: parseInt(id) } });
+  await prisma.businessService.delete({ where: { id: existing.id } });
   return true;
 };

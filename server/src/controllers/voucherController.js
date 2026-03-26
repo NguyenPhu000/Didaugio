@@ -1,3 +1,4 @@
+import { ROLES } from "../config/constants.js";
 import * as voucherService from "../services/voucherService.js";
 
 export const getAll = async (req, res, next) => {
@@ -20,7 +21,11 @@ export const getAll = async (req, res, next) => {
 
 export const getById = async (req, res, next) => {
   try {
-    const voucher = await voucherService.getById(req.params.id);
+    const businessId =
+      req.user.roleId > ROLES.ADMIN ? req.business?.id : undefined;
+    const voucher = await voucherService.getById(req.params.id, {
+      businessId,
+    });
     res.json({
       success: true,
       data: voucher,

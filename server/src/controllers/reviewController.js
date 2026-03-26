@@ -1,3 +1,4 @@
+import { ROLES } from "../config/constants.js";
 import * as reviewService from "../services/reviewService.js";
 
 export const getAll = async (req, res, next) => {
@@ -20,7 +21,9 @@ export const getAll = async (req, res, next) => {
 
 export const getById = async (req, res, next) => {
   try {
-    const review = await reviewService.getById(req.params.id);
+    const businessId =
+      req.user.roleId > ROLES.ADMIN ? req.activeBusiness?.id : undefined;
+    const review = await reviewService.getById(req.params.id, { businessId });
     res.json({
       success: true,
       data: review,
@@ -33,10 +36,13 @@ export const getById = async (req, res, next) => {
 
 export const reply = async (req, res, next) => {
   try {
+    const businessId =
+      req.user.roleId > ROLES.ADMIN ? req.activeBusiness?.id : undefined;
     const replyData = await reviewService.reply(
       req.params.id,
       req.body.content,
       req.user.userId,
+      { businessId },
     );
     res.status(201).json({
       success: true,

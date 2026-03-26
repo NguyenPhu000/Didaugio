@@ -16,7 +16,6 @@ router.use(authenticate, blockGuestFromAdmin);
  */
 router.get(
   "/",
-  authenticate,
   hasPermission("audit_log.view"),
   auditLogController.getAll,
 );
@@ -28,7 +27,6 @@ router.get(
  */
 router.get(
   "/:id",
-  authenticate,
   hasPermission("audit_log.view"),
   auditLogController.getById,
 );

@@ -68,7 +68,16 @@ export const getAll = async (params = {}, userId, roleId) => {
     where.rating = parseInt(params.rating);
   }
   if (params.placeId) {
-    where.placeId = parseInt(params.placeId);
+    const requestedPlaceId = parseInt(params.placeId);
+    // Nếu đã scope theo business, chỉ cho lọc nếu placeId thuộc danh sách được phép
+    if (Array.isArray(where.placeId?.in)) {
+      if (where.placeId.in.includes(requestedPlaceId)) {
+        where.placeId = requestedPlaceId;
+      }
+      // Nếu không thuộc, giữ nguyên scope (bỏ qua tham số placeId không hợp lệ)
+    } else {
+      where.placeId = requestedPlaceId;
+    }
   }
 
   const [data, total] = await Promise.all([
@@ -88,9 +97,15 @@ export const getAll = async (params = {}, userId, roleId) => {
   };
 };
 
-export const getById = async (id) => {
-  const review = await prisma.review.findUnique({
-    where: { id: parseInt(id) },
+export const getById = async (id, options = {}) => {
+  const { businessId } = options;
+  const where = { id: parseInt(id) };
+  if (businessId != null) {
+    where.place = { businessId };
+  }
+
+  const review = await prisma.review.findFirst({
+    where,
     include: {
       ...defaultInclude,
       media: true,
@@ -108,15 +123,21 @@ export const getById = async (id) => {
   return review;
 };
 
-export const reply = async (reviewId, content, userId) => {
-  const review = await prisma.review.findUnique({
-    where: { id: parseInt(reviewId) },
+export const reply = async (reviewId, content, userId, options = {}) => {
+  const { businessId } = options;
+  const reviewWhere = { id: parseInt(reviewId) };
+  if (businessId != null) {
+    reviewWhere.place = { businessId };
+  }
+
+  const review = await prisma.review.findFirst({
+    where: reviewWhere,
     select: { id: true, userId: true },
   });
 
   if (!review) {
     throw new ServiceError(
-      "Đánh giá không tồn tại",
+      "Đánh giá không tồn tại hoặc không thuộc địa điểm của bạn",
       404,
       ERROR_CODES.NOT_FOUND,
     );

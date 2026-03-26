@@ -56,7 +56,7 @@ router.post(
   "/",
   authenticate,
   blockGuestFromAdmin,
-  requirePermission("category.create"),
+  requirePermission("categories.create"),
   validateBody(createCategorySchema),
   auditLog({
     action: "CREATE",
@@ -71,7 +71,7 @@ router.put(
   "/:id",
   authenticate,
   blockGuestFromAdmin,
-  requirePermission("category.update"),
+  requirePermission("categories.edit"),
   validateParams(categoryIdParamSchema),
   validateBody(updateCategorySchema),
   auditLog({
@@ -87,7 +87,7 @@ router.delete(
   "/:id",
   authenticate,
   blockGuestFromAdmin,
-  requirePermission("category.delete"),
+  requirePermission("categories.delete"),
   validateParams(categoryIdParamSchema),
   auditLog({
     action: "DELETE",
@@ -101,7 +101,7 @@ router.post(
   "/:id/tags",
   authenticate,
   blockGuestFromAdmin,
-  requirePermission("category.update"),
+  requirePermission("categories.manage_tags"),
   validateParams(categoryIdParamSchema),
   validateBody(assignCategoryTagsSchema),
   auditLog({

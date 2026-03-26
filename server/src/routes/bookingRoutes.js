@@ -111,6 +111,7 @@ router.put(
 router.put(
   "/:id/no-show",
   checkBusinessOwnership("booking"),
+  hasPermission("bookings.complete"),
   auditLog({
     action: "NO_SHOW",
     tableName: "bookings",

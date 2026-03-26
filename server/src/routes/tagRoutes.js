@@ -45,12 +45,12 @@ router.get(
 );
 router.get("/:id", validateParams(tagIdParamSchema), tagController.getTagById);
 
-// Admin routes - Require authentication + permission
+// Admin routes - Require authentication + permission (categories.manage_tags là quyền quản lý tag trong DB)
 router.post(
   "/",
   authenticate,
   blockGuestFromAdmin,
-  requirePermission("tag.create"),
+  requirePermission("categories.manage_tags"),
   validateBody(createTagSchema),
   tagController.createTag,
 );
@@ -59,7 +59,7 @@ router.post(
   "/bulk",
   authenticate,
   blockGuestFromAdmin,
-  requirePermission("tag.create"),
+  requirePermission("categories.manage_tags"),
   validateBody(bulkCreateTagsSchema),
   tagController.bulkCreateTags,
 );
@@ -68,7 +68,7 @@ router.put(
   "/:id",
   authenticate,
   blockGuestFromAdmin,
-  requirePermission("tag.update"),
+  requirePermission("categories.manage_tags"),
   validateParams(tagIdParamSchema),
   validateBody(updateTagSchema),
   tagController.updateTag,
@@ -78,7 +78,7 @@ router.delete(
   "/:id",
   authenticate,
   blockGuestFromAdmin,
-  requirePermission("tag.delete"),
+  requirePermission("categories.manage_tags"),
   validateParams(tagIdParamSchema),
   tagController.deleteTag,
 );
@@ -87,7 +87,7 @@ router.post(
   "/:id/recalculate",
   authenticate,
   blockGuestFromAdmin,
-  requirePermission("tag.update"),
+  requirePermission("categories.manage_tags"),
   validateParams(tagIdParamSchema),
   tagController.recalculateUsageCount,
 );

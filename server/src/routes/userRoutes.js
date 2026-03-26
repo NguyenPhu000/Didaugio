@@ -14,14 +14,12 @@ router.use(authenticate, blockGuestFromAdmin);
 // User routes
 router.get(
   "/users",
-  authenticate,
   requirePermission("users.view"),
   userController.getAllUsers,
 );
 
 router.post(
   "/users",
-  authenticate,
   requirePermission("users.create"),
   auditLog({
     action: "CREATE",
@@ -34,15 +32,13 @@ router.post(
 
 router.get(
   "/users/:id",
-  authenticate,
   requirePermission("users.view"),
   userController.getUserById,
 );
 
 router.put(
   "/users/:id",
-  authenticate,
-  requirePermission("users.update"),
+  requirePermission("users.edit"),
   checkRoleHierarchy,
   auditLog({
     action: "UPDATE",
@@ -55,7 +51,6 @@ router.put(
 
 router.delete(
   "/users/:id",
-  authenticate,
   requirePermission("users.delete"),
   checkRoleHierarchy,
   auditLog({
@@ -69,7 +64,6 @@ router.delete(
 // Route đặc biệt: cập nhật role (chỉ Super Admin và Admin)
 router.patch(
   "/users/:id/role",
-  authenticate,
   requirePermission("roles.assign_to_users"),
   checkRoleHierarchy,
   auditLog({

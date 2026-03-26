@@ -3,6 +3,7 @@ import { roleService } from "@/apis/roleService";
 import { toast } from "sonner";
 import { RoleManagementModal } from "@/components/role/role-management-modal";
 import { Button } from "@/components/ui/Button";
+import TimStatsCard from "@/components/admin/TimStatsCard";
 import {
   RefreshCw,
   ShieldAlert,
@@ -11,6 +12,7 @@ import {
   User,
   Crown,
   Lock,
+  BarChart3,
 } from "lucide-react";
 
 // Lucide mapping

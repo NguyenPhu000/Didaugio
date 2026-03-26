@@ -34,7 +34,12 @@ router.get(
   controller.getAll,
 );
 
-router.get("/:id", hasPermission(serviceAccessPermission), controller.getById);
+router.get(
+  "/:id",
+  hasPermission(serviceAccessPermission),
+  checkBusinessOwnership("service"),
+  controller.getById,
+);
 
 router.post(
   "/",
@@ -49,10 +54,11 @@ router.post(
   controller.create,
 );
 
-// checkBusinessOwnership: Middleware kiểm tra dịch vụ thuộc DN đang đăng nhập
+// checkBusinessOwnership + manage_services: đồng bộ RBAC với POST tạo dịch vụ
 router.put(
   "/:id",
   checkBusinessOwnership("service"),
+  hasPermission("business.manage_services"),
   validateBody(updateServiceSchema),
   auditLog({
     action: "UPDATE",
@@ -65,6 +71,7 @@ router.put(
 router.delete(
   "/:id",
   checkBusinessOwnership("service"),
+  hasPermission("business.manage_services"),
   auditLog({
     action: "DELETE",
     tableName: "business_services",

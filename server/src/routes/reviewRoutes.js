@@ -1,6 +1,7 @@
 import express from "express";
 import * as controller from "../controllers/reviewController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
+import { hasPermission } from "../middlewares/permissionMiddleware.js";
 import { requireActiveBusiness } from "../middlewares/requireActiveBusiness.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
 import { validateBody, validateParams } from "../middlewares/validateSchema.js";
@@ -17,12 +18,21 @@ const router = express.Router();
 router.use(authenticate);
 router.use(requireActiveBusiness({ requireContractSigned: true }));
 
-router.get("/", controller.getAll);
-router.get("/stats", controller.getStats);
-router.get("/:id", validateParams(reviewIdParamSchema), controller.getById);
+// Business owner: reviews.view | Admin: reviews.view_detail (superset)
+const reviewViewPermission = ["reviews.view", "reviews.view_detail"];
+
+router.get("/", hasPermission(reviewViewPermission), controller.getAll);
+router.get("/stats", hasPermission(reviewViewPermission), controller.getStats);
+router.get(
+  "/:id",
+  hasPermission("reviews.view_detail"),
+  validateParams(reviewIdParamSchema),
+  controller.getById,
+);
 
 router.post(
   "/:id/reply",
+  hasPermission("reviews.reply"),
   validateParams(reviewIdParamSchema),
   validateBody(replyReviewSchema),
   auditLog({
@@ -36,6 +46,7 @@ router.post(
 
 router.put(
   "/:id/replies/:replyId",
+  hasPermission("reviews.reply"),
   validateParams(replyIdParamSchema),
   validateBody(updateReplySchema),
   auditLog({
@@ -49,6 +60,7 @@ router.put(
 
 router.patch(
   "/:id/replies/:replyId/moderation",
+  hasPermission("reviews.hide"),
   validateParams(replyIdParamSchema),
   validateBody(moderateReplySchema),
   auditLog({
@@ -62,6 +74,7 @@ router.patch(
 
 router.delete(
   "/:id/replies/:replyId",
+  hasPermission("reviews.reply"),
   validateParams(replyIdParamSchema),
   auditLog({
     action: "DELETE_REPLY",
