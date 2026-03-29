@@ -31,8 +31,11 @@ import { authLimiter, apiLimiter } from "./middlewares/rateLimitMiddleware.js";
 import logger from "./config/logger.js";
 import prisma from "./config/prismaClient.js";
 import { initNotificationService } from "./services/notificationService.js";
+import { validateEnv } from "./config/validateEnv.js";
+import aiRoutes from "./routes/aiRoutes.js";
 
 dotenv.config();
+validateEnv();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -78,6 +81,7 @@ app.use("/api/business/vouchers", voucherRoutes);
 app.use("/api/business/reviews", reviewRoutes);
 app.use("/api/business", businessRoutes);
 app.use("/api/feedback", feedbackRoutes);
+app.use("/api/ai", aiRoutes);
 app.use("/api", userPermissionRoutes);
 app.use("/api", userRoutes);
 

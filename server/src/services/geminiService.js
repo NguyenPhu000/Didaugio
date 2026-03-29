@@ -2,12 +2,36 @@
  * geminiService.js — Google Gemini integration for AI trip planning.
  * Uses @google/generative-ai SDK.
  */
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { zodToJsonSchema } from "zod-to-json-schema";
+import { z } from "zod";
 import { ERROR_CODES } from "../config/messages.js";
 import ServiceError from "../utils/serviceError.js";
+import { geminiModel, geminiStructuredModel } from "../config/geminiClient.js";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const MODEL_NAME = "gemini-1.5-flash";
+const ItineraryDestinationSchema = z.object({
+  placeId: z.number().int(),
+  order: z.number().int(),
+  startTime: z.string(),
+  endTime: z.string(),
+  durationMinutes: z.number().int(),
+  note: z.string(),
+  transportToNext: z.string(),
+  estimatedCost: z.number(),
+});
+
+const ItineraryDaySchema = z.object({
+  dayNumber: z.number().int(),
+  theme: z.string(),
+  destinations: z.array(ItineraryDestinationSchema),
+});
+
+const ItinerarySchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  totalDays: z.number().int(),
+  estimatedCost: z.number(),
+  days: z.array(ItineraryDaySchema),
+});
 
 // ─── Itinerary generation ─────────────────────────────────────────────────────
 
@@ -71,45 +95,34 @@ Chỉ dùng địa điểm có trong danh sách trên (dùng đúng ID). Trả v
 }
 
 /**
- * Generate a trip itinerary via Gemini.
+ * Generate a trip itinerary via Gemini structured output.
  * @param {Object} preferences
  * @param {Array}  places
- * @returns {{ raw: string, parsed: Object, tokensUsed: number, responseTimeMs: number }}
+ * @returns {{ parsed: Object, tokensUsed: number, responseTimeMs: number }}
  */
 export async function generateItinerary(preferences, places) {
-  if (!GEMINI_API_KEY) {
-    throw new ServiceError(
-      "GEMINI_API_KEY không được cấu hình",
-      500,
-      ERROR_CODES.INTERNAL_ERROR,
-    );
-  }
-
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+  const jsonSchema = zodToJsonSchema(ItinerarySchema, { target: "openApi3" });
+  const model = geminiStructuredModel(jsonSchema);
 
   const prompt = buildItineraryPrompt(preferences, places);
   const start = Date.now();
 
   const result = await model.generateContent(prompt);
-  const response = result.response;
-  const raw = response.text().trim();
   const responseTimeMs = Date.now() - start;
-  const tokensUsed = response.usageMetadata?.totalTokenCount ?? null;
-
-  // Strip markdown code block if present
-  const jsonText = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  const tokensUsed = result.response.usageMetadata?.totalTokenCount ?? null;
 
   let parsed;
   try {
-    parsed = JSON.parse(jsonText);
+    parsed = JSON.parse(result.response.text());
   } catch {
     throw new ServiceError(
-      `Gemini trả về JSON không hợp lệ: ${jsonText.slice(0, 200)}`,
+      "Gemini trả về JSON không hợp lệ",
       502,
       ERROR_CODES.VALIDATION_ERROR,
     );
   }
 
-  return { raw, parsed, tokensUsed, responseTimeMs };
+  return { parsed, tokensUsed, responseTimeMs };
 }
+
+export { geminiModel };

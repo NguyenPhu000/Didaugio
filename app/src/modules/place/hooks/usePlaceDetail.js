@@ -6,23 +6,29 @@ import {
 } from "../api/placeApi";
 
 export function usePlaceDetail(id) {
+  const parsedId = Number(id);
+  const isValidId = Number.isFinite(parsedId) && parsedId > 0;
+
   return useQuery({
-    queryKey: ["place", id],
-    queryFn: () => getPlaceDetailApi(id),
+    queryKey: ["place", isValidId ? parsedId : "invalid"],
+    queryFn: () => getPlaceDetailApi(parsedId),
     select: (data) => data?.data || data,
-    enabled: !!id,
+    enabled: isValidId,
   });
 }
 
 export function usePlaceReviews(id, params = {}) {
+  const parsedId = Number(id);
+  const isValidId = Number.isFinite(parsedId) && parsedId > 0;
+
   return useQuery({
-    queryKey: ["place-reviews", id, params],
-    queryFn: () => getPlaceReviewsApi(id, params),
+    queryKey: ["place-reviews", isValidId ? parsedId : "invalid", params],
+    queryFn: () => getPlaceReviewsApi(parsedId, params),
     select: (data) => ({
       reviews: data?.data || [],
       pagination: data?.pagination,
     }),
-    enabled: !!id,
+    enabled: isValidId,
   });
 }
 

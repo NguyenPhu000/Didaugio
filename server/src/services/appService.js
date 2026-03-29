@@ -718,6 +718,126 @@ export const submitFeedback = async ({
   return feedback;
 };
 
+const TRIP_PLACE_SELECT = {
+  id: true,
+  name: true,
+  address: true,
+  latitude: true,
+  longitude: true,
+  thumbnail: true,
+  ratingAvg: true,
+  category: { select: { id: true, name: true } },
+};
+
+export const createTrip = async (userId, data) => {
+  const { title, description, startDate, endDate, totalDays, travelStyle, groupSize } = data;
+  return prisma.trip.create({
+    data: {
+      userId,
+      title,
+      description,
+      startDate: startDate ? new Date(startDate) : null,
+      endDate: endDate ? new Date(endDate) : null,
+      totalDays: toInt(totalDays, 1),
+      travelStyle,
+      groupSize: toInt(groupSize, 1),
+      status: "draft",
+    },
+    include: {
+      destinations: {
+        include: { place: { select: TRIP_PLACE_SELECT } },
+      },
+    },
+  });
+};
+
+export const getTripDetail = async (id, userId) => {
+  return prisma.trip.findFirst({
+    where: { id, userId },
+    include: {
+      destinations: {
+        orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+        include: { place: { select: TRIP_PLACE_SELECT } },
+      },
+    },
+  });
+};
+
+export const updateTrip = async (id, userId, data) => {
+  const trip = await prisma.trip.findFirst({ where: { id, userId } });
+  if (!trip) {
+    const err = new Error("Không tìm thấy chuyến đi");
+    err.statusCode = 404;
+    throw err;
+  }
+  const { title, description, startDate, endDate, totalDays, travelStyle, groupSize, status } = data;
+  return prisma.trip.update({
+    where: { id },
+    data: {
+      ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
+      ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
+      ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
+      ...(totalDays !== undefined && { totalDays: toInt(totalDays, 1) }),
+      ...(travelStyle !== undefined && { travelStyle }),
+      ...(groupSize !== undefined && { groupSize: toInt(groupSize, 1) }),
+      ...(status !== undefined && { status }),
+    },
+    include: {
+      destinations: {
+        orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+        include: { place: { select: TRIP_PLACE_SELECT } },
+      },
+    },
+  });
+};
+
+export const deleteTrip = async (id, userId) => {
+  const trip = await prisma.trip.findFirst({ where: { id, userId } });
+  if (!trip) {
+    const err = new Error("Không tìm thấy chuyến đi");
+    err.statusCode = 404;
+    throw err;
+  }
+  await prisma.trip.delete({ where: { id } });
+};
+
+export const addDestination = async (tripId, userId, { placeId, dayNumber, order, note }) => {
+  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
+  if (!trip) {
+    const err = new Error("Không tìm thấy chuyến đi");
+    err.statusCode = 404;
+    throw err;
+  }
+  return prisma.tripDestination.create({
+    data: {
+      tripId,
+      placeId: toInt(placeId),
+      dayNumber: toInt(dayNumber, 1),
+      order: toInt(order, 0),
+      note,
+      status: "planned",
+    },
+    include: { place: { select: TRIP_PLACE_SELECT } },
+  });
+};
+
+export const removeDestination = async (tripId, destId, userId) => {
+  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
+  if (!trip) {
+    const err = new Error("Không tìm thấy chuyến đi");
+    err.statusCode = 404;
+    throw err;
+  }
+  const dest = await prisma.tripDestination.findFirst({ where: { id: destId, tripId } });
+  if (!dest) {
+    const err = new Error("Không tìm thấy địa điểm trong lịch trình");
+    err.statusCode = 404;
+    throw err;
+  }
+  await prisma.tripDestination.delete({ where: { id: destId } });
+};
+
 export default {
   getHomeData,
   searchPlaces,
@@ -731,5 +851,11 @@ export default {
   unsavePlace,
   getMyTrips,
   generateAndSaveTrip,
+  createTrip,
+  getTripDetail,
+  updateTrip,
+  deleteTrip,
+  addDestination,
+  removeDestination,
   submitFeedback,
 };

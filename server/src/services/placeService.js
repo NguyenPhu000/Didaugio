@@ -1161,9 +1161,11 @@ export const submitForReview = async (id) => {
 };
 
 /**
- * Thêm ảnh cho địa điểm
+ * Thêm ảnh cho địa điểm — upload lên Cloudinary nếu có imageData base64.
  */
 export const addImages = async (placeId, images, userId) => {
+  const { uploadPlaceImage } = await import("./mediaService.js");
+
   const existing = await prisma.place.findUnique({
     where: { id: placeId, deletedAt: null },
     include: { images: true },
@@ -1190,22 +1192,45 @@ export const addImages = async (placeId, images, userId) => {
 
   const hasCover = existing.images.some((img) => img.isCover);
 
+  const uploadedImages = await Promise.all(
+    images.map(async (img, index) => {
+      let publicId = null;
+      let secureUrl = null;
+      let thumbnailUrl = null;
+      let imageData = img.imageData || null;
+
+      if (img.imageData && img.imageData.startsWith("data:")) {
+        const uploaded = await uploadPlaceImage(img.imageData);
+        publicId = uploaded.publicId;
+        secureUrl = uploaded.secureUrl;
+        thumbnailUrl = uploaded.thumbnailUrl;
+        imageData = null;
+      }
+
+      return {
+        placeId,
+        imageData,
+        publicId,
+        secureUrl,
+        thumbnailUrl,
+        caption: img.caption || null,
+        order: currentImageCount + index,
+        isCover: !hasCover && index === 0,
+        uploadedBy: userId,
+      };
+    }),
+  );
+
   const createdImages = await prisma.placeImage.createMany({
-    data: images.map((img, index) => ({
-      placeId,
-      imageData: img.imageData,
-      caption: img.caption || null,
-      order: currentImageCount + index,
-      isCover: !hasCover && index === 0,
-      uploadedBy: userId,
-    })),
+    data: uploadedImages,
   });
 
   // Update thumbnail if no cover existed
-  if (!hasCover && images.length > 0) {
+  if (!hasCover && uploadedImages.length > 0) {
+    const firstImage = uploadedImages[0];
     await prisma.place.update({
       where: { id: placeId },
-      data: { thumbnail: images[0].imageData },
+      data: { thumbnail: firstImage.thumbnailUrl ?? firstImage.imageData },
     });
   }
 

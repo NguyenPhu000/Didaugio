@@ -13,27 +13,48 @@ export function useLogin() {
     async (email, password) => {
       setError(null);
 
-      if (!email.trim()) {
+      const normalizedEmail = email.trim().toLowerCase();
+
+      if (!normalizedEmail) {
         setError("Vui lòng nhập email.");
-        return;
+        return false;
       }
+
+      if (!/\S+@\S+\.\S+/.test(normalizedEmail)) {
+        setError("Email không hợp lệ.");
+        return false;
+      }
+
       if (!password) {
         setError("Vui lòng nhập mật khẩu.");
-        return;
+        return false;
       }
 
       setIsLoading(true);
       try {
-        const res = await loginApi(email.trim().toLowerCase(), password);
-        const { accessToken, refreshToken, user } = res.data?.data || res.data;
+        const res = await loginApi(normalizedEmail, password);
+        const payload = res?.data || res;
+        const { accessToken, refreshToken, user } = payload || {};
+
+        if (!accessToken || !refreshToken || !user) {
+          throw new Error("Không nhận được dữ liệu phiên đăng nhập hợp lệ.");
+        }
+
         await setSession({ user, accessToken, refreshToken });
         router.replace("/(tabs)/map");
+        return true;
       } catch (err) {
-        const msg =
-          err?.response?.data?.message ||
-          err?.message ||
-          "Đăng nhập thất bại. Vui lòng thử lại.";
-        setError(msg);
+        if (err?.code === "EMAIL_NOT_VERIFIED") {
+          setError(
+            "Email chưa xác thực. Vui lòng kiểm tra hộp thư và xác thực trước khi đăng nhập.",
+          );
+          return false;
+        }
+
+        setError(
+          err?.message || "Đăng nhập thất bại. Vui lòng thử lại.",
+        );
+        return false;
       } finally {
         setIsLoading(false);
       }

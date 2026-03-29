@@ -1,6 +1,7 @@
 import profileService from "../services/profileService.js";
 import appService from "../services/appService.js";
 import { ERROR_CODES } from "../config/messages.js";
+import prisma from "../config/prismaClient.js";
 
 /**
  * GET /api/profile
@@ -206,6 +207,121 @@ export const generateTrip = async (req, res, next) => {
   }
 };
 
+export const createTrip = async (req, res, next) => {
+  try {
+    const { title, description, startDate, endDate, totalDays, travelStyle, groupSize } = req.body;
+    const trip = await appService.createTrip(getUserId(req), {
+      title,
+      description,
+      startDate,
+      endDate,
+      totalDays,
+      travelStyle,
+      groupSize,
+    });
+    res.status(201).json({ success: true, data: trip, message: "Tạo chuyến đi thành công" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTripDetail = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    const trip = await appService.getTripDetail(id, getUserId(req));
+    if (!trip) return res.status(404).json({ success: false, data: null, message: "Không tìm thấy chuyến đi" });
+    res.json({ success: true, data: trip, message: "Lấy chi tiết chuyến đi thành công" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateTrip = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    const trip = await appService.updateTrip(id, getUserId(req), req.body);
+    res.json({ success: true, data: trip, message: "Cập nhật chuyến đi thành công" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteTrip = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    await appService.deleteTrip(id, getUserId(req));
+    res.json({ success: true, data: null, message: "Xóa chuyến đi thành công" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const addDestination = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.id);
+    if (!tripId) return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    const { placeId, dayNumber = 1, order = 0, note } = req.body;
+    const dest = await appService.addDestination(tripId, getUserId(req), {
+      placeId,
+      dayNumber,
+      order,
+      note,
+    });
+    res.status(201).json({ success: true, data: dest, message: "Đã thêm địa điểm vào lịch trình" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const removeDestination = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.id);
+    const destId = parseId(req.params.destId);
+    if (!tripId || !destId) return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    await appService.removeDestination(tripId, destId, getUserId(req));
+    res.json({ success: true, data: null, message: "Đã xóa địa điểm khỏi lịch trình" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePushToken = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    const { pushToken } = req.body;
+
+    if (!pushToken) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "pushToken là bắt buộc",
+        errorCode: "MISSING_PUSH_TOKEN",
+      });
+    }
+
+    await prisma.userSession.updateMany({
+      where: { userId, isActive: true },
+      data: { pushToken },
+    });
+
+    res.json({
+      success: true,
+      data: null,
+      message: "Cập nhật push token thành công",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      data: null,
+      message: "Không thể cập nhật push token",
+      error: error.message,
+    });
+  }
+};
+
 export default {
   getProfile,
   updateProfile,
@@ -218,4 +334,11 @@ export default {
   unsavePlace,
   getMyTrips,
   generateTrip,
+  createTrip,
+  getTripDetail,
+  updateTrip,
+  deleteTrip,
+  addDestination,
+  removeDestination,
+  updatePushToken,
 };

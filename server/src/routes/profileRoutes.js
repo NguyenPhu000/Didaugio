@@ -28,5 +28,13 @@ router.delete("/saved-places/:placeId", authenticate, profileController.unsavePl
 
 router.get("/trips", authenticate, profileController.getMyTrips);
 router.post("/trips/generate", authenticate, profileController.generateTrip);
+router.post("/trips", authenticate, profileController.createTrip);
+router.get("/trips/:id", authenticate, profileController.getTripDetail);
+router.patch("/trips/:id", authenticate, profileController.updateTrip);
+router.delete("/trips/:id", authenticate, profileController.deleteTrip);
+router.post("/trips/:id/destinations", authenticate, profileController.addDestination);
+router.delete("/trips/:id/destinations/:destId", authenticate, profileController.removeDestination);
+
+router.patch("/push-token", authenticate, profileController.updatePushToken);
 
 export default router;

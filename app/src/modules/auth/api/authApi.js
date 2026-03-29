@@ -10,8 +10,13 @@ export const exchangeGoogleCodeApi = (code, redirectUri) =>
 export const loginApi = (email, password) =>
   client.post(ENDPOINTS.auth.login, { email, password });
 
-export const registerApi = (email, password, fullName) =>
-  client.post(ENDPOINTS.auth.register, { email, password, fullName });
+export const registerApi = ({ email, password, confirmPassword, fullName }) =>
+  client.post(ENDPOINTS.auth.register, {
+    email,
+    password,
+    confirmPassword,
+    fullName,
+  });
 
 export const getMeApi = () => client.get(ENDPOINTS.auth.me);
 

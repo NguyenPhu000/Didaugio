@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import Constants from "expo-constants";
 import { useAuthStore } from "../../../stores/authStore";
 import { API_BASE_URL } from "../../../constants/api";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const APP_SCHEME = "didaugio";
+const APP_SCHEME =
+  Constants.expoConfig?.scheme || Constants.expoGoConfig?.scheme || "didaugio";
 
 const decodeUserPayload = (userBase64) => {
   if (!userBase64) return null;

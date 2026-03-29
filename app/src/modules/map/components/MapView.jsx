@@ -1,11 +1,25 @@
-import { forwardRef, useImperativeHandle, useRef } from "react";
-import { StyleSheet, View } from "react-native";
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import { Image as RNImage, Platform, StyleSheet, View } from "react-native";
 import RNMapView, {
-  UrlTile,
   Marker,
   PROVIDER_DEFAULT,
+  UrlTile,
 } from "react-native-maps";
-import { MAP_CONFIGS, MAP_THEME, DEFAULT_MAP_STYLE } from "../config/mapConfig";
+import { MaterialIcons } from "@expo/vector-icons";
+import {
+  CATEGORY_MARKER_STYLES,
+  DEFAULT_CATEGORY_ICON,
+  DEFAULT_MAP_STYLE,
+  MAP_CONFIGS,
+} from "../config/mapConfig";
+import { resolvePlaceImageUri } from "../../../lib/media-url";
 
 const INITIAL_REGION = {
   latitude: MAP_CONFIGS.INITIAL_VIEW.centerCoordinate[1],
@@ -20,25 +34,132 @@ const ZOOM_FACTOR = 0.5;
 const FLY_DURATION = 800;
 const ZOOM_DURATION = 300;
 
+const PIN_SIZE = 42;
+const PIN_SIZE_ACTIVE = 52;
+const STEM_W = 12;
+const STEM_H = 9;
+const PIN_CANVAS_W = PIN_SIZE_ACTIVE + 8;
+const PIN_CANVAS_H = PIN_SIZE_ACTIVE + STEM_H + 6;
+
 const zoomToDelta = (zoom) => (zoom >= 15 ? 0.01 : zoom >= 13 ? 0.03 : 0.08);
 
-const PinDot = ({ isFeatured, isActive }) => (
-  <View
-    style={[
-      styles.pinOuter,
-      isActive && styles.pinOuterActive,
-      isFeatured && styles.pinOuterFeatured,
-    ]}
-  >
-    <View
-      style={[
-        styles.pinInner,
-        isActive && styles.pinInnerActive,
-        isFeatured && styles.pinInnerFeatured,
-      ]}
-    />
-  </View>
-);
+/**
+ * PlacePin — Circular photo marker with stem, matching web style.
+ * Uses React Native Image (not expo-image) so the marker snapshot captures
+ * the image synchronously when tracksViewChanges cycles from true → false.
+ */
+const PlacePin = memo(({ place, imageUri, isActive, onImageLoad }) => {
+  const catCfg =
+    CATEGORY_MARKER_STYLES[place?.categoryId] ?? DEFAULT_CATEGORY_ICON;
+  const catColor = catCfg.color || "#6366f1";
+
+  const borderColor = isActive
+    ? "#3b82f6"
+    : place?.isFeatured
+      ? "#f59e0b"
+      : catColor;
+  const size = isActive ? PIN_SIZE_ACTIVE : PIN_SIZE;
+  const borderW = isActive ? 3 : 2.5;
+  const innerSize = size - borderW * 2;
+  const wrapperStyle = {
+    width: PIN_CANVAS_W,
+    height: PIN_CANVAS_H,
+  };
+  const circleStyle = {
+    width: size,
+    height: size,
+    borderRadius: size / 2,
+    padding: borderW,
+    backgroundColor: borderColor,
+  };
+  const mediaStyle = {
+    width: innerSize,
+    height: innerSize,
+    borderRadius: innerSize / 2,
+    backgroundColor: catCfg.bg || "#eef2ff",
+  };
+
+  return (
+    <View style={[styles.pinWrapper, wrapperStyle]} collapsable={false}>
+      {/*
+       * Border via padding trick — avoids the Android bug:
+       *   elevation + overflow:hidden + borderRadius = half-circle artifact
+       * Solution: outer ring uses backgroundColor=borderColor + padding,
+       * inner image has its own borderRadius. No overflow:hidden, no elevation.
+       */}
+      <View style={[styles.pinBubble, circleStyle]} collapsable={false}>
+        {imageUri ? (
+          <RNImage
+            source={{ uri: imageUri }}
+            style={mediaStyle}
+            resizeMode="cover"
+            onLoad={onImageLoad}
+          />
+        ) : (
+          <View style={[styles.pinFallback, mediaStyle]}>
+            <MaterialIcons
+              name={catCfg.icon || "place"}
+              size={isActive ? 20 : 16}
+              color={catColor}
+            />
+          </View>
+        )}
+      </View>
+
+      <View
+        style={[
+          styles.pinStem,
+          {
+            width: STEM_W,
+            height: STEM_W,
+            backgroundColor: borderColor,
+            bottom: STEM_H - 1,
+          },
+        ]}
+        collapsable={false}
+      />
+    </View>
+  );
+});
+
+/**
+ * PlaceMarker — wraps Marker + PlacePin and manages tracksViewChanges.
+ * Starts tracking, stops after image loads (or if no image, stops immediately).
+ */
+const PlaceMarker = memo(({ place, isActive, onSelectPlace }) => {
+  const [tracked, setTracked] = useState(true);
+
+  const imgUri = resolvePlaceImageUri(place);
+
+  const handleImageLoad = useCallback(() => {
+    setTracked(false);
+  }, []);
+
+  const handlePress = useCallback(() => {
+    onSelectPlace?.(place);
+  }, [onSelectPlace, place]);
+
+  // tracksViewChanges: only true while the pin image is loading, then false.
+  // Do NOT override to always-true on Android — that re-renders every marker
+  // on every frame causing severe lag with many pins.
+  const shouldTrackViewChanges = isActive || tracked;
+
+  return (
+    <Marker
+      coordinate={{ latitude: place.latitude, longitude: place.longitude }}
+      onPress={handlePress}
+      anchor={{ x: 0.5, y: 1 }}
+      tracksViewChanges={shouldTrackViewChanges}
+    >
+      <PlacePin
+        place={place}
+        imageUri={imgUri}
+        isActive={isActive}
+        onImageLoad={imgUri ? handleImageLoad : undefined}
+      />
+    </Marker>
+  );
+});
 
 const MapView = forwardRef(
   (
@@ -47,7 +168,7 @@ const MapView = forwardRef(
       selectedPlaceId = null,
       onSelectPlace,
       style,
-      tileUrl,
+      tileUrls,
       children,
     },
     ref,
@@ -67,20 +188,24 @@ const MapView = forwardRef(
         mapRef.current?.animateToRegion(regionRef.current, FLY_DURATION);
       },
       zoomIn: () => {
-        const r = regionRef.current;
-        const delta = Math.max(r.latitudeDelta * ZOOM_FACTOR, MIN_DELTA);
-        const next = { ...r, latitudeDelta: delta, longitudeDelta: delta };
+        const region = regionRef.current;
+        const delta = Math.max(region.latitudeDelta * ZOOM_FACTOR, MIN_DELTA);
+        const next = { ...region, latitudeDelta: delta, longitudeDelta: delta };
         regionRef.current = next;
         mapRef.current?.animateToRegion(next, ZOOM_DURATION);
       },
       zoomOut: () => {
-        const r = regionRef.current;
-        const delta = Math.min(r.latitudeDelta / ZOOM_FACTOR, MAX_DELTA);
-        const next = { ...r, latitudeDelta: delta, longitudeDelta: delta };
+        const region = regionRef.current;
+        const delta = Math.min(region.latitudeDelta / ZOOM_FACTOR, MAX_DELTA);
+        const next = { ...region, latitudeDelta: delta, longitudeDelta: delta };
         regionRef.current = next;
         mapRef.current?.animateToRegion(next, ZOOM_DURATION);
       },
     }));
+
+    const resolvedTileUrls = tileUrls?.length
+      ? tileUrls
+      : DEFAULT_MAP_STYLE.urls;
 
     return (
       <RNMapView
@@ -102,32 +227,28 @@ const MapView = forwardRef(
           regionRef.current = region;
         }}
       >
-        <UrlTile
-          urlTemplate={tileUrl || DEFAULT_MAP_STYLE.url}
-          maximumZ={19}
-          tileSize={256}
-          flipY={false}
-          shouldReplaceMapContent
-        />
+        {resolvedTileUrls.map((tileUrl) => (
+          <UrlTile
+            key={tileUrl}
+            urlTemplate={tileUrl}
+            maximumZ={19}
+            tileSize={256}
+            flipY={false}
+            shouldReplaceMapContent
+          />
+        ))}
 
         {places.map((place) => {
           if (!place.latitude || !place.longitude) return null;
+          const isActive = place.id === selectedPlaceId;
+
           return (
-            <Marker
+            <PlaceMarker
               key={place.id}
-              coordinate={{
-                latitude: place.latitude,
-                longitude: place.longitude,
-              }}
-              onPress={() => onSelectPlace?.(place)}
-              anchor={{ x: 0.5, y: 0.5 }}
-              tracksViewChanges={false}
-            >
-              <PinDot
-                isFeatured={place.isFeatured}
-                isActive={place.id === selectedPlaceId}
-              />
-            </Marker>
+              place={place}
+              isActive={isActive}
+              onSelectPlace={onSelectPlace}
+            />
           );
         })}
 
@@ -142,37 +263,22 @@ export default MapView;
 
 const styles = StyleSheet.create({
   map: { flex: 1 },
-  pinOuter: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: MAP_THEME.PRIMARY,
+  pinWrapper: {
+    justifyContent: "flex-start",
+    alignItems: "center",
+    backgroundColor: "transparent",
+  },
+  pinBubble: {
+    zIndex: 2,
+  },
+  pinFallback: {
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 4,
   },
-  pinOuterActive: {
-    backgroundColor: MAP_THEME.GOLD,
-    borderColor: MAP_THEME.GOLD,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  pinStem: {
+    position: "absolute",
+    transform: [{ rotate: "45deg" }],
+    borderBottomLeftRadius: 2,
+    zIndex: 1,
   },
-  pinOuterFeatured: {
-    borderColor: MAP_THEME.GOLD,
-    borderWidth: 2.5,
-  },
-  pinInner: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: MAP_THEME.PRIMARY,
-  },
-  pinInnerActive: { backgroundColor: "#fff" },
-  pinInnerFeatured: { backgroundColor: MAP_THEME.GOLD },
 });

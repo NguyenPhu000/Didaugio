@@ -487,15 +487,18 @@ model Place {
 }
 
 model PlaceImage {
-  id         Int      @id @default(autoincrement())
-  placeId    Int      @map("place_id")
-  imageData  String   @map("image_data") @db.Text
-  caption    String?
-  order      Int      @default(0)
-  isCover    Boolean  @default(false) @map("is_cover")
-  uploadedBy Int      @map("uploaded_by")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id           Int      @id @default(autoincrement())
+  placeId      Int      @map("place_id")
+  imageData    String?  @map("image_data") @db.Text
+  publicId     String?  @map("public_id")
+  secureUrl    String?  @map("secure_url")
+  thumbnailUrl String?  @map("thumbnail_url")
+  caption      String?
+  order        Int      @default(0)
+  isCover      Boolean  @default(false) @map("is_cover")
+  uploadedBy   Int      @map("uploaded_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
 

@@ -1,16 +1,17 @@
 import {
   ActivityIndicator,
-  Linking,
   Pressable,
   ScrollView,
   Text,
   View,
+  FlatList,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import {
   usePlaceDetail,
   usePlaceReviews,
@@ -20,11 +21,21 @@ import {
   useUnsavePlace,
 } from "../../src/modules/saved/hooks/useSaved";
 import { useAuthStore } from "../../src/stores/authStore";
-import { Badge } from "../../src/components/ui/Badge";
-import { Button } from "../../src/components/ui/Button";
-import { cn } from "../../src/lib/cn";
+import { useTrips } from "../../src/modules/trips/hooks/useTrips";
+import { useAddDestination } from "../../src/modules/trips/hooks/useTripDetail";
+import { GLASS_THEME, TOKENS } from "../../src/constants/design-tokens";
 
 const DAY_NAMES = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+
+const DETAIL_THEME = {
+  background: "#05070B",
+  card: "#111111",
+  glass: "rgba(255,255,255,0.08)",
+  border: "rgba(255,255,255,0.12)",
+  text: "#FFFFFF",
+  textSecondary: "#A3A3A3",
+  neon: "#00F0FF",
+};
 
 const StarRow = ({ rating, size = 16 }) =>
   [1, 2, 3, 4, 5].map((s) => (
@@ -32,7 +43,7 @@ const StarRow = ({ rating, size = 16 }) =>
       key={s}
       name={s <= Math.round(rating) ? "star" : "star-border"}
       size={size}
-      color="#f59e0b"
+      color="#FCD34D"
     />
   ));
 
@@ -44,36 +55,73 @@ const ReviewCard = ({ review }) => {
   const avatar = review?.user?.profile?.avatar;
 
   return (
-    <View className="border border-gray-100 rounded-2xl p-3 mb-3 gap-2">
-      <View className="flex-row items-center gap-2">
+    <View
+      style={{
+        backgroundColor: DETAIL_THEME.glass,
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: DETAIL_THEME.border,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         <View
-          className="w-9 h-9 rounded-full overflow-hidden items-center justify-center"
-          style={{ backgroundColor: "#e6f3fb" }}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            overflow: "hidden",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0,240,255,0.1)",
+          }}
         >
           {avatar ? (
             <Image
               source={{ uri: avatar }}
-              className="w-9 h-9"
+              style={{ width: 44, height: 44 }}
               contentFit="cover"
             />
           ) : (
-            <Text className="text-[15px] font-bold text-primary">
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "700",
+                color: DETAIL_THEME.neon,
+              }}
+            >
               {author.charAt(0).toUpperCase()}
             </Text>
           )}
         </View>
-        <View className="flex-1">
-          <Text className="text-[13px] font-bold text-ink">{author}</Text>
-          <View className="flex-row gap-px">
-            <StarRow rating={review.rating} size={13} />
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              color: DETAIL_THEME.text,
+              fontSize: 14,
+              fontWeight: "700",
+            }}
+          >
+            {author}
+          </Text>
+          <View style={{ flexDirection: "row", gap: 1, marginTop: 2 }}>
+            <StarRow rating={review.rating} size={12} />
           </View>
         </View>
-        <Text className="text-[11px] text-ink-muted">
+        <Text style={{ color: DETAIL_THEME.textSecondary, fontSize: 11 }}>
           {new Date(review.createdAt).toLocaleDateString("vi-VN")}
         </Text>
       </View>
       {review.content ? (
-        <Text className="text-[13px] text-ink-secondary leading-[19px]">
+        <Text
+          style={{
+            color: DETAIL_THEME.textSecondary,
+            fontSize: 13,
+            lineHeight: 22,
+            marginTop: 12,
+          }}
+        >
           {review.content}
         </Text>
       ) : null}
@@ -84,38 +132,50 @@ const ReviewCard = ({ review }) => {
 const OpeningHours = ({ hours }) => {
   const today = new Date().getDay();
   return (
-    <View className="gap-1.5">
+    <View style={{ gap: 8 }}>
       {DAY_NAMES.map((day, idx) => {
         const dayNumber = idx === 6 ? 0 : idx + 1;
-        const h = hours?.find((h) => h.dayOfWeek === dayNumber);
+        const h = hours?.find((item) => item.dayOfWeek === dayNumber);
         const isToday = today === dayNumber;
         return (
           <View
             key={day}
-            className={cn(
-              "flex-row justify-between px-2 py-1 rounded-lg",
-              isToday && "bg-blue-50",
-            )}
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderRadius: 16,
+              backgroundColor: isToday
+                ? "rgba(0,240,255,0.08)"
+                : DETAIL_THEME.glass,
+              borderWidth: 1,
+              borderColor: isToday
+                ? "rgba(0,240,255,0.25)"
+                : DETAIL_THEME.border,
+            }}
           >
             <Text
-              className={cn(
-                "text-[13px] font-medium text-ink-secondary w-8",
-                isToday && "text-primary font-bold",
-              )}
+              style={{
+                fontSize: 13,
+                fontWeight: isToday ? "700" : "500",
+                color: isToday ? DETAIL_THEME.neon : DETAIL_THEME.textSecondary,
+              }}
             >
               {day}
             </Text>
             <Text
-              className={cn(
-                "text-[13px] text-ink-secondary",
-                isToday && "text-primary font-semibold",
-              )}
+              style={{
+                fontSize: 13,
+                fontWeight: isToday ? "600" : "400",
+                color: isToday ? DETAIL_THEME.neon : DETAIL_THEME.textSecondary,
+              }}
             >
               {h?.isClosed
                 ? "Đóng cửa"
                 : h?.openTime && h?.closeTime
-                  ? `${h.openTime} – ${h.closeTime}`
-                  : "–"}
+                  ? `${h.openTime} - ${h.closeTime}`
+                  : "-"}
             </Text>
           </View>
         );
@@ -124,19 +184,235 @@ const OpeningHours = ({ hours }) => {
   );
 };
 
+const SectionCard = ({ title, children }) => (
+  <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+    <View
+      style={{
+        backgroundColor: DETAIL_THEME.card,
+        borderRadius: 24,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: DETAIL_THEME.border,
+      }}
+    >
+      <Text
+        style={{
+          color: DETAIL_THEME.text,
+          fontSize: 18,
+          fontWeight: "700",
+          marginBottom: 16,
+        }}
+      >
+        {title}
+      </Text>
+      {children}
+    </View>
+  </View>
+);
+
+const TripSelectorSheet = ({ placeId, placeName, onClose }) => {
+  const router = useRouter();
+  const { data: trips = [], isLoading } = useTrips();
+  const [selectedTripId, setSelectedTripId] = useState(null);
+  const addMutation = useAddDestination(selectedTripId);
+
+  const handleSelect = useCallback(
+    async (tripId) => {
+      setSelectedTripId(tripId);
+      try {
+        await addMutation.mutateAsync({
+          placeId: parseInt(placeId),
+          dayNumber: 1,
+          order: 0,
+        });
+        onClose();
+      } catch {
+        setSelectedTripId(null);
+      }
+    },
+    [addMutation, placeId, onClose],
+  );
+
+  return (
+    <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 8 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 16,
+        }}
+      >
+        <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>
+          Thêm vào chuyến đi
+        </Text>
+        <Pressable onPress={onClose} hitSlop={8}>
+          <MaterialIcons
+            name="close"
+            size={22}
+            color={GLASS_THEME.textSecondary}
+          />
+        </Pressable>
+      </View>
+
+      {placeName ? (
+        <Text
+          style={{
+            color: GLASS_THEME.textSecondary,
+            fontSize: 13,
+            marginBottom: 16,
+          }}
+        >
+          "{placeName}"
+        </Text>
+      ) : null}
+
+      {isLoading ? (
+        <ActivityIndicator
+          size="small"
+          color={GLASS_THEME.neon}
+          style={{ marginTop: 20 }}
+        />
+      ) : trips.length === 0 ? (
+        <View style={{ alignItems: "center", paddingVertical: 24, gap: 12 }}>
+          <Text
+            style={{ color: GLASS_THEME.textSecondary, textAlign: "center" }}
+          >
+            Bạn chưa có chuyến đi nào
+          </Text>
+          <Pressable
+            onPress={() => {
+              onClose();
+              router.push("/trip/create");
+            }}
+            style={{
+              backgroundColor: GLASS_THEME.neon,
+              borderRadius: 18,
+              paddingHorizontal: 20,
+              paddingVertical: 10,
+            }}
+          >
+            <Text style={{ color: "#03131A", fontWeight: "800", fontSize: 13 }}>
+              Tạo chuyến đi mới
+            </Text>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <FlatList
+            data={trips}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={({ item }) => {
+              const isAdding =
+                selectedTripId === item.id && addMutation.isPending;
+              return (
+                <Pressable
+                  onPress={() => handleSelect(item.id)}
+                  disabled={addMutation.isPending}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: 14,
+                    borderRadius: 18,
+                    backgroundColor: GLASS_THEME.glass,
+                    borderWidth: 1,
+                    borderColor: GLASS_THEME.glassBorder,
+                    marginBottom: 10,
+                  }}
+                >
+                  <MaterialIcons
+                    name="luggage"
+                    size={20}
+                    color={GLASS_THEME.neon}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{ color: "#fff", fontSize: 14, fontWeight: "600" }}
+                    >
+                      {item.title}
+                    </Text>
+                    <Text
+                      style={{
+                        color: GLASS_THEME.textSecondary,
+                        fontSize: 12,
+                        marginTop: 2,
+                      }}
+                    >
+                      {item.destinations?.length || 0} điểm đến
+                    </Text>
+                  </View>
+                  {isAdding ? (
+                    <ActivityIndicator size="small" color={GLASS_THEME.neon} />
+                  ) : (
+                    <MaterialIcons
+                      name="add-circle-outline"
+                      size={22}
+                      color={GLASS_THEME.neon}
+                    />
+                  )}
+                </Pressable>
+              );
+            }}
+            style={{ maxHeight: 300 }}
+            showsVerticalScrollIndicator={false}
+          />
+          <Pressable
+            onPress={() => {
+              onClose();
+              router.push("/trip/create");
+            }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              padding: 14,
+              borderRadius: 18,
+              borderWidth: 1,
+              borderColor: GLASS_THEME.glassBorderStrong,
+              marginTop: 4,
+            }}
+          >
+            <MaterialIcons
+              name="add"
+              size={18}
+              color={GLASS_THEME.neonAccent}
+            />
+            <Text
+              style={{
+                color: GLASS_THEME.neonAccent,
+                fontSize: 14,
+                fontWeight: "700",
+              }}
+            >
+              Tạo chuyến đi mới
+            </Text>
+          </Pressable>
+        </>
+      )}
+    </View>
+  );
+};
+
 export default function PlaceDetailScreen() {
   const { id } = useLocalSearchParams();
+  const placeId = useMemo(() => {
+    const raw = Array.isArray(id) ? id[0] : id;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }, [id]);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const accessToken = useAuthStore((s) => s.accessToken);
+  const bottomSheetRef = useRef(null);
 
-  const { data: place, isLoading, isError, error } = usePlaceDetail(id);
-  const { data: reviewData } = usePlaceReviews(id, { limit: 5 });
+  const { data: place, isLoading, isError, error } = usePlaceDetail(placeId);
+  const { data: reviewData } = usePlaceReviews(placeId, { limit: 5 });
   const reviews = reviewData?.reviews || [];
 
   const saveMutation = useSavePlace();
   const unsaveMutation = useUnsavePlace();
-
   const [activeImage, setActiveImage] = useState(0);
 
   const handleSaveToggle = () => {
@@ -153,29 +429,85 @@ export default function PlaceDetailScreen() {
 
   const handleNavigate = () => {
     if (place?.latitude && place?.longitude) {
-      const url = `https://maps.google.com/?q=${place.latitude},${place.longitude}`;
-      Linking.openURL(url);
+      router.push({
+        pathname: "/(tabs)/map",
+        params: {
+          focusLat: String(place.latitude),
+          focusLng: String(place.longitude),
+          focusPlaceId: String(place.id || ""),
+        },
+      });
     } else if (place?.address) {
-      const query = encodeURIComponent(`${place.name}, ${place.address}`);
-      Linking.openURL(`https://maps.google.com/?q=${query}`);
+      router.push({
+        pathname: "/(tabs)/map",
+        params: {
+          search: String(place.name || place.address),
+        },
+      });
     }
   };
 
-  const BOTTOM_BAR_H = Math.max(insets.bottom, 16) + 56 + 16;
+  const handleAddToTrip = useCallback(() => {
+    if (!accessToken) {
+      router.push("/(auth)/login");
+      return;
+    }
+    bottomSheetRef.current?.expand();
+  }, [accessToken, router]);
+
+  const handleGetTicket = useCallback(() => {
+    router.push(`/booking/${id}`);
+  }, [id, router]);
+
+  const bottomBarHeight = Math.max(insets.bottom, 18) + 72;
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-surface">
-        <ActivityIndicator size="large" color="#0077b8" />
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: DETAIL_THEME.background,
+        }}
+      >
+        <ActivityIndicator size="large" color={DETAIL_THEME.neon} />
       </View>
     );
   }
 
   if (isError || !place) {
     return (
-      <View className="flex-1 items-center justify-center bg-surface gap-3">
-        <MaterialIcons name="error-outline" size={48} color="#ef4444" />
-        <Text className="text-[15px] text-red-500">
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: DETAIL_THEME.background,
+          gap: 16,
+          paddingHorizontal: 40,
+        }}
+      >
+        <View
+          style={{
+            width: 96,
+            height: 96,
+            borderRadius: 28,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(239,68,68,0.12)",
+          }}
+        >
+          <MaterialIcons name="error-outline" size={42} color="#EF4444" />
+        </View>
+        <Text
+          style={{
+            color: "#fff",
+            fontSize: 20,
+            fontWeight: "700",
+            textAlign: "center",
+          }}
+        >
           {error?.message || "Không tìm thấy địa điểm"}
         </Text>
       </View>
@@ -183,268 +515,482 @@ export default function PlaceDetailScreen() {
   }
 
   const images = place?.images || [];
-  const currentImage = images[activeImage]?.imageData;
+  const currentImage =
+    images[activeImage]?.secureUrl ||
+    images[activeImage]?.imageData ||
+    place?.thumbnail;
   const rating = Number(place?.ratingAvg || place?.averageRating || 0);
 
   return (
-    <View className="flex-1 bg-surface">
-      {/* ── Hero image ── */}
-      <View className="relative">
+    <View style={{ flex: 1, backgroundColor: DETAIL_THEME.background }}>
+      <View style={{ position: "relative" }}>
         {currentImage ? (
           <Image
             source={{ uri: currentImage }}
-            className="w-full h-[280px]"
+            style={{ width: "100%", height: 340 }}
             contentFit="cover"
-            transition={300}
+            transition={240}
           />
         ) : (
-          <View className="w-full h-[280px] bg-gray-100 items-center justify-center">
-            <MaterialIcons name="place" size={64} color="#9ca3af" />
+          <View
+            style={{
+              width: "100%",
+              height: 340,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: DETAIL_THEME.glass,
+            }}
+          >
+            <MaterialIcons name="place" size={64} color={DETAIL_THEME.neon} />
           </View>
         )}
 
-        {/* gradient overlay */}
         <View
-          className="absolute bottom-0 left-0 right-0 h-20"
           style={{
-            background: "transparent",
-            backgroundColor: "rgba(0,0,0,0.12)",
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 144,
+            backgroundColor: "rgba(5,7,11,0.72)",
           }}
           pointerEvents="none"
         />
 
-        {/* Back button */}
         <Pressable
           onPress={() => router.back()}
-          className="absolute left-4 w-10 h-10 rounded-full items-center justify-center"
-          style={{ top: 12 + insets.top, backgroundColor: "rgba(0,0,0,0.4)" }}
+          style={{
+            position: "absolute",
+            left: 16,
+            top: insets.top + 10,
+            width: 44,
+            height: 44,
+            borderRadius: 14,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.4)",
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.3)",
+          }}
         >
           <MaterialIcons name="arrow-back" size={22} color="#fff" />
         </Pressable>
 
-        {/* Save button */}
         <Pressable
           onPress={handleSaveToggle}
-          className="absolute right-4 w-10 h-10 rounded-full items-center justify-center"
-          style={{ top: 12 + insets.top, backgroundColor: "rgba(0,0,0,0.4)" }}
+          style={{
+            position: "absolute",
+            right: 16,
+            top: insets.top + 10,
+            width: 44,
+            height: 44,
+            borderRadius: 14,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: place?.isSaved
+              ? "rgba(0,240,255,0.2)"
+              : "rgba(0,0,0,0.4)",
+            borderWidth: 1,
+            borderColor: place?.isSaved
+              ? "rgba(0,240,255,0.5)"
+              : "rgba(255,255,255,0.3)",
+          }}
         >
           <MaterialIcons
             name={place?.isSaved ? "bookmark" : "bookmark-border"}
             size={22}
-            color={place?.isSaved ? "#f59e0b" : "#fff"}
+            color={place?.isSaved ? DETAIL_THEME.neon : "#fff"}
           />
         </Pressable>
 
-        {/* Image thumbs */}
-        {images.length > 1 && (
+        {images.length > 1 ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16, gap: 6 }}
-            className="absolute bottom-2.5 left-0 right-0"
+            contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+            style={{ position: "absolute", bottom: 12, left: 0, right: 0 }}
           >
-            {images.map((img, i) => (
-              <Pressable key={img.id} onPress={() => setActiveImage(i)}>
+            {images.map((img, index) => (
+              <Pressable
+                key={img.id || index}
+                onPress={() => setActiveImage(index)}
+              >
                 <Image
-                  source={{ uri: img.imageData }}
+                  source={{ uri: img.secureUrl || img.imageData }}
                   contentFit="cover"
-                  className="w-[52px] h-10 rounded-lg"
                   style={{
+                    width: 60,
+                    height: 48,
+                    borderRadius: 12,
                     borderWidth: 2,
-                    borderColor: i === activeImage ? "#fff" : "transparent",
+                    borderColor:
+                      index === activeImage ? DETAIL_THEME.neon : "transparent",
                   }}
                 />
               </Pressable>
             ))}
           </ScrollView>
-        )}
+        ) : null}
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: BOTTOM_BAR_H + 8 }}
+        contentContainerStyle={{ paddingBottom: bottomBarHeight + 20 }}
       >
-        {/* ── Name & meta ── */}
-        <View className="bg-white px-5 pt-5 pb-4 border-b border-gray-100">
-          {place?.category?.name && (
-            <Badge
-              variant="primary"
-              style={{ marginBottom: 8, alignSelf: "flex-start" }}
-            >
-              {place.category.name}
-            </Badge>
-          )}
-          <Text
-            className="text-[22px] font-extrabold text-ink mb-2"
-            style={{ letterSpacing: -0.3 }}
+        <View style={{ paddingHorizontal: 16, marginTop: -48 }}>
+          <View
+            style={{
+              backgroundColor: DETAIL_THEME.card,
+              borderRadius: 28,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: DETAIL_THEME.border,
+            }}
           >
-            {place?.name}
-          </Text>
-
-          <View className="flex-row items-center gap-1 mb-3">
-            <View className="flex-row gap-px">
-              <StarRow rating={rating} />
-            </View>
-            <Text className="text-[14px] font-bold text-ink ml-1">
-              {rating.toFixed(1)}
-            </Text>
-            {place?._count?.reviews > 0 && (
-              <Text className="text-[12px] text-ink-secondary">
-                ({place._count.reviews} đánh giá)
-              </Text>
-            )}
-          </View>
-
-          {place?.address && (
-            <View className="flex-row items-start gap-1.5 mb-1.5">
-              <MaterialIcons
-                name="place"
-                size={16}
-                color="#0077b8"
-                style={{ marginTop: 1 }}
-              />
-              <Text className="text-[13px] text-ink-secondary flex-1 leading-[18px]">
-                {place.address}
-                {place?.ward?.name ? `, ${place.ward.name}` : ""}
-                {place?.district?.name ? `, ${place.district.name}` : ""}
-              </Text>
-            </View>
-          )}
-          {place?.phone && (
-            <View className="flex-row items-center gap-1.5 mb-1.5">
-              <MaterialIcons name="phone" size={16} color="#0077b8" />
-              <Text className="text-[13px] text-ink-secondary">
-                {place.phone}
-              </Text>
-            </View>
-          )}
-          {place?.website && (
-            <View className="flex-row items-center gap-1.5 mb-1.5">
-              <MaterialIcons name="link" size={16} color="#0077b8" />
-              <Text
-                className="text-[13px] text-primary flex-1"
-                numberOfLines={1}
+            {place?.category?.name ? (
+              <View
+                style={{
+                  alignSelf: "flex-start",
+                  backgroundColor: "rgba(0,240,255,0.12)",
+                  borderRadius: 999,
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  marginBottom: 12,
+                  borderWidth: 1,
+                  borderColor: "rgba(0,240,255,0.25)",
+                }}
               >
-                {place.website}
+                <Text
+                  style={{
+                    color: DETAIL_THEME.neon,
+                    fontSize: 12,
+                    fontWeight: "700",
+                  }}
+                >
+                  {place.category.name}
+                </Text>
+              </View>
+            ) : null}
+
+            <Text
+              style={{
+                color: DETAIL_THEME.text,
+                fontSize: 26,
+                fontWeight: "800",
+                letterSpacing: -0.8,
+              }}
+            >
+              {place?.name}
+            </Text>
+
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                marginTop: 12,
+              }}
+            >
+              <View style={{ flexDirection: "row", gap: 1 }}>
+                <StarRow rating={rating} />
+              </View>
+              <Text
+                style={{
+                  color: DETAIL_THEME.text,
+                  fontSize: 15,
+                  fontWeight: "700",
+                }}
+              >
+                {rating.toFixed(1)}
               </Text>
+              {place?._count?.reviews > 0 ? (
+                <Text
+                  style={{ color: DETAIL_THEME.textSecondary, fontSize: 13 }}
+                >
+                  ({place._count.reviews} đánh giá)
+                </Text>
+              ) : null}
             </View>
-          )}
-          {place?.priceRange && (
-            <View className="flex-row items-center gap-1.5">
-              <MaterialIcons name="attach-money" size={16} color="#0077b8" />
-              <Text className="text-[13px] text-ink-secondary">
-                {place.priceRange}
-              </Text>
+
+            <View style={{ gap: 10, marginTop: 16 }}>
+              {place?.address ? (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    gap: 8,
+                  }}
+                >
+                  <MaterialIcons
+                    name="place"
+                    size={16}
+                    color={DETAIL_THEME.neon}
+                  />
+                  <Text
+                    style={{
+                      flex: 1,
+                      color: DETAIL_THEME.textSecondary,
+                      fontSize: 13,
+                      lineHeight: 20,
+                    }}
+                  >
+                    {place.address}
+                    {place?.ward?.name ? `, ${place.ward.name}` : ""}
+                    {place?.district?.name ? `, ${place.district.name}` : ""}
+                  </Text>
+                </View>
+              ) : null}
+
+              {place?.phone ? (
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                >
+                  <MaterialIcons
+                    name="phone"
+                    size={16}
+                    color={DETAIL_THEME.neon}
+                  />
+                  <Text
+                    style={{ color: DETAIL_THEME.textSecondary, fontSize: 13 }}
+                  >
+                    {place.phone}
+                  </Text>
+                </View>
+              ) : null}
+
+              {place?.website ? (
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                >
+                  <MaterialIcons
+                    name="link"
+                    size={16}
+                    color={DETAIL_THEME.neon}
+                  />
+                  <Text
+                    style={{ color: DETAIL_THEME.neon, fontSize: 13, flex: 1 }}
+                    numberOfLines={1}
+                  >
+                    {place.website}
+                  </Text>
+                </View>
+              ) : null}
             </View>
-          )}
+          </View>
         </View>
 
-        {/* ── Description ── */}
-        {place?.description && (
-          <View className="bg-white px-5 py-5 mt-2 border-y border-gray-100">
-            <Text
-              className="text-[16px] font-extrabold text-ink mb-3"
-              style={{ letterSpacing: -0.2 }}
-            >
-              Giới thiệu
-            </Text>
-            <Text className="text-[14px] text-ink-secondary leading-[22px]">
-              {place.description}
-            </Text>
-          </View>
-        )}
-
-        {/* ── Opening hours ── */}
-        {place?.openingHours?.length > 0 && (
-          <View className="bg-white px-5 py-5 mt-2 border-y border-gray-100">
-            <Text
-              className="text-[16px] font-extrabold text-ink mb-3"
-              style={{ letterSpacing: -0.2 }}
-            >
-              Giờ mở cửa
-            </Text>
-            <OpeningHours hours={place.openingHours} />
-          </View>
-        )}
-
-        {/* ── Reviews ── */}
-        <View className="bg-white px-5 py-5 mt-2 border-y border-gray-100">
-          <View className="flex-row justify-between items-center mb-3">
-            <Text
-              className="text-[16px] font-extrabold text-ink"
-              style={{ letterSpacing: -0.2 }}
-            >
-              Đánh giá
-            </Text>
-            {reviews.length > 0 && (
-              <Text className="text-[12px] text-ink-secondary">
-                {reviews.length} nhận xét
-              </Text>
-            )}
-          </View>
-
-          {reviews.length === 0 ? (
-            <Text className="text-[13px] text-ink-muted text-center py-4">
-              Chưa có đánh giá nào
-            </Text>
-          ) : (
-            reviews.map((r) => <ReviewCard key={r.id} review={r} />)
-          )}
-
-          {accessToken && (
-            <Button
-              variant="secondary"
-              size="sm"
-              style={{ marginTop: 12 }}
-              onPress={() => {}}
-            >
-              Viết đánh giá
-            </Button>
-          )}
-        </View>
-      </ScrollView>
-
-      {/* ── Bottom CTA — Chỉ đường ── */}
-      <View
-        className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 flex-row gap-3"
-        style={{
-          paddingBottom: Math.max(insets.bottom, 16),
-          paddingTop: 12,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 8,
-        }}
-      >
-        {/* Save shortcut */}
-        <Pressable
-          onPress={handleSaveToggle}
-          className="w-14 h-14 rounded-2xl items-center justify-center border border-gray-200 bg-surface"
-        >
-          <MaterialIcons
-            name={place?.isSaved ? "bookmark" : "bookmark-border"}
-            size={22}
-            color={place?.isSaved ? "#f59e0b" : "#6b7280"}
-          />
-        </Pressable>
-
-        {/* Navigate CTA */}
-        <Pressable
-          onPress={handleNavigate}
-          className="flex-1 h-14 rounded-2xl bg-primary flex-row items-center justify-center gap-2"
+        <View
           style={{
-            shadowColor: "#0077b8",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 4,
+            flexDirection: "row",
+            gap: 10,
+            paddingHorizontal: 16,
+            marginTop: 14,
           }}
         >
-          <MaterialIcons name="directions" size={22} color="#fff" />
-          <Text className="text-[16px] font-bold text-white">Chỉ đường</Text>
-        </Pressable>
+          <Pressable
+            onPress={handleAddToTrip}
+            style={{
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
+              paddingVertical: 14,
+              borderRadius: 18,
+              backgroundColor: DETAIL_THEME.glass,
+              borderWidth: 1,
+              borderColor: DETAIL_THEME.border,
+            }}
+          >
+            <MaterialIcons name="playlist-add" size={18} color="#fff" />
+            <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>
+              Thêm vào trip
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={handleGetTicket}
+            style={{
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
+              paddingVertical: 14,
+              borderRadius: 18,
+              backgroundColor: DETAIL_THEME.neon,
+              shadowColor: DETAIL_THEME.neon,
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.35,
+              shadowRadius: 16,
+              elevation: 10,
+            }}
+          >
+            <MaterialIcons
+              name="confirmation-number"
+              size={18}
+              color="#03131A"
+            />
+            <Text style={{ color: "#03131A", fontSize: 13, fontWeight: "800" }}>
+              Đặt vé
+            </Text>
+          </Pressable>
+        </View>
+
+        {place?.description ? (
+          <SectionCard title="Giới thiệu">
+            <Text
+              style={{
+                color: DETAIL_THEME.textSecondary,
+                fontSize: 14,
+                lineHeight: 26,
+              }}
+            >
+              {place.description}
+            </Text>
+          </SectionCard>
+        ) : null}
+
+        {place?.openingHours?.length > 0 ? (
+          <SectionCard title="Giờ mở cửa">
+            <OpeningHours hours={place.openingHours} />
+          </SectionCard>
+        ) : null}
+
+        <SectionCard title="Đánh giá">
+          <View style={{ marginBottom: 4 }}>
+            {reviews.length === 0 ? (
+              <Text
+                style={{
+                  color: DETAIL_THEME.textSecondary,
+                  fontSize: 13,
+                  textAlign: "center",
+                  paddingVertical: 20,
+                }}
+              >
+                Chưa có đánh giá nào
+              </Text>
+            ) : (
+              reviews.map((review) => (
+                <ReviewCard key={review.id} review={review} />
+              ))
+            )}
+            {accessToken ? (
+              <Pressable
+                style={{
+                  marginTop: 8,
+                  paddingVertical: 12,
+                  borderRadius: 16,
+                  backgroundColor: DETAIL_THEME.glass,
+                  alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: DETAIL_THEME.border,
+                }}
+                onPress={() => {}}
+              >
+                <Text
+                  style={{
+                    color: DETAIL_THEME.textSecondary,
+                    fontSize: 13,
+                    fontWeight: "600",
+                  }}
+                >
+                  Viết đánh giá
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </SectionCard>
+      </ScrollView>
+
+      <View
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: Math.max(insets.bottom, 16),
+          backgroundColor: "rgba(5,7,11,0.92)",
+          borderTopWidth: 1,
+          borderTopColor: DETAIL_THEME.border,
+        }}
+      >
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <Pressable
+            onPress={handleSaveToggle}
+            style={{
+              width: 54,
+              height: 54,
+              borderRadius: 18,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: DETAIL_THEME.glass,
+              borderWidth: 1,
+              borderColor: DETAIL_THEME.border,
+            }}
+          >
+            <MaterialIcons
+              name={place?.isSaved ? "bookmark" : "bookmark-border"}
+              size={22}
+              color={
+                place?.isSaved ? DETAIL_THEME.neon : DETAIL_THEME.textSecondary
+              }
+            />
+          </Pressable>
+
+          <Pressable
+            onPress={handleNavigate}
+            style={{
+              flex: 1,
+              height: 54,
+              borderRadius: 18,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              backgroundColor: DETAIL_THEME.neon,
+              shadowColor: DETAIL_THEME.neon,
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.3,
+              shadowRadius: 16,
+              elevation: 8,
+            }}
+          >
+            <MaterialIcons name="directions" size={20} color="#03131A" />
+            <Text style={{ color: "#03131A", fontSize: 15, fontWeight: "800" }}>
+              Chỉ đường
+            </Text>
+          </Pressable>
+        </View>
       </View>
+
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={["55%", "80%"]}
+        enablePanDownToClose
+        backgroundStyle={{
+          backgroundColor: "#0D1117",
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+          borderWidth: 1,
+          borderColor: GLASS_THEME.glassBorder,
+        }}
+        handleIndicatorStyle={{
+          backgroundColor: "rgba(255,255,255,0.3)",
+          width: 36,
+        }}
+      >
+        <BottomSheetView style={{ flex: 1 }}>
+          <TripSelectorSheet
+            placeId={id}
+            placeName={place?.name}
+            onClose={() => bottomSheetRef.current?.close()}
+          />
+        </BottomSheetView>
+      </BottomSheet>
     </View>
   );
 }

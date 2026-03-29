@@ -25,6 +25,22 @@ export const ENDPOINTS = {
     savedPlaceById: (placeId) => `/profile/saved-places/${placeId}`,
     trips: "/profile/trips",
     generateTrip: "/profile/trips/generate",
+    createTrip: "/profile/trips",
+    tripDetail: (id) => `/profile/trips/${id}`,
+    updateTrip: (id) => `/profile/trips/${id}`,
+    deleteTrip: (id) => `/profile/trips/${id}`,
+    addDestination: (tripId) => `/profile/trips/${tripId}/destinations`,
+    removeDestination: (tripId, destId) => `/profile/trips/${tripId}/destinations/${destId}`,
+    pushToken: "/profile/push-token",
+  },
+  booking: {
+    create: "/business/bookings",
+    list: "/business/bookings",
+    detail: (id) => `/business/bookings/${id}`,
+  },
+  ai: {
+    placeSummary: "/ai/place-summary",
+    chat: "/ai/chat",
   },
   boundaries: {
     districts: "/boundaries/districts",
