@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
 import Eye from "lucide-react/dist/esm/icons/eye";
@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui";
 import auditLogService from "@/apis/auditLogService";
-import { formatDate, formatDateTime } from "@/utils/dateUtils";
+import { formatDateTime } from "@/utils/dateUtils";
 import TimStatsCard from "@/components/admin/TimStatsCard";
 
 const AuditLogsPage = () => {
@@ -43,7 +43,7 @@ const AuditLogsPage = () => {
   const itemsPerPage = 10;
 
   // Fetch logs
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -77,11 +77,11 @@ const AuditLogsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, actionFilter, tableFilter]);
 
   useEffect(() => {
     fetchLogs();
-  }, [currentPage, actionFilter, tableFilter]);
+  }, [fetchLogs]);
 
   // View detail
   const handleViewDetail = async (log) => {
@@ -214,99 +214,115 @@ const AuditLogsPage = () => {
 
         {/* Data Table */}
         <div className="bg-white border border-black shadow-sm overflow-hidden">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
-              <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
-              <span className="font-mono text-xs uppercase text-gray-500">
-                LOADING DATA...
-              </span>
-            </div>
-          ) : logs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <FileText className="h-12 w-12 text-gray-300 mb-4" />
-              <div className="font-bold uppercase text-gray-400">
-                KHÔNG TÌM THẤY DỮ LIỆU
-              </div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-black text-white tim-table-header">
-                    <th className="p-4 border-r border-black/20 w-[60px]">
-                      ID
-                    </th>
-                    <th className="p-4 border-r border-black/20">USER</th>
-                    <th className="p-4 border-r border-black/20">HÀNH ĐỘNG</th>
-                    <th className="p-4 border-r border-black/20">BẢNG</th>
-                    <th className="p-4 border-r border-black/20">RECORD ID</th>
-                    <th className="p-4 border-r border-black/20">MÔ TẢ</th>
-                    <th className="p-4 border-r border-black/20">THỜI GIAN</th>
-                    <th className="p-4 text-center">CHI TIẾT</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5">
-                  {logs.map((log) => (
-                    <tr
-                      key={log.id}
-                      className="hover:bg-yellow-50 group transition-colors"
-                    >
-                      <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
-                        #{log.id}
-                      </td>
-                      <td className="p-4 border-r border-black/5">
-                        <div>
-                          <div className="font-bold uppercase text-sm">
-                            {log.user?.profile?.fullName || "N/A"}
-                          </div>
-                          <div className="text-gray-500 text-xs font-mono">
-                            {log.user?.email || "N/A"}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-4 border-r border-black/5">
-                        <span
-                          className={`px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${getActionColor(log.action)}`}
-                        >
-                          {log.action}
-                        </span>
-                      </td>
-                      <td className="p-4 border-r border-black/5">
-                        <span className="font-mono text-sm font-medium">
-                          {log.tableName}
-                        </span>
-                      </td>
-                      <td className="p-4 border-r border-black/5">
-                        <span className="font-mono text-sm text-gray-600">
-                          {log.recordId}
-                        </span>
-                      </td>
-                      <td className="p-4 border-r border-black/5">
-                        <span className="text-sm text-gray-600">
-                          {log.description || "—"}
-                        </span>
-                      </td>
-                      <td className="p-4 border-r border-black/5">
-                        <span className="font-mono text-sm text-gray-500">
-                          {formatDateTime(log.createdAt)}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleViewDetail(log)}
-                          className="rounded-none border border-transparent hover:border-black hover:bg-white h-8"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </td>
+          {(() => {
+            if (loading) {
+              return (
+                <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
+                  <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
+                  <span className="font-mono text-xs uppercase text-gray-500">
+                    LOADING DATA...
+                  </span>
+                </div>
+              );
+            }
+
+            if (logs.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <FileText className="h-12 w-12 text-gray-300 mb-4" />
+                  <div className="font-bold uppercase text-gray-400">
+                    KHÔNG TÌM THẤY DỮ LIỆU
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-black text-white tim-table-header">
+                      <th className="p-4 border-r border-black/20 w-[60px]">
+                        ID
+                      </th>
+                      <th className="p-4 border-r border-black/20">USER</th>
+                      <th className="p-4 border-r border-black/20">
+                        HÀNH ĐỘNG
+                      </th>
+                      <th className="p-4 border-r border-black/20">BẢNG</th>
+                      <th className="p-4 border-r border-black/20">
+                        RECORD ID
+                      </th>
+                      <th className="p-4 border-r border-black/20">MÔ TẢ</th>
+                      <th className="p-4 border-r border-black/20">
+                        THỜI GIAN
+                      </th>
+                      <th className="p-4 text-center">CHI TIẾT</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody className="divide-y divide-black/5">
+                    {logs.map((log) => (
+                      <tr
+                        key={log.id}
+                        className="hover:bg-yellow-50 group transition-colors"
+                      >
+                        <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
+                          #{log.id}
+                        </td>
+                        <td className="p-4 border-r border-black/5">
+                          <div>
+                            <div className="font-bold uppercase text-sm">
+                              {log.user?.profile?.fullName || "N/A"}
+                            </div>
+                            <div className="text-gray-500 text-xs font-mono">
+                              {log.user?.email || "N/A"}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4 border-r border-black/5">
+                          <span
+                            className={`px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${getActionColor(log.action)}`}
+                          >
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="p-4 border-r border-black/5">
+                          <span className="font-mono text-sm font-medium">
+                            {log.tableName}
+                          </span>
+                        </td>
+                        <td className="p-4 border-r border-black/5">
+                          <span className="font-mono text-sm text-gray-600">
+                            {log.recordId}
+                          </span>
+                        </td>
+                        <td className="p-4 border-r border-black/5">
+                          <span className="text-sm text-gray-600">
+                            {log.description || "—"}
+                          </span>
+                        </td>
+                        <td className="p-4 border-r border-black/5">
+                          <span className="font-mono text-sm text-gray-500">
+                            {formatDateTime(log.createdAt)}
+                          </span>
+                        </td>
+                        <td className="p-4 text-center">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleViewDetail(log)}
+                            className="rounded-none border border-transparent hover:border-black hover:bg-white h-8"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
 
           {/* Pagination */}
           {totalPages > 1 && (

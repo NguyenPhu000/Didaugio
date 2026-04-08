@@ -41,6 +41,12 @@ export default function PermissionManagePage() {
     totalModules: 0,
   });
 
+  const getPermissionActionClass = (action) => {
+    if (action === "view") return "bg-[#F3E600] text-black";
+    if (action === "delete") return "bg-red-500 text-white";
+    return "bg-black text-white";
+  };
+
   const fetchPermissions = async () => {
     try {
       setLoading(true);
@@ -279,11 +285,7 @@ export default function PermissionManagePage() {
                           <span
                             className={cn(
                               "text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider font-mono",
-                              permission.action === "view"
-                                ? "bg-[#F3E600] text-black"
-                                : permission.action === "delete"
-                                  ? "bg-red-500 text-white"
-                                  : "bg-black text-white",
+                              getPermissionActionClass(permission.action),
                             )}
                           >
                             {permission.action}

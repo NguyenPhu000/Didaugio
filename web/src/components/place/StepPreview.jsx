@@ -67,8 +67,7 @@ const StepPreview = ({ isEditMode }) => {
     if (tags.length === 0) {
       fetchTags();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tags.length, fetchTags]);
 
   const category = categories.find((cat) => cat.id === wizardData.categoryId);
 
@@ -84,10 +83,9 @@ const StepPreview = ({ isEditMode }) => {
         amenities: wizardData.amenities || [],
       };
 
-      let result;
       if (isEditMode) {
         // Update existing place
-        let updateId = wizardData.id;
+        const updateId = wizardData.id;
 
         if (!updateId) {
           console.error("Missing ID in wizardData", wizardData);
@@ -99,14 +97,14 @@ const StepPreview = ({ isEditMode }) => {
           return;
         }
 
-        result = await updatePlace(updateId, placeData);
+        await updatePlace(updateId, placeData);
         toast({
           title: "Thành công",
           description: "Cập nhật địa điểm thành công",
         });
       } else {
         // Create new place
-        result = await createPlace(placeData);
+        await createPlace(placeData);
         toast({
           title: "Thành công",
           description: "Tạo địa điểm mới thành công",

@@ -7,6 +7,9 @@ export const loginGoogleApi = (idToken) =>
 export const exchangeGoogleCodeApi = (code, redirectUri) =>
   client.post(ENDPOINTS.auth.exchangeGoogleCode, { code, redirectUri });
 
+export const exchangeGoogleResultApi = (authCode) =>
+  client.post(ENDPOINTS.auth.exchangeGoogleResult, { authCode });
+
 export const loginApi = (email, password) =>
   client.post(ENDPOINTS.auth.login, { email, password });
 

@@ -1,12 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
-  Dimensions,
-  Image,
   Keyboard,
   Modal,
-  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +10,10 @@ import {
   Text,
   TextInput,
   View,
+  LayoutAnimation,
+  Platform,
+  UIManager,
+  useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,6 +24,12 @@ import { useHomeData } from "./hooks/useHomeData";
 import { useMapPlaces } from "./hooks/useMapPlaces";
 import { useBoundaryData } from "./hooks/useBoundaryData";
 import MapView from "./components/MapView";
+import { AIEntryButton } from "../../components/composed/AIEntryButton";
+import {
+  PlacePreviewCard,
+  getPlaceRatingValue,
+  getPlaceReviewCount,
+} from "../../components/composed/PlacePreviewCard";
 import { DistrictLayer, WardLayer } from "./components/BoundaryLayer";
 import {
   CATEGORY_MARKER_STYLES,
@@ -32,50 +38,127 @@ import {
   MAP_STYLES,
   DEFAULT_MAP_STYLE,
 } from "./config/mapConfig";
-import { COLORS } from "../../constants/colors";
-import { usePlaceDetail } from "../place/hooks/usePlaceDetail";
+import { TOKENS } from "../../constants/design-tokens";
 import { FLOATING_TAB_CLEARANCE } from "../../../app/(tabs)/_layout";
 
-const SCREEN_HEIGHT = Dimensions.get("window").height;
-const SHEET_SNAP_MINI = 330;
-const SHEET_TOP_RESTING_GAP = 176;
-const SHEET_HEADER_GESTURE_HEIGHT = 108;
+const isNewArchitectureEnabled = global?.nativeFabricUIManager != null;
+
+if (Platform.OS === "android" && !isNewArchitectureEnabled) {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+}
 
 const MAP_UI_THEME = {
-  background: "#05070B",
-  backgroundElevated: "#111111",
+  background: TOKENS.color.neutral[900],
+  backgroundElevated: TOKENS.color.neutral[800],
   backgroundSoft: "rgba(255,255,255,0.08)",
   border: "rgba(255,255,255,0.12)",
-  text: "#FFFFFF",
-  textSecondary: "#A3A3A3",
-  neon: "#00F0FF",
+  text: TOKENS.color.neutral[100],
+  textSecondary: TOKENS.color.neutral[400],
+  primary: TOKENS.color.primary[500],
+  neon: TOKENS.color.primary[400],
   whitePill: "rgba(255,255,255,0.94)",
   whitePillBorder: "rgba(255,255,255,0.18)",
-  mapOverlay: "rgba(4,6,12,0.18)",
   heroGradient: "rgba(0,0,0,0.72)",
 };
 
-const PRICE_LABELS = {
-  FREE: { label: "Miễn phí", color: COLORS.success },
-  BUDGET: { label: "Bình dân", color: COLORS.info },
-  MODERATE: { label: "Trung bình", color: COLORS.warning },
-  EXPENSIVE: { label: "Cao cấp", color: "#f97316" },
-  LUXURY: { label: "Sang trọng", color: "#8b5cf6" },
+const MAP_CANVAS_STYLE = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
 };
 
 const NAV_MENU_ITEMS = [
   { key: "map", label: "Bản đồ", icon: "map", route: "/(tabs)/map" },
+  {
+    key: "ai",
+    label: "AI",
+    icon: "auto-awesome",
+    route: "/(tabs)/ai",
+  },
+  { key: "trips", label: "Chuyến đi", icon: "luggage", route: "/(tabs)/trips" },
   {
     key: "explore",
     label: "Khám phá",
     icon: "explore",
     route: "/(tabs)/explore",
   },
-  { key: "trips", label: "Chuyến đi", icon: "luggage", route: "/(tabs)/trips" },
-  { key: "ai", label: "AI", icon: "auto-awesome", route: "/(tabs)/ai" },
   { key: "saved", label: "Đã lưu", icon: "bookmark", route: "/(tabs)/saved" },
   { key: "profile", label: "Hồ sơ", icon: "person", route: "/(tabs)/profile" },
 ];
+
+const QUICK_FILTER_OPTIONS = [
+  {
+    key: "topRated",
+    label: "Đánh giá cao",
+    icon: "star",
+  },
+  {
+    key: "trending",
+    label: "Trending",
+    icon: "local-fire-department",
+  },
+  {
+    key: "budget",
+    label: "Giá rẻ",
+    icon: "savings",
+  },
+  {
+    key: "premium",
+    label: "Cao cấp",
+    icon: "workspace-premium",
+  },
+  {
+    key: "openNow",
+    label: "Mở cửa gần nhất",
+    icon: "schedule",
+  },
+];
+
+const BUDGET_PRICE_RANGES = new Set(["FREE", "BUDGET", "MODERATE"]);
+const PREMIUM_PRICE_RANGES = new Set(["EXPENSIVE", "LUXURY"]);
+
+const parseTimeToMinutes = (timeText) => {
+  if (typeof timeText !== "string") return null;
+  const [hourText, minuteText] = timeText.split(":");
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  return hour * 60 + minute;
+};
+
+const isPlaceOpenNow = (place) => {
+  const openingHours = Array.isArray(place?.openingHours)
+    ? place.openingHours
+    : [];
+
+  // API chưa trả openingHours thì không loại bỏ marker hiện có.
+  if (openingHours.length === 0) return true;
+
+  const now = new Date();
+  const currentDay = now.getDay();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentSchedule = openingHours.find(
+    (item) => Number(item?.dayOfWeek) === currentDay,
+  );
+
+  if (!currentSchedule) return true;
+  if (currentSchedule?.isClosed) return false;
+
+  const openMinutes = parseTimeToMinutes(currentSchedule?.openTime);
+  const closeMinutes = parseTimeToMinutes(currentSchedule?.closeTime);
+
+  if (openMinutes == null || closeMinutes == null) return true;
+
+  if (closeMinutes >= openMinutes) {
+    return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+  }
+
+  // Trường hợp qua đêm: ví dụ 22:00 → 02:00.
+  return currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
+};
 
 const GlassPanel = ({ style, children, intensity = 40 }) => (
   <BlurView
@@ -134,397 +217,39 @@ const CategoryChip = memo(({ category, active, onToggle }) => {
   );
 });
 
-const InfoChip = ({ icon, label, tone = "dark" }) => (
-  <View
-    className="flex-row items-center gap-1 rounded-full px-3 py-1.5"
-    style={{
-      backgroundColor:
-        tone === "light" ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.08)",
-      borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.08)",
-    }}
-  >
-    <MaterialIcons
-      name={icon}
-      size={12}
-      color={tone === "light" ? MAP_UI_THEME.text : MAP_UI_THEME.textSecondary}
-    />
-    <Text
-      className="text-[11px] font-semibold uppercase"
-      style={{
-        color:
-          tone === "light" ? MAP_UI_THEME.text : MAP_UI_THEME.textSecondary,
-        letterSpacing: 0.6,
-      }}
-    >
-      {label}
-    </Text>
-  </View>
-);
-
-const SheetAction = ({ label, primary = false, onPress, icon }) => (
-  <Pressable
-    onPress={onPress}
-    className="flex-1 rounded-full flex-row items-center justify-center gap-2 py-3"
-    style={{
-      backgroundColor: primary
-        ? "rgba(255,255,255,0.1)"
-        : "rgba(255,255,255,0.06)",
-      borderWidth: 1,
-      borderColor: primary ? "rgba(0,240,255,0.24)" : "rgba(255,255,255,0.08)",
-    }}
-  >
-    <MaterialIcons
-      name={icon}
-      size={16}
-      color={primary ? MAP_UI_THEME.neon : MAP_UI_THEME.textSecondary}
-    />
-    <Text
-      className="text-[13px] font-semibold"
-      style={{
-        color: primary ? MAP_UI_THEME.text : MAP_UI_THEME.textSecondary,
-        letterSpacing: 0.4,
-      }}
-    >
-      {label}
-    </Text>
-  </Pressable>
-);
-
-// ─── Full place detail content (no external sheet lib dependency) ────────────
-const PlaceSheetContent = memo(({ place, bottomInset = 0 }) => {
-  const router = useRouter();
-  const { data: detail, isLoading } = usePlaceDetail(place?.id);
-  const dp = detail || place;
-
-  if (!dp) return null;
-
-  const imgUri =
-    dp.images?.[0]?.secureUrl ||
-    dp.images?.[0]?.imageData ||
-    dp.images?.[0]?.url ||
-    dp.thumbnail;
-
-  const ratingAvg = Number(dp.ratingAvg || dp.averageRating || 0).toFixed(1);
-  const reviewCount = dp.reviewCount || dp._count?.reviews || 0;
-  const price = PRICE_LABELS[dp.priceRange];
-  const chips = [dp.category?.name, price?.label, dp.district?.name].filter(Boolean);
+const QuickFilterChip = memo(({ option, active, onToggle }) => {
+  const handlePress = useCallback(() => {
+    onToggle(option.key);
+  }, [onToggle, option.key]);
 
   return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: bottomInset + 48 }}
+    <Pressable
+      onPress={handlePress}
+      className="h-[34px] rounded-full flex-row items-center px-3.5 gap-1.5"
+      style={{
+        backgroundColor: active ? TOKENS.color.primary[500] : "#FFFFFF",
+        borderWidth: 1,
+        borderColor: active ? TOKENS.color.primary[500] : "#E5E7EB",
+        flexShrink: 0,
+      }}
     >
-      {/* Hero image */}
-      <View
+      <MaterialIcons
+        name={option.icon}
+        size={15}
+        color={active ? "#FFFFFF" : "#475569"}
+      />
+      <Text
+        className="text-[12px] font-semibold"
         style={{
-          height: 200,
-          marginHorizontal: 16,
-          borderRadius: 20,
-          overflow: "hidden",
-          backgroundColor: "#1f2937",
+          color: active ? "#FFFFFF" : "#0F172A",
+          letterSpacing: 0.2,
         }}
       >
-        {imgUri ? (
-          <Image
-            source={{ uri: imgUri }}
-            style={{ width: "100%", height: "100%" }}
-            resizeMode="cover"
-          />
-        ) : null}
-        <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundColor: "rgba(0,0,0,0.38)",
-          }}
-        />
-        <View style={{ position: "absolute", bottom: 14, left: 16, right: 16 }}>
-          <Text
-            numberOfLines={2}
-            style={{ color: "#fff", fontSize: 22, fontWeight: "700", letterSpacing: -0.5 }}
-          >
-            {dp.name}
-          </Text>
-          <Text
-            numberOfLines={1}
-            style={{ color: "rgba(255,255,255,0.72)", fontSize: 13, marginTop: 3 }}
-          >
-            {dp.address || dp.district?.name || "Cần Thơ"}
-          </Text>
-        </View>
-      </View>
-
-      <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 14 }}>
-        {/* Rating + chips */}
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 4,
-              backgroundColor: "rgba(251,191,36,0.15)",
-              borderRadius: 20,
-              paddingHorizontal: 10,
-              paddingVertical: 5,
-            }}
-          >
-            <MaterialIcons name="star" size={14} color="#fbbf24" />
-            <Text style={{ color: "#fbbf24", fontWeight: "700", fontSize: 13 }}>
-              {ratingAvg}
-            </Text>
-            {reviewCount > 0 ? (
-              <Text style={{ color: "#a3a3a3", fontSize: 11 }}>({reviewCount})</Text>
-            ) : null}
-          </View>
-          {chips.map((chip) => (
-            <View
-              key={chip}
-              style={{
-                backgroundColor: "rgba(255,255,255,0.09)",
-                borderRadius: 20,
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.12)",
-              }}
-            >
-              <Text style={{ color: "#e5e7eb", fontSize: 12, fontWeight: "600" }}>{chip}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Actions */}
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          <Pressable
-            onPress={() => router.push(`/place/${dp.id}`)}
-            style={{
-              flex: 1,
-              paddingVertical: 13,
-              borderRadius: 14,
-              backgroundColor: MAP_UI_THEME.neon,
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "row",
-              gap: 6,
-            }}
-          >
-            <MaterialIcons name="arrow-outward" size={16} color="#05070B" />
-            <Text style={{ color: "#05070B", fontWeight: "700", fontSize: 14 }}>
-              Xem chi tiết
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push(`/booking/${dp.id}`)}
-            style={{
-              paddingHorizontal: 16,
-              paddingVertical: 13,
-              borderRadius: 14,
-              backgroundColor: "rgba(255,255,255,0.08)",
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.12)",
-            }}
-          >
-            <MaterialIcons name="confirmation-number" size={18} color="#e5e7eb" />
-          </Pressable>
-          <Pressable
-            style={{
-              paddingHorizontal: 16,
-              paddingVertical: 13,
-              borderRadius: 14,
-              backgroundColor: "rgba(255,255,255,0.08)",
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.12)",
-            }}
-          >
-            <MaterialIcons name="directions" size={18} color="#e5e7eb" />
-          </Pressable>
-        </View>
-
-        {/* Description */}
-        {dp.description ? (
-          <View style={{ gap: 6 }}>
-            <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>Mô tả</Text>
-            <Text style={{ color: "#a3a3a3", lineHeight: 22, fontSize: 14 }}>
-              {dp.description}
-            </Text>
-          </View>
-        ) : isLoading ? (
-          <View style={{ height: 80, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.05)" }} />
-        ) : null}
-
-        {/* Tags */}
-        {dp.tags?.length > 0 ? (
-          <View style={{ gap: 8 }}>
-            <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>Đặc điểm</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {dp.tags.map((tag) => (
-                <View
-                  key={tag}
-                  style={{
-                    backgroundColor: "rgba(0,240,255,0.09)",
-                    borderRadius: 20,
-                    paddingHorizontal: 12,
-                    paddingVertical: 5,
-                    borderWidth: 1,
-                    borderColor: "rgba(0,240,255,0.2)",
-                  }}
-                >
-                  <Text style={{ color: MAP_UI_THEME.neon, fontSize: 12, fontWeight: "600" }}>
-                    {tag}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        ) : null}
-      </View>
-    </ScrollView>
+        {option.label}
+      </Text>
+    </Pressable>
   );
 });
-
-// ─── Custom snap-to-position bottom sheet (no reanimated dependency) ─────────
-// Positioning: bottom=0, translateY controls visibility
-//   closed → translateY = sheetHeight        (off screen below)
-//   mini   → translateY = sheetHeight - snapMini  (snapMini px visible)
-//   full   → translateY = 0                  (full sheet visible)
-const MapPlaceSheet = ({
-  visible,
-  place,
-  onRequestClose,
-  onHidden,
-  snapMini,
-  snapFull,
-  bottomInset = 0,
-}) => {
-  const sheetHeight = snapFull + bottomInset;
-  const visibleMiniHeight = snapMini + bottomInset;
-  const translateY = useRef(new Animated.Value(sheetHeight)).current;
-  const currentSnap = useRef("closed");
-
-  const snapTo = useCallback(
-    (target, onDone) => {
-      const toValue =
-        target === "mini"
-          ? sheetHeight - visibleMiniHeight
-          : target === "full"
-            ? 0
-            : sheetHeight;
-      currentSnap.current = target;
-      Animated.spring(translateY, {
-        toValue,
-        useNativeDriver: true,
-        bounciness: 4,
-        speed: 14,
-      }).start(onDone);
-    },
-    [translateY, sheetHeight, visibleMiniHeight],
-  );
-
-  useEffect(() => {
-    if (!place) return undefined;
-
-    if (visible) {
-      snapTo("mini");
-      return undefined;
-    }
-
-    snapTo("closed", onHidden);
-    return undefined;
-  }, [onHidden, place, snapTo, visible]);
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => false,
-        onMoveShouldSetPanResponder: (_, gs) =>
-          Math.abs(gs.dy) > 3 && Math.abs(gs.dy) > Math.abs(gs.dx),
-        onPanResponderMove: (_, gs) => {
-          const base =
-            currentSnap.current === "full" ? 0 : sheetHeight - visibleMiniHeight;
-          translateY.setValue(Math.max(0, base + gs.dy));
-        },
-        onPanResponderRelease: (_, gs) => {
-          const isFull = currentSnap.current === "full";
-          if (!isFull && (gs.dy < -40 || gs.vy < -0.35)) {
-            snapTo("full");
-          } else if (gs.dy > 56 || gs.vy > 0.45) {
-            if (isFull) {
-              snapTo("mini");
-            } else {
-              onRequestClose?.();
-            }
-          } else {
-            snapTo(isFull ? "full" : "mini");
-          }
-        },
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [onRequestClose, sheetHeight, visibleMiniHeight],
-  );
-
-  if (!place) return null;
-
-  return (
-    <Animated.View
-      style={{
-        position: "absolute",
-        left: 0,
-        right: 0,
-        bottom: 0,
-        height: sheetHeight,
-        transform: [{ translateY }],
-        backgroundColor: MAP_UI_THEME.backgroundElevated,
-        borderTopLeftRadius: 28,
-        borderTopRightRadius: 28,
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.1)",
-        overflow: "hidden",
-        zIndex: 40,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 24,
-        elevation: 20,
-      }}
-    >
-      {/* Drag handle — only this area triggers pan gesture */}
-      <View
-        {...panResponder.panHandlers}
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 5,
-          paddingTop: 12,
-          paddingBottom: 12,
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: SHEET_HEADER_GESTURE_HEIGHT,
-        }}
-      >
-        <View
-          style={{
-            width: 48,
-            height: 5,
-            borderRadius: 99,
-            backgroundColor: "rgba(255,255,255,0.25)",
-          }}
-        />
-      </View>
-
-      <View style={{ flex: 1, paddingTop: 40 }}>
-        <PlaceSheetContent place={place} bottomInset={bottomInset} />
-      </View>
-    </Animated.View>
-  );
-};
 
 const LayerSwitcherModal = ({ visible, onClose, currentStyle, onSelect }) => {
   const options = Object.values(MAP_STYLES);
@@ -612,88 +337,188 @@ const LayerSwitcherModal = ({ visible, onClose, currentStyle, onSelect }) => {
 };
 
 export default function MapScreen() {
+  const { width: viewportWidth, height: viewportHeight } =
+    useWindowDimensions();
+  const isCompactPreviewCard = viewportWidth <= 360 || viewportHeight <= 700;
+
   const insets = useSafeAreaInsets();
-  const mapRef = useRef(null);
-  const lastAppliedFocusRef = useRef("");
-  const lastPlaceRef = useRef(null);
   const router = useRouter();
   const params = useLocalSearchParams();
 
+  const mapRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const lastAppliedFocusRef = useRef(null);
+
+  const [mapStyle, setMapStyle] = useState(DEFAULT_MAP_STYLE);
+  const [layerModalVisible, setLayerModalVisible] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
   const [activeCategoryId, setActiveCategoryId] = useState(null);
   const [selectedPlace, setSelectedPlace] = useState(null);
-  const [isSheetVisible, setIsSheetVisible] = useState(false);
-  const [isSheetMounted, setIsSheetMounted] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [layerModalVisible, setLayerModalVisible] = useState(false);
-  const [mapStyle, setMapStyle] = useState(DEFAULT_MAP_STYLE);
-  const [navMenuVisible, setNavMenuVisible] = useState(false);
+  const [quickFilters, setQuickFilters] = useState({
+    topRated: false,
+    trending: false,
+    budget: false,
+    premium: false,
+    openNow: false,
+  });
 
   const {
-    data: homeData,
-    isLoading: homeLoading,
-    error: homeError,
-    refetch: refetchHome,
-  } = useHomeData({ limit: 1 });
-  const {
     data: mapPlaces,
-    isLoading: placesLoading,
+    isLoading: isPlacesLoading,
     error: placesError,
     refetch: refetchPlaces,
   } = useMapPlaces();
-  const { districts: districtGeo, wards: wardGeo } = useBoundaryData();
 
-  const isLoading = homeLoading || placesLoading;
-  const error = homeError || placesError;
-  const refetch = useCallback(() => {
-    refetchHome();
-    refetchPlaces();
-  }, [refetchHome, refetchPlaces]);
+  const {
+    districts: districtGeo,
+    wards: wardGeo,
+    refetch: refetchBoundary,
+  } = useBoundaryData();
 
-  const categories = useMemo(
-    () => homeData?.data?.categories || [],
-    [homeData],
-  );
-  const sheetSnapExpanded = useMemo(() => {
-    const targetTop = (insets.top || 0) + SHEET_TOP_RESTING_GAP;
-    return Math.max(
-      SHEET_SNAP_MINI + 96,
-      SCREEN_HEIGHT - targetTop - FLOATING_TAB_CLEARANCE,
-    );
-  }, [insets.top]);
+  const { data: homeData } = useHomeData({ limit: 12 });
+
   const allPlaces = useMemo(
-    () =>
-      (mapPlaces || []).map((place) => ({
-        ...place,
-        markerStyle:
-          CATEGORY_MARKER_STYLES[place.categoryId] || DEFAULT_CATEGORY_ICON,
-      })),
+    () => (Array.isArray(mapPlaces) ? mapPlaces : []),
     [mapPlaces],
   );
 
-  const visiblePlaces = useMemo(() => {
-    return allPlaces.filter((place) => {
-      const matchesCategory =
-        !activeCategoryId || place.categoryId === activeCategoryId;
-      const query = searchText.trim().toLowerCase();
-      const matchesSearch =
-        !query ||
-        place.name?.toLowerCase().includes(query) ||
-        place.address?.toLowerCase().includes(query);
-      return matchesCategory && matchesSearch;
+  const categories = useMemo(() => {
+    const homeCategories =
+      homeData?.categories ||
+      homeData?.data?.categories ||
+      homeData?.data?.data?.categories ||
+      [];
+
+    if (Array.isArray(homeCategories) && homeCategories.length > 0) {
+      return homeCategories
+        .map((item) => ({ id: item?.id, name: item?.name }))
+        .filter((item) => item.id != null && item.name);
+    }
+
+    const derived = new Map();
+    allPlaces.forEach((place) => {
+      const id = place?.categoryId ?? place?.category?.id;
+      const name = place?.category?.name;
+      if (id == null || !name) return;
+      const key = String(id);
+      if (!derived.has(key)) {
+        derived.set(key, { id, name });
+      }
     });
-  }, [activeCategoryId, allPlaces, searchText]);
+
+    return Array.from(derived.values());
+  }, [homeData, allPlaces]);
+
+  const isLoading = isPlacesLoading && allPlaces.length === 0;
+  const error = placesError;
+
+  const refetch = useCallback(() => {
+    refetchPlaces?.();
+    refetchBoundary?.();
+  }, [refetchBoundary, refetchPlaces]);
+
+  const openSearch = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSearchOpen(true);
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSearchOpen(false);
+    setSearchText("");
+    Keyboard.dismiss();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedPlace?.id) return;
+    const latest = allPlaces.find(
+      (place) => String(place?.id) === String(selectedPlace.id),
+    );
+    if (latest) {
+      setSelectedPlace(latest);
+    }
+  }, [allPlaces, selectedPlace]);
+
+  const visiblePlaces = useMemo(() => {
+    const normalizedSearch = searchText.trim().toLowerCase();
+
+    return allPlaces.filter((place) => {
+      if (
+        !Number.isFinite(place?.latitude) ||
+        !Number.isFinite(place?.longitude)
+      ) {
+        return false;
+      }
+
+      const categoryId = place?.categoryId ?? place?.category?.id;
+      if (
+        activeCategoryId !== null &&
+        String(categoryId ?? "") !== String(activeCategoryId)
+      ) {
+        return false;
+      }
+
+      if (normalizedSearch) {
+        const searchableText = [
+          place?.name,
+          place?.address,
+          place?.category?.name,
+          place?.ward?.name,
+          place?.district?.name,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        if (!searchableText.includes(normalizedSearch)) {
+          return false;
+        }
+      }
+
+      if (quickFilters.topRated && getPlaceRatingValue(place) < 4.5) {
+        return false;
+      }
+
+      if (quickFilters.trending && getPlaceReviewCount(place) < 20) {
+        return false;
+      }
+
+      const priceRangeKey = String(place?.priceRange || "").toUpperCase();
+      if (quickFilters.budget && !BUDGET_PRICE_RANGES.has(priceRangeKey)) {
+        return false;
+      }
+      if (quickFilters.premium && !PREMIUM_PRICE_RANGES.has(priceRangeKey)) {
+        return false;
+      }
+
+      if (quickFilters.openNow && !isPlaceOpenNow(place)) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [activeCategoryId, allPlaces, quickFilters, searchText]);
+
+  const mapBoundaryOverlays = useMemo(
+    () => (
+      <>
+        {districtGeo ? <DistrictLayer geojson={districtGeo} /> : null}
+        {wardGeo ? <WardLayer geojson={wardGeo} /> : null}
+      </>
+    ),
+    [districtGeo, wardGeo],
+  );
 
   const selectedPlaceId = selectedPlace?.id ?? null;
 
   const activePlace = useMemo(
-    () =>
-      visiblePlaces.find((p) => p.id === selectedPlaceId) ||
-      (isSheetVisible ? selectedPlace : null),
-    [isSheetVisible, visiblePlaces, selectedPlaceId, selectedPlace],
+    () => visiblePlaces.find((p) => p.id === selectedPlaceId) || selectedPlace,
+    [visiblePlaces, selectedPlaceId, selectedPlace],
   );
-
-  // Keep last selected place so sheet content stays during close animation
-  if (activePlace) lastPlaceRef.current = activePlace;
 
   const handleLocate = useCallback(async () => {
     try {
@@ -714,31 +539,53 @@ export default function MapScreen() {
 
   const handleSelectPlace = useCallback((place) => {
     setSelectedPlace(place);
-    setIsSheetMounted(true);
-    setIsSheetVisible(true);
     if (place.longitude && place.latitude) {
       mapRef.current?.flyTo([place.longitude, place.latitude], 15);
     }
   }, []);
 
-  const handleRequestCloseSheet = useCallback(() => {
-    setIsSheetVisible(false);
+  const handleClosePreview = useCallback(() => {
     setSelectedPlace(null);
   }, []);
 
-  const handleSheetHidden = useCallback(() => {
-    setIsSheetMounted(false);
+  const handleMapPress = useCallback((event) => {
+    if (event?.nativeEvent?.action === "marker-press") return;
+    setSelectedPlace(null);
   }, []);
 
   const handleCategoryToggle = useCallback((categoryId) => {
     setActiveCategoryId((prev) => (prev === categoryId ? null : categoryId));
   }, []);
 
-  const handleNavigateTab = useCallback(
-    (route) => {
-      setNavMenuVisible(false);
-      if (route === "/(tabs)/map") return;
-      router.push(route);
+  const handleQuickFilterToggle = useCallback((filterKey) => {
+    setQuickFilters((prev) => {
+      if (filterKey === "budget") {
+        return {
+          ...prev,
+          budget: !prev.budget,
+          premium: false,
+        };
+      }
+
+      if (filterKey === "premium") {
+        return {
+          ...prev,
+          premium: !prev.premium,
+          budget: false,
+        };
+      }
+
+      return {
+        ...prev,
+        [filterKey]: !prev[filterKey],
+      };
+    });
+  }, []);
+
+  const handleOpenPlaceDetail = useCallback(
+    (place) => {
+      if (!place?.id) return;
+      router.push(`/place/${place.id}`);
     },
     [router],
   );
@@ -781,8 +628,6 @@ export default function MapScreen() {
     );
     if (matchedPlace) {
       setSelectedPlace(matchedPlace);
-      setIsSheetMounted(true);
-      setIsSheetVisible(true);
     }
   }, [params, mapPlaces]);
 
@@ -811,7 +656,9 @@ export default function MapScreen() {
               Đang tải bản đồ...
             </Text>
           </View>
-        ) : error ? (
+        ) : null}
+
+        {error ? (
           <View
             className="flex-1 items-center justify-center gap-3"
             style={{ backgroundColor: MAP_UI_THEME.background }}
@@ -833,33 +680,22 @@ export default function MapScreen() {
               <Text className="text-[14px] font-bold text-white">Thử lại</Text>
             </Pressable>
           </View>
-        ) : (
-          <MapView
-            ref={mapRef}
-            places={visiblePlaces}
-            selectedPlaceId={activePlace?.id ?? null}
-            onSelectPlace={handleSelectPlace}
-            tileUrls={mapStyle.urls}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-            }}
-          >
-            {districtGeo ? <DistrictLayer geojson={districtGeo} /> : null}
-            {wardGeo ? <WardLayer geojson={wardGeo} /> : null}
-          </MapView>
-        )}
+        ) : null}
 
-        <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundColor: MAP_UI_THEME.mapOverlay,
-          }}
-        />
+        {/* Always render MapView - pins should be visible even if there are errors */}
+        <MapView
+          ref={mapRef}
+          places={visiblePlaces}
+          selectedPlaceId={activePlace?.id ?? null}
+          onSelectPlace={handleSelectPlace}
+          onPressMap={handleMapPress}
+          tileUrls={mapStyle.urls}
+          mapType={mapStyle.mapType || "standard"}
+          useNativeCleanStyle={mapStyle.useNativeCleanStyle === true}
+          style={MAP_CANVAS_STYLE}
+        >
+          {mapBoundaryOverlays}
+        </MapView>
       </View>
 
       <View
@@ -867,110 +703,171 @@ export default function MapScreen() {
         style={{ paddingTop: (insets.top || 0) + 12 }}
         pointerEvents="box-none"
       >
-        {navMenuVisible ? (
-          <Pressable
-            pointerEvents="auto"
-            onPress={() => setNavMenuVisible(false)}
-            style={{ position: "absolute", inset: 0 }}
-          />
-        ) : null}
-
         <View className="flex-row items-start px-4 gap-3" pointerEvents="auto">
           <Pressable
-            className="w-[44px] h-[44px]"
-            onPress={() => setNavMenuVisible((prev) => !prev)}
+            className="w-[48px] h-[48px]"
+            style={{ display: "none" }}
+            onPress={undefined}
             accessibilityRole="button"
-            accessibilityLabel={navMenuVisible ? "Đóng menu" : "Mở menu"}
+            accessibilityLabel="Mo menu"
           >
-            <View
+            <BlurView
+              tint="light"
+              intensity={80}
               style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
+                width: 48,
+                height: 48,
+                borderRadius: 24,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: "rgba(255,255,255,0.1)",
+                backgroundColor: "rgba(255, 255, 255, 0.85)",
                 borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.14)",
+                borderColor: "rgba(255, 255, 255, 0.5)",
+                overflow: "hidden",
               }}
             >
               <MaterialIcons
-                name={navMenuVisible ? "close" : "menu"}
+                name="menu"
                 size={24}
-                color="#FFFFFF"
+                color={TOKENS.color.neutral[700]}
               />
-            </View>
+            </BlurView>
           </Pressable>
 
-          <GlassPanel
+          {/* Search bar expanding */}
+          <View
             style={{
-              flex: 1,
+              flex: searchOpen ? 1 : 0,
+              width: searchOpen ? undefined : 48,
               height: 48,
-              borderRadius: 26,
-              flexDirection: "row",
-              alignItems: "center",
-              paddingHorizontal: 4,
             }}
-            intensity={50}
           >
-            <MaterialIcons
-              name="search"
-              size={20}
-              color={MAP_UI_THEME.textSecondary}
-              style={{ marginLeft: 6 }}
-            />
-            <TextInput
-              value={searchText}
-              onChangeText={setSearchText}
-              placeholder="Tìm kiếm địa điểm..."
-              placeholderTextColor={MAP_UI_THEME.textSecondary}
+            <BlurView
+              tint="light"
+              intensity={80}
               style={{
-                flex: 1,
+                borderRadius: 24,
+                flexDirection: "row",
+                alignItems: "center",
+                overflow: "hidden",
                 height: 48,
-                fontSize: 14,
-                fontWeight: "600",
-                color: MAP_UI_THEME.text,
-                paddingHorizontal: 8,
+                backgroundColor: "rgba(255, 255, 255, 0.85)",
+                borderWidth: 1,
+                borderColor: "rgba(255, 255, 255, 0.5)",
               }}
-              returnKeyType="search"
-              onSubmitEditing={() => Keyboard.dismiss()}
-              clearButtonMode="while-editing"
-            />
-            {searchText.length > 0 ? (
+            >
               <Pressable
-                onPress={() => setSearchText("")}
-                className="w-10 h-10 items-center justify-center"
+                onPress={searchOpen ? undefined : openSearch}
+                style={{
+                  width: 48,
+                  height: 48,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
               >
                 <MaterialIcons
-                  name="close"
-                  size={20}
-                  color={MAP_UI_THEME.textSecondary}
+                  name="search"
+                  size={22}
+                  color={
+                    searchOpen
+                      ? TOKENS.color.primary[500]
+                      : TOKENS.color.neutral[700]
+                  }
                 />
               </Pressable>
-            ) : null}
-          </GlassPanel>
+
+              {searchOpen ? (
+                <>
+                  <TextInput
+                    ref={searchInputRef}
+                    value={searchText}
+                    onChangeText={setSearchText}
+                    placeholder="Tìm kiếm địa điểm..."
+                    placeholderTextColor={TOKENS.color.neutral[500]}
+                    style={{
+                      flex: 1,
+                      height: 48,
+                      fontSize: 15,
+                      fontWeight: "700",
+                      color: TOKENS.color.neutral[900],
+                      paddingRight: 8,
+                      fontFamily: TOKENS.font.semibold,
+                    }}
+                    returnKeyType="search"
+                    onSubmitEditing={() => Keyboard.dismiss()} // Chỉ đóng bàn phím, để user thấy marker kết quả
+                    autoCorrect={false}
+                  />
+                  {searchText.length > 0 ? (
+                    <Pressable
+                      onPress={() => setSearchText("")}
+                      style={{
+                        width: 44,
+                        height: 48,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <MaterialIcons
+                        name="close"
+                        size={20}
+                        color={TOKENS.color.neutral[500]}
+                      />
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    onPress={closeSearch}
+                    style={{
+                      paddingRight: 14,
+                      paddingLeft: 6,
+                      height: 48,
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: TOKENS.color.neutral[600],
+                        fontSize: 14,
+                        fontFamily: TOKENS.font.semibold,
+                      }}
+                    >
+                      Hủy
+                    </Text>
+                  </Pressable>
+                </>
+              ) : null}
+            </BlurView>
+          </View>
+
+          {/* Vùng trống để đẩy Profile */}
+          {!searchOpen ? <View style={{ flex: 1 }} /> : null}
 
           <View className="items-end gap-2">
             <Pressable
               className="w-[48px] h-[48px]"
               onPress={() => router.push("/(tabs)/profile")}
             >
-              <GlassPanel
+              <BlurView
+                tint="light"
+                intensity={80}
                 style={{
                   width: 48,
                   height: 48,
                   borderRadius: 24,
                   alignItems: "center",
                   justifyContent: "center",
+                  backgroundColor: "rgba(255, 255, 255, 0.85)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255, 255, 255, 0.5)",
+                  overflow: "hidden",
                 }}
-                intensity={50}
               >
                 <MaterialIcons
                   name="person"
-                  size={22}
-                  color={MAP_UI_THEME.text}
+                  size={24}
+                  color={TOKENS.color.neutral[700]}
                 />
-              </GlassPanel>
+              </BlurView>
             </Pressable>
           </View>
         </View>
@@ -1008,17 +905,44 @@ export default function MapScreen() {
           </View>
         ) : null}
 
+        <View className="mt-2 px-4" pointerEvents="auto">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingHorizontal: 10,
+              gap: 8,
+              paddingRight: 14,
+              paddingVertical: 2,
+            }}
+            style={{
+              maxHeight: 40,
+            }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {QUICK_FILTER_OPTIONS.map((option) => (
+              <QuickFilterChip
+                key={option.key}
+                option={option}
+                active={quickFilters[option.key] === true}
+                onToggle={handleQuickFilterToggle}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
         <View
           pointerEvents="box-none"
           style={{
             position: "absolute",
             right: 14,
-            top: "50%",
-            transform: [{ translateY: -54 }],
+            bottom: FLOATING_TAB_CLEARANCE + 84,
             zIndex: 55,
           }}
         >
           <View className="items-end gap-3" pointerEvents="auto">
+            <AIEntryButton onPress={() => router.push("/(tabs)/ai")} />
+
             <Pressable className="w-[44px] h-[44px]" onPress={handleLocate}>
               <GlassPanel
                 style={{
@@ -1061,92 +985,26 @@ export default function MapScreen() {
             </Pressable>
           </View>
         </View>
-
-        {navMenuVisible ? (
-          <View
-            pointerEvents="box-none"
-            style={{
-              position: "absolute",
-              top: (insets.top || 0) + 62,
-              left: 16,
-              zIndex: 60,
-            }}
-          >
-            <GlassPanel
-              style={{
-                width: 220,
-                borderRadius: 22,
-                paddingVertical: 8,
-                paddingHorizontal: 8,
-              }}
-              intensity={58}
-            >
-              {NAV_MENU_ITEMS.map((item) => {
-                const isActive = item.key === "map";
-                return (
-                  <Pressable
-                    key={item.key}
-                    onPress={() => handleNavigateTab(item.route)}
-                    className="h-[44px] flex-row items-center gap-3 px-3 rounded-[14px]"
-                    style={({ pressed }) => ({
-                      backgroundColor: isActive
-                        ? "rgba(0,240,255,0.16)"
-                        : pressed
-                          ? "rgba(255,255,255,0.08)"
-                          : "transparent",
-                      borderWidth: isActive ? 1 : 0,
-                      borderColor: isActive
-                        ? "rgba(0,240,255,0.24)"
-                        : "transparent",
-                    })}
-                  >
-                    <MaterialIcons
-                      name={item.icon}
-                      size={19}
-                      color={
-                        isActive
-                          ? MAP_UI_THEME.neon
-                          : MAP_UI_THEME.textSecondary
-                      }
-                    />
-                    <Text
-                      className="text-[13px] font-semibold"
-                      style={{
-                        color: isActive
-                          ? MAP_UI_THEME.text
-                          : MAP_UI_THEME.textSecondary,
-                        letterSpacing: 0.3,
-                      }}
-                    >
-                      {item.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </GlassPanel>
-          </View>
-        ) : null}
-
       </View>
 
-      {/* Custom bottom sheet — mini (330px) → full (90%) */}
-      {isSheetMounted ? (
-        <Pressable
-          onPress={handleRequestCloseSheet}
-          style={[StyleSheet.absoluteFillObject, { zIndex: 30 }]}
-        />
-      ) : null}
-
-      {isSheetMounted ? (
-        <MapPlaceSheet
-          visible={isSheetVisible}
-          place={lastPlaceRef.current}
-          onRequestClose={handleRequestCloseSheet}
-          onHidden={handleSheetHidden}
-          snapMini={SHEET_SNAP_MINI}
-          snapFull={sheetSnapExpanded}
-          bottomInset={FLOATING_TAB_CLEARANCE}
-        />
+      {activePlace ? (
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            bottom: FLOATING_TAB_CLEARANCE + 8,
+            zIndex: 70,
+          }}
+        >
+          <PlacePreviewCard
+            place={activePlace}
+            onClose={handleClosePreview}
+            onViewDetail={handleOpenPlaceDetail}
+            compact={isCompactPreviewCard}
+          />
+        </View>
       ) : null}
 
       <LayerSwitcherModal

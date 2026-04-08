@@ -117,7 +117,7 @@ const StepDetails = () => {
     }, 500); // Debounce 500ms
 
     return () => clearTimeout(timer);
-  }, [wizardData.latitude, wizardData.longitude]);
+  }, [wizardData.latitude, wizardData.longitude, toast]);
 
   const handleNext = () => {
     if (validate()) {

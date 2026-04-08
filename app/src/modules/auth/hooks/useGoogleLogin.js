@@ -4,6 +4,7 @@ import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 import { useAuthStore } from "../../../stores/authStore";
 import { API_BASE_URL } from "../../../constants/api";
+import { exchangeGoogleResultApi } from "../api/authApi";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -50,6 +51,25 @@ export function useGoogleLogin() {
 
       if (url.includes("auth-error")) {
         setError(params.get("message") || "Đăng nhập thất bại");
+        return;
+      }
+
+      const authCode = params.get("authCode");
+
+      if (authCode) {
+        const exchangeRes = await exchangeGoogleResultApi(authCode);
+        const payload = exchangeRes?.data ?? exchangeRes;
+        const accessToken = payload?.accessToken;
+        const refreshToken = payload?.refreshToken;
+        const user = payload?.user || null;
+
+        if (!accessToken) {
+          setError("Không nhận được token sau khi xác thực.");
+          return;
+        }
+
+        await setSession({ user, accessToken, refreshToken });
+        router.replace("/(tabs)/map");
         return;
       }
 

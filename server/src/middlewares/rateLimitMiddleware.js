@@ -19,6 +19,44 @@ export const authLimiter = rateLimit({
   },
 });
 
+const refreshMaxRequests = process.env.REFRESH_RATE_LIMIT_MAX
+  ? Number(process.env.REFRESH_RATE_LIMIT_MAX)
+  : process.env.NODE_ENV !== "production"
+    ? 120
+    : 30;
+
+export const refreshLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: Number.isFinite(refreshMaxRequests) ? refreshMaxRequests : 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    data: null,
+    message: "Quá nhiều yêu cầu làm mới phiên, vui lòng thử lại sau",
+    errorCode: "RATE_LIMIT_EXCEEDED",
+  },
+});
+
+const recoveryMaxRequests = process.env.RECOVERY_RATE_LIMIT_MAX
+  ? Number(process.env.RECOVERY_RATE_LIMIT_MAX)
+  : process.env.NODE_ENV !== "production"
+    ? 120
+    : 10;
+
+export const recoveryLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number.isFinite(recoveryMaxRequests) ? recoveryMaxRequests : 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    data: null,
+    message: "Quá nhiều yêu cầu khôi phục tài khoản, vui lòng thử lại sau",
+    errorCode: "RATE_LIMIT_EXCEEDED",
+  },
+});
+
 const apiMaxRequests = process.env.NODE_ENV !== "production" ? 5000 : 100;
 
 export const apiLimiter = rateLimit({

@@ -25,7 +25,6 @@ const PlaceWizardPage = () => {
   const {
     currentStep,
     totalSteps,
-    wizardData,
     loading,
     fetchPlaceById,
     loadPlaceIntoWizard,
@@ -53,8 +52,15 @@ const PlaceWizardPage = () => {
     } else {
       resetWizard();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isEditMode]);
+  }, [
+    id,
+    isEditMode,
+    fetchPlaceById,
+    loadPlaceIntoWizard,
+    navigate,
+    resetWizard,
+    toast,
+  ]);
 
   const steps = [
     {
@@ -79,8 +85,6 @@ const PlaceWizardPage = () => {
 
   const currentStepData = steps.find((s) => s.number === currentStep);
   const StepComponent = currentStepData?.component;
-
-  const progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
 
   const handleBack = () => {
     navigate("/admin/places");
@@ -136,6 +140,20 @@ const PlaceWizardPage = () => {
             {steps.map((step) => {
               const isActive = step.number === currentStep;
               const isCompleted = step.number < currentStep;
+              let stepCircleClass = "bg-white border-slate-200 text-slate-400";
+              if (isActive) {
+                stepCircleClass =
+                  "bg-primary border-white shadow-lg shadow-primary/20 scale-110";
+              } else if (isCompleted) {
+                stepCircleClass = "bg-primary border-primary/10 text-white";
+              }
+
+              let stepTitleClass = "text-slate-400";
+              if (isActive) {
+                stepTitleClass = "text-slate-800";
+              } else if (isCompleted) {
+                stepTitleClass = "text-primary";
+              }
 
               return (
                 <div
@@ -150,11 +168,7 @@ const PlaceWizardPage = () => {
                   <div
                     className={cn(
                       "w-10 h-10 rounded-full flex items-center justify-center border-4 transition-all duration-300 z-10",
-                      isActive
-                        ? "bg-primary border-white shadow-lg shadow-primary/20 scale-110"
-                        : isCompleted
-                          ? "bg-primary border-primary/10 text-white"
-                          : "bg-white border-slate-200 text-slate-400",
+                      stepCircleClass,
                     )}
                   >
                     {isCompleted ? (
@@ -174,11 +188,7 @@ const PlaceWizardPage = () => {
                     <span
                       className={cn(
                         "text-sm font-bold transition-colors",
-                        isActive
-                          ? "text-slate-800"
-                          : isCompleted
-                            ? "text-primary"
-                            : "text-slate-400",
+                        stepTitleClass,
                       )}
                     >
                       {step.title}

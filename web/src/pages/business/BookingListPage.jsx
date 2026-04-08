@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useState,
-  useCallback,
-  useMemo,
-  useTransition,
-} from "react";
+import { useEffect, useState, useCallback, useTransition } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
@@ -31,12 +25,14 @@ import {
   PageHeader,
   EmptyState,
   PageNav,
-  DESIGN,
   StatCardSkeleton,
   StatusBadge,
-  formatVND,
-  formatDate,
 } from "@/components/business/DashboardWidgets";
+import {
+  DESIGN,
+  formatDate,
+  formatVND,
+} from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/badge";
@@ -285,7 +281,9 @@ const BookingListPage = () => {
     try {
       const response = await bookingApi.getStats();
       setStats(response.data);
-    } catch {}
+    } catch {
+      // Keep UI usable even if stats endpoint is temporarily unavailable.
+    }
   }, []);
 
   useEffect(() => {
@@ -468,7 +466,7 @@ const BookingListPage = () => {
 
       {/* Status Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {statCards.map(({ key, label, icon, iconColor }) =>
+        {statCards.map(({ key, label }) =>
           loading ? (
             <StatCardSkeleton key={key} />
           ) : (
@@ -586,56 +584,66 @@ const BookingListPage = () => {
           {STATUS_TABS.map((tab) => (
             <TabsContent key={tab.value} value={tab.value} className="mt-0">
               <div className="px-5 py-2">
-                {loading ? (
-                  <div className="space-y-0">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-4 py-4 border-b border-border/50 last:border-0"
-                      >
-                        <div className="flex-1 space-y-1.5">
-                          <Skeleton className="h-4 w-36" />
-                          <Skeleton className="h-3.5 w-48" />
-                          <Skeleton className="h-3 w-32" />
-                        </div>
-                        <Skeleton className="h-8 w-20 rounded-md" />
+                {(() => {
+                  if (loading) {
+                    return (
+                      <div className="space-y-0">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center gap-4 py-4 border-b border-border/50 last:border-0"
+                          >
+                            <div className="flex-1 space-y-1.5">
+                              <Skeleton className="h-4 w-36" />
+                              <Skeleton className="h-3.5 w-48" />
+                              <Skeleton className="h-3 w-32" />
+                            </div>
+                            <Skeleton className="h-8 w-20 rounded-md" />
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : bookings.length === 0 ? (
-                  <EmptyState
-                    icon={CalendarCheck}
-                    message="Không có đặt chỗ nào."
-                  />
-                ) : (
-                  <div>
-                    {bookings.map((bk) => (
-                      <BookingItem
-                        key={bk.id}
-                        bk={bk}
-                        selected={selected.includes(bk.id)}
-                        onSelect={toggleSelect}
-                        onConfirm={handleConfirm}
-                        onCancel={(id) => setCancelModal(id)}
-                        onComplete={handleComplete}
-                        onNoShow={handleNoShow}
-                        onView={(id) =>
-                          navigate(BUSINESS_ROUTES.BOOKING_DETAIL(id))
-                        }
+                    );
+                  }
+
+                  if (bookings.length === 0) {
+                    return (
+                      <EmptyState
+                        icon={CalendarCheck}
+                        message="Không có đặt chỗ nào."
                       />
-                    ))}
-                    {totalPages > 1 && (
-                      <div className="border-t border-border/60 mt-2 pt-2">
-                        <PageNav
-                          page={page}
-                          totalPages={totalPages}
-                          total={total}
-                          onPageChange={setPage}
+                    );
+                  }
+
+                  return (
+                    <div>
+                      {bookings.map((bk) => (
+                        <BookingItem
+                          key={bk.id}
+                          bk={bk}
+                          selected={selected.includes(bk.id)}
+                          onSelect={toggleSelect}
+                          onConfirm={handleConfirm}
+                          onCancel={(id) => setCancelModal(id)}
+                          onComplete={handleComplete}
+                          onNoShow={handleNoShow}
+                          onView={(id) =>
+                            navigate(BUSINESS_ROUTES.BOOKING_DETAIL(id))
+                          }
                         />
-                      </div>
-                    )}
-                  </div>
-                )}
+                      ))}
+                      {totalPages > 1 && (
+                        <div className="border-t border-border/60 mt-2 pt-2">
+                          <PageNav
+                            page={page}
+                            totalPages={totalPages}
+                            total={total}
+                            onPageChange={setPage}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </TabsContent>
           ))}

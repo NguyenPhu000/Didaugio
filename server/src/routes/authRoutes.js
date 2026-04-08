@@ -31,6 +31,7 @@ router.post(
   validateBody(exchangeGoogleCodeSchema),
   authController.exchangeGoogleCode,
 );
+router.post("/google/exchange-result", authController.exchangeOAuthResult);
 router.get("/google/web", authController.initiateGoogleOAuth);
 router.get("/google/web/callback", authController.googleOAuthCallback);
 router.post(

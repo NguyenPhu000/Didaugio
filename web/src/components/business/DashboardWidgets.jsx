@@ -18,33 +18,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { BOOKING_STATUS } from "@/constants/constants";
+import { DESIGN } from "./dashboardWidgetHelpers";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-export const formatVND = (price) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-    price || 0,
-  );
-
-export const formatDate = (date) =>
-  date
-    ? new Date(date).toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-    : "—";
-
-export const formatDateTime = (date) =>
-  date
-    ? new Date(date).toLocaleString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "—";
 
 const WELCOME_PATTERN_STYLE = {
   backgroundImage:
@@ -63,31 +39,6 @@ const formatTrendValue = (trend) => {
 
 // ─── Design Tokens ──────────────────────────────────────────────────────────
 
-export const DESIGN = {
-  card: "rounded-2xl border border-border/60 bg-card shadow-sm transition-all duration-300 dark:bg-zinc-950/70 dark:backdrop-blur-md",
-  cardHover: "hover:shadow-md hover:-translate-y-0.5 active:scale-[0.995]",
-  tabUnderlineTrigger:
-    "h-9 px-3 text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary",
-  sectionHeader:
-    "px-5 py-4 border-b border-border/60 flex items-center justify-between",
-  iconBox: (color) =>
-    cn(
-      "rounded-xl p-3 flex items-center justify-center shrink-0",
-      {
-        emerald:
-          "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400",
-        teal: "bg-teal-100 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400",
-        blue: "bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400",
-        amber:
-          "bg-amber-100 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400",
-        rose: "bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400",
-        violet:
-          "bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400",
-        primary: "bg-primary/10 text-primary dark:bg-primary/20",
-      }[color] || "bg-muted text-muted-foreground",
-    ),
-};
-
 const SPARKLINE_BAR_CLASS = {
   emerald: "bg-emerald-500/80",
   teal: "bg-teal-500/80",
@@ -100,7 +51,7 @@ const SPARKLINE_BAR_CLASS = {
 
 // ─── Status Config (Booking) ─────────────────────────────────────────────────
 
-export const BOOKING_STATUS_CONFIG = {
+const BOOKING_STATUS_CONFIG = {
   [BOOKING_STATUS.PENDING]: {
     label: "Chờ xác nhận",
     icon: Clock,
@@ -254,7 +205,7 @@ MiniSparkline.displayName = "MiniSparkline";
 export const StatCard = ({
   title,
   value,
-  icon: Icon,
+  icon: _Icon,
   iconColor = "primary",
   trend,
   miniChart,
@@ -270,7 +221,7 @@ export const StatCard = ({
     <Card className={cn(DESIGN.card, DESIGN.cardHover, "group")}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
         <div className={DESIGN.iconBox(iconColor)}>
-          <Icon className="h-5 w-5" />
+          <_Icon className="h-5 w-5" />
         </div>
         {trendValue && (
           <Badge
@@ -360,10 +311,10 @@ const PageHeaderBase = ({ title, subtitle, badge, action }) => (
 export const PageHeader = memo(PageHeaderBase);
 PageHeader.displayName = "PageHeader";
 
-const EmptyStateBase = ({ icon: Icon = AlertCircle, message, action }) => (
+const EmptyStateBase = ({ icon: _Icon = AlertCircle, message, action }) => (
   <div className="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
     <div className="rounded-2xl bg-muted p-5">
-      <Icon className="h-9 w-9 text-muted-foreground" />
+      <_Icon className="h-9 w-9 text-muted-foreground" />
     </div>
     <p className="max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">
       {message}

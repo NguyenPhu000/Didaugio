@@ -26,11 +26,7 @@ import { Label } from "@/components/ui/Label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import {
-  resolveMediaUrl,
-  isPdfSource,
-  isImageSource,
-} from "@/utils/mediaUrl";
+import { resolveMediaUrl, isPdfSource, isImageSource } from "@/utils/mediaUrl";
 
 const FieldRow = ({ label, value, mono }) => (
   <div className="flex flex-col sm:flex-row sm:gap-3 sm:justify-between py-2.5 border-b border-border/40 last:border-0 first:pt-0 text-sm">
@@ -56,7 +52,8 @@ function DocumentPreviewCard({ title, raw }) {
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
-    setImgError(false);
+    const id = requestAnimationFrame(() => setImgError(false));
+    return () => cancelAnimationFrame(id);
   }, [resolved]);
 
   const isPdf = resolved && isPdfSource(resolved);
@@ -70,7 +67,9 @@ function DocumentPreviewCard({ title, raw }) {
           aria-hidden="true"
         />
         <p className="text-sm font-semibold text-foreground">{title}</p>
-        <p className="mt-1 text-xs text-muted-foreground">Chưa có tệp đính kèm</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Chưa có tệp đính kèm
+        </p>
       </div>
     );
   }
@@ -78,7 +77,9 @@ function DocumentPreviewCard({ title, raw }) {
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-border/50 bg-card shadow-md ring-1 ring-black/[0.04] dark:ring-white/10">
       <div className="flex items-center justify-between gap-2 rounded-t-2xl border-b border-border/40 bg-gradient-to-r from-muted/60 to-muted/30 px-4 py-3">
-        <p className="truncate text-sm font-semibold text-foreground">{title}</p>
+        <p className="truncate text-sm font-semibold text-foreground">
+          {title}
+        </p>
         <a
           href={resolved}
           target="_blank"
@@ -91,58 +92,74 @@ function DocumentPreviewCard({ title, raw }) {
       </div>
 
       <div className="flex min-h-[220px] flex-1 items-center justify-center rounded-b-2xl bg-muted/20 p-3">
-        {isPdf ? (
-          <div className="w-full space-y-2">
-            <iframe
-              title={title}
-              src={resolved}
-              className="h-[min(42vh,300px)] w-full rounded-xl border border-border/50 bg-background shadow-inner"
-            />
-            <p className="text-center text-[11px] leading-snug text-muted-foreground">
-              Nếu khung PDF trống hoặc bị chặn, dùng &quot;Toàn màn hình&quot; để
-              mở trong tab mới.
-            </p>
-          </div>
-        ) : isImgHint || (!isPdf && !imgError) ? (
-          <div className="relative flex w-full justify-center">
-            {!imgError ? (
-              <img
-                src={resolved}
-                alt={`${title} — đối chiếu`}
-                className="max-h-[min(44vh,380px)] w-full rounded-xl border border-border/30 bg-background object-contain shadow-sm"
-                loading="lazy"
-                decoding="async"
-                referrerPolicy="no-referrer"
-                onError={() => setImgError(true)}
-              />
-            ) : (
-              <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
-                <ImageIcon className="h-10 w-10 text-muted-foreground/70" />
-                <p className="text-xs text-muted-foreground">
-                  Không tải được ảnh (link hết hạn, chặn hotlink, hoặc định dạng
-                  không hỗ trợ). Hãy mở &quot;Toàn màn hình&quot; để đối chiếu.
+        {(() => {
+          if (isPdf) {
+            return (
+              <div className="w-full space-y-2">
+                <iframe
+                  title={title}
+                  src={resolved}
+                  className="h-[min(42vh,300px)] w-full rounded-xl border border-border/50 bg-background shadow-inner"
+                />
+                <p className="text-center text-[11px] leading-snug text-muted-foreground">
+                  Nếu khung PDF trống hoặc bị chặn, dùng &quot;Toàn màn
+                  hình&quot; để mở trong tab mới.
                 </p>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={resolved} target="_blank" rel="noopener noreferrer">
-                    Mở tệp gốc
-                  </a>
-                </Button>
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-            <FileText className="h-10 w-10 text-muted-foreground/70" />
-            <p className="text-xs text-muted-foreground">
-              Xem nhanh không khả dụng. Mở tab mới để đối chiếu.
-            </p>
-            <Button variant="outline" size="sm" asChild>
-              <a href={resolved} target="_blank" rel="noopener noreferrer">
-                Mở tệp
-              </a>
-            </Button>
-          </div>
-        )}
+            );
+          }
+
+          const canPreviewImage = isImgHint || (!isPdf && !imgError);
+          if (canPreviewImage) {
+            return (
+              <div className="relative flex w-full justify-center">
+                {!imgError ? (
+                  <img
+                    src={resolved}
+                    alt={`${title} — đối chiếu`}
+                    className="max-h-[min(44vh,380px)] w-full rounded-xl border border-border/30 bg-background object-contain shadow-sm"
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={() => setImgError(true)}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+                    <ImageIcon className="h-10 w-10 text-muted-foreground/70" />
+                    <p className="text-xs text-muted-foreground">
+                      Không tải được ảnh (link hết hạn, chặn hotlink, hoặc định
+                      dạng không hỗ trợ). Hãy mở &quot;Toàn màn hình&quot; để
+                      đối chiếu.
+                    </p>
+                    <Button variant="outline" size="sm" asChild>
+                      <a
+                        href={resolved}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Mở tệp gốc
+                      </a>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+              <FileText className="h-10 w-10 text-muted-foreground/70" />
+              <p className="text-xs text-muted-foreground">
+                Xem nhanh không khả dụng. Mở tab mới để đối chiếu.
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <a href={resolved} target="_blank" rel="noopener noreferrer">
+                  Mở tệp
+                </a>
+              </Button>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
@@ -266,180 +283,205 @@ const BusinessReviewApproveModal = ({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-5 space-y-6">
-          {loading ? (
-            <div className="flex justify-center py-20 text-muted-foreground">
-              <Loader2 className="h-9 w-9 animate-spin" aria-hidden="true" />
-            </div>
-          ) : detail ? (
-            <>
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-border/50 bg-muted/30 p-5 shadow-sm">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Doanh nghiệp
-                  </p>
-                  <div className="space-y-0">
-                  <FieldRow label="Tên hiển thị" value={detail.businessName} />
-                  <FieldRow label="Loại hình" value={typeLabel} />
-                  <FieldRow label="Mã số thuế" value={detail.taxCode} mono />
-                  <FieldRow
-                    label="Số CCCD/CMND"
-                    value={detail.idCardNumber}
-                    mono
+          {(() => {
+            if (loading) {
+              return (
+                <div className="flex justify-center py-20 text-muted-foreground">
+                  <Loader2
+                    className="h-9 w-9 animate-spin"
+                    aria-hidden="true"
                   />
-                  <FieldRow
-                    label="Ngày gửi hồ sơ"
-                    value={
-                      detail.createdAt
-                        ? new Date(detail.createdAt).toLocaleString("vi-VN")
-                        : null
-                    }
-                  />
-                  <FieldRow
-                    label="Vận hành (địa điểm · DV · voucher · đặt chỗ)"
-                    value={`${detail._count?.places ?? 0} · ${detail._count?.services ?? 0} · ${detail._count?.vouchers ?? 0} · ${detail._count?.bookings ?? 0}`}
-                  />
+                </div>
+              );
+            }
+
+            if (!detail) return null;
+
+            return (
+              <>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-border/50 bg-muted/30 p-5 shadow-sm">
+                    <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Doanh nghiệp
+                    </p>
+                    <div className="space-y-0">
+                      <FieldRow
+                        label="Tên hiển thị"
+                        value={detail.businessName}
+                      />
+                      <FieldRow label="Loại hình" value={typeLabel} />
+                      <FieldRow
+                        label="Mã số thuế"
+                        value={detail.taxCode}
+                        mono
+                      />
+                      <FieldRow
+                        label="Số CCCD/CMND"
+                        value={detail.idCardNumber}
+                        mono
+                      />
+                      <FieldRow
+                        label="Ngày gửi hồ sơ"
+                        value={
+                          detail.createdAt
+                            ? new Date(detail.createdAt).toLocaleString("vi-VN")
+                            : null
+                        }
+                      />
+                      <FieldRow
+                        label="Vận hành (địa điểm · DV · voucher · đặt chỗ)"
+                        value={`${detail._count?.places ?? 0} · ${detail._count?.services ?? 0} · ${detail._count?.vouchers ?? 0} · ${detail._count?.bookings ?? 0}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-border/50 bg-muted/30 p-5 shadow-sm">
+                    <p className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-background shadow-sm">
+                        <User className="h-3.5 w-3.5" aria-hidden="true" />
+                      </span>
+                      Chủ tài khoản & thanh toán
+                    </p>
+                    <div className="space-y-0">
+                      <FieldRow label="Email" value={detail.owner?.email} />
+                      <FieldRow label="Họ tên" value={detail.owner?.fullName} />
+                      <FieldRow label="Ngân hàng" value={detail.bankName} />
+                      <FieldRow
+                        label="Số tài khoản"
+                        value={detail.bankAccountNumber}
+                        mono
+                      />
+                      <FieldRow
+                        label="Chủ TK"
+                        value={detail.bankAccountOwner}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border/50 bg-muted/30 p-5 shadow-sm">
+                <div className="rounded-2xl border border-border/50 bg-muted/20 p-5 shadow-sm">
                   <p className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-background shadow-sm">
-                      <User className="h-3.5 w-3.5" aria-hidden="true" />
-                    </span>
-                    Chủ tài khoản & thanh toán
+                    <MapPin className="h-3.5 w-3.5" aria-hidden />
+                    Địa điểm thuộc doanh nghiệp
                   </p>
-                  <div className="space-y-0">
-                  <FieldRow label="Email" value={detail.owner?.email} />
-                  <FieldRow label="Họ tên" value={detail.owner?.fullName} />
-                  <FieldRow label="Ngân hàng" value={detail.bankName} />
-                  <FieldRow
-                    label="Số tài khoản"
-                    value={detail.bankAccountNumber}
-                    mono
-                  />
-                  <FieldRow label="Chủ TK" value={detail.bankAccountOwner} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-border/50 bg-muted/20 p-5 shadow-sm">
-                <p className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5" aria-hidden />
-                  Địa điểm thuộc doanh nghiệp
-                </p>
-                {!Array.isArray(detail.places) || detail.places.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Chưa có địa điểm nào được gắn với hồ sơ này (có thể bổ sung
-                    sau khi duyệt).
-                  </p>
-                ) : (
-                  <ul className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                    {detail.places.map((p) => (
-                      <li
-                        key={p.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/40 bg-background/80 px-3 py-2 text-sm"
-                      >
-                        <span className="font-medium truncate">{p.name}</span>
-                        <Link
-                          to={ADMIN_ROUTES.PLACES_EDIT(p.id)}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline shrink-0"
-                          onClick={() => onOpenChange?.(false)}
+                  {!Array.isArray(detail.places) ||
+                  detail.places.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Chưa có địa điểm nào được gắn với hồ sơ này (có thể bổ
+                      sung sau khi duyệt).
+                    </p>
+                  ) : (
+                    <ul className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                      {detail.places.map((p) => (
+                        <li
+                          key={p.id}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/40 bg-background/80 px-3 py-2 text-sm"
                         >
-                          Sửa
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+                          <span className="font-medium truncate">{p.name}</span>
+                          <Link
+                            to={ADMIN_ROUTES.PLACES_EDIT(p.id)}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline shrink-0"
+                            onClick={() => onOpenChange?.(false)}
+                          >
+                            Sửa
+                            <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
 
-              <div className="space-y-4">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <p className="text-base font-semibold text-foreground">
-                      Giấy tờ đính kèm
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Thứ tự đối chiếu gợi ý: CCCD trước → sau → GPKD.
-                    </p>
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <p className="text-base font-semibold text-foreground">
+                        Giấy tờ đính kèm
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Thứ tự đối chiếu gợi ý: CCCD trước → sau → GPKD.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                    <DocumentPreviewCard
+                      title="CCCD / CMND mặt trước"
+                      raw={detail.idCardFront}
+                    />
+                    <DocumentPreviewCard
+                      title="CCCD / CMND mặt sau"
+                      raw={detail.idCardBack}
+                    />
+                    <DocumentPreviewCard
+                      title="Giấy phép kinh doanh"
+                      raw={detail.businessLicense}
+                    />
                   </div>
                 </div>
-                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                  <DocumentPreviewCard
-                    title="CCCD / CMND mặt trước"
-                    raw={detail.idCardFront}
-                  />
-                  <DocumentPreviewCard
-                    title="CCCD / CMND mặt sau"
-                    raw={detail.idCardBack}
-                  />
-                  <DocumentPreviewCard
-                    title="Giấy phép kinh doanh"
-                    raw={detail.businessLicense}
-                  />
-                </div>
-              </div>
 
-              {!rejectMode ? (
-                <>
-                  <div className="rounded-2xl border border-border/50 bg-muted/25 p-5 shadow-sm space-y-3">
+                {!rejectMode ? (
+                  <>
+                    <div className="rounded-2xl border border-border/50 bg-muted/25 p-5 shadow-sm space-y-3">
+                      <Label
+                        htmlFor="commission-rate"
+                        className="text-sm font-medium"
+                      >
+                        Tỷ lệ hoa hồng nền tảng (%) sau khi duyệt
+                      </Label>
+                      <Input
+                        id="commission-rate"
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.5}
+                        value={commissionRate}
+                        onChange={(e) => setCommissionRate(e.target.value)}
+                        className="max-w-[200px] rounded-xl border-border/60 font-mono"
+                        autoComplete="off"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Áp dụng cho giao dịch trên nền tảng; có thể điều chỉnh
+                        sau nếu cần.
+                      </p>
+                    </div>
+
+                    <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/60 bg-background/50 p-4 transition-colors hover:bg-muted/40">
+                      <Checkbox
+                        checked={acknowledged}
+                        onCheckedChange={(c) => setAcknowledged(Boolean(c))}
+                        className="mt-0.5"
+                        id="ack-compare"
+                      />
+                      <span className="text-sm leading-relaxed">
+                        <span className="font-medium text-foreground">
+                          Tôi đã đối chiếu
+                        </span>{" "}
+                        đủ 3 loại giấy tờ ở trên (ảnh hoặc PDF) với bản gốc hoặc
+                        bản sao công chứng và <strong>xác nhận khớp</strong>{" "}
+                        trước khi duyệt.
+                      </span>
+                    </label>
+                  </>
+                ) : (
+                  <div className="space-y-2 rounded-2xl border border-destructive/20 bg-destructive/[0.03] p-4">
                     <Label
-                      htmlFor="commission-rate"
-                      className="text-sm font-medium"
+                      htmlFor="reject-reason-admin"
+                      className="font-medium"
                     >
-                      Tỷ lệ hoa hồng nền tảng (%) sau khi duyệt
+                      Lý do từ chối
                     </Label>
-                    <Input
-                      id="commission-rate"
-                      type="number"
-                      min={0}
-                      max={100}
-                      step={0.5}
-                      value={commissionRate}
-                      onChange={(e) => setCommissionRate(e.target.value)}
-                      className="max-w-[200px] rounded-xl border-border/60 font-mono"
-                      autoComplete="off"
+                    <Textarea
+                      id="reject-reason-admin"
+                      placeholder="Nêu rõ phần không khớp hoặc thiếu (tối thiểu 10 ký tự)…"
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      className="min-h-[120px] rounded-xl border-border/60"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Áp dụng cho giao dịch trên nền tảng; có thể điều chỉnh
-                      sau nếu cần.
-                    </p>
                   </div>
-
-                  <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/60 bg-background/50 p-4 transition-colors hover:bg-muted/40">
-                    <Checkbox
-                      checked={acknowledged}
-                      onCheckedChange={(c) => setAcknowledged(Boolean(c))}
-                      className="mt-0.5"
-                      id="ack-compare"
-                    />
-                    <span className="text-sm leading-relaxed">
-                      <span className="font-medium text-foreground">
-                        Tôi đã đối chiếu
-                      </span>{" "}
-                      đủ 3 loại giấy tờ ở trên (ảnh hoặc PDF) với bản gốc hoặc
-                      bản sao công chứng và{" "}
-                      <strong>xác nhận khớp</strong> trước khi duyệt.
-                    </span>
-                  </label>
-                </>
-              ) : (
-                <div className="space-y-2 rounded-2xl border border-destructive/20 bg-destructive/[0.03] p-4">
-                  <Label htmlFor="reject-reason-admin" className="font-medium">
-                    Lý do từ chối
-                  </Label>
-                  <Textarea
-                    id="reject-reason-admin"
-                    placeholder="Nêu rõ phần không khớp hoặc thiếu (tối thiểu 10 ký tự)…"
-                    value={rejectReason}
-                    onChange={(e) => setRejectReason(e.target.value)}
-                    className="min-h-[120px] rounded-xl border-border/60"
-                  />
-                </div>
-              )}
-            </>
-          ) : null}
+                )}
+              </>
+            );
+          })()}
         </div>
 
         <DialogFooter className="shrink-0 gap-2 rounded-b-3xl border-t border-border/40 bg-gradient-to-t from-muted/50 to-background p-4 sm:gap-3 sm:p-6 sm:pt-5">

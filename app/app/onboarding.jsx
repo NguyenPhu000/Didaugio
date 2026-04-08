@@ -100,19 +100,27 @@ export default function OnboardingScreen() {
                     onPress={() => toggleStyle(style.id)}
                     className="flex-row items-center gap-2 px-4 py-2.5 rounded-2xl border"
                     style={{
-                      borderColor: isSelected ? style.color : TOKENS.color.neutral[100],
-                      backgroundColor: isSelected ? style.color + "22" : "transparent",
+                      borderColor: isSelected
+                        ? style.color
+                        : TOKENS.color.neutral[100],
+                      backgroundColor: isSelected
+                        ? style.color + "22"
+                        : "transparent",
                     }}
                   >
                     <MaterialIcons
                       name={style.icon}
                       size={18}
-                      color={isSelected ? style.color : TOKENS.color.neutral[400]}
+                      color={
+                        isSelected ? style.color : TOKENS.color.neutral[400]
+                      }
                     />
                     <Text
                       className="text-sm font-medium"
                       style={{
-                        color: isSelected ? style.color : TOKENS.color.neutral[700],
+                        color: isSelected
+                          ? style.color
+                          : TOKENS.color.neutral[700],
                       }}
                     >
                       {style.label}
@@ -132,7 +140,7 @@ export default function OnboardingScreen() {
                 Đi du lịch với ai? 👥
               </Text>
               <Text className="text-sm text-ink-secondary">
-                Giúp Chị Mai gợi ý phù hợp hơn
+                Giúp em Nhi gợi ý phù hợp hơn
               </Text>
             </View>
             <View className="gap-3 mt-2">
@@ -141,7 +149,9 @@ export default function OnboardingScreen() {
                 return (
                   <Pressable
                     key={group.id}
-                    onPress={() => setPrefs((p) => ({ ...p, groupType: group.id }))}
+                    onPress={() =>
+                      setPrefs((p) => ({ ...p, groupType: group.id }))
+                    }
                     className="flex-row items-center gap-3 px-4 py-4 rounded-2xl border"
                     style={{
                       borderColor: isSelected
@@ -195,7 +205,7 @@ export default function OnboardingScreen() {
                 Ngân sách của bạn? 💰
               </Text>
               <Text className="text-sm text-ink-secondary">
-                Để Chị Mai gợi ý phù hợp túi tiền
+                Để em Nhi gợi ý phù hợp túi tiền
               </Text>
             </View>
             <View className="gap-3 mt-2">
@@ -204,7 +214,9 @@ export default function OnboardingScreen() {
                 return (
                   <Pressable
                     key={level.id}
-                    onPress={() => setPrefs((p) => ({ ...p, budgetLevel: level.id }))}
+                    onPress={() =>
+                      setPrefs((p) => ({ ...p, budgetLevel: level.id }))
+                    }
                     className="px-4 py-4 rounded-2xl border"
                     style={{
                       borderColor: isSelected

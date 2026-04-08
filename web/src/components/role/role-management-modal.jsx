@@ -17,7 +17,8 @@ export function RoleManagementModal({ open, onOpenChange, role, onUpdated }) {
 
   useEffect(() => {
     if (open && role) {
-      setActiveTab("permissions");
+      const id = requestAnimationFrame(() => setActiveTab("permissions"));
+      return () => cancelAnimationFrame(id);
     }
   }, [open, role]);
 

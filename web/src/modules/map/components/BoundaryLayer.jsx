@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Source, Layer } from "../adapters";
-import { useMapContext } from "../context/MapProvider";
+import { useMapContext } from "../hooks/useMapContext";
 import { MAP_THEME, LAYER_IDS } from "../config/mapConfig";
 
 const BoundaryLayer = ({ mask, districts, wards }) => {

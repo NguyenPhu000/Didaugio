@@ -26,9 +26,11 @@ import {
   StatCardSkeleton,
   SectionCardSkeleton,
   TableRowSkeleton,
-  formatVND,
-  DESIGN,
 } from "@/components/business/DashboardWidgets";
+import {
+  DESIGN,
+  formatVND,
+} from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +81,13 @@ const ServiceFormModal = ({
   onSave,
   onClose,
 }) => {
+  let initialFormPlaceId = "";
+  if (service?.place?.id) {
+    initialFormPlaceId = String(service.place.id);
+  } else if (initialPlaceId) {
+    initialFormPlaceId = String(initialPlaceId);
+  }
+
   const [form, setForm] = useState({
     name: service?.name || "",
     description: service?.description || "",
@@ -87,11 +96,7 @@ const ServiceFormModal = ({
     discountPrice: service?.discountPrice || "",
     duration: service?.duration || "",
     maxCapacity: service?.maxCapacity || "",
-    placeId: service?.place?.id
-      ? String(service.place.id)
-      : initialPlaceId
-        ? String(initialPlaceId)
-        : "",
+    placeId: initialFormPlaceId,
     isActive: service?.isActive ?? true,
   });
   const [saving, setSaving] = useState(false);
@@ -709,13 +714,12 @@ const ServiceListPage = () => {
                 item={item}
                 isSelected={selectedPlaceId === String(item.placeKey)}
                 onClick={() =>
-                  setSelectedPlaceId((prev) =>
-                    prev === String(item.placeKey)
-                      ? "all"
-                      : item.placeKey === "none"
-                        ? "all"
-                        : String(item.placeKey),
-                  )
+                  setSelectedPlaceId((prev) => {
+                    const nextPlaceKey = String(item.placeKey);
+                    if (prev === nextPlaceKey) return "all";
+                    if (item.placeKey === "none") return "all";
+                    return nextPlaceKey;
+                  })
                 }
               />
             ))}
@@ -754,89 +758,99 @@ const ServiceListPage = () => {
           </div>
         }
       >
-        {loading ? (
-          <div className="space-y-0">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-4 py-4 border-b border-border/50 last:border-0"
-              >
-                <div className="flex-1 space-y-1.5">
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="h-3 w-32" />
-                </div>
-                <Skeleton className="h-8 w-16 rounded-md" />
-              </div>
-            ))}
-          </div>
-        ) : services.length === 0 ? (
-          <EmptyState
-            icon={Ticket}
-            message="Chưa có dịch vụ nào. Nhấn 'Tạo dịch vụ mới' để bắt đầu."
-            action={
-              <Button
-                size="sm"
-                onClick={() => openCreate("")}
-                className="gap-1.5"
-              >
-                <Plus className="h-3.5 w-3.5" /> Tạo dịch vụ
-              </Button>
-            }
-          />
-        ) : (
-          <div className="space-y-0">
-            {Object.entries(groupedServices).map(([placeKey, group]) => (
-              <div key={placeKey}>
-                {/* Place Group Header */}
-                <div
-                  className="flex items-center justify-between py-2 mb-1 cursor-pointer"
-                  onClick={() =>
-                    setExpandedPlaces((prev) => ({
-                      ...prev,
-                      [placeKey]: !(prev[placeKey] ?? true),
-                    }))
-                  }
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      {group.label}
-                    </span>
-                    <span className="text-[10px] bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-medium">
-                      {group.items.length} dịch vụ
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs gap-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openCreate(placeKey);
-                    }}
+        {(() => {
+          if (loading) {
+            return (
+              <div className="space-y-0">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 py-4 border-b border-border/50 last:border-0"
                   >
-                    <Plus className="h-3 w-3" />
-                    Thêm vào đây
-                  </Button>
-                </div>
-
-                {(expandedPlaces[placeKey] ?? true) && (
-                  <div className="pl-2 border-l-2 border-border/60 ml-1 mb-4">
-                    {group.items.map((svc) => (
-                      <ServiceItem
-                        key={svc.id}
-                        svc={svc}
-                        onEdit={openEdit}
-                        onDelete={(s) =>
-                          setConfirmDelete({ id: s.id, name: s.name })
-                        }
-                      />
-                    ))}
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                    <Skeleton className="h-8 w-16 rounded-md" />
                   </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            );
+          }
+
+          if (services.length === 0) {
+            return (
+              <EmptyState
+                icon={Ticket}
+                message="Chưa có dịch vụ nào. Nhấn 'Tạo dịch vụ mới' để bắt đầu."
+                action={
+                  <Button
+                    size="sm"
+                    onClick={() => openCreate("")}
+                    className="gap-1.5"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Tạo dịch vụ
+                  </Button>
+                }
+              />
+            );
+          }
+
+          return (
+            <div className="space-y-0">
+              {Object.entries(groupedServices).map(([placeKey, group]) => (
+                <div key={placeKey}>
+                  {/* Place Group Header */}
+                  <div
+                    className="flex items-center justify-between py-2 mb-1 cursor-pointer"
+                    onClick={() =>
+                      setExpandedPlaces((prev) => ({
+                        ...prev,
+                        [placeKey]: !(prev[placeKey] ?? true),
+                      }))
+                    }
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        {group.label}
+                      </span>
+                      <span className="text-[10px] bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-medium">
+                        {group.items.length} dịch vụ
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openCreate(placeKey);
+                      }}
+                    >
+                      <Plus className="h-3 w-3" />
+                      Thêm vào đây
+                    </Button>
+                  </div>
+
+                  {(expandedPlaces[placeKey] ?? true) && (
+                    <div className="pl-2 border-l-2 border-border/60 ml-1 mb-4">
+                      {group.items.map((svc) => (
+                        <ServiceItem
+                          key={svc.id}
+                          svc={svc}
+                          onEdit={openEdit}
+                          onDelete={(s) =>
+                            setConfirmDelete({ id: s.id, name: s.name })
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {!loading && totalPages > 1 && (
           <>

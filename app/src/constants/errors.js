@@ -5,7 +5,8 @@ export const ERROR_MESSAGES = {
   NOT_FOUND: "Không tìm thấy thông tin yêu cầu.",
   VALIDATION: "Thông tin không hợp lệ. Vui lòng kiểm tra lại.",
   UNKNOWN: "Đã có lỗi xảy ra. Vui lòng thử lại.",
-  AI_QUOTA: "AI đang quá tải, vui lòng thử lại sau ít phút nhé.",
+  AI_QUOTA:
+    "AI đã chạm giới hạn quota. Vui lòng thử lại sau hoặc kiểm tra billing của Gemini API.",
   AI_UNAVAILABLE: "Dịch vụ AI tạm thời không khả dụng.",
   LOCATION_DENIED: "Cần quyền truy cập vị trí để sử dụng tính năng này.",
 };

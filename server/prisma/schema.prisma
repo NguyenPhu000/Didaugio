@@ -445,6 +445,7 @@ model Place {
   priceFrom        Int?      @map("price_from")
   priceTo          Int?      @map("price_to")
   thumbnail        String?   @db.Text
+  markerUrl        String?   @map("marker_url") @db.Text
   ratingAvg        Decimal   @default(0.0) @map("rating_avg") @db.Decimal(2, 1)
   ratingCount      Int       @default(0) @map("rating_count")
   viewCount        Int       @default(0) @map("view_count")

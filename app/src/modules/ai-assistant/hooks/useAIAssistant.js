@@ -4,9 +4,77 @@ import { useAuthStore } from "../../../stores/authStore";
 import { useStreamingVoice } from "./useStreamingVoice";
 import { useIntentRouter } from "./useIntentRouter";
 import { buildApiPayload } from "../lib/conversationMemory";
+import { INTENT_TYPES } from "../lib/intentDetector";
 import { mapAIError } from "../lib/mapAIError";
+import { generateTripPreviewApi } from "../../ai/api/aiApi";
 import { ENDPOINTS } from "../../../api/endpoints";
 import apiClient from "../../../api/client";
+
+const MAX_CHAT_SUGGESTED_PLACES = 6;
+
+const PLACE_SUGGESTION_INTENTS = new Set([
+  INTENT_TYPES.SCHEDULE,
+  INTENT_TYPES.NEARBY,
+  INTENT_TYPES.EAT,
+  INTENT_TYPES.VOICE,
+  INTENT_TYPES.REVIEW,
+  INTENT_TYPES.OPEN_HOURS,
+  INTENT_TYPES.NAVIGATE,
+  INTENT_TYPES.SAVE,
+  INTENT_TYPES.GENERAL,
+]);
+
+function extractAssistantReply(response) {
+  // Prefer deeply nested payload first so raw axios responses don't return
+  // top-level metadata messages like "Thành công".
+  const nestedMessage = response?.data?.data?.message;
+  if (typeof nestedMessage === "string" && nestedMessage.trim()) {
+    return nestedMessage.trim();
+  }
+
+  const directMessage = response?.data?.message;
+  if (typeof directMessage === "string" && directMessage.trim()) {
+    return directMessage.trim();
+  }
+
+  return "";
+}
+
+function inferPlannerPreferences(text = "") {
+  const dayMatch = text.match(/(\d{1,2})\s*(ngày|day)/i);
+  const groupMatch = text.match(/(\d{1,2})\s*(người|person|people)/i);
+
+  const totalDays = Number(dayMatch?.[1]);
+  const groupSize = Number(groupMatch?.[1]);
+
+  return {
+    totalDays:
+      Number.isFinite(totalDays) && totalDays > 0 ? Math.min(totalDays, 14) : 1,
+    groupSize:
+      Number.isFinite(groupSize) && groupSize > 0 ? Math.min(groupSize, 12) : 1,
+  };
+}
+
+function shouldFetchSuggestedPlaces(intent) {
+  return PLACE_SUGGESTION_INTENTS.has(intent);
+}
+
+function normalizeSuggestedPlaces(places = []) {
+  if (!Array.isArray(places) || places.length === 0) return [];
+
+  const deduped = [];
+  const seen = new Set();
+
+  for (const place of places) {
+    const placeId = Number(place?.id);
+    if (!placeId || seen.has(placeId)) continue;
+    seen.add(placeId);
+    deduped.push(place);
+    if (deduped.length >= MAX_CHAT_SUGGESTED_PLACES) break;
+  }
+
+  return deduped;
+}
 
 export function useAIAssistant() {
   const sessionContext = useAIContextStore((s) => s.sessionContext);
@@ -31,13 +99,26 @@ export function useAIAssistant() {
         accessToken,
       );
     },
-    [sessionContext, accessToken, addVisitedPlace, setVoiceSpeaking, streamAndSpeak],
+    [
+      sessionContext,
+      accessToken,
+      addVisitedPlace,
+      setVoiceSpeaking,
+      streamAndSpeak,
+    ],
   );
 
   const sendChatMessage = useCallback(
     async (text) => {
       const { intent } = route(text);
       const payload = buildApiPayload(conversationMemory, text);
+
+      const placeSuggestionPromise = shouldFetchSuggestedPlaces(intent)
+        ? generateTripPreviewApi({
+            ...inferPlannerPreferences(text),
+            notes: text,
+          }).catch(() => null)
+        : Promise.resolve(null);
 
       addMessage({ role: "user", content: text });
 
@@ -58,8 +139,20 @@ export function useAIAssistant() {
           { signal: abortControllerRef.current.signal },
         );
 
-        const aiReply = response.data?.data?.message ?? "";
-        addMessage({ role: "assistant", content: aiReply });
+        const aiReply =
+          extractAssistantReply(response) ||
+          "Mình chưa nhận được nội dung phản hồi, bạn thử lại giúp mình nhé.";
+
+        const placeSuggestionResponse = await placeSuggestionPromise;
+        const suggestedPlaces = normalizeSuggestedPlaces(
+          placeSuggestionResponse?.data?.suggestedPlaces,
+        );
+
+        addMessage({
+          role: "assistant",
+          content: aiReply,
+          suggestedPlaces,
+        });
         return { reply: aiReply, intent };
       } catch (err) {
         if (err?.name === "CanceledError" || err?.name === "AbortError") {

@@ -32,7 +32,12 @@ const CategorySelector = memo(({ value, onChange, error }) => {
     if (value && categories.length > 0) {
       const selected = categories.find((c) => c.id === value);
       if (selected?.parentId) {
-        setExpandedCategories((prev) => new Set([...prev, selected.parentId]));
+        const id = requestAnimationFrame(() => {
+          setExpandedCategories(
+            (prev) => new Set([...prev, selected.parentId]),
+          );
+        });
+        return () => cancelAnimationFrame(id);
       }
     }
   }, [value, categories]);

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -13,60 +14,57 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useCreateTrip } from "../../src/modules/trips/hooks/useTrips";
-import { GLASS_THEME } from "../../src/constants/design-tokens";
+import { AIEntryButton } from "../../src/components/composed/AIEntryButton";
+import { CustomDatePicker } from "../../src/components/ui/CustomDatePicker";
+import { TOKENS } from "../../src/constants/design-tokens";
+import { TAB_THEME } from "../(tabs)/tabTheme";
 
-const GlassInput = ({ label, placeholder, value, onChangeText, multiline = false, icon }) => (
-  <View style={{ marginBottom: 18 }}>
-    <Text
-      style={{
-        color: GLASS_THEME.textSecondary,
-        fontSize: 12,
-        fontWeight: "700",
-        letterSpacing: 0.6,
-        textTransform: "uppercase",
-        marginBottom: 8,
-      }}
-    >
-      {label}
-    </Text>
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: multiline ? "flex-start" : "center",
-        gap: 10,
-        backgroundColor: GLASS_THEME.glass,
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: GLASS_THEME.glassBorder,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        minHeight: multiline ? 90 : 54,
-      }}
-    >
-      {icon ? (
-        <MaterialIcons
-          name={icon}
-          size={18}
-          color={GLASS_THEME.textSecondary}
-          style={multiline ? { marginTop: 2 } : {}}
-        />
-      ) : null}
+// Tính số ngày từ 2 Date object (bao gồm cả ngày đầu và cuối)
+function calcTotalDays(start, end) {
+  if (!start || !end) return null;
+  const ms = end.getTime() - start.getTime();
+  const days = Math.round(ms / (1000 * 60 * 60 * 24)) + 1;
+  return days > 0 ? days : null;
+}
+
+function FormSection({ title, icon, children }) {
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionIconWrap}>
+          <MaterialIcons name={icon} size={16} color={TAB_THEME.primary} />
+        </View>
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+function LabeledInput({
+  label,
+  placeholder,
+  value,
+  onChangeText,
+  multiline = false,
+  keyboardType,
+}) {
+  return (
+    <View style={styles.inputBlock}>
+      <Text style={styles.inputLabel}>{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={GLASS_THEME.textSecondary}
+        placeholderTextColor={TOKENS.color.neutral[400]}
         multiline={multiline}
-        style={{
-          flex: 1,
-          color: "#fff",
-          fontSize: 14,
-          lineHeight: multiline ? 22 : undefined,
-        }}
+        keyboardType={keyboardType}
+        style={[styles.textInput, multiline && styles.textInputMulti]}
+        textAlignVertical={multiline ? "top" : "center"}
       />
     </View>
-  </View>
-);
+  );
+}
 
 export default function CreateTripScreen() {
   const router = useRouter();
@@ -75,9 +73,25 @@ export default function CreateTripScreen() {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [totalDays, setTotalDays] = useState("1");
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [totalDays, setTotalDays] = useState(null);
+
+  // Tự động tính totalDays khi user chọn date range
+  useEffect(() => {
+    const computed = calcTotalDays(startDate, endDate);
+    if (computed !== null) {
+      setTotalDays(computed);
+    }
+  }, [startDate, endDate]);
+
+  // Đảm bảo endDate >= startDate
+  const handleStartDate = (date) => {
+    setStartDate(date);
+    if (date && endDate && endDate < date) {
+      setEndDate(null);
+    }
+  };
 
   const canSubmit = title.trim().length > 0 && !createMutation.isPending;
 
@@ -87,9 +101,9 @@ export default function CreateTripScreen() {
       const result = await createMutation.mutateAsync({
         title: title.trim(),
         description: description.trim() || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        totalDays: parseInt(totalDays) || 1,
+        startDate: startDate ? startDate.toISOString() : undefined,
+        endDate: endDate ? endDate.toISOString() : undefined,
+        totalDays: totalDays ?? 1,
       });
       const newId = result?.data?.id;
       if (newId) {
@@ -98,182 +112,343 @@ export default function CreateTripScreen() {
         router.back();
       }
     } catch {
-      // Error handled by mutation state
+      // lỗi được xử lý bởi createMutation.isError
     }
   };
 
-  const handleAIGenerate = () => {
-    router.replace("/(tabs)/ai");
-  };
+  // Hiển thị số ngày dự tính
+  const daysLabel =
+    totalDays !== null
+      ? `${totalDays} ngày`
+      : startDate && !endDate
+        ? "Chọn ngày kết thúc"
+        : null;
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: GLASS_THEME.background }}
+      style={styles.screen}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: 16,
-          paddingTop: insets.top + 12,
-          paddingBottom: 12,
-          gap: 12,
-        }}
-      >
+      {/* ── Header ── */}
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Pressable
           onPress={() => router.back()}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 14,
-            backgroundColor: GLASS_THEME.glass,
-            alignItems: "center",
-            justifyContent: "center",
-            borderWidth: 1,
-            borderColor: GLASS_THEME.glassBorder,
-          }}
+          style={styles.backBtn}
+          hitSlop={8}
         >
-          <MaterialIcons name="close" size={20} color="#fff" />
+          <MaterialIcons name="arrow-back" size={20} color={TAB_THEME.text} />
         </Pressable>
-        <Text style={{ color: "#fff", fontSize: 20, fontWeight: "800" }}>
-          Tạo chuyến đi
-        </Text>
+
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Tạo chuyến đi</Text>
+          <Text style={styles.headerSubtitle}>Lên kế hoạch hành trình mới</Text>
+        </View>
+
+        <View style={styles.headerRight} />
       </View>
 
       <ScrollView
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingBottom: insets.bottom + 40,
-        }}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 40 },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View
-          style={{
-            backgroundColor: GLASS_THEME.glass,
-            borderRadius: 28,
-            borderWidth: 1,
-            borderColor: GLASS_THEME.glassBorder,
-            padding: 20,
-            marginBottom: 16,
-          }}
-        >
-          <GlassInput
+        {/* ── Info section ── */}
+        <FormSection title="Thông tin chuyến đi" icon="luggage">
+          <LabeledInput
             label="Tên chuyến đi *"
             placeholder="VD: Khám phá Cần Thơ 3 ngày"
             value={title}
             onChangeText={setTitle}
-            icon="edit"
           />
-          <GlassInput
+          <LabeledInput
             label="Mô tả"
-            placeholder="Mô tả ngắn về chuyến đi..."
+            placeholder="Mục đích, phong cách, điểm đặc biệt..."
             value={description}
             onChangeText={setDescription}
             multiline
-            icon="notes"
           />
-          <GlassInput
-            label="Ngày bắt đầu"
-            placeholder="DD/MM/YYYY"
-            value={startDate}
-            onChangeText={setStartDate}
-            icon="calendar-today"
-          />
-          <GlassInput
-            label="Ngày kết thúc"
-            placeholder="DD/MM/YYYY"
-            value={endDate}
-            onChangeText={setEndDate}
-            icon="event"
-          />
-          <GlassInput
-            label="Số ngày"
-            placeholder="1"
-            value={totalDays}
-            onChangeText={setTotalDays}
-            icon="today"
-          />
-        </View>
+        </FormSection>
 
+        {/* ── Date section ── */}
+        <FormSection title="Thời gian" icon="calendar-month">
+          <CustomDatePicker
+            label="Ngày bắt đầu"
+            value={startDate}
+            onChange={handleStartDate}
+            placeholder="Chọn ngày bắt đầu"
+          />
+          <CustomDatePicker
+            label="Ngày kết thúc"
+            value={endDate}
+            onChange={setEndDate}
+            minimumDate={startDate ?? undefined}
+            placeholder="Chọn ngày kết thúc"
+          />
+
+          {/* Duration badge */}
+          {daysLabel ? (
+            <View style={styles.durationBadge}>
+              <MaterialIcons
+                name="timelapse"
+                size={14}
+                color={TAB_THEME.primary}
+              />
+              <Text style={styles.durationText}>{daysLabel}</Text>
+            </View>
+          ) : null}
+
+          {/* Validation: endDate < startDate */}
+          {startDate && endDate && endDate < startDate ? (
+            <View style={styles.warningRow}>
+              <MaterialIcons
+                name="warning"
+                size={14}
+                color={TOKENS.color.warning}
+              />
+              <Text style={styles.warningText}>
+                Ngày kết thúc phải sau ngày bắt đầu
+              </Text>
+            </View>
+          ) : null}
+        </FormSection>
+
+        {/* ── Error ── */}
         {createMutation.isError ? (
-          <View
-            style={{
-              backgroundColor: "rgba(239,68,68,0.12)",
-              borderRadius: 16,
-              padding: 14,
-              marginBottom: 16,
-              borderWidth: 1,
-              borderColor: "rgba(239,68,68,0.3)",
-            }}
-          >
-            <Text style={{ color: "#EF4444", fontSize: 13 }}>
-              {createMutation.error?.message || "Có lỗi xảy ra, vui lòng thử lại"}
+          <View style={styles.errorCard}>
+            <MaterialIcons
+              name="error-outline"
+              size={18}
+              color={TOKENS.color.error}
+            />
+            <Text style={styles.errorText}>
+              {createMutation.error?.message ||
+                "Có lỗi xảy ra, vui lòng thử lại"}
             </Text>
           </View>
         ) : null}
 
+        {/* ── Actions ── */}
         <Pressable
           onPress={handleCreate}
           disabled={!canSubmit}
-          style={{
-            backgroundColor: canSubmit ? GLASS_THEME.neon : "rgba(255,255,255,0.12)",
-            borderRadius: 22,
-            paddingVertical: 16,
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 12,
-            flexDirection: "row",
-            gap: 8,
-            shadowColor: canSubmit ? GLASS_THEME.neon : "transparent",
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.35,
-            shadowRadius: 20,
-            elevation: canSubmit ? 10 : 0,
-          }}
+          style={({ pressed }) => [
+            styles.primaryBtn,
+            !canSubmit && styles.primaryBtnDisabled,
+            pressed && canSubmit && styles.primaryBtnPressed,
+          ]}
         >
           {createMutation.isPending ? (
-            <ActivityIndicator size="small" color="#03131A" />
+            <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <MaterialIcons
               name="luggage"
               size={18}
-              color={canSubmit ? "#03131A" : GLASS_THEME.textSecondary}
+              color={canSubmit ? "#FFFFFF" : TOKENS.color.neutral[400]}
             />
           )}
           <Text
-            style={{
-              color: canSubmit ? "#03131A" : GLASS_THEME.textSecondary,
-              fontSize: 15,
-              fontWeight: "800",
-              letterSpacing: 0.4,
-            }}
+            style={[
+              styles.primaryBtnText,
+              !canSubmit && styles.primaryBtnTextDisabled,
+            ]}
           >
             Tạo chuyến đi
           </Text>
         </Pressable>
 
-        <Pressable
-          onPress={handleAIGenerate}
-          style={{
-            backgroundColor: GLASS_THEME.glass,
-            borderRadius: 22,
-            paddingVertical: 16,
-            alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "row",
-            gap: 8,
-            borderWidth: 1,
-            borderColor: GLASS_THEME.glassBorderStrong,
-          }}
-        >
-          <MaterialIcons name="auto-awesome" size={18} color={GLASS_THEME.neonAccent} />
-          <Text style={{ color: GLASS_THEME.neonAccent, fontSize: 15, fontWeight: "700" }}>
-            Để AI "Chị Mai" lên kế hoạch cho tôi
-          </Text>
-        </Pressable>
+        <AIEntryButton
+          onPress={() => router.replace("/(tabs)/ai")}
+          badge="em Nhi"
+          style={styles.aiButton}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#F6FAFF",
+  },
+  /* ── Header ── */
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(148,163,184,0.16)",
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: TOKENS.radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F1F5F9",
+  },
+  headerCenter: {
+    flex: 1,
+    gap: 2,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: TOKENS.font.heading,
+    color: TAB_THEME.text,
+    letterSpacing: -0.2,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    fontFamily: TOKENS.font.body,
+    color: TAB_THEME.textMuted,
+  },
+  headerRight: {
+    width: 40,
+  },
+  /* ── Scroll ── */
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    gap: 16,
+  },
+  /* ── Section ── */
+  section: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: TOKENS.radius["2xl"],
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.14)",
+    padding: 20,
+    gap: 4,
+    ...TOKENS.shadow.sm,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 16,
+  },
+  sectionIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: TOKENS.radius.md,
+    backgroundColor: "rgba(0,102,230,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontFamily: TOKENS.font.semibold,
+    color: TAB_THEME.text,
+  },
+  /* ── Inputs ── */
+  inputBlock: {
+    marginBottom: 14,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
+    color: TOKENS.color.neutral[500],
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 8,
+  },
+  textInput: {
+    backgroundColor: "#F8FBFF",
+    borderRadius: TOKENS.radius.lg,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.22)",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 14,
+    fontFamily: TOKENS.font.body,
+    color: TAB_THEME.text,
+    minHeight: 52,
+  },
+  textInputMulti: {
+    minHeight: 90,
+    paddingTop: 14,
+  },
+  /* ── Duration badge ── */
+  durationBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: TOKENS.radius.full,
+    backgroundColor: "rgba(0,102,230,0.08)",
+    marginTop: 4,
+  },
+  durationText: {
+    fontSize: 13,
+    fontFamily: TOKENS.font.semibold,
+    color: TAB_THEME.primary,
+  },
+  /* ── Warning ── */
+  warningRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+  },
+  warningText: {
+    fontSize: 12,
+    fontFamily: TOKENS.font.medium,
+    color: TOKENS.color.warning,
+  },
+  /* ── Error ── */
+  errorCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: TOKENS.color.error + "10",
+    borderRadius: TOKENS.radius.lg,
+    borderWidth: 1,
+    borderColor: TOKENS.color.error + "28",
+    padding: 14,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: TOKENS.font.medium,
+    color: TOKENS.color.error,
+  },
+  /* ── Buttons ── */
+  primaryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: TAB_THEME.primary,
+    borderRadius: TOKENS.radius.xl,
+    paddingVertical: 16,
+    ...TOKENS.shadow.accent,
+  },
+  primaryBtnDisabled: {
+    backgroundColor: TOKENS.color.neutral[100],
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  primaryBtnPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.98 }],
+  },
+  primaryBtnText: {
+    fontSize: 15,
+    fontFamily: TOKENS.font.semibold,
+    color: "#FFFFFF",
+  },
+  primaryBtnTextDisabled: {
+    color: TOKENS.color.neutral[400],
+  },
+  aiButton: {
+    marginTop: 2,
+  },
+});

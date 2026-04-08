@@ -16,7 +16,9 @@ const getPersistedAuth = () => {
       const parsed = JSON.parse(raw);
       return parsed?.state ?? {};
     }
-  } catch {}
+  } catch {
+    // Ignore malformed persisted auth state.
+  }
   return {};
 };
 

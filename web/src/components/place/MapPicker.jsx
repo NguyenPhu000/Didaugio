@@ -32,7 +32,7 @@ import {
 const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
   const mapRef = useRef();
   const lastRightClickRef = useRef(0);
-  const { viewState, setViewState } = useMapContext();
+  const { setViewState } = useMapContext();
   const { districts, wards, canThoMask } = useMapData();
 
   // Local state for UI only (marker position)
@@ -61,12 +61,15 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
         zoom: 15,
       }));
     }
-  }, [setViewState]); // Run once on mount effective/dependency
+  }, [latitude, longitude, setViewState]);
 
   // Sync props to state (Marker only)
   useEffect(() => {
     if (latitude && longitude) {
-      setMarker({ latitude: Number(latitude), longitude: Number(longitude) });
+      const id = requestAnimationFrame(() => {
+        setMarker({ latitude: Number(latitude), longitude: Number(longitude) });
+      });
+      return () => cancelAnimationFrame(id);
     }
   }, [latitude, longitude]);
 
@@ -128,7 +131,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
             zoom: 16,
           }));
         },
-        (error) => alert("Không thể lấy vị trí: " + error.message),
+        (error) => alert(`Không thể lấy vị trí: ${error.message}`),
       );
     }
   };

@@ -24,42 +24,37 @@ export const MAP_STYLES = {
   OSM: {
     key: "osm",
     label: "Ban do",
-    urls: [
-      "https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
-      "https://b.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
-      "https://c.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
-    ],
+    urls: [],
+    mapType: "standard",
+    useNativeCleanStyle: true,
   },
   CARTO_LIGHT: {
     key: "carto_light",
     label: "Toi gian",
-    urls: [
-      "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-      "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-    ],
+    urls: [],
+    mapType: "standard",
+    useNativeCleanStyle: true,
   },
   ADMIN: {
     key: "admin",
     label: "Hanh chinh",
-    urls: [
-      "https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
-      "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
-    ],
+    urls: [],
+    mapType: "standard",
+    useNativeCleanStyle: true,
   },
   SATELLITE: {
     key: "satellite",
     label: "Ve tinh",
-    urls: [
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    ],
+    urls: [],
+    mapType: "satellite",
+    useNativeCleanStyle: false,
   },
   HYBRID: {
     key: "hybrid",
     label: "Hybrid",
-    urls: [
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      "https://basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
-    ],
+    urls: [],
+    mapType: "hybrid",
+    useNativeCleanStyle: false,
   },
 };
 

@@ -35,15 +35,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import * as voucherApi from "@/apis/voucherService";
 import { getMyPlaces } from "@/apis/businessApi";
-import * as businessOfferingApi from "@/apis/businessOfferingApi";
 import {
   SectionCard,
   PageHeader,
   EmptyState,
-  DESIGN,
-  formatVND,
-  formatDate,
 } from "@/components/business/DashboardWidgets";
+import {
+  DESIGN,
+  formatDate,
+  formatVND,
+} from "@/components/business/dashboardWidgetHelpers";
 import { cn } from "@/lib/utils";
 
 // ─── Voucher Form Modal ──────────────────────────────────────────────────────
@@ -634,45 +635,55 @@ const VoucherListPage = () => {
           </div>
         }
       >
-        {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 rounded-xl" />
-            ))}
-          </div>
-        ) : filteredVouchers.length === 0 ? (
-          <EmptyState
-            icon={Tag}
-            message="Chưa có voucher nào. Nhấn 'Tạo voucher' để bắt đầu."
-            action={
-              <Button
-                size="sm"
-                onClick={() => setShowForm(true)}
-                className="gap-1.5"
-              >
-                <Plus className="h-3.5 w-3.5" /> Tạo voucher
-              </Button>
-            }
-          />
-        ) : (
-          <div className="space-y-3">
-            {filteredVouchers.map((v) => (
-              <VoucherCard
-                key={v.id}
-                voucher={v}
-                places={places}
-                selected={selected.includes(v.id)}
-                onSelect={toggleSelect}
-                onEdit={openEdit}
-                onDelete={(id) =>
-                  setDeleteTarget(
-                    filteredVouchers.find((item) => item.id === id) || null,
-                  )
+        {(() => {
+          if (loading) {
+            return (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-28 rounded-xl" />
+                ))}
+              </div>
+            );
+          }
+
+          if (filteredVouchers.length === 0) {
+            return (
+              <EmptyState
+                icon={Tag}
+                message="Chưa có voucher nào. Nhấn 'Tạo voucher' để bắt đầu."
+                action={
+                  <Button
+                    size="sm"
+                    onClick={() => setShowForm(true)}
+                    className="gap-1.5"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Tạo voucher
+                  </Button>
                 }
               />
-            ))}
-          </div>
-        )}
+            );
+          }
+
+          return (
+            <div className="space-y-3">
+              {filteredVouchers.map((v) => (
+                <VoucherCard
+                  key={v.id}
+                  voucher={v}
+                  places={places}
+                  selected={selected.includes(v.id)}
+                  onSelect={toggleSelect}
+                  onEdit={openEdit}
+                  onDelete={(id) =>
+                    setDeleteTarget(
+                      filteredVouchers.find((item) => item.id === id) || null,
+                    )
+                  }
+                />
+              ))}
+            </div>
+          );
+        })()}
       </SectionCard>
 
       <VoucherFormModal

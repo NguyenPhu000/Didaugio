@@ -179,31 +179,41 @@ const DistrictRow = ({ district, placeCount, maxCount }) => {
 
       <Collapsible.Content>
         <div className="border border-t-0 border-black bg-white">
-          {loadingPlaces ? (
-            <div className="flex items-center justify-center gap-2 py-6 tim-meta">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              ĐANG TẢI...
-            </div>
-          ) : sorted.length > 0 ? (
-            <>
-              <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                <span className="tim-meta">{sorted.length} ĐỊA ĐIỂM</span>
-                <Link
-                  to={`${ADMIN_ROUTES.PLACES}?districtId=${district.id}`}
-                  className="text-[10px] font-mono uppercase text-primary hover:underline"
-                >
-                  XEM TRONG QUẢN LÝ →
-                </Link>
+          {(() => {
+            if (loadingPlaces) {
+              return (
+                <div className="flex items-center justify-center gap-2 py-6 tim-meta">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  ĐANG TẢI...
+                </div>
+              );
+            }
+
+            if (sorted.length > 0) {
+              return (
+                <>
+                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                    <span className="tim-meta">{sorted.length} ĐỊA ĐIỂM</span>
+                    <Link
+                      to={`${ADMIN_ROUTES.PLACES}?districtId=${district.id}`}
+                      className="text-[10px] font-mono uppercase text-primary hover:underline"
+                    >
+                      XEM TRONG QUẢN LÝ →
+                    </Link>
+                  </div>
+                  {sorted.map((place, i) => (
+                    <PlaceRow key={place.id} place={place} idx={i} />
+                  ))}
+                </>
+              );
+            }
+
+            return (
+              <div className="px-4 py-6 text-center tim-meta">
+                CHƯA CÓ ĐỊA ĐIỂM NÀO
               </div>
-              {sorted.map((place, i) => (
-                <PlaceRow key={place.id} place={place} idx={i} />
-              ))}
-            </>
-          ) : (
-            <div className="px-4 py-6 text-center tim-meta">
-              CHƯA CÓ ĐỊA ĐIỂM NÀO
-            </div>
-          )}
+            );
+          })()}
         </div>
       </Collapsible.Content>
     </Collapsible.Root>
@@ -295,9 +305,7 @@ const DistrictListPage = () => {
             />
             <TimStatsCard
               title="CÓ ĐỊA ĐIỂM"
-              value={
-                filtered.filter((d) => (d._count?.places || 0) > 0).length
-              }
+              value={filtered.filter((d) => (d._count?.places || 0) > 0).length}
               icon={CheckCircle}
               serial="DST-003"
               textColor="text-emerald-600"

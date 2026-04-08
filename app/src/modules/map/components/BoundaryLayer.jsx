@@ -15,26 +15,30 @@ const WARD_STYLE = {
 };
 
 const DistrictLayer = memo(({ geojson }) => {
-  const features = useMemo(() => {
-    if (!geojson?.features?.length) return [];
-    return geojson.features.filter(
+  const districtGeojson = useMemo(() => {
+    if (!geojson?.features?.length) return null;
+
+    const features = geojson.features.filter(
       (feature) =>
         feature.geometry?.type === "Polygon" ||
         feature.geometry?.type === "MultiPolygon",
     );
+
+    if (features.length === 0) return null;
+
+    return { type: "FeatureCollection", features };
   }, [geojson]);
 
-  if (features.length === 0) return null;
+  if (!districtGeojson) return null;
 
-  return features.map((feature, idx) => (
+  return (
     <Geojson
-      key={`district-${feature.properties?.id || idx}`}
-      geojson={{ type: "FeatureCollection", features: [feature] }}
+      geojson={districtGeojson}
       fillColor={DISTRICT_STYLE.fillColor}
       strokeColor={DISTRICT_STYLE.strokeColor}
       strokeWidth={DISTRICT_STYLE.strokeWidth}
     />
-  ));
+  );
 });
 
 const WardLayer = memo(({ geojson }) => {

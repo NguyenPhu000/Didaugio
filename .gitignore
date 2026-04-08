@@ -113,3 +113,8 @@ bash.exe.stackdump
 
 # Understand Anything (Cursor): thư mục clone/build nặng — giữ .cursor-plugin/plugin.json trong git
 understand-anything-plugin/
+
+DEPLOYMENT.md
+docker-compose.yml
+start.bat
+start.sh

@@ -151,82 +151,92 @@ export default function RoleManagePage() {
         )}
 
         {/* Roles Grid */}
-        {loading ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => (
-              <div
-                key={i}
-                className="bg-white p-6 border border-black shadow-sm h-48 animate-pulse relative"
-              >
-                <div className="flex justify-between mb-8">
-                  <div className="h-12 w-12 bg-gray-200" />
-                  <div className="h-6 w-16 bg-gray-200" />
-                </div>
-                <div className="h-6 w-1/2 bg-gray-200 mb-2" />
-                <div className="h-4 w-3/4 bg-gray-200" />
+        {(() => {
+          if (loading) {
+            return (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {[...Array(6)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-white p-6 border border-black shadow-sm h-48 animate-pulse relative"
+                  >
+                    <div className="flex justify-between mb-8">
+                      <div className="h-12 w-12 bg-gray-200" />
+                      <div className="h-6 w-16 bg-gray-200" />
+                    </div>
+                    <div className="h-6 w-1/2 bg-gray-200 mb-2" />
+                    <div className="h-4 w-3/4 bg-gray-200" />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : filteredRoles.length === 0 ? (
-          <div className="text-center py-16 bg-white border border-black border-dashed">
-            <Users className="mx-auto h-12 w-12 text-gray-300" />
-            <p className="mt-4 text-gray-500 font-mono uppercase">
-              CHƯA CÓ VAI TRÒ
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredRoles.map((role) => {
-              const Icon = getRoleIcon(role.name);
-              return (
-                <div
-                  key={role.id}
-                  className="group bg-white border border-black p-6 flex flex-col justify-between hover:shadow-hard transition-all duration-200 relative overflow-hidden"
-                >
-                  <div className="absolute top-0 right-0 w-16 h-16 bg-[#F3E600]/10 -mr-8 -mt-8 rotate-45 transform transition-transform group-hover:scale-150"></div>
+            );
+          }
 
-                  <div>
-                    <div className="flex items-start justify-between mb-4 relative z-10">
-                      <div className="h-12 w-12 bg-black text-white flex items-center justify-center border border-black group-hover:bg-[#F3E600] group-hover:text-black transition-colors">
-                        <Icon className="h-6 w-6" />
+          if (filteredRoles.length === 0) {
+            return (
+              <div className="text-center py-16 bg-white border border-black border-dashed">
+                <Users className="mx-auto h-12 w-12 text-gray-300" />
+                <p className="mt-4 text-gray-500 font-mono uppercase">
+                  CHƯA CÓ VAI TRÒ
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredRoles.map((role) => {
+                const Icon = getRoleIcon(role.name);
+                return (
+                  <div
+                    key={role.id}
+                    className="group bg-white border border-black p-6 flex flex-col justify-between hover:shadow-hard transition-all duration-200 relative overflow-hidden"
+                  >
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-[#F3E600]/10 -mr-8 -mt-8 rotate-45 transform transition-transform group-hover:scale-150"></div>
+
+                    <div>
+                      <div className="flex items-start justify-between mb-4 relative z-10">
+                        <div className="h-12 w-12 bg-black text-white flex items-center justify-center border border-black group-hover:bg-[#F3E600] group-hover:text-black transition-colors">
+                          <Icon className="h-6 w-6" />
+                        </div>
+                        <div className="px-2 py-1 bg-gray-100 border border-gray-200 text-xs font-mono text-gray-600 flex items-center gap-1 group-hover:border-black group-hover:bg-white transition-colors">
+                          <Users className="h-3 w-3" />
+                          {role.userCount || 0}
+                        </div>
                       </div>
-                      <div className="px-2 py-1 bg-gray-100 border border-gray-200 text-xs font-mono text-gray-600 flex items-center gap-1 group-hover:border-black group-hover:bg-white transition-colors">
-                        <Users className="h-3 w-3" />
-                        {role.userCount || 0}
-                      </div>
+
+                      <h3 className="text-xl font-bold text-black mb-1 font-display uppercase tracking-tight">
+                        {role.displayName}
+                      </h3>
+                      <p className="text-xs text-gray-500 line-clamp-2 h-10 mb-4 font-mono">
+                        {role.description || "NO DESCRIPTION AVAILABLE"}
+                      </p>
                     </div>
 
-                    <h3 className="text-xl font-bold text-black mb-1 font-display uppercase tracking-tight">
-                      {role.displayName}
-                    </h3>
-                    <p className="text-xs text-gray-500 line-clamp-2 h-10 mb-4 font-mono">
-                      {role.description || "NO DESCRIPTION AVAILABLE"}
-                    </p>
-                  </div>
+                    <div className="pt-4 border-t border-gray-100 group-hover:border-black/10 transition-colors">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-black">
+                          Permissions
+                        </span>
+                        <span className="text-xs font-mono font-bold bg-[#F3E600] text-black px-1.5 py-0.5">
+                          {role.permissionCount || 0}
+                        </span>
+                      </div>
 
-                  <div className="pt-4 border-t border-gray-100 group-hover:border-black/10 transition-colors">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-black">
-                        Permissions
-                      </span>
-                      <span className="text-xs font-mono font-bold bg-[#F3E600] text-black px-1.5 py-0.5">
-                        {role.permissionCount || 0}
-                      </span>
+                      <Button
+                        onClick={() => handleManagePermissions(role)}
+                        className="w-full bg-white border border-black text-black hover:bg-black hover:text-white rounded-none h-9 text-xs font-bold uppercase tracking-wider"
+                      >
+                        <Lock className="w-3 h-3 mr-2" />
+                        Cấu hình quyền
+                      </Button>
                     </div>
-
-                    <Button
-                      onClick={() => handleManagePermissions(role)}
-                      className="w-full bg-white border border-black text-black hover:bg-black hover:text-white rounded-none h-9 text-xs font-bold uppercase tracking-wider"
-                    >
-                      <Lock className="w-3 h-3 mr-2" />
-                      Cấu hình quyền
-                    </Button>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {selectedRole && (
           <RoleManagementModal

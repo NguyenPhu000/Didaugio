@@ -1,4 +1,5 @@
 import { geminiModel } from "../config/geminiClient.js";
+import { mapGeminiError } from "../lib/geminiErrorHandler.js";
 
 const SSE_HEADERS = {
   "Content-Type": "text/event-stream",
@@ -17,7 +18,9 @@ function writeSSE(res, data) {
  * @param {import('express').Response} res
  */
 export async function streamPlaceSummary(prompt, res) {
-  Object.entries(SSE_HEADERS).forEach(([key, value]) => res.setHeader(key, value));
+  Object.entries(SSE_HEADERS).forEach(([key, value]) =>
+    res.setHeader(key, value),
+  );
 
   try {
     const result = await geminiModel.generateContentStream(prompt);
@@ -27,7 +30,8 @@ export async function streamPlaceSummary(prompt, res) {
     }
     writeSSE(res, "[DONE]");
   } catch (err) {
-    writeSSE(res, `[ERROR] ${err.message}`);
+    const { body } = mapGeminiError(err);
+    writeSSE(res, `[ERROR] ${body.message}`);
   } finally {
     res.end();
   }
@@ -36,11 +40,13 @@ export async function streamPlaceSummary(prompt, res) {
 /**
  * Stream a chat response via SSE.
  * @param {Array<{role: string, content: string}>} messages
- * @param {string} system  - System instruction for Chị Mai persona
+ * @param {string} system  - System instruction for em Nhi persona
  * @param {import('express').Response} res
  */
 export async function streamChat(messages, system, res) {
-  Object.entries(SSE_HEADERS).forEach(([key, value]) => res.setHeader(key, value));
+  Object.entries(SSE_HEADERS).forEach(([key, value]) =>
+    res.setHeader(key, value),
+  );
 
   try {
     const result = await geminiModel.generateContentStream({
@@ -57,7 +63,8 @@ export async function streamChat(messages, system, res) {
     }
     writeSSE(res, "[DONE]");
   } catch (err) {
-    writeSSE(res, `[ERROR] ${err.message}`);
+    const { body } = mapGeminiError(err);
+    writeSSE(res, `[ERROR] ${body.message}`);
   } finally {
     res.end();
   }

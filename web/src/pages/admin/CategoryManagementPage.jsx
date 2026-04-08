@@ -53,7 +53,7 @@ import TimStatsCard from "@/components/admin/TimStatsCard";
  */
 
 export default function CategoryManagementPage() {
-  const { categoryTree, loading, error, deleteCategory, fetchCategoryTree } =
+  const { categoryTree, loading, deleteCategory, fetchCategoryTree } =
     useCategoryStore();
   const { toast } = useToast();
 
@@ -161,10 +161,6 @@ export default function CategoryManagementPage() {
 
   const actualHiddenCount = actualTotalCategories - actualActiveCount;
 
-  // Stats for currently visible (filtered) categories
-  const activeCount = filteredFlatCategories.filter((c) => !c.isHidden).length;
-  const hiddenCount = filteredFlatCategories.filter((c) => c.isHidden).length;
-
   const handleAddRoot = () => {
     setSelectedCategory(null);
     setParentCategory(null);
@@ -232,7 +228,9 @@ export default function CategoryManagementPage() {
           <div className="flex items-start gap-4">
             <div className="w-1.5 h-16 bg-yellow-400"></div>
             <div>
-              <h1 className="text-4xl md:text-5xl uppercase font-black tracking-tight mb-2">QUẢN LÝ DANH MỤC</h1>
+              <h1 className="text-4xl md:text-5xl uppercase font-black tracking-tight mb-2">
+                QUẢN LÝ DANH MỤC
+              </h1>
               <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-1">
                 <span className="bg-black text-white px-2.5 py-0.5 text-xs font-mono font-bold tracking-widest uppercase">
                   TAXONOMY // CATEGORIES
@@ -248,7 +246,9 @@ export default function CategoryManagementPage() {
               onClick={handleRefresh}
               className="h-12 w-12 flex items-center justify-center border border-black bg-white hover:bg-gray-100 transition-colors"
             >
-              <RefreshCw className={`h-5 w-5 text-black ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`h-5 w-5 text-black ${loading ? "animate-spin" : ""}`}
+              />
             </button>
             <button
               onClick={handleAddRoot}
@@ -363,11 +363,15 @@ export default function CategoryManagementPage() {
                     <th className="p-4 border-r border-gray-800 text-left">
                       TÊN DANH MỤC / CẤP ĐỘ
                     </th>
-                    <th className="p-4 border-r border-gray-800 text-center w-[120px]">ICON / HÌNH</th>
+                    <th className="p-4 border-r border-gray-800 text-center w-[120px]">
+                      ICON / HÌNH
+                    </th>
                     <th className="p-4 border-r border-gray-800 w-[150px] text-center">
                       SLUG
                     </th>
-                    <th className="p-4 border-r border-gray-800 text-center w-[100px]">THỨ TỰ</th>
+                    <th className="p-4 border-r border-gray-800 text-center w-[100px]">
+                      THỨ TỰ
+                    </th>
                     <th className="p-4 border-r border-gray-800 w-[150px] text-center">
                       ĐỊA ĐIỂM
                     </th>
@@ -412,22 +416,22 @@ export default function CategoryManagementPage() {
                             )}
                           </div>
                           {/* Name */}
-<div className="flex items-center gap-2">
-  <span
-    className={
-      cat.level === 0
-        ? "font-black uppercase tracking-tight text-[15px]"
-        : "text-gray-700 font-bold text-sm"
-    }
-  >
-    {cat.name}
-  </span>
-  {cat.level === 0 && (
-    <span className="bg-black text-white px-1.5 py-[2px] text-[9px] font-mono tracking-widest ml-1">
-      ROOT
-    </span>
-  )}
-</div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={
+                                cat.level === 0
+                                  ? "font-black uppercase tracking-tight text-[15px]"
+                                  : "text-gray-700 font-bold text-sm"
+                              }
+                            >
+                              {cat.name}
+                            </span>
+                            {cat.level === 0 && (
+                              <span className="bg-black text-white px-1.5 py-[2px] text-[9px] font-mono tracking-widest ml-1">
+                                ROOT
+                              </span>
+                            )}
+                          </div>
                           {cat.level === 0 && (
                             <span className="ml-2 text-[10px] bg-black text-white px-1.5 py-0.5 font-mono">
                               ROOT
@@ -461,9 +465,15 @@ export default function CategoryManagementPage() {
                       <td className="p-4 border-r border-gray-100 font-mono text-xs text-gray-500 lowercase max-w-[140px] truncate text-center mx-auto">
                         {cat.slug}
                       </td>
-                      <td className="p-4 border-r border-gray-100 font-mono font-bold text-[13px] text-center"> {cat.order || 0} </td>
+                      <td className="p-4 border-r border-gray-100 font-mono font-bold text-[13px] text-center">
+                        {" "}
+                        {cat.order || 0}{" "}
+                      </td>
                       <td className="p-4 border-r border-gray-100 text-center">
-                        <span className="border border-gray-300 px-2 py-0.5 text-xs text-gray-600 font-mono inline-block"> {cat._count?.places || 0} Places </span>
+                        <span className="border border-gray-300 px-2 py-0.5 text-xs text-gray-600 font-mono inline-block">
+                          {" "}
+                          {cat._count?.places || 0} Places{" "}
+                        </span>
                       </td>
                       <td className="p-4 border-r border-gray-100">
                         {cat.isHidden ? (
@@ -562,7 +572,8 @@ export default function CategoryManagementPage() {
                 khỏi cơ sở dữ liệu?
               </p>
               <DialogFooter className="gap-2 sm:gap-0">
-                <Button variant="outline"
+                <Button
+                  variant="outline"
                   onClick={() => setDeleteDialogOpen(false)}
                   className="rounded-none border-black hover:bg-gray-100"
                 >

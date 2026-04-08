@@ -66,10 +66,15 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  return res.status(err.statusCode || 500).json({
+  const statusCode = err.statusCode || 500;
+  const isServerError = statusCode >= 500;
+
+  return res.status(statusCode).json({
     success: false,
     data: null,
-    message: err.message || "Loi he thong",
+    message: isServerError
+      ? "Lỗi hệ thống, vui lòng thử lại sau"
+      : err.message || "Yêu cầu không hợp lệ",
     errorCode: err.errorCode || ERROR_CODES.INTERNAL_ERROR,
   });
 };

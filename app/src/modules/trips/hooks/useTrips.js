@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMyTripsApi, createTripApi, deleteTripApi } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 
-export function useTrips() {
+export function useTrips(enabled = true) {
   return useQuery({
     queryKey: QUERY_KEYS.trips.list(),
     queryFn: () => getMyTripsApi(),
+    enabled,
     select: (res) => res?.data || [],
     staleTime: 2 * 60 * 1000,
   });

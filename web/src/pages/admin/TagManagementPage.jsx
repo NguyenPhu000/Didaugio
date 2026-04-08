@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Plus,
   Search,
@@ -59,17 +59,17 @@ export default function TagManagementPage() {
   const [filterType, setFilterType] = useState("all");
   const [sortBy, setSortBy] = useState("usageCount");
 
-  useEffect(() => {
-    loadTags();
-  }, [filterType, sortBy]);
-
-  const loadTags = () => {
+  const loadTags = useCallback(() => {
     const params = {};
     if (filterType !== "all") params.tagType = filterType;
     if (searchQuery) params.search = searchQuery;
     params.sortBy = sortBy;
     fetchTags(params);
-  };
+  }, [fetchTags, filterType, searchQuery, sortBy]);
+
+  useEffect(() => {
+    loadTags();
+  }, [loadTags]);
 
   const handleSearch = () => {
     loadTags();

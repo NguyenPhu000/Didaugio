@@ -27,7 +27,12 @@ import voucherRoutes from "./routes/voucherRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import feedbackRoutes from "./routes/feedbackRoutes.js";
 import errorHandler from "./middlewares/errorHandler.js";
-import { authLimiter, apiLimiter } from "./middlewares/rateLimitMiddleware.js";
+import {
+  authLimiter,
+  apiLimiter,
+  refreshLimiter,
+  recoveryLimiter,
+} from "./middlewares/rateLimitMiddleware.js";
 import logger from "./config/logger.js";
 import prisma from "./config/prismaClient.js";
 import { initNotificationService } from "./services/notificationService.js";
@@ -39,16 +44,43 @@ validateEnv();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const BODY_LIMIT = "100mb";
+const BODY_LIMIT = process.env.BODY_LIMIT || "10mb";
+
+const configuredOrigins = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+const isProduction = process.env.NODE_ENV === "production";
+
+if (isProduction && configuredOrigins.length === 0) {
+  throw new Error("[CORS] Thiếu CORS_ORIGINS trong production");
+}
+
+const devDefaultOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5173",
+];
+const allowedOrigins =
+  configuredOrigins.length > 0 ? configuredOrigins : devDefaultOrigins;
 
 app.use(helmet());
 app.use(express.json({ limit: BODY_LIMIT }));
 app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true }));
 app.use(
   cors({
-    origin: process.env.CORS_ORIGINS
-      ? process.env.CORS_ORIGINS.split(",")
-      : "*",
+    origin(origin, callback) {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   }),
@@ -57,6 +89,11 @@ app.use(
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/auth/google", authLimiter);
+app.use("/api/auth/refresh", refreshLimiter);
+app.use("/api/auth/forgot-password", recoveryLimiter);
+app.use("/api/auth/reset-password", recoveryLimiter);
+app.use("/api/auth/resend-verification-public", recoveryLimiter);
+app.use("/api/auth/google/exchange-result", recoveryLimiter);
 app.use("/api", apiLimiter);
 
 app.use("/api/auth", authRoutes);

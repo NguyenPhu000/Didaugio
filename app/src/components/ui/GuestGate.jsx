@@ -8,8 +8,8 @@ import { TOKENS } from "../../constants/design-tokens";
 export const GuestGate = ({
   icon = "lock",
   iconColor = TOKENS.color.primary[600],
-  title = "Đăng nhập để tiếp tục",
-  description = "Tính năng này yêu cầu tài khoản đăng nhập.",
+  title = "Dang nhap de tiep tuc",
+  description = "Tinh nang nay yeu cau tai khoan dang nhap.",
   children,
 }) => {
   const router = useRouter();
@@ -23,7 +23,10 @@ export const GuestGate = ({
   return (
     <View
       className="flex-1 items-center justify-center px-6"
-      style={{ paddingTop: insets.top, backgroundColor: TOKENS.color.background.light }}
+      style={{
+        paddingTop: insets.top,
+        backgroundColor: TOKENS.color.background.light,
+      }}
     >
       <View
         className="w-full rounded-[32px] border border-primary-100 px-6 py-8"
@@ -54,7 +57,7 @@ export const GuestGate = ({
             }}
           >
             <Text className="text-[14px] font-bold uppercase tracking-[1.1px] text-white">
-              Đăng nhập ngay
+              Dang nhap ngay
             </Text>
           </Pressable>
         </View>

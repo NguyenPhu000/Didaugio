@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BarChart3, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 import useBusinessStore from "@/stores/businessStore";
 import { BOOKING_STATUS } from "@/constants/constants";
+import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
   PageHeader,
   StatCard,
@@ -9,8 +10,8 @@ import {
   StatCardSkeleton,
   SectionCardSkeleton,
   StatusProgressRow,
-  formatVND,
 } from "@/components/business/DashboardWidgets";
+import { formatVND } from "@/components/business/dashboardWidgetHelpers";
 
 const STATUS_ROWS = [
   {
@@ -79,9 +80,7 @@ const RevenuePage = () => {
           <>
             <StatCard
               title="Tổng doanh thu"
-              value={formatVND(
-                overview?.totalRevenue ?? stats?.totalRevenue,
-              )}
+              value={formatVND(overview?.totalRevenue ?? stats?.totalRevenue)}
               icon={TrendingUp}
               iconColor="emerald"
               description="Từ tất cả booking hoàn thành"
@@ -120,9 +119,7 @@ const RevenuePage = () => {
                 key={key}
                 label={label}
                 count={overview?.bookingsByStatus?.[key] || 0}
-                total={
-                  overview?.bookingsTotal ?? stats?.bookingsCount ?? 0
-                }
+                total={overview?.bookingsTotal ?? stats?.bookingsCount ?? 0}
                 colorClass={colorClass}
               />
             ))}

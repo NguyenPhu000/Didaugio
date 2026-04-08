@@ -4,6 +4,7 @@ export const ENDPOINTS = {
     login: "/auth/login",
     loginGoogle: "/auth/google",
     exchangeGoogleCode: "/auth/google/exchange",
+    exchangeGoogleResult: "/auth/google/exchange-result",
     refresh: "/auth/refresh",
     me: "/auth/me",
     logout: "/auth/logout",
@@ -13,6 +14,7 @@ export const ENDPOINTS = {
     list: "/places",
     services: "/places/services",
     detail: (id) => `/places/${id}`,
+    detailBySlug: (slug) => `/places/slug/${slug}`,
     reviews: (id) => `/places/${id}/reviews`,
   },
   categories: {
@@ -30,7 +32,8 @@ export const ENDPOINTS = {
     updateTrip: (id) => `/profile/trips/${id}`,
     deleteTrip: (id) => `/profile/trips/${id}`,
     addDestination: (tripId) => `/profile/trips/${tripId}/destinations`,
-    removeDestination: (tripId, destId) => `/profile/trips/${tripId}/destinations/${destId}`,
+    removeDestination: (tripId, destId) =>
+      `/profile/trips/${tripId}/destinations/${destId}`,
     pushToken: "/profile/push-token",
   },
   booking: {

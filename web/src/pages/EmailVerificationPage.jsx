@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Mail,
   RefreshCw,
@@ -36,7 +36,7 @@ const EmailVerificationPage = () => {
   const itemsPerPage = 10;
 
   // Fetch verifications
-  const fetchVerifications = async () => {
+  const fetchVerifications = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -55,22 +55,22 @@ const EmailVerificationPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage, statusFilter]);
 
   // Fetch stats
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const statsData = await emailVerificationService.getStats();
       setStats(statsData);
     } catch (error) {
       console.error("Failed to fetch stats:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchVerifications();
     fetchStats();
-  }, [currentPage, statusFilter]);
+  }, [fetchVerifications, fetchStats]);
 
   // Handle resend email
   const handleResend = async (userId, email) => {
@@ -229,129 +229,141 @@ const EmailVerificationPage = () => {
         </div>
         {/* Data Table */}
         <div className="bg-white border border-black shadow-sm overflow-hidden">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
-              <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
-              <span className="font-mono text-xs uppercase text-gray-500">
-                LOADING DATA...
-              </span>
-            </div>
-          ) : verifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Mail className="h-12 w-12 text-gray-300 mb-4" />
-              <div className="font-bold uppercase text-gray-400">
-                KHÔNG TÌM THẤY DỮ LIỆU
-              </div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-black text-white tim-table-header">
-                    <th className="p-4 border-r border-black/20 w-[60px]">
-                      ID
-                    </th>
-                    <th className="p-4 border-r border-black/20">EMAIL</th>
-                    <th className="p-4 border-r border-black/20">USER</th>
-                    <th className="p-4 border-r border-black/20">TRẠNG THÁI</th>
-                    <th className="p-4 border-r border-black/20">NGÀY TẠO</th>
-                    <th className="p-4 border-r border-black/20">HẾT HẠN</th>
-                    <th className="p-4 border-r border-black/20">
-                      NGÀY XÁC THỰC
-                    </th>
-                    <th className="p-4 text-center">THAO TÁC</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5">
-                  {verifications.map((verification) => {
-                    const statusInfo = getStatusInfo(verification);
-                    return (
-                      <tr
-                        key={verification.id}
-                        className="hover:bg-yellow-50 group transition-colors"
-                      >
-                        <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
-                          #{verification.id}
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <div className="font-mono text-sm font-medium">
-                            {verification.email}
-                          </div>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <div className="font-mono text-sm text-gray-600">
-                            {verification.user?.email || "—"}
-                          </div>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${statusInfo.color}`}
-                          >
-                            {statusInfo.icon}
-                            {statusInfo.label}
-                          </span>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <div className="font-mono text-sm text-gray-500">
-                            {formatDate(verification.createdAt)}
-                          </div>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <div className="font-mono text-sm text-gray-500">
-                            {formatDate(verification.expiresAt)}
-                          </div>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <div className="font-mono text-sm text-gray-500">
-                            {verification.verifiedAt
-                              ? formatDate(verification.verifiedAt)
-                              : "—"}
-                          </div>
-                        </td>
-                        <td className="p-4 text-center">
-                          {!verification.verifiedAt ? (
-                            <div className="flex gap-2 justify-center">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  handleResend(
-                                    verification.userId,
-                                    verification.email,
-                                  )
-                                }
-                                className="rounded-none border border-black hover:bg-black hover:text-white uppercase text-[10px] font-bold h-8"
-                              >
-                                <Send className="w-3 h-3 mr-1" />
-                                GỬI
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  handleManualVerify(
-                                    verification.userId,
-                                    verification.email,
-                                  )
-                                }
-                                className="rounded-none bg-[#F3E600] hover:bg-black text-black hover:text-white border border-black uppercase text-[10px] font-bold h-8"
-                              >
-                                <ShieldCheck className="w-3 h-3 mr-1" />
-                                XÁC THỰC
-                              </Button>
+          {(() => {
+            if (loading) {
+              return (
+                <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
+                  <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
+                  <span className="font-mono text-xs uppercase text-gray-500">
+                    LOADING DATA...
+                  </span>
+                </div>
+              );
+            }
+
+            if (verifications.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <Mail className="h-12 w-12 text-gray-300 mb-4" />
+                  <div className="font-bold uppercase text-gray-400">
+                    KHÔNG TÌM THẤY DỮ LIỆU
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-black text-white tim-table-header">
+                      <th className="p-4 border-r border-black/20 w-[60px]">
+                        ID
+                      </th>
+                      <th className="p-4 border-r border-black/20">EMAIL</th>
+                      <th className="p-4 border-r border-black/20">USER</th>
+                      <th className="p-4 border-r border-black/20">
+                        TRẠNG THÁI
+                      </th>
+                      <th className="p-4 border-r border-black/20">NGÀY TẠO</th>
+                      <th className="p-4 border-r border-black/20">HẾT HẠN</th>
+                      <th className="p-4 border-r border-black/20">
+                        NGÀY XÁC THỰC
+                      </th>
+                      <th className="p-4 text-center">THAO TÁC</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/5">
+                    {verifications.map((verification) => {
+                      const statusInfo = getStatusInfo(verification);
+                      return (
+                        <tr
+                          key={verification.id}
+                          className="hover:bg-yellow-50 group transition-colors"
+                        >
+                          <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
+                            #{verification.id}
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <div className="font-mono text-sm font-medium">
+                              {verification.email}
                             </div>
-                          ) : (
-                            <span className="text-green-600 text-xs uppercase font-mono font-bold">
-                              ✓ ĐÃ XÁC THỰC
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <div className="font-mono text-sm text-gray-600">
+                              {verification.user?.email || "—"}
+                            </div>
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${statusInfo.color}`}
+                            >
+                              {statusInfo.icon}
+                              {statusInfo.label}
                             </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <div className="font-mono text-sm text-gray-500">
+                              {formatDate(verification.createdAt)}
+                            </div>
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <div className="font-mono text-sm text-gray-500">
+                              {formatDate(verification.expiresAt)}
+                            </div>
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <div className="font-mono text-sm text-gray-500">
+                              {verification.verifiedAt
+                                ? formatDate(verification.verifiedAt)
+                                : "—"}
+                            </div>
+                          </td>
+                          <td className="p-4 text-center">
+                            {!verification.verifiedAt ? (
+                              <div className="flex gap-2 justify-center">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleResend(
+                                      verification.userId,
+                                      verification.email,
+                                    )
+                                  }
+                                  className="rounded-none border border-black hover:bg-black hover:text-white uppercase text-[10px] font-bold h-8"
+                                >
+                                  <Send className="w-3 h-3 mr-1" />
+                                  GỬI
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() =>
+                                    handleManualVerify(
+                                      verification.userId,
+                                      verification.email,
+                                    )
+                                  }
+                                  className="rounded-none bg-[#F3E600] hover:bg-black text-black hover:text-white border border-black uppercase text-[10px] font-bold h-8"
+                                >
+                                  <ShieldCheck className="w-3 h-3 mr-1" />
+                                  XÁC THỰC
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-green-600 text-xs uppercase font-mono font-bold">
+                                ✓ ĐÃ XÁC THỰC
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
 
           {/* Pagination */}
           {totalPages > 1 && (

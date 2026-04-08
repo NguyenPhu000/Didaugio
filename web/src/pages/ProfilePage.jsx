@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import toast from "react-hot-toast";
 import {
   User,
@@ -46,7 +45,7 @@ import { profileSchema } from "@/schemas/user";
 // const profileSchema = z.object({...}) // Removed
 
 const ProfilePage = () => {
-  const { user, setUser } = useAuthStore();
+  const { setUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [profile, setProfile] = useState(null);
@@ -82,7 +81,7 @@ const ProfilePage = () => {
             bio: response.data.profile?.bio || "",
           });
         }
-      } catch (error) {
+      } catch {
         toast.error("Khong the tai thong tin profile");
       } finally {
         setIsFetching(false);

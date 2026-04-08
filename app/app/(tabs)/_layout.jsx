@@ -5,26 +5,52 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-/** Nâng thanh tab cao hơn so với mép đáy (cộng thêm vào safe area). */
+/** Nang thanh tab cao hon so voi mep day (cong them vao safe area). */
 const EXTRA_FLOAT_LIFT = 26;
 
 /**
- * Khoảng đẩy bottom sheet / nội dung map (thanh nổi + lift + đệm).
+ * Khoang day bottom sheet / noi dung map (thanh noi + lift + dem).
  */
-/** Đủ chỗ cho thanh nổi (safe + lift + pill) — chỉnh nếu sheet/map vẫn chồng tab */
+/** Du cho thanh noi (safe + lift + pill) - chinh neu sheet/map van chong tab */
 export const FLOATING_TAB_CLEARANCE = 118;
 
-/** Padding đáy ScrollView (explore, …) */
+/** Padding day ScrollView (explore, ...) */
 export const TAB_BAR_HEIGHT = FLOATING_TAB_CLEARANCE + 8;
 
-/** Màu highlight tab đang chọn — xanh đậm kiểu TripNest */
-const TAB_ACTIVE_BLUE = "#3B82F6";
+/** Mau tab theo phong cach Stitch: neo dam + surface sang. */
+const TAB_ACTIVE_BLUE = "#101E2C";
+const TAB_ACTIVE_SECONDARY = "#101E2C";
+const TAB_IDLE_ICON = "#54647A";
 
 const TABS = [
-  { key: "explore", label: "Khám phá", icon: "explore", route: "/(tabs)/explore" },
-  { key: "map", label: "Bản đồ", icon: "map", route: "/(tabs)/map" },
-  { key: "ai", label: "AI", icon: "auto-awesome", route: "/(tabs)/ai" },
-  { key: "trips", label: "Chuyến đi", icon: "luggage", route: "/(tabs)/trips" },
+  {
+    key: "map",
+    label: "Ban do",
+    icon: "location-on",
+    route: "/(tabs)/map",
+    color: TAB_ACTIVE_BLUE,
+  },
+  {
+    key: "explore",
+    label: "Kham pha",
+    icon: "explore",
+    route: "/(tabs)/explore",
+    color: TAB_ACTIVE_BLUE,
+  },
+  {
+    key: "saved",
+    label: "Da luu",
+    icon: "bookmark",
+    route: "/(tabs)/saved",
+    color: TAB_ACTIVE_SECONDARY,
+  },
+  {
+    key: "trips",
+    label: "Chuyen di",
+    icon: "luggage",
+    route: "/(tabs)/trips",
+    color: TAB_ACTIVE_SECONDARY,
+  },
 ];
 
 function resolveTabKey(pathname) {
@@ -53,10 +79,9 @@ function FloatingBottomTabBar() {
       <View style={[styles.floatingOuter, { marginBottom: bottom }]}>
         <BlurView
           intensity={Platform.OS === "ios" ? 100 : 85}
-          tint="dark"
+          tint="light"
           style={styles.blurFill}
         >
-          {/* Lớp phủ rất nhẹ — trong suốt, để mờ mờ lộ map/content */}
           <View style={styles.glassTint} />
           <View style={styles.barRow}>
             {TABS.map((tab) => {
@@ -65,6 +90,7 @@ function FloatingBottomTabBar() {
                 if (active) return;
                 router.push(tab.route);
               };
+
               return (
                 <Pressable
                   key={tab.key}
@@ -81,13 +107,16 @@ function FloatingBottomTabBar() {
                     style={[
                       styles.iconCircle,
                       !active && styles.iconCircleIdle,
-                      active && styles.iconCircleActive,
+                      active && [
+                        styles.iconCircleActive,
+                        { backgroundColor: tab.color },
+                      ],
                     ]}
                   >
                     <MaterialIcons
                       name={tab.icon}
                       size={22}
-                      color={active ? "#FFFFFF" : "rgba(255,255,255,0.78)"}
+                      color={active ? "#FFFFFF" : TAB_IDLE_ICON}
                     />
                   </View>
                 </Pressable>
@@ -116,26 +145,25 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 16 },
-        shadowOpacity: 0.35,
-        shadowRadius: 28,
+        shadowColor: "#191c1e",
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.1,
+        shadowRadius: 24,
       },
       android: {
-        elevation: 22,
+        elevation: 12,
       },
     }),
   },
   blurFill: {
     borderRadius: 999,
     overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(116,119,124,0.2)",
   },
-  /** Lớp phủ rất nhẹ — trong suốt hơn để thấy blur phía sau */
   glassTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(8,10,18,0.18)",
+    backgroundColor: "rgba(255,255,255,0.72)",
   },
   barRow: {
     flexDirection: "row",
@@ -151,7 +179,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  /** Vòng tròn — khít như mockup */
   iconCircle: {
     width: 44,
     height: 44,
@@ -160,19 +187,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   iconCircleIdle: {
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.82)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: "rgba(196,198,204,0.66)",
   },
-  /** Tab đang chọn — vòng tròn xanh đặc như mockup */
   iconCircleActive: {
     backgroundColor: TAB_ACTIVE_BLUE,
     borderWidth: 0,
     shadowColor: TAB_ACTIVE_BLUE,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
   },
 });
 

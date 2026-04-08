@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Edit, Trash2, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/badge";

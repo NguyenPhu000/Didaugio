@@ -1,17 +1,17 @@
-import { Pressable, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
-import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter, usePathname } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { TOKENS } from "../../constants/design-tokens";
 import { ANIMATIONS } from "../../lib/animations";
+import { AIEntryButton } from "./AIEntryButton";
 
 const HIDE_PATHS = new Set([
   "/(tabs)/ai",
   "/ai",
+  "/(tabs)/map",
+  "/map",
   "/(auth)/login",
   "/(auth)/register",
   "/onboarding",
@@ -40,7 +40,8 @@ export function AIFloatingButton() {
         },
       ]}
     >
-      <Pressable
+      <AIEntryButton
+        compact
         onPress={() => router.push("/(tabs)/ai")}
         onPressIn={() => {
           scale.value = ANIMATIONS.cardPressIn;
@@ -48,19 +49,7 @@ export function AIFloatingButton() {
         onPressOut={() => {
           scale.value = ANIMATIONS.cardPressOut;
         }}
-        className="rounded-full border border-white/70 px-4 py-3"
-        style={{
-          backgroundColor: TOKENS.color.primary[600],
-          ...TOKENS.shadow.glow,
-        }}
-      >
-        <View className="flex-row items-center gap-2">
-          <MaterialIcons name="auto-awesome" size={20} color="#fff" />
-          <Text className="text-[12px] font-bold uppercase tracking-[1px] text-white">
-            AI
-          </Text>
-        </View>
-      </Pressable>
+      />
     </Animated.View>
   );
 }

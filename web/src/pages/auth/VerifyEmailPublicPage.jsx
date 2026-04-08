@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -14,17 +14,13 @@ const VerifyEmailPublicPage = () => {
   const [status, setStatus] = useState("verifying"); // verifying | success | error
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
+  const verifyEmail = useCallback(async () => {
     if (!token) {
       setStatus("error");
       setMessage("Token không hợp lệ. Vui lòng kiểm tra lại link trong email.");
       return;
     }
 
-    verifyEmail();
-  }, [token]);
-
-  const verifyEmail = async () => {
     try {
       setStatus("verifying");
       const response = await authService.verifyEmail({ token });
@@ -45,7 +41,14 @@ const VerifyEmailPublicPage = () => {
       setMessage(errorMsg);
       toast.error(`❌ ${errorMsg}`);
     }
-  };
+  }, [navigate, token]);
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      verifyEmail();
+    }, 0);
+    return () => clearTimeout(id);
+  }, [verifyEmail]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MapPin from "lucide-react/dist/esm/icons/map-pin";
@@ -41,10 +41,46 @@ const StepBasicInfo = () => {
   const [errors, setErrors] = useState({});
   const [checkingSlug, setCheckingSlug] = useState(false);
 
+  const loadDistricts = useCallback(async () => {
+    setLoadingDistricts(true);
+    try {
+      const response = await districtService.getAllDistricts();
+      setDistricts(response.data || []);
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "LỖI HỆ THỐNG",
+        description: "Không thể tải dữ liệu quận/huyện.",
+      });
+    } finally {
+      setLoadingDistricts(false);
+    }
+  }, [toast]);
+
+  const loadWards = useCallback(
+    async (districtId) => {
+      setLoadingWards(true);
+      try {
+        const response = await wardService.getWardsByDistrict(districtId);
+        setWards(response.data || []);
+      } catch {
+        toast({
+          variant: "destructive",
+          title: "LỖI HỆ THỐNG",
+          description: "Không thể tải dữ liệu phường/xã.",
+        });
+        setWards([]);
+      } finally {
+        setLoadingWards(false);
+      }
+    },
+    [toast],
+  );
+
   // Load districts on mount
   useEffect(() => {
     loadDistricts();
-  }, []);
+  }, [loadDistricts]);
 
   // Load wards when district changes
   useEffect(() => {
@@ -57,41 +93,7 @@ const StepBasicInfo = () => {
         updateWizardData({ wardId: null });
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wizardData.districtId, wizardData.wardId]);
-
-  const loadDistricts = async () => {
-    setLoadingDistricts(true);
-    try {
-      const response = await districtService.getAllDistricts();
-      setDistricts(response.data || []);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "LỖI HỆ THỐNG",
-        description: "Không thể tải dữ liệu quận/huyện.",
-      });
-    } finally {
-      setLoadingDistricts(false);
-    }
-  };
-
-  const loadWards = async (districtId) => {
-    setLoadingWards(true);
-    try {
-      const response = await wardService.getWardsByDistrict(districtId);
-      setWards(response.data || []);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "LỖI HỆ THỐNG",
-        description: "Không thể tải dữ liệu phường/xã.",
-      });
-      setWards([]);
-    } finally {
-      setLoadingWards(false);
-    }
-  };
+  }, [wizardData.districtId, wizardData.wardId, loadWards, updateWizardData]);
 
   // Auto-generate slug from name
   const generateSlug = (name) => {
@@ -134,7 +136,7 @@ const StepBasicInfo = () => {
           ...prev,
           slug: exists ? "SLUG ĐÃ TỒN TẠI" : null,
         }));
-      } catch (error) {
+      } catch {
         // Ignore check errors
       } finally {
         setCheckingSlug(false);

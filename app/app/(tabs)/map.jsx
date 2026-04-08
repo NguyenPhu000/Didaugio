@@ -1,10 +1,6 @@
-import { Suspense, lazy } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { TOKENS } from "../../src/constants/design-tokens";
-
-const HeavyMapContent = lazy(() =>
-  import("../../src/modules/map/MapScreen"),
-);
+import MapScreen from "../../src/modules/map/MapScreen";
 
 function MapSkeleton() {
   return (
@@ -15,9 +11,5 @@ function MapSkeleton() {
 }
 
 export default function MapTab() {
-  return (
-    <Suspense fallback={<MapSkeleton />}>
-      <HeavyMapContent />
-    </Suspense>
-  );
+  return <MapScreen />;
 }

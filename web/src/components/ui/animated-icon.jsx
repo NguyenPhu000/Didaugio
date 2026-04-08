@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
+const MotionDiv = motion.div;
+
 /**
  * AnimatedIcon Component
  * Wraps a Lucide icon with Framer Motion animations.
@@ -62,13 +64,13 @@ const AnimatedIcon = ({ icon: Icon, type = "hover", className, ...rest }) => {
   // Note: We wrap the Icon in a motion.div to handle the specific framer motions
   // effectively without needing to forwardRef on every Lucide icon if not supported.
   return (
-    <motion.div
+    <MotionDiv
       className={cn("inline-flex items-center justify-center", className)}
       {...selectedVariant}
       transition={selectedVariant.transition || transition}
     >
       <Icon className="w-full h-full" {...rest} />
-    </motion.div>
+    </MotionDiv>
   );
 };
 

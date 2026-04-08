@@ -14,29 +14,29 @@ const useUIStore = create(
       // Toggle category expansion
       // mode: 'single' = chỉ 1 card expand tại 1 thời điểm (only at root level)
       // mode: 'multiple' = cho phép nhiều cards expand (for nested children)
-      toggleCategoryExpansion: (categoryId, mode = "multiple") => {
+      toggleCategoryExpansion: (categoryId, _mode = "multiple") => {
         set((state) => {
           let newExpanded = [...state.expandedCategories];
 
           if (newExpanded.includes(categoryId)) {
             // Collapse this category
             newExpanded = newExpanded.filter((id) => id !== categoryId);
-            console.log(
+            console.warn(
               `🔽 Collapsed category ${categoryId}. Total expanded:`,
-              newExpanded.length
+              newExpanded.length,
             );
           } else {
             // Expand this category
             // Note: 'single' mode is ONLY applied at root level cards
             // It does NOT affect nested children expansion
             newExpanded.push(categoryId);
-            console.log(
+            console.warn(
               `🔼 Expanded category ${categoryId}. Total expanded:`,
-              newExpanded.length
+              newExpanded.length,
             );
           }
 
-          console.log("📋 All expanded IDs:", newExpanded);
+          console.warn("📋 All expanded IDs:", newExpanded);
           return { expandedCategories: newExpanded };
         });
       },
@@ -53,8 +53,8 @@ const useUIStore = create(
     }),
     {
       name: "ui-store",
-    }
-  )
+    },
+  ),
 );
 
 export default useUIStore;

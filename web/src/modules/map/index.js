@@ -31,7 +31,8 @@ export { default as WardLabels } from "./components/WardLabels";
 export { default as RouteLayer } from "./components/RouteLayer";
 
 // Context & Hooks
-export { MapProvider, useMapContext } from "./context/MapProvider";
+export { MapProvider } from "./context/MapProvider";
+export { useMapContext } from "./hooks/useMapContext";
 export { useMapData } from "./hooks/useMapData";
 export { useRouting } from "./hooks/useRouting";
 

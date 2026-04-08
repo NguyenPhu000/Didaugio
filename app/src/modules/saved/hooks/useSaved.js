@@ -5,10 +5,11 @@ import {
   unsavePlaceApi,
 } from "../api/savedApi";
 
-export function useSavedPlaces() {
+export function useSavedPlaces(enabled = true) {
   return useQuery({
     queryKey: ["saved-places"],
     queryFn: () => getSavedPlacesApi(),
+    enabled,
     select: (data) => data?.data || [],
   });
 }

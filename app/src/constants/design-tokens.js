@@ -1,80 +1,137 @@
 /**
  * design-tokens.js — single source of truth for the mobile design system.
+ * Based on the provided design system specification.
  * Use these values in StyleSheet/native styles and expose them to NativeWind.
  */
 
-const MODERN_BLUE = {
-  50: "#F0F9FF",
-  100: "#E0F2FE",
-  200: "#BAE6FD",
-  300: "#7DD3FC",
-  400: "#38BDF8",
-  500: "#0EA5E9",
-  600: "#0284C8",
-  700: "#0369A1",
-  800: "#075985",
-  900: "#0C4A6E",
+// Design System Colors from specification
+const WHITE = "#FFFFFF";
+const BLACK = "#181819";
+const GREY = "#4C4C50";
+const LIGHT_GREY = "#D1E0ED";
+const MAIN_ACCENT = "#007BFF";
+
+// Extended color palette based on main accent
+const PRIMARY_BLUE = {
+  50: "#F0F7FF",
+  100: "#E0EEFF",
+  200: "#C2DDFF",
+  300: "#A3C9FF",
+  400: "#85B5FF",
+  500: MAIN_ACCENT,
+  600: "#0066E6",
+  700: "#0055CC",
+  800: "#0044B3",
+  900: "#003399",
 };
 
-const SLATE = {
-  0: "#FFFFFF",
-  50: "#F8FAFC",
-  100: "#F1F5F9",
-  200: "#E2E8F0",
-  300: "#CBD5E1",
-  400: "#94A3B8",
-  500: "#64748B",
-  700: "#334155",
-  800: "#1E293B",
-  900: "#0F172A",
+// Neutral colors based on specification
+const NEUTRAL = {
+  0: WHITE,
+  50: "#F5F5F5",
+  100: LIGHT_GREY,
+  200: "#B8C8D6",
+  300: "#9EB0BF",
+  400: GREY,
+  500: "#3A3A3D",
+  600: "#2C2C2F",
+  700: BLACK,
+  800: "#141415",
+  900: "#0A0A0B",
 };
 
-export const TOKENS = {
-  color: {
-    primary: MODERN_BLUE,
-    accent: {
-      400: "#7DD3FC",
-      500: "#0284C8",
-      600: "#0369A1",
-    },
-    neutral: SLATE,
-    success: "#10B981",
-    warning: "#F59E0B",
-    error: "#EF4444",
-    info: "#3B82F6",
-    surface: {
-      light: "#FFFFFF",
-      dark: "#111827",
-      elevatedLight: "rgba(255,255,255,0.96)",
-      elevatedDark: "#172033",
-    },
-    background: {
-      light: "#F8FAFC",
-      dark: "#020617",
-      tintLight: "#E0F2FE",
-      tintDark: "#0F172A",
-    },
-    card: {
-      light: "#FFFFFF",
-      dark: "#172033",
-    },
-    border: {
-      light: "#E2E8F0",
-      dark: "#243041",
-      strong: "#BAE6FD",
-    },
-    overlay: {
-      soft: "rgba(15, 23, 42, 0.08)",
-      strong: "rgba(15, 23, 42, 0.72)",
-      blue: "rgba(2, 132, 200, 0.14)",
-    },
-  },
+const ACTIVE_FONT_FAMILY = "Afacad";
 
-  font: {
+const FONT_FAMILIES = {
+  BeVietnamPro: {
     heading: "BeVietnamPro_700Bold",
     body: "BeVietnamPro_400Regular",
     medium: "BeVietnamPro_500Medium",
     semibold: "BeVietnamPro_600SemiBold",
+  },
+  Afacad: {
+    heading: "Afacad-Bold",
+    body: "Afacad-Regular",
+    medium: "Afacad-Medium",
+    semibold: "Afacad-SemiBold",
+  },
+};
+
+const ACTIVE_FONTS = FONT_FAMILIES[ACTIVE_FONT_FAMILY];
+
+export const TOKENS = {
+  color: {
+    primary: PRIMARY_BLUE,
+    accent: {
+      400: PRIMARY_BLUE[400],
+      500: PRIMARY_BLUE[500],
+      600: PRIMARY_BLUE[600],
+    },
+    // Travel app colors using only blue theme from design system
+    travel: {
+      ocean: PRIMARY_BLUE[500],
+      tropical: PRIMARY_BLUE[400],
+      sand: "#FFE5B4",
+      forest: "#2D6A4F",
+      coral: PRIMARY_BLUE[300],
+      gradient: [PRIMARY_BLUE[400], PRIMARY_BLUE[500], PRIMARY_BLUE[600]],
+    },
+    neutral: NEUTRAL,
+    success: "#10B981",
+    warning: "#F59E0B",
+    error: "#EF4444",
+    info: PRIMARY_BLUE[500],
+    surface: {
+      light: WHITE,
+      dark: BLACK,
+      elevatedLight: "rgba(255,255,255,0.98)",
+      elevatedDark: "rgba(24,24,25,0.98)",
+    },
+    background: {
+      light: WHITE,
+      dark: BLACK,
+      tintLight: LIGHT_GREY,
+      tintDark: NEUTRAL[800],
+      // Gradient backgrounds using new colors
+      gradientLight: [WHITE, LIGHT_GREY],
+      gradientWarm: ["#FFF5F5", "#FFE5B4"],
+    },
+    card: {
+      light: WHITE,
+      dark: BLACK,
+      elevatedLight: "rgba(255,255,255,0.98)",
+      elevatedDark: "rgba(24,24,25,0.98)",
+    },
+    border: {
+      light: LIGHT_GREY,
+      dark: GREY,
+      strong: PRIMARY_BLUE[300],
+      accent: PRIMARY_BLUE[500],
+      soft: "rgba(0,123,255,0.2)",
+    },
+    overlay: {
+      soft: "rgba(24,24,25,0.08)",
+      strong: "rgba(24,24,25,0.72)",
+      blue: "rgba(0,123,255,0.14)",
+      ocean: "rgba(0,123,255,0.12)",
+    },
+  },
+
+  font: {
+    family: ACTIVE_FONT_FAMILY,
+    heading: ACTIVE_FONTS.heading,
+    body: ACTIVE_FONTS.body,
+    medium: ACTIVE_FONTS.medium,
+    semibold: ACTIVE_FONTS.semibold,
+    headingFallback: "System",
+    bodyFallback: "System",
+    mediumFallback: "System",
+    semiboldFallback: "System",
+  },
+
+  getFont: (fontType) => {
+    const resolvedFont = ACTIVE_FONTS[fontType] || ACTIVE_FONTS.body;
+    return [resolvedFont, "System"];
   },
 
   fontSize: {
@@ -112,36 +169,55 @@ export const TOKENS = {
     "2xl": 28,
     "3xl": 32,
     full: 9999,
+    // Modern rounded corners for cards
+    card: 20,
+    button: 12,
+    pill: 999,
   },
 
   shadow: {
     sm: {
-      shadowColor: "#0F172A",
+      shadowColor: BLACK,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.05,
       shadowRadius: 10,
       elevation: 2,
     },
     md: {
-      shadowColor: "#0F172A",
+      shadowColor: BLACK,
       shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.08,
       shadowRadius: 22,
       elevation: 6,
     },
     lg: {
-      shadowColor: "#0F172A",
+      shadowColor: BLACK,
       shadowOffset: { width: 0, height: 18 },
       shadowOpacity: 0.12,
       shadowRadius: 30,
       elevation: 12,
     },
     glow: {
-      shadowColor: "#0284C8",
+      shadowColor: PRIMARY_BLUE[500],
       shadowOffset: { width: 0, height: 12 },
       shadowOpacity: 0.28,
       shadowRadius: 24,
       elevation: 12,
+    },
+    // Blue shadows using new design system
+    accent: {
+      shadowColor: PRIMARY_BLUE[500],
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.15,
+      shadowRadius: 20,
+      elevation: 8,
+    },
+    ocean: {
+      shadowColor: PRIMARY_BLUE[500],
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.18,
+      shadowRadius: 28,
+      elevation: 10,
     },
   },
 
@@ -154,26 +230,26 @@ export const TOKENS = {
 };
 
 export const GLASS_THEME = {
-  background: "#05070B",
-  backgroundElevated: "#111111",
+  background: BLACK,
+  backgroundElevated: NEUTRAL[600],
   glass: "rgba(255,255,255,0.08)",
   glassBorder: "rgba(255,255,255,0.12)",
   glassBorderStrong: "rgba(255,255,255,0.22)",
-  neon: "#00F0FF",
-  neonAccent: "#C084FC",
-  neonGlow: "rgba(0,240,255,0.12)",
-  text: "#FFFFFF",
-  textSecondary: "#A3A3A3",
+  neon: PRIMARY_BLUE[400],
+  neonAccent: PRIMARY_BLUE[300],
+  neonGlow: "rgba(0,123,255,0.12)",
+  text: WHITE,
+  textSecondary: NEUTRAL[400],
   shadow: {
     glass: {
-      shadowColor: "#00F0FF",
+      shadowColor: PRIMARY_BLUE[400],
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.18,
       shadowRadius: 24,
       elevation: 12,
     },
     neon: {
-      shadowColor: "#00F0FF",
+      shadowColor: PRIMARY_BLUE[400],
       shadowOffset: { width: 0, height: 12 },
       shadowOpacity: 0.35,
       shadowRadius: 30,
@@ -184,10 +260,10 @@ export const GLASS_THEME = {
 
 export const CATEGORY_COLORS = {
   "an-uong": "#F97316",
-  "du-lich": "#0EA5E9",
+  "du-lich": PRIMARY_BLUE[500],
   "vui-choi": "#22C55E",
   "mua-sam": "#EC4899",
   "van-hoa": "#8B5CF6",
   "thien-nhien": "#14B8A6",
-  default: "#94A3B8",
+  default: GREY,
 };

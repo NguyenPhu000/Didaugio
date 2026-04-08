@@ -193,14 +193,18 @@ export const getMyTrips = async (req, res, next) => {
 
 export const generateTrip = async (req, res, next) => {
   try {
-    const trip = await appService.generateAndSaveTrip(
+    const result = await appService.generateAndSaveTrip(
       getUserId(req),
       req.body || {},
     );
-    res.status(201).json({
+    const isPreview = result?.previewOnly === true;
+
+    res.status(isPreview ? 200 : 201).json({
       success: true,
-      data: trip,
-      message: "Tạo chuyến đi thành công",
+      data: result,
+      message: isPreview
+        ? "Đã gợi ý địa điểm, hãy chọn và chốt trước khi tạo chuyến đi"
+        : "Tạo chuyến đi thành công",
     });
   } catch (error) {
     next(error);
@@ -209,7 +213,15 @@ export const generateTrip = async (req, res, next) => {
 
 export const createTrip = async (req, res, next) => {
   try {
-    const { title, description, startDate, endDate, totalDays, travelStyle, groupSize } = req.body;
+    const {
+      title,
+      description,
+      startDate,
+      endDate,
+      totalDays,
+      travelStyle,
+      groupSize,
+    } = req.body;
     const trip = await appService.createTrip(getUserId(req), {
       title,
       description,
@@ -219,7 +231,9 @@ export const createTrip = async (req, res, next) => {
       travelStyle,
       groupSize,
     });
-    res.status(201).json({ success: true, data: trip, message: "Tạo chuyến đi thành công" });
+    res
+      .status(201)
+      .json({ success: true, data: trip, message: "Tạo chuyến đi thành công" });
   } catch (error) {
     next(error);
   }
@@ -228,10 +242,24 @@ export const createTrip = async (req, res, next) => {
 export const getTripDetail = async (req, res, next) => {
   try {
     const id = parseId(req.params.id);
-    if (!id) return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    if (!id)
+      return res
+        .status(400)
+        .json({ success: false, data: null, message: "ID không hợp lệ" });
     const trip = await appService.getTripDetail(id, getUserId(req));
-    if (!trip) return res.status(404).json({ success: false, data: null, message: "Không tìm thấy chuyến đi" });
-    res.json({ success: true, data: trip, message: "Lấy chi tiết chuyến đi thành công" });
+    if (!trip)
+      return res
+        .status(404)
+        .json({
+          success: false,
+          data: null,
+          message: "Không tìm thấy chuyến đi",
+        });
+    res.json({
+      success: true,
+      data: trip,
+      message: "Lấy chi tiết chuyến đi thành công",
+    });
   } catch (error) {
     next(error);
   }
@@ -240,9 +268,16 @@ export const getTripDetail = async (req, res, next) => {
 export const updateTrip = async (req, res, next) => {
   try {
     const id = parseId(req.params.id);
-    if (!id) return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    if (!id)
+      return res
+        .status(400)
+        .json({ success: false, data: null, message: "ID không hợp lệ" });
     const trip = await appService.updateTrip(id, getUserId(req), req.body);
-    res.json({ success: true, data: trip, message: "Cập nhật chuyến đi thành công" });
+    res.json({
+      success: true,
+      data: trip,
+      message: "Cập nhật chuyến đi thành công",
+    });
   } catch (error) {
     next(error);
   }
@@ -251,9 +286,16 @@ export const updateTrip = async (req, res, next) => {
 export const deleteTrip = async (req, res, next) => {
   try {
     const id = parseId(req.params.id);
-    if (!id) return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    if (!id)
+      return res
+        .status(400)
+        .json({ success: false, data: null, message: "ID không hợp lệ" });
     await appService.deleteTrip(id, getUserId(req));
-    res.json({ success: true, data: null, message: "Xóa chuyến đi thành công" });
+    res.json({
+      success: true,
+      data: null,
+      message: "Xóa chuyến đi thành công",
+    });
   } catch (error) {
     next(error);
   }
@@ -262,7 +304,10 @@ export const deleteTrip = async (req, res, next) => {
 export const addDestination = async (req, res, next) => {
   try {
     const tripId = parseId(req.params.id);
-    if (!tripId) return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    if (!tripId)
+      return res
+        .status(400)
+        .json({ success: false, data: null, message: "ID không hợp lệ" });
     const { placeId, dayNumber = 1, order = 0, note } = req.body;
     const dest = await appService.addDestination(tripId, getUserId(req), {
       placeId,
@@ -270,7 +315,13 @@ export const addDestination = async (req, res, next) => {
       order,
       note,
     });
-    res.status(201).json({ success: true, data: dest, message: "Đã thêm địa điểm vào lịch trình" });
+    res
+      .status(201)
+      .json({
+        success: true,
+        data: dest,
+        message: "Đã thêm địa điểm vào lịch trình",
+      });
   } catch (error) {
     next(error);
   }
@@ -280,9 +331,16 @@ export const removeDestination = async (req, res, next) => {
   try {
     const tripId = parseId(req.params.id);
     const destId = parseId(req.params.destId);
-    if (!tripId || !destId) return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    if (!tripId || !destId)
+      return res
+        .status(400)
+        .json({ success: false, data: null, message: "ID không hợp lệ" });
     await appService.removeDestination(tripId, destId, getUserId(req));
-    res.json({ success: true, data: null, message: "Đã xóa địa điểm khỏi lịch trình" });
+    res.json({
+      success: true,
+      data: null,
+      message: "Đã xóa địa điểm khỏi lịch trình",
+    });
   } catch (error) {
     next(error);
   }

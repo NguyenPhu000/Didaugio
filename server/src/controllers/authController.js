@@ -1,5 +1,37 @@
 import authService from "../services/authService.js";
 import { ERROR_CODES } from "../config/messages.js";
+import crypto from "crypto";
+
+const OAUTH_RESULT_TTL_MS = 2 * 60 * 1000;
+const oauthResultStore = new Map();
+
+function cleanupExpiredOAuthResults() {
+  const now = Date.now();
+  for (const [code, entry] of oauthResultStore.entries()) {
+    if (!entry?.expiresAt || entry.expiresAt <= now) {
+      oauthResultStore.delete(code);
+    }
+  }
+}
+
+function createOAuthResultCode(payload) {
+  cleanupExpiredOAuthResults();
+  const code = crypto.randomBytes(24).toString("hex");
+  oauthResultStore.set(code, {
+    payload,
+    expiresAt: Date.now() + OAUTH_RESULT_TTL_MS,
+  });
+  return code;
+}
+
+function consumeOAuthResultCode(code) {
+  cleanupExpiredOAuthResults();
+  const entry = oauthResultStore.get(code);
+  if (!entry) return null;
+  oauthResultStore.delete(code);
+  if (entry.expiresAt <= Date.now()) return null;
+  return entry.payload;
+}
 
 // AUTH CONTROLLER
 
@@ -102,20 +134,65 @@ export const googleOAuthCallback = async (req, res) => {
       clientInfo,
     );
 
-    const userBase64 = Buffer.from(JSON.stringify(result.user)).toString(
-      "base64",
-    );
+    const legacyTokenRedirect =
+      process.env.OAUTH_LEGACY_TOKEN_REDIRECT === "true";
 
-    const deepLink =
-      `${appScheme}://auth-success` +
-      `?accessToken=${encodeURIComponent(result.accessToken)}` +
-      `&refreshToken=${encodeURIComponent(result.refreshToken)}` +
-      `&user=${encodeURIComponent(userBase64)}`;
+    if (legacyTokenRedirect) {
+      const userBase64 = Buffer.from(JSON.stringify(result.user)).toString(
+        "base64",
+      );
 
+      const deepLink =
+        `${appScheme}://auth-success` +
+        `?accessToken=${encodeURIComponent(result.accessToken)}` +
+        `&refreshToken=${encodeURIComponent(result.refreshToken)}` +
+        `&user=${encodeURIComponent(userBase64)}`;
+
+      return res.redirect(deepLink);
+    }
+
+    const authCode = createOAuthResultCode(result);
+    const deepLink = `${appScheme}://auth-success?authCode=${encodeURIComponent(authCode)}`;
     return res.redirect(deepLink);
   } catch (err) {
     console.error("[Google OAuth Callback]", err.message);
     return redirectError(err.message);
+  }
+};
+
+/**
+ * POST /api/auth/google/exchange-result
+ * Đổi authCode một lần lấy kết quả đăng nhập Google (access/refresh token + user)
+ */
+export const exchangeOAuthResult = async (req, res, next) => {
+  try {
+    const { authCode } = req.body || {};
+    if (!authCode || typeof authCode !== "string") {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "authCode là bắt buộc",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    const payload = consumeOAuthResultCode(authCode);
+    if (!payload) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "authCode không hợp lệ hoặc đã hết hạn",
+        errorCode: ERROR_CODES.INVALID_TOKEN,
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: payload,
+      message: "Đổi authCode thành công",
+    });
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -433,6 +510,7 @@ export default {
   login,
   loginGoogle,
   exchangeGoogleCode,
+  exchangeOAuthResult,
   initiateGoogleOAuth,
   googleOAuthCallback,
   refreshToken,

@@ -24,8 +24,8 @@ import {
   StatCardSkeleton,
   SectionCardSkeleton,
   StatusProgressRow,
-  formatVND,
 } from "@/components/business/DashboardWidgets";
+import { formatVND } from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/Button";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 
@@ -80,7 +80,7 @@ const BusinessDashboardPage = () => {
 
   /** Dữ liệu dashboard — profile/hợp đồng lấy từ `business` (đã fetch trong BusinessGuard) */
   const stats = dashboardStats;
-  const overview = stats?.overview || stats || {};
+  const overview = useMemo(() => stats?.overview || stats || {}, [stats]);
   const topServices = stats?.topServices || [];
   const period = stats?.period || null;
 
