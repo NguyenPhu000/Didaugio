@@ -26,17 +26,16 @@ import {
 import AnimatedIcon from "@/components/ui/animated-icon";
 import { ROLE_NAMES } from "@/constants/constants";
 import { cn } from "@/lib/utils";
+import { useLogout } from "@/hooks/useLogout";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+  const { handleLogout, isLoggingOut } = useLogout({
+    onBeforeNavigate: () => setIsMenuOpen(false),
+  });
 
   const menuItems = [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -146,6 +145,7 @@ const Navbar = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="focus:bg-red-900/20 focus:text-red-400 text-red-400 cursor-pointer font-mono text-xs uppercase"
+                  disabled={isLoggingOut}
                   onClick={handleLogout}
                 >
                   <AnimatedIcon
@@ -162,6 +162,9 @@ const Navbar = () => {
           {/* Mobile Menu Button */}
           <button
             className="md:hidden p-2 text-gray-400 hover:text-white"
+            aria-label={
+              isMenuOpen ? "Dong menu dieu huong" : "Mo menu dieu huong"
+            }
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? (
@@ -209,6 +212,7 @@ const Navbar = () => {
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={isLoggingOut}
                     onClick={handleLogout}
                     className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-red-400"
                   >

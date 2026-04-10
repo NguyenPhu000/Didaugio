@@ -39,7 +39,7 @@ import { initNotificationService } from "./services/notificationService.js";
 import { validateEnv } from "./config/validateEnv.js";
 import aiRoutes from "./routes/aiRoutes.js";
 
-dotenv.config();
+dotenv.config({ override: true });
 validateEnv();
 
 const app = express();
@@ -93,7 +93,6 @@ app.use("/api/auth/refresh", refreshLimiter);
 app.use("/api/auth/forgot-password", recoveryLimiter);
 app.use("/api/auth/reset-password", recoveryLimiter);
 app.use("/api/auth/resend-verification-public", recoveryLimiter);
-app.use("/api/auth/google/exchange-result", recoveryLimiter);
 app.use("/api", apiLimiter);
 
 app.use("/api/auth", authRoutes);

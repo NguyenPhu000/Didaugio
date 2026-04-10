@@ -37,10 +37,17 @@ export function AIBubble({
   );
   const hasSuggestionCards = !isTyping && visibleSuggestedPlaces.length > 0;
   const isCompactCard = width <= 360 || height <= 700;
+  const suggestionResetKey = useMemo(
+    () =>
+      suggestedPlaces
+        .map((place) => Number(place?.id) || place?.name || "")
+        .join("|"),
+    [suggestedPlaces],
+  );
 
   useEffect(() => {
     setDismissedPlaceIds([]);
-  }, [places]);
+  }, [suggestionResetKey]);
 
   const handleOpenPlace = useCallback(
     (place) => {

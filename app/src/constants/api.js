@@ -1,8 +1,12 @@
 import Constants from "expo-constants";
 
-const PROD_DEFAULT_API_URL = "https://api.didaugio.vn/api";
-const DEV_FALLBACK_API_URL = "http://10.0.2.2:8081/api";
-const DEV_LOCAL_API_PORT = process.env.EXPO_PUBLIC_LOCAL_API_PORT?.trim() || "8081";
+const DEV_LOCAL_API_PORT =
+  process.env.EXPO_PUBLIC_LOCAL_API_PORT?.trim() || "8081";
+const DEV_ENV_API_URL = process.env.EXPO_PUBLIC_API_URL?.trim() || "";
+const PROD_ENV_API_URL = process.env.EXPO_PUBLIC_API_URL_PROD?.trim() || "";
+const DEV_FALLBACK_API_URL =
+  process.env.EXPO_PUBLIC_API_FALLBACK_URL?.trim() || "";
+const USE_RUNTIME_HOST = process.env.EXPO_PUBLIC_USE_RUNTIME_HOST === "true";
 
 const getRuntimeHost = () => {
   const debuggerHost =
@@ -17,37 +21,40 @@ const getRuntimeHost = () => {
 };
 
 const getDevApiUrl = () => {
-  const envApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
-  if (envApiUrl) return envApiUrl;
+  if (DEV_ENV_API_URL) return DEV_ENV_API_URL;
 
-  const shouldUseLocalApi = process.env.EXPO_PUBLIC_USE_LOCAL_API === "true";
-  if (!shouldUseLocalApi) return PROD_DEFAULT_API_URL;
+  if (USE_RUNTIME_HOST) {
+    const runtimeHost = getRuntimeHost();
+    if (runtimeHost) return `http://${runtimeHost}:${DEV_LOCAL_API_PORT}/api`;
+  }
 
-  const runtimeHost = getRuntimeHost();
-  if (runtimeHost) return `http://${runtimeHost}:${DEV_LOCAL_API_PORT}/api`;
+  if (DEV_FALLBACK_API_URL) {
+    return DEV_FALLBACK_API_URL.replace(":8081/", `:${DEV_LOCAL_API_PORT}/`);
+  }
 
-  return DEV_FALLBACK_API_URL.replace(":8081/", `:${DEV_LOCAL_API_PORT}/`);
+  return "";
 };
 
-export const API_BASE_URL = __DEV__ ? getDevApiUrl() : PROD_DEFAULT_API_URL;
+export const API_BASE_URL = __DEV__
+  ? getDevApiUrl()
+  : PROD_ENV_API_URL || DEV_ENV_API_URL;
 export const REQUEST_TIMEOUT = 15000;
 
 const buildApiCandidates = () => {
-  const envApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
   const runtimeHost = getRuntimeHost();
-  const runtimeUrl = runtimeHost
-    ? `http://${runtimeHost}:${DEV_LOCAL_API_PORT}/api`
+  const runtimeUrl =
+    USE_RUNTIME_HOST && runtimeHost
+      ? `http://${runtimeHost}:${DEV_LOCAL_API_PORT}/api`
+      : null;
+  const fallbackUrl = DEV_FALLBACK_API_URL
+    ? DEV_FALLBACK_API_URL.replace(":8081/", `:${DEV_LOCAL_API_PORT}/`)
     : null;
-  const fallbackUrl = DEV_FALLBACK_API_URL.replace(
-    ":8081/",
-    `:${DEV_LOCAL_API_PORT}/`,
-  );
 
-  return [envApiUrl, runtimeUrl, fallbackUrl, PROD_DEFAULT_API_URL].filter(
+  return [DEV_ENV_API_URL, runtimeUrl, fallbackUrl, PROD_ENV_API_URL].filter(
     (value, index, array) => value && array.indexOf(value) === index,
   );
 };
 
 export const API_BASE_CANDIDATES = __DEV__
   ? buildApiCandidates()
-  : [PROD_DEFAULT_API_URL];
+  : [PROD_ENV_API_URL || DEV_ENV_API_URL].filter(Boolean);

@@ -32,7 +32,4 @@ dist-ssr
 .cursorrules
 test
 types
-.env
-.env
 vitest.config.js
-.env

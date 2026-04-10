@@ -3,8 +3,6 @@ export const ENDPOINTS = {
     register: "/auth/register",
     login: "/auth/login",
     loginGoogle: "/auth/google",
-    exchangeGoogleCode: "/auth/google/exchange",
-    exchangeGoogleResult: "/auth/google/exchange-result",
     refresh: "/auth/refresh",
     me: "/auth/me",
     logout: "/auth/logout",

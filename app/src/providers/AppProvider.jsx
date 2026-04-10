@@ -42,21 +42,42 @@ const Bootstrap = ({ children }) => {
   const hydrate = useAuthStore((state) => state.hydrate);
 
   useEffect(() => {
-    const init = async () => {
-      await hydrate();
+    let isMounted = true;
 
-      const { accessToken, setUser } = useAuthStore.getState();
-      if (accessToken) {
-        getMeApi()
-          .then((res) => {
-            const freshUser = res?.data || res;
-            if (freshUser?.id) setUser(freshUser);
-          })
-          .catch(() => {});
+    const init = async () => {
+      try {
+        await hydrate();
+
+        const { accessToken, setUser, clearSession } = useAuthStore.getState();
+        if (!accessToken || !isMounted) {
+          return;
+        }
+
+        try {
+          const res = await getMeApi();
+          const freshUser = res?.data || res;
+          if (isMounted && freshUser?.id) {
+            setUser(freshUser);
+          }
+        } catch (error) {
+          if (error?.status === 401 && isMounted) {
+            await clearSession();
+          }
+        }
+      } catch {
+        const { clearSession } = useAuthStore.getState();
+        if (isMounted) {
+          await clearSession();
+        }
       }
     };
-    init();
-  }, []);
+
+    void init();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [hydrate]);
 
   return children;
 };

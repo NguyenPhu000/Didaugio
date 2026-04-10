@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -11,12 +11,127 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Link } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRegister } from "../../src/modules/auth/hooks/useRegister";
 
-const inputClassName =
-  "h-14 rounded-2xl border border-gray-200 bg-white px-4 text-[15px] text-ink";
+const CARD_SHADOW = {
+  shadowColor: "#0f172a",
+  shadowOffset: { width: 0, height: -12 },
+  shadowOpacity: 0.1,
+  shadowRadius: 28,
+  elevation: 20,
+};
+
+function AuthInput({
+  label,
+  icon,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType,
+  autoComplete,
+  autoCapitalize = "none",
+  secureTextEntry = false,
+  showToggle = false,
+  isVisible = false,
+  onToggleVisibility,
+  textContentType,
+  returnKeyType,
+  onSubmitEditing,
+  inputRef,
+}) {
+  return (
+    <View style={{ gap: 8 }}>
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: "600",
+          color: "#374151",
+          marginLeft: 2,
+        }}
+      >
+        {label}
+      </Text>
+      <View
+        style={{
+          height: 54,
+          flexDirection: "row",
+          alignItems: "center",
+          borderRadius: 16,
+          borderWidth: 1.5,
+          borderColor: "#e2e8f0",
+          backgroundColor: "#f8fafc",
+          paddingHorizontal: 14,
+        }}
+      >
+        <MaterialIcons name={icon} size={20} color="#94a3b8" />
+        <TextInput
+          ref={inputRef}
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType={keyboardType}
+          autoComplete={autoComplete}
+          autoCapitalize={autoCapitalize}
+          secureTextEntry={secureTextEntry}
+          placeholder={placeholder}
+          placeholderTextColor="#94a3b8"
+          style={{
+            flex: 1,
+            paddingHorizontal: 12,
+            fontSize: 15,
+            color: "#0f172a",
+          }}
+          textContentType={textContentType}
+          returnKeyType={returnKeyType}
+          onSubmitEditing={onSubmitEditing}
+        />
+        {showToggle && (
+          <Pressable
+            onPress={onToggleVisibility}
+            hitSlop={10}
+            style={{
+              height: 40,
+              width: 40,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <MaterialIcons
+              name={isVisible ? "visibility-off" : "visibility"}
+              size={20}
+              color="#94a3b8"
+            />
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function BenefitPill({ icon, text }) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        backgroundColor: "rgba(255,255,255,0.13)",
+        borderRadius: 100,
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.2)",
+      }}
+    >
+      <MaterialIcons name={icon} size={14} color="#a5f3fc" />
+      <Text style={{ fontSize: 12, fontWeight: "500", color: "#cffafe" }}>
+        {text}
+      </Text>
+    </View>
+  );
+}
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
@@ -29,231 +144,462 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+  const confirmPasswordRef = useRef(null);
+
   const handleRegister = () => {
     register({ fullName, email, password, confirmPassword });
   };
 
   return (
-    <View className="flex-1 bg-[#0f172a]" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: "#020617" }}>
       <StatusBar style="light" />
 
-      <View
-        className="absolute overflow-hidden"
-        style={{ top: -160, left: -100, width: 360, height: 360 }}
-        pointerEvents="none"
+      <LinearGradient
+        colors={["#020617", "#083344", "#0e7490"]}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={{ flex: 1, paddingTop: insets.top }}
       >
+        {/* Decorative blobs */}
         <View
-          className="w-full h-full rounded-full"
-          style={{ backgroundColor: "rgba(56,189,248,0.12)" }}
-        />
-      </View>
-
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingBottom: Math.max(insets.bottom, 20),
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: -70,
+            left: -70,
+            width: 220,
+            height: 220,
+            borderRadius: 110,
+            backgroundColor: "rgba(34,211,238,0.1)",
           }}
+        />
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 160,
+            right: -50,
+            width: 200,
+            height: 200,
+            borderRadius: 100,
+            backgroundColor: "rgba(6,182,212,0.08)",
+          }}
+        />
+
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View className="px-8 pt-8 pb-7">
-            <View
-              className="w-16 h-16 rounded-[20px] items-center justify-center mb-5"
-              style={{
-                backgroundColor: "rgba(56,189,248,0.15)",
-                borderWidth: 1,
-                borderColor: "rgba(125,211,252,0.25)",
-              }}
-            >
-              <MaterialIcons name="person-add-alt-1" size={28} color="#e0f2fe" />
-            </View>
-
-            <Text
-              className="text-[33px] font-extrabold text-white"
-              style={{ letterSpacing: -0.7 }}
-            >
-              Tạo tài khoản
-            </Text>
-            <Text
-              className="text-[15px] leading-[22px] mt-2"
-              style={{ color: "rgba(226,232,240,0.85)" }}
-            >
-              Đăng ký bằng email để sử dụng chung tài khoản với hệ thống web.
-            </Text>
-          </View>
-
-          <View
-            className="flex-1 rounded-t-[32px] bg-white px-6 pt-7"
-            style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: -8 },
-              shadowOpacity: 0.12,
-              shadowRadius: 20,
-              elevation: 12,
+          <ScrollView
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingBottom: Math.max(insets.bottom + 16, 32),
             }}
           >
-            <View className="gap-4">
-              <View>
-                <Text className="text-[13px] font-semibold text-ink-secondary mb-2">
-                  Họ và tên
-                </Text>
-                <TextInput
+            {/* Header section */}
+            <View
+              style={{
+                paddingHorizontal: 24,
+                paddingTop: 20,
+                paddingBottom: 28,
+              }}
+            >
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 18,
+                  backgroundColor: "rgba(255,255,255,0.12)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.22)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 20,
+                }}
+              >
+                <MaterialIcons name="person-add-alt-1" size={28} color="#ffffff" />
+              </View>
+
+              <Text
+                style={{
+                  fontSize: 30,
+                  fontWeight: "800",
+                  color: "#ffffff",
+                  letterSpacing: -0.8,
+                  lineHeight: 36,
+                  maxWidth: 260,
+                }}
+              >
+                Tạo tài khoản mới
+              </Text>
+              <Text
+                style={{
+                  marginTop: 10,
+                  fontSize: 14,
+                  lineHeight: 21,
+                  color: "rgba(207,250,254,0.88)",
+                  maxWidth: 300,
+                }}
+              >
+                Đăng ký để lưu thông tin, đồng bộ lịch sử và mở khóa trải
+                nghiệm đầy đủ trên ứng dụng.
+              </Text>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  marginTop: 16,
+                }}
+              >
+                <BenefitPill icon="mail-outline" text="Xác thực email" />
+                <BenefitPill icon="shield" text="Bảo mật cao" />
+                <BenefitPill icon="favorite-border" text="Lưu địa điểm" />
+              </View>
+            </View>
+
+            {/* White card */}
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: "#ffffff",
+                borderTopLeftRadius: 36,
+                borderTopRightRadius: 36,
+                paddingHorizontal: 24,
+                paddingTop: 28,
+                paddingBottom: 12,
+                ...CARD_SHADOW,
+              }}
+            >
+              {/* Card header */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 24,
+                }}
+              >
+                <View>
+                  <Text
+                    style={{
+                      fontSize: 22,
+                      fontWeight: "800",
+                      color: "#0f172a",
+                      letterSpacing: -0.4,
+                    }}
+                  >
+                    Đăng ký
+                  </Text>
+                  <Text
+                    style={{ marginTop: 3, fontSize: 13, color: "#64748b" }}
+                  >
+                    Một tài khoản cho cả web và mobile
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    backgroundColor: "#ecfeff",
+                    borderRadius: 100,
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "700",
+                      color: "#0e7490",
+                    }}
+                  >
+                    Mới toanh
+                  </Text>
+                </View>
+              </View>
+
+              {/* Form */}
+              <View style={{ gap: 14 }}>
+                <AuthInput
+                  label="Họ và tên"
+                  icon="badge"
                   value={fullName}
                   onChangeText={setFullName}
                   autoCapitalize="words"
                   autoComplete="name"
                   placeholder="Nguyễn Văn A"
-                  placeholderTextColor="#9ca3af"
-                  className={inputClassName}
+                  textContentType="name"
+                  returnKeyType="next"
+                  onSubmitEditing={() => emailRef.current?.focus()}
                 />
-              </View>
 
-              <View>
-                <Text className="text-[13px] font-semibold text-ink-secondary mb-2">
-                  Email
-                </Text>
-                <TextInput
+                <AuthInput
+                  label="Email"
+                  icon="alternate-email"
                   value={email}
                   onChangeText={setEmail}
-                  autoCapitalize="none"
                   keyboardType="email-address"
                   autoComplete="email"
+                  autoCapitalize="none"
                   placeholder="you@example.com"
-                  placeholderTextColor="#9ca3af"
-                  className={inputClassName}
+                  textContentType="emailAddress"
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  inputRef={emailRef}
                 />
-              </View>
 
-              <View>
-                <Text className="text-[13px] font-semibold text-ink-secondary mb-2">
-                  Mật khẩu
-                </Text>
-                <View className="relative">
-                  <TextInput
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    autoComplete="new-password"
-                    placeholder="Tối thiểu 6 ký tự"
-                    placeholderTextColor="#9ca3af"
-                    className={`${inputClassName} pr-12`}
+                <AuthInput
+                  label="Mật khẩu"
+                  icon="lock-outline"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoComplete="new-password"
+                  placeholder="Tối thiểu 6 ký tự"
+                  showToggle
+                  isVisible={showPassword}
+                  onToggleVisibility={() => setShowPassword((v) => !v)}
+                  textContentType="newPassword"
+                  returnKeyType="next"
+                  onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+                  inputRef={passwordRef}
+                />
+
+                <AuthInput
+                  label="Xác nhận mật khẩu"
+                  icon="verified-user"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                  autoComplete="new-password"
+                  placeholder="Nhập lại mật khẩu"
+                  showToggle
+                  isVisible={showConfirmPassword}
+                  onToggleVisibility={() => setShowConfirmPassword((v) => !v)}
+                  textContentType="password"
+                  returnKeyType="done"
+                  onSubmitEditing={handleRegister}
+                  inputRef={confirmPasswordRef}
+                />
+
+                {/* Password hint */}
+                <View
+                  style={{
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: "#a5f3fc",
+                    backgroundColor: "#ecfeff",
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    gap: 8,
+                  }}
+                >
+                  <MaterialIcons
+                    name="tips-and-updates"
+                    size={17}
+                    color="#0e7490"
                   />
-                  <Pressable
-                    onPress={() => setShowPassword((value) => !value)}
-                    className="absolute right-4 top-0 bottom-0 items-center justify-center"
+                  <Text
+                    style={{
+                      flex: 1,
+                      fontSize: 12,
+                      lineHeight: 18,
+                      color: "#164e63",
+                    }}
                   >
-                    <MaterialIcons
-                      name={showPassword ? "visibility-off" : "visibility"}
-                      size={22}
-                      color="#6b7280"
-                    />
-                  </Pressable>
-                </View>
-                <Text className="text-[12px] text-ink-muted mt-2">
-                  Mật khẩu cần có chữ hoa, chữ thường và ít nhất 1 số.
-                </Text>
-              </View>
-
-              <View>
-                <Text className="text-[13px] font-semibold text-ink-secondary mb-2">
-                  Xác nhận mật khẩu
-                </Text>
-                <View className="relative">
-                  <TextInput
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry={!showConfirmPassword}
-                    autoComplete="new-password"
-                    placeholder="Nhập lại mật khẩu"
-                    placeholderTextColor="#9ca3af"
-                    className={`${inputClassName} pr-12`}
-                  />
-                  <Pressable
-                    onPress={() => setShowConfirmPassword((value) => !value)}
-                    className="absolute right-4 top-0 bottom-0 items-center justify-center"
-                  >
-                    <MaterialIcons
-                      name={showConfirmPassword ? "visibility-off" : "visibility"}
-                      size={22}
-                      color="#6b7280"
-                    />
-                  </Pressable>
-                </View>
-              </View>
-
-              {error ? (
-                <View className="flex-row items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
-                  <MaterialIcons name="error-outline" size={18} color="#ef4444" />
-                  <Text className="flex-1 text-[13px] leading-[19px] text-red-500">
-                    {error}
+                    Mật khẩu nên có chữ hoa, chữ thường và ít nhất 1 số để bảo
+                    vệ tài khoản tốt hơn.
                   </Text>
                 </View>
-              ) : null}
 
-              {successMessage ? (
-                <View className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                  <View className="flex-row items-start gap-2">
-                    <MaterialIcons name="mark-email-read" size={18} color="#10b981" />
-                    <Text className="flex-1 text-[13px] leading-[19px] text-emerald-700">
-                      {successMessage}
+                {/* Error */}
+                {error ? (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      gap: 8,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: "#fecaca",
+                      backgroundColor: "#fff1f2",
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                    }}
+                  >
+                    <MaterialIcons
+                      name="error-outline"
+                      size={18}
+                      color="#ef4444"
+                    />
+                    <Text
+                      style={{
+                        flex: 1,
+                        fontSize: 13,
+                        lineHeight: 19,
+                        color: "#dc2626",
+                      }}
+                    >
+                      {error}
                     </Text>
                   </View>
-                  <Link href="/(auth)/login" asChild>
-                    <Pressable className="mt-3 self-start rounded-xl bg-emerald-600 px-4 py-2">
-                      <Text className="text-[13px] font-semibold text-white">
-                        Quay lại đăng nhập
+                ) : null}
+
+                {/* Success message */}
+                {successMessage ? (
+                  <View
+                    style={{
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: "#6ee7b7",
+                      backgroundColor: "#f0fdf4",
+                      paddingHorizontal: 14,
+                      paddingVertical: 14,
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        gap: 8,
+                      }}
+                    >
+                      <MaterialIcons
+                        name="mark-email-read"
+                        size={18}
+                        color="#059669"
+                      />
+                      <Text
+                        style={{
+                          flex: 1,
+                          fontSize: 13,
+                          lineHeight: 19,
+                          color: "#065f46",
+                        }}
+                      >
+                        {successMessage}
                       </Text>
-                    </Pressable>
-                  </Link>
-                </View>
-              ) : null}
+                    </View>
+                    <Link href="/(auth)/login" asChild>
+                      <Pressable
+                        style={({ pressed }) => [
+                          {
+                            marginTop: 12,
+                            height: 42,
+                            alignSelf: "flex-start",
+                            borderRadius: 12,
+                            backgroundColor: "#059669",
+                            paddingHorizontal: 16,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          },
+                          pressed && { opacity: 0.85 },
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: "600",
+                            color: "#ffffff",
+                          }}
+                        >
+                          Quay lại đăng nhập
+                        </Text>
+                      </Pressable>
+                    </Link>
+                  </View>
+                ) : null}
 
-              <Pressable
-                onPress={handleRegister}
-                disabled={isLoading}
-                className="h-14 rounded-2xl items-center justify-center mt-1"
-                style={({ pressed }) => [
-                  {
-                    backgroundColor: "#0f172a",
-                    shadowColor: "#0f172a",
-                    shadowOffset: { width: 0, height: 6 },
-                    shadowOpacity: 0.18,
-                    shadowRadius: 14,
-                    elevation: 5,
-                  },
-                  pressed && { opacity: 0.94, transform: [{ scale: 0.99 }] },
-                  isLoading && { opacity: 0.7 },
-                ]}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#ffffff" size="small" />
-                ) : (
-                  <Text className="text-[15px] font-bold text-white">
-                    Đăng ký bằng email
-                  </Text>
-                )}
-              </Pressable>
-            </View>
-
-            <View className="flex-row items-center justify-center gap-1 mt-6 mb-4">
-              <Text className="text-[13px] text-ink-secondary">
-                Đã có tài khoản?
-              </Text>
-              <Link href="/(auth)/login" asChild>
-                <Pressable>
-                  <Text className="text-[13px] font-bold text-primary">
-                    Đăng nhập
-                  </Text>
+                {/* Register button */}
+                <Pressable
+                  onPress={handleRegister}
+                  disabled={isLoading}
+                  style={({ pressed }) => [
+                    {
+                      height: 54,
+                      marginTop: 2,
+                      borderRadius: 16,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "#0e7490",
+                      shadowColor: "#0e7490",
+                      shadowOffset: { width: 0, height: 8 },
+                      shadowOpacity: 0.35,
+                      shadowRadius: 16,
+                      elevation: 8,
+                    },
+                    pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] },
+                    isLoading && { opacity: 0.7 },
+                  ]}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#ffffff" size="small" />
+                  ) : (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          fontWeight: "700",
+                          color: "#ffffff",
+                        }}
+                      >
+                        Tạo tài khoản
+                      </Text>
+                      <MaterialIcons
+                        name="arrow-forward"
+                        size={18}
+                        color="#ffffff"
+                      />
+                    </View>
+                  )}
                 </Pressable>
-              </Link>
+              </View>
+
+              {/* Login link */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
+                  marginTop: 20,
+                  marginBottom: 8,
+                }}
+              >
+                <Text style={{ fontSize: 13, color: "#64748b" }}>
+                  Đã có tài khoản?
+                </Text>
+                <Link href="/(auth)/login" asChild>
+                  <Pressable hitSlop={8}>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "700",
+                        color: "#0e7490",
+                      }}
+                    >
+                      Đăng nhập ngay
+                    </Text>
+                  </Pressable>
+                </Link>
+              </View>
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </LinearGradient>
     </View>
   );
 }

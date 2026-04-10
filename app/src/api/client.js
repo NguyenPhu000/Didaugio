@@ -1,6 +1,7 @@
 import axios from "axios";
 import { API_BASE_URL, REQUEST_TIMEOUT } from "../constants/api";
 import { useAuthStore } from "../stores/authStore";
+import { ENDPOINTS } from "./endpoints";
 
 const client = axios.create({
   baseURL: API_BASE_URL,
@@ -21,6 +22,59 @@ client.interceptors.request.use((config) => {
 
 let isRefreshing = false;
 let failedQueue = [];
+const REFRESH_QUEUE_TIMEOUT_MS = 12000;
+
+const PUBLIC_AUTH_PATHS = new Set([
+  ENDPOINTS.auth.login,
+  ENDPOINTS.auth.register,
+  ENDPOINTS.auth.loginGoogle,
+]);
+
+const normalizeRequestPath = (requestUrl) => {
+  const raw = String(requestUrl || "")
+    .split("?")[0]
+    .trim();
+  if (!raw) return "";
+
+  let path = raw;
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    path = new URL(path).pathname;
+  }
+
+  if (path.startsWith("/api/")) {
+    path = path.slice(4);
+  }
+
+  return path.replace(/\/+$/, "") || "/";
+};
+
+const isPublicAuthRequest = (requestUrl) =>
+  PUBLIC_AUTH_PATHS.has(normalizeRequestPath(requestUrl));
+
+const isRefreshRequest = (requestUrl) =>
+  normalizeRequestPath(requestUrl) === ENDPOINTS.auth.refresh;
+
+const enqueueRequestWhileRefreshing = () =>
+  new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject({
+        message: "Hết thời gian chờ làm mới phiên. Vui lòng đăng nhập lại.",
+        status: 401,
+        code: "REFRESH_TIMEOUT",
+      });
+    }, REFRESH_QUEUE_TIMEOUT_MS);
+
+    failedQueue.push({
+      resolve: (token) => {
+        clearTimeout(timeoutId);
+        resolve(token);
+      },
+      reject: (err) => {
+        clearTimeout(timeoutId);
+        reject(err);
+      },
+    });
+  });
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach((prom) => {
@@ -37,8 +91,20 @@ client.interceptors.response.use(
   (response) => response.data,
   async (error) => {
     const originalRequest = error.config;
+    if (!originalRequest) {
+      return Promise.reject(buildError(error));
+    }
 
-    if (error?.response?.status === 401 && !originalRequest._retry) {
+    const requestUrl = originalRequest?.url || "";
+    const isPublicRequest = isPublicAuthRequest(requestUrl);
+    const isRefreshCall = isRefreshRequest(requestUrl);
+
+    if (
+      error?.response?.status === 401 &&
+      !originalRequest?._retry &&
+      !isPublicRequest &&
+      !isRefreshCall
+    ) {
       originalRequest._retry = true;
 
       const store = useAuthStore.getState();
@@ -50,10 +116,17 @@ client.interceptors.response.use(
       }
 
       if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
+        return enqueueRequestWhileRefreshing()
           .then((newToken) => {
+            if (!newToken) {
+              return Promise.reject({
+                message: "Phiên đăng nhập không còn hợp lệ.",
+                status: 401,
+                code: "INVALID_REFRESH_RESPONSE",
+              });
+            }
+
+            originalRequest.headers = originalRequest.headers || {};
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
             return client(originalRequest);
           })
@@ -75,6 +148,10 @@ client.interceptors.response.use(
           user,
         } = res.data?.data || res.data || {};
 
+        if (!accessToken) {
+          throw new Error("Missing access token in refresh response");
+        }
+
         await store.setSession({
           user: user || store.user,
           accessToken,
@@ -82,10 +159,11 @@ client.interceptors.response.use(
         });
 
         processQueue(null, accessToken);
+        originalRequest.headers = originalRequest.headers || {};
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return client(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
+        processQueue(buildError(refreshError), null);
         await store.clearSession();
         return Promise.reject(buildError(refreshError));
       } finally {

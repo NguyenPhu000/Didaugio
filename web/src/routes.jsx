@@ -50,24 +50,29 @@ import ResendVerificationPage from "@/pages/auth/ResendVerificationPage";
 import RoleManagePage from "@/pages/RoleManagePage";
 import PermissionManagePage from "@/pages/PermissionManagePage";
 import BusinessGuard from "@/components/business/BusinessGuard";
+import { resolvePostLoginRoute, resolveRoleId } from "@/utils/authRouting";
 
 /** Redirect / to correct dashboard based on role */
 const RootRedirect = () => {
   const { user, isAuthenticated } = useAuthStore();
   if (!isAuthenticated) return <Navigate to={AUTH_ROUTES.LOGIN} replace />;
-  const to =
-    user?.roleId === ROLES.BUSINESS
-      ? BUSINESS_ROUTES.DASHBOARD
-      : ADMIN_ROUTES.DASHBOARD;
+  const to = resolvePostLoginRoute(user);
   return <Navigate to={to} replace />;
 };
 
 /** Business thấy BusinessDashboard, Admin/Staff thấy DashboardPage */
 const DashboardGate = () => {
   const { user } = useAuthStore();
-  if (user?.roleId === ROLES.BUSINESS) {
+  const roleId = resolveRoleId(user);
+
+  if (roleId === ROLES.BUSINESS) {
     return <Navigate to={BUSINESS_ROUTES.DASHBOARD} replace />;
   }
+
+  if (![ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF].includes(roleId)) {
+    return <Navigate to={AUTH_ROUTES.LOGIN} replace />;
+  }
+
   return <DashboardPage />;
 };
 
@@ -469,13 +474,19 @@ const AppRoutes = () => {
       <Route
         path="/business/contracts"
         element={
-          <Navigate to={`${BUSINESS_ROUTES.PROFILE}?section=contract`} replace />
+          <Navigate
+            to={`${BUSINESS_ROUTES.PROFILE}?section=contract`}
+            replace
+          />
         }
       />
       <Route
         path="/business/contracts/:id"
         element={
-          <Navigate to={`${BUSINESS_ROUTES.PROFILE}?section=contract`} replace />
+          <Navigate
+            to={`${BUSINESS_ROUTES.PROFILE}?section=contract`}
+            replace
+          />
         }
       />
 

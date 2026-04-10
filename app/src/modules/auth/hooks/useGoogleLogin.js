@@ -1,92 +1,143 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 import { useAuthStore } from "../../../stores/authStore";
-import { API_BASE_URL } from "../../../constants/api";
-import { exchangeGoogleResultApi } from "../api/authApi";
+import { loginGoogleApi } from "../api/authApi";
 
-WebBrowser.maybeCompleteAuthSession();
-
-const APP_SCHEME =
-  Constants.expoConfig?.scheme || Constants.expoGoConfig?.scheme || "didaugio";
-
-const decodeUserPayload = (userBase64) => {
-  if (!userBase64) return null;
-  try {
-    return JSON.parse(atob(userBase64));
-  } catch {
-    return null;
-  }
-};
+const buildLoginError = (message, code) => ({ message, code });
 
 export function useGoogleLogin() {
   const router = useRouter();
   const setSession = useAuthStore((s) => s.setSession);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [googleModule, setGoogleModule] = useState(null);
+
+  const isExpoGo =
+    Constants.executionEnvironment === "storeClient" ||
+    Constants.appOwnership === "expo";
+
+  const googleConfig = useMemo(() => {
+    const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+
+    return {
+      webClientId,
+      iosClientId: iosClientId || undefined,
+      scopes: ["openid", "profile", "email"],
+      offlineAccess: false,
+      forceCodeForRefreshToken: false,
+      profileImageSize: 128,
+    };
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const setupGoogleSignin = async () => {
+      if (isExpoGo) return;
+
+      try {
+        const module =
+          await import("@react-native-google-signin/google-signin");
+        if (isCancelled) return;
+
+        module.GoogleSignin.configure(googleConfig);
+        setGoogleModule(module);
+      } catch {
+        if (!isCancelled) {
+          setGoogleModule(null);
+        }
+      }
+    };
+
+    setupGoogleSignin();
+    return () => {
+      isCancelled = true;
+    };
+  }, [googleConfig, isExpoGo]);
 
   const login = async () => {
     setError(null);
+    if (isExpoGo) {
+      setError(
+        "Google Sign-In native không chạy trên Expo Go. Hãy dùng development build (npx expo run:android).",
+      );
+      return;
+    }
+
+    if (!googleConfig.webClientId) {
+      setError("Thiếu EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID trong app/.env.");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const oauthUrl = `${API_BASE_URL}/auth/google/web`;
+      const module =
+        googleModule ||
+        (await import("@react-native-google-signin/google-signin"));
 
-      const result = await WebBrowser.openAuthSessionAsync(
-        oauthUrl,
-        `${APP_SCHEME}://`,
-      );
+      const {
+        GoogleSignin,
+        isCancelledResponse,
+        isErrorWithCode,
+        isSuccessResponse,
+        statusCodes,
+      } = module;
 
-      if (result.type === "cancel" || result.type === "dismiss") {
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
+
+      const response = await GoogleSignin.signIn();
+      if (isCancelledResponse(response)) {
         return;
       }
 
-      if (result.type !== "success" || !result.url) {
-        setError("Đăng nhập không thành công. Vui lòng thử lại.");
+      if (!isSuccessResponse(response)) {
+        setError("Đăng nhập Google thất bại. Vui lòng thử lại.");
         return;
       }
 
-      const url = result.url;
-      const params = new URLSearchParams(url.split("?")[1] || "");
+      let idToken = response.data?.idToken || null;
+      if (!idToken) {
+        const tokens = await GoogleSignin.getTokens();
+        idToken = tokens?.idToken || null;
+      }
 
-      if (url.includes("auth-error")) {
-        setError(params.get("message") || "Đăng nhập thất bại");
+      if (!idToken) {
+        setError("Không nhận được id_token từ Google.");
         return;
       }
 
-      const authCode = params.get("authCode");
+      const res = await loginGoogleApi(idToken);
+      const payload = res?.data || res;
+      const { accessToken, refreshToken, user } = payload || {};
 
-      if (authCode) {
-        const exchangeRes = await exchangeGoogleResultApi(authCode);
-        const payload = exchangeRes?.data ?? exchangeRes;
-        const accessToken = payload?.accessToken;
-        const refreshToken = payload?.refreshToken;
-        const user = payload?.user || null;
-
-        if (!accessToken) {
-          setError("Không nhận được token sau khi xác thực.");
-          return;
-        }
-
-        await setSession({ user, accessToken, refreshToken });
-        router.replace("/(tabs)/map");
+      if (!accessToken || !refreshToken || !user) {
+        setError("Phiên đăng nhập Google không hợp lệ.");
         return;
       }
 
-      const accessToken = params.get("accessToken");
-      const refreshToken = params.get("refreshToken");
-      const userBase64 = params.get("user");
-
-      if (!accessToken) {
-        setError("Không nhận được token. Vui lòng thử lại.");
-        return;
-      }
-
-      const user = decodeUserPayload(userBase64);
       await setSession({ user, accessToken, refreshToken });
       router.replace("/(tabs)/map");
     } catch (e) {
-      setError(e?.message || "Đăng nhập thất bại. Vui lòng thử lại.");
+      if (isErrorWithCode(e)) {
+        if (e.code === statusCodes.IN_PROGRESS) {
+          setError("Đăng nhập đang xử lý, vui lòng đợi.");
+        } else if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          setError("Thiết bị thiếu Google Play Services hoặc cần cập nhật.");
+        } else {
+          setError(e.message || "Đăng nhập Google thất bại.");
+        }
+        return;
+      }
+
+      const normalizedError = buildLoginError(
+        e?.message || "Đăng nhập thất bại. Vui lòng thử lại.",
+        e?.code || "GOOGLE_LOGIN_FAILED",
+      );
+      setError(normalizedError.message);
     } finally {
       setIsLoading(false);
     }

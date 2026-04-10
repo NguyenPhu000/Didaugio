@@ -13,6 +13,7 @@
     "test:business-portal-regression": "node tests/test_business_portal_regression.js",
     "test:qa-business-all": "node tests/run_qa_business_all.mjs",
     "test:api-focused": "node tests/test_api_focused_contracts.js",
+    "test:auth-security-negative": "node tests/test_auth_security_negative.js",
     "test:booking-use-date": "node tests/test_booking_use_date_list.js",
     "studio": "prisma studio --schema=prisma/schema.prisma --port 5555",
     "migrate:dev": "prisma migrate dev --schema=prisma/schema.prisma",

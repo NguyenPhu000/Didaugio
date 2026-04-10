@@ -76,8 +76,8 @@ export const authService = {
   },
 
   // Đăng xuất
-  logout: async (refreshToken) => {
-    const response = await api.post("/auth/logout", { refreshToken });
+  logout: async (refreshToken, config = {}) => {
+    const response = await api.post("/auth/logout", { refreshToken }, config);
     return response;
   },
 

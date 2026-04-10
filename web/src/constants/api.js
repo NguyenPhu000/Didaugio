@@ -16,6 +16,57 @@ const api = axios.create({
   timeout: API_TIMEOUT,
 });
 
+const PUBLIC_AUTH_PATHS = new Set([
+  "/auth/login",
+  "/auth/register",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+  "/auth/verify-email",
+  "/auth/resend-verification-public",
+  "/auth/google",
+  "/auth/google/exchange",
+  "/auth/google/exchange-result",
+]);
+
+const normalizeRequestPath = (requestUrl) => {
+  const raw = String(requestUrl || "")
+    .split("?")[0]
+    .trim();
+  if (!raw) return "";
+
+  let normalizedPath = raw;
+  if (
+    normalizedPath.startsWith("http://") ||
+    normalizedPath.startsWith("https://")
+  ) {
+    normalizedPath = new URL(normalizedPath).pathname;
+  }
+
+  if (normalizedPath.startsWith("/api/")) {
+    normalizedPath = normalizedPath.slice(4);
+  }
+
+  return normalizedPath.replace(/\/+$/, "") || "/";
+};
+
+const isPublicAuthRequest = (requestUrl) =>
+  PUBLIC_AUTH_PATHS.has(normalizeRequestPath(requestUrl));
+
+const isRefreshRequest = (requestUrl) =>
+  normalizeRequestPath(requestUrl) === "/auth/refresh";
+
+const redirectToLogin = () => {
+  if (typeof window === "undefined") return;
+  if (window.location.pathname !== AUTH_ROUTES.LOGIN) {
+    window.location.assign(AUTH_ROUTES.LOGIN);
+  }
+};
+
+const clearAuthAndRedirect = () => {
+  useAuthStore.getState().logout();
+  redirectToLogin();
+};
+
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -24,6 +75,12 @@ const processQueue = (error, token = null) => {
     error ? prom.reject(error) : prom.resolve(token);
   });
   failedQueue = [];
+};
+
+const rejectPendingQueue = (error) => {
+  if (failedQueue.length > 0) {
+    processQueue(error, null);
+  }
 };
 
 api.interceptors.request.use((config) => {
@@ -38,47 +95,57 @@ api.interceptors.response.use(
   (response) => response.data,
   async (error) => {
     const originalRequest = error.config;
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
+
     const { response } = error;
+
     const requestUrl = originalRequest?.url || "";
-    const isPublicAuthRequest = [
-      "/auth/login",
-      "/auth/register",
-      "/auth/forgot-password",
-      "/auth/reset-password",
-      "/auth/verify-email",
-      "/auth/resend-verification-public",
-      "/auth/google",
-      "/auth/google/exchange",
-    ].some((path) => requestUrl.includes(path));
+    const isPublicRequest = isPublicAuthRequest(requestUrl);
+    const isRefresh = isRefreshRequest(requestUrl);
     const hasAccessToken = Boolean(useAuthStore.getState().accessToken);
+    const isLogoutInProgress = Boolean(useAuthStore.getState().isLoggingOut);
+    const skipAuthRefresh = Boolean(originalRequest?.skipAuthRefresh);
+    const skipAuthRedirect = Boolean(originalRequest?.skipAuthRedirect);
 
     if (
       response?.status === 401 &&
       !originalRequest._retry &&
-      !isPublicAuthRequest &&
-      hasAccessToken
+      !isPublicRequest &&
+      !isRefresh &&
+      hasAccessToken &&
+      !skipAuthRefresh &&
+      !isLogoutInProgress
     ) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
+            if (!token) {
+              return Promise.reject(new Error("Missing refreshed token"));
+            }
+
+            originalRequest.headers = originalRequest.headers || {};
             originalRequest.headers.Authorization = `Bearer ${token}`;
             return api(originalRequest);
           })
           .catch((err) => Promise.reject(err));
       }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
-
       const refreshToken = useAuthStore.getState().refreshToken;
+      originalRequest._retry = true;
 
       if (!refreshToken) {
-        useAuthStore.getState().logout();
-        window.location.href = AUTH_ROUTES.LOGIN;
+        rejectPendingQueue(new Error("Missing refresh token"));
+        if (!skipAuthRedirect) {
+          clearAuthAndRedirect();
+        }
         return Promise.reject(error);
       }
+
+      isRefreshing = true;
 
       try {
         const refreshResponse = await axios.post(
@@ -89,8 +156,14 @@ api.interceptors.response.use(
 
         if (refreshResponse.data.success) {
           const newAccessToken = refreshResponse.data.data.accessToken;
+
+          if (useAuthStore.getState().isLoggingOut) {
+            throw new Error("Logout in progress");
+          }
+
           useAuthStore.getState().setAccessToken(newAccessToken);
           processQueue(null, newAccessToken);
+          originalRequest.headers = originalRequest.headers || {};
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
           return api(originalRequest);
         }
@@ -98,17 +171,25 @@ api.interceptors.response.use(
         throw new Error("Refresh token failed");
       } catch (refreshError) {
         processQueue(refreshError, null);
-        useAuthStore.getState().logout();
-        window.location.href = AUTH_ROUTES.LOGIN;
+
+        if (!skipAuthRedirect && !useAuthStore.getState().isLoggingOut) {
+          clearAuthAndRedirect();
+        }
+
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
 
-    if (response?.status === 401 && !isPublicAuthRequest && !hasAccessToken) {
-      useAuthStore.getState().logout();
-      window.location.href = AUTH_ROUTES.LOGIN;
+    if (
+      response?.status === 401 &&
+      !isPublicRequest &&
+      !hasAccessToken &&
+      !skipAuthRedirect &&
+      !isLogoutInProgress
+    ) {
+      clearAuthAndRedirect();
     }
 
     if (response?.status === 400 && response?.data?.errors) {

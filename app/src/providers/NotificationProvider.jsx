@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 import apiClient from "../api/client";
@@ -55,25 +55,67 @@ async function registerForPushNotifications() {
 
 export function NotificationProvider({ children }) {
   const accessToken = useAuthStore((s) => s.accessToken);
+  const userId = useAuthStore((s) => s.user?.id || null);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
+  const lastSyncedRef = useRef({ userId: null, pushToken: null });
 
   useEffect(() => {
-    if (!accessToken || !Notifications) return;
+    if (!Notifications) return;
 
-    registerForPushNotifications()
-      .then((pushToken) => {
-        if (!pushToken) return;
-        return apiClient.patch(ENDPOINTS.profile.pushToken, { pushToken });
-      })
-      .catch(() => {});
-
-    const subscription = Notifications.addNotificationReceivedListener(
+    const receivedSubscription = Notifications.addNotificationReceivedListener(
       (notification) => {
         console.log("[Push] Received:", notification.request.content.title);
       },
     );
 
-    return () => subscription.remove();
-  }, [accessToken]);
+    const responseSubscription =
+      Notifications.addNotificationResponseReceivedListener(() => {
+        // Hook point for deep-link handling on notification tap.
+      });
+
+    return () => {
+      receivedSubscription.remove();
+      responseSubscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!Notifications || !isHydrated) return;
+
+    if (!accessToken || !userId) {
+      lastSyncedRef.current = { userId: null, pushToken: null };
+      return;
+    }
+
+    let cancelled = false;
+
+    const syncPushToken = async () => {
+      try {
+        const pushToken = await registerForPushNotifications();
+        if (!pushToken) return;
+
+        const alreadySynced =
+          lastSyncedRef.current.userId === userId &&
+          lastSyncedRef.current.pushToken === pushToken;
+
+        if (alreadySynced || cancelled) return;
+
+        await apiClient.patch(ENDPOINTS.profile.pushToken, { pushToken });
+
+        if (!cancelled) {
+          lastSyncedRef.current = { userId, pushToken };
+        }
+      } catch {
+        // Notification sync errors are intentionally non-blocking for auth flow.
+      }
+    };
+
+    void syncPushToken();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, isHydrated, userId]);
 
   return children;
 }

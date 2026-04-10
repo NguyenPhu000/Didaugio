@@ -1,5 +1,7 @@
 const REQUIRED_CORE = ["JWT_SECRET", "DATABASE_URL"];
 
+const REQUIRED_AUTH_OAUTH = ["GOOGLE_CLIENT_ID"];
+
 /** Bắt buộc khi deploy production / staging đầy đủ tính năng */
 const REQUIRED_FOR_FULL_STACK = [
   "GEMINI_API_KEY",
@@ -9,6 +11,7 @@ const REQUIRED_FOR_FULL_STACK = [
 ];
 
 export function validateEnv() {
+  const isProd = process.env.NODE_ENV === "production";
   const missingCore = REQUIRED_CORE.filter((key) => !process.env[key]);
   if (missingCore.length > 0) {
     throw new Error(
@@ -16,10 +19,20 @@ export function validateEnv() {
     );
   }
 
+  const missingAuthOAuth = REQUIRED_AUTH_OAUTH.filter(
+    (key) => !process.env[key],
+  );
+  if (missingAuthOAuth.length > 0) {
+    const msg = `[ENV] Thiếu cấu hình Auth/OAuth: ${missingAuthOAuth.join(", ")}`;
+    if (isProd) {
+      throw new Error(msg);
+    }
+    console.warn(`\n⚠️  ${msg}\n`);
+  }
+
   const missingFeatures = REQUIRED_FOR_FULL_STACK.filter(
     (key) => !process.env[key],
   );
-  const isProd = process.env.NODE_ENV === "production";
 
   if (missingFeatures.length > 0) {
     const msg = `[ENV] Thiếu (AI + Cloudinary): ${missingFeatures.join(", ")} — API itinerary/upload ảnh sẽ lỗi cho đến khi bổ sung.`;

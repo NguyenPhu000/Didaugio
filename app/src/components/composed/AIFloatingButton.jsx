@@ -13,7 +13,9 @@ const HIDE_PATHS = new Set([
   "/(tabs)/map",
   "/map",
   "/(auth)/login",
+  "/login",
   "/(auth)/register",
+  "/register",
   "/onboarding",
 ]);
 

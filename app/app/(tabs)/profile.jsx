@@ -56,9 +56,21 @@ function buildStats(profile, storedUser) {
   const followersCount = profile?.stats?.followersCount ?? 8500;
 
   return [
-    { key: "trips", value: formatCompactNumber(tripsCount), label: "CHUYẾN ĐI" },
-    { key: "countries", value: formatCompactNumber(countriesCount), label: "QUỐC GIA" },
-    { key: "followers", value: formatCompactNumber(followersCount), label: "NGƯỜI THEO DÕI" },
+    {
+      key: "trips",
+      value: formatCompactNumber(tripsCount),
+      label: "CHUYẾN ĐI",
+    },
+    {
+      key: "countries",
+      value: formatCompactNumber(countriesCount),
+      label: "QUỐC GIA",
+    },
+    {
+      key: "followers",
+      value: formatCompactNumber(followersCount),
+      label: "NGƯỜI THEO DÕI",
+    },
   ];
 }
 
@@ -83,10 +95,16 @@ function AvatarBlock({ avatarUri, displayName }) {
     <View style={styles.avatarContainer}>
       <View style={styles.avatarRing}>
         {avatarUri ? (
-          <Image source={{ uri: avatarUri }} style={styles.avatar} contentFit="cover" />
+          <Image
+            source={{ uri: avatarUri }}
+            style={styles.avatar}
+            contentFit="cover"
+          />
         ) : (
           <View style={styles.avatarFallback}>
-            <Text style={styles.avatarFallbackText}>{displayName[0]?.toUpperCase()}</Text>
+            <Text style={styles.avatarFallbackText}>
+              {displayName[0]?.toUpperCase()}
+            </Text>
           </View>
         )}
       </View>
@@ -138,30 +156,45 @@ function SettingsSection() {
 /* ====================== MAIN ====================== */
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const storedUser = useAuthStore((s) => s.user);
-  const isLoggedIn = !!useAuthStore((s) => s.accessToken) && !useAuthStore((s) => s.isGuest);
+  const isLoggedIn =
+    !!useAuthStore((s) => s.accessToken) && !useAuthStore((s) => s.isGuest);
 
-  const { data: profile, isLoading, refetch, isRefetching } = useProfile(isLoggedIn);
-  const { data: trips = [] } = useTrips(isLoggedIn);
+  if (!isLoggedIn) {
+    return (
+      <View style={[styles.screen, { paddingTop: insets.top }]}>
+        {/* Guest UI giữ nguyên */}
+      </View>
+    );
+  }
+
+  return <LoggedInProfileScreen insets={insets} storedUser={storedUser} />;
+}
+
+function LoggedInProfileScreen({ insets, storedUser }) {
+  const router = useRouter();
+  const { data: profile, isLoading, refetch, isRefetching } = useProfile(true);
+  const { data: trips = [] } = useTrips(true);
 
   const displayName = getDisplayName(profile, storedUser);
   const avatarUri = getAvatarUri(profile, storedUser);
   const location = getLocation();
   const stats = buildStats(profile, storedUser);
 
-  const upcomingTrip = trips.find((t) => t?.status !== "completed" && t?.status !== "cancelled") || null;
-  const completedTrips = trips.filter((t) => t?.status === "completed").slice(0, 4);
+  const upcomingTrip =
+    trips.find((t) => t?.status !== "completed" && t?.status !== "cancelled") ||
+    null;
+  const completedTrips = trips
+    .filter((t) => t?.status === "completed")
+    .slice(0, 4);
 
   const handleShare = async () => {
     try {
-      await Share.share({ message: `Check out ${displayName}'s profile on Đi Đâu Giờ!` });
+      await Share.share({
+        message: `Check out ${displayName}'s profile on Đi Đâu Giờ!`,
+      });
     } catch {}
   };
-
-  if (!isLoggedIn) {
-    return <View style={[styles.screen, { paddingTop: insets.top }]}>{/* Guest UI giữ nguyên */}</View>;
-  }
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -175,7 +208,9 @@ export default function ProfileScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+          }
         >
           {/* Avatar */}
           <AvatarBlock avatarUri={avatarUri} displayName={displayName} />
@@ -189,7 +224,10 @@ export default function ProfileScreen() {
 
           {/* Buttons */}
           <View style={styles.actionRow}>
-            <Pressable onPress={() => router.push("/profile/edit")} style={styles.primaryBtn}>
+            <Pressable
+              onPress={() => router.push("/profile/edit")}
+              style={styles.primaryBtn}
+            >
               <Text style={styles.primaryBtnText}>Chỉnh sửa hồ sơ</Text>
             </Pressable>
             <Pressable onPress={handleShare} style={styles.outlineBtn}>
@@ -216,11 +254,37 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
             {upcomingTrip ? (
-              <UpcomingTripCard trip={upcomingTrip} onPress={() => router.push(`/trip/${upcomingTrip.id}`)} />
+              <UpcomingTripCard
+                trip={upcomingTrip}
+                onPress={() => router.push(`/trip/${upcomingTrip.id}`)}
+              />
             ) : (
-              <View style={[styles.upcomingCard, { height: 120, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E2E8F0", elevation: 0 }]}>
-                <MaterialIcons name="travel-explore" size={28} color="#CBD5E1" />
-                <Text style={{ marginTop: 8, color: "#64748B", fontFamily: TOKENS.font.medium }}>
+              <View
+                style={[
+                  styles.upcomingCard,
+                  {
+                    height: 120,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#FFFFFF",
+                    borderWidth: 1,
+                    borderColor: "#E2E8F0",
+                    elevation: 0,
+                  },
+                ]}
+              >
+                <MaterialIcons
+                  name="travel-explore"
+                  size={28}
+                  color="#CBD5E1"
+                />
+                <Text
+                  style={{
+                    marginTop: 8,
+                    color: "#64748B",
+                    fontFamily: TOKENS.font.medium,
+                  }}
+                >
                   Chưa có chuyến đi nào sắp tới
                 </Text>
               </View>
@@ -256,7 +320,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   backBtn: { padding: 4 },
-  headerTitle: { fontSize: 18, fontFamily: TOKENS.font.semibold, color: "#0F172A" },
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: TOKENS.font.semibold,
+    color: "#0F172A",
+  },
   settingsBtn: { padding: 4 },
 
   avatarContainer: { alignItems: "center", marginTop: 12 },
@@ -281,7 +349,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarFallbackText: { fontSize: 46, fontFamily: TOKENS.font.heading, color: ACCENT_BLUE },
+  avatarFallbackText: {
+    fontSize: 46,
+    fontFamily: TOKENS.font.heading,
+    color: ACCENT_BLUE,
+  },
 
   username: {
     textAlign: "center",
@@ -297,7 +369,11 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginTop: 6,
   },
-  locationText: { fontSize: 13, color: ACCENT_BLUE, fontFamily: TOKENS.font.semibold },
+  locationText: {
+    fontSize: 13,
+    color: ACCENT_BLUE,
+    fontFamily: TOKENS.font.semibold,
+  },
 
   actionRow: {
     flexDirection: "row",
@@ -312,7 +388,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: "center",
   },
-  primaryBtnText: { color: "#fff", fontSize: 15, fontFamily: TOKENS.font.semibold },
+  primaryBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontFamily: TOKENS.font.semibold,
+  },
   outlineBtn: {
     flex: 1,
     borderWidth: 1.5,
@@ -321,7 +401,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: "center",
   },
-  outlineBtnText: { color: "#334155", fontSize: 15, fontFamily: TOKENS.font.semibold },
+  outlineBtnText: {
+    color: "#334155",
+    fontSize: 15,
+    fontFamily: TOKENS.font.semibold,
+  },
 
   statsRow: {
     flexDirection: "row",
@@ -341,8 +425,18 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
   },
-  statNumber: { fontSize: 26, fontFamily: TOKENS.font.heading, color: "#0F172A" },
-  statLabel: { fontSize: 10.5, color: "#64748B", marginTop: 6, textTransform: "uppercase", fontFamily: TOKENS.font.medium },
+  statNumber: {
+    fontSize: 26,
+    fontFamily: TOKENS.font.heading,
+    color: "#0F172A",
+  },
+  statLabel: {
+    fontSize: 10.5,
+    color: "#64748B",
+    marginTop: 6,
+    textTransform: "uppercase",
+    fontFamily: TOKENS.font.medium,
+  },
 
   /* Section common */
   section: { marginTop: 32, paddingHorizontal: 24 },

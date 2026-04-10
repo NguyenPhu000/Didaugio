@@ -176,9 +176,9 @@ export const reset = async (rawToken, newPassword) => {
 
   // Hash new password
   const bcrypt = await import("bcrypt");
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-  // Update password and mark token as used
+  // Update password, revoke all sessions, and mark token as used
   await prisma.$transaction([
     prisma.passwordReset.update({
       where: { id: reset.id },
@@ -190,6 +190,9 @@ export const reset = async (rawToken, newPassword) => {
         password: hashedPassword,
         failedLoginCount: 0, // Reset failed login count
       },
+    }),
+    prisma.userSession.deleteMany({
+      where: { userId: reset.userId },
     }),
   ]);
 

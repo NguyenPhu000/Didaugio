@@ -4,12 +4,43 @@ import * as SecureStore from "expo-secure-store";
 const ACCESS_TOKEN_KEY = "didaugio_access_token";
 const REFRESH_TOKEN_KEY = "didaugio_refresh_token";
 const USER_KEY = "didaugio_user";
+const SECURE_STORE_OPTIONS = {
+  keychainService: "didaugio.auth",
+  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+};
+
+const safeGetItem = async (key) => {
+  try {
+    return await SecureStore.getItemAsync(key, SECURE_STORE_OPTIONS);
+  } catch {
+    return null;
+  }
+};
+
+const safeSetItem = async (key, value) => {
+  try {
+    await SecureStore.setItemAsync(key, value, SECURE_STORE_OPTIONS);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const safeDeleteItem = async (key) => {
+  try {
+    await SecureStore.deleteItemAsync(key, SECURE_STORE_OPTIONS);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 export const useAuthStore = create((set, get) => ({
   user: null,
   accessToken: null,
   refreshToken: null,
   isHydrated: false,
+  hydrationError: null,
   isGuest: false,
 
   enterGuestMode: () => set({ isGuest: true }),
@@ -18,49 +49,87 @@ export const useAuthStore = create((set, get) => ({
   setUser: (user) => set({ user }),
 
   hydrate: async () => {
-    const [accessToken, refreshToken, userJson] = await Promise.all([
-      SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
-      SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
-      SecureStore.getItemAsync(USER_KEY),
-    ]);
-
+    let accessToken = null;
+    let refreshToken = null;
     let user = null;
-    try {
-      if (userJson) user = JSON.parse(userJson);
-    } catch {
-      user = null;
-    }
 
-    set({
-      accessToken: accessToken || null,
-      refreshToken: refreshToken || null,
-      user,
-      isHydrated: true,
-    });
+    try {
+      const [storedAccessToken, storedRefreshToken, userJson] =
+        await Promise.all([
+          safeGetItem(ACCESS_TOKEN_KEY),
+          safeGetItem(REFRESH_TOKEN_KEY),
+          safeGetItem(USER_KEY),
+        ]);
+
+      accessToken = storedAccessToken || null;
+      refreshToken = storedRefreshToken || null;
+
+      if (userJson) {
+        try {
+          user = JSON.parse(userJson);
+        } catch {
+          user = null;
+          await safeDeleteItem(USER_KEY);
+        }
+      }
+
+      set({
+        accessToken,
+        refreshToken,
+        user,
+        isHydrated: true,
+        hydrationError: null,
+      });
+    } catch {
+      set({
+        accessToken: null,
+        refreshToken: null,
+        user: null,
+        isHydrated: true,
+        hydrationError: "AUTH_HYDRATE_FAILED",
+      });
+    }
   },
 
   setSession: async ({ user, accessToken, refreshToken }) => {
-    set({ user, accessToken, refreshToken });
+    const nextUser = user || null;
+    const nextAccessToken = accessToken || null;
+    const nextRefreshToken = refreshToken || null;
+
+    set({
+      user: nextUser,
+      accessToken: nextAccessToken,
+      refreshToken: nextRefreshToken,
+      isGuest: false,
+      hydrationError: null,
+    });
 
     await Promise.all([
-      accessToken
-        ? SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken)
-        : SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY),
-      refreshToken
-        ? SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken)
-        : SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
-      user
-        ? SecureStore.setItemAsync(USER_KEY, JSON.stringify(user))
-        : SecureStore.deleteItemAsync(USER_KEY),
+      nextAccessToken
+        ? safeSetItem(ACCESS_TOKEN_KEY, nextAccessToken)
+        : safeDeleteItem(ACCESS_TOKEN_KEY),
+      nextRefreshToken
+        ? safeSetItem(REFRESH_TOKEN_KEY, nextRefreshToken)
+        : safeDeleteItem(REFRESH_TOKEN_KEY),
+      nextUser
+        ? safeSetItem(USER_KEY, JSON.stringify(nextUser))
+        : safeDeleteItem(USER_KEY),
     ]);
   },
 
   clearSession: async () => {
-    set({ user: null, accessToken: null, refreshToken: null, isGuest: false });
+    set({
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      isGuest: false,
+      hydrationError: null,
+    });
+
     await Promise.all([
-      SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY),
-      SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
-      SecureStore.deleteItemAsync(USER_KEY),
+      safeDeleteItem(ACCESS_TOKEN_KEY),
+      safeDeleteItem(REFRESH_TOKEN_KEY),
+      safeDeleteItem(USER_KEY),
     ]);
   },
 

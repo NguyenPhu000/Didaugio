@@ -33,6 +33,7 @@ export const useAuthStore = create(
       refreshToken: _p.refreshToken ?? null,
       isAuthenticated: _p.isAuthenticated ?? false,
       isLoading: false,
+      isLoggingOut: false,
 
       // Actions
       setAuth: (user, accessToken, refreshToken) => {
@@ -57,6 +58,10 @@ export const useAuthStore = create(
         set({ isLoading });
       },
 
+      setLogoutInProgress: (isLoggingOut) => {
+        set({ isLoggingOut });
+      },
+
       logout: () => {
         set({
           user: null,
@@ -64,6 +69,7 @@ export const useAuthStore = create(
           refreshToken: null,
           isAuthenticated: false,
           isLoading: false,
+          isLoggingOut: false,
         });
         // Clear localStorage explicitly
         localStorage.removeItem(STORAGE_KEYS.AUTH);

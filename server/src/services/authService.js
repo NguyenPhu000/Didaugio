@@ -33,6 +33,10 @@ if (!JWT_SECRET) {
 }
 const ACCESS_TOKEN_EXPIRES = process.env.ACCESS_TOKEN_EXPIRES || "15m";
 const REFRESH_TOKEN_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const GOOGLE_ALLOWED_ISSUERS = new Set([
+  "https://accounts.google.com",
+  "accounts.google.com",
+]);
 
 // Account lockout config
 const MAX_FAILED_ATTEMPTS = 5;
@@ -606,10 +610,18 @@ export const revokeSession = async (userId, sessionId) => {
  * Xác thực Google id_token và tạo phiên đăng nhập
  * Tự động tạo tài khoản nếu email chưa tồn tại
  */
-export const loginWithGoogle = async (idToken, clientInfo = {}) => {
+export const loginWithGoogle = async (
+  idToken,
+  clientInfo = {},
+  options = {},
+) => {
   if (!idToken) {
     throw new ServiceError("id_token is required", 400, "MISSING_ID_TOKEN");
   }
+
+  const expectedAudience =
+    options.expectedAudience || process.env.GOOGLE_CLIENT_ID || null;
+  const expectedNonce = options.expectedNonce || null;
 
   // Xác thực id_token với Google (không cần thêm package)
   const tokenInfoRes = await fetch(
@@ -634,7 +646,47 @@ export const loginWithGoogle = async (idToken, clientInfo = {}) => {
     );
   }
 
-  const { email, email_verified, name, picture, sub: googleSub } = tokenInfo;
+  const issuer = String(tokenInfo.iss || "");
+  if (!GOOGLE_ALLOWED_ISSUERS.has(issuer)) {
+    throw new ServiceError(
+      "Google token issuer không hợp lệ",
+      401,
+      "INVALID_GOOGLE_TOKEN",
+    );
+  }
+
+  const audience = String(tokenInfo.aud || "");
+  const authorizedParty = String(tokenInfo.azp || "");
+  if (
+    expectedAudience &&
+    audience !== expectedAudience &&
+    authorizedParty !== expectedAudience
+  ) {
+    throw new ServiceError(
+      "Google token audience không hợp lệ",
+      401,
+      "INVALID_GOOGLE_TOKEN",
+    );
+  }
+
+  if (expectedNonce && String(tokenInfo.nonce || "") !== expectedNonce) {
+    throw new ServiceError(
+      "Google token nonce không hợp lệ",
+      401,
+      "INVALID_GOOGLE_TOKEN",
+    );
+  }
+
+  const expMillis = Number(tokenInfo.exp || 0) * 1000;
+  if (!Number.isFinite(expMillis) || expMillis <= Date.now()) {
+    throw new ServiceError(
+      "Google token đã hết hạn",
+      401,
+      "INVALID_GOOGLE_TOKEN",
+    );
+  }
+
+  const { email, email_verified, name, picture } = tokenInfo;
 
   if (!email) {
     throw new ServiceError("Không lấy được email từ Google", 401, "NO_EMAIL");
