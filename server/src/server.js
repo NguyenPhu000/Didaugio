@@ -59,11 +59,32 @@ if (isProduction && configuredOrigins.length === 0) {
 const devDefaultOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
+  "http://localhost:8083",
   "http://127.0.0.1:3000",
   "http://127.0.0.1:5173",
+  "http://127.0.0.1:8083",
+  "exp://localhost:8083",
+  "exp://127.0.0.1:8083",
+  "exps://localhost:8083",
+  "exps://127.0.0.1:8083",
 ];
-const allowedOrigins =
-  configuredOrigins.length > 0 ? configuredOrigins : devDefaultOrigins;
+const allowedOrigins = isProduction
+  ? configuredOrigins
+  : Array.from(new Set([...devDefaultOrigins, ...configuredOrigins]));
+
+const isAllowedExpoDevOrigin = (origin) => {
+  if (isProduction || !origin) return false;
+
+  // Allow Expo/dev-client origins on private LAN for local development.
+  return (
+    /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/i.test(
+      origin,
+    ) ||
+    /^exps?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/i.test(
+      origin,
+    )
+  );
+};
 
 app.use(helmet());
 app.use(express.json({ limit: BODY_LIMIT }));
@@ -76,6 +97,10 @@ app.use(
       }
 
       if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      if (isAllowedExpoDevOrigin(origin)) {
         return callback(null, true);
       }
 

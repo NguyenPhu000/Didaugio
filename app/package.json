@@ -4,8 +4,8 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start --port 8083",
-    "start:dev-client": "expo start --dev-client --port 8083",
+    "start": "expo start -c --port 8083",
+    "dev": "expo start --dev-client --port 8083",
     "android": "expo run:android --port 8083",
     "ios": "expo run:ios --port 8083",
     "web": "expo start --web --port 8083"
@@ -41,6 +41,7 @@
     "expo-speech": "~14.0.8",
     "expo-splash-screen": "^31.0.13",
     "expo-status-bar": "~3.0.9",
+    "expo-system-ui": "~6.0.9",
     "expo-web-browser": "~15.0.10",
     "nativewind": "^4.2.2",
     "react": "19.1.0",

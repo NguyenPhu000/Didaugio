@@ -156,14 +156,89 @@ function SettingsSection() {
 /* ====================== MAIN ====================== */
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const storedUser = useAuthStore((s) => s.user);
-  const isLoggedIn =
-    !!useAuthStore((s) => s.accessToken) && !useAuthStore((s) => s.isGuest);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const isGuest = useAuthStore((s) => s.isGuest);
+  const exitGuestMode = useAuthStore((s) => s.exitGuestMode);
+  const isLoggedIn = Boolean(accessToken) && !isGuest;
 
   if (!isLoggedIn) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top }]}>
-        {/* Guest UI giữ nguyên */}
+        <ProfileHeader
+          onSettingsPress={() => router.push("/profile/settings")}
+        />
+        <ScrollView
+          style={styles.guestScroll}
+          contentContainerStyle={[
+            styles.guestContainer,
+            { paddingBottom: TAB_BAR_HEIGHT + 32 },
+          ]}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          {/* Icon block */}
+          <View style={styles.guestIconOuter}>
+            <View style={styles.guestIconRing} />
+            <View style={styles.guestIconWrap}>
+              <MaterialIcons name="person-outline" size={40} color={ACCENT_BLUE} />
+            </View>
+          </View>
+
+          {/* Text */}
+          <Text style={styles.guestTitle}>Đăng nhập để mở khóa hồ sơ</Text>
+          <Text style={styles.guestSubtitle}>
+            Theo dõi chuyến đi, lưu kỷ niệm và đồng bộ dữ liệu trên mọi thiết bị.
+          </Text>
+
+          {/* Divider */}
+          <View style={styles.guestDivider} />
+
+          {/* Nút đăng nhập */}
+          <Pressable
+            onPress={() => {
+              exitGuestMode();
+              router.navigate("/(auth)/login");
+            }}
+            style={({ pressed }) => [
+              styles.guestPrimaryBtn,
+              pressed && styles.guestPressedScale,
+            ]}
+          >
+            <MaterialIcons name="login" size={18} color="#fff" />
+            <Text style={styles.guestPrimaryText}>Đăng nhập</Text>
+          </Pressable>
+
+          {/* Nút đăng ký */}
+          <Pressable
+            onPress={() => {
+              exitGuestMode();
+              router.navigate("/(auth)/register");
+            }}
+            style={({ pressed }) => [
+              styles.guestRegisterBtn,
+              pressed && styles.guestPressedScale,
+            ]}
+          >
+            <MaterialIcons name="person-add-alt-1" size={18} color="#fff" />
+            <Text style={styles.guestRegisterText}>Đăng ký tài khoản mới</Text>
+          </Pressable>
+
+          {/* Nút khám phá */}
+          <Pressable
+            onPress={() => router.push("/(tabs)/map")}
+            style={({ pressed }) => [
+              styles.guestSecondaryBtn,
+              pressed && styles.guestPressedScale,
+            ]}
+          >
+            <Text style={styles.guestSecondaryText}>Khám phá bản đồ</Text>
+          </Pressable>
+
+          {/* Hint */}
+          <Text style={styles.guestHint}>Miễn phí · Không cần thẻ tín dụng</Text>
+        </ScrollView>
       </View>
     );
   }
@@ -311,6 +386,139 @@ function LoggedInProfileScreen({ insets, storedUser }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#F8FAFC" },
   scrollContent: { paddingBottom: TAB_BAR_HEIGHT + 60 },
+
+  guestScroll: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  guestContainer: {
+    flexGrow: 1,
+    alignItems: "center",
+    paddingHorizontal: 28,
+    justifyContent: "center",
+  },
+
+  guestIconOuter: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 28,
+  },
+  guestIconRing: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 999,
+    backgroundColor: "rgba(52,120,246,0.08)",
+  },
+  guestIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EAF2FF",
+  },
+  guestTitle: {
+    fontSize: 24,
+    fontFamily: TOKENS.font.heading,
+    color: "#0F172A",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  guestSubtitle: {
+    fontSize: 15,
+    fontFamily: TOKENS.font.regular,
+    color: "#64748B",
+    textAlign: "center",
+    lineHeight: 23,
+    maxWidth: 320,
+  },
+
+  guestDivider: {
+    width: 48,
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: "#E2E8F0",
+    marginVertical: 28,
+  },
+
+  guestPrimaryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    width: "100%",
+    paddingVertical: 16,
+    borderRadius: 999,
+    backgroundColor: ACCENT_BLUE,
+    marginBottom: 12,
+    shadowColor: ACCENT_BLUE,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  guestPrimaryText: {
+    fontSize: 15,
+    fontFamily: TOKENS.font.semibold,
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
+  },
+
+  guestRegisterBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    width: "100%",
+    paddingVertical: 16,
+    borderRadius: 999,
+    backgroundColor: "#0F172A",
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  guestRegisterText: {
+    fontSize: 15,
+    fontFamily: TOKENS.font.semibold,
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
+  },
+
+  guestSecondaryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    width: "100%",
+    paddingVertical: 16,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFFFFF",
+  },
+  guestSecondaryText: {
+    color: "#334155",
+    fontSize: 15,
+    fontFamily: TOKENS.font.semibold,
+    letterSpacing: 0.2,
+  },
+
+  guestPressedScale: {
+    opacity: 0.88,
+    transform: [{ scale: 0.975 }],
+  },
+
+  guestHint: {
+    marginTop: 18,
+    fontSize: 12,
+    fontFamily: TOKENS.font.regular,
+    color: "#94A3B8",
+    textAlign: "center",
+  },
 
   header: {
     flexDirection: "row",

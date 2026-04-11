@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "expo-router";
 import { loginApi } from "../api/authApi";
 import { useAuthStore } from "../../../stores/authStore";
+import { normalizeAuthSessionResponse } from "../utils/normalizeAuthSession";
 
 export function useLogin() {
   const router = useRouter();
@@ -33,14 +34,20 @@ export function useLogin() {
       setIsLoading(true);
       try {
         const res = await loginApi(normalizedEmail, password);
-        const payload = res?.data || res;
-        const { accessToken, refreshToken, user } = payload || {};
+        const { accessToken, refreshToken, user, errorMessage } =
+          normalizeAuthSessionResponse(res);
 
-        if (!accessToken || !refreshToken || !user) {
-          throw new Error("Không nhận được dữ liệu phiên đăng nhập hợp lệ.");
+        if (!accessToken || !user) {
+          throw new Error(
+            errorMessage || "Không nhận được dữ liệu phiên đăng nhập hợp lệ.",
+          );
         }
 
-        await setSession({ user, accessToken, refreshToken });
+        await setSession({
+          user,
+          accessToken,
+          refreshToken: refreshToken || null,
+        });
         router.replace("/(tabs)/map");
         return true;
       } catch (err) {
@@ -51,9 +58,7 @@ export function useLogin() {
           return false;
         }
 
-        setError(
-          err?.message || "Đăng nhập thất bại. Vui lòng thử lại.",
-        );
+        setError(err?.message || "Đăng nhập thất bại. Vui lòng thử lại.");
         return false;
       } finally {
         setIsLoading(false);

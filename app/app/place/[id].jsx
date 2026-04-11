@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   ActivityIndicator,
   Dimensions,
   FlatList,
@@ -617,7 +618,20 @@ export default function PlaceDetailScreen() {
 
   const handleSaveToggle = useCallback(() => {
     if (!accessToken) {
-      router.push("/(auth)/login");
+      Alert.alert(
+        t("Cần đăng nhập", "Login required"),
+        t(
+          "Hãy đăng nhập để lưu địa điểm yêu thích.",
+          "Please log in to save this place.",
+        ),
+        [
+          { text: t("Để sau", "Later"), style: "cancel" },
+          {
+            text: t("Đăng nhập", "Login"),
+            onPress: () => router.push("/(auth)/login"),
+          },
+        ],
+      );
       return;
     }
 
@@ -651,15 +665,46 @@ export default function PlaceDetailScreen() {
 
   const handleAddToTrip = useCallback(() => {
     if (!accessToken) {
-      router.push("/(auth)/login");
+      Alert.alert(
+        t("Cần đăng nhập", "Login required"),
+        t(
+          "Hãy đăng nhập để thêm địa điểm vào chuyến đi.",
+          "Please log in to add this place to your trip.",
+        ),
+        [
+          { text: t("Để sau", "Later"), style: "cancel" },
+          {
+            text: t("Đăng nhập", "Login"),
+            onPress: () => router.push("/(auth)/login"),
+          },
+        ],
+      );
       return;
     }
     bottomSheetRef.current?.expand();
-  }, [accessToken, router]);
+  }, [accessToken, router, t]);
 
   const handleGetTicket = useCallback(() => {
+    if (!accessToken) {
+      Alert.alert(
+        t("Cần đăng nhập", "Login required"),
+        t(
+          "Hãy đăng nhập mới có thể đặt chỗ/booking.",
+          "Please log in to continue booking.",
+        ),
+        [
+          { text: t("Để sau", "Later"), style: "cancel" },
+          {
+            text: t("Đăng nhập", "Login"),
+            onPress: () => router.push("/(auth)/login"),
+          },
+        ],
+      );
+      return;
+    }
+
     router.push(`/booking/${id}`);
-  }, [id, router]);
+  }, [accessToken, id, router, t]);
 
   const handleOpenUrl = useCallback(async (url) => {
     if (!url) return;
@@ -935,7 +980,9 @@ export default function PlaceDetailScreen() {
 
               <Pressable onPress={handleGetTicket} style={styles.bookButton}>
                 <Text style={styles.bookButtonText}>
-                  {t("Đặt ngay", "Book now")}
+                  {accessToken
+                    ? t("Đặt ngay", "Book now")
+                    : t("Đăng nhập để đặt", "Login to book")}
                 </Text>
               </Pressable>
             </View>
@@ -1113,7 +1160,9 @@ export default function PlaceDetailScreen() {
 
         <Pressable onPress={handleGetTicket} style={styles.bottomPrimaryButton}>
           <Text style={styles.bottomPrimaryText}>
-            {t("Đặt ngay", "Book now")}
+            {accessToken
+              ? t("Đặt ngay", "Book now")
+              : t("Đăng nhập để đặt", "Login to book")}
           </Text>
         </Pressable>
       </BlurView>

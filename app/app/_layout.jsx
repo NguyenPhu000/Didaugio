@@ -1,7 +1,7 @@
 import "../global.css";
 import { useEffect } from "react";
 import { View } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -22,10 +22,19 @@ import {
 import { AppProvider } from "../src/providers/AppProvider";
 import { OfflineToast } from "../src/components/composed/OfflineToast";
 import { AIFloatingButton } from "../src/components/composed/AIFloatingButton";
+import { useAuthStore } from "../src/stores/authStore";
+import { useUIStore } from "../src/stores/uiStore";
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const router = useRouter();
+  const segments = useSegments();
+  const isHydrated = useAuthStore((s) => s.isHydrated);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const isGuest = useAuthStore((s) => s.isGuest);
+  const hasOnboarded = useUIStore((s) => s.hasOnboarded);
+
   const [fontsLoaded, fontError] = useFonts({
     BeVietnamPro_400Regular,
     BeVietnamPro_500Medium,
@@ -42,6 +51,39 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    const rootSegment = segments[0];
+    const childSegment = segments[1];
+    const inAuthGroup = rootSegment === "(auth)";
+    const inOnboarding = rootSegment === "onboarding";
+    const inPublicTabs =
+      rootSegment === "(tabs)" &&
+      (childSegment === "map" || childSegment === "explore");
+    const inPlaceDetail = rootSegment === "place";
+    const isPublicRoute = inPublicTabs || inPlaceDetail;
+    const isLoggedIn = !!accessToken || isGuest;
+
+    if (!isLoggedIn && !inAuthGroup && !isPublicRoute) {
+      router.replace("/(auth)/login");
+      return;
+    }
+
+    if (isLoggedIn && inAuthGroup) {
+      if (!hasOnboarded && accessToken) {
+        router.replace("/onboarding");
+      } else {
+        router.replace("/(tabs)/map");
+      }
+      return;
+    }
+
+    if (isLoggedIn && !inOnboarding && !hasOnboarded && accessToken) {
+      router.replace("/onboarding");
+    }
+  }, [isHydrated, accessToken, isGuest, segments, hasOnboarded, router]);
 
   if (!fontsLoaded && !fontError) return null;
 

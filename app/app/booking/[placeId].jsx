@@ -9,6 +9,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useAuthStore } from "../../src/stores/authStore";
 import {
   usePlaceServices,
   useCreateBooking,
@@ -27,22 +28,34 @@ const formatPrice = (price) => {
 };
 
 const StepIndicator = ({ currentStep }) => (
-  <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, marginBottom: 24 }}>
+  <View
+    style={{
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      marginBottom: 24,
+    }}
+  >
     {STEP_LABELS.map((label, index) => {
       const stepNum = index + 1;
       const isDone = stepNum < currentStep;
       const isActive = stepNum === currentStep;
       return (
         <View key={label} style={{ flex: 1, alignItems: "center" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", width: "100%" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              width: "100%",
+            }}
+          >
             {index > 0 ? (
               <View
                 style={{
                   flex: 1,
                   height: 2,
-                  backgroundColor: isDone || isActive
-                    ? GLASS_THEME.neon
-                    : GLASS_THEME.glass,
+                  backgroundColor:
+                    isDone || isActive ? GLASS_THEME.neon : GLASS_THEME.glass,
                 }}
               />
             ) : null}
@@ -59,13 +72,18 @@ const StepIndicator = ({ currentStep }) => (
                     ? "rgba(0,240,255,0.2)"
                     : GLASS_THEME.glass,
                 borderWidth: 1,
-                borderColor: isDone || isActive
-                  ? GLASS_THEME.neon
-                  : GLASS_THEME.glassBorder,
+                borderColor:
+                  isDone || isActive
+                    ? GLASS_THEME.neon
+                    : GLASS_THEME.glassBorder,
               }}
             >
               {isDone ? (
-                <MaterialIcons name="check" size={16} color={GLASS_THEME.neon} />
+                <MaterialIcons
+                  name="check"
+                  size={16}
+                  color={GLASS_THEME.neon}
+                />
               ) : (
                 <Text
                   style={{
@@ -83,9 +101,10 @@ const StepIndicator = ({ currentStep }) => (
                 style={{
                   flex: 1,
                   height: 2,
-                  backgroundColor: stepNum < currentStep
-                    ? GLASS_THEME.neon
-                    : GLASS_THEME.glass,
+                  backgroundColor:
+                    stepNum < currentStep
+                      ? GLASS_THEME.neon
+                      : GLASS_THEME.glass,
                 }}
               />
             ) : null}
@@ -118,14 +137,25 @@ const ServiceCard = ({ service, isSelected, onSelect }) => (
       borderColor: isSelected ? GLASS_THEME.neon : GLASS_THEME.glassBorder,
     }}
   >
-    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
       <View style={{ flex: 1, marginRight: 12 }}>
         <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700" }}>
           {service.name}
         </Text>
         {service.description ? (
           <Text
-            style={{ color: GLASS_THEME.textSecondary, fontSize: 12, marginTop: 4, lineHeight: 18 }}
+            style={{
+              color: GLASS_THEME.textSecondary,
+              fontSize: 12,
+              marginTop: 4,
+              lineHeight: 18,
+            }}
             numberOfLines={2}
           >
             {service.description}
@@ -133,7 +163,9 @@ const ServiceCard = ({ service, isSelected, onSelect }) => (
         ) : null}
       </View>
       <View style={{ alignItems: "flex-end", gap: 4 }}>
-        <Text style={{ color: GLASS_THEME.neon, fontSize: 15, fontWeight: "800" }}>
+        <Text
+          style={{ color: GLASS_THEME.neon, fontSize: 15, fontWeight: "800" }}
+        >
           {formatPrice(service.price)}
         </Text>
         <View
@@ -143,7 +175,9 @@ const ServiceCard = ({ service, isSelected, onSelect }) => (
             borderRadius: 11,
             backgroundColor: isSelected ? GLASS_THEME.neon : "transparent",
             borderWidth: 2,
-            borderColor: isSelected ? GLASS_THEME.neon : GLASS_THEME.glassBorder,
+            borderColor: isSelected
+              ? GLASS_THEME.neon
+              : GLASS_THEME.glassBorder,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -161,6 +195,9 @@ export default function BookingScreen() {
   const { placeId } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const isGuest = useAuthStore((s) => s.isGuest);
+  const isLoggedIn = Boolean(accessToken) && !isGuest;
 
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState(null);
@@ -168,10 +205,101 @@ export default function BookingScreen() {
   const [bookingDone, setBookingDone] = useState(false);
 
   const { data: place } = usePlaceDetail(placeId);
-  const { data: services = [], isLoading: servicesLoading } = usePlaceServices(placeId);
+  const { data: services = [], isLoading: servicesLoading } =
+    usePlaceServices(placeId);
   const bookingMutation = useCreateBooking();
 
-  const totalPrice = selectedService?.price ? selectedService.price * quantity : null;
+  const totalPrice = selectedService?.price
+    ? selectedService.price * quantity
+    : null;
+
+  if (!isLoggedIn) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: GLASS_THEME.background,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 28,
+          paddingTop: insets.top,
+          gap: 16,
+        }}
+      >
+        <View
+          style={{
+            width: 92,
+            height: 92,
+            borderRadius: 28,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0,240,255,0.12)",
+            borderWidth: 1,
+            borderColor: "rgba(0,240,255,0.35)",
+          }}
+        >
+          <MaterialIcons
+            name="lock-outline"
+            size={44}
+            color={GLASS_THEME.neon}
+          />
+        </View>
+
+        <Text
+          style={{
+            color: "#fff",
+            fontSize: 24,
+            fontWeight: "800",
+            textAlign: "center",
+          }}
+        >
+          Hãy đăng nhập để booking
+        </Text>
+        <Text
+          style={{
+            color: GLASS_THEME.textSecondary,
+            fontSize: 14,
+            textAlign: "center",
+            lineHeight: 22,
+            maxWidth: 320,
+          }}
+        >
+          Bạn cần đăng nhập để đặt chỗ và quản lý lịch sử booking của mình.
+        </Text>
+
+        <Pressable
+          onPress={() => router.replace("/(auth)/login")}
+          style={{
+            marginTop: 6,
+            backgroundColor: GLASS_THEME.neon,
+            borderRadius: 20,
+            paddingHorizontal: 28,
+            paddingVertical: 13,
+          }}
+        >
+          <Text style={{ color: "#03131A", fontSize: 14, fontWeight: "800" }}>
+            Đăng nhập ngay
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.back()}
+          style={{
+            borderRadius: 20,
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderWidth: 1,
+            borderColor: GLASS_THEME.glassBorder,
+            backgroundColor: GLASS_THEME.glass,
+          }}
+        >
+          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>
+            Quay lại
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   const handleConfirmBooking = async () => {
     try {
@@ -218,12 +346,30 @@ export default function BookingScreen() {
             elevation: 16,
           }}
         >
-          <MaterialIcons name="check-circle" size={52} color={GLASS_THEME.neon} />
+          <MaterialIcons
+            name="check-circle"
+            size={52}
+            color={GLASS_THEME.neon}
+          />
         </View>
-        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: "center" }}>
+        <Text
+          style={{
+            color: "#fff",
+            fontSize: 26,
+            fontWeight: "800",
+            textAlign: "center",
+          }}
+        >
           Đặt thành công!
         </Text>
-        <Text style={{ color: GLASS_THEME.textSecondary, fontSize: 14, textAlign: "center", lineHeight: 22 }}>
+        <Text
+          style={{
+            color: GLASS_THEME.textSecondary,
+            fontSize: 14,
+            textAlign: "center",
+            lineHeight: 22,
+          }}
+        >
           {selectedService?.name
             ? `Dịch vụ "${selectedService.name}" đã được đặt. Chúng tôi sẽ liên hệ để xác nhận.`
             : "Đặt dịch vụ thành công. Chúng tôi sẽ liên hệ để xác nhận."}
@@ -283,9 +429,18 @@ export default function BookingScreen() {
           <MaterialIcons name="arrow-back" size={20} color="#fff" />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800" }}>Đặt dịch vụ</Text>
+          <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800" }}>
+            Đặt dịch vụ
+          </Text>
           {place?.name ? (
-            <Text style={{ color: GLASS_THEME.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+            <Text
+              style={{
+                color: GLASS_THEME.textSecondary,
+                fontSize: 12,
+                marginTop: 2,
+              }}
+              numberOfLines={1}
+            >
               {place.name}
             </Text>
           ) : null}
@@ -303,12 +458,22 @@ export default function BookingScreen() {
       >
         {step === 1 ? (
           <>
-            <Text style={{ color: GLASS_THEME.textSecondary, fontSize: 13, marginBottom: 16 }}>
+            <Text
+              style={{
+                color: GLASS_THEME.textSecondary,
+                fontSize: 13,
+                marginBottom: 16,
+              }}
+            >
               Chọn dịch vụ bạn muốn đặt
             </Text>
 
             {servicesLoading ? (
-              <ActivityIndicator size="large" color={GLASS_THEME.neon} style={{ marginTop: 32 }} />
+              <ActivityIndicator
+                size="large"
+                color={GLASS_THEME.neon}
+                style={{ marginTop: 32 }}
+              />
             ) : services.length === 0 ? (
               <View
                 style={{
@@ -321,9 +486,20 @@ export default function BookingScreen() {
                   borderColor: GLASS_THEME.glassBorder,
                 }}
               >
-                <MaterialIcons name="room-service" size={48} color="rgba(255,255,255,0.2)" />
-                <Text style={{ color: GLASS_THEME.textSecondary, textAlign: "center", fontSize: 14 }}>
-                  Địa điểm này chưa có dịch vụ đặt trước.{"\n"}Vui lòng liên hệ trực tiếp.
+                <MaterialIcons
+                  name="room-service"
+                  size={48}
+                  color="rgba(255,255,255,0.2)"
+                />
+                <Text
+                  style={{
+                    color: GLASS_THEME.textSecondary,
+                    textAlign: "center",
+                    fontSize: 14,
+                  }}
+                >
+                  Địa điểm này chưa có dịch vụ đặt trước.{"\n"}Vui lòng liên hệ
+                  trực tiếp.
                 </Text>
               </View>
             ) : (
@@ -339,7 +515,13 @@ export default function BookingScreen() {
           </>
         ) : step === 2 ? (
           <>
-            <Text style={{ color: GLASS_THEME.textSecondary, fontSize: 13, marginBottom: 16 }}>
+            <Text
+              style={{
+                color: GLASS_THEME.textSecondary,
+                fontSize: 13,
+                marginBottom: 16,
+              }}
+            >
               Xác nhận thông tin đặt dịch vụ
             </Text>
 
@@ -353,24 +535,72 @@ export default function BookingScreen() {
                 gap: 16,
               }}
             >
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ color: GLASS_THEME.textSecondary, fontSize: 13 }}>Địa điểm</Text>
-                <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600", maxWidth: "55%", textAlign: "right" }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Text
+                  style={{ color: GLASS_THEME.textSecondary, fontSize: 13 }}
+                >
+                  Địa điểm
+                </Text>
+                <Text
+                  style={{
+                    color: "#fff",
+                    fontSize: 13,
+                    fontWeight: "600",
+                    maxWidth: "55%",
+                    textAlign: "right",
+                  }}
+                >
                   {place?.name || "—"}
                 </Text>
               </View>
-              <View style={{ height: 1, backgroundColor: GLASS_THEME.glassBorder }} />
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ color: GLASS_THEME.textSecondary, fontSize: 13 }}>Dịch vụ</Text>
-                <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>
+              <View
+                style={{ height: 1, backgroundColor: GLASS_THEME.glassBorder }}
+              />
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Text
+                  style={{ color: GLASS_THEME.textSecondary, fontSize: 13 }}
+                >
+                  Dịch vụ
+                </Text>
+                <Text
+                  style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}
+                >
                   {selectedService?.name || "—"}
                 </Text>
               </View>
-              <View style={{ height: 1, backgroundColor: GLASS_THEME.glassBorder }} />
+              <View
+                style={{ height: 1, backgroundColor: GLASS_THEME.glassBorder }}
+              />
 
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                <Text style={{ color: GLASS_THEME.textSecondary, fontSize: 13 }}>Số lượng</Text>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Text
+                  style={{ color: GLASS_THEME.textSecondary, fontSize: 13 }}
+                >
+                  Số lượng
+                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 14,
+                  }}
+                >
                   <Pressable
                     onPress={() => setQuantity(Math.max(1, quantity - 1))}
                     style={{
@@ -386,7 +616,15 @@ export default function BookingScreen() {
                   >
                     <MaterialIcons name="remove" size={16} color="#fff" />
                   </Pressable>
-                  <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700", minWidth: 24, textAlign: "center" }}>
+                  <Text
+                    style={{
+                      color: "#fff",
+                      fontSize: 16,
+                      fontWeight: "700",
+                      minWidth: 24,
+                      textAlign: "center",
+                    }}
+                  >
                     {quantity}
                   </Text>
                   <Pressable
@@ -409,10 +647,30 @@ export default function BookingScreen() {
 
               {totalPrice !== null ? (
                 <>
-                  <View style={{ height: 1, backgroundColor: GLASS_THEME.glassBorder }} />
-                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                    <Text style={{ color: GLASS_THEME.textSecondary, fontSize: 13 }}>Tổng tiền</Text>
-                    <Text style={{ color: GLASS_THEME.neon, fontSize: 16, fontWeight: "800" }}>
+                  <View
+                    style={{
+                      height: 1,
+                      backgroundColor: GLASS_THEME.glassBorder,
+                    }}
+                  />
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Text
+                      style={{ color: GLASS_THEME.textSecondary, fontSize: 13 }}
+                    >
+                      Tổng tiền
+                    </Text>
+                    <Text
+                      style={{
+                        color: GLASS_THEME.neon,
+                        fontSize: 16,
+                        fontWeight: "800",
+                      }}
+                    >
                       {formatPrice(totalPrice)}
                     </Text>
                   </View>
@@ -422,7 +680,13 @@ export default function BookingScreen() {
           </>
         ) : (
           <>
-            <Text style={{ color: GLASS_THEME.textSecondary, fontSize: 13, marginBottom: 16 }}>
+            <Text
+              style={{
+                color: GLASS_THEME.textSecondary,
+                fontSize: 13,
+                marginBottom: 16,
+              }}
+            >
               Xác nhận và thanh toán
             </Text>
 
@@ -437,12 +701,31 @@ export default function BookingScreen() {
                 gap: 12,
               }}
             >
-              <MaterialIcons name="payment" size={40} color={GLASS_THEME.neon} />
-              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700", textAlign: "center" }}>
+              <MaterialIcons
+                name="payment"
+                size={40}
+                color={GLASS_THEME.neon}
+              />
+              <Text
+                style={{
+                  color: "#fff",
+                  fontSize: 16,
+                  fontWeight: "700",
+                  textAlign: "center",
+                }}
+              >
                 Thanh toán khi đến nơi
               </Text>
-              <Text style={{ color: GLASS_THEME.textSecondary, fontSize: 13, textAlign: "center", lineHeight: 20 }}>
-                Hiện tại chúng tôi hỗ trợ thanh toán trực tiếp tại địa điểm.{"\n"}Đặt chỗ sẽ được xác nhận qua điện thoại.
+              <Text
+                style={{
+                  color: GLASS_THEME.textSecondary,
+                  fontSize: 13,
+                  textAlign: "center",
+                  lineHeight: 20,
+                }}
+              >
+                Hiện tại chúng tôi hỗ trợ thanh toán trực tiếp tại địa điểm.
+                {"\n"}Đặt chỗ sẽ được xác nhận qua điện thoại.
               </Text>
               {totalPrice !== null ? (
                 <View
@@ -455,7 +738,13 @@ export default function BookingScreen() {
                     borderColor: "rgba(0,240,255,0.25)",
                   }}
                 >
-                  <Text style={{ color: GLASS_THEME.neon, fontSize: 20, fontWeight: "800" }}>
+                  <Text
+                    style={{
+                      color: GLASS_THEME.neon,
+                      fontSize: 20,
+                      fontWeight: "800",
+                    }}
+                  >
                     {formatPrice(totalPrice)}
                   </Text>
                 </View>
@@ -474,7 +763,8 @@ export default function BookingScreen() {
                 }}
               >
                 <Text style={{ color: "#EF4444", fontSize: 13 }}>
-                  {bookingMutation.error?.message || "Có lỗi xảy ra, vui lòng thử lại"}
+                  {bookingMutation.error?.message ||
+                    "Có lỗi xảy ra, vui lòng thử lại"}
                 </Text>
               </View>
             ) : null}
@@ -512,7 +802,9 @@ export default function BookingScreen() {
               paddingVertical: 16,
               alignItems: "center",
               shadowColor:
-                step === 1 && !selectedService ? "transparent" : GLASS_THEME.neon,
+                step === 1 && !selectedService
+                  ? "transparent"
+                  : GLASS_THEME.neon,
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: 0.35,
               shadowRadius: 20,
@@ -522,7 +814,9 @@ export default function BookingScreen() {
             <Text
               style={{
                 color:
-                  step === 1 && !selectedService ? GLASS_THEME.textSecondary : "#03131A",
+                  step === 1 && !selectedService
+                    ? GLASS_THEME.textSecondary
+                    : "#03131A",
                 fontSize: 15,
                 fontWeight: "800",
               }}
