@@ -1,5 +1,10 @@
 import prisma from "../config/prismaClient.js";
-import { generateItinerary } from "./geminiService.js";
+import { PRIMARY_GEMINI_MODEL } from "../config/geminiClient.js";
+import { mapGeminiError } from "../lib/geminiErrorHandler.js";
+import {
+  generateFallbackItinerary,
+  generateItinerary,
+} from "./geminiService.js";
 
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
@@ -16,6 +21,52 @@ const parsePagination = (query = {}) => {
 const approvedPlaceWhere = {
   deletedAt: null,
   status: "approved",
+};
+
+const parseTermsObject = (terms) => {
+  if (!terms || typeof terms !== "string") return null;
+  try {
+    const parsed = JSON.parse(terms);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
+const getDepositPolicy = (terms) => {
+  const meta = parseTermsObject(terms);
+  const raw = meta?.depositConfig || {};
+
+  const requireDeposit =
+    raw.requireDeposit === true || String(raw.requireDeposit) === "true";
+  const depositType = raw.depositType === "FIXED" ? "FIXED" : "PERCENT";
+  const depositAmount = Number(raw.depositAmount);
+  const normalizedDepositAmount = Number.isFinite(depositAmount)
+    ? depositType === "PERCENT"
+      ? Math.max(0, Math.min(100, depositAmount))
+      : Math.max(0, depositAmount)
+    : null;
+
+  let depositRefundable = raw.depositRefundable;
+  if (typeof depositRefundable !== "boolean") {
+    depositRefundable = String(depositRefundable) !== "false";
+  }
+
+  const refundPercent = Number(raw.depositRefundPercent);
+
+  return {
+    requireDeposit,
+    depositType: requireDeposit ? depositType : null,
+    depositAmount: requireDeposit ? normalizedDepositAmount : null,
+    depositRefundable,
+    depositRefundPercent:
+      Number.isFinite(refundPercent) && refundPercent >= 0
+        ? Math.min(refundPercent, 100)
+        : 50,
+  };
 };
 
 export const getHomeData = async (query = {}) => {
@@ -322,12 +373,17 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
 
 export const getServices = async (query = {}) => {
   const { page, limit, skip } = parsePagination(query);
+  const placeId = toInt(query.placeId);
   const serviceType = query.serviceType || undefined;
   const search = query.search || undefined;
 
   const where = {
     isActive: true,
   };
+
+  if (placeId) {
+    where.placeId = placeId;
+  }
 
   if (serviceType && serviceType !== "all") {
     where.serviceType = serviceType;
@@ -353,6 +409,7 @@ export const getServices = async (query = {}) => {
         serviceType: true,
         price: true,
         salePrice: true,
+        terms: true,
         thumbnail: true,
         bookingCount: true,
         place: {
@@ -370,7 +427,13 @@ export const getServices = async (query = {}) => {
   ]);
 
   return {
-    data: items,
+    data: items.map((item) => {
+      const deposit = getDepositPolicy(item.terms);
+      return {
+        ...item,
+        ...deposit,
+      };
+    }),
     pagination: {
       page,
       limit,
@@ -438,6 +501,9 @@ export const getMySavedPlaces = async (userId, query = {}) => {
             },
             district: {
               select: { id: true, name: true },
+            },
+            ward: {
+              select: { id: true, name: true, wardType: true },
             },
             images: {
               take: 1,
@@ -529,7 +595,18 @@ export const getMyTrips = async (userId, query = {}) => {
           take: 6,
           include: {
             place: {
-              select: { id: true, name: true, slug: true, thumbnail: true },
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                thumbnail: true,
+                district: {
+                  select: { id: true, name: true, code: true },
+                },
+                ward: {
+                  select: { id: true, name: true, wardType: true },
+                },
+              },
             },
           },
         },
@@ -549,6 +626,188 @@ export const getMyTrips = async (userId, query = {}) => {
   };
 };
 
+const MAX_TRIP_SUGGESTED_PLACES = 12;
+
+const normalizeItineraryDays = (days) => {
+  const safeDays = Array.isArray(days) ? days : [];
+
+  return safeDays
+    .map((day, dayIndex) => {
+      const dayNumber = Math.max(toInt(day?.dayNumber, dayIndex + 1), 1);
+      const safeDestinations = Array.isArray(day?.destinations)
+        ? day.destinations
+        : [];
+
+      const destinations = safeDestinations
+        .map((dest, destIndex) => {
+          const placeId = toInt(dest?.placeId);
+          if (!placeId) return null;
+
+          const durationMinutes = toInt(dest?.durationMinutes, null);
+          const estimatedCost = Number(dest?.estimatedCost);
+
+          return {
+            placeId,
+            order: Math.max(toInt(dest?.order, destIndex + 1), 1),
+            startTime: dest?.startTime ?? null,
+            endTime: dest?.endTime ?? null,
+            durationMinutes:
+              Number.isFinite(durationMinutes) && durationMinutes > 0
+                ? durationMinutes
+                : null,
+            note: dest?.note ?? null,
+            transportToNext: dest?.transportToNext ?? null,
+            estimatedCost:
+              Number.isFinite(estimatedCost) && estimatedCost >= 0
+                ? Math.round(estimatedCost)
+                : null,
+          };
+        })
+        .filter(Boolean);
+
+      return {
+        dayNumber,
+        theme:
+          typeof day?.theme === "string" && day.theme.trim()
+            ? day.theme.trim()
+            : `Ngày ${dayNumber}`,
+        destinations,
+      };
+    })
+    .filter((day) => day.destinations.length > 0);
+};
+
+const normalizeItinerary = (itinerary, fallbackTotalDays = 1) => {
+  const safeFallbackDays = Math.max(toInt(fallbackTotalDays, 1), 1);
+  const days = normalizeItineraryDays(itinerary?.days);
+  const parsedTotalDays = Math.max(
+    toInt(itinerary?.totalDays, safeFallbackDays),
+    1,
+  );
+  const totalDays = Math.max(parsedTotalDays, days.length || 1);
+  const estimatedCost = Number(itinerary?.estimatedCost);
+
+  return {
+    title:
+      typeof itinerary?.title === "string" && itinerary.title.trim()
+        ? itinerary.title.trim()
+        : `Lịch trình ${totalDays} ngày ở Cần Thơ`,
+    description:
+      typeof itinerary?.description === "string" && itinerary.description.trim()
+        ? itinerary.description.trim()
+        : null,
+    totalDays,
+    estimatedCost:
+      Number.isFinite(estimatedCost) && estimatedCost >= 0
+        ? Math.round(estimatedCost)
+        : null,
+    days,
+  };
+};
+
+const buildSuggestedPlaces = (days, placeById) => {
+  const orderedIds = [];
+  const seen = new Set();
+
+  for (const day of days) {
+    const safeDestinations = Array.isArray(day?.destinations)
+      ? day.destinations
+      : [];
+    for (const dest of safeDestinations) {
+      const placeId = toInt(dest?.placeId);
+      if (!placeId || seen.has(placeId) || !placeById.has(placeId)) continue;
+      seen.add(placeId);
+      orderedIds.push(placeId);
+      if (orderedIds.length >= MAX_TRIP_SUGGESTED_PLACES) break;
+    }
+    if (orderedIds.length >= MAX_TRIP_SUGGESTED_PLACES) break;
+  }
+
+  if (orderedIds.length === 0) {
+    for (const place of placeById.values()) {
+      if (seen.has(place.id)) continue;
+      seen.add(place.id);
+      orderedIds.push(place.id);
+      if (orderedIds.length >= MAX_TRIP_SUGGESTED_PLACES) break;
+    }
+  }
+
+  return orderedIds.map((id) => placeById.get(id)).filter(Boolean);
+};
+
+const buildTripDestinations = ({
+  tripId,
+  days,
+  allowedPlaceIds,
+  selectedPlaceIdSet,
+}) => {
+  const destinations = [];
+
+  const safeDays = Array.isArray(days) ? days : [];
+  for (const day of safeDays) {
+    const dayNumber = Math.max(toInt(day?.dayNumber, 1), 1);
+    const safeDestinations = Array.isArray(day?.destinations)
+      ? day.destinations
+      : [];
+
+    for (let index = 0; index < safeDestinations.length; index += 1) {
+      const dest = safeDestinations[index];
+      const placeId = toInt(dest?.placeId);
+      if (!placeId || !allowedPlaceIds.has(placeId)) continue;
+      if (selectedPlaceIdSet?.size && !selectedPlaceIdSet.has(placeId))
+        continue;
+
+      destinations.push({
+        tripId,
+        placeId,
+        dayNumber,
+        order: Math.max(toInt(dest?.order, index + 1), 1),
+        startTime: dest?.startTime ?? null,
+        endTime: dest?.endTime ?? null,
+        durationMinutes: toInt(dest?.durationMinutes, null),
+        note: dest?.note ?? null,
+        transportToNext: dest?.transportToNext ?? null,
+        estimatedCost: Number.isFinite(Number(dest?.estimatedCost))
+          ? Math.round(Number(dest.estimatedCost))
+          : null,
+        status: "planned",
+      });
+    }
+  }
+
+  return destinations;
+};
+
+const buildFallbackDestinationsFromSelection = ({
+  tripId,
+  selectedPlaceIds,
+  totalDays,
+}) => {
+  const safeIds = Array.isArray(selectedPlaceIds) ? selectedPlaceIds : [];
+  const safeTotalDays = Math.max(toInt(totalDays, 1), 1);
+  const ordersByDay = new Map();
+
+  return safeIds.map((placeId, index) => {
+    const dayNumber = (index % safeTotalDays) + 1;
+    const nextOrder = (ordersByDay.get(dayNumber) ?? 0) + 1;
+    ordersByDay.set(dayNumber, nextOrder);
+
+    return {
+      tripId,
+      placeId,
+      dayNumber,
+      order: nextOrder,
+      startTime: null,
+      endTime: null,
+      durationMinutes: null,
+      note: "Địa điểm được chọn trước khi chốt lịch trình",
+      transportToNext: null,
+      estimatedCost: null,
+      status: "planned",
+    };
+  });
+};
+
 export const generateAndSaveTrip = async (userId, preferences = {}) => {
   const {
     totalDays = 1,
@@ -557,6 +816,9 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
     budget,
     categoryId,
     notes,
+    previewOnly = false,
+    selectedPlaceIds = [],
+    itineraryDraft = null,
   } = preferences;
 
   const where = { ...approvedPlaceWhere };
@@ -567,7 +829,23 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
     orderBy: [{ ratingAvg: "desc" }, { viewCount: "desc" }],
     take: 50,
     include: {
-      category: { select: { id: true, name: true } },
+      category: { select: { id: true, name: true, slug: true } },
+      district: { select: { id: true, name: true, code: true } },
+      ward: { select: { id: true, name: true, wardType: true } },
+      openingHours: {
+        orderBy: [{ dayOfWeek: "asc" }],
+        select: {
+          dayOfWeek: true,
+          openTime: true,
+          closeTime: true,
+          isClosed: true,
+        },
+      },
+      _count: {
+        select: {
+          reviews: true,
+        },
+      },
       images: {
         take: 1,
         orderBy: [{ isCover: "desc" }],
@@ -582,74 +860,137 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
     throw error;
   }
 
-  const startTime = Date.now();
-  let geminiResult;
-  let isSuccessful = true;
-  let errorMessage = null;
+  const placeById = new Map(places.map((place) => [place.id, place]));
+  const placeIdSet = new Set(placeById.keys());
 
-  try {
-    geminiResult = await generateItinerary(preferences, places);
-  } catch (err) {
-    isSuccessful = false;
-    errorMessage = err.message;
-    throw err;
-  } finally {
-    await prisma.aiPromptHistory
-      .create({
-        data: {
-          userId,
-          promptType: "trip_itinerary",
-          promptText: JSON.stringify(preferences),
-          contextData: { placesCount: places.length, travelStyle, totalDays },
-          responseText: geminiResult?.raw ?? null,
-          responseParsed: geminiResult?.parsed ?? null,
-          modelUsed: "gemini-1.5-flash",
-          tokensUsed: geminiResult?.tokensUsed ?? null,
+  let rawItinerary =
+    itineraryDraft && typeof itineraryDraft === "object"
+      ? itineraryDraft
+      : null;
+
+  if (!rawItinerary) {
+    const startTime = Date.now();
+    let geminiResult;
+    let isSuccessful = true;
+    let errorMessage = null;
+
+    try {
+      geminiResult = await generateItinerary(preferences, places);
+    } catch (err) {
+      const mappedGemini = mapGeminiError(err);
+      const mappedCode = mappedGemini?.body?.errorCode;
+      const allowFallback =
+        mappedCode === "QUOTA_EXCEEDED" || mappedCode === "AI_UNAVAILABLE";
+
+      if (allowFallback) {
+        geminiResult = {
+          parsed: generateFallbackItinerary(preferences, places),
+          raw: null,
+          tokensUsed: null,
           responseTimeMs: Date.now() - startTime,
-          isSuccessful,
-          errorMessage,
-        },
-      })
-      .catch(() => {});
+        };
+        isSuccessful = false;
+        errorMessage = `${mappedCode}: ${mappedGemini?.body?.message || err?.message}`;
+      } else {
+        isSuccessful = false;
+        errorMessage = err?.message;
+        throw err;
+      }
+    } finally {
+      await prisma.aiPromptHistory
+        .create({
+          data: {
+            userId,
+            promptType: "trip_itinerary",
+            promptText: JSON.stringify(preferences),
+            contextData: {
+              placesCount: places.length,
+              travelStyle,
+              totalDays,
+              previewOnly: !!previewOnly,
+            },
+            responseText: geminiResult?.raw ?? null,
+            responseParsed: geminiResult?.parsed ?? null,
+            modelUsed: geminiResult?.raw
+              ? PRIMARY_GEMINI_MODEL
+              : "fallback-local",
+            tokensUsed: geminiResult?.tokensUsed ?? null,
+            responseTimeMs: Date.now() - startTime,
+            isSuccessful,
+            errorMessage,
+          },
+        })
+        .catch(() => {});
+    }
+
+    rawItinerary = geminiResult?.parsed ?? null;
   }
 
-  const itinerary = geminiResult.parsed;
+  let itinerary = normalizeItinerary(rawItinerary, totalDays);
+  if (itinerary.days.length === 0) {
+    itinerary = normalizeItinerary(
+      generateFallbackItinerary(preferences, places),
+      totalDays,
+    );
+  }
 
-  const placeIdSet = new Set(places.map((p) => p.id));
+  const suggestedPlaces = buildSuggestedPlaces(itinerary.days, placeById);
+  const suggestedPlaceIds = suggestedPlaces.map((place) => place.id);
+  const normalizedSelectedPlaceIds = Array.isArray(selectedPlaceIds)
+    ? selectedPlaceIds
+        .map((id) => toInt(id))
+        .filter((id) => id && placeIdSet.has(id))
+    : [];
+
+  const effectiveSelectedPlaceIds =
+    normalizedSelectedPlaceIds.length > 0
+      ? normalizedSelectedPlaceIds
+      : suggestedPlaceIds;
+
+  if (previewOnly) {
+    return {
+      previewOnly: true,
+      itinerary,
+      suggestedPlaces,
+      selectedPlaceIds: effectiveSelectedPlaceIds,
+    };
+  }
+
+  const selectedPlaceIdSet =
+    effectiveSelectedPlaceIds.length > 0
+      ? new Set(effectiveSelectedPlaceIds)
+      : null;
 
   const trip = await prisma.$transaction(async (tx) => {
     const created = await tx.trip.create({
       data: {
         userId,
-        title: itinerary.title || `Lịch trình ${totalDays} ngày ở Cần Thơ`,
+        title: itinerary.title,
         description: itinerary.description ?? null,
-        totalDays: itinerary.totalDays || totalDays,
+        totalDays: itinerary.totalDays,
         estimatedCost: itinerary.estimatedCost ?? null,
         travelStyle: travelStyle ?? null,
-        groupSize,
+        groupSize: Math.max(toInt(groupSize, 1), 1),
         isAiGenerated: true,
         aiPrompt: JSON.stringify(preferences),
         status: "draft",
       },
     });
 
-    const allDestinations = (itinerary.days || [])
-      .flatMap((day) =>
-        (day.destinations || []).map((dest) => ({
-          tripId: created.id,
-          placeId: dest.placeId,
-          dayNumber: day.dayNumber,
-          order: dest.order,
-          startTime: dest.startTime ?? null,
-          endTime: dest.endTime ?? null,
-          durationMinutes: dest.durationMinutes ?? null,
-          note: dest.note ?? null,
-          transportToNext: dest.transportToNext ?? null,
-          estimatedCost: dest.estimatedCost ?? null,
-          status: "planned",
-        })),
-      )
-      .filter((d) => placeIdSet.has(d.placeId));
+    let allDestinations = buildTripDestinations({
+      tripId: created.id,
+      days: itinerary.days,
+      allowedPlaceIds: placeIdSet,
+      selectedPlaceIdSet,
+    });
+
+    if (allDestinations.length === 0 && effectiveSelectedPlaceIds.length > 0) {
+      allDestinations = buildFallbackDestinationsFromSelection({
+        tripId: created.id,
+        selectedPlaceIds: effectiveSelectedPlaceIds,
+        totalDays: itinerary.totalDays,
+      });
+    }
 
     if (allDestinations.length > 0) {
       await tx.tripDestination.createMany({ data: allDestinations });
@@ -669,6 +1010,8 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
                 latitude: true,
                 longitude: true,
                 category: { select: { id: true, name: true } },
+                district: { select: { id: true, name: true, code: true } },
+                ward: { select: { id: true, name: true, wardType: true } },
                 images: {
                   take: 1,
                   orderBy: [{ isCover: "desc" }],
@@ -718,6 +1061,155 @@ export const submitFeedback = async ({
   return feedback;
 };
 
+const TRIP_PLACE_SELECT = {
+  id: true,
+  name: true,
+  address: true,
+  latitude: true,
+  longitude: true,
+  thumbnail: true,
+  ratingAvg: true,
+  category: { select: { id: true, name: true } },
+  district: { select: { id: true, name: true, code: true } },
+  ward: { select: { id: true, name: true, wardType: true } },
+};
+
+export const createTrip = async (userId, data) => {
+  const {
+    title,
+    description,
+    startDate,
+    endDate,
+    totalDays,
+    travelStyle,
+    groupSize,
+  } = data;
+  return prisma.trip.create({
+    data: {
+      userId,
+      title,
+      description,
+      startDate: startDate ? new Date(startDate) : null,
+      endDate: endDate ? new Date(endDate) : null,
+      totalDays: toInt(totalDays, 1),
+      travelStyle,
+      groupSize: toInt(groupSize, 1),
+      status: "draft",
+    },
+    include: {
+      destinations: {
+        include: { place: { select: TRIP_PLACE_SELECT } },
+      },
+    },
+  });
+};
+
+export const getTripDetail = async (id, userId) => {
+  return prisma.trip.findFirst({
+    where: { id, userId },
+    include: {
+      destinations: {
+        orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+        include: { place: { select: TRIP_PLACE_SELECT } },
+      },
+    },
+  });
+};
+
+export const updateTrip = async (id, userId, data) => {
+  const trip = await prisma.trip.findFirst({ where: { id, userId } });
+  if (!trip) {
+    const err = new Error("Không tìm thấy chuyến đi");
+    err.statusCode = 404;
+    throw err;
+  }
+  const {
+    title,
+    description,
+    startDate,
+    endDate,
+    totalDays,
+    travelStyle,
+    groupSize,
+    status,
+  } = data;
+  return prisma.trip.update({
+    where: { id },
+    data: {
+      ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
+      ...(startDate !== undefined && {
+        startDate: startDate ? new Date(startDate) : null,
+      }),
+      ...(endDate !== undefined && {
+        endDate: endDate ? new Date(endDate) : null,
+      }),
+      ...(totalDays !== undefined && { totalDays: toInt(totalDays, 1) }),
+      ...(travelStyle !== undefined && { travelStyle }),
+      ...(groupSize !== undefined && { groupSize: toInt(groupSize, 1) }),
+      ...(status !== undefined && { status }),
+    },
+    include: {
+      destinations: {
+        orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+        include: { place: { select: TRIP_PLACE_SELECT } },
+      },
+    },
+  });
+};
+
+export const deleteTrip = async (id, userId) => {
+  const trip = await prisma.trip.findFirst({ where: { id, userId } });
+  if (!trip) {
+    const err = new Error("Không tìm thấy chuyến đi");
+    err.statusCode = 404;
+    throw err;
+  }
+  await prisma.trip.delete({ where: { id } });
+};
+
+export const addDestination = async (
+  tripId,
+  userId,
+  { placeId, dayNumber, order, note },
+) => {
+  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
+  if (!trip) {
+    const err = new Error("Không tìm thấy chuyến đi");
+    err.statusCode = 404;
+    throw err;
+  }
+  return prisma.tripDestination.create({
+    data: {
+      tripId,
+      placeId: toInt(placeId),
+      dayNumber: toInt(dayNumber, 1),
+      order: toInt(order, 0),
+      note,
+      status: "planned",
+    },
+    include: { place: { select: TRIP_PLACE_SELECT } },
+  });
+};
+
+export const removeDestination = async (tripId, destId, userId) => {
+  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
+  if (!trip) {
+    const err = new Error("Không tìm thấy chuyến đi");
+    err.statusCode = 404;
+    throw err;
+  }
+  const dest = await prisma.tripDestination.findFirst({
+    where: { id: destId, tripId },
+  });
+  if (!dest) {
+    const err = new Error("Không tìm thấy địa điểm trong lịch trình");
+    err.statusCode = 404;
+    throw err;
+  }
+  await prisma.tripDestination.delete({ where: { id: destId } });
+};
+
 export default {
   getHomeData,
   searchPlaces,
@@ -731,5 +1223,11 @@ export default {
   unsavePlace,
   getMyTrips,
   generateAndSaveTrip,
+  createTrip,
+  getTripDetail,
+  updateTrip,
+  deleteTrip,
+  addDestination,
+  removeDestination,
   submitFeedback,
 };

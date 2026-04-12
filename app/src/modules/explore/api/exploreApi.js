@@ -1,11 +1,11 @@
-import client from "../../../api/client";
 import { ENDPOINTS } from "../../../api/endpoints";
+import { getPublicWithFallback } from "../../../api/publicClient";
 
 export const getHomeApi = (params) =>
-  client.get(ENDPOINTS.places.home, { params });
+  getPublicWithFallback(ENDPOINTS.places.home, { params });
 
 export const searchPlacesApi = (params) =>
-  client.get(ENDPOINTS.places.list, { params });
+  getPublicWithFallback(ENDPOINTS.places.list, { params });
 
 export const getServicesApi = () =>
-  client.get(ENDPOINTS.places.services);
+  getPublicWithFallback(ENDPOINTS.places.services);

@@ -161,11 +161,11 @@ function StarRow({ value, count }) {
   );
 }
 
-function InfoChip({ icon: Icon, children, href, className }) {
+function InfoChip({ icon: _Icon, children, href, className }) {
   const inner = (
     <div className={cn("flex items-center gap-2.5 group", className)}>
       <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-        <Icon className="w-4 h-4 text-gray-500 group-hover:text-gray-700 transition-colors" />
+        <_Icon className="w-4 h-4 text-gray-500 group-hover:text-gray-700 transition-colors" />
       </div>
       <span className="text-sm text-gray-700 leading-snug">{children}</span>
     </div>
@@ -185,11 +185,11 @@ function InfoChip({ icon: Icon, children, href, className }) {
   return inner;
 }
 
-function SectionTitle({ icon: Icon, children }) {
+function SectionTitle({ icon: _Icon, children }) {
   return (
     <div className="flex items-center gap-2.5 mb-4">
       <div className="w-7 h-7 rounded-lg bg-gray-900 flex items-center justify-center">
-        <Icon className="w-3.5 h-3.5 text-white" />
+        <_Icon className="w-3.5 h-3.5 text-white" />
       </div>
       <h3 className="text-sm font-black uppercase tracking-tight text-gray-900">
         {children}
@@ -497,7 +497,7 @@ const PlaceDetailDialog = ({
 
             {/* ── Tab bar ── */}
             <div className="flex border-b border-gray-100 bg-gray-50/80 flex-shrink-0 px-3">
-              {TABS.map(({ id, label, icon: Icon }) => (
+              {TABS.map(({ id, label, icon: _Icon }) => (
                 <button
                   key={id}
                   onClick={() => setActiveTab(id)}
@@ -508,7 +508,7 @@ const PlaceDetailDialog = ({
                       : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-white/60",
                   )}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <_Icon className="w-3.5 h-3.5" />
                   {label}
                 </button>
               ))}
@@ -537,7 +537,9 @@ const PlaceDetailDialog = ({
                               </p>
                               <p className="text-[11px] text-amber-900/80 mt-0.5">
                                 Trạng thái DN:{" "}
-                                {BUSINESS_STATUS_LABELS[place.business.status] ||
+                                {BUSINESS_STATUS_LABELS[
+                                  place.business.status
+                                ] ||
                                   place.business.status ||
                                   "—"}
                               </p>
@@ -772,6 +774,14 @@ const PlaceDetailDialog = ({
                             .map((h, i) => {
                               const isToday =
                                 h.dayOfWeek === new Date().getDay();
+                              let openingStatusColor = "text-gray-800";
+                              if (h.isClosed) {
+                                openingStatusColor = isToday
+                                  ? "text-red-400"
+                                  : "text-red-500";
+                              } else if (isToday) {
+                                openingStatusColor = "text-emerald-300";
+                              }
                               return (
                                 <div
                                   key={i}
@@ -812,13 +822,7 @@ const PlaceDetailDialog = ({
                                   <span
                                     className={cn(
                                       "text-sm font-bold",
-                                      h.isClosed
-                                        ? isToday
-                                          ? "text-red-400"
-                                          : "text-red-500"
-                                        : isToday
-                                          ? "text-emerald-300"
-                                          : "text-gray-800",
+                                      openingStatusColor,
                                     )}
                                   >
                                     {h.isClosed

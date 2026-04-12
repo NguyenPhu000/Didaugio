@@ -3,6 +3,23 @@ import * as bookingScheduleService from "../services/bookingScheduleService.js";
 import { resolveBusinessId } from "../utils/businessScope.js";
 import { ERROR_CODES } from "../config/messages.js";
 
+export const create = async (req, res, next) => {
+  try {
+    const payload = {
+      ...req.body,
+      serviceId: req.body?.serviceId || req.params?.serviceId,
+    };
+    const booking = await bookingService.create(payload, req.user.userId);
+    res.status(201).json({
+      success: true,
+      data: booking,
+      message: "Tạo booking thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getSchedule = async (req, res, next) => {
   try {
     const date = req.query.date;
@@ -206,6 +223,26 @@ export const getQR = async (req, res, next) => {
       success: true,
       data: qr,
       message: "Lấy mã QR booking thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyQR = async (req, res, next) => {
+  try {
+    const result = await bookingService.verifyQR(
+      req.body,
+      req.user.userId,
+      req.user.roleId,
+    );
+    res.json({
+      success: true,
+      data: result,
+      message:
+        result.action === "verify"
+          ? "Xác thực QR thành công"
+          : "Check-in booking thành công",
     });
   } catch (error) {
     next(error);

@@ -4,7 +4,7 @@ import * as turf from "@turf/turf";
 let _maskCache = { key: null, result: null };
 
 const makeCacheKey = (features) =>
-  features.length + ":" + (features[0]?.properties?.id ?? "");
+  `${features.length  }:${  features[0]?.properties?.id ?? ""}`;
 
 /**
  * Generate a "fog" mask polygon that covers the entire world

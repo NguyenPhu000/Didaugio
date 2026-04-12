@@ -14,6 +14,13 @@
       "expo-secure-store",
       "expo-font",
       [
+        "expo-notifications",
+        {
+          "color": "#0077b8",
+          "defaultChannel": "default"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#0077b8",
@@ -26,7 +33,8 @@
           "locationWhenInUsePermission": "Đi Đâu Giờ? cần vị trí để hiển thị địa điểm gần bạn."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": false

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,11 +39,7 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
   const [moduleFilter, setModuleFilter] = useState("all");
   const [expandedModules, setExpandedModules] = useState(new Set());
 
-  useEffect(() => {
-    fetchData();
-  }, [role]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -82,7 +78,11 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [role?.id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleTogglePermission = (permissionId) => {
     setSelectedPermissions((prev) => {
@@ -325,6 +325,12 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
             ).length;
             const moduleTotal = permissions.length;
             const isExpanded = expandedModules.has(module);
+            let moduleCheckedState = false;
+            if (moduleSelected === moduleTotal && moduleTotal > 0) {
+              moduleCheckedState = true;
+            } else if (moduleSelected > 0) {
+              moduleCheckedState = "indeterminate";
+            }
 
             return (
               <div
@@ -338,13 +344,7 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
                   <div className="flex items-center gap-3">
                     <div onClick={(e) => e.stopPropagation()}>
                       <Checkbox
-                        checked={
-                          moduleSelected === moduleTotal && moduleTotal > 0
-                            ? true
-                            : moduleSelected > 0
-                              ? "indeterminate"
-                              : false
-                        }
+                        checked={moduleCheckedState}
                         onCheckedChange={() => handleToggleModule(module)}
                         className="data-[state=checked]:bg-[#F3E600] data-[state=checked]:border-black data-[state=checked]:text-black rounded-none border-2"
                       />

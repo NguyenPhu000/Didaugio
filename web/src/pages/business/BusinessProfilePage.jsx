@@ -33,8 +33,8 @@ import { BUSINESS_STATUS } from "@/constants/businessConstants";
 import {
   SectionCard,
   PageHeader,
-  DESIGN,
 } from "@/components/business/DashboardWidgets";
+import { DESIGN } from "@/components/business/dashboardWidgetHelpers";
 import { cn } from "@/lib/utils";
 import FileUploader from "@/components/business/FileUploader";
 import ContractSignModal from "@/components/business/ContractSignModal";
@@ -234,8 +234,6 @@ const BusinessProfilePage = () => {
     setIsEditing(false);
   };
 
-  if (loading) return <ProfileSkeleton />;
-
   const businessTypeLabel = BUSINESS_TYPES.find(
     (t) => t.value === business?.businessType,
   )?.label;
@@ -273,6 +271,8 @@ const BusinessProfilePage = () => {
     [documentFiles],
   );
 
+  if (loading) return <ProfileSkeleton />;
+
   const isSuspended = business?.status === BUSINESS_STATUS.SUSPENDED;
   const canSignContract =
     business?.status === BUSINESS_STATUS.APPROVED && !business?.contractSigned;
@@ -292,25 +292,32 @@ const BusinessProfilePage = () => {
     }
   };
 
+  let headerAction = null;
+  if (!isSuspended) {
+    if (!isEditing) {
+      headerAction = (
+        <Button onClick={() => setIsEditing(true)} className="gap-2">
+          <Edit3 className="h-4 w-4" />
+          Chỉnh sửa
+        </Button>
+      );
+    } else {
+      headerAction = (
+        <Button variant="outline" onClick={handleCancel} className="gap-2">
+          <X className="h-4 w-4" />
+          Hủy
+        </Button>
+      );
+    }
+  }
+
   return (
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
       {/* Header */}
       <PageHeader
         title="Hồ sơ doanh nghiệp"
         subtitle="Quản lý thông tin pháp lý và thanh toán"
-        action={
-          isSuspended ? null : !isEditing ? (
-            <Button onClick={() => setIsEditing(true)} className="gap-2">
-              <Edit3 className="h-4 w-4" />
-              Chỉnh sửa
-            </Button>
-          ) : (
-            <Button variant="outline" onClick={handleCancel} className="gap-2">
-              <X className="h-4 w-4" />
-              Hủy
-            </Button>
-          )
-        }
+        action={headerAction}
       />
 
       {/* Status Banner */}

@@ -18,7 +18,6 @@ import {
   XCircle,
 } from "lucide-react";
 import { ROLE_NAMES } from "@/constants/constants";
-import { userService } from "@/apis";
 import { formatDate, formatDateTime } from "@/utils/dateUtils";
 import { locationService } from "@/apis/locationService";
 
@@ -54,9 +53,8 @@ const UserDetailModal = ({ open, onClose, user }) => {
         // Fetch all wards for the province
         if (districtCode) {
           try {
-            const wards = await locationService.getWardsByProvince(
-              provinceCode
-            );
+            const wards =
+              await locationService.getWardsByProvince(provinceCode);
 
             // ProvinceDistrictSelect lưu ward_code vào districtCode
             // Nên tìm ward theo ward_code
@@ -72,11 +70,11 @@ const UserDetailModal = ({ open, onClose, user }) => {
                 parts.push(ward.district_name);
               }
             } else {
-              console.log(
+              console.warn(
                 "Ward not found. WardCode:",
                 districtCode,
                 "Available wards:",
-                wards.length
+                wards.length,
               );
             }
           } catch (err) {
@@ -87,7 +85,7 @@ const UserDetailModal = ({ open, onClose, user }) => {
         // Fetch province name
         const provinces = await locationService.getAllProvinces();
         const province = provinces.find(
-          (p) => p.province_code === provinceCode
+          (p) => p.province_code === provinceCode,
         );
 
         if (province) {
@@ -180,7 +178,7 @@ const UserDetailModal = ({ open, onClose, user }) => {
               <div className="flex flex-wrap gap-2 mt-2">
                 <span
                   className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(
-                    user.roleId
+                    user.roleId,
                   )}`}
                 >
                   {getRoleName(user.roleId)}

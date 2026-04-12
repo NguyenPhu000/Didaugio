@@ -1,0 +1,515 @@
+
+=== D:\didaugio\web\src\components\admin\TimStatsCard.jsx ===
+
+[no-unused-vars] at 7:9
+   5 |   title,
+   6 |   value,
+   7 |   icon: Icon,
+   8 |   serial,
+   9 |   color = "bg-white",
+
+=== D:\didaugio\web\src\components\business\DashboardWidgets.jsx ===
+
+[no-unused-vars] at 257:9
+ 255 |   title,
+ 256 |   value,
+ 257 |   icon: Icon,
+ 258 |   iconColor = "primary",
+ 259 |   trend,
+
+[no-unused-vars] at 363:33
+ 361 | PageHeader.displayName = "PageHeader";
+ 362 | 
+ 363 | const EmptyStateBase = ({ icon: Icon = AlertCircle, message, action }) => (
+ 364 |   <div className="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+ 365 |     <div className="rounded-2xl bg-muted p-5">
+
+=== D:\didaugio\web\src\components\category\CategoryCard.jsx ===
+
+[no-unused-vars] at 1:10
+   1 | import { useState, useEffect } from "react";
+   2 | import {
+   3 |   MoreVertical,
+
+[no-unused-vars] at 1:20
+   1 | import { useState, useEffect } from "react";
+   2 | import {
+   3 |   MoreVertical,
+
+=== D:\didaugio\web\src\components\place\MapPicker.jsx ===
+
+[no-unused-vars] at 35:11
+  33 |   const mapRef = useRef();
+  34 |   const lastRightClickRef = useRef(0);
+  35 |   const { viewState, setViewState } = useMapContext();
+  36 |   const { districts, wards, canThoMask } = useMapData();
+  37 | 
+
+=== D:\didaugio\web\src\components\place\PlaceDetailDialog.jsx ===
+
+[no-unused-vars] at 164:27
+ 162 | }
+ 163 | 
+ 164 | function InfoChip({ icon: Icon, children, href, className }) {
+ 165 |   const inner = (
+ 166 |     <div className={cn("flex items-center gap-2.5 group", className)}>
+
+[no-unused-vars] at 188:31
+ 186 | }
+ 187 | 
+ 188 | function SectionTitle({ icon: Icon, children }) {
+ 189 |   return (
+ 190 |     <div className="flex items-center gap-2.5 mb-4">
+
+[no-unused-vars] at 500:45
+ 498 |             {/* ── Tab bar ── */}
+ 499 |             <div className="flex border-b border-gray-100 bg-gray-50/80 flex-shrink-0 px-3">
+ 500 |               {TABS.map(({ id, label, icon: Icon }) => (
+ 501 |                 <button
+ 502 |                   key={id}
+
+=== D:\didaugio\web\src\components\place\StepBasicInfo.jsx ===
+
+[no-unused-vars] at 68:14
+  66 |       const response = await districtService.getAllDistricts();
+  67 |       setDistricts(response.data || []);
+  68 |     } catch (error) {
+  69 |       toast({
+  70 |         variant: "destructive",
+
+[no-unused-vars] at 84:14
+  82 |       const response = await wardService.getWardsByDistrict(districtId);
+  83 |       setWards(response.data || []);
+  84 |     } catch (error) {
+  85 |       toast({
+  86 |         variant: "destructive",
+
+[no-unused-vars] at 137:16
+ 135 |           slug: exists ? "SLUG ĐÃ TỒN TẠI" : null,
+ 136 |         }));
+ 137 |       } catch (error) {
+ 138 |         // Ignore check errors
+ 139 |       } finally {
+
+=== D:\didaugio\web\src\components\place\StepPreview.jsx ===
+
+[no-unused-vars] at 109:9
+ 107 |       } else {
+ 108 |         // Create new place
+ 109 |         result = await createPlace(placeData);
+ 110 |         toast({
+ 111 |           title: "Thành công",
+
+=== D:\didaugio\web\src\components\role\role-permission-modal.jsx ===
+
+[no-unused-vars] at 38:10
+  36 | import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
+  37 | import { toast } from "sonner";
+  38 | import { cn } from "@/lib/utils";
+  39 | 
+  40 | export function RolePermissionModal({
+
+[no-console] at 70:7
+  68 |       ]);
+  69 | 
+  70 |       console.log("Permissions response:", permissionsResponse);
+  71 |       console.log("Role permissions response:", rolePermissionsResponse);
+  72 | 
+
+[no-console] at 71:7
+  69 | 
+  70 |       console.log("Permissions response:", permissionsResponse);
+  71 |       console.log("Role permissions response:", rolePermissionsResponse);
+  72 | 
+  73 |       if (permissionsResponse && permissionsResponse.permissions) {
+
+=== D:\didaugio\web\src\components\role\user-permission-modal.jsx ===
+
+[no-unused-vars] at 185:9
+ 183 |   };
+ 184 | 
+ 185 |   const handleRemoveCustomPermissions = async () => {
+ 186 |     if (!user || isBulk) return;
+ 187 | 
+
+=== D:\didaugio\web\src\components\tag\TagList.jsx ===
+
+[no-unused-vars] at 1:10
+   1 | import { useState } from "react";
+   2 | import { Edit, Trash2, MoreVertical } from "lucide-react";
+   3 | import { Button } from "@/components/ui/Button";
+
+=== D:\didaugio\web\src\components\ui\animated-icon.jsx ===
+
+[no-unused-vars] at 1:10
+   1 | import { motion } from "framer-motion";
+   2 | import { cn } from "@/lib/utils";
+   3 | 
+
+=== D:\didaugio\web\src\components\user\UserDetailModal.jsx ===
+
+[no-unused-vars] at 21:10
+  19 | } from "lucide-react";
+  20 | import { ROLE_NAMES } from "@/constants/constants";
+  21 | import { userService } from "@/apis";
+  22 | import { formatDate, formatDateTime } from "@/utils/dateUtils";
+  23 | import { locationService } from "@/apis/locationService";
+
+[no-console] at 75:15
+  73 |               }
+  74 |             } else {
+  75 |               console.log(
+  76 |                 "Ward not found. WardCode:",
+  77 |                 districtCode,
+
+=== D:\didaugio\web\src\modules\map\components\DistrictLabels.jsx ===
+
+[no-unused-vars] at 19:22
+  17 | 
+  18 |     return sorted
+  19 |       .map((feature, idx) => {
+  20 |         let lng, lat;
+  21 |         if (feature.geometry.type === "Point") {
+
+=== D:\didaugio\web\src\modules\map\components\MapBase.jsx ===
+
+[no-empty] at 69:19
+  67 |               { hover: false },
+  68 |             );
+  69 |           } catch {}
+  70 |         }
+  71 | 
+
+[no-empty] at 76:19
+  74 |           try {
+  75 |             map.setFeatureState({ source, id: feature.id }, { hover: true });
+  76 |           } catch {}
+  77 |           prevHoveredRef.current = { id: feature.id, source };
+  78 |           map.getCanvas().style.cursor = "pointer";
+
+[no-empty] at 106:19
+ 104 |               { hover: false },
+ 105 |             );
+ 106 |           } catch {}
+ 107 |           prevHoveredRef.current = { id: null, source: null };
+ 108 |         }
+
+=== D:\didaugio\web\src\modules\map\components\MapControls.jsx ===
+
+[no-unused-vars] at 51:49
+  49 |         {expanded ? (
+  50 |           <div className="grid grid-cols-3 gap-1 bg-white/95 backdrop-blur-sm border border-black/10 shadow-lg p-1.5 rounded-lg">
+  51 |             {BASEMAP_OPTIONS.map(({ key, label, Icon }) => {
+  52 |               const active = basemap === MAP_STYLES[key];
+  53 |               return (
+
+=== D:\didaugio\web\src\modules\map\components\PlaceMarkers.jsx ===
+
+[no-empty] at 611:13
+ 609 |     try {
+ 610 |       map.setFeatureState({ source: "places-source", id }, { active: false });
+ 611 |     } catch {}
+ 612 |   }, []);
+ 613 | 
+
+[no-empty] at 667:15
+ 665 |           { active: true },
+ 666 |         );
+ 667 |       } catch {}
+ 668 |       activeFeatIdRef.current = placeId;
+ 669 | 
+
+[no-empty] at 749:15
+ 747 |           { active: true },
+ 748 |         );
+ 749 |       } catch {}
+ 750 | 
+ 751 |       if (routingModeRef.current) {
+
+=== D:\didaugio\web\src\pages\AuditLogsPage.jsx ===
+
+[no-unused-vars] at 23:10
+  21 | } from "@/components/ui";
+  22 | import auditLogService from "@/apis/auditLogService";
+  23 | import { formatDate, formatDateTime } from "@/utils/dateUtils";
+  24 | import TimStatsCard from "@/components/admin/TimStatsCard";
+  25 | 
+
+=== D:\didaugio\web\src\pages\ProfilePage.jsx ===
+
+[no-unused-vars] at 4:10
+   2 | import { useForm } from "react-hook-form";
+   3 | import { zodResolver } from "@hookform/resolvers/zod";
+   4 | import { z } from "zod";
+   5 | import toast from "react-hot-toast";
+   6 | import {
+
+[no-unused-vars] at 49:11
+  47 | 
+  48 | const ProfilePage = () => {
+  49 |   const { user, setUser } = useAuthStore();
+  50 |   const [isLoading, setIsLoading] = useState(false);
+  51 |   const [isFetching, setIsFetching] = useState(true);
+
+[no-unused-vars] at 85:16
+  83 |           });
+  84 |         }
+  85 |       } catch (error) {
+  86 |         toast.error("Khong the tai thong tin profile");
+  87 |       } finally {
+
+=== D:\didaugio\web\src\pages\UserManagePage.jsx ===
+
+[no-unused-vars] at 58:17
+  56 |  */
+  57 | const UserManagePage = () => {
+  58 |   const { user: currentUser } = useAuthStore();
+  59 |   const { toast } = useToast();
+  60 | 
+
+[no-unused-vars] at 64:10
+  62 |   const [users, setUsers] = useState([]);
+  63 |   const [loading, setLoading] = useState(false);
+  64 |   const [stats, setStats] = useState({
+  65 |     total: 0,
+  66 |     admin: 0,
+
+[no-unused-vars] at 119:14
+ 117 |         active: 0, // Placeholder
+ 118 |       });
+ 119 |     } catch (error) {
+ 120 |       toast({
+ 121 |         title: "LỖI HỆ THỐNG",
+
+[no-unused-vars] at 414:37
+ 412 |                 </thead>
+ 413 |                 <tbody className="divide-y divide-black/5">
+ 414 |                   {users.map((user, index) => (
+ 415 |                     <tr
+ 416 |                       key={user.id}
+
+=== D:\didaugio\web\src\pages\admin\CategoryManagementPage.jsx ===
+
+[no-unused-vars] at 56:34
+  54 | 
+  55 | export default function CategoryManagementPage() {
+  56 |   const { categoryTree, loading, error, deleteCategory, fetchCategoryTree } =
+  57 |     useCategoryStore();
+  58 |   const { toast } = useToast();
+
+[no-unused-vars] at 165:9
+ 163 | 
+ 164 |   // Stats for currently visible (filtered) categories
+ 165 |   const activeCount = filteredFlatCategories.filter((c) => !c.isHidden).length;
+ 166 |   const hiddenCount = filteredFlatCategories.filter((c) => c.isHidden).length;
+ 167 | 
+
+[no-unused-vars] at 166:9
+ 164 |   // Stats for currently visible (filtered) categories
+ 165 |   const activeCount = filteredFlatCategories.filter((c) => !c.isHidden).length;
+ 166 |   const hiddenCount = filteredFlatCategories.filter((c) => c.isHidden).length;
+ 167 | 
+ 168 |   const handleAddRoot = () => {
+
+=== D:\didaugio\web\src\pages\admin\MapPage.jsx ===
+
+[no-empty] at 131:15
+ 129 |           };
+ 130 |         }
+ 131 |       } catch {}
+ 132 |     });
+ 133 |     return map;
+
+[no-unused-vars] at 398:46
+ 396 |                     icon: BarChart3,
+ 397 |                   },
+ 398 |                 ].map(({ label, value, icon: Icon }) => (
+ 399 |                   <div
+ 400 |                     key={label}
+
+[no-unused-vars] at 418:43
+ 416 |                   { id: "districts", label: "Quận", icon: BarChart3 },
+ 417 |                   { id: "filters", label: "Lọc", icon: Filter },
+ 418 |                 ].map(({ id, label, icon: Icon }) => (
+ 419 |                   <button
+ 420 |                     key={id}
+
+=== D:\didaugio\web\src\pages\admin\PlaceListPage.jsx ===
+
+[no-unused-vars] at 104:10
+ 102 |   const { categories, fetchCategories } = useCategoryStore();
+ 103 | 
+ 104 |   const [districts, setDistricts] = useState([]);
+ 105 |   const [selectedPlace, setSelectedPlace] = useState(null);
+ 106 |   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+
+=== D:\didaugio\web\src\pages\admin\PlaceWizardPage.jsx ===
+
+[no-unused-vars] at 28:5
+  26 |     currentStep,
+  27 |     totalSteps,
+  28 |     wizardData,
+  29 |     loading,
+  30 |     fetchPlaceById,
+
+[no-unused-vars] at 83:9
+  81 |   const StepComponent = currentStepData?.component;
+  82 | 
+  83 |   const progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
+  84 | 
+  85 |   const handleBack = () => {
+
+=== D:\didaugio\web\src\pages\auth\ForgotPasswordPage.jsx ===
+
+[no-unused-vars] at 5:10
+   3 | import { useForm } from "react-hook-form";
+   4 | import { zodResolver } from "@hookform/resolvers/zod";
+   5 | import { z } from "zod";
+   6 | import toast from "react-hot-toast";
+   7 | import Mail from "lucide-react/dist/esm/icons/mail";
+
+[no-unused-vars] at 32:9
+  30 |   const [isLoading, setIsLoading] = useState(false);
+  31 |   const [emailSent, setEmailSent] = useState(false);
+  32 |   const navigate = useNavigate();
+  33 | 
+  34 |   const {
+
+[no-console] at 54:9
+  52 |       // Hiển thị token nếu ở dev mode (để test)
+  53 |       if (response.data?.resetToken) {
+  54 |         console.log("Reset Token (DEV only):", response.data.resetToken);
+  55 |         toast.success(`Token: ${response.data.resetToken}`, {
+  56 |           duration: 10000,
+
+=== D:\didaugio\web\src\pages\auth\LoginPage.jsx ===
+
+[no-unused-vars] at 5:10
+   3 | import { useForm } from "react-hook-form";
+   4 | import { zodResolver } from "@hookform/resolvers/zod";
+   5 | import { z } from "zod";
+   6 | import toast from "react-hot-toast";
+   7 | import Mail from "lucide-react/dist/esm/icons/mail";
+
+=== D:\didaugio\web\src\pages\business\BookingDetailPage.jsx ===
+
+[no-empty] at 329:13
+ 327 |       const response = await bookingApi.getQR(id);
+ 328 |       setQrCode(response.data?.qrCode);
+ 329 |     } catch {}
+ 330 |   }, [id]);
+ 331 | 
+
+=== D:\didaugio\web\src\pages\business\BookingListPage.jsx ===
+
+[no-unused-vars] at 5:3
+   3 |   useState,
+   4 |   useCallback,
+   5 |   useMemo,
+   6 |   useTransition,
+   7 | } from "react";
+
+[no-empty] at 288:13
+ 286 |       const response = await bookingApi.getStats();
+ 287 |       setStats(response.data);
+ 288 |     } catch {}
+ 289 |   }, []);
+ 290 | 
+
+[no-unused-vars] at 471:39
+ 469 |       {/* Status Stat Cards */}
+ 470 |       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+ 471 |         {statCards.map(({ key, label, icon, iconColor }) =>
+ 472 |           loading ? (
+ 473 |             <StatCardSkeleton key={key} />
+
+[no-unused-vars] at 471:45
+ 469 |       {/* Status Stat Cards */}
+ 470 |       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+ 471 |         {statCards.map(({ key, label, icon, iconColor }) =>
+ 472 |           loading ? (
+ 473 |             <StatCardSkeleton key={key} />
+
+=== D:\didaugio\web\src\pages\business\ReviewListPage.jsx ===
+
+[no-empty] at 348:13
+ 346 |       const response = await api.get(`${REVIEW_API}/stats`);
+ 347 |       setStats(response.data);
+ 348 |     } catch {}
+ 349 |   }, []);
+ 350 | 
+
+=== D:\didaugio\web\src\pages\business\VoucherListPage.jsx ===
+
+[no-unused-vars] at 38:13
+  36 | import * as voucherApi from "@/apis/voucherService";
+  37 | import { getMyPlaces } from "@/apis/businessApi";
+  38 | import * as businessOfferingApi from "@/apis/businessOfferingApi";
+  39 | import {
+  40 |   SectionCard,
+
+=== D:\didaugio\web\src\pages\dashboard\DashboardDataStatus.jsx ===
+
+[no-unused-vars] at 6:28
+   4 | import Layers from "lucide-react/dist/esm/icons/layers";
+   5 | 
+   6 | const StatusRow = ({ icon: Icon, value, label, pct, barColor, iconClass }) => (
+   7 |   <div className="group flex items-center gap-4 p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors cursor-default">
+   8 |     <div
+
+=== D:\didaugio\web\src\pages\dashboard\DashboardSystemHealth.jsx ===
+
+[no-unused-vars] at 19:28
+  17 | };
+  18 | 
+  19 | const HealthBar = ({ icon: Icon, label, value, unit = "%" }) => (
+  20 |   <div className="space-y-1.5">
+  21 |     <div className="flex items-center justify-between">
+
+=== D:\didaugio\web\src\stores\authStore.js ===
+
+[no-empty] at 19:11
+  17 |       return parsed?.state ?? {};
+  18 |     }
+  19 |   } catch {}
+  20 |   return {};
+  21 | };
+
+=== D:\didaugio\web\src\stores\placeStore.js ===
+
+[no-unused-vars] at 114:18
+ 112 |           const response = await placeService.checkSlugExists(slug, excludeId);
+ 113 |           return response.data?.exists || false;
+ 114 |         } catch (error) {
+ 115 |           return false;
+ 116 |         }
+
+=== D:\didaugio\web\src\stores\uiStore.js ===
+
+[no-unused-vars] at 17:45
+  15 |       // mode: 'single' = chỉ 1 card expand tại 1 thời điểm (only at root level)
+  16 |       // mode: 'multiple' = cho phép nhiều cards expand (for nested children)
+  17 |       toggleCategoryExpansion: (categoryId, mode = "multiple") => {
+  18 |         set((state) => {
+  19 |           let newExpanded = [...state.expandedCategories];
+
+[no-console] at 24:13
+  22 |             // Collapse this category
+  23 |             newExpanded = newExpanded.filter((id) => id !== categoryId);
+  24 |             console.log(
+  25 |               `🔽 Collapsed category ${categoryId}. Total expanded:`,
+  26 |               newExpanded.length
+
+[no-console] at 33:13
+  31 |             // It does NOT affect nested children expansion
+  32 |             newExpanded.push(categoryId);
+  33 |             console.log(
+  34 |               `🔼 Expanded category ${categoryId}. Total expanded:`,
+  35 |               newExpanded.length
+
+[no-console] at 39:11
+  37 |           }
+  38 | 
+  39 |           console.log("📋 All expanded IDs:", newExpanded);
+  40 |           return { expandedCategories: newExpanded };
+  41 |         });

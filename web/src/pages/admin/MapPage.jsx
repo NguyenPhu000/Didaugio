@@ -41,7 +41,6 @@ import {
   Navigation2,
   Flag,
 } from "lucide-react";
-
 import PlaceCard from "./map/PlaceCard";
 import DistrictRow from "./map/DistrictRow";
 import FilterPanel from "./map/FilterPanel";
@@ -80,11 +79,14 @@ const MapPageContent = () => {
   const [selectedPlaceDetail, setSelectedPlaceDetail] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const containerRef = useRef(null);
+  const hasBootstrappedRef = useRef(false);
 
   useEffect(() => {
+    if (hasBootstrappedRef.current) return;
+    hasBootstrappedRef.current = true;
     fetchPlaces({ limit: FETCH_LIMIT, status: "approved" });
     if (!categories.length) fetchCategories();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchPlaces, fetchCategories, categories.length]);
 
   // Register the "open detail" handler so PlaceMarkers popup button works
   useEffect(() => {
@@ -93,7 +95,7 @@ const MapPageContent = () => {
       setIsDetailOpen(true);
     });
     return () => setOnSelectPlace(null);
-  }, [setOnSelectPlace]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [setOnSelectPlace]);
 
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
@@ -128,7 +130,9 @@ const MapPageContent = () => {
             lng: c.geometry.coordinates[0],
           };
         }
-      } catch {}
+      } catch {
+        // Ignore malformed GeoJSON features.
+      }
     });
     return map;
   }, [districts]);
@@ -395,7 +399,7 @@ const MapPageContent = () => {
                     value: districtList.length,
                     icon: BarChart3,
                   },
-                ].map(({ label, value, icon: Icon }) => (
+                ].map(({ label, value }) => (
                   <div
                     key={label}
                     className="py-3 text-center border-r border-gray-100 last:border-r-0"
@@ -415,7 +419,7 @@ const MapPageContent = () => {
                   { id: "places", label: "Địa điểm", icon: MapPin },
                   { id: "districts", label: "Quận", icon: BarChart3 },
                   { id: "filters", label: "Lọc", icon: Filter },
-                ].map(({ id, label, icon: Icon }) => (
+                ].map(({ id, label, icon: _Icon }) => (
                   <button
                     key={id}
                     onClick={() => setPanelTab(id)}
@@ -425,7 +429,7 @@ const MapPageContent = () => {
                         : "border-transparent text-gray-400 hover:text-gray-600"
                     }`}
                   >
-                    <Icon className="h-3.5 w-3.5" />
+                    <_Icon className="h-3.5 w-3.5" />
                     {label}
                     {id === "filters" && hasActiveFilters && (
                       <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
@@ -567,7 +571,7 @@ const MapPageContent = () => {
           {/* Map / List area */}
           {viewMode === "map" ? (
             <div className="flex-1 relative overflow-hidden">
-              {loading ? (
+              {loading && (
                 <div className="w-full h-full flex items-center justify-center bg-gray-50">
                   <div className="text-center">
                     <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -576,7 +580,8 @@ const MapPageContent = () => {
                     </p>
                   </div>
                 </div>
-              ) : error ? (
+              )}
+              {!loading && error && (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 gap-3">
                   <AlertTriangle className="h-10 w-10 text-red-400" />
                   <p className="text-sm font-medium text-gray-600">
@@ -590,7 +595,8 @@ const MapPageContent = () => {
                     Thử lại
                   </button>
                 </div>
-              ) : (
+              )}
+              {!loading && !error && (
                 <MapBase
                   className="w-full h-full"
                   onBoundaryClick={(f, t) => selectArea(f, t)}

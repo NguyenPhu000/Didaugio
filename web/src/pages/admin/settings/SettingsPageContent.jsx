@@ -26,8 +26,7 @@ const normalizeMapDefault = (input) => {
       input.longitude != null && input.longitude !== ""
         ? String(input.longitude)
         : "",
-    zoom:
-      input.zoom != null && input.zoom !== "" ? String(input.zoom) : "",
+    zoom: input.zoom != null && input.zoom !== "" ? String(input.zoom) : "",
   };
 };
 
@@ -90,7 +89,7 @@ const SettingsPageContent = () => {
     return () => {
       disposed = true;
     };
-  }, []);
+  }, [toast]);
 
   const updateSectionField = (section, key, value) => {
     setSettings((prev) => ({

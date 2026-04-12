@@ -34,6 +34,29 @@ import {
 const UserFormModal = ({ open, onClose, user, onSuccess }) => {
   const isEdit = !!user;
   const [loading, setLoading] = useState(false);
+  let submitActionContent;
+  if (loading) {
+    submitActionContent = (
+      <>
+        <Loader2 className="w-4 h-4 animate-spin" />
+        Đang xử lý...
+      </>
+    );
+  } else if (isEdit) {
+    submitActionContent = (
+      <>
+        <Check className="w-4 h-4" />
+        Cập nhật
+      </>
+    );
+  } else {
+    submitActionContent = (
+      <>
+        <Plus className="w-4 h-4" />
+        Thêm người dùng
+      </>
+    );
+  }
 
   const {
     register,
@@ -333,22 +356,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
             disabled={loading}
             className="flex items-center gap-2 px-5 py-2 rounded-none border border-black bg-black text-white text-sm font-bold uppercase tracking-wide transition-all hover:bg-gray-800 disabled:opacity-50"
           >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Đang xử lý...
-              </>
-            ) : isEdit ? (
-              <>
-                <Check className="w-4 h-4" />
-                Cập nhật
-              </>
-            ) : (
-              <>
-                <Plus className="w-4 h-4" />
-                Thêm người dùng
-              </>
-            )}
+            {submitActionContent}
           </button>
         </div>
       </DialogContent>

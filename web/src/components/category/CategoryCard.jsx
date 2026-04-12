@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import {
   MoreVertical,
   Edit,
@@ -21,7 +20,6 @@ import {
 import useUIStore from "@/stores/uiStore";
 import { CATEGORY_ICON_MAP } from "@/constants/categoryConstants";
 
-
 /**
  * CATEGORY SUB ITEM
  * Recursive component cho nested sub-categories
@@ -35,15 +33,17 @@ function CategorySubItem({
 }) {
   // Use selective subscription - only re-render when THIS category's state changes
   const isExpanded = useUIStore((state) =>
-    state.expandedCategories.includes(category.id)
+    state.expandedCategories.includes(category.id),
   );
   const toggleCategoryExpansion = useUIStore(
-    (state) => state.toggleCategoryExpansion
+    (state) => state.toggleCategoryExpansion,
   );
 
   const hasChildren = category.children && category.children.length > 0;
   const childrenCount = category._count?.children || 0;
-  const IconComponent = category.icon ? CATEGORY_ICON_MAP[category.icon] : FolderTree;
+  const IconComponent = category.icon
+    ? CATEGORY_ICON_MAP[category.icon]
+    : FolderTree;
 
   return (
     <div className="space-y-1">
@@ -152,10 +152,10 @@ export default function CategoryCard({
 }) {
   // Use selective subscription - only re-render when THIS category's state changes
   const showSubCategories = useUIStore((state) =>
-    state.expandedCategories.includes(category.id)
+    state.expandedCategories.includes(category.id),
   );
   const toggleCategoryExpansion = useUIStore(
-    (state) => state.toggleCategoryExpansion
+    (state) => state.toggleCategoryExpansion,
   );
 
   const hasChildren = category.children && category.children.length > 0;
@@ -163,7 +163,9 @@ export default function CategoryCard({
   const placesCount = category._count?.places || 0;
 
   // Get icon component
-  const IconComponent = category.icon ? CATEGORY_ICON_MAP[category.icon] : FolderTree;
+  const IconComponent = category.icon
+    ? CATEGORY_ICON_MAP[category.icon]
+    : FolderTree;
 
   return (
     <Card className="group hover:shadow-xl transition-all duration-300 relative overflow-hidden border-2 hover:border-primary/20">

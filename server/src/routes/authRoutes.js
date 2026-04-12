@@ -4,7 +4,6 @@ import { authenticate } from "../middlewares/authMiddleware.js";
 import { validateBody, validateParams } from "../middlewares/validateSchema.js";
 import {
   changePasswordSchema,
-  exchangeGoogleCodeSchema,
   forgotPasswordSchema,
   loginGoogleSchema,
   loginSchema,
@@ -26,13 +25,6 @@ router.post(
   validateBody(loginGoogleSchema),
   authController.loginGoogle,
 );
-router.post(
-  "/google/exchange",
-  validateBody(exchangeGoogleCodeSchema),
-  authController.exchangeGoogleCode,
-);
-router.get("/google/web", authController.initiateGoogleOAuth);
-router.get("/google/web/callback", authController.googleOAuthCallback);
 router.post(
   "/refresh",
   validateBody(refreshTokenSchema),

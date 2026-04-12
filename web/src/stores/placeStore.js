@@ -111,7 +111,7 @@ const usePlaceStore = create(
         try {
           const response = await placeService.checkSlugExists(slug, excludeId);
           return response.data?.exists || false;
-        } catch (error) {
+        } catch {
           return false;
         }
       },
@@ -429,13 +429,18 @@ const usePlaceStore = create(
             website: place.website || "",
             facebook: place.facebook || "",
             images: place.images || [],
-            tagIds: place.tags
-              ? place.tags.map((t) => t.id)
-              : place.tagLinks
-                ? place.tagLinks
-                    .map((l) => l.tagId || l.tag?.id)
-                    .filter(Boolean)
-                : [],
+            ...(() => {
+              let resolvedTagIds = [];
+              if (place.tags) {
+                resolvedTagIds = place.tags.map((t) => t.id);
+              } else if (place.tagLinks) {
+                resolvedTagIds = place.tagLinks
+                  .map((l) => l.tagId || l.tag?.id)
+                  .filter(Boolean);
+              }
+
+              return { tagIds: resolvedTagIds };
+            })(),
             priceRange: place.priceRange || null,
             priceFrom: place.priceFrom || null,
             priceTo: place.priceTo || null,

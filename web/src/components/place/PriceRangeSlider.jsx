@@ -33,7 +33,10 @@ const PriceRangeSlider = ({
   // Update slider visual when props change externally
   useEffect(() => {
     if (priceFrom !== undefined && priceTo !== undefined) {
-      setSliderValues([priceFrom || 0, priceTo || 500000]);
+      const id = requestAnimationFrame(() => {
+        setSliderValues([priceFrom || 0, priceTo || 500000]);
+      });
+      return () => cancelAnimationFrame(id);
     }
   }, [priceFrom, priceTo]);
 

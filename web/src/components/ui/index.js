@@ -1,4 +1,4 @@
-export { Button, buttonVariants } from "./Button";
+export { Button } from "./Button";
 export { Input } from "./Input";
 export { Spinner } from "./Spinner";
 export {
@@ -43,7 +43,7 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuRadioGroup,
 } from "./dropdown-menu";
-export { Badge, badgeVariants } from "./badge";
+export { Badge } from "./badge";
 export { Alert, AlertTitle, AlertDescription } from "./alert";
 export { Progress } from "./progress";
 export { ScrollArea, ScrollBar } from "./scroll-area";

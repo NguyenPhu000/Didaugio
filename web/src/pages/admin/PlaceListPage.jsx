@@ -21,7 +21,6 @@ import AnimatedIcon from "@/components/ui/animated-icon";
 import { lazy, Suspense } from "react";
 import usePlaceStore from "@/stores/placeStore";
 import useCategoryStore from "@/stores/categoryStore";
-import * as districtService from "@/apis/districtService";
 
 // Dynamic import for heavy component
 const PlaceDetailDialog = lazy(
@@ -101,7 +100,6 @@ const PlaceListPage = ({
 
   const { categories, fetchCategories } = useCategoryStore();
 
-  const [districts, setDistricts] = useState([]);
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [viewBusinessId, setViewBusinessId] = useState(null);
@@ -150,17 +148,11 @@ const PlaceListPage = ({
     if (!apiFilters.businessId) delete apiFilters.businessId;
 
     fetchPlaces(apiFilters);
-  }, [filters]);
+  }, [filters, fetchPlaces]);
 
   useEffect(() => {
     if (categories.length === 0) fetchCategories();
-  }, [categories.length]);
-
-  useEffect(() => {
-    districtService.getAllDistricts().then((res) => {
-      setDistricts(res.data || []);
-    });
-  }, []);
+  }, [categories.length, fetchCategories]);
 
   const updateURL = (newFilters) => {
     const params = {};
@@ -611,7 +603,7 @@ const PlaceListPage = ({
                       onClick={() => handleViewDetails(place)}
                     >
                       {place.name.length > 30
-                        ? place.name.substring(0, 30) + "..."
+                        ? `${place.name.substring(0, 30)}...`
                         : place.name}
                     </h3>
 

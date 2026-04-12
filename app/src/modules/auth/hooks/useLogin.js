@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "expo-router";
 import { loginApi } from "../api/authApi";
 import { useAuthStore } from "../../../stores/authStore";
+import { normalizeAuthSessionResponse } from "../utils/normalizeAuthSession";
 
 export function useLogin() {
   const router = useRouter();
@@ -13,27 +14,52 @@ export function useLogin() {
     async (email, password) => {
       setError(null);
 
-      if (!email.trim()) {
+      const normalizedEmail = email.trim().toLowerCase();
+
+      if (!normalizedEmail) {
         setError("Vui lòng nhập email.");
-        return;
+        return false;
       }
+
+      if (!/\S+@\S+\.\S+/.test(normalizedEmail)) {
+        setError("Email không hợp lệ.");
+        return false;
+      }
+
       if (!password) {
         setError("Vui lòng nhập mật khẩu.");
-        return;
+        return false;
       }
 
       setIsLoading(true);
       try {
-        const res = await loginApi(email.trim().toLowerCase(), password);
-        const { accessToken, refreshToken, user } = res.data?.data || res.data;
-        await setSession({ user, accessToken, refreshToken });
+        const res = await loginApi(normalizedEmail, password);
+        const { accessToken, refreshToken, user, errorMessage } =
+          normalizeAuthSessionResponse(res);
+
+        if (!accessToken || !user) {
+          throw new Error(
+            errorMessage || "Không nhận được dữ liệu phiên đăng nhập hợp lệ.",
+          );
+        }
+
+        await setSession({
+          user,
+          accessToken,
+          refreshToken: refreshToken || null,
+        });
         router.replace("/(tabs)/map");
+        return true;
       } catch (err) {
-        const msg =
-          err?.response?.data?.message ||
-          err?.message ||
-          "Đăng nhập thất bại. Vui lòng thử lại.";
-        setError(msg);
+        if (err?.code === "EMAIL_NOT_VERIFIED") {
+          setError(
+            "Email chưa xác thực. Vui lòng kiểm tra hộp thư và xác thực trước khi đăng nhập.",
+          );
+          return false;
+        }
+
+        setError(err?.message || "Đăng nhập thất bại. Vui lòng thử lại.");
+        return false;
       } finally {
         setIsLoading(false);
       }

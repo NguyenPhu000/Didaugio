@@ -232,17 +232,31 @@ export default function TagFormDialog({ open, onClose, tag }) {
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : tag ? "Update" : "Create"}
-            </Button>
+            {/** Keep submit label explicit to satisfy lint readability rules. */}
+            {(() => {
+              let submitLabel = "Create";
+              if (loading) {
+                submitLabel = "Saving...";
+              } else if (tag) {
+                submitLabel = "Update";
+              }
+
+              return (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onClose}
+                    disabled={loading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={loading}>
+                    {submitLabel}
+                  </Button>
+                </>
+              );
+            })()}
           </DialogFooter>
         </form>
       </DialogContent>

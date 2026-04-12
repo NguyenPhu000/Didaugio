@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import toast from "react-hot-toast";
 import Mail from "lucide-react/dist/esm/icons/mail";
 import Lock from "lucide-react/dist/esm/icons/lock";
@@ -19,17 +18,17 @@ import {
   CardDescription,
 } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
-import { ROLES } from "@/constants";
-import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { authService } from "@/apis/authService";
 import { loginSchema } from "@/schemas/auth";
 import GoogleLoginButton from "@/components/auth/GoogleLoginButton";
+import { resolvePostLoginRoute } from "@/utils/authRouting";
+import { AUTH_ROUTES } from "@/constants/routes";
 
 const HAS_GOOGLE_OAUTH = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
+  const { setAuth, logout } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
 
   const {
@@ -48,17 +47,20 @@ const LoginPage = () => {
         window.location.origin,
       );
       if (response.success) {
+        const dashboardUrl = resolvePostLoginRoute(response.data.user);
+        if (dashboardUrl === AUTH_ROUTES.LOGIN) {
+          logout();
+          toast.error("Tài khoản không có quyền truy cập khu vực quản trị");
+          return;
+        }
+
         setAuth(
           response.data.user,
           response.data.accessToken,
           response.data.refreshToken,
         );
         toast.success("Đăng nhập Google thành công!");
-        const dashboardUrl =
-          response.data.user?.roleId === ROLES.BUSINESS
-            ? BUSINESS_ROUTES.DASHBOARD
-            : ADMIN_ROUTES.DASHBOARD;
-        navigate(dashboardUrl);
+        navigate(dashboardUrl, { replace: true });
       }
     } catch (error) {
       toast.error(error.message || "Đăng nhập Google thất bại");
@@ -72,6 +74,13 @@ const LoginPage = () => {
     try {
       const response = await authService.login(data.email, data.password);
       if (response.success) {
+        const dashboardUrl = resolvePostLoginRoute(response.data.user);
+        if (dashboardUrl === AUTH_ROUTES.LOGIN) {
+          logout();
+          toast.error("Tài khoản không có quyền truy cập khu vực quản trị");
+          return;
+        }
+
         // Lưu user, accessToken và refreshToken
         setAuth(
           response.data.user,
@@ -79,11 +88,7 @@ const LoginPage = () => {
           response.data.refreshToken,
         );
         toast.success("Đăng nhập thành công!");
-        const dashboardUrl =
-          response.data.user?.roleId === ROLES.BUSINESS
-            ? BUSINESS_ROUTES.DASHBOARD
-            : ADMIN_ROUTES.DASHBOARD;
-        navigate(dashboardUrl);
+        navigate(dashboardUrl, { replace: true });
       }
     } catch (error) {
       if (error?.errorCode === "EMAIL_NOT_VERIFIED") {
@@ -320,7 +325,7 @@ const LoginPage = () => {
               </p>
               <Link
                 to="/auth/register"
-                className="inline-block w-full rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-12 px-6 uppercase font-black text-sm transition-all flex items-center justify-center"
+                className="w-full rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-12 px-6 uppercase font-black text-sm transition-all flex items-center justify-center"
               >
                 CREATE NEW ACCOUNT
               </Link>

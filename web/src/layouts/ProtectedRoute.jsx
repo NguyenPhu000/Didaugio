@@ -1,25 +1,8 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
-import { AUTH_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
+import { ADMIN_ROUTES, AUTH_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/constants";
-
-const NON_ADMIN_ROLES = [ROLES.USER, ROLES.GUEST];
-const ROLE_NAME_TO_ID = {
-  super_admin: ROLES.SUPER_ADMIN,
-  admin: ROLES.ADMIN,
-  business: ROLES.BUSINESS,
-  staff: ROLES.STAFF,
-  user: ROLES.USER,
-  guest: ROLES.GUEST,
-};
-
-const resolveRoleId = (user) => {
-  if (user?.roleId) return user.roleId;
-  const roleKey = String(
-    user?.roleName || user?.role?.name || user?.role || "",
-  ).toLowerCase();
-  return ROLE_NAME_TO_ID[roleKey] || null;
-};
+import { isNonAdminRole, resolveRoleId } from "@/utils/authRouting";
 
 const ProtectedRoute = ({ allowedRoles = [], roles = [], children }) => {
   const { isAuthenticated, user } = useAuthStore();
@@ -31,7 +14,7 @@ const ProtectedRoute = ({ allowedRoles = [], roles = [], children }) => {
     return <Navigate to={AUTH_ROUTES.LOGIN} replace />;
   }
 
-  if (NON_ADMIN_ROLES.includes(roleId)) {
+  if (isNonAdminRole(roleId)) {
     return (
       <Navigate
         to={AUTH_ROUTES.LOGIN}
@@ -45,8 +28,13 @@ const ProtectedRoute = ({ allowedRoles = [], roles = [], children }) => {
   }
 
   if (effectiveRoles.length > 0 && !effectiveRoles.includes(roleId)) {
-    const fallback =
-      roleId === ROLES.BUSINESS ? BUSINESS_ROUTES.DASHBOARD : AUTH_ROUTES.LOGIN;
+    let fallback = AUTH_ROUTES.LOGIN;
+    if (roleId === ROLES.BUSINESS) {
+      fallback = BUSINESS_ROUTES.DASHBOARD;
+    } else if ([ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF].includes(roleId)) {
+      fallback = ADMIN_ROUTES.DASHBOARD;
+    }
+
     return <Navigate to={fallback} replace />;
   }
 

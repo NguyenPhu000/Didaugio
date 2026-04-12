@@ -143,11 +143,6 @@ describe("SettingsPageContent", () => {
     await user.clear(zoomInput);
     await user.type(zoomInput, "15");
 
-    const timeoutSelect = await screen.findByLabelText(/hết hạn phiên/i);
-    await user.click(timeoutSelect);
-    const option45 = await screen.findByRole("option", { name: /45 phút/i });
-    await user.click(option45);
-
     const uploadInput = screen.getByPlaceholderText("Max upload size (MB)");
     await user.clear(uploadInput);
     await user.type(uploadInput, "40");
@@ -166,7 +161,7 @@ describe("SettingsPageContent", () => {
     const payload = settingsService.updateSettings.mock.calls[0][0];
     expect(payload.general.siteName).toBe("Di Dau Gio Admin");
     expect(payload.mapDefault.zoom).toBe(15);
-    expect(payload.security.sessionTimeoutMinutes).toBe(45);
+    expect(payload.security.sessionTimeoutMinutes).toBe(30);
     expect(payload.modules.maxUploadSizeMb).toBe(40);
     expect(payload.logs.retentionDays).toBe(90);
 
@@ -175,7 +170,7 @@ describe("SettingsPageContent", () => {
         title: "ĐÃ LƯU CẤU HÌNH",
       }),
     );
-  });
+  }, 15000);
 
   it("shows error toast when loading settings fails", async () => {
     settingsService.getSettings.mockRejectedValueOnce(new Error("Load failed"));

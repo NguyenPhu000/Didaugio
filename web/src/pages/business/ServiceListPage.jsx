@@ -26,9 +26,11 @@ import {
   StatCardSkeleton,
   SectionCardSkeleton,
   TableRowSkeleton,
-  formatVND,
-  DESIGN,
 } from "@/components/business/DashboardWidgets";
+import {
+  DESIGN,
+  formatVND,
+} from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +71,30 @@ const filesToDataUrls = async (files = []) => {
   return results.filter(Boolean);
 };
 
+const buildInitialServiceForm = (service, initialPlaceId = "") => ({
+  name: service?.name || "",
+  description: service?.description || "",
+  serviceType: service?.serviceType || "service",
+  price: service?.price || 0,
+  discountPrice: service?.discountPrice || "",
+  duration: service?.duration || "",
+  maxCapacity: service?.maxCapacity || "",
+  placeId: initialPlaceId,
+  isActive: service?.isActive ?? true,
+  requireDeposit: service?.requireDeposit ?? false,
+  depositType: service?.depositType || "PERCENT",
+  depositAmount:
+    service?.depositAmount !== null && service?.depositAmount !== undefined
+      ? String(service.depositAmount)
+      : "",
+  depositRefundable: service?.depositRefundable ?? true,
+  depositRefundPercent:
+    service?.depositRefundPercent !== null &&
+    service?.depositRefundPercent !== undefined
+      ? String(service.depositRefundPercent)
+      : "50",
+});
+
 // ─── Service Form Modal ─────────────────────────────────────────────────────
 
 const ServiceFormModal = ({
@@ -79,30 +105,45 @@ const ServiceFormModal = ({
   onSave,
   onClose,
 }) => {
-  const [form, setForm] = useState({
-    name: service?.name || "",
-    description: service?.description || "",
-    serviceType: service?.serviceType || "service",
-    price: service?.price || 0,
-    discountPrice: service?.discountPrice || "",
-    duration: service?.duration || "",
-    maxCapacity: service?.maxCapacity || "",
-    placeId: service?.place?.id
-      ? String(service.place.id)
-      : initialPlaceId
-        ? String(initialPlaceId)
-        : "",
-    isActive: service?.isActive ?? true,
-  });
+  let initialFormPlaceId = "";
+  if (service?.place?.id) {
+    initialFormPlaceId = String(service.place.id);
+  } else if (initialPlaceId) {
+    initialFormPlaceId = String(initialPlaceId);
+  }
+
+  const [form, setForm] = useState(() =>
+    buildInitialServiceForm(service, initialFormPlaceId),
+  );
   const [saving, setSaving] = useState(false);
   const [thumbnailFiles, setThumbnailFiles] = useState([]);
   const [galleryFiles, setGalleryFiles] = useState([]);
 
   useEffect(() => {
     if (!open) return;
+    setForm(buildInitialServiceForm(service, initialFormPlaceId));
     setThumbnailFiles([]);
     setGalleryFiles([]);
-  }, [open, service?.id]);
+  }, [open, service, initialFormPlaceId]);
+
+  const effectivePrice = Number(form.discountPrice || form.price || 0);
+  const depositPreview = useMemo(() => {
+    if (!form.requireDeposit) return null;
+
+    const amount = Number(form.depositAmount);
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+
+    if (form.depositType === "PERCENT") {
+      return Math.round((effectivePrice * amount) / 100);
+    }
+
+    return Math.round(amount);
+  }, [
+    form.requireDeposit,
+    form.depositAmount,
+    form.depositType,
+    effectivePrice,
+  ]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -115,6 +156,19 @@ const ServiceFormModal = ({
         duration: form.duration ? Number(form.duration) : null,
         maxCapacity: form.maxCapacity ? Number(form.maxCapacity) : null,
         placeId: form.placeId ? Number(form.placeId) : undefined,
+        requireDeposit: !!form.requireDeposit,
+        depositType: form.requireDeposit ? form.depositType : null,
+        depositAmount:
+          form.requireDeposit && form.depositAmount !== ""
+            ? Number(form.depositAmount)
+            : null,
+        depositRefundable: form.requireDeposit
+          ? !!form.depositRefundable
+          : true,
+        depositRefundPercent:
+          form.requireDeposit && form.depositRefundable
+            ? Number(form.depositRefundPercent || 50)
+            : null,
       };
 
       if (thumbnailFiles.length > 0) {
@@ -282,6 +336,116 @@ const ServiceFormModal = ({
             </div>
           </div>
 
+          <div className="rounded-lg border border-border/60 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label htmlFor="svc-require-deposit" className="font-medium">
+                  Yêu cầu đặt cọc
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Bật để yêu cầu khách thanh toán cọc trước khi giữ chỗ.
+                </p>
+              </div>
+              <Checkbox
+                id="svc-require-deposit"
+                checked={form.requireDeposit}
+                onCheckedChange={(checked) =>
+                  setForm({ ...form, requireDeposit: !!checked })
+                }
+              />
+            </div>
+
+            {form.requireDeposit ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Loại cọc</Label>
+                  <Select
+                    value={form.depositType}
+                    onValueChange={(v) => setForm({ ...form, depositType: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PERCENT">
+                        Theo phần trăm (%)
+                      </SelectItem>
+                      <SelectItem value="FIXED">
+                        Số tiền cố định (VND)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="svc-deposit-amount">
+                    {form.depositType === "PERCENT"
+                      ? "Mức cọc (%)"
+                      : "Số tiền cọc (VND)"}
+                  </Label>
+                  <Input
+                    id="svc-deposit-amount"
+                    type="number"
+                    min="0"
+                    max={form.depositType === "PERCENT" ? "100" : undefined}
+                    value={form.depositAmount}
+                    onChange={(e) =>
+                      setForm({ ...form, depositAmount: e.target.value })
+                    }
+                    placeholder={
+                      form.depositType === "PERCENT"
+                        ? "Ví dụ: 30"
+                        : "Ví dụ: 200000"
+                    }
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="svc-refundable">Cho phép hoàn cọc</Label>
+                  <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2">
+                    <Checkbox
+                      id="svc-refundable"
+                      checked={form.depositRefundable}
+                      onCheckedChange={(checked) =>
+                        setForm({ ...form, depositRefundable: !!checked })
+                      }
+                    />
+                    <Label htmlFor="svc-refundable" className="cursor-pointer">
+                      Hoàn cọc khi hủy booking theo chính sách
+                    </Label>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="svc-refund-percent">Tỉ lệ hoàn cọc (%)</Label>
+                  <Input
+                    id="svc-refund-percent"
+                    type="number"
+                    min="0"
+                    max="100"
+                    disabled={!form.depositRefundable}
+                    value={form.depositRefundPercent}
+                    onChange={(e) =>
+                      setForm({ ...form, depositRefundPercent: e.target.value })
+                    }
+                    placeholder="Mặc định 50"
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {form.requireDeposit && depositPreview != null ? (
+              <div className="text-xs rounded-md bg-primary/10 border border-primary/20 px-3 py-2">
+                <span className="text-muted-foreground">
+                  Khach se thay tien coc:{" "}
+                </span>
+                <span className="font-semibold text-foreground">
+                  {formatVND(depositPreview)}
+                </span>
+              </div>
+            ) : null}
+          </div>
+
           <div className="space-y-3">
             <FileUploader
               label="Ảnh đại diện dịch vụ"
@@ -427,6 +591,11 @@ const ServiceItem = ({ svc, onEdit, onDelete }) => (
               Tạm dừng
             </Badge>
           )}
+          {svc.requireDeposit && (
+            <Badge variant="secondary" className="text-[10px]">
+              Có cọc
+            </Badge>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
@@ -471,6 +640,7 @@ const ServiceItem = ({ svc, onEdit, onDelete }) => (
         variant="ghost"
         size="sm"
         className="h-8 w-8 p-0"
+        aria-label={`Chỉnh sửa dịch vụ ${svc.name}`}
         onClick={() => onEdit(svc)}
       >
         <Pencil className="h-3.5 w-3.5" />
@@ -479,6 +649,7 @@ const ServiceItem = ({ svc, onEdit, onDelete }) => (
         variant="ghost"
         size="sm"
         className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+        aria-label={`Xóa dịch vụ ${svc.name}`}
         onClick={() => onDelete(svc)}
       >
         <Trash2 className="h-3.5 w-3.5" />
@@ -709,13 +880,12 @@ const ServiceListPage = () => {
                 item={item}
                 isSelected={selectedPlaceId === String(item.placeKey)}
                 onClick={() =>
-                  setSelectedPlaceId((prev) =>
-                    prev === String(item.placeKey)
-                      ? "all"
-                      : item.placeKey === "none"
-                        ? "all"
-                        : String(item.placeKey),
-                  )
+                  setSelectedPlaceId((prev) => {
+                    const nextPlaceKey = String(item.placeKey);
+                    if (prev === nextPlaceKey) return "all";
+                    if (item.placeKey === "none") return "all";
+                    return nextPlaceKey;
+                  })
                 }
               />
             ))}
@@ -754,89 +924,99 @@ const ServiceListPage = () => {
           </div>
         }
       >
-        {loading ? (
-          <div className="space-y-0">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-4 py-4 border-b border-border/50 last:border-0"
-              >
-                <div className="flex-1 space-y-1.5">
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="h-3 w-32" />
-                </div>
-                <Skeleton className="h-8 w-16 rounded-md" />
-              </div>
-            ))}
-          </div>
-        ) : services.length === 0 ? (
-          <EmptyState
-            icon={Ticket}
-            message="Chưa có dịch vụ nào. Nhấn 'Tạo dịch vụ mới' để bắt đầu."
-            action={
-              <Button
-                size="sm"
-                onClick={() => openCreate("")}
-                className="gap-1.5"
-              >
-                <Plus className="h-3.5 w-3.5" /> Tạo dịch vụ
-              </Button>
-            }
-          />
-        ) : (
-          <div className="space-y-0">
-            {Object.entries(groupedServices).map(([placeKey, group]) => (
-              <div key={placeKey}>
-                {/* Place Group Header */}
-                <div
-                  className="flex items-center justify-between py-2 mb-1 cursor-pointer"
-                  onClick={() =>
-                    setExpandedPlaces((prev) => ({
-                      ...prev,
-                      [placeKey]: !(prev[placeKey] ?? true),
-                    }))
-                  }
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      {group.label}
-                    </span>
-                    <span className="text-[10px] bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-medium">
-                      {group.items.length} dịch vụ
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs gap-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openCreate(placeKey);
-                    }}
+        {(() => {
+          if (loading) {
+            return (
+              <div className="space-y-0">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 py-4 border-b border-border/50 last:border-0"
                   >
-                    <Plus className="h-3 w-3" />
-                    Thêm vào đây
-                  </Button>
-                </div>
-
-                {(expandedPlaces[placeKey] ?? true) && (
-                  <div className="pl-2 border-l-2 border-border/60 ml-1 mb-4">
-                    {group.items.map((svc) => (
-                      <ServiceItem
-                        key={svc.id}
-                        svc={svc}
-                        onEdit={openEdit}
-                        onDelete={(s) =>
-                          setConfirmDelete({ id: s.id, name: s.name })
-                        }
-                      />
-                    ))}
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                    <Skeleton className="h-8 w-16 rounded-md" />
                   </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            );
+          }
+
+          if (services.length === 0) {
+            return (
+              <EmptyState
+                icon={Ticket}
+                message="Chưa có dịch vụ nào. Nhấn 'Tạo dịch vụ mới' để bắt đầu."
+                action={
+                  <Button
+                    size="sm"
+                    onClick={() => openCreate("")}
+                    className="gap-1.5"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Tạo dịch vụ
+                  </Button>
+                }
+              />
+            );
+          }
+
+          return (
+            <div className="space-y-0">
+              {Object.entries(groupedServices).map(([placeKey, group]) => (
+                <div key={placeKey}>
+                  {/* Place Group Header */}
+                  <div
+                    className="flex items-center justify-between py-2 mb-1 cursor-pointer"
+                    onClick={() =>
+                      setExpandedPlaces((prev) => ({
+                        ...prev,
+                        [placeKey]: !(prev[placeKey] ?? true),
+                      }))
+                    }
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        {group.label}
+                      </span>
+                      <span className="text-[10px] bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-medium">
+                        {group.items.length} dịch vụ
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openCreate(placeKey);
+                      }}
+                    >
+                      <Plus className="h-3 w-3" />
+                      Thêm vào đây
+                    </Button>
+                  </div>
+
+                  {(expandedPlaces[placeKey] ?? true) && (
+                    <div className="pl-2 border-l-2 border-border/60 ml-1 mb-4">
+                      {group.items.map((svc) => (
+                        <ServiceItem
+                          key={svc.id}
+                          svc={svc}
+                          onEdit={openEdit}
+                          onDelete={(s) =>
+                            setConfirmDelete({ id: s.id, name: s.name })
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {!loading && totalPages > 1 && (
           <>

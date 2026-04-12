@@ -1,46 +1,44 @@
 import { memo, useMemo } from "react";
 import { Geojson } from "react-native-maps";
-import { COLORS } from "../../../constants/colors";
-
-const DISTRICT_COLORS = [
-  "#2B7CB8", "#1E8A5E", "#C47F17", "#B83040", "#6840A8",
-  "#1A8A7F", "#B85520", "#3450A0", "#3A7830",
-];
+import { MAP_THEME } from "../config/mapConfig";
 
 const DISTRICT_STYLE = {
-  fillColor: "rgba(186,215,233,0.25)",
-  strokeColor: COLORS.primary,
-  strokeWidth: 2,
+  fillColor: "transparent",
+  strokeColor: MAP_THEME.DISTRICT.STROKE_COLOR,
+  strokeWidth: MAP_THEME.DISTRICT.STROKE_WIDTH,
 };
 
 const WARD_STYLE = {
   fillColor: "transparent",
-  strokeColor: "rgba(148,163,184,0.45)",
-  strokeWidth: 0.8,
+  strokeColor: MAP_THEME.WARD.LINE_COLOR,
+  strokeWidth: MAP_THEME.WARD.LINE_WIDTH,
 };
 
 const DistrictLayer = memo(({ geojson }) => {
-  const features = useMemo(() => {
-    if (!geojson?.features?.length) return [];
-    return geojson.features
-      .filter((f) => f.geometry?.type === "Polygon" || f.geometry?.type === "MultiPolygon")
-      .map((feature, idx) => ({
-        ...feature,
-        _strokeColor: DISTRICT_COLORS[idx % DISTRICT_COLORS.length],
-      }));
+  const districtGeojson = useMemo(() => {
+    if (!geojson?.features?.length) return null;
+
+    const features = geojson.features.filter(
+      (feature) =>
+        feature.geometry?.type === "Polygon" ||
+        feature.geometry?.type === "MultiPolygon",
+    );
+
+    if (features.length === 0) return null;
+
+    return { type: "FeatureCollection", features };
   }, [geojson]);
 
-  if (features.length === 0) return null;
+  if (!districtGeojson) return null;
 
-  return features.map((feature, idx) => (
+  return (
     <Geojson
-      key={`district-${feature.properties?.id || idx}`}
-      geojson={{ type: "FeatureCollection", features: [feature] }}
+      geojson={districtGeojson}
       fillColor={DISTRICT_STYLE.fillColor}
-      strokeColor={feature._strokeColor}
+      strokeColor={DISTRICT_STYLE.strokeColor}
       strokeWidth={DISTRICT_STYLE.strokeWidth}
     />
-  ));
+  );
 });
 
 const WardLayer = memo(({ geojson }) => {

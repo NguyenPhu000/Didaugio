@@ -135,15 +135,6 @@ export const loginGoogleSchema = z.object({
     .min(1, "idToken khong duoc de trong"),
 });
 
-export const exchangeGoogleCodeSchema = z.object({
-  code: z
-    .string({ required_error: "code khong duoc de trong" })
-    .min(1, "code khong duoc de trong"),
-  redirectUri: z
-    .string({ required_error: "redirectUri khong duoc de trong" })
-    .url("redirectUri khong hop le"),
-});
-
 export const logoutSchema = z.object({
   refreshToken: z
     .string({ required_error: "Refresh token khong duoc de trong" })
@@ -176,7 +167,6 @@ export default {
   verifyEmailSchema,
   resendVerificationPublicSchema,
   loginGoogleSchema,
-  exchangeGoogleCodeSchema,
   logoutSchema,
   revokeSessionParamSchema,
   updateProfileSchema,

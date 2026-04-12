@@ -1,58 +1,224 @@
-import { Tabs } from "expo-router";
+import { useMemo } from "react";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { Tabs, usePathname, useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { COLORS } from "../../src/constants/colors";
+import { BlurView } from "expo-blur";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const TAB_BAR_HEIGHT = 60;
-const TAB_BAR_PADDING_BOTTOM = 6;
+/** Nang thanh tab cao hon so voi mep day (cong them vao safe area). */
+const EXTRA_FLOAT_LIFT = 26;
 
-const TabIcon = ({ name, color, size }) => (
-  <MaterialIcons name={name} size={size ?? 24} color={color} />
-);
+/**
+ * Khoang day bottom sheet / noi dung map (thanh noi + lift + dem).
+ */
+/** Du cho thanh noi (safe + lift + pill) - chinh neu sheet/map van chong tab */
+export const FLOATING_TAB_CLEARANCE = 118;
 
-const TAB_SCREENS = [
-  { name: "map", title: "Bản đồ", icon: "map" },
-  { name: "explore", title: "Khám phá", icon: "explore" },
-  { name: "ai-planner", title: "AI", icon: "auto-awesome" },
-  { name: "saved", title: "Đã lưu", icon: "bookmark" },
-  { name: "profile", title: "Cá nhân", icon: "person" },
+/** Padding day ScrollView (explore, ...) */
+export const TAB_BAR_HEIGHT = FLOATING_TAB_CLEARANCE + 8;
+
+/** Mau tab theo phong cach Stitch: neo dam + surface sang. */
+const TAB_ACTIVE_BLUE = "#101E2C";
+const TAB_ACTIVE_SECONDARY = "#101E2C";
+const TAB_IDLE_ICON = "#54647A";
+
+const TABS = [
+  {
+    key: "map",
+    label: "Ban do",
+    icon: "location-on",
+    route: "/(tabs)/map",
+    color: TAB_ACTIVE_BLUE,
+  },
+  {
+    key: "explore",
+    label: "Kham pha",
+    icon: "explore",
+    route: "/(tabs)/explore",
+    color: TAB_ACTIVE_BLUE,
+  },
+  {
+    key: "saved",
+    label: "Da luu",
+    icon: "bookmark",
+    route: "/(tabs)/saved",
+    color: TAB_ACTIVE_SECONDARY,
+  },
+  {
+    key: "trips",
+    label: "Chuyen di",
+    icon: "luggage",
+    route: "/(tabs)/trips",
+    color: TAB_ACTIVE_SECONDARY,
+  },
 ];
+
+function resolveTabKey(pathname) {
+  if (!pathname) return "explore";
+  const p = pathname.toLowerCase();
+  if (p.includes("/map")) return "map";
+  if (p.includes("/ai")) return "ai";
+  if (p.includes("/trips")) return "trips";
+  if (p.includes("/saved")) return "saved";
+  if (p.includes("/profile")) return "profile";
+  if (p.includes("/explore")) return "explore";
+  return "explore";
+}
+
+function FloatingBottomTabBar() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const currentKey = useMemo(() => resolveTabKey(pathname), [pathname]);
+
+  const bottom = Math.max(insets.bottom, 8) + EXTRA_FLOAT_LIFT;
+
+  return (
+    <View pointerEvents="box-none" style={styles.wrap}>
+      <View style={[styles.floatingOuter, { marginBottom: bottom }]}>
+        <BlurView
+          intensity={Platform.OS === "ios" ? 100 : 85}
+          tint="light"
+          style={styles.blurFill}
+        >
+          <View style={styles.glassTint} />
+          <View style={styles.barRow}>
+            {TABS.map((tab) => {
+              const active = tab.key === currentKey;
+              const onNavigate = () => {
+                if (active) return;
+                router.push(tab.route);
+              };
+
+              return (
+                <Pressable
+                  key={tab.key}
+                  onPress={onNavigate}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={tab.label}
+                  style={({ pressed }) => [
+                    styles.tabPress,
+                    pressed && { opacity: 0.88 },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.iconCircle,
+                      !active && styles.iconCircleIdle,
+                      active && [
+                        styles.iconCircleActive,
+                        { backgroundColor: tab.color },
+                      ],
+                    ]}
+                  >
+                    <MaterialIcons
+                      name={tab.icon}
+                      size={22}
+                      color={active ? "#FFFFFF" : TAB_IDLE_ICON}
+                    />
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </BlurView>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  floatingOuter: {
+    alignSelf: "center",
+    marginHorizontal: 16,
+    borderRadius: 999,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#191c1e",
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.1,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
+  },
+  blurFill: {
+    borderRadius: 999,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(116,119,124,0.2)",
+  },
+  glassTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.72)",
+  },
+  barRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    minHeight: 50,
+  },
+  tabPress: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconCircleIdle: {
+    backgroundColor: "rgba(255,255,255,0.82)",
+    borderWidth: 1,
+    borderColor: "rgba(196,198,204,0.66)",
+  },
+  iconCircleActive: {
+    backgroundColor: TAB_ACTIVE_BLUE,
+    borderWidth: 0,
+    shadowColor: TAB_ACTIVE_BLUE,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+});
 
 export default function TabsLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textMuted,
-        tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopWidth: 0,
-          elevation: 12,
-          shadowColor: COLORS.text,
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 8,
-          height: TAB_BAR_HEIGHT,
-          paddingBottom: TAB_BAR_PADDING_BOTTOM,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-        },
-      }}
-    >
-      {TAB_SCREENS.map((screen) => (
-        <Tabs.Screen
-          key={screen.name}
-          name={screen.name}
-          options={{
-            title: screen.title,
-            tabBarIcon: ({ color, size }) => (
-              <TabIcon name={screen.icon} color={color} size={size} />
-            ),
-          }}
-        />
-      ))}
-    </Tabs>
+    <View style={{ flex: 1 }}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: { display: "none" },
+        }}
+      >
+        <Tabs.Screen name="explore" />
+        <Tabs.Screen name="map" />
+        <Tabs.Screen name="ai" />
+        <Tabs.Screen name="trips" />
+        <Tabs.Screen name="saved" />
+        <Tabs.Screen name="profile" />
+      </Tabs>
+      <FloatingBottomTabBar />
+    </View>
   );
 }

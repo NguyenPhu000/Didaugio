@@ -3,12 +3,12 @@ import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import Archive from "lucide-react/dist/esm/icons/archive";
 import Layers from "lucide-react/dist/esm/icons/layers";
 
-const StatusRow = ({ icon: Icon, value, label, pct, barColor, iconClass }) => (
+const StatusRow = ({ icon: _Icon, value, label, pct, barColor, iconClass }) => (
   <div className="group flex items-center gap-4 p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors cursor-default">
     <div
       className={`w-10 h-10 flex items-center justify-center rounded-none border transition-colors ${iconClass}`}
     >
-      <Icon className="h-5 w-5" />
+      <_Icon className="h-5 w-5" />
     </div>
     <div className="flex-1 min-w-0">
       <div className="flex items-center justify-between mb-1.5">

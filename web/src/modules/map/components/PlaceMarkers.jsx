@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Source, Layer, Marker, Popup } from "../adapters";
-import { useMapContext } from "../context/MapProvider";
+import { useMapContext } from "../hooks/useMapContext";
 import {
   getCategoryConfig,
   CATEGORY_CONFIG,
@@ -127,19 +127,17 @@ const CARD_ZOOM = 14;
 const Stars = ({ value = 0 }) => {
   const full = Math.floor(value);
   const half = value - full >= 0.5;
+
+  const getStarClass = (index) => {
+    if (index <= full) return "fill-amber-400 text-amber-400";
+    if (index === full + 1 && half) return "fill-amber-200 text-amber-400";
+    return "text-gray-200 fill-gray-200";
+  };
+
   return (
     <span className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={`h-3.5 w-3.5 ${
-            i <= full
-              ? "fill-amber-400 text-amber-400"
-              : i === full + 1 && half
-                ? "fill-amber-200 text-amber-400"
-                : "text-gray-200 fill-gray-200"
-          }`}
-        />
+        <Star key={i} className={`h-3.5 w-3.5 ${getStarClass(i)}`} />
       ))}
       {value > 0 && (
         <span className="ml-1 text-[11px] font-bold text-amber-600">
@@ -225,8 +223,8 @@ const PlacePopup = ({ place, onClose }) => {
               className="px-2 py-0.5 rounded-full text-[10px] font-bold border"
               style={{
                 color: price.color,
-                borderColor: price.color + "44",
-                backgroundColor: price.color + "11",
+                borderColor: `${price.color}44`,
+                backgroundColor: `${price.color}11`,
               }}
             >
               {price.label}
@@ -393,6 +391,19 @@ const RoutingPicker = ({
 const PlacePin = ({ place, isActive, onClick }) => {
   const { color } = getCategoryConfig(place.categoryId);
   const imgSrc = place.thumbnail || place.images?.[0]?.url;
+  let pinStateClass = "border-2 border-white group-hover:border-blue-400";
+  if (isActive) {
+    pinStateClass = "border-[3px] border-blue-500 ring-2 ring-blue-300";
+  } else if (place.isFeatured) {
+    pinStateClass = "border-[3px] border-amber-400";
+  }
+
+  let stemColor = "#ffffff";
+  if (isActive) {
+    stemColor = "#3b82f6";
+  } else if (place.isFeatured) {
+    stemColor = "#f59e0b";
+  }
 
   return (
     <div
@@ -403,13 +414,7 @@ const PlacePin = ({ place, isActive, onClick }) => {
       {/* Circular thumbnail */}
       <div
         className={`w-10 h-10 rounded-full overflow-hidden shadow-lg transition-all duration-200
-          ${
-            isActive
-              ? "border-[3px] border-blue-500 ring-2 ring-blue-300"
-              : place.isFeatured
-                ? "border-[3px] border-amber-400"
-                : "border-2 border-white group-hover:border-blue-400"
-          }`}
+          ${pinStateClass}`}
       >
         {imgSrc ? (
           <img
@@ -422,7 +427,7 @@ const PlacePin = ({ place, isActive, onClick }) => {
         ) : (
           <div
             className="w-full h-full flex items-center justify-center"
-            style={{ backgroundColor: color + "22" }}
+            style={{ backgroundColor: `${color}22` }}
           >
             <MapPin className="w-4 h-4" style={{ color }} />
           </div>
@@ -435,7 +440,7 @@ const PlacePin = ({ place, isActive, onClick }) => {
         style={{
           borderLeft: "6px solid transparent",
           borderRight: "6px solid transparent",
-          borderTop: `8px solid ${isActive ? "#3b82f6" : place.isFeatured ? "#f59e0b" : "#ffffff"}`,
+          borderTop: `8px solid ${stemColor}`,
           filter: "drop-shadow(0 1px 1px rgba(0,0,0,.15))",
         }}
       />
@@ -483,11 +488,23 @@ const PlaceMarkers = () => {
   useEffect(() => {
     const map = mapRef.current?.getMap?.();
     if (!map) return;
+
+    let frameId = null;
+    const setZoomDeferred = (value) => {
+      frameId = requestAnimationFrame(() => {
+        setZoom(value);
+      });
+    };
+
     const onZoom = () => setZoom(map.getZoom());
-    if (map.loaded()) setZoom(map.getZoom());
-    else map.once("load", () => setZoom(map.getZoom()));
+    if (map.loaded()) setZoomDeferred(map.getZoom());
+    else map.once("load", () => setZoomDeferred(map.getZoom()));
     map.on("zoom", onZoom);
-    return () => map.off("zoom", onZoom);
+
+    return () => {
+      if (frameId != null) cancelAnimationFrame(frameId);
+      map.off("zoom", onZoom);
+    };
   }, [mapRef]);
 
   const isCardMode = zoom != null && zoom >= CARD_ZOOM;
@@ -544,17 +561,30 @@ const PlaceMarkers = () => {
   // ── Visible bounds tracking (DOM markers only rendered in viewport) ────────
   const [visibleBounds, setVisibleBounds] = useState(null);
   useEffect(() => {
+    let frameId = null;
+
     if (!isCardMode) {
-      setVisibleBounds(null);
+      frameId = requestAnimationFrame(() => {
+        setVisibleBounds(null);
+      });
       return;
     }
+
     const map = mapRef.current?.getMap?.();
     if (!map) return;
-    const update = () => setVisibleBounds(map.getBounds());
+
+    const update = () => {
+      frameId = requestAnimationFrame(() => {
+        setVisibleBounds(map.getBounds());
+      });
+    };
+
     update();
     map.on("moveend", update);
     map.on("zoomend", update);
+
     return () => {
+      if (frameId != null) cancelAnimationFrame(frameId);
       map.off("moveend", update);
       map.off("zoomend", update);
     };
@@ -608,7 +638,9 @@ const PlaceMarkers = () => {
     if (id == null || !map) return;
     try {
       map.setFeatureState({ source: "places-source", id }, { active: false });
-    } catch {}
+    } catch {
+      // Ignore when source/state is unavailable during transient map updates.
+    }
   }, []);
 
   /**
@@ -664,7 +696,9 @@ const PlaceMarkers = () => {
           { source: "places-source", id: placeId },
           { active: true },
         );
-      } catch {}
+      } catch {
+        // Ignore when source/state is unavailable during transient map updates.
+      }
       activeFeatIdRef.current = placeId;
 
       // Routing mode → show compact picker; normal mode → full popup
@@ -746,7 +780,9 @@ const PlaceMarkers = () => {
           { source: "places-source", id: place.id },
           { active: true },
         );
-      } catch {}
+      } catch {
+        // Ignore when source/state is unavailable during transient map updates.
+      }
 
       if (routingModeRef.current) {
         setActivePlace(null);
@@ -777,7 +813,11 @@ const PlaceMarkers = () => {
 
   // Also dismiss routing picker when routing mode turns off
   useEffect(() => {
-    if (!routingMode) setRoutingPickerState(null);
+    if (routingMode) return;
+    const timerId = setTimeout(() => {
+      setRoutingPickerState(null);
+    }, 0);
+    return () => clearTimeout(timerId);
   }, [routingMode]);
 
   return (

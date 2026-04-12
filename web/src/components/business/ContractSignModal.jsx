@@ -38,8 +38,11 @@ const ContractSignModal = ({
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    setHasStroke(false);
-    setAcceptedTerms(false);
+    const id = requestAnimationFrame(() => {
+      setHasStroke(false);
+      setAcceptedTerms(false);
+    });
+    return () => cancelAnimationFrame(id);
   }, [open]);
 
   const pointFromEvent = (event) => {

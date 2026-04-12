@@ -26,7 +26,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/animate-ui/components/radix/dropdown-menu";
 import { useNavigate, useLocation } from "react-router-dom";
-import { AUTH_ROUTES, ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
+import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
+import { useLogout } from "@/hooks/useLogout";
 
 const ROUTE_LABELS = {
   [ADMIN_ROUTES.DASHBOARD]: "Tổng quan",
@@ -52,16 +53,12 @@ const ROUTE_LABELS = {
 };
 
 function AdminHeader() {
-  const { user, logout } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const navigate = useNavigate();
   const location = useLocation();
+  const { handleLogout, isLoggingOut } = useLogout();
 
   const getInitials = (name) => (name ? name.charAt(0).toUpperCase() : "U");
-
-  const handleLogout = () => {
-    logout();
-    navigate(AUTH_ROUTES.LOGIN);
-  };
 
   const today = new Date().toLocaleDateString("vi-VN", {
     weekday: "long",
@@ -104,6 +101,7 @@ function AdminHeader() {
           <Input
             type="text"
             placeholder="Tìm kiếm..."
+            aria-label="Tim kiem"
             className="h-9 w-full rounded-full border-0 bg-sidebar-accent/50 pl-5 pr-10 text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus-visible:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-sidebar-ring"
           />
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-sidebar-foreground/40" />
@@ -122,6 +120,7 @@ function AdminHeader() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Thong bao"
           className="relative h-9 w-9 rounded-full hover:bg-sidebar-accent text-sidebar-foreground"
         >
           <Bell className="h-4 w-4" />
@@ -174,6 +173,7 @@ function AdminHeader() {
             <DropdownMenuSeparator className="bg-sidebar-border" />
             <DropdownMenuItem
               onClick={handleLogout}
+              disabled={isLoggingOut}
               className="text-destructive focus:text-destructive focus:bg-sidebar-accent gap-2"
             >
               <LogOut className="h-4 w-4" /> Đăng xuất

@@ -6,18 +6,17 @@ import * as bookingApi from "@/apis/bookingService";
 import * as ruleApi from "@/apis/bookingAutoRuleApi";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BOOKING_STATUS } from "@/constants/constants";
-import {
-  TIME_SLOT_KEYS,
-  TIME_SLOT_LABELS,
-} from "@/constants/bookingSchedule";
+import { TIME_SLOT_KEYS, TIME_SLOT_LABELS } from "@/constants/bookingSchedule";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
   PageHeader,
   SectionCard,
   EmptyState,
-  formatVND,
-  formatDate,
 } from "@/components/business/DashboardWidgets";
+import {
+  formatDate,
+  formatVND,
+} from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -167,8 +166,7 @@ const BookingQuickProcessPage = () => {
 
   const submitRule = async () => {
     const conditions = {};
-    if (ruleForm.timeSlots.length)
-      conditions.timeSlots = ruleForm.timeSlots;
+    if (ruleForm.timeSlots.length) conditions.timeSlots = ruleForm.timeSlots;
     if (ruleForm.minQuantity !== "")
       conditions.minQuantity = parseInt(ruleForm.minQuantity, 10);
     if (ruleForm.maxQuantity !== "")
@@ -271,72 +269,79 @@ const BookingQuickProcessPage = () => {
             </div>
           )}
 
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Đang tải…</p>
-          ) : pending.length === 0 ? (
-            <EmptyState message="Không có booking chờ xử lý" />
-          ) : (
-            <SectionCard>
-              <div className="mb-3 flex items-center gap-2">
-                <Checkbox
-                  checked={
-                    pending.length > 0 && selected.length === pending.length
-                  }
-                  onCheckedChange={selectAll}
-                />
-                <span className="text-xs text-muted-foreground">Chọn tất cả</span>
-              </div>
-              <div className="space-y-2">
-                {pending.map((b) => (
-                  <div
-                    key={b.id}
-                    className={cn(
-                      "flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3",
-                      selected.includes(b.id) && "ring-1 ring-primary/50",
-                    )}
-                  >
-                    <Checkbox
-                      checked={selected.includes(b.id)}
-                      onCheckedChange={() => toggleSelect(b.id)}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">{b.guestName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {b.bookingCode} · {b.guestPhone} ·{" "}
-                        {b.service?.name} · {formatDate(b.useDate)}{" "}
-                        {b.useTime}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatVND(b.finalPrice)}
-                      </p>
+          {(() => {
+            if (loading) {
+              return <p className="text-sm text-muted-foreground">Đang tải…</p>;
+            }
+
+            if (pending.length === 0) {
+              return <EmptyState message="Không có booking chờ xử lý" />;
+            }
+
+            return (
+              <SectionCard>
+                <div className="mb-3 flex items-center gap-2">
+                  <Checkbox
+                    checked={
+                      pending.length > 0 && selected.length === pending.length
+                    }
+                    onCheckedChange={selectAll}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Chọn tất cả
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {pending.map((b) => (
+                    <div
+                      key={b.id}
+                      className={cn(
+                        "flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3",
+                        selected.includes(b.id) && "ring-1 ring-primary/50",
+                      )}
+                    >
+                      <Checkbox
+                        checked={selected.includes(b.id)}
+                        onCheckedChange={() => toggleSelect(b.id)}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">{b.guestName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {b.bookingCode} · {b.guestPhone} · {b.service?.name} ·{" "}
+                          {formatDate(b.useDate)} {b.useTime}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatVND(b.finalPrice)}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          disabled={busyId === b.id}
+                          onClick={() => handleQuickApprove(b.id)}
+                        >
+                          Duyệt
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busyId === b.id}
+                          onClick={() => handleQuickReject(b.id)}
+                        >
+                          Từ chối
+                        </Button>
+                        <Button size="sm" variant="ghost" asChild>
+                          <Link to={BUSINESS_ROUTES.BOOKING_DETAIL(b.id)}>
+                            Chi tiết
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        disabled={busyId === b.id}
-                        onClick={() => handleQuickApprove(b.id)}
-                      >
-                        Duyệt
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busyId === b.id}
-                        onClick={() => handleQuickReject(b.id)}
-                      >
-                        Từ chối
-                      </Button>
-                      <Button size="sm" variant="ghost" asChild>
-                        <Link to={BUSINESS_ROUTES.BOOKING_DETAIL(b.id)}>
-                          Chi tiết
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-          )}
+                  ))}
+                </div>
+              </SectionCard>
+            );
+          })()}
         </TabsContent>
 
         <TabsContent value="rules" className="mt-4 space-y-4">
@@ -347,45 +352,53 @@ const BookingQuickProcessPage = () => {
             </Button>
           </div>
 
-          {rulesLoading ? (
-            <p className="text-sm text-muted-foreground">Đang tải rule…</p>
-          ) : rules.length === 0 ? (
-            <EmptyState message="Chưa có rule auto-duyệt" />
-          ) : (
-            <SectionCard>
-              <div className="space-y-3">
-                {rules.map((r) => (
-                  <div
-                    key={r.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
-                  >
-                    <div>
-                      <p className="font-medium">{`Rule #${r.id} · priority ${r.priority}`}</p>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {JSON.stringify(r.conditions)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs">Kích hoạt</span>
-                        <Switch
-                          checked={r.isActive}
-                          onCheckedChange={() => toggleRuleActive(r)}
-                        />
+          {(() => {
+            if (rulesLoading) {
+              return (
+                <p className="text-sm text-muted-foreground">Đang tải rule…</p>
+              );
+            }
+
+            if (rules.length === 0) {
+              return <EmptyState message="Chưa có rule auto-duyệt" />;
+            }
+
+            return (
+              <SectionCard>
+                <div className="space-y-3">
+                  {rules.map((r) => (
+                    <div
+                      key={r.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
+                    >
+                      <div>
+                        <p className="font-medium">{`Rule #${r.id} · priority ${r.priority}`}</p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {JSON.stringify(r.conditions)}
+                        </p>
                       </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => deleteRule(r)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs">Kích hoạt</span>
+                          <Switch
+                            checked={r.isActive}
+                            onCheckedChange={() => toggleRuleActive(r)}
+                          />
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => deleteRule(r)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-          )}
+                  ))}
+                </div>
+              </SectionCard>
+            );
+          })()}
         </TabsContent>
       </Tabs>
 
@@ -411,10 +424,7 @@ const BookingQuickProcessPage = () => {
             <div className="space-y-2">
               <Label>Khung giờ áp dụng</Label>
               {SLOT_OPTIONS.map((slot) => (
-                <label
-                  key={slot}
-                  className="flex items-center gap-2 text-sm"
-                >
+                <label key={slot} className="flex items-center gap-2 text-sm">
                   <Checkbox
                     checked={ruleForm.timeSlots.includes(slot)}
                     onCheckedChange={(ck) => {

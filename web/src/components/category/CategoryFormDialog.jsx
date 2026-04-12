@@ -146,18 +146,26 @@ export default function CategoryFormDialog({
     icon.toLowerCase().includes(iconSearch.toLowerCase()),
   );
 
+  let dialogTitle = "TẠO DANH MỤC GỐC";
+  if (category) {
+    dialogTitle = "CHỈNH SỬA DANH MỤC";
+  } else if (parentCategory) {
+    dialogTitle = "THÊM DANH MỤC CON";
+  }
+
+  let submitLabel = "TẠO DANH MỤC";
+  if (loading) {
+    submitLabel = "ĐANG XỬ LÝ...";
+  } else if (category) {
+    submitLabel = "LƯU THAY ĐỔI";
+  }
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-none border border-black p-0 shadow-hard">
         <DialogHeader className="bg-black text-white p-6 border-b border-white/20">
           <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center justify-between">
-            <span>
-              {category
-                ? "CHỈNH SỬA DANH MỤC"
-                : parentCategory
-                  ? "THÊM DANH MỤC CON"
-                  : "TẠO DANH MỤC GỐC"}
-            </span>
+            <span>{dialogTitle}</span>
             <span className="text-[10px] font-mono bg-white text-black px-2 py-0.5">
               {category ? category.id.substring(0, 8) : "NEW"}
             </span>
@@ -331,11 +339,7 @@ export default function CategoryFormDialog({
               disabled={loading}
               className="rounded-none bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard font-bold uppercase transition-all"
             >
-              {loading
-                ? "ĐANG XỬ LÝ..."
-                : category
-                  ? "LƯU THAY ĐỔI"
-                  : "TẠO DANH MỤC"}
+              {submitLabel}
             </Button>
           </DialogFooter>
         </form>

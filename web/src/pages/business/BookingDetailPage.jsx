@@ -35,10 +35,12 @@ import { BOOKING_STATUS } from "@/constants/constants";
 import {
   SectionCard,
   StatusBadge,
-  formatVND,
-  formatDateTime,
-  formatDate,
 } from "@/components/business/DashboardWidgets";
+import {
+  formatDate,
+  formatDateTime,
+  formatVND,
+} from "@/components/business/dashboardWidgetHelpers";
 
 // ─── Info Row ─────────────────────────────────────────────────────────────────
 
@@ -120,7 +122,10 @@ const MarkPaidDialog = ({ open, onClose, onConfirm, loading }) => {
   const [note, setNote] = useState("");
 
   useEffect(() => {
-    if (open) setNote("");
+    if (open) {
+      const id = requestAnimationFrame(() => setNote(""));
+      return () => cancelAnimationFrame(id);
+    }
   }, [open]);
 
   return (
@@ -160,8 +165,11 @@ const RefundDialog = ({ open, onClose, onConfirm, loading, maxAmount }) => {
 
   useEffect(() => {
     if (open) {
-      setReason("");
-      setAmount(maxAmount || 0);
+      const id = requestAnimationFrame(() => {
+        setReason("");
+        setAmount(maxAmount || 0);
+      });
+      return () => cancelAnimationFrame(id);
     }
   }, [open, maxAmount]);
 
@@ -326,7 +334,9 @@ const BookingDetailPage = () => {
     try {
       const response = await bookingApi.getQR(id);
       setQrCode(response.data?.qrCode);
-    } catch {}
+    } catch {
+      // QR may be unavailable for some booking states.
+    }
   }, [id]);
 
   useEffect(() => {
@@ -445,6 +455,12 @@ const BookingDetailPage = () => {
   const paymentStatus = String(
     booking?.paymentStatus || "unpaid",
   ).toLowerCase();
+  let paymentStatusLabel = "Chưa thanh toán";
+  if (paymentStatus === "paid") {
+    paymentStatusLabel = "Đã thanh toán";
+  } else if (paymentStatus.includes("refund")) {
+    paymentStatusLabel = "Đã hoàn tiền";
+  }
   const canMarkPaid =
     paymentStatus !== "paid" && !paymentStatus.includes("refund");
   const canRefund = paymentStatus === "paid";
@@ -592,11 +608,7 @@ const BookingDetailPage = () => {
                   Trạng thái thanh toán
                 </p>
                 <p className="mt-1 text-sm font-semibold text-foreground uppercase">
-                  {paymentStatus === "paid"
-                    ? "Đã thanh toán"
-                    : paymentStatus.includes("refund")
-                      ? "Đã hoàn tiền"
-                      : "Chưa thanh toán"}
+                  {paymentStatusLabel}
                 </p>
               </div>
 

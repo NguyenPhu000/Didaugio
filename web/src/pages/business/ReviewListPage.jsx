@@ -26,8 +26,8 @@ import {
   SectionCard,
   PageHeader,
   EmptyState,
-  DESIGN,
 } from "@/components/business/DashboardWidgets";
+import { DESIGN } from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/badge";
@@ -86,6 +86,16 @@ const ReviewCard = ({
     date ? new Date(date).toLocaleDateString("vi-VN") : "";
   const hasReplied = review.replies?.length > 0;
   const isReplying = replyingTo === review.id;
+
+  const getModerateReplyIcon = (reply) => {
+    if (actionLoadingByReply[reply.id]) {
+      return <Loader2 className="h-3.5 w-3.5 animate-spin" />;
+    }
+    if (reply.status === "hidden") {
+      return <Eye className="h-3.5 w-3.5" />;
+    }
+    return <EyeOff className="h-3.5 w-3.5" />;
+  };
 
   return (
     <div className={cn(DESIGN.card, "[content-visibility:auto] p-5 space-y-3")}>
@@ -172,13 +182,7 @@ const ReviewCard = ({
                     }
                     disabled={!!actionLoadingByReply[reply.id]}
                   >
-                    {actionLoadingByReply[reply.id] ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : reply.status === "hidden" ? (
-                      <Eye className="h-3.5 w-3.5" />
-                    ) : (
-                      <EyeOff className="h-3.5 w-3.5" />
-                    )}
+                    {getModerateReplyIcon(reply)}
                   </Button>
                   <Button
                     variant="ghost"
@@ -345,7 +349,9 @@ const ReviewListPage = () => {
     try {
       const response = await api.get(`${REVIEW_API}/stats`);
       setStats(response.data);
-    } catch {}
+    } catch {
+      // Keep list visible even if stats endpoint fails.
+    }
   }, []);
 
   useEffect(() => {
@@ -582,62 +588,75 @@ const ReviewListPage = () => {
           {["all", "unreplied", "replied"].map((tab) => (
             <TabsContent key={tab} value={tab} className="mt-0">
               <div className="p-5">
-                {loading ? (
-                  <div className="space-y-4">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="space-y-2 p-4 rounded-xl border border-border"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Skeleton className="h-9 w-9 rounded-full" />
-                          <div className="space-y-1.5">
-                            <Skeleton className="h-3.5 w-32" />
-                            <Skeleton className="h-3 w-24" />
+                {(() => {
+                  if (loading) {
+                    return (
+                      <div className="space-y-4">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="space-y-2 p-4 rounded-xl border border-border"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Skeleton className="h-9 w-9 rounded-full" />
+                              <div className="space-y-1.5">
+                                <Skeleton className="h-3.5 w-32" />
+                                <Skeleton className="h-3 w-24" />
+                              </div>
+                            </div>
+                            <Skeleton className="h-3.5 w-full" />
+                            <Skeleton className="h-3.5 w-3/4" />
                           </div>
-                        </div>
-                        <Skeleton className="h-3.5 w-full" />
-                        <Skeleton className="h-3.5 w-3/4" />
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : filteredReviews.length === 0 ? (
-                  <EmptyState icon={Star} message="Không có đánh giá nào." />
-                ) : (
-                  <div className="space-y-4">
-                    {filteredReviews.map((review) => (
-                      <ReviewCard
-                        key={review.id}
-                        review={review}
-                        replyingTo={replyingTo}
-                        replyContent={replyContent}
-                        editingReplyId={editingReplyId}
-                        editContent={editContent}
-                        sending={sending}
-                        actionLoadingByReply={actionLoadingByReply}
-                        onStartReply={setReplyingTo}
-                        onCancelReply={() => {
-                          setReplyingTo(null);
-                          setReplyContent("");
-                        }}
-                        onContentChange={setReplyContent}
-                        onSendReply={handleReply}
-                        onStartEditReply={handleStartEditReply}
-                        onCancelEditReply={handleCancelEditReply}
-                        onEditContentChange={setEditContent}
-                        onSaveEditReply={(replyId) =>
-                          handleSaveEditReply(review.id, replyId)
-                        }
-                        onDeleteReply={(replyId) =>
-                          handleDeleteReply(review.id, replyId)
-                        }
-                        onModerateReply={(replyId, status) =>
-                          handleModerateReply(review.id, replyId, status)
-                        }
+                    );
+                  }
+
+                  if (filteredReviews.length === 0) {
+                    return (
+                      <EmptyState
+                        icon={Star}
+                        message="Không có đánh giá nào."
                       />
-                    ))}
-                  </div>
-                )}
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {filteredReviews.map((review) => (
+                        <ReviewCard
+                          key={review.id}
+                          review={review}
+                          replyingTo={replyingTo}
+                          replyContent={replyContent}
+                          editingReplyId={editingReplyId}
+                          editContent={editContent}
+                          sending={sending}
+                          actionLoadingByReply={actionLoadingByReply}
+                          onStartReply={setReplyingTo}
+                          onCancelReply={() => {
+                            setReplyingTo(null);
+                            setReplyContent("");
+                          }}
+                          onContentChange={setReplyContent}
+                          onSendReply={handleReply}
+                          onStartEditReply={handleStartEditReply}
+                          onCancelEditReply={handleCancelEditReply}
+                          onEditContentChange={setEditContent}
+                          onSaveEditReply={(replyId) =>
+                            handleSaveEditReply(review.id, replyId)
+                          }
+                          onDeleteReply={(replyId) =>
+                            handleDeleteReply(review.id, replyId)
+                          }
+                          onModerateReply={(replyId, status) =>
+                            handleModerateReply(review.id, replyId, status)
+                          }
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </TabsContent>
           ))}

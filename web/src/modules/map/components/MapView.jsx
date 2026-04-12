@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
-import { MapProvider, useMapContext } from "../context/MapProvider";
+import { MapProvider } from "../context/MapProvider";
+import { useMapContext } from "../hooks/useMapContext";
 import { useMapData } from "../hooks/useMapData";
 import MapBase from "./MapBase";
 import BoundaryLayer from "./BoundaryLayer";

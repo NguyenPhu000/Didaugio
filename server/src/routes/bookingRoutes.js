@@ -7,6 +7,7 @@ import { hasPermission } from "../middlewares/permissionMiddleware.js";
 import { validateBody } from "../middlewares/validateSchema.js";
 import { auditLog } from "../middlewares/auditLogMiddleware.js";
 import {
+  createBookingSchema,
   confirmBookingSchema,
   cancelBookingSchema,
   bulkBookingSchema,
@@ -19,6 +20,10 @@ import {
 const router = express.Router();
 
 router.use(authenticate);
+
+// User creates booking request; business confirmation remains on guarded routes below.
+router.post("/", validateBody(createBookingSchema), controller.create);
+
 router.use(requireActiveBusiness({ requireContractSigned: true }));
 
 router.get("/", hasPermission("bookings.view"), controller.getAll);

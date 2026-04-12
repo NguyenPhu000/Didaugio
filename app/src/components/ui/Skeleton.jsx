@@ -1,31 +1,28 @@
-/**
- * Skeleton — animated loading placeholder.
- * Uses Animated.Value for opacity pulse; className for bg & shape.
- */
 import { useEffect, useRef } from "react";
 import { Animated, View } from "react-native";
 import { cn } from "../../lib/cn";
+import { TOKENS } from "../../constants/design-tokens";
 
 export function Skeleton({
   width,
   height,
-  borderRadius = 8,
+  borderRadius = TOKENS.radius.lg,
   style,
   className,
 }) {
-  const opacity = useRef(new Animated.Value(0.4)).current;
+  const opacity = useRef(new Animated.Value(0.35)).current;
 
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, {
-          toValue: 1,
-          duration: 600,
+          toValue: 0.85,
+          duration: 700,
           useNativeDriver: true,
         }),
         Animated.timing(opacity, {
-          toValue: 0.4,
-          duration: 600,
+          toValue: 0.35,
+          duration: 700,
           useNativeDriver: true,
         }),
       ]),
@@ -34,23 +31,38 @@ export function Skeleton({
 
   return (
     <Animated.View
-      className={cn("bg-slate-200", className)}
+      className={cn("bg-primary-100", className)}
       style={[{ width, height, borderRadius, opacity }, style]}
     />
   );
 }
 
-/** Composite skeleton that matches a PlaceCard */
 export function PlaceCardSkeleton() {
   return (
-    <View className="bg-white rounded-2xl overflow-hidden mb-3">
-      <Skeleton width="100%" height={140} borderRadius={12} />
-      <View className="p-3 gap-1">
-        <Skeleton width="75%" height={14} borderRadius={6} />
-        <Skeleton width="50%" height={11} borderRadius={6} className="mt-1.5" />
-        <View className="flex-row gap-2 mt-1">
-          <Skeleton width={48} height={11} borderRadius={6} />
-          <Skeleton width={48} height={11} borderRadius={6} />
+    <View
+      className="rounded-[28px] overflow-hidden mb-4"
+      style={[
+        TOKENS.shadow.sm,
+        {
+          backgroundColor: "#111111",
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.08)",
+        },
+      ]}
+    >
+      <Skeleton
+        width="100%"
+        height={188}
+        borderRadius={0}
+        style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+      />
+      <View className="p-4 gap-2">
+        <Skeleton width="32%" height={26} borderRadius={999} />
+        <Skeleton width="74%" height={18} borderRadius={8} />
+        <Skeleton width="58%" height={14} borderRadius={8} />
+        <View className="flex-row gap-2 mt-2">
+          <Skeleton width={72} height={14} borderRadius={8} />
+          <Skeleton width={60} height={14} borderRadius={8} />
         </View>
       </View>
     </View>

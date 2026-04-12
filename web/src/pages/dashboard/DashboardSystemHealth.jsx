@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Cpu from "lucide-react/dist/esm/icons/cpu";
 import Database from "lucide-react/dist/esm/icons/database";
 import HardDrive from "lucide-react/dist/esm/icons/hard-drive";
@@ -16,11 +17,11 @@ const textColor = (v) => {
   return "text-emerald-600";
 };
 
-const HealthBar = ({ icon: Icon, label, value, unit = "%" }) => (
+const HealthBar = ({ icon: _Icon, label, value, unit = "%" }) => (
   <div className="space-y-1.5">
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+        <_Icon className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="tim-meta">{label}</span>
       </div>
       <span className={`font-mono text-sm font-black ${textColor(value)}`}>
@@ -45,7 +46,7 @@ const DashboardSystemHealth = () => {
     { icon: Zap, label: "API RESPONSE", value: 12.5 },
   ];
 
-  const onlineUsers = Math.floor(Math.random() * 50) + 10;
+  const [onlineUsers] = useState(() => Math.floor(Math.random() * 50) + 10);
   const allOk = metrics.every((m) => m.value < 80);
 
   return (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +35,6 @@ import Lightbulb from "lucide-react/dist/esm/icons/lightbulb";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 export function RolePermissionModal({
   open,
@@ -52,13 +51,7 @@ export function RolePermissionModal({
   const [moduleFilter, setModuleFilter] = useState("all");
   const [expandedModules, setExpandedModules] = useState(new Set());
 
-  useEffect(() => {
-    if (open && role) {
-      fetchData();
-    }
-  }, [open, role]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -67,8 +60,8 @@ export function RolePermissionModal({
         roleService.getRolePermissions(role.id),
       ]);
 
-      console.log("Permissions response:", permissionsResponse);
-      console.log("Role permissions response:", rolePermissionsResponse);
+      console.warn("Permissions response:", permissionsResponse);
+      console.warn("Role permissions response:", rolePermissionsResponse);
 
       if (permissionsResponse && permissionsResponse.permissions) {
         setAllPermissions(permissionsResponse.permissions);
@@ -94,7 +87,13 @@ export function RolePermissionModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [role?.id]);
+
+  useEffect(() => {
+    if (open && role) {
+      fetchData();
+    }
+  }, [open, role, fetchData]);
 
   const handleTogglePermission = (permissionId) => {
     setSelectedPermissions((prev) => {

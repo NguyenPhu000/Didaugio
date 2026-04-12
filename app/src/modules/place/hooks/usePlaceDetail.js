@@ -1,28 +1,51 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getPlaceDetailApi,
+  getPlaceDetailBySlugApi,
   getPlaceReviewsApi,
   createReviewApi,
 } from "../api/placeApi";
 
-export function usePlaceDetail(id) {
+function normalizePlaceIdentifier(identifier) {
+  const raw = Array.isArray(identifier) ? identifier[0] : identifier;
+  const value = String(raw ?? "").trim();
+  if (!value) return { kind: "invalid", value: null };
+
+  const parsedId = Number(value);
+  if (Number.isFinite(parsedId) && parsedId > 0) {
+    return { kind: "id", value: parsedId };
+  }
+
+  return { kind: "slug", value };
+}
+
+export function usePlaceDetail(identifier) {
+  const normalized = normalizePlaceIdentifier(identifier);
+  const enabled = normalized.kind !== "invalid";
+
   return useQuery({
-    queryKey: ["place", id],
-    queryFn: () => getPlaceDetailApi(id),
+    queryKey: ["place", normalized.kind, normalized.value ?? "invalid"],
+    queryFn: () =>
+      normalized.kind === "id"
+        ? getPlaceDetailApi(normalized.value)
+        : getPlaceDetailBySlugApi(normalized.value),
     select: (data) => data?.data || data,
-    enabled: !!id,
+    enabled,
   });
 }
 
 export function usePlaceReviews(id, params = {}) {
+  const parsedId = Number(id);
+  const isValidId = Number.isFinite(parsedId) && parsedId > 0;
+
   return useQuery({
-    queryKey: ["place-reviews", id, params],
-    queryFn: () => getPlaceReviewsApi(id, params),
+    queryKey: ["place-reviews", isValidId ? parsedId : "invalid", params],
+    queryFn: () => getPlaceReviewsApi(parsedId, params),
     select: (data) => ({
       reviews: data?.data || [],
       pagination: data?.pagination,
     }),
-    enabled: !!id,
+    enabled: isValidId,
   });
 }
 

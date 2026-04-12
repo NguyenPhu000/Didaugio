@@ -9,7 +9,6 @@ export {
   verifyEmailSchema,
   resendVerificationPublicSchema,
   loginGoogleSchema,
-  exchangeGoogleCodeSchema,
   logoutSchema,
   revokeSessionParamSchema,
   updateProfileSchema,

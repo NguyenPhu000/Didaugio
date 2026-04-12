@@ -1,24 +1,16 @@
-/**
- * GuestGate — Wraps content that requires login.
- * If the user is a guest (isGuest=true) or unauthenticated (no accessToken),
- * renders a full-screen login prompt instead of the protected content.
- *
- * Props:
- *   icon        - MaterialIcons name shown in the icon circle (default: "lock")
- *   iconColor   - Color for the icon and button (default: "#0077b8")
- *   title       - Heading text
- *   description - Body text explaining why login is needed
- *   children    - Protected content rendered when user is authenticated
- */
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../../stores/authStore";
+import { TOKENS } from "../../constants/design-tokens";
+
+const TAB_BAR_HEIGHT = 80;
+const ACCENT = "#3478F6";
+const BLACK = "#0F172A";
 
 export const GuestGate = ({
   icon = "lock",
-  iconColor = "#0077b8",
   title = "Đăng nhập để tiếp tục",
   description = "Tính năng này yêu cầu tài khoản đăng nhập.",
   children,
@@ -27,46 +19,195 @@ export const GuestGate = ({
   const insets = useSafeAreaInsets();
   const accessToken = useAuthStore((s) => s.accessToken);
   const isGuest = useAuthStore((s) => s.isGuest);
+  const exitGuestMode = useAuthStore((s) => s.exitGuestMode);
 
-  // Chỉ cho phép user đã đăng nhập thực sự (có accessToken và không phải guest)
   const isLoggedIn = !!accessToken && !isGuest;
+  if (isLoggedIn) return children ?? null;
 
-  if (isLoggedIn) return children;
+  const handleLogin = () => {
+    exitGuestMode();
+    router.navigate("/(auth)/login");
+  };
+
+  const handleRegister = () => {
+    exitGuestMode();
+    router.navigate("/(auth)/register");
+  };
 
   return (
-    <View
-      className="flex-1 items-center justify-center px-10 gap-3"
-      style={{ paddingTop: insets.top }}
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[
+        styles.container,
+        {
+          paddingTop: insets.top + 24,
+          paddingBottom: TAB_BAR_HEIGHT + 32,
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
+      bounces={false}
     >
-      {/* Icon circle */}
-      <View
-        className="w-20 h-20 rounded-full items-center justify-center border-2 border-gray-200"
-        style={{ backgroundColor: "#f8faff" }}
-      >
-        <MaterialIcons name={icon} size={40} color="#9ca3af" />
+      {/* Icon block */}
+      <View style={styles.iconOuter}>
+        <View style={styles.iconRing} />
+        <View style={styles.iconWrap}>
+          <MaterialIcons name={icon} size={40} color={ACCENT} />
+        </View>
       </View>
 
       {/* Text */}
-      <Text className="text-lg font-bold text-ink text-center">{title}</Text>
-      <Text className="text-sm text-ink-secondary text-center leading-5">
-        {description}
-      </Text>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.description}>{description}</Text>
 
-      {/* Login button */}
+      {/* Divider */}
+      <View style={styles.divider} />
+
+      {/* Nút đăng nhập — nền xanh */}
       <Pressable
-        onPress={() => router.push("/(auth)/login")}
-        className="rounded-2xl px-7 py-3.5 mt-2"
-        style={{
-          backgroundColor: iconColor,
-          shadowColor: iconColor,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 4,
-        }}
+        onPress={handleLogin}
+        style={({ pressed }) => [
+          styles.loginBtn,
+          pressed && styles.pressedScale,
+        ]}
       >
-        <Text className="text-[15px] font-bold text-white">Đăng nhập ngay</Text>
+        <MaterialIcons name="login" size={18} color="#fff" />
+        <Text style={styles.loginText}>Đăng nhập</Text>
       </Pressable>
-    </View>
+
+      {/* Nút đăng ký — nền đen */}
+      <Pressable
+        onPress={handleRegister}
+        style={({ pressed }) => [
+          styles.registerBtn,
+          pressed && styles.pressedScale,
+        ]}
+      >
+        <MaterialIcons name="person-add-alt-1" size={18} color="#fff" />
+        <Text style={styles.registerText}>Đăng ký tài khoản mới</Text>
+      </Pressable>
+
+      {/* Hint */}
+      <Text style={styles.hint}>Miễn phí · Không cần thẻ tín dụng</Text>
+    </ScrollView>
   );
 };
+
+const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  container: {
+    flexGrow: 1,
+    alignItems: "center",
+    paddingHorizontal: 28,
+    justifyContent: "center",
+  },
+
+  /* Icon */
+  iconOuter: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 28,
+  },
+  iconRing: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 999,
+    backgroundColor: "rgba(52,120,246,0.08)",
+  },
+  iconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EAF2FF",
+  },
+
+  /* Text */
+  title: {
+    fontSize: 24,
+    fontFamily: TOKENS.font.heading,
+    color: "#0F172A",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  description: {
+    fontSize: 15,
+    fontFamily: TOKENS.font.regular,
+    color: "#64748B",
+    textAlign: "center",
+    lineHeight: 23,
+    maxWidth: 320,
+  },
+
+  divider: {
+    width: 48,
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: "#E2E8F0",
+    marginVertical: 28,
+  },
+
+  /* Nút đăng nhập */
+  loginBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    width: "100%",
+    paddingVertical: 16,
+    borderRadius: 999,
+    backgroundColor: ACCENT,
+    marginBottom: 12,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  loginText: {
+    fontSize: 15,
+    fontFamily: TOKENS.font.semibold,
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
+  },
+
+  /* Nút đăng ký */
+  registerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    width: "100%",
+    paddingVertical: 16,
+    borderRadius: 999,
+    backgroundColor: BLACK,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  registerText: {
+    fontSize: 15,
+    fontFamily: TOKENS.font.semibold,
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
+  },
+
+  pressedScale: {
+    opacity: 0.88,
+    transform: [{ scale: 0.975 }],
+  },
+
+  hint: {
+    marginTop: 18,
+    fontSize: 12,
+    fontFamily: TOKENS.font.regular,
+    color: "#94A3B8",
+    textAlign: "center",
+  },
+});

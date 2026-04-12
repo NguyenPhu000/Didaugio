@@ -16,7 +16,7 @@ const DistrictLabels = ({ districts }) => {
       .sort((a, b) => a.properties.id - b.properties.id);
 
     return sorted
-      .map((feature, idx) => {
+      .map((feature) => {
         let lng, lat;
         if (feature.geometry.type === "Point") {
           [lng, lat] = feature.geometry.coordinates;

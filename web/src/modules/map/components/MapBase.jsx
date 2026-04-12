@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useRef } from "react";
 import { MapGL } from "../adapters";
-import { useMapContext } from "../context/MapProvider";
+import { useMapContext } from "../hooks/useMapContext";
 import { MAP_CONFIGS, LAYER_IDS } from "../config/mapConfig";
 
 const INTERACTIVE_LAYERS = [
@@ -66,14 +66,18 @@ const MapBase = forwardRef(
               { source: prev.source, id: prev.id },
               { hover: false },
             );
-          } catch {}
+          } catch {
+            // Ignore invalid feature-state transitions on stale features.
+          }
         }
 
         if (feature) {
           const source = feature.source; // 'districts-source' | 'wards-source'
           try {
             map.setFeatureState({ source, id: feature.id }, { hover: true });
-          } catch {}
+          } catch {
+            // Ignore invalid feature-state transitions on stale features.
+          }
           prevHoveredRef.current = { id: feature.id, source };
           map.getCanvas().style.cursor = "pointer";
 
@@ -103,7 +107,9 @@ const MapBase = forwardRef(
               { source: prev.source, id: prev.id },
               { hover: false },
             );
-          } catch {}
+          } catch {
+            // Ignore invalid feature-state transitions on stale features.
+          }
           prevHoveredRef.current = { id: null, source: null };
         }
         e.target.getCanvas().style.cursor = "";

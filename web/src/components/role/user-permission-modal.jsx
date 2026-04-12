@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -61,13 +61,7 @@ export function UserPermissionModal({
   const [moduleFilter, setModuleFilter] = useState("all");
   const [expandedModules, setExpandedModules] = useState(new Set());
 
-  useEffect(() => {
-    if (open && (user || isBulk)) {
-      fetchData();
-    }
-  }, [open, user, userIds]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -118,7 +112,13 @@ export function UserPermissionModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [isBulk, user]);
+
+  useEffect(() => {
+    if (open && (user || isBulk)) {
+      fetchData();
+    }
+  }, [open, user, isBulk, fetchData]);
 
   const handleTogglePermission = (permissionId) => {
     setSelectedPermissions((prev) => {
@@ -177,27 +177,6 @@ export function UserPermissionModal({
     } catch (error) {
       console.error("Lỗi khi cập nhật quyền:", error);
       toast.error(error.response?.data?.message || "Không thể cập nhật quyền");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleRemoveCustomPermissions = async () => {
-    if (!user || isBulk) return;
-
-    try {
-      setSaving(true);
-      await userPermissionService.removeUserCustomPermissions(user.id);
-      toast.success("Đã xóa tất cả quyền custom");
-      setSelectedPermissions(new Set());
-      setInitialPermissions(new Set());
-
-      if (onUpdated) {
-        onUpdated();
-      }
-    } catch (error) {
-      console.error("Lỗi khi xóa quyền:", error);
-      toast.error(error.response?.data?.message || "Không thể xóa quyền");
     } finally {
       setSaving(false);
     }
@@ -409,6 +388,12 @@ export function UserPermissionModal({
                       ).length;
                       const moduleTotal = permissions.length;
                       const isExpanded = expandedModules.has(module);
+                      let moduleCheckedState = false;
+                      if (moduleSelected === moduleTotal && moduleTotal > 0) {
+                        moduleCheckedState = true;
+                      } else if (moduleSelected > 0) {
+                        moduleCheckedState = "indeterminate";
+                      }
 
                       return (
                         <div
@@ -422,14 +407,7 @@ export function UserPermissionModal({
                             <div className="flex items-center gap-3">
                               <div onClick={(e) => e.stopPropagation()}>
                                 <Checkbox
-                                  checked={
-                                    moduleSelected === moduleTotal &&
-                                    moduleTotal > 0
-                                      ? true
-                                      : moduleSelected > 0
-                                        ? "indeterminate"
-                                        : false
-                                  }
+                                  checked={moduleCheckedState}
                                   onCheckedChange={() =>
                                     handleToggleModule(module)
                                   }

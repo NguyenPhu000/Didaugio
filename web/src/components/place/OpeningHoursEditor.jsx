@@ -54,7 +54,13 @@ const OpeningHoursEditor = ({ value = [], onChange }) => {
     if (value.length > 0) {
       const lastDay = value[value.length - 1].dayOfWeek;
       // Logic: 1->2...->6->0->1
-      nextDay = lastDay === 6 ? 0 : lastDay === 0 ? 1 : lastDay + 1;
+      if (lastDay === 6) {
+        nextDay = 0;
+      } else if (lastDay === 0) {
+        nextDay = 1;
+      } else {
+        nextDay = lastDay + 1;
+      }
     }
 
     const newSlot = {

@@ -74,6 +74,25 @@ export const update = async (req, res, next) => {
   }
 };
 
+export const updateDepositConfig = async (req, res, next) => {
+  try {
+    const businessId =
+      req.user.roleId > ROLES.ADMIN ? req.business?.id : undefined;
+    const offering = await businessOfferingService.updateDepositConfig(
+      req.params.id,
+      req.body,
+      { businessId },
+    );
+    res.json({
+      success: true,
+      message: "Cập nhật cấu hình đặt cọc thành công",
+      data: offering,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const remove = async (req, res, next) => {
   try {
     const businessId =

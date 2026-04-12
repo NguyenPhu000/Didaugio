@@ -3,8 +3,17 @@ import { ZodError } from "zod";
 import multer from "multer";
 
 const errorHandler = (err, req, res, next) => {
-  console.error(`[ERROR] ${err.message}`);
-  console.error(err.stack);
+  const statusCode = err.statusCode || 500;
+  const isServerError = statusCode >= 500;
+
+  if (isServerError) {
+    console.error(`[ERROR] ${err.message}`);
+    console.error(err.stack);
+  } else {
+    console.warn(
+      `[WARN] ${req.method} ${req.originalUrl} -> ${statusCode} ${err.errorCode || "BUSINESS_ERROR"}: ${err.message}`,
+    );
+  }
 
   if (err instanceof ZodError) {
     const firstError = err.errors?.[0];
@@ -66,10 +75,12 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  return res.status(err.statusCode || 500).json({
+  return res.status(statusCode).json({
     success: false,
     data: null,
-    message: err.message || "Loi he thong",
+    message: isServerError
+      ? "Lỗi hệ thống, vui lòng thử lại sau"
+      : err.message || "Yêu cầu không hợp lệ",
     errorCode: err.errorCode || ERROR_CODES.INTERNAL_ERROR,
   });
 };

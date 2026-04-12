@@ -1,19 +1,12 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import {
   MAP_CONFIGS,
   MAP_STYLES,
   DEFAULT_MAP_STYLE,
 } from "../config/mapConfig";
 import { useRouting } from "../hooks/useRouting";
+import { MapContext } from "./MapContext";
 
-const MapContext = createContext(null);
 const FLY_DURATION_MS = 1000;
 
 export const MapProvider = ({ children }) => {
@@ -115,12 +108,4 @@ export const MapProvider = ({ children }) => {
   );
 
   return <MapContext.Provider value={value}>{children}</MapContext.Provider>;
-};
-
-export const useMapContext = () => {
-  const context = useContext(MapContext);
-  if (!context) {
-    throw new Error("useMapContext must be used within a MapProvider");
-  }
-  return context;
 };

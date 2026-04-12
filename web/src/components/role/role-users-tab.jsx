@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,11 +19,7 @@ export function RoleUsersTab({ role }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [role.id]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await userPermissionService.getUsersByRole(role.id, {
@@ -46,7 +42,11 @@ export function RoleUsersTab({ role }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [role.id, search]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleSearch = () => {
     fetchUsers();

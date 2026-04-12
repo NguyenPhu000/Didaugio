@@ -1,5 +1,4 @@
 import authService from "../services/authService.js";
-import { ERROR_CODES } from "../config/messages.js";
 
 // AUTH CONTROLLER
 
@@ -24,98 +23,6 @@ export const loginGoogle = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
-  }
-};
-
-/**
- * GET /api/auth/google/web
- * Bắt đầu Google OAuth 2.0 Authorization Code Flow (server-side)
- * Browser redirect → Google sign-in page
- */
-export const initiateGoogleOAuth = (req, res) => {
-  const callbackUrl =
-    process.env.GOOGLE_CALLBACK_URL ||
-    `http://localhost:${process.env.PORT || 8081}/api/auth/google/web/callback`;
-
-  const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID,
-    redirect_uri: callbackUrl,
-    response_type: "code",
-    scope: "openid email profile",
-    access_type: "offline",
-    prompt: "select_account",
-  });
-
-  return res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
-};
-
-/**
- * GET /api/auth/google/web/callback
- * Google redirect về đây với authorization code
- * Đổi code → id_token → tạo JWT → redirect deep link về app
- */
-export const googleOAuthCallback = async (req, res) => {
-  const appScheme = process.env.APP_SCHEME || "didaugio";
-
-  const redirectError = (message) => {
-    const msg = encodeURIComponent(message || "Đăng nhập thất bại");
-    return res.redirect(`${appScheme}://auth-error?message=${msg}`);
-  };
-
-  try {
-    const { code, error } = req.query;
-
-    if (error || !code) {
-      return redirectError(error || "No authorization code received");
-    }
-
-    const callbackUrl =
-      process.env.GOOGLE_CALLBACK_URL ||
-      `http://localhost:${process.env.PORT || 8081}/api/auth/google/web/callback`;
-
-    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        code,
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: callbackUrl,
-        grant_type: "authorization_code",
-      }),
-    });
-
-    const tokenData = await tokenResponse.json();
-
-    if (!tokenData.id_token) {
-      return redirectError(
-        tokenData.error_description || "Failed to get token from Google",
-      );
-    }
-
-    const clientInfo = {
-      ipAddress: req.ip || req.connection?.remoteAddress,
-      deviceName: req.headers["user-agent"],
-    };
-    const result = await authService.loginWithGoogle(
-      tokenData.id_token,
-      clientInfo,
-    );
-
-    const userBase64 = Buffer.from(JSON.stringify(result.user)).toString(
-      "base64",
-    );
-
-    const deepLink =
-      `${appScheme}://auth-success` +
-      `?accessToken=${encodeURIComponent(result.accessToken)}` +
-      `&refreshToken=${encodeURIComponent(result.refreshToken)}` +
-      `&user=${encodeURIComponent(userBase64)}`;
-
-    return res.redirect(deepLink);
-  } catch (err) {
-    console.error("[Google OAuth Callback]", err.message);
-    return redirectError(err.message);
   }
 };
 
@@ -370,71 +277,10 @@ export const revokeSession = async (req, res, next) => {
   }
 };
 
-export const exchangeGoogleCode = async (req, res, next) => {
-  try {
-    const { code, redirectUri } = req.body;
-
-    if (!code || !redirectUri) {
-      return res.status(400).json({
-        success: false,
-        data: null,
-        message: "code and redirectUri are required",
-        errorCode: ERROR_CODES.VALIDATION_ERROR,
-      });
-    }
-
-    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        code,
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: redirectUri,
-        grant_type: "authorization_code",
-      }),
-    });
-
-    const tokenData = await tokenResponse.json();
-
-    if (!tokenData.id_token) {
-      return res.status(400).json({
-        success: false,
-        data: null,
-        message:
-          tokenData.error_description ||
-          "Không thể đổi code lấy token từ Google",
-        errorCode: ERROR_CODES.VALIDATION_ERROR,
-      });
-    }
-
-    const clientInfo = {
-      ipAddress: req.ip || req.connection?.remoteAddress,
-      deviceId: req.headers["x-device-id"],
-      deviceName: req.headers["x-device-name"] || req.headers["user-agent"],
-    };
-
-    const result = await authService.loginWithGoogle(
-      tokenData.id_token,
-      clientInfo,
-    );
-    res.json({
-      success: true,
-      data: result,
-      message: "Đăng nhập Google thành công",
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 export default {
   register,
   login,
   loginGoogle,
-  exchangeGoogleCode,
-  initiateGoogleOAuth,
-  googleOAuthCallback,
   refreshToken,
   getMe,
   changePassword,

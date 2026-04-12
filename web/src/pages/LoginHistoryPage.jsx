@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Monitor,
   RefreshCw,
@@ -47,7 +47,7 @@ const LoginHistoryPage = () => {
   const itemsPerPage = 10;
 
   // Fetch sessions
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -67,22 +67,22 @@ const LoginHistoryPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage, statusFilter]);
 
   // Fetch stats
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const statsData = await loginHistoryService.getStats();
       setStats(statsData);
     } catch (error) {
       console.error("Failed to fetch stats:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchSessions();
     fetchStats();
-  }, [currentPage, statusFilter]);
+  }, [fetchSessions, fetchStats]);
 
   // View detail
   const handleViewDetail = async (session) => {
@@ -187,7 +187,7 @@ const LoginHistoryPage = () => {
   // Truncate device name
   const truncateDevice = (name) => {
     if (!name) return "Unknown";
-    return name.length > 50 ? name.substring(0, 50) + "..." : name;
+    return name.length > 50 ? `${name.substring(0, 50)}...` : name;
   };
 
   return (
@@ -286,126 +286,142 @@ const LoginHistoryPage = () => {
 
         {/* Data Table */}
         <div className="bg-white border border-black shadow-sm overflow-hidden">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
-              <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
-              <span className="font-mono text-xs uppercase text-gray-500">
-                LOADING DATA...
-              </span>
-            </div>
-          ) : sessions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Monitor className="h-12 w-12 text-gray-300 mb-4" />
-              <div className="font-bold uppercase text-gray-400">
-                KHÔNG TÌM THẤY DỮ LIỆU
-              </div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-black text-white tim-table-header">
-                    <th className="p-4 border-r border-black/20 w-[60px]">
-                      ID
-                    </th>
-                    <th className="p-4 border-r border-black/20">USER</th>
-                    <th className="p-4 border-r border-black/20">THIẾT BỊ</th>
-                    <th className="p-4 border-r border-black/20">IP ADDRESS</th>
-                    <th className="p-4 border-r border-black/20">TRẠNG THÁI</th>
-                    <th className="p-4 border-r border-black/20">ĐĂNG NHẬP</th>
-                    <th className="p-4 border-r border-black/20">
-                      DÙNG GẦN NHẤT
-                    </th>
-                    <th className="p-4 border-r border-black/20">HẾT HẠN</th>
-                    <th className="p-4 text-center">THAO TÁC</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5">
-                  {sessions.map((session) => {
-                    const statusInfo = getStatusInfo(session);
-                    return (
-                      <tr
-                        key={session.id}
-                        className="hover:bg-yellow-50 group transition-colors"
-                      >
-                        <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
-                          #{session.id}
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <div>
-                            <div className="font-bold uppercase text-sm">
-                              {session.user?.profile?.fullName || "N/A"}
+          {(() => {
+            if (loading) {
+              return (
+                <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
+                  <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
+                  <span className="font-mono text-xs uppercase text-gray-500">
+                    LOADING DATA...
+                  </span>
+                </div>
+              );
+            }
+
+            if (sessions.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <Monitor className="h-12 w-12 text-gray-300 mb-4" />
+                  <div className="font-bold uppercase text-gray-400">
+                    KHÔNG TÌM THẤY DỮ LIỆU
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-black text-white tim-table-header">
+                      <th className="p-4 border-r border-black/20 w-[60px]">
+                        ID
+                      </th>
+                      <th className="p-4 border-r border-black/20">USER</th>
+                      <th className="p-4 border-r border-black/20">THIẾT BỊ</th>
+                      <th className="p-4 border-r border-black/20">
+                        IP ADDRESS
+                      </th>
+                      <th className="p-4 border-r border-black/20">
+                        TRẠNG THÁI
+                      </th>
+                      <th className="p-4 border-r border-black/20">
+                        ĐĂNG NHẬP
+                      </th>
+                      <th className="p-4 border-r border-black/20">
+                        DÙNG GẦN NHẤT
+                      </th>
+                      <th className="p-4 border-r border-black/20">HẾT HẠN</th>
+                      <th className="p-4 text-center">THAO TÁC</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/5">
+                    {sessions.map((session) => {
+                      const statusInfo = getStatusInfo(session);
+                      return (
+                        <tr
+                          key={session.id}
+                          className="hover:bg-yellow-50 group transition-colors"
+                        >
+                          <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
+                            #{session.id}
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <div>
+                              <div className="font-bold uppercase text-sm">
+                                {session.user?.profile?.fullName || "N/A"}
+                              </div>
+                              <div className="text-gray-500 text-xs font-mono">
+                                {session.user?.email || "N/A"}
+                              </div>
                             </div>
-                            <div className="text-gray-500 text-xs font-mono">
-                              {session.user?.email || "N/A"}
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <div className="flex items-center gap-2">
+                              {getDeviceIcon(session.deviceName)}
+                              <span className="truncate max-w-[200px] text-sm">
+                                {truncateDevice(session.deviceName)}
+                              </span>
                             </div>
-                          </div>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <div className="flex items-center gap-2">
-                            {getDeviceIcon(session.deviceName)}
-                            <span className="truncate max-w-[200px] text-sm">
-                              {truncateDevice(session.deviceName)}
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <span className="font-mono text-sm">
+                              {session.ipAddress}
                             </span>
-                          </div>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <span className="font-mono text-sm">
-                            {session.ipAddress}
-                          </span>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${statusInfo.color}`}
-                          >
-                            {statusInfo.icon}
-                            {statusInfo.label}
-                          </span>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <span className="font-mono text-sm text-gray-500">
-                            {formatDate(session.createdAt)}
-                          </span>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <span className="font-mono text-sm text-gray-500">
-                            {formatDate(session.lastUsedAt)}
-                          </span>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <span className="font-mono text-sm text-gray-500">
-                            {formatDate(session.expiresAt)}
-                          </span>
-                        </td>
-                        <td className="p-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleViewDetail(session)}
-                              className="rounded-none border border-transparent hover:border-black hover:bg-white h-8"
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${statusInfo.color}`}
                             >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            {session.isActive && (
+                              {statusInfo.icon}
+                              {statusInfo.label}
+                            </span>
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <span className="font-mono text-sm text-gray-500">
+                              {formatDate(session.createdAt)}
+                            </span>
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <span className="font-mono text-sm text-gray-500">
+                              {formatDate(session.lastUsedAt)}
+                            </span>
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <span className="font-mono text-sm text-gray-500">
+                              {formatDate(session.expiresAt)}
+                            </span>
+                          </td>
+                          <td className="p-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => handleRevoke(session.id)}
-                                className="rounded-none border border-transparent hover:border-red-600 hover:bg-red-50 text-red-600 hover:text-red-700 h-8"
+                                onClick={() => handleViewDetail(session)}
+                                className="rounded-none border border-transparent hover:border-black hover:bg-white h-8"
                               >
-                                <Ban className="w-4 h-4" />
+                                <Eye className="w-4 h-4" />
                               </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                              {session.isActive && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleRevoke(session.id)}
+                                  className="rounded-none border border-transparent hover:border-red-600 hover:bg-red-50 text-red-600 hover:text-red-700 h-8"
+                                >
+                                  <Ban className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
 
           {/* Pagination */}
           {totalPages > 1 && (

@@ -102,4 +102,79 @@ export const loadBusiness = async (req, res, next) => {
   }
 };
 
-export default { checkBusinessOwnership, loadBusiness };
+export const checkBusinessOwnershipByBookingCode = async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const roleId = req.user.roleId;
+
+    if (roleId <= ROLES.ADMIN) return next();
+
+    const business = await prisma.business.findUnique({
+      where: { ownerId: userId },
+      select: { id: true },
+    });
+
+    if (!business) {
+      return res.status(403).json({
+        success: false,
+        data: null,
+        message: "Bạn chưa đăng ký doanh nghiệp",
+        errorCode: "NO_BUSINESS_PROFILE",
+      });
+    }
+
+    const bookingCode = String(req.body?.bookingCode || "")
+      .trim()
+      .toUpperCase();
+
+    if (!bookingCode) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "Thiếu mã booking",
+        errorCode: ERROR_CODES.MISSING_PARAMS,
+      });
+    }
+
+    const booking = await prisma.booking.findUnique({
+      where: { bookingCode },
+      select: { id: true, businessId: true },
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        data: null,
+        message: "Booking không tồn tại",
+        errorCode: ERROR_CODES.NOT_FOUND,
+      });
+    }
+
+    if (booking.businessId !== business.id) {
+      return res.status(403).json({
+        success: false,
+        data: null,
+        message: "Không phải business của booking này",
+        errorCode: "FORBIDDEN_NOT_OWNER",
+      });
+    }
+
+    req.business = business;
+    req.resource = booking;
+    next();
+  } catch (error) {
+    console.error("Business ownership by bookingCode error:", error);
+    res.status(500).json({
+      success: false,
+      data: null,
+      message: "Lỗi kiểm tra quyền sở hữu",
+      errorCode: ERROR_CODES.SERVER_ERROR,
+    });
+  }
+};
+
+export default {
+  checkBusinessOwnership,
+  checkBusinessOwnershipByBookingCode,
+  loadBusiness,
+};

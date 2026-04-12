@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useAuthStore } from "@/stores/authStore";
 import { userService } from "@/apis/userService";
 import { ROLES } from "@/constants/constants";
 import UserFormModal from "@/components/user/UserFormModal";
@@ -55,18 +54,11 @@ import { useToast } from "@/hooks/use-toast";
  * USER MANAGEMENT PAGE - T.I.M STYLE (VIETNAMESE)
  */
 const UserManagePage = () => {
-  const { user: currentUser } = useAuthStore();
   const { toast } = useToast();
 
   // Data
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({
-    total: 0,
-    admin: 0,
-    business: 0,
-    active: 0,
-  });
 
   // Filters
   const [filters, setFilters] = useState({
@@ -108,15 +100,7 @@ const UserManagePage = () => {
 
       setUsers(userData);
       setPagination(paginationData);
-
-      // Simple stats (in real app, fetched from API)
-      setStats({
-        total: paginationData.total,
-        admin: 0, // Placeholder
-        business: 0, // Placeholder
-        active: 0, // Placeholder
-      });
-    } catch (error) {
+    } catch {
       toast({
         title: "LỖI HỆ THỐNG",
         description: "Không thể tải dữ liệu người dùng.",
@@ -125,7 +109,7 @@ const UserManagePage = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, toast]);
 
   useEffect(() => {
     fetchUsers();
@@ -411,7 +395,7 @@ const UserManagePage = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black/5">
-                  {users.map((user, index) => (
+                  {users.map((user) => (
                     <tr
                       key={user.id}
                       className="hover:bg-yellow-50 group transition-colors"

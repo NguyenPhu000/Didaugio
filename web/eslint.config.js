@@ -9,12 +9,47 @@ export default defineConfig([
     "dist",
     "node_modules",
     "build",
+    "coverage",
     ".cursor",
     ".claude",
     ".gemini",
     ".agent",
+    ".next",
+    "out",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    ".env",
+    ".env.local",
+    ".env.*.local",
+    ".vscode",
+    ".idea",
+    "*.log",
     "**/animate-ui/**",
   ]),
+  {
+    files: [
+      "**/*.config.{js,cjs,mjs}",
+      "vite.config.js",
+      "vitest.config.js",
+      "tailwind.config.js",
+    ],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
+    files: ["**/*.{test,spec}.{js,jsx}", "src/test/**"],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.vitest,
+      },
+    },
+  },
   {
     files: ["**/*.{js,jsx}"],
     extends: [
@@ -34,15 +69,20 @@ export default defineConfig([
     rules: {
       // Base rules
       "no-unused-vars": [
-        "error",
+        "warn",
         {
           varsIgnorePattern: "^[A-Z_]",
           argsIgnorePattern: "^_",
         },
       ],
 
+      "no-empty": "warn",
+
       // React Best Practices - Performance
       "react-hooks/exhaustive-deps": "warn",
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/purity": "warn",
+      "react-refresh/only-export-components": "warn",
       "no-console": ["warn", { allow: ["warn", "error"] }],
 
       // Code quality

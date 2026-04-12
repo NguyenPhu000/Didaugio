@@ -3,6 +3,7 @@ import { PLACE_STATUS, PAGINATION, ROLES } from "../config/constants.js";
 import { ERROR_MESSAGES, ERROR_CODES } from "../config/messages.js";
 import eventEmitter, { EVENTS } from "../utils/eventEmitter.js";
 import ServiceError from "../utils/serviceError.js";
+import { generateMapMarkerUrl, deleteMapMarkerImage } from "../utils/cloudinaryHelper.js";
 
 /**
  * Generate slug từ tên
@@ -295,6 +296,7 @@ export const getNearbyPlaces = async (params = {}) => {
       ratingCount: true,
       isFeatured: true,
       thumbnail: true,
+      markerUrl: true,
       category: {
         select: { id: true, name: true, slug: true, icon: true, color: true },
       },
@@ -342,8 +344,13 @@ export const getNearbyPlaces = async (params = {}) => {
  * Lấy địa điểm theo ID
  */
 export const getPlaceById = async (id, incrementView = false) => {
-  const place = await prisma.place.findUnique({
-    where: { id, deletedAt: null },
+  const numericId = Number(id);
+  if (!Number.isInteger(numericId) || numericId <= 0) {
+    return null;
+  }
+
+  const place = await prisma.place.findFirst({
+    where: { id: numericId, deletedAt: null },
     include: {
       ...defaultInclude,
       openingHours: {
@@ -368,7 +375,7 @@ export const getPlaceById = async (id, incrementView = false) => {
   // Increment view count
   if (incrementView) {
     await prisma.place.update({
-      where: { id },
+      where: { id: numericId },
       data: { viewCount: { increment: 1 } },
     });
   }
@@ -380,8 +387,13 @@ export const getPlaceById = async (id, incrementView = false) => {
  * Lấy địa điểm theo slug
  */
 export const getPlaceBySlug = async (slug, incrementView = false) => {
-  const place = await prisma.place.findUnique({
-    where: { slug, deletedAt: null },
+  const normalizedSlug = String(slug || "").trim();
+  if (!normalizedSlug) {
+    return null;
+  }
+
+  const place = await prisma.place.findFirst({
+    where: { slug: normalizedSlug, deletedAt: null },
     include: {
       ...defaultInclude,
       openingHours: {
@@ -592,9 +604,13 @@ export const createPlace = async (data, userId) => {
         // Update thumbnail (first cover image)
         const coverImage = images.find((img) => img.isCover) || images[0];
         if (coverImage) {
+          const markerUrl = await generateMapMarkerUrl(coverImage.imageData);
           await tx.place.update({
             where: { id: newPlace.id },
-            data: { thumbnail: coverImage.imageData },
+            data: { 
+              thumbnail: coverImage.imageData,
+              markerUrl: markerUrl 
+            },
           });
         }
       }
@@ -680,7 +696,7 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
   // Check place exists
   const existing = await prisma.place.findUnique({
     where: { id, deletedAt: null },
-    select: { id: true, slug: true, status: true },
+    select: { id: true, slug: true, status: true, markerUrl: true },
   });
 
   if (!existing) {
@@ -881,13 +897,14 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
       const coverImage = images.find((img) => img.isCover) || images[0];
       if (coverImage && coverImage.imageData) {
         // If it's a new image, it has imageData.
-        // If it's an existing image, we might NOT have sent imageData back if we optimized FE?
-        // But currently FE ImageUploader keeps imageData in state.
-        // Let's assume imageData is present.
+        const markerUrl = await generateMapMarkerUrl(coverImage.imageData);
         await tx.place.update({
           where: { id },
-          data: { thumbnail: coverImage.imageData },
+          data: { thumbnail: coverImage.imageData, markerUrl },
         });
+        if (existing.markerUrl && existing.markerUrl !== markerUrl) {
+          deleteMapMarkerImage(existing.markerUrl).catch(console.error);
+        }
       } else if (coverImage && coverImage.id) {
         // Existing image is cover, but we might not have imageData in the payload to update thumbnail
         // Fetch it from DB
@@ -896,10 +913,14 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
           select: { imageData: true },
         });
         if (dbImage) {
+          const markerUrl = await generateMapMarkerUrl(dbImage.imageData);
           await tx.place.update({
             where: { id },
-            data: { thumbnail: dbImage.imageData },
+            data: { thumbnail: dbImage.imageData, markerUrl },
           });
+          if (existing.markerUrl && existing.markerUrl !== markerUrl) {
+            deleteMapMarkerImage(existing.markerUrl).catch(console.error);
+          }
         }
       }
     }
@@ -946,7 +967,7 @@ export const deletePlace = async (id) => {
 export const hardDeletePlace = async (id) => {
   const existing = await prisma.place.findUnique({
     where: { id },
-    select: { id: true },
+    select: { id: true, markerUrl: true },
   });
 
   if (!existing) {
@@ -955,6 +976,11 @@ export const hardDeletePlace = async (id) => {
       "Địa điểm không tồn tại",
       404,
     );
+  }
+
+  // Xoá hình Cloudinary Marker vĩnh viễn
+  if (existing.markerUrl) {
+    deleteMapMarkerImage(existing.markerUrl).catch(console.error);
   }
 
   // Cascade delete is handled by Prisma relations
@@ -1161,9 +1187,11 @@ export const submitForReview = async (id) => {
 };
 
 /**
- * Thêm ảnh cho địa điểm
+ * Thêm ảnh cho địa điểm — upload lên Cloudinary nếu có imageData base64.
  */
 export const addImages = async (placeId, images, userId) => {
+  const { uploadPlaceImage } = await import("./mediaService.js");
+
   const existing = await prisma.place.findUnique({
     where: { id: placeId, deletedAt: null },
     include: { images: true },
@@ -1190,22 +1218,45 @@ export const addImages = async (placeId, images, userId) => {
 
   const hasCover = existing.images.some((img) => img.isCover);
 
+  const uploadedImages = await Promise.all(
+    images.map(async (img, index) => {
+      let publicId = null;
+      let secureUrl = null;
+      let thumbnailUrl = null;
+      let imageData = img.imageData || null;
+
+      if (img.imageData && img.imageData.startsWith("data:")) {
+        const uploaded = await uploadPlaceImage(img.imageData);
+        publicId = uploaded.publicId;
+        secureUrl = uploaded.secureUrl;
+        thumbnailUrl = uploaded.thumbnailUrl;
+        imageData = null;
+      }
+
+      return {
+        placeId,
+        imageData,
+        publicId,
+        secureUrl,
+        thumbnailUrl,
+        caption: img.caption || null,
+        order: currentImageCount + index,
+        isCover: !hasCover && index === 0,
+        uploadedBy: userId,
+      };
+    }),
+  );
+
   const createdImages = await prisma.placeImage.createMany({
-    data: images.map((img, index) => ({
-      placeId,
-      imageData: img.imageData,
-      caption: img.caption || null,
-      order: currentImageCount + index,
-      isCover: !hasCover && index === 0,
-      uploadedBy: userId,
-    })),
+    data: uploadedImages,
   });
 
   // Update thumbnail if no cover existed
-  if (!hasCover && images.length > 0) {
+  if (!hasCover && uploadedImages.length > 0) {
+    const firstImage = uploadedImages[0];
     await prisma.place.update({
       where: { id: placeId },
-      data: { thumbnail: images[0].imageData },
+      data: { thumbnail: firstImage.thumbnailUrl ?? firstImage.imageData },
     });
   }
 
@@ -1242,15 +1293,24 @@ export const deleteImage = async (placeId, imageId) => {
         where: { id: nextImage.id },
         data: { isCover: true },
       });
+      const markerUrl = await generateMapMarkerUrl(nextImage.imageData);
+      const placeDb = await prisma.place.findUnique({ where: { id: placeId }, select: { markerUrl: true } });
       await prisma.place.update({
         where: { id: placeId },
-        data: { thumbnail: nextImage.imageData },
+        data: { thumbnail: nextImage.imageData, markerUrl },
       });
+      if (placeDb?.markerUrl && placeDb.markerUrl !== markerUrl) {
+         deleteMapMarkerImage(placeDb.markerUrl).catch(console.error);
+      }
     } else {
+      const placeDb = await prisma.place.findUnique({ where: { id: placeId }, select: { markerUrl: true } });
       await prisma.place.update({
         where: { id: placeId },
-        data: { thumbnail: null },
+        data: { thumbnail: null, markerUrl: null },
       });
+      if (placeDb?.markerUrl) {
+         deleteMapMarkerImage(placeDb.markerUrl).catch(console.error);
+      }
     }
   }
 
@@ -1290,6 +1350,20 @@ export const setCoverImage = async (placeId, imageId) => {
       data: { thumbnail: image.imageData },
     }),
   ]);
+
+  // Update markerUrl properly since we just set a new cover
+  const newMarkerUrl = await generateMapMarkerUrl(image.imageData);
+  const placeDb = await prisma.place.findUnique({ where: { id: placeId }, select: { markerUrl: true }});
+  
+  if (newMarkerUrl) {
+    await prisma.place.update({
+       where: { id: placeId },
+       data: { markerUrl: newMarkerUrl }
+    });
+    if (placeDb?.markerUrl && placeDb.markerUrl !== newMarkerUrl) {
+       deleteMapMarkerImage(placeDb.markerUrl).catch(console.error);
+    }
+  }
 
   return { success: true };
 };

@@ -76,6 +76,13 @@ const ProvinceDistrictSelect = ({
   const selectClassName =
     "w-full py-2.5 pl-10 pr-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 focus:ring-blue-600 focus:border-blue-600 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors appearance-none disabled:opacity-50 disabled:cursor-not-allowed";
 
+  let districtPlaceholder = "-- Chọn quận/huyện/phường/xã --";
+  if (loadingDistricts) {
+    districtPlaceholder = "Đang tải...";
+  } else if (!provinceCode) {
+    districtPlaceholder = "Vui lòng chọn tỉnh/thành phố trước";
+  }
+
   return (
     <div className="space-y-4">
       {/* Province Select */}
@@ -136,13 +143,7 @@ const ProvinceDistrictSelect = ({
             }
             className={selectClassName}
           >
-            <option value="">
-              {loadingDistricts
-                ? "Đang tải..."
-                : !provinceCode
-                ? "Vui lòng chọn tỉnh/thành phố trước"
-                : "-- Chọn quận/huyện/phường/xã --"}
-            </option>
+            <option value="">{districtPlaceholder}</option>
             {districts.map((district) => (
               <option key={district.ward_code} value={district.ward_code}>
                 {district.ward_name}

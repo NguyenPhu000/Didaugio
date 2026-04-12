@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Key,
   RefreshCw,
@@ -35,7 +35,7 @@ const PasswordResetPage = () => {
   const itemsPerPage = 10;
 
   // Fetch resets
-  const fetchResets = async () => {
+  const fetchResets = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -54,22 +54,22 @@ const PasswordResetPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage, statusFilter]);
 
   // Fetch stats
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const statsData = await passwordResetService.getStats();
       setStats(statsData);
     } catch (error) {
       console.error("Failed to fetch stats:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchResets();
     fetchStats();
-  }, [currentPage, statusFilter]);
+  }, [fetchResets, fetchStats]);
 
   // Get status info
   const getStatusInfo = (reset) => {
@@ -204,104 +204,118 @@ const PasswordResetPage = () => {
         </div>
         {/* Data Table */}
         <div className="bg-white border border-black shadow-sm overflow-hidden">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
-              <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
-              <span className="font-mono text-xs uppercase text-gray-500">
-                LOADING DATA...
-              </span>
-            </div>
-          ) : resets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Key className="h-12 w-12 text-gray-300 mb-4" />
-              <div className="font-bold uppercase text-gray-400">
-                KHÔNG TÌM THẤY DỮ LIỆU
-              </div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-black text-white tim-table-header">
-                    <th className="p-4 border-r border-black/20 w-[60px]">
-                      ID
-                    </th>
-                    <th className="p-4 border-r border-black/20">EMAIL</th>
-                    <th className="p-4 border-r border-black/20">USER</th>
-                    <th className="p-4 border-r border-black/20">IP ADDRESS</th>
-                    <th className="p-4 border-r border-black/20">TRẠNG THÁI</th>
-                    <th className="p-4 border-r border-black/20">NGÀY TẠO</th>
-                    <th className="p-4 border-r border-black/20">HẾT HẠN</th>
-                    <th className="p-4 border-r border-black/20">CÒN LẠI</th>
-                    <th className="p-4">ĐÃ DÙNG</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5">
-                  {resets.map((reset) => {
-                    const statusInfo = getStatusInfo(reset);
-                    return (
-                      <tr
-                        key={reset.id}
-                        className="hover:bg-yellow-50 group transition-colors"
-                      >
-                        <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
-                          #{reset.id}
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <div className="font-mono text-sm font-medium">
-                            {reset.email}
-                          </div>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <div className="font-mono text-sm text-gray-600">
-                            {reset.user?.email || "—"}
-                          </div>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <div className="flex items-center gap-1 font-mono text-sm text-gray-600">
-                            <MapPin className="w-3 h-3 text-gray-400" />
-                            {reset.ipAddress}
-                          </div>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${statusInfo.color}`}
-                          >
-                            {statusInfo.icon}
-                            {statusInfo.label}
-                          </span>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <div className="font-mono text-sm text-gray-500">
-                            {formatDate(reset.createdAt)}
-                          </div>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <div className="font-mono text-sm text-gray-500">
-                            {formatDate(reset.expiresAt)}
-                          </div>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          {!reset.usedAt && (
+          {(() => {
+            if (loading) {
+              return (
+                <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
+                  <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
+                  <span className="font-mono text-xs uppercase text-gray-500">
+                    LOADING DATA...
+                  </span>
+                </div>
+              );
+            }
+
+            if (resets.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <Key className="h-12 w-12 text-gray-300 mb-4" />
+                  <div className="font-bold uppercase text-gray-400">
+                    KHÔNG TÌM THẤY DỮ LIỆU
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-black text-white tim-table-header">
+                      <th className="p-4 border-r border-black/20 w-[60px]">
+                        ID
+                      </th>
+                      <th className="p-4 border-r border-black/20">EMAIL</th>
+                      <th className="p-4 border-r border-black/20">USER</th>
+                      <th className="p-4 border-r border-black/20">
+                        IP ADDRESS
+                      </th>
+                      <th className="p-4 border-r border-black/20">
+                        TRẠNG THÁI
+                      </th>
+                      <th className="p-4 border-r border-black/20">NGÀY TẠO</th>
+                      <th className="p-4 border-r border-black/20">HẾT HẠN</th>
+                      <th className="p-4 border-r border-black/20">CÒN LẠI</th>
+                      <th className="p-4">ĐÃ DÙNG</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/5">
+                    {resets.map((reset) => {
+                      const statusInfo = getStatusInfo(reset);
+                      return (
+                        <tr
+                          key={reset.id}
+                          className="hover:bg-yellow-50 group transition-colors"
+                        >
+                          <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
+                            #{reset.id}
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <div className="font-mono text-sm font-medium">
+                              {reset.email}
+                            </div>
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <div className="font-mono text-sm text-gray-600">
+                              {reset.user?.email || "—"}
+                            </div>
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <div className="flex items-center gap-1 font-mono text-sm text-gray-600">
+                              <MapPin className="w-3 h-3 text-gray-400" />
+                              {reset.ipAddress}
+                            </div>
+                          </td>
+                          <td className="p-4 border-r border-black/5">
                             <span
-                              className={`font-mono text-sm font-bold ${new Date(reset.expiresAt) > new Date() ? "text-[#F3E600]" : "text-red-600"}`}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${statusInfo.color}`}
                             >
-                              {getTimeRemaining(reset.expiresAt)}
+                              {statusInfo.icon}
+                              {statusInfo.label}
                             </span>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <div className="font-mono text-sm text-gray-500">
-                            {reset.usedAt ? formatDate(reset.usedAt) : "—"}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <div className="font-mono text-sm text-gray-500">
+                              {formatDate(reset.createdAt)}
+                            </div>
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            <div className="font-mono text-sm text-gray-500">
+                              {formatDate(reset.expiresAt)}
+                            </div>
+                          </td>
+                          <td className="p-4 border-r border-black/5">
+                            {!reset.usedAt && (
+                              <span
+                                className={`font-mono text-sm font-bold ${new Date(reset.expiresAt) > new Date() ? "text-[#F3E600]" : "text-red-600"}`}
+                              >
+                                {getTimeRemaining(reset.expiresAt)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-4">
+                            <div className="font-mono text-sm text-gray-500">
+                              {reset.usedAt ? formatDate(reset.usedAt) : "—"}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
 
           {/* Pagination */}
           {totalPages > 1 && (

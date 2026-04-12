@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import toast from "react-hot-toast";
 import Mail from "lucide-react/dist/esm/icons/mail";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
@@ -29,7 +28,6 @@ import { forgotPasswordSchema } from "@/schemas/auth";
 const ForgotPasswordPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const navigate = useNavigate();
 
   const {
     register,
@@ -51,7 +49,7 @@ const ForgotPasswordPage = () => {
 
       // Hiển thị token nếu ở dev mode (để test)
       if (response.data?.resetToken) {
-        console.log("Reset Token (DEV only):", response.data.resetToken);
+        console.warn("Reset Token (DEV only):", response.data.resetToken);
         toast.success(`Token: ${response.data.resetToken}`, {
           duration: 10000,
         });
