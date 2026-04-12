@@ -8,7 +8,12 @@ import { GuestGate } from "../../src/components/ui/GuestGate";
 import { TAB_BAR_HEIGHT } from "./_layout";
 import { TripsDashboard } from "../../src/modules/trips/components/TripsDashboard";
 import { TripCard } from "../../src/modules/trips/components/TripCard";
-import { LoadingState, EmptyTrips, ErrorState } from "../../src/modules/trips/components/TripsStates";
+import {
+  LoadingState,
+  EmptyTrips,
+  ErrorState,
+} from "../../src/modules/trips/components/TripsStates";
+import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../src/constants/design-tokens";
 
 export default function TripsScreen() {
   const router = useRouter();
@@ -18,7 +23,12 @@ export default function TripsScreen() {
   const isLoggedIn = !!accessToken && !isGuest;
   const [activeFilter, setActiveFilter] = useState("all");
 
-  const { data: trips = [], isLoading, isError, refetch } = useTrips(isLoggedIn);
+  const {
+    data: trips = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useTrips(isLoggedIn);
 
   const filteredTrips = useMemo(
     () =>
@@ -36,7 +46,10 @@ export default function TripsScreen() {
   );
 
   const handleCreate = useCallback(() => router.push("/trip/create"), [router]);
-  const handlePressTrip = useCallback((id) => router.push(`/trip/${id}`), [router]);
+  const handlePressTrip = useCallback(
+    (id) => router.push(`/trip/${id}`),
+    [router],
+  );
 
   if (!isLoggedIn) {
     return (
@@ -91,7 +104,7 @@ export default function TripsScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: APPLE_THEME.background,
   },
   listContent: {
     paddingBottom: TAB_BAR_HEIGHT + 24,

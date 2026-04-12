@@ -23,6 +23,52 @@ const approvedPlaceWhere = {
   status: "approved",
 };
 
+const parseTermsObject = (terms) => {
+  if (!terms || typeof terms !== "string") return null;
+  try {
+    const parsed = JSON.parse(terms);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
+const getDepositPolicy = (terms) => {
+  const meta = parseTermsObject(terms);
+  const raw = meta?.depositConfig || {};
+
+  const requireDeposit =
+    raw.requireDeposit === true || String(raw.requireDeposit) === "true";
+  const depositType = raw.depositType === "FIXED" ? "FIXED" : "PERCENT";
+  const depositAmount = Number(raw.depositAmount);
+  const normalizedDepositAmount = Number.isFinite(depositAmount)
+    ? depositType === "PERCENT"
+      ? Math.max(0, Math.min(100, depositAmount))
+      : Math.max(0, depositAmount)
+    : null;
+
+  let depositRefundable = raw.depositRefundable;
+  if (typeof depositRefundable !== "boolean") {
+    depositRefundable = String(depositRefundable) !== "false";
+  }
+
+  const refundPercent = Number(raw.depositRefundPercent);
+
+  return {
+    requireDeposit,
+    depositType: requireDeposit ? depositType : null,
+    depositAmount: requireDeposit ? normalizedDepositAmount : null,
+    depositRefundable,
+    depositRefundPercent:
+      Number.isFinite(refundPercent) && refundPercent >= 0
+        ? Math.min(refundPercent, 100)
+        : 50,
+  };
+};
+
 export const getHomeData = async (query = {}) => {
   const limit = Math.min(Math.max(toInt(query.limit, 12), 1), 30);
 
@@ -327,12 +373,17 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
 
 export const getServices = async (query = {}) => {
   const { page, limit, skip } = parsePagination(query);
+  const placeId = toInt(query.placeId);
   const serviceType = query.serviceType || undefined;
   const search = query.search || undefined;
 
   const where = {
     isActive: true,
   };
+
+  if (placeId) {
+    where.placeId = placeId;
+  }
 
   if (serviceType && serviceType !== "all") {
     where.serviceType = serviceType;
@@ -358,6 +409,7 @@ export const getServices = async (query = {}) => {
         serviceType: true,
         price: true,
         salePrice: true,
+        terms: true,
         thumbnail: true,
         bookingCount: true,
         place: {
@@ -375,7 +427,13 @@ export const getServices = async (query = {}) => {
   ]);
 
   return {
-    data: items,
+    data: items.map((item) => {
+      const deposit = getDepositPolicy(item.terms);
+      return {
+        ...item,
+        ...deposit,
+      };
+    }),
     pagination: {
       page,
       limit,

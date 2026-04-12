@@ -31,7 +31,7 @@ function getDisplayName(profile, storedUser) {
     profile?.fullName ||
     storedUser?.fullName ||
     storedUser?.email?.split("@")[0] ||
-    "Sarah Jenkins"
+    "Lữ khách"
   );
 }
 
@@ -39,8 +39,8 @@ function getAvatarUri(profile, storedUser) {
   return profile?.avatar || storedUser?.avatar || null;
 }
 
-function getLocation() {
-  return "SAN FRANCISCO, CA";
+function getLocation(profile, storedUser) {
+  return profile?.address || storedUser?.address || "Chưa cập nhật địa chỉ";
 }
 
 function formatCompactNumber(value) {
@@ -49,11 +49,9 @@ function formatCompactNumber(value) {
   return String(num);
 }
 
-function buildStats(profile, storedUser) {
-  const tripsCount = profile?.stats?.tripsCount || 24;
-  // Giả sử API trả về countriesCount & followers (nếu chưa có thì fallback giá trị mockup)
-  const countriesCount = profile?.stats?.countriesCount ?? 12;
-  const followersCount = profile?.stats?.followersCount ?? 8500;
+function buildStats(profile, storedUser, tripsCount = 0) {
+  const reviewsCount = profile?.stats?.reviewsCount || 0;
+  const savedCount = profile?.stats?.savedCount || 0;
 
   return [
     {
@@ -62,14 +60,14 @@ function buildStats(profile, storedUser) {
       label: "CHUYẾN ĐI",
     },
     {
-      key: "countries",
-      value: formatCompactNumber(countriesCount),
-      label: "QUỐC GIA",
+      key: "reviews",
+      value: formatCompactNumber(reviewsCount),
+      label: "ĐÁNH GIÁ",
     },
     {
-      key: "followers",
-      value: formatCompactNumber(followersCount),
-      label: "NGƯỜI THEO DÕI",
+      key: "saved",
+      value: formatCompactNumber(savedCount),
+      label: "ĐÃ LƯU",
     },
   ];
 }
@@ -116,6 +114,11 @@ function SettingsSection() {
   const router = useRouter();
 
   const settingsItems = [
+    {
+      icon: "confirmation-number",
+      label: "Booking của tôi",
+      route: "/profile/bookings",
+    },
     {
       icon: "bookmark",
       label: "Địa điểm đã lưu",
@@ -182,14 +185,19 @@ export default function ProfileScreen() {
           <View style={styles.guestIconOuter}>
             <View style={styles.guestIconRing} />
             <View style={styles.guestIconWrap}>
-              <MaterialIcons name="person-outline" size={40} color={ACCENT_BLUE} />
+              <MaterialIcons
+                name="person-outline"
+                size={40}
+                color={ACCENT_BLUE}
+              />
             </View>
           </View>
 
           {/* Text */}
           <Text style={styles.guestTitle}>Đăng nhập để mở khóa hồ sơ</Text>
           <Text style={styles.guestSubtitle}>
-            Theo dõi chuyến đi, lưu kỷ niệm và đồng bộ dữ liệu trên mọi thiết bị.
+            Theo dõi chuyến đi, lưu kỷ niệm và đồng bộ dữ liệu trên mọi thiết
+            bị.
           </Text>
 
           {/* Divider */}
@@ -237,7 +245,9 @@ export default function ProfileScreen() {
           </Pressable>
 
           {/* Hint */}
-          <Text style={styles.guestHint}>Miễn phí · Không cần thẻ tín dụng</Text>
+          <Text style={styles.guestHint}>
+            Miễn phí · Không cần thẻ tín dụng
+          </Text>
         </ScrollView>
       </View>
     );
@@ -253,8 +263,9 @@ function LoggedInProfileScreen({ insets, storedUser }) {
 
   const displayName = getDisplayName(profile, storedUser);
   const avatarUri = getAvatarUri(profile, storedUser);
-  const location = getLocation();
-  const stats = buildStats(profile, storedUser);
+  const location = getLocation(profile, storedUser);
+  const tripsCount = trips?.length || 0;
+  const stats = buildStats(profile, storedUser, tripsCount);
 
   const upcomingTrip =
     trips.find((t) => t?.status !== "completed" && t?.status !== "cancelled") ||

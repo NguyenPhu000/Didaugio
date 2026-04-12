@@ -22,10 +22,12 @@ import settingsRoutes from "./routes/settingsRoutes.js";
 import businessRoutes from "./routes/businessRoutes.js";
 import businessOfferingRoutes from "./routes/businessOfferingRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
+import bookingPublicRoutes from "./routes/bookingPublicRoutes.js";
 import autoApproveRuleRoutes from "./routes/autoApproveRuleRoutes.js";
 import voucherRoutes from "./routes/voucherRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import feedbackRoutes from "./routes/feedbackRoutes.js";
+import serviceBookingRoutes from "./routes/serviceBookingRoutes.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import {
   authLimiter,
@@ -137,6 +139,8 @@ app.use("/api/boundaries", boundaryRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/business/services", businessOfferingRoutes);
 app.use("/api/business/bookings", bookingRoutes);
+app.use("/api/bookings", bookingPublicRoutes);
+app.use("/api/services", serviceBookingRoutes);
 app.use("/api/business/booking-auto-rules", autoApproveRuleRoutes);
 app.use("/api/business/vouchers", voucherRoutes);
 app.use("/api/business/reviews", reviewRoutes);

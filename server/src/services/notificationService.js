@@ -51,16 +51,25 @@ async function getUserPushTokens(userId) {
  * Convenience: send push + create DB notification for a user.
  */
 async function notifyUser(userId, title, body, data = {}, createdBy = null) {
+  const targetUserId = Number(userId);
+  if (!Number.isInteger(targetUserId) || targetUserId <= 0) return;
+
+  const createdByIdRaw = Number(createdBy);
+  const createdById =
+    Number.isInteger(createdByIdRaw) && createdByIdRaw > 0
+      ? createdByIdRaw
+      : targetUserId;
+
   const [tokens] = await Promise.all([
-    getUserPushTokens(userId),
+    getUserPushTokens(targetUserId),
     prisma.notificationGlobal.create({
       data: {
         title,
         body,
         targetType: "user",
-        targetValue: { userId },
+        targetValue: { userId: targetUserId },
         data,
-        createdBy,
+        createdBy: createdById,
         status: "published",
         sentAt: new Date(),
       },
@@ -86,48 +95,119 @@ eventEmitter.on(EVENTS.PLACE.APPROVED, async ({ id, approvedBy, ownerId }) => {
   }
 });
 
-eventEmitter.on(EVENTS.PLACE.REJECTED, async ({ id, rejectedBy, reason, ownerId }) => {
-  try {
+eventEmitter.on(
+  EVENTS.PLACE.REJECTED,
+  async ({ id, rejectedBy, reason, ownerId }) => {
+    try {
+      await notifyUser(
+        ownerId,
+        "Địa điểm bị từ chối",
+        `Địa điểm của bạn (ID: ${id}) bị từ chối. Lý do: ${reason}`,
+        { placeId: id, type: "place_rejected", reason },
+        rejectedBy,
+      );
+    } catch (error) {
+      console.error("[Notification] Error processing REJECTED event:", error);
+    }
+  },
+);
+
+eventEmitter.on(
+  EVENTS.BOOKING.CREATED,
+  async ({ bookingId, bookingCode, userId, businessOwnerId }) => {
+    await notifyUser(
+      businessOwnerId,
+      "Booking mới",
+      `Có booking mới #${bookingCode} cần xác nhận.`,
+      { bookingId, type: "booking_created" },
+      userId,
+    ).catch(() => {});
+    await notifyUser(
+      userId,
+      "Đặt chỗ thành công",
+      `Đặt chỗ #${bookingCode} đã được ghi nhận, đang chờ xác nhận.`,
+      { bookingId, type: "booking_created" },
+    ).catch(() => {});
+  },
+);
+
+eventEmitter.on(
+  EVENTS.BOOKING.CONFIRMED,
+  async ({ bookingId, bookingCode, confirmedBy, userId }) => {
+    await notifyUser(
+      userId,
+      "Booking đã xác nhận",
+      `Booking #${bookingCode} đã được xác nhận. Mã QR đã sẵn sàng.`,
+      { bookingId, type: "booking_confirmed" },
+      confirmedBy,
+    ).catch(() => {});
+  },
+);
+
+eventEmitter.on(
+  EVENTS.BOOKING.CANCELLED,
+  async ({ bookingId, bookingCode, cancelledBy, cancelReason, userId }) => {
+    await notifyUser(
+      userId,
+      "Booking đã bị hủy",
+      `Booking #${bookingCode} đã bị hủy. Lý do: ${cancelReason}`,
+      { bookingId, type: "booking_cancelled", cancelReason },
+      cancelledBy,
+    ).catch(() => {});
+  },
+);
+
+eventEmitter.on(
+  EVENTS.BOOKING.COMPLETED,
+  async ({ bookingId, bookingCode, completedBy, userId }) => {
+    await notifyUser(
+      userId,
+      "Booking hoàn thành",
+      `Booking #${bookingCode} đã hoàn thành. Cảm ơn bạn!`,
+      { bookingId, type: "booking_completed" },
+      completedBy,
+    ).catch(() => {});
+  },
+);
+
+eventEmitter.on(
+  EVENTS.BOOKING.NO_SHOW,
+  async ({ bookingId, bookingCode, markedBy, userId }) => {
+    await notifyUser(
+      userId,
+      "Không đến",
+      `Bạn đã không đến. Booking #${bookingCode} đã bị đánh dấu không đến.`,
+      { bookingId, type: "booking_no_show" },
+      markedBy,
+    ).catch(() => {});
+  },
+);
+
+eventEmitter.on(
+  EVENTS.BUSINESS.APPROVED,
+  async ({ businessId, approvedBy, ownerId }) => {
     await notifyUser(
       ownerId,
-      "Địa điểm bị từ chối",
-      `Địa điểm của bạn (ID: ${id}) bị từ chối. Lý do: ${reason}`,
-      { placeId: id, type: "place_rejected", reason },
+      "Doanh nghiệp được duyệt",
+      "Hồ sơ doanh nghiệp của bạn đã được duyệt. Bạn có thể bắt đầu đăng địa điểm.",
+      { businessId, type: "business_approved" },
+      approvedBy,
+    ).catch(() => {});
+  },
+);
+
+eventEmitter.on(
+  EVENTS.BUSINESS.REJECTED,
+  async ({ businessId, rejectedBy, reason, ownerId }) => {
+    await notifyUser(
+      ownerId,
+      "Doanh nghiệp bị từ chối",
+      `Hồ sơ doanh nghiệp bị từ chối. Lý do: ${reason}`,
+      { businessId, type: "business_rejected", reason },
       rejectedBy,
-    );
-  } catch (error) {
-    console.error("[Notification] Error processing REJECTED event:", error);
-  }
-});
-
-eventEmitter.on(EVENTS.BOOKING.CREATED, async ({ bookingId, bookingCode, userId, businessOwnerId }) => {
-  await notifyUser(businessOwnerId, "Booking mới", `Có booking mới #${bookingCode} cần xác nhận.`, { bookingId, type: "booking_created" }, userId).catch(() => {});
-  await notifyUser(userId, "Đặt chỗ thành công", `Đặt chỗ #${bookingCode} đã được ghi nhận, đang chờ xác nhận.`, { bookingId, type: "booking_created" }).catch(() => {});
-});
-
-eventEmitter.on(EVENTS.BOOKING.CONFIRMED, async ({ bookingId, bookingCode, confirmedBy, userId }) => {
-  await notifyUser(userId, "Booking đã xác nhận", `Booking #${bookingCode} đã được xác nhận. Mã QR đã sẵn sàng.`, { bookingId, type: "booking_confirmed" }, confirmedBy).catch(() => {});
-});
-
-eventEmitter.on(EVENTS.BOOKING.CANCELLED, async ({ bookingId, bookingCode, cancelledBy, cancelReason, userId }) => {
-  await notifyUser(userId, "Booking đã bị hủy", `Booking #${bookingCode} đã bị hủy. Lý do: ${cancelReason}`, { bookingId, type: "booking_cancelled", cancelReason }, cancelledBy).catch(() => {});
-});
-
-eventEmitter.on(EVENTS.BOOKING.COMPLETED, async ({ bookingId, bookingCode, completedBy, userId }) => {
-  await notifyUser(userId, "Booking hoàn thành", `Booking #${bookingCode} đã hoàn thành. Cảm ơn bạn!`, { bookingId, type: "booking_completed" }, completedBy).catch(() => {});
-});
-
-eventEmitter.on(EVENTS.BOOKING.NO_SHOW, async ({ bookingId, bookingCode, markedBy, userId }) => {
-  await notifyUser(userId, "Không đến", `Bạn đã không đến. Booking #${bookingCode} đã bị đánh dấu không đến.`, { bookingId, type: "booking_no_show" }, markedBy).catch(() => {});
-});
-
-eventEmitter.on(EVENTS.BUSINESS.APPROVED, async ({ businessId, approvedBy, ownerId }) => {
-  await notifyUser(ownerId, "Doanh nghiệp được duyệt", "Hồ sơ doanh nghiệp của bạn đã được duyệt. Bạn có thể bắt đầu đăng địa điểm.", { businessId, type: "business_approved" }, approvedBy).catch(() => {});
-});
-
-eventEmitter.on(EVENTS.BUSINESS.REJECTED, async ({ businessId, rejectedBy, reason, ownerId }) => {
-  await notifyUser(ownerId, "Doanh nghiệp bị từ chối", `Hồ sơ doanh nghiệp bị từ chối. Lý do: ${reason}`, { businessId, type: "business_rejected", reason }, rejectedBy).catch(() => {});
-});
+    ).catch(() => {});
+  },
+);
 
 export const initNotificationService = () => {
   console.log("[Notification Service] Initialized and listening for events...");

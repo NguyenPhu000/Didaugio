@@ -3,24 +3,37 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { TOKENS } from "../../../../src/constants/design-tokens";
-import { TAB_THEME, TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
-import { STATUS_THEME, getDateRangeLabel, getTimelineLabel } from "../utils/tripHelpers";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../../src/constants/design-tokens";
+import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
+import {
+  STATUS_THEME,
+  getDateRangeLabel,
+  getTimelineLabel,
+} from "../utils/tripHelpers";
 
 export const TripCard = memo(function TripCard({ trip, onPress }) {
   const status = STATUS_THEME[trip.status] || STATUS_THEME.draft;
-  const cover = trip.thumbnail || trip.destinations?.[0]?.place?.thumbnail || null;
+  const cover =
+    trip.thumbnail || trip.destinations?.[0]?.place?.thumbnail || null;
   const destinationCount = trip.destinations?.length || 0;
   const dateRange = getDateRangeLabel(trip);
   const daysLabel = `${trip.totalDays || 1} ngày`;
   const timelineLabel = getTimelineLabel(trip);
   const placesLabel =
-    destinationCount === 0 ? "Chưa có điểm đến" : `${destinationCount} điểm đến`;
+    destinationCount === 0
+      ? "Chưa có điểm đến"
+      : `${destinationCount} điểm đến`;
 
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.tripCard, pressed && styles.tripCardPressed]}
+      style={({ pressed }) => [
+        styles.tripCard,
+        pressed && styles.tripCardPressed,
+      ]}
     >
       <View style={styles.tripVisual}>
         {cover ? (
@@ -34,13 +47,16 @@ export const TripCard = memo(function TripCard({ trip, onPress }) {
         ) : (
           <View style={styles.tripImageFallback}>
             <View style={styles.tripFallbackGlow} />
-            <MaterialIcons name="landscape" size={42} color="#93C5FD" />
+            <MaterialIcons
+              name="landscape"
+              size={42}
+              color={APPLE_THEME.textMuted}
+            />
           </View>
         )}
 
-        {/* Gradient bóng mờ từ dưới lên cho text nổi bật */}
         <LinearGradient
-          colors={["transparent", "rgba(15, 23, 42, 0.75)", "#0F172A"]}
+          colors={["transparent", "rgba(0, 0, 0, 0.36)", "rgba(0, 0, 0, 0.62)"]}
           locations={[0, 0.6, 1]}
           style={styles.tripImageShade}
         />
@@ -48,11 +64,13 @@ export const TripCard = memo(function TripCard({ trip, onPress }) {
         <View style={styles.tripTopRow}>
           <View style={[styles.statusPill, { backgroundColor: status.bg }]}>
             <MaterialIcons name={status.icon} size={14} color={status.text} />
-            <Text style={[styles.statusText, { color: status.text }]}>{status.label}</Text>
+            <Text style={[styles.statusText, { color: status.text }]}>
+              {status.label}
+            </Text>
           </View>
 
           <View style={styles.timelinePill}>
-            <MaterialIcons name="schedule" size={13} color="#FFFFFF" />
+            <MaterialIcons name="schedule" size={13} color={APPLE_THEME.text} />
             <Text style={styles.timelinePillText}>{timelineLabel}</Text>
           </View>
         </View>
@@ -71,11 +89,15 @@ export const TripCard = memo(function TripCard({ trip, onPress }) {
       <View style={styles.tripBody}>
         <View style={styles.metricRow}>
           <View style={styles.metricPill}>
-            <MaterialIcons name="calendar-month" size={15} color={TAB_THEME.primary} />
+            <MaterialIcons
+              name="calendar-month"
+              size={15}
+              color={APPLE_THEME.primary}
+            />
             <Text style={styles.metricText}>{dateRange}</Text>
           </View>
           <View style={styles.metricPill}>
-            <MaterialIcons name="route" size={15} color={TAB_THEME.primary} />
+            <MaterialIcons name="route" size={15} color={APPLE_THEME.primary} />
             <Text style={styles.metricText}>{daysLabel}</Text>
           </View>
         </View>
@@ -90,7 +112,11 @@ export const TripCard = memo(function TripCard({ trip, onPress }) {
 
           <View style={styles.openTripWrap}>
             <Text style={styles.openTripText}>Mở chi tiết</Text>
-            <MaterialIcons name="arrow-forward" size={16} color={TAB_THEME.primary} />
+            <MaterialIcons
+              name="arrow-forward"
+              size={16}
+              color={APPLE_THEME.white}
+            />
           </View>
         </View>
       </View>
@@ -101,20 +127,20 @@ export const TripCard = memo(function TripCard({ trip, onPress }) {
 const styles = StyleSheet.create({
   tripCard: {
     marginHorizontal: TAB_SCREEN_PADDING,
-    borderRadius: 26,
+    borderRadius: TOKENS.radius["2xl"],
     overflow: "hidden",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: APPLE_THEME.surface,
     borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.12)",
-    ...TOKENS.shadow.md,
+    borderColor: APPLE_THEME.borderSoft,
+    ...TOKENS.shadow.sm,
   },
   tripCardPressed: {
     transform: [{ scale: 0.98 }],
     opacity: 0.95,
   },
   tripVisual: {
-    height: 240, // Tăng thêm 20px để tạo độ sâu, hình cover đã con mắt hơn
-    backgroundColor: "#EFF6FF",
+    height: 228,
+    backgroundColor: APPLE_THEME.surfaceMuted,
     justifyContent: "space-between",
   },
   tripImage: {
@@ -124,14 +150,14 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#EFF6FF",
+    backgroundColor: APPLE_THEME.surfaceMuted,
   },
   tripFallbackGlow: {
     position: "absolute",
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: "rgba(59, 130, 246, 0.1)",
+    backgroundColor: APPLE_THEME.primaryTint,
   },
   tripImageShade: {
     ...StyleSheet.absoluteFillObject,
@@ -143,7 +169,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 16,
     paddingTop: 16,
-    zIndex: 1, // Đảm bảo nổi lên trên cover
+    zIndex: 1,
   },
   statusPill: {
     flexDirection: "row",
@@ -152,12 +178,12 @@ const styles = StyleSheet.create({
     borderRadius: TOKENS.radius.full,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    // Add backdrop filter / blur in real native layer if desired, 
-    // basic background works for now
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
   },
   statusText: {
     fontSize: 12,
-    fontFamily: TOKENS.font.bold,
+    fontFamily: TOKENS.font.semibold,
   },
   timelinePill: {
     flexDirection: "row",
@@ -166,12 +192,12 @@ const styles = StyleSheet.create({
     borderRadius: TOKENS.radius.full,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "rgba(15, 23, 42, 0.5)",
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.92)",
   },
   timelinePillText: {
-    color: "#FFFFFF",
+    color: APPLE_THEME.text,
     fontSize: 12,
     fontFamily: TOKENS.font.semibold,
   },
@@ -188,7 +214,7 @@ const styles = StyleSheet.create({
     fontFamily: TOKENS.font.heading,
   },
   tripSubtitle: {
-    color: "rgba(241, 245, 249, 0.9)",
+    color: "rgba(245, 245, 247, 0.88)",
     fontSize: 14.5,
     lineHeight: 20,
     fontFamily: TOKENS.font.body,
@@ -210,12 +236,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: APPLE_THEME.surfaceElevated,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
+    borderColor: APPLE_THEME.border,
   },
   metricText: {
-    color: "#334155",
+    color: APPLE_THEME.textSecondary,
     fontSize: 13,
     fontFamily: TOKENS.font.semibold,
   },
@@ -237,7 +263,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   tripFooterText: {
-    color: "#64748B",
+    color: APPLE_THEME.textMuted,
     fontSize: 13.5,
     fontFamily: TOKENS.font.medium,
   },
@@ -245,14 +271,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: APPLE_THEME.primary,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 12,
   },
   openTripText: {
-    color: TAB_THEME.primary,
+    color: APPLE_THEME.white,
     fontSize: 13,
-    fontFamily: TOKENS.font.bold,
+    fontFamily: TOKENS.font.semibold,
   },
 });

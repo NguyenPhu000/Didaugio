@@ -80,7 +80,13 @@ export function formatPriceLine(place) {
     }
     return { main: `${main}đ`, suffix: "/lượt" };
   }
-  if (place?.priceRange) return { main: String(place.priceRange), suffix: "" };
+  if (place?.priceRange) {
+    const pr = String(place.priceRange).toUpperCase();
+    if (pr === "BUDGET") return { main: "Giá rẻ", suffix: "" };
+    if (pr === "MODERATE") return { main: "Bình dân", suffix: "" };
+    if (pr === "EXPENSIVE") return { main: "Cao cấp", suffix: "" };
+    return { main: pr, suffix: "" };
+  }
   return null;
 }
 

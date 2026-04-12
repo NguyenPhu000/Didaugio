@@ -1,5 +1,6 @@
 import profileService from "../services/profileService.js";
 import appService from "../services/appService.js";
+import * as bookingService from "../services/bookingService.js";
 import { ERROR_CODES } from "../config/messages.js";
 import prisma from "../config/prismaClient.js";
 
@@ -191,6 +192,97 @@ export const getMyTrips = async (req, res, next) => {
   }
 };
 
+export const getMyBookings = async (req, res, next) => {
+  try {
+    const result = await bookingService.getMyBookings(
+      getUserId(req),
+      req.query,
+    );
+    res.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+      message: "Lấy danh sách booking của tôi thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyBookingDetail = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID booking không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    const booking = await bookingService.getMyBookingDetail(id, getUserId(req));
+    res.json({
+      success: true,
+      data: booking,
+      message: "Lấy chi tiết booking thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyBookingQR = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID booking không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    const qr = await bookingService.getMyBookingQR(id, getUserId(req));
+    res.json({
+      success: true,
+      data: qr,
+      message: "Lấy mã QR booking thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const linkMyBookingToTrip = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID booking không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    const booking = await bookingService.linkMyBookingToTrip(
+      id,
+      getUserId(req),
+      req.body || {},
+    );
+
+    res.json({
+      success: true,
+      data: booking,
+      message: "Liên kết booking vào trip thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const generateTrip = async (req, res, next) => {
   try {
     const result = await appService.generateAndSaveTrip(
@@ -248,13 +340,11 @@ export const getTripDetail = async (req, res, next) => {
         .json({ success: false, data: null, message: "ID không hợp lệ" });
     const trip = await appService.getTripDetail(id, getUserId(req));
     if (!trip)
-      return res
-        .status(404)
-        .json({
-          success: false,
-          data: null,
-          message: "Không tìm thấy chuyến đi",
-        });
+      return res.status(404).json({
+        success: false,
+        data: null,
+        message: "Không tìm thấy chuyến đi",
+      });
     res.json({
       success: true,
       data: trip,
@@ -315,13 +405,11 @@ export const addDestination = async (req, res, next) => {
       order,
       note,
     });
-    res
-      .status(201)
-      .json({
-        success: true,
-        data: dest,
-        message: "Đã thêm địa điểm vào lịch trình",
-      });
+    res.status(201).json({
+      success: true,
+      data: dest,
+      message: "Đã thêm địa điểm vào lịch trình",
+    });
   } catch (error) {
     next(error);
   }
@@ -391,6 +479,10 @@ export default {
   savePlace,
   unsavePlace,
   getMyTrips,
+  getMyBookings,
+  getMyBookingDetail,
+  getMyBookingQR,
+  linkMyBookingToTrip,
   generateTrip,
   createTrip,
   getTripDetail,

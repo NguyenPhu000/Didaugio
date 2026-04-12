@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
@@ -607,6 +607,11 @@ export default function PlaceDetailScreen() {
   const saveMutation = useSavePlace();
   const unsaveMutation = useUnsavePlace();
   const [activeImage, setActiveImage] = useState(0);
+  const [isSavedLocal, setIsSavedLocal] = useState(false);
+
+  useEffect(() => {
+    setIsSavedLocal(Boolean(place?.isSaved));
+  }, [place?.id, place?.isSaved]);
 
   const handleImageScroll = useCallback(
     (e) => {
@@ -635,12 +640,31 @@ export default function PlaceDetailScreen() {
       return;
     }
 
-    if (place?.isSaved) {
-      unsaveMutation.mutate(place.id);
+    if (!place?.id) return;
+
+    if (isSavedLocal) {
+      setIsSavedLocal(false);
+      unsaveMutation.mutate(place.id, {
+        onError: () => setIsSavedLocal(true),
+      });
     } else if (place?.id) {
-      saveMutation.mutate({ placeId: place.id });
+      setIsSavedLocal(true);
+      saveMutation.mutate(
+        { placeId: place.id },
+        {
+          onError: () => setIsSavedLocal(false),
+        },
+      );
     }
-  }, [accessToken, place, router, saveMutation, unsaveMutation]);
+  }, [
+    accessToken,
+    isSavedLocal,
+    place?.id,
+    router,
+    saveMutation,
+    t,
+    unsaveMutation,
+  ]);
 
   const handleNavigate = useCallback(() => {
     if (place?.latitude && place?.longitude) {
@@ -915,9 +939,9 @@ export default function PlaceDetailScreen() {
 
           <Pressable onPress={handleSaveToggle} style={styles.favoriteFab}>
             <MaterialIcons
-              name={place?.isSaved ? "star" : "star-border"}
+              name={isSavedLocal ? "star" : "star-border"}
               size={28}
-              color={place?.isSaved ? PALETTE.accent : "#F3B300"}
+              color={isSavedLocal ? "#1D1D1F" : "#6B7280"}
             />
           </Pressable>
         </View>
@@ -1144,9 +1168,9 @@ export default function PlaceDetailScreen() {
       >
         <Pressable onPress={handleSaveToggle} style={styles.bottomIconButton}>
           <MaterialIcons
-            name={place?.isSaved ? "bookmark" : "bookmark-border"}
+            name={isSavedLocal ? "bookmark" : "bookmark-border"}
             size={24}
-            color={place?.isSaved ? PALETTE.primary : PALETTE.textMuted}
+            color={isSavedLocal ? "#1D1D1F" : PALETTE.textMuted}
           />
         </Pressable>
 

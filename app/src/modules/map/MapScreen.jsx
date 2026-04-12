@@ -119,6 +119,7 @@ const QUICK_FILTER_OPTIONS = [
 
 const BUDGET_PRICE_RANGES = new Set(["FREE", "BUDGET", "MODERATE"]);
 const PREMIUM_PRICE_RANGES = new Set(["EXPENSIVE", "LUXURY"]);
+const ALL_AREAS_KEY = "__all_areas__";
 
 const parseTimeToMinutes = (timeText) => {
   if (typeof timeText !== "string") return null;
@@ -158,6 +159,29 @@ const isPlaceOpenNow = (place) => {
 
   // Trường hợp qua đêm: ví dụ 22:00 → 02:00.
   return currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
+};
+
+const getPlaceDistrictMeta = (place) => {
+  const districtId =
+    place?.district?.id ?? place?.ward?.districtId ?? place?.districtId;
+  const districtName =
+    place?.district?.name ?? place?.ward?.district?.name ?? null;
+
+  if (districtId != null) {
+    return {
+      key: `id:${districtId}`,
+      name: districtName || `Khu vực ${districtId}`,
+    };
+  }
+
+  if (districtName) {
+    return {
+      key: `name:${districtName.trim().toLowerCase()}`,
+      name: districtName,
+    };
+  }
+
+  return null;
 };
 
 const GlassPanel = ({ style, children, intensity = 40 }) => (
@@ -250,6 +274,34 @@ const QuickFilterChip = memo(({ option, active, onToggle }) => {
     </Pressable>
   );
 });
+
+const AreaFilterChip = memo(({ label, active, onPress }) => (
+  <Pressable
+    onPress={onPress}
+    className="h-[34px] rounded-full flex-row items-center px-3.5 gap-1.5"
+    style={{
+      backgroundColor: active ? "#1D1D1F" : "#FFFFFF",
+      borderWidth: 1,
+      borderColor: active ? "#1D1D1F" : "#E5E7EB",
+      flexShrink: 0,
+    }}
+  >
+    <MaterialIcons
+      name="place"
+      size={15}
+      color={active ? "#FFFFFF" : "#475569"}
+    />
+    <Text
+      className="text-[12px] font-semibold"
+      style={{
+        color: active ? "#FFFFFF" : "#0F172A",
+        letterSpacing: 0.2,
+      }}
+    >
+      {label}
+    </Text>
+  </Pressable>
+));
 
 const LayerSwitcherModal = ({ visible, onClose, currentStyle, onSelect }) => {
   const options = Object.values(MAP_STYLES);
@@ -354,6 +406,7 @@ export default function MapScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [activeCategoryId, setActiveCategoryId] = useState(null);
+  const [activeArea, setActiveArea] = useState(ALL_AREAS_KEY);
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [quickFilters, setQuickFilters] = useState({
     topRated: false,
@@ -410,6 +463,19 @@ export default function MapScreen() {
     return Array.from(derived.values());
   }, [homeData, allPlaces]);
 
+  const areaOptions = useMemo(() => {
+    const areas = new Map();
+    allPlaces.forEach((place) => {
+      const district = getPlaceDistrictMeta(place);
+      if (!district || areas.has(district.key)) return;
+      areas.set(district.key, district);
+    });
+
+    return Array.from(areas.values()).sort((a, b) =>
+      String(a.name).localeCompare(String(b.name), "vi"),
+    );
+  }, [allPlaces]);
+
   const isLoading = isPlacesLoading && allPlaces.length === 0;
   const error = placesError;
 
@@ -462,6 +528,13 @@ export default function MapScreen() {
         return false;
       }
 
+      if (activeArea !== ALL_AREAS_KEY) {
+        const district = getPlaceDistrictMeta(place);
+        if (!district || district.key !== activeArea) {
+          return false;
+        }
+      }
+
       if (normalizedSearch) {
         const searchableText = [
           place?.name,
@@ -501,7 +574,7 @@ export default function MapScreen() {
 
       return true;
     });
-  }, [activeCategoryId, allPlaces, quickFilters, searchText]);
+  }, [activeArea, activeCategoryId, allPlaces, quickFilters, searchText]);
 
   const mapBoundaryOverlays = useMemo(
     () => (
@@ -580,6 +653,10 @@ export default function MapScreen() {
         [filterKey]: !prev[filterKey],
       };
     });
+  }, []);
+
+  const handleAreaToggle = useCallback((areaKey) => {
+    setActiveArea(areaKey);
   }, []);
 
   const handleOpenPlaceDetail = useCallback(
@@ -899,6 +976,39 @@ export default function MapScreen() {
                   category={category}
                   active={activeCategoryId === category.id}
                   onToggle={handleCategoryToggle}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        {areaOptions.length > 0 ? (
+          <View className="mt-2 px-4" pointerEvents="auto">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingHorizontal: 10,
+                gap: 8,
+                paddingRight: 14,
+                paddingVertical: 2,
+              }}
+              style={{
+                maxHeight: 40,
+              }}
+              keyboardShouldPersistTaps="handled"
+            >
+              <AreaFilterChip
+                label="Tất cả khu vực"
+                active={activeArea === ALL_AREAS_KEY}
+                onPress={() => handleAreaToggle(ALL_AREAS_KEY)}
+              />
+              {areaOptions.map((area) => (
+                <AreaFilterChip
+                  key={area.key}
+                  label={area.name}
+                  active={activeArea === area.key}
+                  onPress={() => handleAreaToggle(area.key)}
                 />
               ))}
             </ScrollView>

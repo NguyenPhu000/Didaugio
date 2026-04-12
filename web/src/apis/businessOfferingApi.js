@@ -35,9 +35,21 @@ export const update = async (id, data) => {
   return response;
 };
 
+export const updateDepositConfig = async (id, data) => {
+  const response = await api.patch(`${BASE_URL}/${id}/deposit-config`, data);
+  return response;
+};
+
 export const remove = async (id) => {
   const response = await api.delete(`${BASE_URL}/${id}`);
   return response;
 };
 
-export default { getAll, getById, create, update, remove };
+export default {
+  getAll,
+  getById,
+  create,
+  update,
+  updateDepositConfig,
+  remove,
+};

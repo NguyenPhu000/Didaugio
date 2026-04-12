@@ -13,6 +13,7 @@ import { auditLog } from "../middlewares/auditLogMiddleware.js";
 import {
   createServiceSchema,
   updateServiceSchema,
+  updateServiceDepositConfigSchema,
   getBusinessServicesQuerySchema,
 } from "../models/index.js";
 
@@ -66,6 +67,25 @@ router.put(
     getNewData: (req) => req.body,
   }),
   controller.update,
+);
+
+router.patch(
+  "/:id/deposit-config",
+  checkBusinessOwnership("service"),
+  hasPermission("business.manage_services"),
+  validateBody(updateServiceDepositConfigSchema),
+  auditLog({
+    action: "UPDATE_DEPOSIT_CONFIG",
+    tableName: "business_services",
+    getNewData: (req) => ({
+      requireDeposit: req.body.requireDeposit,
+      depositType: req.body.depositType,
+      depositAmount: req.body.depositAmount,
+      depositRefundable: req.body.depositRefundable,
+      depositRefundPercent: req.body.depositRefundPercent,
+    }),
+  }),
+  controller.updateDepositConfig,
 );
 
 router.delete(

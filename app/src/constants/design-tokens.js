@@ -258,6 +258,31 @@ export const GLASS_THEME = {
   },
 };
 
+// Apple-inspired booking theme for booking/profile booking surfaces.
+export const BOOKING_APPLE_THEME = {
+  background: "#F5F5F7",
+  surface: "#FFFFFF",
+  surfaceElevated: "#FAFAFC",
+  surfaceMuted: "#EDEDF2",
+  border: "#D2D2D7",
+  borderSoft: "rgba(0,0,0,0.08)",
+  primary: "#1D1D1F",
+  primaryPressed: "#000000",
+  primaryTint: "rgba(0,0,0,0.08)",
+  text: "#1D1D1F",
+  textSecondary: "rgba(0,0,0,0.8)",
+  textMuted: "rgba(0,0,0,0.48)",
+  success: "#34C759",
+  warning: "#FF9F0A",
+  danger: "#FF3B30",
+  focusBlue: "#0071E3",
+  white: "#FFFFFF",
+  black: "#000000",
+};
+
+// Backward-compatible alias for earlier import sites.
+export const BOOKING_AIRBNB_THEME = BOOKING_APPLE_THEME;
+
 export const CATEGORY_COLORS = {
   "an-uong": "#F97316",
   "du-lich": PRIMARY_BLUE[500],

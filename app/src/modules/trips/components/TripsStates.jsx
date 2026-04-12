@@ -1,14 +1,25 @@
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { TOKENS } from "../../../../src/constants/design-tokens";
-import { TAB_THEME, TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../../src/constants/design-tokens";
+import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 
 // Lottie hoặc skeleton sẽ đẹp hơn, nhưng tạm thời fallback ActivityIndicator
 export function LoadingState() {
   return (
     <View style={styles.loadingState}>
-      <ActivityIndicator size="large" color={TAB_THEME.primary} />
-      <Text style={styles.loadingText}>Đang chuẩn bị dữ liệu hành trình...</Text>
+      <ActivityIndicator size="large" color={APPLE_THEME.primary} />
+      <Text style={styles.loadingText}>
+        Đang chuẩn bị dữ liệu hành trình...
+      </Text>
     </View>
   );
 }
@@ -24,12 +35,14 @@ export function EmptyTrips({ onCreate, activeFilter }) {
           <MaterialIcons
             name={isFiltered ? "filter-alt-off" : "explore"}
             size={42}
-            color={TAB_THEME.primary}
+            color={APPLE_THEME.primary}
           />
         </View>
 
         <Text style={styles.centerTitle}>
-          {isFiltered ? "Không có kết quả phù hợp" : "Bắt đầu khám phá thế giới"}
+          {isFiltered
+            ? "Không có kết quả phù hợp"
+            : "Bắt đầu khám phá thế giới"}
         </Text>
         <Text style={styles.centerCopy}>
           {isFiltered
@@ -53,7 +66,11 @@ export function ErrorState({ onRetry }) {
     <View style={styles.centerCardWrap}>
       <View style={styles.centerCard}>
         <View style={[styles.centerIconBlock, styles.errorIconBlock]}>
-          <MaterialIcons name="cloud-off" size={42} color={TOKENS.color.error} />
+          <MaterialIcons
+            name="cloud-off"
+            size={42}
+            color={TOKENS.color.error}
+          />
         </View>
         <Text style={styles.centerTitle}>Không tải được dữ liệu</Text>
         <Text style={styles.centerCopy}>
@@ -78,7 +95,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   loadingText: {
-    color: "#475569",
+    color: APPLE_THEME.textSecondary,
     fontSize: 15,
     fontFamily: TOKENS.font.medium,
   },
@@ -89,11 +106,11 @@ const styles = StyleSheet.create({
   centerCard: {
     borderRadius: 28,
     padding: 32,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: APPLE_THEME.surface,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.1)",
-    ...TOKENS.shadow.md,
+    borderColor: APPLE_THEME.borderSoft,
+    ...TOKENS.shadow.sm,
   },
   centerIconBlock: {
     width: 96,
@@ -101,7 +118,7 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#EFF6FF",
+    backgroundColor: APPLE_THEME.primaryTint,
     marginBottom: 20,
     overflow: "hidden",
   },
@@ -110,20 +127,20 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: "rgba(59, 130, 246, 0.08)",
+    backgroundColor: "rgba(0, 0, 0, 0.06)",
   },
   errorIconBlock: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: "rgba(255, 59, 48, 0.12)",
   },
   centerTitle: {
-    color: "#0F172A",
+    color: APPLE_THEME.text,
     fontSize: 22,
     textAlign: "center",
     fontFamily: TOKENS.font.heading,
   },
   centerCopy: {
     marginTop: 12,
-    color: "#64748B",
+    color: APPLE_THEME.textSecondary,
     fontSize: 15,
     lineHeight: 22,
     textAlign: "center",
@@ -138,11 +155,10 @@ const styles = StyleSheet.create({
     borderRadius: TOKENS.radius.full,
     paddingHorizontal: 24,
     paddingVertical: 14,
-    backgroundColor: TAB_THEME.primary,
-    ...TOKENS.shadow.accent,
+    backgroundColor: APPLE_THEME.primary,
   },
   primaryButtonText: {
-    color: "#FFFFFF",
+    color: APPLE_THEME.white,
     fontSize: 15,
     fontFamily: TOKENS.font.semibold,
   },

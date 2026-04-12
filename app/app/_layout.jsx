@@ -105,6 +105,14 @@ export default function RootLayout() {
                   options={{ animation: "slide_from_right" }}
                 />
                 <Stack.Screen
+                  name="profile/bookings"
+                  options={{ animation: "slide_from_right" }}
+                />
+                <Stack.Screen
+                  name="profile/booking/[id]"
+                  options={{ animation: "slide_from_right" }}
+                />
+                <Stack.Screen
                   name="onboarding"
                   options={{ animation: "fade" }}
                 />

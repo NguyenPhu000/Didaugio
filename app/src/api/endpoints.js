@@ -32,9 +32,14 @@ export const ENDPOINTS = {
     addDestination: (tripId) => `/profile/trips/${tripId}/destinations`,
     removeDestination: (tripId, destId) =>
       `/profile/trips/${tripId}/destinations/${destId}`,
+    bookings: "/profile/bookings",
+    bookingDetail: (id) => `/profile/bookings/${id}`,
+    bookingQr: (id) => `/profile/bookings/${id}/qr`,
+    bookingLinkTrip: (id) => `/profile/bookings/${id}/link-trip`,
     pushToken: "/profile/push-token",
   },
   booking: {
+    createByService: (serviceId) => `/services/${serviceId}/book`,
     create: "/business/bookings",
     list: "/business/bookings",
     detail: (id) => `/business/bookings/${id}`,

@@ -91,9 +91,9 @@ const styles = StyleSheet.create({
   },
   title: {
     color: TEXT_COLOR,
-    fontSize: 33,
-    lineHeight: 38,
-    letterSpacing: -0.8,
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: -0.5,
     fontFamily: TOKENS.font.heading,
   },
   viewAll: {

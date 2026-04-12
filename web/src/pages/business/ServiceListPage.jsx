@@ -71,6 +71,30 @@ const filesToDataUrls = async (files = []) => {
   return results.filter(Boolean);
 };
 
+const buildInitialServiceForm = (service, initialPlaceId = "") => ({
+  name: service?.name || "",
+  description: service?.description || "",
+  serviceType: service?.serviceType || "service",
+  price: service?.price || 0,
+  discountPrice: service?.discountPrice || "",
+  duration: service?.duration || "",
+  maxCapacity: service?.maxCapacity || "",
+  placeId: initialPlaceId,
+  isActive: service?.isActive ?? true,
+  requireDeposit: service?.requireDeposit ?? false,
+  depositType: service?.depositType || "PERCENT",
+  depositAmount:
+    service?.depositAmount !== null && service?.depositAmount !== undefined
+      ? String(service.depositAmount)
+      : "",
+  depositRefundable: service?.depositRefundable ?? true,
+  depositRefundPercent:
+    service?.depositRefundPercent !== null &&
+    service?.depositRefundPercent !== undefined
+      ? String(service.depositRefundPercent)
+      : "50",
+});
+
 // ─── Service Form Modal ─────────────────────────────────────────────────────
 
 const ServiceFormModal = ({
@@ -88,26 +112,38 @@ const ServiceFormModal = ({
     initialFormPlaceId = String(initialPlaceId);
   }
 
-  const [form, setForm] = useState({
-    name: service?.name || "",
-    description: service?.description || "",
-    serviceType: service?.serviceType || "service",
-    price: service?.price || 0,
-    discountPrice: service?.discountPrice || "",
-    duration: service?.duration || "",
-    maxCapacity: service?.maxCapacity || "",
-    placeId: initialFormPlaceId,
-    isActive: service?.isActive ?? true,
-  });
+  const [form, setForm] = useState(() =>
+    buildInitialServiceForm(service, initialFormPlaceId),
+  );
   const [saving, setSaving] = useState(false);
   const [thumbnailFiles, setThumbnailFiles] = useState([]);
   const [galleryFiles, setGalleryFiles] = useState([]);
 
   useEffect(() => {
     if (!open) return;
+    setForm(buildInitialServiceForm(service, initialFormPlaceId));
     setThumbnailFiles([]);
     setGalleryFiles([]);
-  }, [open, service?.id]);
+  }, [open, service, initialFormPlaceId]);
+
+  const effectivePrice = Number(form.discountPrice || form.price || 0);
+  const depositPreview = useMemo(() => {
+    if (!form.requireDeposit) return null;
+
+    const amount = Number(form.depositAmount);
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+
+    if (form.depositType === "PERCENT") {
+      return Math.round((effectivePrice * amount) / 100);
+    }
+
+    return Math.round(amount);
+  }, [
+    form.requireDeposit,
+    form.depositAmount,
+    form.depositType,
+    effectivePrice,
+  ]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -120,6 +156,19 @@ const ServiceFormModal = ({
         duration: form.duration ? Number(form.duration) : null,
         maxCapacity: form.maxCapacity ? Number(form.maxCapacity) : null,
         placeId: form.placeId ? Number(form.placeId) : undefined,
+        requireDeposit: !!form.requireDeposit,
+        depositType: form.requireDeposit ? form.depositType : null,
+        depositAmount:
+          form.requireDeposit && form.depositAmount !== ""
+            ? Number(form.depositAmount)
+            : null,
+        depositRefundable: form.requireDeposit
+          ? !!form.depositRefundable
+          : true,
+        depositRefundPercent:
+          form.requireDeposit && form.depositRefundable
+            ? Number(form.depositRefundPercent || 50)
+            : null,
       };
 
       if (thumbnailFiles.length > 0) {
@@ -287,6 +336,116 @@ const ServiceFormModal = ({
             </div>
           </div>
 
+          <div className="rounded-lg border border-border/60 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label htmlFor="svc-require-deposit" className="font-medium">
+                  Yêu cầu đặt cọc
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Bật để yêu cầu khách thanh toán cọc trước khi giữ chỗ.
+                </p>
+              </div>
+              <Checkbox
+                id="svc-require-deposit"
+                checked={form.requireDeposit}
+                onCheckedChange={(checked) =>
+                  setForm({ ...form, requireDeposit: !!checked })
+                }
+              />
+            </div>
+
+            {form.requireDeposit ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Loại cọc</Label>
+                  <Select
+                    value={form.depositType}
+                    onValueChange={(v) => setForm({ ...form, depositType: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PERCENT">
+                        Theo phần trăm (%)
+                      </SelectItem>
+                      <SelectItem value="FIXED">
+                        Số tiền cố định (VND)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="svc-deposit-amount">
+                    {form.depositType === "PERCENT"
+                      ? "Mức cọc (%)"
+                      : "Số tiền cọc (VND)"}
+                  </Label>
+                  <Input
+                    id="svc-deposit-amount"
+                    type="number"
+                    min="0"
+                    max={form.depositType === "PERCENT" ? "100" : undefined}
+                    value={form.depositAmount}
+                    onChange={(e) =>
+                      setForm({ ...form, depositAmount: e.target.value })
+                    }
+                    placeholder={
+                      form.depositType === "PERCENT"
+                        ? "Ví dụ: 30"
+                        : "Ví dụ: 200000"
+                    }
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="svc-refundable">Cho phép hoàn cọc</Label>
+                  <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2">
+                    <Checkbox
+                      id="svc-refundable"
+                      checked={form.depositRefundable}
+                      onCheckedChange={(checked) =>
+                        setForm({ ...form, depositRefundable: !!checked })
+                      }
+                    />
+                    <Label htmlFor="svc-refundable" className="cursor-pointer">
+                      Hoàn cọc khi hủy booking theo chính sách
+                    </Label>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="svc-refund-percent">Tỉ lệ hoàn cọc (%)</Label>
+                  <Input
+                    id="svc-refund-percent"
+                    type="number"
+                    min="0"
+                    max="100"
+                    disabled={!form.depositRefundable}
+                    value={form.depositRefundPercent}
+                    onChange={(e) =>
+                      setForm({ ...form, depositRefundPercent: e.target.value })
+                    }
+                    placeholder="Mặc định 50"
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {form.requireDeposit && depositPreview != null ? (
+              <div className="text-xs rounded-md bg-primary/10 border border-primary/20 px-3 py-2">
+                <span className="text-muted-foreground">
+                  Khach se thay tien coc:{" "}
+                </span>
+                <span className="font-semibold text-foreground">
+                  {formatVND(depositPreview)}
+                </span>
+              </div>
+            ) : null}
+          </div>
+
           <div className="space-y-3">
             <FileUploader
               label="Ảnh đại diện dịch vụ"
@@ -432,6 +591,11 @@ const ServiceItem = ({ svc, onEdit, onDelete }) => (
               Tạm dừng
             </Badge>
           )}
+          {svc.requireDeposit && (
+            <Badge variant="secondary" className="text-[10px]">
+              Có cọc
+            </Badge>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
@@ -476,6 +640,7 @@ const ServiceItem = ({ svc, onEdit, onDelete }) => (
         variant="ghost"
         size="sm"
         className="h-8 w-8 p-0"
+        aria-label={`Chỉnh sửa dịch vụ ${svc.name}`}
         onClick={() => onEdit(svc)}
       >
         <Pencil className="h-3.5 w-3.5" />
@@ -484,6 +649,7 @@ const ServiceItem = ({ svc, onEdit, onDelete }) => (
         variant="ghost"
         size="sm"
         className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+        aria-label={`Xóa dịch vụ ${svc.name}`}
         onClick={() => onDelete(svc)}
       >
         <Trash2 className="h-3.5 w-3.5" />

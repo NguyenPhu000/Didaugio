@@ -24,6 +24,11 @@ export const createServiceSchema = z.object({
   maxCapacity: z.number().int().min(1).optional().nullable(),
   isActive: z.boolean().default(true),
   placeId: z.number().int().optional().nullable(),
+  requireDeposit: z.boolean().optional().default(false),
+  depositType: z.enum(["PERCENT", "FIXED"]).optional().nullable(),
+  depositAmount: z.number().min(0).optional().nullable(),
+  depositRefundable: z.boolean().optional().default(true),
+  depositRefundPercent: z.number().min(0).max(100).optional().nullable(),
   thumbnail: base64ImageSchema.optional().nullable(),
   images: z.array(base64ImageSchema).max(10).optional().nullable(),
 });
@@ -40,8 +45,21 @@ export const updateServiceSchema = z.object({
   maxCapacity: z.number().int().min(1).optional().nullable(),
   isActive: z.boolean().optional(),
   placeId: z.number().int().optional().nullable(),
+  requireDeposit: z.boolean().optional(),
+  depositType: z.enum(["PERCENT", "FIXED"]).optional().nullable(),
+  depositAmount: z.number().min(0).optional().nullable(),
+  depositRefundable: z.boolean().optional(),
+  depositRefundPercent: z.number().min(0).max(100).optional().nullable(),
   thumbnail: base64ImageSchema.optional().nullable(),
   images: z.array(base64ImageSchema).max(10).optional().nullable(),
+});
+
+export const updateServiceDepositConfigSchema = z.object({
+  requireDeposit: z.boolean(),
+  depositType: z.enum(["PERCENT", "FIXED"]).optional().nullable(),
+  depositAmount: z.number().min(0).optional().nullable(),
+  depositRefundable: z.boolean().default(true),
+  depositRefundPercent: z.number().min(0).max(100).optional().nullable(),
 });
 
 export const getBusinessServicesQuerySchema = paginationLargeSchema.extend({

@@ -143,6 +143,7 @@ const MapView = memo(
       const mapRef = useRef(null);
       const regionRef = useRef(INITIAL_REGION);
       const [tileError, setTileError] = useState(false);
+      const tileErrorTimerRef = useRef(null);
 
       useImperativeHandle(ref, () => ({
         flyTo: ([lng, lat], zoom = 14) => {
@@ -221,7 +222,8 @@ const MapView = memo(
         const pointLabel =
           properties?.point_count_abbreviated ||
           (pointCount > 99 ? "99+" : String(pointCount));
-        const { size, ringSize, coreSize, colors } = getClusterVisual(pointCount);
+        const { size, ringSize, coreSize, colors } =
+          getClusterVisual(pointCount);
 
         return (
           <Marker
@@ -292,9 +294,32 @@ const MapView = memo(
         regionRef.current = region;
       }, []);
 
+      const handleTileError = useCallback(() => {
+        if (tileError || tileErrorTimerRef.current) return;
+
+        // Defer fallback state update to avoid mutating tile requests in Glide callbacks.
+        tileErrorTimerRef.current = setTimeout(() => {
+          tileErrorTimerRef.current = null;
+          setTileError(true);
+        }, 0);
+      }, [tileError]);
+
       useEffect(() => {
+        if (tileErrorTimerRef.current) {
+          clearTimeout(tileErrorTimerRef.current);
+          tileErrorTimerRef.current = null;
+        }
         setTileError(false);
       }, [tileUrls]);
+
+      useEffect(() => {
+        return () => {
+          if (tileErrorTimerRef.current) {
+            clearTimeout(tileErrorTimerRef.current);
+            tileErrorTimerRef.current = null;
+          }
+        };
+      }, []);
 
       return (
         <ClusteredMapView
@@ -336,9 +361,7 @@ const MapView = memo(
                   tileSize={256}
                   flipY={false}
                   shouldReplaceMapContent
-                  onError={() => {
-                    setTileError(true);
-                  }}
+                  onError={handleTileError}
                 />
               ))
             : null}

@@ -16,8 +16,25 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useCreateTrip } from "../../src/modules/trips/hooks/useTrips";
 import { AIEntryButton } from "../../src/components/composed/AIEntryButton";
 import { CustomDatePicker } from "../../src/components/ui/CustomDatePicker";
-import { TOKENS } from "../../src/constants/design-tokens";
-import { TAB_THEME } from "../(tabs)/tabTheme";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../src/constants/design-tokens";
+
+const TRIP_THEME = {
+  ...APPLE_THEME,
+  background: APPLE_THEME.background,
+  surface: APPLE_THEME.surface,
+  surfaceElevated: APPLE_THEME.surfaceElevated,
+  surfaceMuted: APPLE_THEME.surfaceMuted,
+  border: APPLE_THEME.border,
+  borderSoft: APPLE_THEME.borderSoft,
+  primary: APPLE_THEME.primary,
+  primaryTint: APPLE_THEME.primaryTint,
+  text: APPLE_THEME.text,
+  textSecondary: APPLE_THEME.textSecondary,
+  textMuted: APPLE_THEME.textMuted,
+};
 
 // Tính số ngày từ 2 Date object (bao gồm cả ngày đầu và cuối)
 function calcTotalDays(start, end) {
@@ -32,7 +49,7 @@ function FormSection({ title, icon, children }) {
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionIconWrap}>
-          <MaterialIcons name={icon} size={16} color={TAB_THEME.primary} />
+          <MaterialIcons name={icon} size={16} color={TRIP_THEME.primary} />
         </View>
         <Text style={styles.sectionTitle}>{title}</Text>
       </View>
@@ -136,7 +153,7 @@ export default function CreateTripScreen() {
           style={styles.backBtn}
           hitSlop={8}
         >
-          <MaterialIcons name="arrow-back" size={20} color={TAB_THEME.text} />
+          <MaterialIcons name="arrow-back" size={20} color={TRIP_THEME.text} />
         </Pressable>
 
         <View style={styles.headerCenter}>
@@ -194,7 +211,7 @@ export default function CreateTripScreen() {
               <MaterialIcons
                 name="timelapse"
                 size={14}
-                color={TAB_THEME.primary}
+                color={TRIP_THEME.primary}
               />
               <Text style={styles.durationText}>{daysLabel}</Text>
             </View>
@@ -246,7 +263,7 @@ export default function CreateTripScreen() {
             <MaterialIcons
               name="luggage"
               size={18}
-              color={canSubmit ? "#FFFFFF" : TOKENS.color.neutral[400]}
+              color={canSubmit ? TRIP_THEME.white : TRIP_THEME.textMuted}
             />
           )}
           <Text
@@ -272,7 +289,7 @@ export default function CreateTripScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F6FAFF",
+    backgroundColor: TRIP_THEME.background,
   },
   /* ── Header ── */
   header: {
@@ -281,9 +298,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
     gap: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: TRIP_THEME.surface,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(148,163,184,0.16)",
+    borderBottomColor: TRIP_THEME.borderSoft,
   },
   backBtn: {
     width: 40,
@@ -291,7 +308,9 @@ const styles = StyleSheet.create({
     borderRadius: TOKENS.radius.md,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F1F5F9",
+    backgroundColor: TRIP_THEME.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TRIP_THEME.border,
   },
   headerCenter: {
     flex: 1,
@@ -300,13 +319,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontFamily: TOKENS.font.heading,
-    color: TAB_THEME.text,
+    color: TRIP_THEME.text,
     letterSpacing: -0.2,
   },
   headerSubtitle: {
     fontSize: 12,
     fontFamily: TOKENS.font.body,
-    color: TAB_THEME.textMuted,
+    color: TRIP_THEME.textMuted,
   },
   headerRight: {
     width: 40,
@@ -319,10 +338,10 @@ const styles = StyleSheet.create({
   },
   /* ── Section ── */
   section: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: TRIP_THEME.surface,
     borderRadius: TOKENS.radius["2xl"],
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.14)",
+    borderColor: TRIP_THEME.borderSoft,
     padding: 20,
     gap: 4,
     ...TOKENS.shadow.sm,
@@ -337,14 +356,14 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: TOKENS.radius.md,
-    backgroundColor: "rgba(0,102,230,0.1)",
+    backgroundColor: TRIP_THEME.primaryTint,
     alignItems: "center",
     justifyContent: "center",
   },
   sectionTitle: {
     fontSize: 15,
     fontFamily: TOKENS.font.semibold,
-    color: TAB_THEME.text,
+    color: TRIP_THEME.text,
   },
   /* ── Inputs ── */
   inputBlock: {
@@ -353,21 +372,21 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 12,
     fontFamily: TOKENS.font.semibold,
-    color: TOKENS.color.neutral[500],
+    color: TRIP_THEME.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.6,
     marginBottom: 8,
   },
   textInput: {
-    backgroundColor: "#F8FBFF",
+    backgroundColor: TRIP_THEME.surfaceElevated,
     borderRadius: TOKENS.radius.lg,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.22)",
+    borderColor: TRIP_THEME.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 14,
     fontFamily: TOKENS.font.body,
-    color: TAB_THEME.text,
+    color: TRIP_THEME.text,
     minHeight: 52,
   },
   textInputMulti: {
@@ -383,13 +402,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: TOKENS.radius.full,
-    backgroundColor: "rgba(0,102,230,0.08)",
+    backgroundColor: TRIP_THEME.primaryTint,
     marginTop: 4,
   },
   durationText: {
     fontSize: 13,
     fontFamily: TOKENS.font.semibold,
-    color: TAB_THEME.primary,
+    color: TRIP_THEME.primary,
   },
   /* ── Warning ── */
   warningRow: {
@@ -401,24 +420,24 @@ const styles = StyleSheet.create({
   warningText: {
     fontSize: 12,
     fontFamily: TOKENS.font.medium,
-    color: TOKENS.color.warning,
+    color: TRIP_THEME.warning,
   },
   /* ── Error ── */
   errorCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: TOKENS.color.error + "10",
+    backgroundColor: "rgba(255,59,48,0.1)",
     borderRadius: TOKENS.radius.lg,
     borderWidth: 1,
-    borderColor: TOKENS.color.error + "28",
+    borderColor: "rgba(255,59,48,0.22)",
     padding: 14,
   },
   errorText: {
     flex: 1,
     fontSize: 13,
     fontFamily: TOKENS.font.medium,
-    color: TOKENS.color.error,
+    color: TRIP_THEME.danger,
   },
   /* ── Buttons ── */
   primaryBtn: {
@@ -426,13 +445,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: TAB_THEME.primary,
+    backgroundColor: TRIP_THEME.primary,
     borderRadius: TOKENS.radius.xl,
     paddingVertical: 16,
-    ...TOKENS.shadow.accent,
+    ...TOKENS.shadow.sm,
   },
   primaryBtnDisabled: {
-    backgroundColor: TOKENS.color.neutral[100],
+    backgroundColor: TRIP_THEME.surfaceMuted,
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -443,10 +462,10 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     fontSize: 15,
     fontFamily: TOKENS.font.semibold,
-    color: "#FFFFFF",
+    color: TRIP_THEME.white,
   },
   primaryBtnTextDisabled: {
-    color: TOKENS.color.neutral[400],
+    color: TRIP_THEME.textMuted,
   },
   aiButton: {
     marginTop: 2,

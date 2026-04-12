@@ -1,7 +1,10 @@
+import { useCallback, useMemo, useState } from "react";
 import {
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -19,6 +22,31 @@ import { useAuthStore } from "../../src/stores/authStore";
 import { TOKENS } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "./_layout";
 import { TAB_CARD_RADIUS, TAB_SCREEN_PADDING, TAB_THEME } from "./tabTheme";
+
+const ALL_AREAS_KEY = "__all_areas__";
+
+function getPlaceArea(place) {
+  const districtId =
+    place?.district?.id ?? place?.ward?.districtId ?? place?.districtId;
+  const districtName =
+    place?.district?.name ?? place?.ward?.district?.name ?? null;
+
+  if (districtId != null) {
+    return {
+      key: `id:${districtId}`,
+      name: districtName || `Khu vực ${districtId}`,
+    };
+  }
+
+  if (districtName) {
+    return {
+      key: `name:${districtName.trim().toLowerCase()}`,
+      name: districtName,
+    };
+  }
+
+  return null;
+}
 
 function buildSummary(count) {
   return [
@@ -74,7 +102,13 @@ function SummaryTile({ item }) {
   );
 }
 
-function SavedHeader({ count }) {
+function SavedHeader({
+  count,
+  totalCount,
+  areaOptions,
+  activeArea,
+  onChangeArea,
+}) {
   const summary = buildSummary(count);
 
   return (
@@ -131,6 +165,59 @@ function SavedHeader({ count }) {
           Mọi địa điểm yêu thích đều được gom lại để bạn xem lại, bỏ lưu hoặc mở
           chi tiết chỉ trong một chạm.
         </Text>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.areaFilterRow}
+        >
+          <Pressable
+            onPress={() => onChangeArea(ALL_AREAS_KEY)}
+            style={[
+              styles.areaChip,
+              activeArea === ALL_AREAS_KEY && styles.areaChipActive,
+            ]}
+          >
+            <MaterialIcons
+              name="map"
+              size={14}
+              color={activeArea === ALL_AREAS_KEY ? "#FFFFFF" : "#1D1D1F"}
+            />
+            <Text
+              style={[
+                styles.areaChipText,
+                activeArea === ALL_AREAS_KEY && styles.areaChipTextActive,
+              ]}
+            >
+              Tất cả khu vực ({totalCount})
+            </Text>
+          </Pressable>
+
+          {areaOptions.map((area) => {
+            const active = activeArea === area.key;
+            return (
+              <Pressable
+                key={area.key}
+                onPress={() => onChangeArea(area.key)}
+                style={[styles.areaChip, active && styles.areaChipActive]}
+              >
+                <MaterialIcons
+                  name="place"
+                  size={14}
+                  color={active ? "#FFFFFF" : "#1D1D1F"}
+                />
+                <Text
+                  style={[
+                    styles.areaChipText,
+                    active && styles.areaChipTextActive,
+                  ]}
+                >
+                  {area.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
     </View>
   );
@@ -207,6 +294,48 @@ export default function SavedScreen() {
     isRefetching,
   } = useSavedPlaces(isLoggedIn);
   const unsaveMutation = useUnsavePlace();
+  const [activeArea, setActiveArea] = useState(ALL_AREAS_KEY);
+
+  const areaOptions = useMemo(() => {
+    const map = new Map();
+    savedData.forEach((entry) => {
+      const place = entry?.place || entry;
+      const area = getPlaceArea(place);
+      if (!area || map.has(area.key)) return;
+      map.set(area.key, area);
+    });
+    return Array.from(map.values()).sort((a, b) =>
+      String(a.name).localeCompare(String(b.name), "vi"),
+    );
+  }, [savedData]);
+
+  const filteredSavedData = useMemo(() => {
+    if (activeArea === ALL_AREAS_KEY) return savedData;
+    return savedData.filter((entry) => {
+      const place = entry?.place || entry;
+      const area = getPlaceArea(place);
+      return area?.key === activeArea;
+    });
+  }, [activeArea, savedData]);
+
+  const handleUnsave = useCallback(
+    (placeId) => {
+      if (!placeId || unsaveMutation.isPending) return;
+      Alert.alert(
+        "Bỏ lưu địa điểm?",
+        "Địa điểm này sẽ được gỡ khỏi danh sách đã lưu.",
+        [
+          { text: "Hủy", style: "cancel" },
+          {
+            text: "Bỏ lưu",
+            style: "destructive",
+            onPress: () => unsaveMutation.mutate(placeId),
+          },
+        ],
+      );
+    },
+    [unsaveMutation],
+  );
 
   if (!isLoggedIn) {
     return (
@@ -221,7 +350,7 @@ export default function SavedScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <FlatList
-        data={!isLoading && !isError ? savedData : []}
+        data={!isLoading && !isError ? filteredSavedData : []}
         keyExtractor={(item) => String(item.id)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
@@ -233,7 +362,15 @@ export default function SavedScreen() {
             colors={[TAB_THEME.primary]}
           />
         }
-        ListHeaderComponent={<SavedHeader count={savedData.length} />}
+        ListHeaderComponent={
+          <SavedHeader
+            count={filteredSavedData.length}
+            totalCount={savedData.length}
+            areaOptions={areaOptions}
+            activeArea={activeArea}
+            onChangeArea={setActiveArea}
+          />
+        }
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
           isLoading ? (
@@ -250,10 +387,21 @@ export default function SavedScreen() {
             <View style={styles.cardWrap}>
               <PlaceCard
                 place={place}
-                onSave={() => unsaveMutation.mutate(place.id)}
+                onSave={() => handleUnsave(place.id)}
                 isSaved
                 style={styles.placeCardStyle}
               />
+              <Pressable
+                onPress={() => handleUnsave(place.id)}
+                style={styles.unsaveButton}
+              >
+                <MaterialIcons
+                  name="bookmark-remove"
+                  size={16}
+                  color="#1D1D1F"
+                />
+                <Text style={styles.unsaveButtonText}>Bỏ lưu địa điểm</Text>
+              </Pressable>
             </View>
           );
         }}
@@ -438,7 +586,7 @@ const styles = StyleSheet.create({
   },
   sectionHead: {
     marginTop: 18,
-    gap: 4,
+    gap: 8,
   },
   sectionTitle: {
     color: TAB_THEME.text,
@@ -461,8 +609,54 @@ const styles = StyleSheet.create({
   cardWrap: {
     paddingHorizontal: TAB_SCREEN_PADDING,
   },
+  areaFilterRow: {
+    paddingTop: 4,
+    paddingRight: 8,
+    gap: 8,
+  },
+  areaChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: TOKENS.radius.full,
+    borderWidth: 1,
+    borderColor: "rgba(29, 29, 31, 0.15)",
+    backgroundColor: "#FFFFFF",
+  },
+  areaChipActive: {
+    backgroundColor: "#1D1D1F",
+    borderColor: "#1D1D1F",
+  },
+  areaChipText: {
+    color: "#1D1D1F",
+    fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
+  },
+  areaChipTextActive: {
+    color: "#FFFFFF",
+  },
   placeCardStyle: {
     marginBottom: 0,
+  },
+  unsaveButton: {
+    marginTop: 10,
+    alignSelf: "flex-end",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: TOKENS.radius.full,
+    borderWidth: 1,
+    borderColor: "rgba(29, 29, 31, 0.14)",
+    backgroundColor: "#FFFFFF",
+  },
+  unsaveButtonText: {
+    color: "#1D1D1F",
+    fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
   },
   centerCardWrap: {
     paddingHorizontal: TAB_SCREEN_PADDING,
