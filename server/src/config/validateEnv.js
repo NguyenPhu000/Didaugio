@@ -41,4 +41,16 @@ export function validateEnv() {
     }
     console.warn(`\n⚠️  ${msg}\n`);
   }
+
+  const routingEngine = String(process.env.ROUTING_ENGINE || "osrm").trim();
+  const osrmUrl = String(process.env.OSRM_URL || "").trim();
+
+  if (routingEngine === "osrm" && !osrmUrl) {
+    const msg =
+      "[ENV] Thiếu OSRM_URL khi ROUTING_ENGINE=osrm. Mặc định local sẽ là http://localhost:5000.";
+    if (isProd) {
+      throw new Error(msg);
+    }
+    console.warn(`\n⚠️  ${msg}\n`);
+  }
 }

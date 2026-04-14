@@ -8,7 +8,9 @@
     "dev": "expo start --dev-client --port 8083",
     "android": "expo run:android --port 8083",
     "ios": "expo run:ios --port 8083",
-    "web": "expo start --web --port 8083"
+    "web": "expo start --web --port 8083",
+    "test": "vitest run",
+    "test:routing-contract": "vitest run src/api/__tests__/routingApi.contract.test.js src/modules/map/hooks/__tests__/useMapRouting.mapping.contract.test.js"
   },
   "dependencies": {
     "@expo-google-fonts/afacad": "^0.4.1",
@@ -63,6 +65,7 @@
   "devDependencies": {
     "babel-preset-expo": "^54.0.10",
     "react-refresh": "^0.18.0",
-    "tailwindcss": "^3.4.19"
+    "tailwindcss": "^3.4.19",
+    "vitest": "^3.2.4"
   }
 }

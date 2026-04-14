@@ -84,3 +84,33 @@ export const businessApiLimiter = rateLimit({
     errorCode: "RATE_LIMIT_EXCEEDED",
   },
 });
+
+const routingMaxRequests = process.env.NODE_ENV !== "production" ? 1200 : 180;
+
+export const routingLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: routingMaxRequests,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    data: null,
+    message: "Quá nhiều yêu cầu định tuyến, vui lòng thử lại sau",
+    errorCode: "RATE_LIMIT_EXCEEDED",
+  },
+});
+
+const aiNavigateMaxRequests = process.env.NODE_ENV !== "production" ? 240 : 60;
+
+export const aiNavigateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: aiNavigateMaxRequests,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    data: null,
+    message: "Quá nhiều yêu cầu AI điều hướng, vui lòng thử lại sau",
+    errorCode: "RATE_LIMIT_EXCEEDED",
+  },
+});

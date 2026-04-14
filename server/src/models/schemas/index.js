@@ -42,3 +42,4 @@ export * from "./bookingSchema.js";
 export * from "./voucherSchema.js";
 export * from "./reviewSchema.js";
 export * from "./feedbackSchema.js";
+export * from "./routingSchema.js";

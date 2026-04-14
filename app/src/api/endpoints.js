@@ -47,6 +47,12 @@ export const ENDPOINTS = {
   ai: {
     placeSummary: "/ai/place-summary",
     chat: "/ai/chat",
+    navigate: "/ai/navigate",
+  },
+  routing: {
+    health: "/routes/health",
+    calculate: "/routes/calculate",
+    legs: "/routes/legs",
   },
   boundaries: {
     districts: "/boundaries/districts",

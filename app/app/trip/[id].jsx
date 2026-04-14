@@ -110,6 +110,16 @@ function formatPrice(amount) {
   return `${value.toLocaleString("vi-VN")}đ`;
 }
 
+/**
+ * Định dạng khoảng cách (km) — hiển thị 1 chữ số thập phân nếu < 10 km.
+ */
+function formatDistance(km) {
+  const value = Number(km);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  if (value < 10) return `${value.toFixed(1)} km`;
+  return `${Math.round(value)} km`;
+}
+
 function formatBookingDateTime(booking) {
   const useDate = String(booking?.useDate || "").slice(0, 10);
   const useTime = booking?.useTime || "--:--";
@@ -248,6 +258,7 @@ const DestinationCard = memo(function DestinationCard({
   const place = dest.place;
   const imgUri = place?.thumbnail || null;
   const bookingPreview = (bookings || []).slice(0, 2);
+  const distanceLabel = formatDistance(dest.distanceToNext);
 
   return (
     <View style={styles.destCard}>
@@ -299,6 +310,15 @@ const DestinationCard = memo(function DestinationCard({
           />
         </Pressable>
       </View>
+
+      {distanceLabel ? (
+        <View style={styles.destDistanceRow}>
+          <MaterialIcons name="directions" size={12} color={TRIP_THEME.primary} />
+          <Text style={styles.destDistanceText}>
+            {distanceLabel} đến điểm tiếp theo
+          </Text>
+        </View>
+      ) : null}
 
       {bookingPreview.length > 0 ? (
         <View style={styles.destBookingBlock}>
@@ -928,6 +948,8 @@ export default function TripDetailScreen() {
         ? `Từ ${formatDate(trip.startDate)}`
         : null;
 
+  const totalDistanceLabel = formatDistance(trip.totalDistance);
+
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -945,6 +967,14 @@ export default function TripDetailScreen() {
           </Text>
           {dateRange ? (
             <Text style={styles.headerSubtitle}>{dateRange}</Text>
+          ) : null}
+          {totalDistanceLabel ? (
+            <View style={styles.headerDistanceRow}>
+              <MaterialIcons name="directions-car" size={11} color={TRIP_THEME.primary} />
+              <Text style={styles.headerDistanceText}>
+                Tổng quãng đường: {totalDistanceLabel}
+              </Text>
+            </View>
           ) : null}
         </View>
 

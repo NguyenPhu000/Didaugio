@@ -34,12 +34,15 @@ import {
   apiLimiter,
   refreshLimiter,
   recoveryLimiter,
+  routingLimiter,
+  aiNavigateLimiter,
 } from "./middlewares/rateLimitMiddleware.js";
 import logger from "./config/logger.js";
 import prisma from "./config/prismaClient.js";
 import { initNotificationService } from "./services/notificationService.js";
 import { validateEnv } from "./config/validateEnv.js";
 import aiRoutes from "./routes/aiRoutes.js";
+import routingRoutes from "./routes/routingRoutes.js";
 
 dotenv.config({ override: true });
 validateEnv();
@@ -120,6 +123,8 @@ app.use("/api/auth/refresh", refreshLimiter);
 app.use("/api/auth/forgot-password", recoveryLimiter);
 app.use("/api/auth/reset-password", recoveryLimiter);
 app.use("/api/auth/resend-verification-public", recoveryLimiter);
+app.use("/api/routes", routingLimiter);
+app.use("/api/ai/navigate", aiNavigateLimiter);
 app.use("/api", apiLimiter);
 
 app.use("/api/auth", authRoutes);
@@ -147,6 +152,7 @@ app.use("/api/business/reviews", reviewRoutes);
 app.use("/api/business", businessRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/routes", routingRoutes);
 app.use("/api", userPermissionRoutes);
 app.use("/api", userRoutes);
 

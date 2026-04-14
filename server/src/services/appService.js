@@ -5,6 +5,10 @@ import {
   generateFallbackItinerary,
   generateItinerary,
 } from "./geminiService.js";
+import routingService from "./routingService.js";
+
+const isRoutingEnabled =
+  String(process.env.ROUTING_ENABLED ?? "true") !== "false";
 
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
@@ -767,6 +771,9 @@ const buildTripDestinations = ({
         durationMinutes: toInt(dest?.durationMinutes, null),
         note: dest?.note ?? null,
         transportToNext: dest?.transportToNext ?? null,
+        distanceToNext: Number.isFinite(Number(dest?.distanceToNext))
+          ? Number(dest.distanceToNext)
+          : null,
         estimatedCost: Number.isFinite(Number(dest?.estimatedCost))
           ? Math.round(Number(dest.estimatedCost))
           : null,
@@ -776,6 +783,94 @@ const buildTripDestinations = ({
   }
 
   return destinations;
+};
+
+const toKm2 = (meters) => {
+  const value = Number(meters);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return Number((value / 1000).toFixed(2));
+};
+
+const enrichItineraryWithRouting = async ({
+  itinerary,
+  placeById,
+  selectedPlaceIdSet,
+}) => {
+  const clonedItinerary = {
+    ...itinerary,
+    days: (itinerary?.days || []).map((day) => ({
+      ...day,
+      destinations: (day?.destinations || []).map((dest) => ({ ...dest })),
+    })),
+  };
+
+  let totalDistanceMeters = 0;
+  let totalDurationSeconds = 0;
+  const legSummaries = [];
+
+  for (const day of clonedItinerary.days) {
+    const dayDestinations = (day?.destinations || []).filter((dest) => {
+      const placeId = toInt(dest?.placeId);
+      if (!placeId || !placeById.has(placeId)) return false;
+      if (selectedPlaceIdSet?.size && !selectedPlaceIdSet.has(placeId)) {
+        return false;
+      }
+      return true;
+    });
+
+    for (let i = 0; i < dayDestinations.length; i += 1) {
+      dayDestinations[i].distanceToNext = null;
+    }
+
+    for (let i = 0; i < dayDestinations.length - 1; i += 1) {
+      const fromDest = dayDestinations[i];
+      const toDest = dayDestinations[i + 1];
+      const fromPlace = placeById.get(toInt(fromDest.placeId));
+      const toPlace = placeById.get(toInt(toDest.placeId));
+      if (!fromPlace || !toPlace) continue;
+
+      const routeResult = await routingService.calculate({
+        origin: {
+          lat: Number(fromPlace.latitude),
+          lng: Number(fromPlace.longitude),
+          name: fromPlace.name,
+        },
+        destination: {
+          lat: Number(toPlace.latitude),
+          lng: Number(toPlace.longitude),
+          name: toPlace.name,
+        },
+        mode: "motorcycle",
+        options: { alternatives: 0, steps: false },
+      });
+
+      const route = routeResult?.routes?.[0];
+      if (!route) continue;
+
+      totalDistanceMeters += Number(route.distance || 0);
+      totalDurationSeconds += Number(route.duration || 0);
+      fromDest.distanceToNext = toKm2(route.distance);
+
+      legSummaries.push({
+        dayNumber: day.dayNumber,
+        fromPlaceId: fromPlace.id,
+        toPlaceId: toPlace.id,
+        distance: Number(route.distance || 0),
+        duration: Number(route.duration || 0),
+        source: routeResult?.source || "osrm",
+      });
+    }
+  }
+
+  return {
+    itinerary: clonedItinerary,
+    tripRoutingSummary: {
+      totalDistance: totalDistanceMeters,
+      totalDistanceKm: toKm2(totalDistanceMeters),
+      totalDuration: totalDurationSeconds,
+      legs: legSummaries,
+    },
+  };
 };
 
 const buildFallbackDestinationsFromSelection = ({
@@ -947,19 +1042,37 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       ? normalizedSelectedPlaceIds
       : suggestedPlaceIds;
 
+  const selectedPlaceIdSet =
+    effectiveSelectedPlaceIds.length > 0
+      ? new Set(effectiveSelectedPlaceIds)
+      : null;
+
+  const { itinerary: enrichedItinerary, tripRoutingSummary } = isRoutingEnabled
+    ? await enrichItineraryWithRouting({
+        itinerary,
+        placeById,
+        selectedPlaceIdSet,
+      })
+    : {
+        itinerary,
+        tripRoutingSummary: {
+          totalDistance: 0,
+          totalDistanceKm: null,
+          totalDuration: 0,
+          legs: [],
+        },
+      };
+  itinerary = enrichedItinerary;
+
   if (previewOnly) {
     return {
       previewOnly: true,
       itinerary,
       suggestedPlaces,
       selectedPlaceIds: effectiveSelectedPlaceIds,
+      tripRoutingSummary,
     };
   }
-
-  const selectedPlaceIdSet =
-    effectiveSelectedPlaceIds.length > 0
-      ? new Set(effectiveSelectedPlaceIds)
-      : null;
 
   const trip = await prisma.$transaction(async (tx) => {
     const created = await tx.trip.create({
@@ -968,6 +1081,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
         title: itinerary.title,
         description: itinerary.description ?? null,
         totalDays: itinerary.totalDays,
+        totalDistance: tripRoutingSummary?.totalDistanceKm ?? null,
         estimatedCost: itinerary.estimatedCost ?? null,
         travelStyle: travelStyle ?? null,
         groupSize: Math.max(toInt(groupSize, 1), 1),
@@ -1025,7 +1139,10 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
     });
   });
 
-  return trip;
+  return {
+    ...trip,
+    tripRoutingSummary,
+  };
 };
 
 export const submitFeedback = async ({
