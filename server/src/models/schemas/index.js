@@ -12,7 +12,7 @@ export {
   logoutSchema,
   revokeSessionParamSchema,
   updateProfileSchema,
-} from "./authSchema.js";
+} from "./auth/auth.schema.js";
 export {
   auditLogQuerySchema,
   createEmailVerificationSchema,
@@ -23,23 +23,23 @@ export {
   passwordResetQuerySchema,
   loginHistoryQuerySchema,
   revokeSessionSchema,
-} from "./activitySchema.js";
-export * from "./userSchema.js";
-export * from "./roleSchema.js";
-export * from "./permissionSchema.js";
-export * from "./districtSchema.js";
-export * from "./boundarySchema.js";
-export * from "./userPermissionSchema.js";
-export * from "./roleRouteSchema.js";
-export * from "./permissionRouteSchema.js";
-export * from "./categorySchema.js";
-export * from "./tagSchema.js";
-export * from "./placeSchema.js";
-export * from "./businessSchema.js";
-export * from "./businessServiceSchema.js";
-export * from "./autoApproveRuleSchema.js";
-export * from "./bookingSchema.js";
-export * from "./voucherSchema.js";
-export * from "./reviewSchema.js";
-export * from "./feedbackSchema.js";
-export * from "./routingSchema.js";
+} from "./activity/activity.schema.js";
+export * from "./user/user.schema.js";
+export * from "./rbac/role.schema.js";
+export * from "./rbac/permission.schema.js";
+export * from "./district/district.schema.js";
+export * from "./boundary/boundary.schema.js";
+export * from "./rbac/userPermission.schema.js";
+export * from "./rbac/roleRoute.schema.js";
+export * from "./rbac/permissionRoute.schema.js";
+export * from "./category/category.schema.js";
+export * from "./tag/tag.schema.js";
+export * from "./place/place.schema.js";
+export * from "./business/business.schema.js";
+export * from "./businessOffering/businessService.schema.js";
+export * from "./autoApproveRule/autoApproveRule.schema.js";
+export * from "./booking/booking.schema.js";
+export * from "./voucher/voucher.schema.js";
+export * from "./review/review.schema.js";
+export * from "./feedback/feedback.schema.js";
+export * from "./routing/routing.schema.js";

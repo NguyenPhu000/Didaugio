@@ -1,13 +1,16 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { TOKENS } from "../../../constants/design-tokens";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
+import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { FeaturedCard, FEATURED_CARD_W } from "./FeaturedCard";
 
-const TEXT_COLOR = "#0F172A";
-const PAD = 24;
 const SNAP_INTERVAL = FEATURED_CARD_W + 14;
 
-const keyExtractor = (item) => String(item?.id ?? Math.random());
+const keyExtractor = (item, index) =>
+  item?.id != null ? String(item.id) : `featured-${index}`;
 
 function FeaturedSectionInner({ places, onPressPlace, onPressViewAll }) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -86,38 +89,38 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: PAD,
+    paddingHorizontal: TAB_SCREEN_PADDING,
     marginBottom: 14,
   },
   title: {
-    color: TEXT_COLOR,
+    color: APPLE_THEME.text,
     fontSize: 22,
     lineHeight: 28,
     letterSpacing: -0.5,
     fontFamily: TOKENS.font.heading,
   },
   viewAll: {
-    color: "#101E2C",
+    color: APPLE_THEME.primary,
     fontSize: 12,
     fontFamily: TOKENS.font.semibold,
     paddingHorizontal: 12,
     height: 30,
     borderRadius: 999,
     textAlignVertical: "center",
-    backgroundColor: "rgba(242,244,246,0.96)",
+    backgroundColor: APPLE_THEME.surfaceElevated,
     borderWidth: 1,
-    borderColor: "rgba(196,198,204,0.8)",
+    borderColor: APPLE_THEME.border,
     overflow: "hidden",
   },
   listContent: {
-    paddingHorizontal: 18,
+    paddingHorizontal: Math.max(0, TAB_SCREEN_PADDING - 6),
   },
   separator: {
     width: 14,
   },
   progressWrap: {
     marginTop: 12,
-    paddingHorizontal: PAD,
+    paddingHorizontal: TAB_SCREEN_PADDING,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
@@ -126,10 +129,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 4,
     borderRadius: 999,
-    backgroundColor: "rgba(84,100,122,0.3)",
+    backgroundColor: "rgba(0,0,0,0.18)",
   },
   progressDotActive: {
     width: 32,
-    backgroundColor: "#101E2C",
+    backgroundColor: APPLE_THEME.primary,
   },
 });

@@ -10,6 +10,7 @@ export function useExplore({
   search = "",
   categoryId = null,
   districtId = null,
+  enabled = true,
 } = {}) {
   const filters = { search, categoryId, districtId };
   return useInfiniteQuery({
@@ -32,6 +33,7 @@ export function useExplore({
       const { page, totalPages } = pagination;
       return page < totalPages ? page + 1 : undefined;
     },
+    enabled,
     initialPageParam: 1,
     staleTime: 3 * 60 * 1000,
   });

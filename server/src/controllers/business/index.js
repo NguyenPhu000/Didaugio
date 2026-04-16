@@ -1,6 +1,6 @@
 /**
  * Business module - Clean Architecture exports
  */
-export * from "./businessProfileController.js";
-export * from "./businessAdminController.js";
-export * from "./businessDashboardController.js";
+export * from "./businessProfile.controller.js";
+export * from "./businessAdmin.controller.js";
+export * from "./businessDashboard.controller.js";

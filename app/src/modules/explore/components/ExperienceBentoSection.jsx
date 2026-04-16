@@ -2,11 +2,13 @@ import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
-import { TOKENS } from "../../../constants/design-tokens";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
+import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation } from "../utils/exploreHelpers";
-
-const SECTION_PAD = 24;
 
 function BentoTile({ place, large = false, onPress }) {
   const imageUri = resolvePlaceImageUri(place);
@@ -104,10 +106,10 @@ export const ExperienceBentoSection = memo(ExperienceBentoSectionInner);
 const styles = StyleSheet.create({
   container: {
     marginTop: 26,
-    paddingHorizontal: SECTION_PAD,
+    paddingHorizontal: TAB_SCREEN_PADDING,
   },
   heading: {
-    color: TOKENS.color.neutral[900],
+    color: APPLE_THEME.text,
     fontSize: 31,
     lineHeight: 38,
     letterSpacing: -0.7,
@@ -117,14 +119,10 @@ const styles = StyleSheet.create({
   glassShell: {
     borderRadius: 34,
     padding: 12,
-    backgroundColor: "rgba(255,255,255,0.86)",
+    backgroundColor: APPLE_THEME.surface,
     borderWidth: 1,
-    borderColor: "rgba(196,198,204,0.42)",
-    shadowColor: "#191c1e",
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.08,
-    shadowRadius: 26,
-    elevation: 8,
+    borderColor: APPLE_THEME.borderSoft,
+    ...TOKENS.shadow.sm,
   },
   grid: {
     flexDirection: "row",
@@ -138,7 +136,7 @@ const styles = StyleSheet.create({
   tileBase: {
     overflow: "hidden",
     borderRadius: 24,
-    backgroundColor: "#E0E3E5",
+    backgroundColor: APPLE_THEME.surfaceMuted,
     position: "relative",
   },
   tileLarge: {
@@ -151,7 +149,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#E0E3E5",
+    backgroundColor: APPLE_THEME.surfaceMuted,
   },
   overlayBase: {
     ...StyleSheet.absoluteFillObject,
@@ -175,12 +173,12 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     justifyContent: "center",
     marginBottom: 6,
-    backgroundColor: "rgba(255,255,255,0.86)",
+    backgroundColor: "rgba(255,255,255,0.9)",
     borderWidth: 1,
-    borderColor: "rgba(224,227,229,0.9)",
+    borderColor: APPLE_THEME.borderSoft,
   },
   pillMiniText: {
-    color: "#0F172A",
+    color: APPLE_THEME.text,
     fontSize: 10,
     fontFamily: TOKENS.font.semibold,
   },

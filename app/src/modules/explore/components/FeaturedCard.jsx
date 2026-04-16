@@ -14,7 +14,10 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { TOKENS } from "../../../constants/design-tokens";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import {
   getPlaceLocation,
@@ -28,9 +31,6 @@ const SCREEN_W = Dimensions.get("window").width;
 const PAD = 24;
 const CARD_W = Math.min(312, SCREEN_W - PAD * 2 - 20);
 const CARD_H = 404;
-const PRIMARY = "#101E2C";
-const TEXT_COLOR = "#191C1E";
-const TEXT_MUTED = "#54647A";
 
 const SPRING_CONFIG = { damping: 15, stiffness: 200 };
 
@@ -120,7 +120,11 @@ function FeaturedCardInner({ place, onPress }) {
             </Text>
             {location ? (
               <View style={styles.locationRow}>
-                <MaterialIcons name="place" size={13} color={PRIMARY} />
+                <MaterialIcons
+                  name="place"
+                  size={13}
+                  color={APPLE_THEME.primary}
+                />
                 <Text style={styles.locationText} numberOfLines={1}>
                   {location}
                 </Text>
@@ -141,7 +145,11 @@ function FeaturedCardInner({ place, onPress }) {
               </View>
             ) : null}
             <View style={styles.ctaCircle}>
-              <MaterialIcons name="arrow-forward" size={14} color={PRIMARY} />
+              <MaterialIcons
+                name="arrow-forward"
+                size={14}
+                color={APPLE_THEME.primary}
+              />
             </View>
           </View>
         </View>
@@ -157,24 +165,21 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_W,
     height: CARD_H,
-    borderRadius: 40,
+    borderRadius: TOKENS.radius["3xl"],
     overflow: "hidden",
-    backgroundColor: "#E0E3E5",
+    backgroundColor: APPLE_THEME.surfaceMuted,
     borderWidth: 1,
-    borderColor: "rgba(196,198,204,0.52)",
+    borderColor: APPLE_THEME.borderSoft,
     ...Platform.select({
       ios: {
-        shadowColor: "#191c1e",
-        shadowOffset: { width: 0, height: 22 },
-        shadowOpacity: 0.12,
-        shadowRadius: 34,
+        ...TOKENS.shadow.lg,
       },
-      android: { elevation: 13 },
+      android: { elevation: TOKENS.shadow.lg.elevation },
     }),
   },
   placeholder: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#D0E1FB",
+    backgroundColor: APPLE_THEME.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -275,17 +280,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.84)",
+    backgroundColor: "rgba(255,255,255,0.9)",
     borderWidth: 1,
-    borderColor: "rgba(224,227,229,0.95)",
+    borderColor: APPLE_THEME.borderSoft,
     ...Platform.select({
       ios: {
-        shadowColor: "#191c1e",
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.08,
-        shadowRadius: 20,
+        ...TOKENS.shadow.sm,
       },
-      android: { elevation: 6 },
+      android: { elevation: TOKENS.shadow.sm.elevation },
     }),
   },
   categoryPill: {
@@ -295,13 +297,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     borderRadius: 999,
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.82)",
+    backgroundColor: APPLE_THEME.surfaceElevated,
     borderWidth: 1,
-    borderColor: "rgba(196,198,204,0.65)",
+    borderColor: APPLE_THEME.border,
     marginBottom: 7,
   },
   categoryPillText: {
-    color: "#101E2C",
+    color: APPLE_THEME.primary,
     fontSize: 10,
     fontFamily: TOKENS.font.semibold,
     letterSpacing: 0.2,
@@ -318,7 +320,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   placeName: {
-    color: TEXT_COLOR,
+    color: APPLE_THEME.text,
     fontSize: 15,
     lineHeight: 20,
     letterSpacing: -0.3,
@@ -331,7 +333,7 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   locationText: {
-    color: TEXT_MUTED,
+    color: APPLE_THEME.textSecondary,
     fontSize: 11,
     fontFamily: TOKENS.font.medium,
     flex: 1,
@@ -342,7 +344,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   ratingsCap: {
-    color: TEXT_MUTED,
+    color: APPLE_THEME.textMuted,
     fontSize: 10,
     fontFamily: TOKENS.font.semibold,
     letterSpacing: 0.5,
@@ -358,12 +360,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   priceMain: {
-    color: TEXT_COLOR,
+    color: APPLE_THEME.text,
     fontSize: 16,
     fontFamily: TOKENS.font.heading,
   },
   priceSuffix: {
-    color: TEXT_MUTED,
+    color: APPLE_THEME.textMuted,
     fontSize: 10,
     fontFamily: TOKENS.font.medium,
     marginLeft: 1,
@@ -374,17 +376,14 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(242,244,246,0.96)",
+    backgroundColor: APPLE_THEME.surfaceElevated,
     borderWidth: 1,
-    borderColor: "rgba(196,198,204,0.75)",
+    borderColor: APPLE_THEME.border,
     ...Platform.select({
       ios: {
-        shadowColor: "#191c1e",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
+        ...TOKENS.shadow.sm,
       },
-      android: { elevation: 3 },
+      android: { elevation: TOKENS.shadow.sm.elevation },
     }),
   },
 });

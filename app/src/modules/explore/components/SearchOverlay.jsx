@@ -15,16 +15,14 @@ import { FlashList } from "@shopify/flash-list";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { TOKENS } from "../../../constants/design-tokens";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
 import { useExplore, useCategories } from "../hooks/useExplore";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation, normalizeText } from "../utils/exploreHelpers";
 
-const NAVY = "#0F4C75";
-const TEXT_COLOR = "#0F172A";
-const TEXT_MUTED = "#64748B";
-const TEXT_SOFT = "#94A3B8";
-const PRIMARY = "#2563EB";
 const CHIP_SHADOW = {
   shadowColor: "#0F172A",
   shadowOffset: { width: 0, height: 3 },
@@ -84,7 +82,11 @@ const SearchResultItem = memo(function SearchResultItem({
         </Text>
         {location ? (
           <View style={styles.resultLocationRow}>
-            <MaterialIcons name="place" size={12} color={PRIMARY} />
+            <MaterialIcons
+              name="place"
+              size={12}
+              color={APPLE_THEME.focusBlue}
+            />
             <Text style={styles.resultLocation} numberOfLines={1}>
               {location}
             </Text>
@@ -98,7 +100,11 @@ const SearchResultItem = memo(function SearchResultItem({
         ) : null}
       </View>
 
-      <MaterialIcons name="chevron-right" size={20} color={TEXT_SOFT} />
+      <MaterialIcons
+        name="chevron-right"
+        size={20}
+        color={APPLE_THEME.textMuted}
+      />
     </Pressable>
   );
 });
@@ -124,6 +130,7 @@ function SearchOverlayInner({ visible, onClose }) {
     useExplore({
       search: debouncedText,
       categoryId: selectedCategory,
+      enabled: visible && isActive,
     });
 
   const results = useMemo(() => {
@@ -195,14 +202,14 @@ function SearchOverlayInner({ visible, onClose }) {
             <MaterialIcons
               name="search"
               size={20}
-              color={text ? NAVY : TEXT_MUTED}
+              color={text ? APPLE_THEME.text : APPLE_THEME.textMuted}
             />
             <TextInput
               autoFocus
               value={text}
               onChangeText={setText}
               placeholder="Tìm địa điểm, quán ăn, điểm vui chơi..."
-              placeholderTextColor={TEXT_SOFT}
+              placeholderTextColor={APPLE_THEME.textMuted}
               style={styles.searchInput}
               returnKeyType="search"
               autoCorrect={false}
@@ -210,7 +217,11 @@ function SearchOverlayInner({ visible, onClose }) {
             />
             {text ? (
               <Pressable onPress={() => setText("")} hitSlop={10}>
-                <MaterialIcons name="close" size={18} color={TEXT_MUTED} />
+                <MaterialIcons
+                  name="close"
+                  size={18}
+                  color={APPLE_THEME.textMuted}
+                />
               </Pressable>
             ) : null}
           </View>
@@ -232,7 +243,11 @@ function SearchOverlayInner({ visible, onClose }) {
               }}
               style={styles.clearFilterBtn}
             >
-              <MaterialIcons name="refresh" size={14} color={PRIMARY} />
+              <MaterialIcons
+                name="refresh"
+                size={14}
+                color={APPLE_THEME.focusBlue}
+              />
               <Text style={styles.clearFilterText}>Đặt lại bộ lọc</Text>
             </Pressable>
           </View>
@@ -290,11 +305,15 @@ function SearchOverlayInner({ visible, onClose }) {
         {/* Results */}
         {isLoading ? (
           <View style={styles.emptyState}>
-            <ActivityIndicator color={NAVY} />
+            <ActivityIndicator color={APPLE_THEME.focusBlue} />
           </View>
         ) : !isActive ? (
           <View style={styles.emptyState}>
-            <MaterialIcons name="travel-explore" size={42} color={TEXT_SOFT} />
+            <MaterialIcons
+              name="travel-explore"
+              size={42}
+              color={APPLE_THEME.textMuted}
+            />
             <Text style={styles.emptyTitle}>Tìm điểm đến tiếp theo</Text>
             <Text style={styles.emptyCopy}>
               Nhập tên địa điểm hoặc chọn danh mục để khám phá.
@@ -302,7 +321,11 @@ function SearchOverlayInner({ visible, onClose }) {
           </View>
         ) : results.length === 0 ? (
           <View style={styles.emptyState}>
-            <MaterialIcons name="search-off" size={42} color={TEXT_SOFT} />
+            <MaterialIcons
+              name="search-off"
+              size={42}
+              color={APPLE_THEME.textMuted}
+            />
             <Text style={styles.emptyTitle}>Không tìm thấy kết quả</Text>
             <Text style={styles.emptyCopy}>
               Thử từ khóa khác hoặc đổi danh mục.
@@ -320,7 +343,10 @@ function SearchOverlayInner({ visible, onClose }) {
             keyboardShouldPersistTaps="handled"
             ListFooterComponent={
               isFetchingNextPage ? (
-                <ActivityIndicator color={NAVY} style={styles.footerLoader} />
+                <ActivityIndicator
+                  color={APPLE_THEME.focusBlue}
+                  style={styles.footerLoader}
+                />
               ) : null
             }
           />
@@ -335,7 +361,7 @@ export const SearchOverlay = memo(SearchOverlayInner);
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: APPLE_THEME.background,
   },
   searchHeader: {
     flexDirection: "row",
@@ -352,19 +378,19 @@ const styles = StyleSheet.create({
     height: 46,
     paddingHorizontal: 14,
     borderRadius: 14,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: APPLE_THEME.surface,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: APPLE_THEME.borderSoft,
   },
   searchInput: {
     flex: 1,
-    color: TEXT_COLOR,
+    color: APPLE_THEME.text,
     fontSize: 14,
     fontFamily: TOKENS.font.body,
     paddingVertical: 0,
   },
   cancelBtn: {
-    color: PRIMARY,
+    color: APPLE_THEME.focusBlue,
     fontSize: 14,
     fontFamily: TOKENS.font.semibold,
   },
@@ -377,7 +403,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterSummaryText: {
-    color: TEXT_MUTED,
+    color: APPLE_THEME.textSecondary,
     fontSize: 12,
     fontFamily: TOKENS.font.medium,
   },
@@ -388,12 +414,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     height: 28,
     borderRadius: 999,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: "rgba(0,0,0,0.04)",
     borderWidth: 1,
-    borderColor: "#BFDBFE",
+    borderColor: APPLE_THEME.borderSoft,
   },
   clearFilterText: {
-    color: PRIMARY,
+    color: APPLE_THEME.focusBlue,
     fontSize: 11,
     fontFamily: TOKENS.font.semibold,
   },
@@ -412,9 +438,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: APPLE_THEME.surface,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: APPLE_THEME.border,
     alignSelf: "center",
     justifyContent: "center",
     height: 36,
@@ -424,16 +450,16 @@ const styles = StyleSheet.create({
     }),
   },
   chipActive: {
-    backgroundColor: "#0F2942",
-    borderColor: "#0F2942",
+    backgroundColor: APPLE_THEME.primary,
+    borderColor: APPLE_THEME.primary,
   },
   chipText: {
-    color: TEXT_MUTED,
+    color: APPLE_THEME.textSecondary,
     fontSize: 12,
     fontFamily: TOKENS.font.semibold,
   },
   chipTextActive: {
-    color: "#FFFFFF",
+    color: APPLE_THEME.white,
   },
   emptyState: {
     flex: 1,
@@ -443,14 +469,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 48,
   },
   emptyTitle: {
-    color: TEXT_COLOR,
+    color: APPLE_THEME.text,
     fontSize: 17,
     fontFamily: TOKENS.font.heading,
     textAlign: "center",
     marginTop: 4,
   },
   emptyCopy: {
-    color: TEXT_MUTED,
+    color: APPLE_THEME.textSecondary,
     fontSize: 13,
     fontFamily: TOKENS.font.body,
     textAlign: "center",
@@ -467,14 +493,14 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#F1F5F9",
+    borderBottomColor: APPLE_THEME.borderSoft,
   },
   resultImageWrap: {
     width: 56,
     height: 56,
     borderRadius: 14,
     overflow: "hidden",
-    backgroundColor: "#0c4a6e",
+    backgroundColor: APPLE_THEME.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -483,7 +509,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   resultName: {
-    color: TEXT_COLOR,
+    color: APPLE_THEME.text,
     fontSize: 14,
     fontFamily: TOKENS.font.heading,
   },
@@ -493,7 +519,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   resultLocation: {
-    color: TEXT_MUTED,
+    color: APPLE_THEME.textSecondary,
     fontSize: 11,
     fontFamily: TOKENS.font.medium,
   },
@@ -503,7 +529,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   resultRating: {
-    color: TEXT_COLOR,
+    color: APPLE_THEME.text,
     fontSize: 11,
     fontFamily: TOKENS.font.semibold,
   },

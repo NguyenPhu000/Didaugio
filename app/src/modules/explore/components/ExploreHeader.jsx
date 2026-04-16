@@ -1,11 +1,11 @@
 import { memo } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { TOKENS } from "../../../constants/design-tokens";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
 import { getUserName } from "../utils/exploreHelpers";
-
-const TEXT_COLOR = "#191C1E";
-const PRIMARY = "#101E2C";
 
 function ExploreHeaderInner({ user }) {
   const userName = getUserName(user);
@@ -14,7 +14,7 @@ function ExploreHeaderInner({ user }) {
     <View style={styles.container}>
       <View style={styles.brandRow}>
         <View style={styles.avatarWrap}>
-          <MaterialIcons name="person" size={20} color={PRIMARY} />
+          <MaterialIcons name="person" size={20} color={APPLE_THEME.primary} />
         </View>
 
         <View style={styles.brandTextCol}>
@@ -27,7 +27,11 @@ function ExploreHeaderInner({ user }) {
 
       <Pressable style={styles.iconButton}>
         <View style={styles.alertDot} />
-        <MaterialIcons name="notifications-none" size={20} color={TEXT_COLOR} />
+        <MaterialIcons
+          name="notifications-none"
+          size={20}
+          color={APPLE_THEME.text}
+        />
       </Pressable>
     </View>
   );
@@ -43,18 +47,15 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingHorizontal: 15,
     paddingVertical: 12,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
+    borderRadius: TOKENS.radius["3xl"],
+    backgroundColor: APPLE_THEME.surface,
     borderWidth: 1,
-    borderColor: "rgba(196,198,204,0.42)",
+    borderColor: APPLE_THEME.borderSoft,
     ...Platform.select({
       ios: {
-        shadowColor: "#191c1e",
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.07,
-        shadowRadius: 16,
+        ...TOKENS.shadow.sm,
       },
-      android: { elevation: 4 },
+      android: { elevation: TOKENS.shadow.sm.elevation },
     }),
   },
   brandRow: {
@@ -69,14 +70,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(16,30,44,0.12)",
+    backgroundColor: APPLE_THEME.primaryTint,
   },
   brandTextCol: {
     flex: 1,
     minWidth: 0,
   },
   brandTopLabel: {
-    color: "#3A4858",
+    color: APPLE_THEME.textMuted,
     fontSize: 11,
     lineHeight: 13,
     fontFamily: TOKENS.font.semibold,
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
   },
   brandGreeting: {
     marginTop: 2,
-    color: TEXT_COLOR,
+    color: APPLE_THEME.text,
     fontSize: 17,
     lineHeight: 21,
     fontFamily: TOKENS.font.heading,
@@ -97,9 +98,9 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(242,244,246,0.98)",
+    backgroundColor: APPLE_THEME.surfaceElevated,
     borderWidth: 1,
-    borderColor: "rgba(196,198,204,0.66)",
+    borderColor: APPLE_THEME.border,
     position: "relative",
   },
   alertDot: {
@@ -109,8 +110,8 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 999,
-    backgroundColor: "#3A81F5",
+    backgroundColor: APPLE_THEME.focusBlue,
     borderWidth: 1,
-    borderColor: "#FFFFFF",
+    borderColor: APPLE_THEME.white,
   },
 });

@@ -1,7 +1,10 @@
 import { memo } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { TOKENS } from "../../../constants/design-tokens";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
 
 function ExploreSearchBarInner({ onPress }) {
   return (
@@ -10,11 +13,15 @@ function ExploreSearchBarInner({ onPress }) {
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
     >
       <View style={styles.iconWrap}>
-        <MaterialIcons name="search" size={22} color="#101E2C" />
+        <MaterialIcons name="search" size={22} color={APPLE_THEME.text} />
       </View>
       <Text style={styles.placeholder}>{"Tìm kiếm địa điểm, món ăn..."}</Text>
       <View style={styles.filterBtn}>
-        <MaterialIcons name="filter-list" size={20} color="#3A4858" />
+        <MaterialIcons
+          name="filter-list"
+          size={20}
+          color={APPLE_THEME.textSecondary}
+        />
       </View>
     </Pressable>
   );
@@ -29,16 +36,15 @@ const styles = StyleSheet.create({
     gap: 12,
     height: 54,
     paddingHorizontal: 14,
-    borderRadius: 18,
-    backgroundColor: "#FFFFFF",
+    borderRadius: TOKENS.radius["2xl"],
+    backgroundColor: APPLE_THEME.surface,
+    borderWidth: 1,
+    borderColor: APPLE_THEME.borderSoft,
     ...Platform.select({
       ios: {
-        shadowColor: "#191c1e",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
+        ...TOKENS.shadow.sm,
       },
-      android: { elevation: 2 },
+      android: { elevation: TOKENS.shadow.sm.elevation },
     }),
   },
   pressed: {
@@ -48,13 +54,15 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "rgba(242,244,246,0.94)",
+    backgroundColor: APPLE_THEME.surfaceElevated,
+    borderWidth: 1,
+    borderColor: APPLE_THEME.border,
     alignItems: "center",
     justifyContent: "center",
   },
   placeholder: {
     flex: 1,
-    color: "#54647A",
+    color: APPLE_THEME.textMuted,
     fontSize: 14,
     fontFamily: TOKENS.font.medium,
   },
@@ -62,7 +70,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "rgba(16,30,44,0.1)",
+    backgroundColor: APPLE_THEME.primaryTint,
     alignItems: "center",
     justifyContent: "center",
   },

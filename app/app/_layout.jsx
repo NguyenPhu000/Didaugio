@@ -63,7 +63,8 @@ export default function RootLayout() {
       rootSegment === "(tabs)" &&
       (childSegment === "map" || childSegment === "explore");
     const inPlaceDetail = rootSegment === "place";
-    const isPublicRoute = inPublicTabs || inPlaceDetail;
+    const inExploreStack = rootSegment === "explore";
+    const isPublicRoute = inPublicTabs || inPlaceDetail || inExploreStack;
     const isLoggedIn = !!accessToken || isGuest;
 
     if (!isLoggedIn && !inAuthGroup && !isPublicRoute) {

@@ -8,10 +8,10 @@ import {
   View,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { TOKENS } from "../../../constants/design-tokens";
-
-const ACTIVE_BG = "#101E2C";
-const INACTIVE_BG = TOKENS.color.card.light;
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
 
 const PillItem = memo(function PillItem({
   categoryId,
@@ -32,7 +32,7 @@ const PillItem = memo(function PillItem({
       <MaterialIcons
         name={icon}
         size={16}
-        color={isActive ? "#FFFFFF" : "#3A4858"}
+        color={isActive ? APPLE_THEME.white : APPLE_THEME.textSecondary}
       />
       <Text style={[styles.pillText, isActive ? styles.pillTextActive : null]}>
         {label}
@@ -130,29 +130,27 @@ const styles = StyleSheet.create({
     borderRadius: TOKENS.radius.pill,
   },
   pillActive: {
-    backgroundColor: ACTIVE_BG,
-    borderWidth: 0,
+    backgroundColor: APPLE_THEME.primary,
+    borderWidth: 1,
+    borderColor: APPLE_THEME.primary,
     ...Platform.select({
       ios: {
-        shadowColor: "#191c1e",
-        shadowOffset: { width: 0, height: 9 },
-        shadowOpacity: 0.14,
-        shadowRadius: 18,
+        ...TOKENS.shadow.sm,
       },
-      android: { elevation: 7 },
+      android: { elevation: TOKENS.shadow.sm.elevation },
     }),
   },
   pillInactive: {
-    backgroundColor: "rgba(255,255,255,0.82)",
+    backgroundColor: APPLE_THEME.surface,
     borderWidth: 1,
-    borderColor: "rgba(196,198,204,0.75)",
+    borderColor: APPLE_THEME.border,
   },
   pillText: {
-    color: "#3A4858",
+    color: APPLE_THEME.textSecondary,
     fontSize: 13,
     fontFamily: TOKENS.font.semibold,
   },
   pillTextActive: {
-    color: "#FFFFFF",
+    color: APPLE_THEME.white,
   },
 });

@@ -1,4 +1,4 @@
-import * as auditLogService from "../services/auditLogService.js";
+import * as auditLogService from "../services/activity/auditLog.service.js";
 import { ROLES } from "../config/constants.js";
 
 const MAX_AUDITABLE_ROLE = ROLES.STAFF;

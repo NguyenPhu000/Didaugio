@@ -114,3 +114,34 @@ export const aiNavigateLimiter = rateLimit({
     errorCode: "RATE_LIMIT_EXCEEDED",
   },
 });
+
+const navigationMaxRequests = process.env.NODE_ENV !== "production" ? 360 : 90;
+
+export const navigationLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: navigationMaxRequests,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    data: null,
+    message: "Quá nhiều yêu cầu navigation, vui lòng thử lại sau",
+    errorCode: "RATE_LIMIT_EXCEEDED",
+  },
+});
+
+const navigationTelemetryMaxRequests =
+  process.env.NODE_ENV !== "production" ? 1200 : 240;
+
+export const navigationTelemetryLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: navigationTelemetryMaxRequests,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    data: null,
+    message: "Quá nhiều yêu cầu telemetry điều hướng, vui lòng thử lại sau",
+    errorCode: "RATE_LIMIT_EXCEEDED",
+  },
+});

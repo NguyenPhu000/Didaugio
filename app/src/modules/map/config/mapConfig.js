@@ -1,4 +1,5 @@
 import { COLORS } from "../../../constants/colors";
+import { MAP_TEXT } from "../constants/mapText.constants";
 
 export const CAN_THO_CENTER = {
   lat: 10.0345852,
@@ -23,35 +24,35 @@ export const MAP_CONFIGS = {
 export const MAP_STYLES = {
   OSM: {
     key: "osm",
-    label: "Ban do",
+    label: MAP_TEXT.mapConfig.mapStyles.osm,
     urls: [],
     mapType: "standard",
     useNativeCleanStyle: true,
   },
   CARTO_LIGHT: {
     key: "carto_light",
-    label: "Toi gian",
+    label: MAP_TEXT.mapConfig.mapStyles.cartoLight,
     urls: [],
     mapType: "standard",
     useNativeCleanStyle: true,
   },
   ADMIN: {
     key: "admin",
-    label: "Hanh chinh",
+    label: MAP_TEXT.mapConfig.mapStyles.admin,
     urls: [],
     mapType: "standard",
     useNativeCleanStyle: true,
   },
   SATELLITE: {
     key: "satellite",
-    label: "Ve tinh",
+    label: MAP_TEXT.mapConfig.mapStyles.satellite,
     urls: [],
     mapType: "satellite",
     useNativeCleanStyle: false,
   },
   HYBRID: {
     key: "hybrid",
-    label: "Hybrid",
+    label: MAP_TEXT.mapConfig.mapStyles.hybrid,
     urls: [],
     mapType: "hybrid",
     useNativeCleanStyle: false,
@@ -87,30 +88,65 @@ export const DISTRICT_COLORS = [
 ];
 
 export const CATEGORY_MARKER_STYLES = {
-  1: { icon: "restaurant", color: "#ef4444", bg: "#fef2f2", label: "Am thuc" },
-  2: { icon: "hotel", color: "#f97316", bg: "#fff7ed", label: "Luu tru" },
+  1: {
+    icon: "restaurant",
+    color: "#ef4444",
+    bg: "#fef2f2",
+    label: MAP_TEXT.mapConfig.categoryLabels.cuisine,
+  },
+  2: {
+    icon: "hotel",
+    color: "#f97316",
+    bg: "#fff7ed",
+    label: MAP_TEXT.mapConfig.categoryLabels.lodging,
+  },
   3: {
     icon: "photo-camera",
     color: "#8b5cf6",
     bg: "#f5f3ff",
-    label: "Tham quan",
+    label: MAP_TEXT.mapConfig.categoryLabels.sightseeing,
   },
   4: {
     icon: "shopping-cart",
     color: "#06b6d4",
     bg: "#ecfeff",
-    label: "Mua sam",
+    label: MAP_TEXT.mapConfig.categoryLabels.shopping,
   },
-  5: { icon: "park", color: "#22c55e", bg: "#f0fdf4", label: "Sinh thai" },
-  6: { icon: "local-cafe", color: "#ec4899", bg: "#fdf2f8", label: "Cafe" },
-  7: { icon: "home", color: "#f59e0b", bg: "#fffbeb", label: "Homestay" },
-  8: { icon: "spa", color: "#14b8a6", bg: "#f0fdfa", label: "Khu sinh thai" },
-  13: { icon: "restaurant", color: "#ef4444", bg: "#fef2f2", label: "Am thuc" },
+  5: {
+    icon: "park",
+    color: "#22c55e",
+    bg: "#f0fdf4",
+    label: MAP_TEXT.mapConfig.categoryLabels.ecotourism,
+  },
+  6: {
+    icon: "local-cafe",
+    color: "#ec4899",
+    bg: "#fdf2f8",
+    label: MAP_TEXT.mapConfig.categoryLabels.cafe,
+  },
+  7: {
+    icon: "home",
+    color: "#f59e0b",
+    bg: "#fffbeb",
+    label: MAP_TEXT.mapConfig.categoryLabels.homestay,
+  },
+  8: {
+    icon: "spa",
+    color: "#14b8a6",
+    bg: "#f0fdfa",
+    label: MAP_TEXT.mapConfig.categoryLabels.ecoPark,
+  },
+  13: {
+    icon: "restaurant",
+    color: "#ef4444",
+    bg: "#fef2f2",
+    label: MAP_TEXT.mapConfig.categoryLabels.cuisine,
+  },
 };
 
 export const DEFAULT_CATEGORY_ICON = {
   icon: "place",
   color: COLORS.textSecondary,
   bg: "#eef2ff",
-  label: "Dia diem",
+  label: MAP_TEXT.mapConfig.categoryLabels.place,
 };
