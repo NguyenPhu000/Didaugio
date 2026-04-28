@@ -1,13 +1,18 @@
 import { memo } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../../constants/design-tokens";
+import { getGreeting, getUserName } from "../utils/exploreHelpers";
+import { resolveMediaUrl } from "../../../lib/media-url";
 
 function ExploreModernHeaderInner({ user, onPressSearch }) {
-  const userName = user?.fullName || "Khách";
+  const userName = getUserName(user);
+  const avatarUri = resolveMediaUrl(
+    user?.profile?.avatar || user?.avatar || user?.avatarURL || user?.photoURL,
+  );
 
   return (
     <View style={styles.container}>
@@ -15,13 +20,8 @@ function ExploreModernHeaderInner({ user, onPressSearch }) {
       <View style={styles.topRow}>
         <View style={styles.userInfo}>
           <View style={styles.avatarWrap}>
-            {user?.avatarURL ? (
-              // In case you have actual avatar URLs later, use Image
-              <MaterialIcons
-                name="person"
-                size={22}
-                color={APPLE_THEME.textMuted}
-              />
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
             ) : (
               <MaterialIcons
                 name="person"
@@ -31,7 +31,7 @@ function ExploreModernHeaderInner({ user, onPressSearch }) {
             )}
           </View>
           <View>
-            <Text style={styles.greetingText}>Xin chào,</Text>
+            <Text style={styles.greetingText}>{getGreeting()},</Text>
             <Text style={styles.userNameText}>{userName}</Text>
           </View>
         </View>
@@ -48,18 +48,21 @@ function ExploreModernHeaderInner({ user, onPressSearch }) {
 
       {/* Title */}
       <View style={styles.titleWrap}>
-        <Text style={styles.title}>Lên kế hoạch du lịch 🧳</Text>
+        <Text style={styles.title}>Bạn muốn khám phá gì hôm nay?</Text>
+        <Text style={styles.subtitle}>
+          Chọn danh mục, xem địa điểm nổi bật và bắt đầu hành trình tại Cần Thơ.
+        </Text>
       </View>
 
       {/* Search Bar - Pill Shape with integrated Location Button */}
       <Pressable onPress={onPressSearch} style={styles.searchBar}>
         <MaterialIcons name="search" size={22} color={APPLE_THEME.textMuted} />
-        <Text style={styles.searchText}>Tìm điểm đến, món ăn...</Text>
+        <Text style={styles.searchText}>Tìm địa điểm, món ăn, hoạt động...</Text>
 
         {/* Location Button (Orange Style like reference) */}
         <View style={styles.locationButton}>
           <MaterialIcons name="place" size={14} color="#FFF" />
-          <Text style={styles.locationButtonText}>Tây Đô</Text>
+          <Text style={styles.locationButtonText}>Cần Thơ</Text>
         </View>
       </Pressable>
     </View>
@@ -94,6 +97,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9", // Slate 100
     alignItems: "center",
     justifyContent: "center",
+  },
+  avatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   greetingText: {
     fontSize: 13,
@@ -140,10 +148,18 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     color: APPLE_THEME.text,
     fontFamily: TOKENS.font.heading,
-    letterSpacing: -0.5,
+    letterSpacing: -0.45,
+    lineHeight: 32,
+  },
+  subtitle: {
+    marginTop: 8,
+    color: APPLE_THEME.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: TOKENS.font.medium,
   },
   /* — Search bar — */
   searchBar: {

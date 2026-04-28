@@ -56,6 +56,10 @@ export const ENDPOINTS = {
     calculate: "/routes/calculate",
     legs: "/routes/legs",
   },
+  navigation: {
+    navigate: "/navigation/navigate",
+    telemetry: "/navigation/telemetry",
+  },
   boundaries: {
     districts: "/boundaries/districts",
     wards: "/boundaries/wards",

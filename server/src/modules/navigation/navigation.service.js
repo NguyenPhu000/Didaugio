@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import NodeCache from "node-cache";
 import logger from "../../config/logger.js";
 import aiNavigationService from "../../services/ai/aiNavigation.service.js";
+import routingService from "../../services/routing/routing.service.js";
 import ServiceError from "../../utils/serviceError.js";
 import {
   NAVIGATION_DOMAIN_NAME,
@@ -14,6 +15,9 @@ import {
 
 const isObject = (value) =>
   value != null && typeof value === "object" && !Array.isArray(value);
+const ORCHESTRATOR_AI_ORDERING_ENABLED =
+  String(process.env.NAVIGATION_ORCHESTRATOR_AI_ORDERING_ENABLED ?? "true") !==
+  "false";
 
 const sanitizePayload = (value) => {
   if (!isObject(value)) return {};
@@ -61,10 +65,91 @@ class NavigationDomainService {
   }
 
   async recommendRoute(payload = {}) {
+    if (Array.isArray(payload?.waypoints) && payload.waypoints.length > 0) {
+      return this.orchestrateRoute(payload);
+    }
+
     const result = await aiNavigationService.getNavigationAdvice(payload);
 
     logger.info(
       `[${NAVIGATION_DOMAIN_NAME}] recommendation source=${result?.source || "unknown"} routeId=${result?.recommendation?.routeId || "n/a"}`,
+    );
+
+    return result;
+  }
+
+  async orchestrateRoute(payload = {}) {
+    const {
+      origin,
+      destination,
+      waypoints = [],
+      mode = "motorcycle",
+      options = {},
+      context = {},
+    } = payload;
+
+    const orderAdvice = ORCHESTRATOR_AI_ORDERING_ENABLED
+      ? await aiNavigationService.getWaypointOrderAdvice({
+          origin,
+          destination,
+          waypoints,
+          context,
+        })
+      : {
+          source: "flag_disabled",
+          orderedWaypointIndexes: waypoints.map((_, index) => index),
+          reason:
+            "AI waypoint ordering đang tắt bằng feature flag, hệ thống giữ nguyên thứ tự điểm đến.",
+          warnings: [],
+          confidence: 0.5,
+        };
+
+    const orderedWaypoints = orderAdvice.orderedWaypointIndexes
+      .map((index) => waypoints[index])
+      .filter(Boolean);
+
+    const route = await routingService.calculate({
+      origin,
+      destination,
+      waypoints: orderedWaypoints,
+      mode,
+      options: {
+        alternatives: 1,
+        steps: true,
+        overview: "full",
+        geometries: "polyline6",
+        snapToRoad: true,
+        simplifyGeometry: true,
+        ...options,
+      },
+    });
+
+    const firstRoute = route.routes?.[0] || null;
+    const result = {
+      source: "orchestrator",
+      strategy: {
+        waypointOrdering: orderAdvice.source,
+        geometryProvider: route.source,
+      },
+      featureFlags: {
+        aiWaypointOrdering: ORCHESTRATOR_AI_ORDERING_ENABLED,
+      },
+      recommendation: {
+        routeId: firstRoute?.id || route.selectedRouteId || null,
+        reason: orderAdvice.reason,
+        tips: [
+          "AI chỉ sắp xếp thứ tự điểm đến; tuyến đường thực tế được OSRM dựng từ dữ liệu đường.",
+        ],
+        warnings: orderAdvice.warnings || [],
+        confidence: orderAdvice.confidence,
+      },
+      orderedWaypointIndexes: orderAdvice.orderedWaypointIndexes,
+      orderedWaypoints,
+      route,
+    };
+
+    logger.info(
+      `[${NAVIGATION_DOMAIN_NAME}.orchestrator] order=${orderAdvice.source} geometry=${route.source} waypoints=${orderedWaypoints.length}`,
     );
 
     return result;
@@ -213,6 +298,9 @@ class NavigationDomainService {
         totalCounters[type] = (totalCounters[type] || 0) + 1;
         sessionCounters[type] = (sessionCounters[type] || 0) + 1;
       });
+      const startedCount = sessionCounters.navigation_started || 0;
+      const deviationCount = sessionCounters.route_deviation || 0;
+      const rerouteCount = sessionCounters.reroute_requested || 0;
 
       perSession.push({
         sessionId,
@@ -221,6 +309,13 @@ class NavigationDomainService {
         firstEventAt: filteredEvents[0]?.eventAt || null,
         lastEventAt: filteredEvents[filteredEvents.length - 1]?.eventAt || null,
         counters: sessionCounters,
+        quality: {
+          routeDeviationRate:
+            startedCount > 0
+              ? Number((deviationCount / startedCount).toFixed(4))
+              : 0,
+          rerouteFrequency: rerouteCount,
+        },
       });
     });
 
@@ -238,6 +333,10 @@ class NavigationDomainService {
         totalCounters[NAVIGATION_UNKNOWN_EVENT_TYPE];
     }
 
+    const navigationStarted = totalCounters.navigation_started || 0;
+    const routeDeviationEvents = totalCounters.route_deviation || 0;
+    const rerouteEvents = totalCounters.reroute_requested || 0;
+
     return {
       window: {
         sinceMinutes: safeSinceMinutes,
@@ -248,6 +347,18 @@ class NavigationDomainService {
         sessions: perSession.length,
         events: totalEvents,
         byEventType: knownTypes,
+        quality: {
+          routeDeviationEvents,
+          rerouteEvents,
+          routeDeviationRate:
+            navigationStarted > 0
+              ? Number((routeDeviationEvents / navigationStarted).toFixed(4))
+              : 0,
+          rerouteFrequencyPerSession:
+            perSession.length > 0
+              ? Number((rerouteEvents / perSession.length).toFixed(4))
+              : 0,
+        },
       },
       topActiveSessions,
     };

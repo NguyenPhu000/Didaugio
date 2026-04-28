@@ -43,7 +43,11 @@ export function useCategories() {
   return useQuery({
     queryKey: ["home-categories"],
     queryFn: () => getHomeApi({ limit: 1 }),
-    select: (data) => data?.data?.categories || [],
+    select: (data) =>
+      data?.categories ||
+      data?.data?.categories ||
+      data?.data?.data?.categories ||
+      [],
     staleTime: 10 * 60 * 1000,
   });
 }

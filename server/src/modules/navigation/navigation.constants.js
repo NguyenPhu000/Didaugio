@@ -15,6 +15,7 @@ export const NAVIGATION_EVENT_TYPES = Object.freeze([
   "pending_confirm",
   "recovery_entered",
   "recovery_cleared",
+  "route_deviation",
   "reroute_requested",
   "route_completed",
   "route_cancelled",

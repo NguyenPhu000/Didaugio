@@ -70,6 +70,7 @@ export function useMapRouting({
           overview: "full",
           geometries: "polyline6",
           snapToRoad: true,
+          simplifyGeometry: true,
         },
       }),
     enabled: isReady,
@@ -120,7 +121,13 @@ export function useRoutingLegs({
   const query = useQuery({
     queryKey,
     queryFn: () =>
-      calculateRouteLegsApi({ waypoints: normalizedWaypoints, mode }),
+      calculateRouteLegsApi({
+        waypoints: normalizedWaypoints,
+        mode,
+        options: {
+          simplifyGeometry: true,
+        },
+      }),
     enabled: isReady,
     staleTime: STALE_TIME,
     gcTime: STALE_TIME * 2,

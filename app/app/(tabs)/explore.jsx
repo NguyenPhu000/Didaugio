@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
@@ -13,15 +14,20 @@ import { StatusBar } from "expo-status-bar";
 import Animated, { useSharedValue } from "react-native-reanimated";
 import { MaterialIcons } from "@expo/vector-icons";
 
-import { useExplore } from "../../src/modules/explore/hooks/useExplore";
+import {
+  useCategories,
+  useExplore,
+} from "../../src/modules/explore/hooks/useExplore";
 import { useAuthStore } from "../../src/stores/authStore";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "./_layout";
-import { TAB_SCREEN_PADDING } from "./tabTheme";
-import { normalizeText } from "../../src/modules/explore/utils/exploreHelpers";
+import {
+  getCategoryIcon,
+  normalizeText,
+} from "../../src/modules/explore/utils/exploreHelpers";
 
 import { FeaturedSection } from "../../src/modules/explore/components/FeaturedSection";
 import { ExperienceBentoSection } from "../../src/modules/explore/components/ExperienceBentoSection";
@@ -30,6 +36,7 @@ import { ExploreSkeleton } from "../../src/modules/explore/components/ExploreSke
 import { SearchOverlay } from "../../src/modules/explore/components/SearchOverlay";
 import { ExploreModernHeader } from "../../src/modules/explore/components/ExploreModernHeader";
 import { ExploreQuickActions } from "../../src/modules/explore/components/ExploreQuickActions";
+import { CategoryPills } from "../../src/modules/explore/components/CategoryPills";
 
 const FEATURED_COUNT = 6;
 const EMPTY_STATE_TITLE = "Chưa có địa điểm nào";
@@ -46,7 +53,9 @@ export default function ExploreScreen() {
   const user = useAuthStore((s) => s.user);
 
   const [searchVisible, setSearchVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const scrollY = useSharedValue(0);
+  const { data: categories = [] } = useCategories();
 
   const {
     data: exploreData,
@@ -56,12 +65,40 @@ export default function ExploreScreen() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useExplore({});
+  } = useExplore({ categoryId: selectedCategory });
 
   const allPlaces = useMemo(
     () => exploreData?.pages.flatMap((page) => page?.data || []) ?? [],
     [exploreData],
   );
+
+  const categoryTabs = useMemo(() => {
+    const normalizedCategories = Array.isArray(categories) ? categories : [];
+    return [
+      {
+        key: "all",
+        categoryId: null,
+        label: "Tất cả",
+        icon: "travel-explore",
+      },
+      ...normalizedCategories
+        .filter((category) => category?.id != null && category?.name)
+        .map((category) => ({
+          key: String(category.id),
+          categoryId: category.id,
+          label: category.name,
+          icon: getCategoryIcon(category.name),
+        })),
+    ];
+  }, [categories]);
+
+  const selectedCategoryName = useMemo(() => {
+    if (selectedCategory == null) return "Tất cả trải nghiệm";
+    const matched = categories.find(
+      (category) => String(category?.id) === String(selectedCategory),
+    );
+    return matched?.name || "Danh mục đã chọn";
+  }, [categories, selectedCategory]);
 
   const featuredPlaces = useMemo(
     () => allPlaces.slice(0, FEATURED_COUNT),
@@ -69,7 +106,23 @@ export default function ExploreScreen() {
   );
 
   const popularPlaces = useMemo(
-    () => allPlaces.slice(FEATURED_COUNT),
+    () => allPlaces.slice(selectedCategory == null ? FEATURED_COUNT : 0),
+    [allPlaces, selectedCategory],
+  );
+
+  const categoryHeroCopy = useMemo(
+    () =>
+      selectedCategory == null
+        ? "Gợi ý địa điểm nổi bật, ẩm thực và hoạt động phù hợp cho chuyến đi của bạn."
+        : `Đang lọc các địa điểm thuộc ${selectedCategoryName}. Chạm vào thẻ để xem chi tiết, ảnh và chỉ đường.`,
+    [selectedCategory, selectedCategoryName],
+  );
+
+  const resultSummary = useMemo(
+    () =>
+      allPlaces.length > 0
+        ? `${allPlaces.length} địa điểm phù hợp`
+        : "Chưa có địa điểm phù hợp",
     [allPlaces],
   );
 
@@ -121,6 +174,10 @@ export default function ExploreScreen() {
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  const handleSelectCategory = useCallback((categoryId) => {
+    setSelectedCategory(categoryId ?? null);
+  }, []);
+
   const handleScroll = useCallback(
     (event) => {
       const { layoutMeasurement, contentOffset, contentSize } =
@@ -165,7 +222,7 @@ export default function ExploreScreen() {
             scrollY.value = e.nativeEvent.contentOffset.y;
             handleScroll(e);
           }}
-          scrollEventThrottle={8}
+          scrollEventThrottle={16}
         >
           {/* Header */}
           <ExploreModernHeader
@@ -173,20 +230,50 @@ export default function ExploreScreen() {
             onPressSearch={handleOpenSearch}
           />
 
+          {categoryTabs.length > 1 ? (
+            <CategoryPills
+              categories={categoryTabs}
+              selectedCategory={selectedCategory}
+              onSelectCategory={handleSelectCategory}
+            />
+          ) : null}
+
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryIcon}>
+              <MaterialIcons
+                name="explore"
+                size={20}
+                color={APPLE_THEME.white}
+              />
+            </View>
+            <View style={styles.summaryTextWrap}>
+              <Text style={styles.summaryEyebrow}>{selectedCategoryName}</Text>
+              <Text style={styles.summaryTitle}>{resultSummary}</Text>
+              <Text style={styles.summaryCopy}>{categoryHeroCopy}</Text>
+            </View>
+            {selectedCategory != null ? (
+              <Pressable
+                onPress={() => handleSelectCategory(null)}
+                style={styles.clearCategoryButton}
+              >
+                <Text style={styles.clearCategoryText}>Xóa lọc</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
           {/* Quick Actions */}
-          <ExploreQuickActions />
+          <ExploreQuickActions
+            categories={categories}
+            onSelectCategory={handleSelectCategory}
+            onOpenSearch={handleOpenSearch}
+          />
 
           {/* Featured carousel */}
           {featuredPlaces.length > 0 ? (
             <FeaturedSection
               places={featuredPlaces}
               onPressPlace={handlePressPlace}
-              onPressViewAll={() =>
-                router.push({
-                  pathname: "/explore/category/[id]",
-                  params: { id: "all" },
-                })
-              }
+              onPressViewAll={() => handleSelectCategory(null)}
             />
           ) : null}
 
@@ -203,7 +290,11 @@ export default function ExploreScreen() {
             <PopularSection
               places={popularPlaces}
               onPressPlace={handlePressPlace}
-              title="Tour gợi ý"
+              title={
+                selectedCategory == null
+                  ? "Địa điểm nên thử"
+                  : `Địa điểm ${selectedCategoryName}`
+              }
             />
           ) : null}
 
@@ -211,7 +302,11 @@ export default function ExploreScreen() {
           {allPlaces.length === 0 && !isLoading ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>{EMPTY_STATE_TITLE}</Text>
-              <Text style={styles.emptyCopy}>{EMPTY_STATE_COPY}</Text>
+              <Text style={styles.emptyCopy}>
+                {selectedCategory == null
+                  ? EMPTY_STATE_COPY
+                  : "Danh mục này chưa có địa điểm phù hợp. Hãy thử danh mục khác hoặc tìm kiếm theo tên."}
+              </Text>
             </View>
           ) : null}
 
@@ -236,6 +331,70 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 4,
+  },
+  summaryCard: {
+    marginTop: 12,
+    marginHorizontal: 20,
+    padding: 16,
+    borderRadius: 24,
+    backgroundColor: APPLE_THEME.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: APPLE_THEME.borderSoft,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    ...Platform.select({
+      ios: TOKENS.shadow.sm,
+      android: { elevation: 2 },
+    }),
+  },
+  summaryIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: APPLE_THEME.primary,
+  },
+  summaryTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  summaryEyebrow: {
+    color: APPLE_THEME.focusBlue,
+    fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
+    letterSpacing: 0.2,
+  },
+  summaryTitle: {
+    marginTop: 2,
+    color: APPLE_THEME.text,
+    fontSize: 17,
+    lineHeight: 22,
+    fontFamily: TOKENS.font.heading,
+    letterSpacing: -0.2,
+  },
+  summaryCopy: {
+    marginTop: 4,
+    color: APPLE_THEME.textSecondary,
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontFamily: TOKENS.font.medium,
+  },
+  clearCategoryButton: {
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.05)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: APPLE_THEME.borderSoft,
+  },
+  clearCategoryText: {
+    color: APPLE_THEME.text,
+    fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
   },
   emptyState: {
     alignItems: "center",

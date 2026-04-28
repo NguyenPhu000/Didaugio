@@ -91,6 +91,27 @@ const MAP_CANVAS_STYLE = {
   width: "100%",
   height: "100%",
 };
+const PLACE_SPATIAL_INDEX_CELL_DEGREES = 0.003;
+
+const getSpatialCellKey = (latitude, longitude) => {
+  const latCell = Math.floor(latitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
+  const lngCell = Math.floor(longitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
+  return `${latCell}:${lngCell}`;
+};
+
+const buildNearbySpatialKeys = (latitude, longitude) => {
+  const latCell = Math.floor(latitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
+  const lngCell = Math.floor(longitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
+  const keys = [];
+
+  for (let dLat = -1; dLat <= 1; dLat += 1) {
+    for (let dLng = -1; dLng <= 1; dLng += 1) {
+      keys.push(`${latCell + dLat}:${lngCell + dLng}`);
+    }
+  }
+
+  return keys;
+};
 
 const GlassPanel = ({ style, children, intensity = 40 }) => (
   <BlurView
@@ -343,6 +364,23 @@ export default function MapScreen() {
       }),
     [allPlaces, searchText, activeCategoryId, activeArea, quickFilters],
   );
+
+  const visiblePlaceSpatialIndex = useMemo(() => {
+    const index = new Map();
+
+    visiblePlaces.forEach((place) => {
+      const latitude = Number(place?.latitude);
+      const longitude = Number(place?.longitude);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+      const key = getSpatialCellKey(latitude, longitude);
+      const bucket = index.get(key) || [];
+      bucket.push(place);
+      index.set(key, bucket);
+    });
+
+    return index;
+  }, [visiblePlaces]);
 
   const currentUserNickname = useMemo(() => {
     const nickname =
@@ -642,8 +680,10 @@ export default function MapScreen() {
 
       let nearestPlace = null;
       let minDistance = Number.POSITIVE_INFINITY;
+      const candidatePlaces = buildNearbySpatialKeys(latitude, longitude)
+        .flatMap((key) => visiblePlaceSpatialIndex.get(key) || []);
 
-      visiblePlaces.forEach((place) => {
+      candidatePlaces.forEach((place) => {
         const placeLat = Number(place?.latitude);
         const placeLng = Number(place?.longitude);
         if (!Number.isFinite(placeLat) || !Number.isFinite(placeLng)) return;
@@ -662,7 +702,7 @@ export default function MapScreen() {
         handleLongPressPlace(nearestPlace);
       }
     },
-    [handleLongPressPlace, visiblePlaces],
+    [handleLongPressPlace, visiblePlaceSpatialIndex],
   );
 
   const handleOpenPlaceDetail = useCallback(

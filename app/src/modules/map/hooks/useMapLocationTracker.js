@@ -1,10 +1,54 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as Location from "expo-location";
+import { useSharedValue } from "react-native-reanimated";
+import { distanceMeters } from "../utils/distance";
 
 const LAST_KNOWN_MAX_AGE_MS = 5 * 60 * 1000;
+const WATCH_STATE_PUBLISH_INTERVAL_MS = 3500;
+const WATCH_STATE_PUBLISH_DISTANCE_M = 18;
 
 export function useMapLocationTracker({ watchEnabled = false } = {}) {
   const [currentLocation, setCurrentLocation] = useState(null);
+  const currentLocationSharedValue = useSharedValue(null);
+  const currentLocationRef = useRef(null);
+  const lastPublishedAtRef = useRef(0);
+
+  const publishLocation = useCallback(
+    (nextLocation, { force = false } = {}) => {
+      if (
+        !nextLocation ||
+        !Number.isFinite(nextLocation.latitude) ||
+        !Number.isFinite(nextLocation.longitude)
+      ) {
+        return;
+      }
+
+      const previous = currentLocationRef.current;
+      const movedMeters = previous
+        ? distanceMeters(
+            previous.latitude,
+            previous.longitude,
+            nextLocation.latitude,
+            nextLocation.longitude,
+          )
+        : Number.POSITIVE_INFINITY;
+      const now = Date.now();
+      const elapsed = now - lastPublishedAtRef.current;
+      currentLocationSharedValue.value = nextLocation;
+      currentLocationRef.current = nextLocation;
+
+      if (
+        force ||
+        !previous ||
+        elapsed >= WATCH_STATE_PUBLISH_INTERVAL_MS ||
+        movedMeters >= WATCH_STATE_PUBLISH_DISTANCE_M
+      ) {
+        lastPublishedAtRef.current = now;
+        setCurrentLocation(nextLocation);
+      }
+    },
+    [currentLocationSharedValue],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -26,10 +70,13 @@ export function useMapLocationTracker({ watchEnabled = false } = {}) {
 
         if (!position?.coords || cancelled) return;
 
-        setCurrentLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
+        publishLocation(
+          {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          },
+          { force: true },
+        );
       } catch {
         // Keep silent: route can still be shown after manual locate.
       }
@@ -40,7 +87,7 @@ export function useMapLocationTracker({ watchEnabled = false } = {}) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [publishLocation]);
 
   useEffect(() => {
     if (!watchEnabled) return undefined;
@@ -64,7 +111,7 @@ export function useMapLocationTracker({ watchEnabled = false } = {}) {
           },
           (location) => {
             if (!location?.coords) return;
-            setCurrentLocation({
+            publishLocation({
               latitude: location.coords.latitude,
               longitude: location.coords.longitude,
             });
@@ -81,7 +128,7 @@ export function useMapLocationTracker({ watchEnabled = false } = {}) {
       active = false;
       subscriber?.remove?.();
     };
-  }, [watchEnabled]);
+  }, [publishLocation, watchEnabled]);
 
   const locateNow = useCallback(async () => {
     try {
@@ -96,15 +143,17 @@ export function useMapLocationTracker({ watchEnabled = false } = {}) {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       };
-      setCurrentLocation(nextLocation);
+      publishLocation(nextLocation, { force: true });
       return nextLocation;
     } catch {
       return null;
     }
-  }, []);
+  }, [publishLocation]);
 
   return {
     currentLocation,
+    currentLocationRef,
+    currentLocationSharedValue,
     setCurrentLocation,
     locateNow,
   };

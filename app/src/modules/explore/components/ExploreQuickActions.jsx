@@ -1,12 +1,10 @@
 import { memo, useCallback, useMemo } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../../constants/design-tokens";
-import { useCategories } from "../hooks/useExplore";
 import { normalizeText } from "../utils/exploreHelpers";
 
 // Tên khóa và keyword để match với danh sách category từ API
@@ -61,10 +59,11 @@ const ACTIONS = Object.freeze([
   },
 ]);
 
-function ExploreQuickActionsInner() {
-  const router = useRouter();
-  const { data: categories = [] } = useCategories(); // Lấy danh sách category thực
-
+function ExploreQuickActionsInner({
+  categories = [],
+  onSelectCategory,
+  onOpenSearch,
+}) {
   const items = useMemo(() => ACTIONS, []);
 
   // Theme trắng/đen chủ đạo theo yêu cầu
@@ -74,25 +73,22 @@ function ExploreQuickActionsInner() {
   const handlePress = useCallback(
     (item) => {
       if (item.key === "more") {
-        router.push("/explore/categories"); // Xem tất cả danh mục
+        onSelectCategory?.(null);
         return;
       }
 
-      // Tìm ID của category tương ứng từ API
       const matchedCat = categories.find((c) => {
         const catName = normalizeText(c.name);
         return item.keywords.some((kw) => catName.includes(normalizeText(kw)));
       });
 
       if (matchedCat?.id) {
-        // Nảy ra list địa điểm chuẩn
-        router.push({ pathname: "/explore/category/[id]", params: { id: matchedCat.id } });
+        onSelectCategory?.(matchedCat.id);
       } else {
-        // Nếu không tìm thấy map trực tiếp, mở tất cả
-        router.push("/explore/categories");
+        onOpenSearch?.();
       }
     },
-    [router, categories],
+    [categories, onOpenSearch, onSelectCategory],
   );
 
   return (

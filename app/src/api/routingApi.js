@@ -29,6 +29,24 @@ export const aiNavigateApi = async (payload) => {
 };
 
 /**
+ * Orchestrated navigation — AI xếp waypoint, OSRM dựng geometry cuối.
+ * @param {{ origin, destination, waypoints?, mode?, options?, context? }} payload
+ */
+export const orchestrateNavigationApi = async (payload) => {
+  const response = await apiClient.post(ENDPOINTS.navigation.navigate, payload);
+  return response;
+};
+
+/**
+ * Gửi telemetry điều hướng để đo route deviation/reroute quality.
+ * @param {{ sessionId?, meta?, events: Array }} payload
+ */
+export const sendNavigationTelemetryApi = async (payload) => {
+  const response = await apiClient.post(ENDPOINTS.navigation.telemetry, payload);
+  return response;
+};
+
+/**
  * Kiểm tra health của routing service (OSRM + fallback).
  */
 export const getRoutingHealthApi = async () => {

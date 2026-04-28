@@ -11,11 +11,22 @@ export function normalizeText(value = "") {
 }
 
 export function getUserName(user) {
-  return (
-    user?.profile?.fullName?.split(" ").filter(Boolean).pop() ||
-    user?.email?.split("@")[0] ||
-    "Bạn"
-  );
+  const rawName =
+    user?.profile?.fullName ||
+    user?.fullName ||
+    user?.name ||
+    user?.displayName ||
+    user?.username ||
+    user?.profile?.nickname ||
+    user?.nickname ||
+    "";
+
+  if (typeof rawName === "string" && rawName.trim()) {
+    return rawName.trim();
+  }
+
+  const emailName = user?.email?.split("@")?.[0];
+  return emailName || "Bạn";
 }
 
 export function getGreeting() {

@@ -15,4 +15,6 @@ export const createLegTrackingState = (legIndex = -1) => ({
   legIndex,
   minDistance: Number.POSITIVE_INFINITY,
   prevDistance: Number.POSITIVE_INFINITY,
+  recoveryCandidateCount: 0,
+  recoveryEventEmitted: false,
 });

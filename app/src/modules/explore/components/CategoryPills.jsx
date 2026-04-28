@@ -23,22 +23,26 @@ const PillItem = memo(function PillItem({
   const handlePress = useCallback(() => {
     onPressCategory(categoryId);
   }, [categoryId, onPressCategory]);
+  const resolvedActive = Boolean(isActive);
 
   return (
     <Pressable
       onPress={handlePress}
       style={({ pressed }) => [
         styles.pill,
-        isActive ? styles.pillActive : styles.pillInactive,
+        resolvedActive ? styles.pillActive : styles.pillInactive,
         pressed && styles.pillPressed,
       ]}
     >
       <MaterialIcons
         name={icon}
-        size={15}
-        color={isActive ? APPLE_THEME.white : APPLE_THEME.textSecondary}
+        size={17}
+        color={resolvedActive ? APPLE_THEME.white : APPLE_THEME.text}
       />
-      <Text style={[styles.pillText, isActive ? styles.pillTextActive : null]}>
+      <Text
+        style={[styles.pillText, resolvedActive ? styles.pillTextActive : null]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </Pressable>
@@ -60,7 +64,7 @@ function CategoryPillsInner({
         isActive={
           item.categoryId === null
             ? selectedCategory === null
-            : selectedCategory === item.categoryId
+            : String(selectedCategory) === String(item.categoryId)
         }
         label={item.label}
         onPressCategory={onSelectCategory}
@@ -120,17 +124,18 @@ export const CategoryPills = memo(
 
 const styles = StyleSheet.create({
   listContent: {
-    gap: 8,
-    paddingTop: 12,
-    paddingBottom: 4,
-    paddingRight: 16,
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 6,
   },
   pill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
-    paddingHorizontal: 15,
-    paddingVertical: 9,
+    gap: 8,
+    minHeight: 42,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 999,
   },
   pillActive: {
@@ -151,8 +156,8 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   pillText: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 13,
+    color: APPLE_THEME.text,
+    fontSize: 14,
     fontFamily: TOKENS.font.semibold,
   },
   pillTextActive: {

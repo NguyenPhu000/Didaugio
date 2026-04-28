@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { sendNavigationTelemetryApi } from "../../../api/routingApi";
 import {
   ROUTE_BUILDER_COLORS,
   ROUTE_BUILDER_DEFAULT_COMPLETED_VIEW,
   ROUTE_BUILDER_FIRST_LEG_COLOR,
+  ROUTE_BUILDER_MISSED_DISTANCE_M,
+  ROUTE_BUILDER_RECOVERY_CONFIRMATION_SAMPLES,
 } from "../constants/routeBuilder.constants";
 import { MAP_TEXT } from "../constants/mapText.constants";
 import { useMapLocationTracker } from "./useMapLocationTracker";
@@ -23,12 +26,18 @@ import {
   shouldEnterRecoveryMode,
 } from "./routeBuilderArrivalRecovery.guards";
 
+const NAVIGATION_TELEMETRY_ENABLED =
+  process.env.EXPO_PUBLIC_NAVIGATION_TELEMETRY_ENABLED !== "false";
+
 export function useRouteBuilderController({
   allPlaces,
   onSelectPlace,
   onLocationResolved,
 }) {
   const routeBuilderLegTrackingRef = useRef(createLegTrackingState());
+  const telemetrySessionIdRef = useRef(
+    `route-builder-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+  );
 
   const [routeBuilderMode, setRouteBuilderMode] = useState(false);
   const [routeBuilderDraftStops, setRouteBuilderDraftStops] = useState([]);
@@ -52,6 +61,37 @@ export function useRouteBuilderController({
   const { currentLocation, locateNow } = useMapLocationTracker({
     watchEnabled: shouldWatchLocation,
   });
+
+  const emitNavigationTelemetry = useCallback(
+    (eventType, payload = {}) => {
+      if (!NAVIGATION_TELEMETRY_ENABLED) return;
+
+      sendNavigationTelemetryApi({
+        sessionId: telemetrySessionIdRef.current,
+        meta: {
+          platform: "mobile",
+        },
+        events: [
+          {
+            eventType,
+            eventAt: new Date().toISOString(),
+            routeId: payload.routeId,
+            legIndex: payload.legIndex,
+            location: currentLocation
+              ? {
+                  lat: currentLocation.latitude,
+                  lng: currentLocation.longitude,
+                }
+              : undefined,
+            payload,
+          },
+        ],
+      }).catch(() => {
+        // Telemetry is best-effort and must never interrupt navigation UX.
+      });
+    },
+    [currentLocation],
+  );
 
   const syncBuilderStops = useCallback(
     (stops) => {
@@ -320,7 +360,31 @@ export function useRouteBuilderController({
     });
 
     if (hasMissedTarget) {
+      tracking.recoveryCandidateCount += 1;
+    } else {
+      tracking.recoveryCandidateCount = 0;
+    }
+
+    if (
+      tracking.recoveryCandidateCount >=
+      ROUTE_BUILDER_RECOVERY_CONFIRMATION_SAMPLES
+    ) {
       setRouteBuilderRecoveryMode(true);
+      if (!tracking.recoveryEventEmitted) {
+        tracking.recoveryEventEmitted = true;
+        emitNavigationTelemetry("route_deviation", {
+          legIndex: activeLeg,
+          targetName: routeBuilderActiveTarget?.name,
+          minDistance: tracking.minDistance,
+          distanceToTarget: routeBuilderDistanceToActiveTarget,
+          thresholdMeters: ROUTE_BUILDER_MISSED_DISTANCE_M,
+        });
+        emitNavigationTelemetry("reroute_requested", {
+          legIndex: activeLeg,
+          targetName: routeBuilderActiveTarget?.name,
+          reason: "missed_target",
+        });
+      }
     }
 
     if (
@@ -330,6 +394,7 @@ export function useRouteBuilderController({
       })
     ) {
       setRouteBuilderRecoveryMode(false);
+      tracking.recoveryCandidateCount = 0;
     }
 
     tracking.prevDistance = routeBuilderDistanceToActiveTarget;
@@ -340,6 +405,7 @@ export function useRouteBuilderController({
     routeBuilderEnabled,
     routeBuilderPendingArrival,
     routeBuilderRecoveryMode,
+    emitNavigationTelemetry,
   ]);
 
   const routeBuilderRecoveryOrigin = useMemo(() => {
@@ -477,8 +543,21 @@ export function useRouteBuilderController({
     setRouteBuilderArrivalAlertVisible(false);
     setRouteBuilderRecoveryMode(false);
     setRouteBuilderMode(true);
+    const confirmedWaypointCount =
+      routeBuilderDraftStops.length +
+      (routeBuilderCanStartFromCurrentLocation ? 1 : 0);
+    emitNavigationTelemetry("navigation_started", {
+      stopCount: routeBuilderDraftStops.length,
+      waypointCount: confirmedWaypointCount,
+      mode: "motorcycle",
+    });
+    emitNavigationTelemetry("route_confirmed", {
+      stopCount: routeBuilderDraftStops.length,
+      waypointCount: confirmedWaypointCount,
+    });
   }, [
     currentLocation,
+    emitNavigationTelemetry,
     locateNow,
     onLocationResolved,
     routeBuilderCanConfirm,
@@ -487,6 +566,12 @@ export function useRouteBuilderController({
   ]);
 
   const handleExitRouteBuilder = useCallback(() => {
+    if (routeBuilderConfirmedStops.length > 0) {
+      emitNavigationTelemetry("route_cancelled", {
+        completedLegs: routeBuilderCompletedLegs,
+        legCount: routeBuilderLegCount,
+      });
+    }
     setRouteBuilderMode(false);
     setRouteBuilderDraftStops([]);
     setRouteBuilderConfirmedStops([]);
@@ -494,10 +579,23 @@ export function useRouteBuilderController({
     setRouteBuilderPendingArrival(null);
     setRouteBuilderArrivalAlertVisible(false);
     setRouteBuilderRecoveryMode(false);
-  }, []);
+  }, [
+    emitNavigationTelemetry,
+    routeBuilderCompletedLegs,
+    routeBuilderConfirmedStops.length,
+    routeBuilderLegCount,
+  ]);
 
   const handleConfirmArrivedRouteBuilderLeg = useCallback(() => {
     if (!routeBuilderPendingArrival) return;
+
+    const nextCompletedLegs = Math.min(
+      Math.max(
+        routeBuilderCompletedLegs,
+        routeBuilderPendingArrival.legIndex + 1,
+      ),
+      routeBuilderLegCount,
+    );
 
     setRouteBuilderCompletedLegs((prev) =>
       Math.min(
@@ -508,7 +606,21 @@ export function useRouteBuilderController({
     setRouteBuilderPendingArrival(null);
     setRouteBuilderArrivalAlertVisible(false);
     setRouteBuilderRecoveryMode(false);
-  }, [routeBuilderLegCount, routeBuilderPendingArrival]);
+    emitNavigationTelemetry("leg_arrived", {
+      legIndex: routeBuilderPendingArrival.legIndex,
+      targetName: routeBuilderPendingArrival.targetName,
+    });
+    if (nextCompletedLegs >= routeBuilderLegCount) {
+      emitNavigationTelemetry("route_completed", {
+        legCount: routeBuilderLegCount,
+      });
+    }
+  }, [
+    emitNavigationTelemetry,
+    routeBuilderCompletedLegs,
+    routeBuilderLegCount,
+    routeBuilderPendingArrival,
+  ]);
 
   const handleDismissRouteBuilderArrivalAlert = useCallback(() => {
     setRouteBuilderArrivalAlertVisible(false);
