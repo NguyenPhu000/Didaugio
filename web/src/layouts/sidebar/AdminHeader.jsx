@@ -32,6 +32,7 @@ import { useLogout } from "@/hooks/useLogout";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { useWebPush } from "@/hooks/useWebPush";
 import { useNotifications } from "@/hooks/useNotifications";
+import { resolveRoleId } from "@/utils/authRouting";
 
 const ROUTE_LABELS = {
   [ADMIN_ROUTES.DASHBOARD]: "Tổng quan",
@@ -56,8 +57,11 @@ const ROUTE_LABELS = {
   [BUSINESS_ROUTES.REVIEWS]: "Đánh giá",
 };
 
+const REVIEW_NOTIFICATION_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF];
+
 function AdminHeader() {
   const user = useAuthStore((state) => state.user);
+  const currentRoleId = resolveRoleId(user);
   const navigate = useNavigate();
   const location = useLocation();
   const { handleLogout, isLoggingOut } = useLogout();
@@ -68,8 +72,8 @@ function AdminHeader() {
   const getInitials = (name) => (name ? name.charAt(0).toUpperCase() : "U");
 
   const resolveRoleLabel = () => {
-    if (ROLE_NAMES[user?.roleId]) {
-      return ROLE_NAMES[user.roleId];
+    if (ROLE_NAMES[currentRoleId]) {
+      return ROLE_NAMES[currentRoleId];
     }
 
     const rawRole = String(user?.role?.name || user?.roleName || "").trim();
@@ -94,7 +98,7 @@ function AdminHeader() {
     const metadata = notification?.metadata || {};
     const type = String(metadata.type || "");
 
-    if (user?.roleId <= ROLES.ADMIN) {
+    if (REVIEW_NOTIFICATION_ROLES.includes(currentRoleId)) {
       if (type.includes("place") || metadata.placeId) {
         return ADMIN_ROUTES.PLACES_PENDING;
       }
@@ -127,7 +131,7 @@ function AdminHeader() {
       return "Hợp đồng";
     }
     return (
-      ROUTE_LABELS[location.pathname] || ROLE_NAMES[user?.roleId] || "Quản trị"
+      ROUTE_LABELS[location.pathname] || ROLE_NAMES[currentRoleId] || "Quản trị"
     );
   })();
 
@@ -179,8 +183,8 @@ function AdminHeader() {
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
-                <span className="absolute right-1.5 top-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold border-2 border-sidebar px-0.5">
-                  {unreadCount > 9 ? "9+" : unreadCount}
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-sidebar bg-red-600 px-1 text-[10px] font-black leading-none text-white shadow-sm">
+                  {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}
             </Button>

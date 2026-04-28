@@ -5,15 +5,18 @@ import { API_BASE_URL } from "@/constants/constants";
 let socket = null;
 let socketIdentity = null;
 
+const resolveUserId = (user) => user?.userId || user?.id;
+
 /**
  * Connect Socket.io for the authenticated user.
  * Call once on app mount (e.g. in AdminHeader or App layout).
  */
 export const connectSocket = () => {
   const { accessToken, user } = useAuthStore.getState();
-  if (!accessToken || !user?.userId) return;
+  const userId = resolveUserId(user);
+  if (!accessToken || !userId) return;
 
-  const identity = `${user.userId}:${accessToken}`;
+  const identity = `${userId}:${accessToken}`;
   if (socket && socketIdentity === identity) return socket;
 
   if (socket) {

@@ -22,7 +22,7 @@ const ROLE_NAME_TO_ID = {
   guest: ROLES.GUEST,
 };
 
-const ADMIN_ROLE_IDS = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
+const ADMIN_ROLE_IDS = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF];
 
 const resolveRoleId = (decoded = {}) => {
   if (decoded.roleId) return decoded.roleId;

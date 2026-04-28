@@ -4,11 +4,14 @@ import api from "@/constants/api";
 import { ROLES } from "@/constants/constants";
 import { useAuthStore } from "@/stores/authStore";
 import { connectSocket } from "@/utils/socket";
+import { resolveRoleId } from "@/utils/authRouting";
 
 const NOTIFICATION_LIMIT = 20;
 
+const resolveUserId = (user) => user?.userId || user?.id;
+
 const canUseNotifications = (user) =>
-  Boolean(user?.userId && user.roleId && user.roleId < ROLES.GUEST);
+  Boolean(resolveUserId(user) && resolveRoleId(user) < ROLES.GUEST);
 
 const normalizeNotificationsResponse = (response) => {
   const data = response?.data || response || [];
@@ -27,6 +30,7 @@ const normalizeNotification = (notification) => ({
 export const useNotifications = () => {
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
+  const userId = resolveUserId(user);
   const enabled = canUseNotifications(user);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -106,7 +110,7 @@ export const useNotifications = () => {
     return () => {
       socket.off("notification", handleNotification);
     };
-  }, [accessToken, enabled, user?.userId]);
+  }, [accessToken, enabled, userId]);
 
   const markAsRead = useCallback(async (id) => {
     if (!id) return;

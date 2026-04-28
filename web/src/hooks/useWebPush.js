@@ -14,12 +14,13 @@ export const useWebPush = () => {
   );
   const [isSubscribed, setIsSubscribed] = useState(false);
   const user = useAuthStore((state) => state.user);
+  const userId = user?.userId || user?.id;
 
   useEffect(() => {
-    if (!user?.userId) return;
+    if (!userId) return;
     // Auto-register SW and check existing subscription
     registerAndCheck();
-  }, [user?.userId]);
+  }, [userId]);
 
   const registerAndCheck = async () => {
     try {

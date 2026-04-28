@@ -4,7 +4,7 @@ import { emitToUser, isUserOnline } from "../../config/socketIO.js";
 import { sendWebPush } from "./webPush.service.js";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
-const ADMIN_ROLE_IDS = [1, 2];
+const ADMIN_ROLE_IDS = [1, 2, 4];
 
 const FIELD_LABELS = {
   idCardFront: "CCCD mặt trước",
@@ -98,12 +98,67 @@ async function createNotification({
   recipients,
   createdBy = null,
   targetType = "users",
+  eventKey = null,
 }) {
   const normalizedRecipients = uniqueRecipients(recipients);
   if (normalizedRecipients.length === 0) return null;
 
+  if (eventKey) {
+    const existing = await prisma.notificationGlobal.findMany({
+      where: { status: "published" },
+      include: { recipients: true },
+      orderBy: { createdAt: "desc" },
+      take: 500,
+    });
+    const existingNotification = existing.find(
+      (item) => item.data?.eventKey === eventKey,
+    );
+
+    if (existingNotification) {
+      const existingUserIds = new Set(
+        existingNotification.recipients.map((recipient) => recipient.userId),
+      );
+      const missingRecipients = normalizedRecipients.filter(
+        (recipient) => !existingUserIds.has(recipient.userId),
+      );
+
+      if (missingRecipients.length === 0) return null;
+
+      const createdRecipients = await prisma.notificationRecipient.createMany({
+        data: missingRecipients.map((recipient) => ({
+          notificationId: existingNotification.id,
+          userId: recipient.userId,
+          businessId: recipient.businessId,
+          roleId: recipient.roleId,
+        })),
+        skipDuplicates: true,
+      });
+
+      const hydratedRecipients = await prisma.notificationRecipient.findMany({
+        where: {
+          notificationId: existingNotification.id,
+          userId: { in: missingRecipients.map((recipient) => recipient.userId) },
+        },
+      });
+
+      for (const recipient of hydratedRecipients) {
+        const payload = toPayload(existingNotification, recipient);
+        emitToUser(recipient.userId, "notification", payload);
+        sendPushIfOffline(
+          recipient.userId,
+          existingNotification.title,
+          existingNotification.body,
+          existingNotification.data || {},
+        ).catch(() => {});
+      }
+
+      return { ...existingNotification, createdRecipients };
+    }
+  }
+
   const createdById = toPositiveInt(createdBy) || normalizedRecipients[0].userId;
   const userIds = normalizedRecipients.map((recipient) => recipient.userId);
+  const metadata = eventKey ? { ...data, eventKey } : data;
 
   const notification = await prisma.notificationGlobal.create({
     data: {
@@ -111,7 +166,7 @@ async function createNotification({
       body,
       targetType,
       targetValue: { userIds },
-      data,
+      data: metadata,
       createdBy: createdById,
       status: "published",
       sentAt: new Date(),
@@ -130,7 +185,7 @@ async function createNotification({
   for (const recipient of notification.recipients) {
     const payload = toPayload(notification, recipient);
     emitToUser(recipient.userId, "notification", payload);
-    sendPushIfOffline(recipient.userId, title, body, data).catch(() => {});
+    sendPushIfOffline(recipient.userId, title, body, metadata).catch(() => {});
   }
 
   return notification;
@@ -148,7 +203,7 @@ async function notifyUser(userId, title, body, data = {}, createdBy = null) {
 
 async function notifyAdmins(title, body, data = {}, createdBy = null) {
   const admins = await prisma.user.findMany({
-    where: { roleId: { in: ADMIN_ROLE_IDS }, deletedAt: null, status: "active" },
+    where: { roleId: { in: ADMIN_ROLE_IDS }, deletedAt: null },
     select: { id: true, roleId: true },
   });
 
@@ -160,6 +215,14 @@ async function notifyAdmins(title, body, data = {}, createdBy = null) {
     targetType: "role",
     recipients: admins.map((admin) => ({ userId: admin.id, roleId: admin.roleId })),
   });
+}
+
+async function getAdminRecipients() {
+  const admins = await prisma.user.findMany({
+    where: { roleId: { in: ADMIN_ROLE_IDS }, deletedAt: null },
+    select: { id: true, roleId: true },
+  });
+  return admins.map((admin) => ({ userId: admin.id, roleId: admin.roleId }));
 }
 
 async function notifyBusinessOwner(
@@ -188,6 +251,72 @@ async function notifyBusinessOwner(
 
 const formatChangedFields = (changedFields = []) =>
   changedFields.map((field) => FIELD_LABELS[field] || field).join(", ");
+
+async function backfillPendingReviewNotifications() {
+  const adminRecipients = await getAdminRecipients();
+  if (adminRecipients.length === 0) return;
+
+  const [pendingBusinesses, pendingPlaces] = await Promise.all([
+    prisma.business.findMany({
+      where: { status: "pending" },
+      select: {
+        id: true,
+        ownerId: true,
+        businessName: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+    prisma.place.findMany({
+      where: { status: "pending", deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        businessId: true,
+        createdBy: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+  ]);
+
+  for (const business of pendingBusinesses) {
+    await createNotification({
+      title: "Hồ sơ doanh nghiệp cần duyệt",
+      body: `${business.businessName || `Doanh nghiệp #${business.id}`} đang chờ quản trị viên xét duyệt.`,
+      data: {
+        businessId: business.id,
+        type: "admin_business_pending",
+      },
+      createdBy: business.ownerId,
+      targetType: "role",
+      recipients: adminRecipients,
+      eventKey: `business:pending:${business.id}`,
+    }).catch((error) => {
+      console.error("[Notification] Backfill pending business failed:", error);
+    });
+  }
+
+  for (const place of pendingPlaces) {
+    await createNotification({
+      title: "Địa điểm cần duyệt",
+      body: `${place.name || `Địa điểm #${place.id}`} đang chờ quản trị viên xét duyệt.`,
+      data: {
+        placeId: place.id,
+        businessId: place.businessId,
+        type: "admin_place_pending",
+      },
+      createdBy: place.createdBy,
+      targetType: "role",
+      recipients: adminRecipients,
+      eventKey: `place:pending:${place.id}`,
+    }).catch((error) => {
+      console.error("[Notification] Backfill pending place failed:", error);
+    });
+  }
+}
 
 eventEmitter.on(EVENTS.BUSINESS.REGISTERED, async ({ businessId, userId, businessName }) => {
   await Promise.all([
@@ -466,4 +595,7 @@ eventEmitter.on(EVENTS.REVIEW.REPLIED, async ({ reviewId, replyId, repliedBy, re
 
 export const initNotificationService = () => {
   console.log("[Notification Service] Initialized and listening for events...");
+  backfillPendingReviewNotifications().catch((error) => {
+    console.error("[Notification] Backfill pending review notifications failed:", error);
+  });
 };
