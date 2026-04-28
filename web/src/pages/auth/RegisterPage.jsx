@@ -8,6 +8,7 @@ import Eye from "lucide-react/dist/esm/icons/eye";
 import EyeOff from "lucide-react/dist/esm/icons/eye-off";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import User from "lucide-react/dist/esm/icons/user";
+import AtSign from "lucide-react/dist/esm/icons/at-sign";
 import Mail from "lucide-react/dist/esm/icons/mail";
 import Lock from "lucide-react/dist/esm/icons/lock";
 import Shield from "lucide-react/dist/esm/icons/shield";
@@ -34,6 +35,11 @@ const registerSchema = z
       .string()
       .min(1, "Email khong duoc de trong")
       .email("Email khong hop le"),
+    username: z
+      .string()
+      .min(3, "Username phai co it nhat 3 ky tu")
+      .max(30, "Username toi da 30 ky tu")
+      .regex(/^[a-zA-Z0-9_]+$/, "Username chi gom chu, so va dau gach duoi"),
     password: z
       .string()
       .min(6, "Mat khau phai co it nhat 6 ky tu")
@@ -67,6 +73,7 @@ const RegisterPage = () => {
     try {
       const response = await authService.register({
         email: data.email,
+        username: data.username,
         password: data.password,
         confirmPassword: data.confirmPassword,
         fullName: data.fullName,
@@ -230,6 +237,29 @@ const RegisterPage = () => {
                 )}
               </div>
 
+              {/* Username */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="username"
+                  className="tim-meta flex items-center gap-2"
+                >
+                  <AtSign className="h-4 w-4" />
+                  USERNAME
+                </Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="USERNAME_01"
+                  className="rounded-none border-2 border-black h-11 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                  {...register("username")}
+                />
+                {errors.username && (
+                  <p className="text-xs text-red-600 font-mono uppercase">
+                    {errors.username.message}
+                  </p>
+                )}
+              </div>
+
               {/* Email */}
               <div className="space-y-2">
                 <Label
@@ -366,7 +396,7 @@ const RegisterPage = () => {
               </p>
               <Link
                 to="/auth/login"
-                className="inline-block w-full rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-11 px-6 uppercase font-black text-sm transition-all flex items-center justify-center"
+                className="w-full rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-11 px-6 uppercase font-black text-sm transition-all flex items-center justify-center"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 BACK TO LOGIN

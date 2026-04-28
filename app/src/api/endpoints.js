@@ -21,6 +21,8 @@ export const ENDPOINTS = {
   profile: {
     get: "/profile",
     summary: "/profile/summary",
+    update: "/profile",
+    updateAvatar: "/profile/avatar",
     savedPlaces: "/profile/saved-places",
     savedPlaceById: (placeId) => `/profile/saved-places/${placeId}`,
     trips: "/profile/trips",

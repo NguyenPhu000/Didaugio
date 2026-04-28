@@ -41,6 +41,7 @@ import { profileService } from "@/apis/profileService";
 import { ROLE_NAMES } from "@/constants/constants";
 import { ChangePasswordModal } from "@/components/user/ChangePasswordModal";
 import { profileSchema } from "@/schemas/user";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
 
 // const profileSchema = z.object({...}) // Removed
 
@@ -134,6 +135,10 @@ const ProfilePage = () => {
     return email?.charAt(0).toUpperCase() || "U";
   };
 
+  const avatarSrc = resolveMediaUrl(
+    profile?.profile?.avatar || profile?.avatar,
+  );
+
   if (isFetching) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
@@ -206,9 +211,9 @@ const ProfilePage = () => {
               <div className="flex items-center gap-8">
                 <div className="relative">
                   <div className="h-32 w-32 border-4 border-black bg-gray-900 overflow-hidden relative group">
-                    {profile?.profile?.avatar ? (
+                    {avatarSrc ? (
                       <img
-                        src={profile.profile.avatar}
+                        src={avatarSrc}
                         alt="Avatar"
                         className="h-full w-full object-cover grayscale group-hover:grayscale-0 transition-all"
                       />

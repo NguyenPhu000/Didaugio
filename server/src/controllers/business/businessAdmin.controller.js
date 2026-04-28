@@ -69,6 +69,7 @@ export const suspend = async (req, res, next) => {
   try {
     const business = await businessAdminService.suspend(
       req.params.id,
+      req.body.suspensionReason,
       req.user.userId,
     );
     res.json({
@@ -90,6 +91,23 @@ export const reactivate = async (req, res, next) => {
     res.json({
       success: true,
       message: "Kích hoạt lại doanh nghiệp thành công",
+      data: business,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const terminate = async (req, res, next) => {
+  try {
+    const business = await businessAdminService.terminate(
+      req.params.id,
+      req.body.terminationReason,
+      req.user.userId,
+    );
+    res.json({
+      success: true,
+      message: "Chấm dứt hợp đồng doanh nghiệp thành công",
       data: business,
     });
   } catch (error) {

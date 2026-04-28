@@ -317,7 +317,7 @@ const BusinessReviewApproveModal = ({
                       />
                       <FieldRow
                         label="Số CCCD/CMND"
-                        value={detail.idCardNumber}
+                        value={detail.idCardNumberMasked || detail.idCardNumber}
                         mono
                       />
                       <FieldRow
@@ -348,12 +348,18 @@ const BusinessReviewApproveModal = ({
                       <FieldRow label="Ngân hàng" value={detail.bankName} />
                       <FieldRow
                         label="Số tài khoản"
-                        value={detail.bankAccountNumber}
+                        value={
+                          detail.bankAccountNumberMasked ||
+                          detail.bankAccountNumber
+                        }
                         mono
                       />
                       <FieldRow
                         label="Chủ TK"
-                        value={detail.bankAccountOwner}
+                        value={
+                          detail.bankAccountOwnerMasked ||
+                          detail.bankAccountOwner
+                        }
                       />
                     </div>
                   </div>

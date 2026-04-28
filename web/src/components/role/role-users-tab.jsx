@@ -9,6 +9,7 @@ import { userPermissionService } from "@/apis/userPermissionService";
 import { toast } from "sonner";
 import { UserPermissionModal } from "./user-permission-modal";
 import { Search, UserCog, Users, Settings } from "lucide-react";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
 
 export function RoleUsersTab({ role }) {
   const [users, setUsers] = useState([]);
@@ -201,7 +202,12 @@ export function RoleUsersTab({ role }) {
                 className="data-[state=checked]:bg-[#F3E600] data-[state=checked]:border-black data-[state=checked]:text-black rounded-none border-2"
               />
               <Avatar className="h-10 w-10 border-2 border-black rounded-none">
-                <AvatarImage src={user.avatar} />
+                <AvatarImage
+                  src={
+                    resolveMediaUrl(user.avatar || user.profile?.avatar) ||
+                    undefined
+                  }
+                />
                 <AvatarFallback className="bg-gray-100 text-black font-bold rounded-none">
                   {getInitials(user.email, user.fullName)}
                 </AvatarFallback>

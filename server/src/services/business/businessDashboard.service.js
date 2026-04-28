@@ -116,7 +116,7 @@ export const getDashboard = async (userId, options = {}) => {
   const period = resolveDashboardPeriod(options);
 
   const bookingWhere = {
-    service: { businessId: business.id },
+    businessId: business.id,
     useDate: {
       gte: period.from,
       lte: period.to,
@@ -164,7 +164,7 @@ export const getDashboard = async (userId, options = {}) => {
     }),
     prisma.booking.count({
       where: {
-        service: { businessId: business.id },
+        businessId: business.id,
         status: "pending",
         useDate: {
           gte: todayStart,
@@ -174,7 +174,7 @@ export const getDashboard = async (userId, options = {}) => {
     }),
     prisma.booking.count({
       where: {
-        service: { businessId: business.id },
+        businessId: business.id,
         createdAt: {
           gte: startOfWeek,
         },

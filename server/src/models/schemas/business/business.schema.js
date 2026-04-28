@@ -1,38 +1,145 @@
 import { z } from "zod";
 import { paginationLargeSchema } from "../commonSchema.js";
+import {
+  sanitizeNullableText,
+  sanitizeOptionalText,
+  sanitizeText,
+} from "../../../utils/sanitizeText.js";
+
+const sanitizeDigits = (value) => sanitizeText(value, { collapseWhitespace: false });
+
+const sanitizeWithSchema = (
+  schema,
+  { nullable = false, collapseWhitespace = true } = {},
+) =>
+  z.preprocess(
+    (value) =>
+      nullable
+        ? sanitizeNullableText(value, { collapseWhitespace })
+        : sanitizeOptionalText(value, { collapseWhitespace }),
+    schema,
+  );
 
 export const registerBusinessSchema = z.object({
-  businessName: z
-    .string({ required_error: "Tên doanh nghiệp không được để trống" })
-    .min(2, "Tên doanh nghiệp phải có ít nhất 2 ký tự")
-    .max(200, "Tên doanh nghiệp không được quá 200 ký tự"),
+  businessName: z.preprocess(
+    (value) => sanitizeText(value),
+    z
+      .string({ required_error: "Tên doanh nghiệp không được để trống" })
+      .min(2, "Tên doanh nghiệp phải có ít nhất 2 ký tự")
+      .max(200, "Tên doanh nghiệp không được quá 200 ký tự"),
+  ),
   businessType: z.enum(["individual", "household", "company"], {
     required_error: "Loại hình doanh nghiệp không được để trống",
   }),
-  taxCode: z.string().max(20).optional().nullable(),
-  idCardNumber: z
-    .string({ required_error: "Số CCCD không được để trống" })
-    .min(9, "Số CCCD không hợp lệ")
-    .max(12, "Số CCCD không hợp lệ"),
-  bankName: z.string().max(100).optional().nullable(),
-  bankAccountNumber: z.string().max(30).optional().nullable(),
-  bankAccountOwner: z.string().max(100).optional().nullable(),
-  fullName: z.string().max(120).optional().nullable(),
-  phone: z.string().max(20).optional().nullable(),
-  address: z.string().max(255).optional().nullable(),
+  taxCode: sanitizeWithSchema(z.string().max(20).nullable().optional(), {
+    nullable: true,
+    collapseWhitespace: false,
+  }),
+  idCardNumber: z.preprocess(
+    (value) => sanitizeDigits(value),
+    z
+      .string({ required_error: "Số CCCD không được để trống" })
+      .regex(/^\d{9,12}$/, "Số CCCD không hợp lệ"),
+  ),
+  bankName: sanitizeWithSchema(z.string().max(100).nullable().optional(), {
+    nullable: true,
+  }),
+  bankAccountNumber: sanitizeWithSchema(
+    z
+      .string()
+      .max(30)
+      .refine(
+      (value) => value == null || /^\d{6,30}$/.test(value),
+      "Số tài khoản không hợp lệ",
+    )
+      .nullable()
+      .optional(),
+    {
+      nullable: true,
+      collapseWhitespace: false,
+    },
+  ),
+  bankAccountOwner: sanitizeWithSchema(
+    z.string().max(100).nullable().optional(),
+    { nullable: true },
+  ),
+  fullName: sanitizeWithSchema(z.string().max(120).nullable().optional(), {
+    nullable: true,
+  }),
+  phone: sanitizeWithSchema(
+    z
+      .string()
+      .max(20)
+      .refine(
+      (value) => value == null || /^[+\d\s().-]{8,20}$/.test(value),
+      "Số điện thoại không hợp lệ",
+    )
+      .nullable()
+      .optional(),
+    {
+      nullable: true,
+      collapseWhitespace: false,
+    },
+  ),
+  address: sanitizeWithSchema(z.string().max(255).nullable().optional(), {
+    nullable: true,
+  }),
 });
 
 export const updateBusinessSchema = z.object({
-  businessName: z.string().min(2).max(200).optional(),
+  businessName: sanitizeWithSchema(z.string().min(2).max(200).optional()),
   businessType: z.enum(["individual", "household", "company"]).optional(),
-  taxCode: z.string().max(20).optional().nullable(),
-  idCardNumber: z.string().min(9).max(12).optional(),
-  bankName: z.string().max(100).optional().nullable(),
-  bankAccountNumber: z.string().max(30).optional().nullable(),
-  bankAccountOwner: z.string().max(100).optional().nullable(),
-  fullName: z.string().max(120).optional().nullable(),
-  phone: z.string().max(20).optional().nullable(),
-  address: z.string().max(255).optional().nullable(),
+  taxCode: sanitizeWithSchema(z.string().max(20).nullable().optional(), {
+    nullable: true,
+    collapseWhitespace: false,
+  }),
+  idCardNumber: z.preprocess(
+    (value) => (value === undefined ? undefined : sanitizeDigits(value)),
+    z.string().regex(/^\d{9,12}$/, "Số CCCD không hợp lệ").optional(),
+  ),
+  bankName: sanitizeWithSchema(z.string().max(100).nullable().optional(), {
+    nullable: true,
+  }),
+  bankAccountNumber: sanitizeWithSchema(
+    z
+      .string()
+      .max(30)
+      .refine(
+      (value) => value == null || /^\d{6,30}$/.test(value),
+      "Số tài khoản không hợp lệ",
+    )
+      .nullable()
+      .optional(),
+    {
+      nullable: true,
+      collapseWhitespace: false,
+    },
+  ),
+  bankAccountOwner: sanitizeWithSchema(
+    z.string().max(100).nullable().optional(),
+    { nullable: true },
+  ),
+  fullName: sanitizeWithSchema(z.string().max(120).nullable().optional(), {
+    nullable: true,
+  }),
+  phone: sanitizeWithSchema(
+    z
+      .string()
+      .max(20)
+      .refine(
+      (value) => value == null || /^[+\d\s().-]{8,20}$/.test(value),
+      "Số điện thoại không hợp lệ",
+    )
+      .nullable()
+      .optional(),
+    {
+      nullable: true,
+      collapseWhitespace: false,
+    },
+  ),
+  address: sanitizeWithSchema(z.string().max(255).nullable().optional(), {
+    nullable: true,
+  }),
 });
 
 export const approveBusinessSchema = z.preprocess(
@@ -43,10 +150,13 @@ export const approveBusinessSchema = z.preprocess(
 );
 
 export const rejectBusinessSchema = z.object({
-  rejectionReason: z
-    .string({ required_error: "Lý do từ chối không được để trống" })
-    .min(10, "Lý do từ chối phải có ít nhất 10 ký tự")
-    .max(500, "Lý do từ chối không được quá 500 ký tự"),
+  rejectionReason: z.preprocess(
+    (value) => sanitizeText(value),
+    z
+      .string({ required_error: "Lý do từ chối không được để trống" })
+      .min(10, "Lý do từ chối phải có ít nhất 10 ký tự")
+      .max(500, "Lý do từ chối không được quá 500 ký tự"),
+  ),
 });
 
 export const signBusinessContractSchema = z
@@ -73,10 +183,30 @@ export const signBusinessContractSchema = z
   })
   .strict();
 
+export const suspendBusinessSchema = z.object({
+  suspensionReason: z.preprocess(
+    (value) => sanitizeText(value),
+    z
+      .string({ required_error: "Lý do tạm khóa không được để trống" })
+      .min(10, "Lý do tạm khóa phải có ít nhất 10 ký tự")
+      .max(500, "Lý do tạm khóa không được quá 500 ký tự"),
+  ),
+});
+
+export const terminateBusinessSchema = z.object({
+  terminationReason: z.preprocess(
+    (value) => sanitizeText(value),
+    z
+      .string({ required_error: "Lý do hủy hợp đồng không được để trống" })
+      .min(10, "Lý do hủy hợp đồng phải có ít nhất 10 ký tự")
+      .max(500, "Lý do hủy hợp đồng không được quá 500 ký tự"),
+  ),
+});
+
 export const getBusinessesQuerySchema = paginationLargeSchema.extend({
   search: z.string().max(200).optional(),
   status: z
-    .enum(["all", "pending", "approved", "rejected", "suspended"])
+    .enum(["all", "pending", "approved", "rejected", "suspended", "terminated", "suspicious"])
     .optional(),
   contractSigned: z.coerce.boolean().optional(),
   sortBy: z.enum(["newest", "oldest", "name"]).default("newest"),

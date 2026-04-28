@@ -35,9 +35,33 @@ export const updateProfile = async (userId, data) => {
     throw new ServiceError("User khong ton tai", 404, "USER_NOT_FOUND");
   }
 
+  if (validated.username !== undefined) {
+    const existingUsername = await prisma.user.findFirst({
+      where: {
+        username: validated.username,
+        id: { not: userId },
+      },
+      select: { id: true },
+    });
+
+    if (existingUsername) {
+      throw new ServiceError(
+        "Username da duoc su dung",
+        400,
+        "VALIDATION_ERROR",
+      );
+    }
+  }
+
+  const userData = {};
+  if (validated.username !== undefined) {
+    userData.username = validated.username;
+  }
+
   // Chuẩn bị data cho profile
   const profileData = {
     fullName: validated.fullName,
+    nickname: validated.nickname,
     phone: validated.phone,
     gender: validated.gender,
     address: validated.address,
@@ -56,21 +80,28 @@ export const updateProfile = async (userId, data) => {
     }
   });
 
-  let updatedProfile;
+  const hasUserUpdates = Object.keys(userData).length > 0;
+  const hasProfileUpdates = Object.keys(profileData).length > 0;
 
-  if (user.profile) {
-    // Update profile hiện có
-    updatedProfile = await prisma.userProfile.update({
-      where: { userId },
-      data: profileData,
-    });
-  } else {
-    // Tạo profile mới nếu chưa có
-    updatedProfile = await prisma.userProfile.create({
-      data: {
-        userId,
-        ...profileData,
-      },
+  if (hasUserUpdates || hasProfileUpdates) {
+    await prisma.$transaction(async (tx) => {
+      if (hasUserUpdates) {
+        await tx.user.update({
+          where: { id: userId },
+          data: userData,
+        });
+      }
+
+      if (hasProfileUpdates) {
+        await tx.userProfile.upsert({
+          where: { userId },
+          update: profileData,
+          create: {
+            userId,
+            ...profileData,
+          },
+        });
+      }
     });
   }
 

@@ -13,6 +13,7 @@ import {
   updateUserSchema,
 } from "../../models/index.js";
 import ServiceError from "../../utils/serviceError.js";
+import { generateUniqueUsername } from "../../utils/username.js";
 
 export const getAllUsers = async (query = {}) => {
   const { page, limit } = paginationSchema.parse(query);
@@ -26,6 +27,7 @@ export const getAllUsers = async (query = {}) => {
   if (query.search && query.search.trim()) {
     where.OR = [
       { email: { contains: query.search.trim(), mode: "insensitive" } },
+      { username: { contains: query.search.trim(), mode: "insensitive" } },
       {
         profile: {
           fullName: { contains: query.search.trim(), mode: "insensitive" },
@@ -48,6 +50,7 @@ export const getAllUsers = async (query = {}) => {
       select: {
         id: true,
         email: true,
+        username: true,
         roleId: true,
         status: true,
         emailVerified: true,
@@ -56,6 +59,7 @@ export const getAllUsers = async (query = {}) => {
         profile: {
           select: {
             fullName: true,
+            nickname: true,
             phone: true,
             avatar: true,
             gender: true,
@@ -78,6 +82,7 @@ export const getAllUsers = async (query = {}) => {
   const transformedUsers = users.map((user) => ({
     id: user.id,
     email: user.email,
+    username: user.username || null,
     roleId: user.roleId,
     status: user.status,
     isActive: user.status === USER_STATUS.ACTIVE,
@@ -85,6 +90,7 @@ export const getAllUsers = async (query = {}) => {
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
     fullName: user.profile?.fullName || null,
+    nickname: user.profile?.nickname || null,
     phone: user.profile?.phone || null,
     avatar: user.profile?.avatar || null,
     gender: user.profile?.gender || null,
@@ -140,9 +146,11 @@ export const createUser = async (userData) => {
   const validatedData = createUserSchema.parse(userData);
   const {
     email,
+    username,
     password,
     roleId,
     fullName,
+    nickname,
     phone,
     gender,
     dateOfBirth,
@@ -168,13 +176,37 @@ export const createUser = async (userData) => {
     throw new ServiceError(ERROR_MESSAGES.EXISTED, 400, ERROR_CODES.EXISTED);
   }
 
+  // Check username uniqueness
+  if (username) {
+    const existingUsername = await prisma.user.findUnique({
+      where: { username },
+      select: { id: true },
+    });
+    if (existingUsername) {
+      throw new ServiceError(
+        "Username da duoc su dung",
+        400,
+        ERROR_CODES.EXISTED,
+      );
+    }
+  }
+
+  const resolvedUsername = username
+    ? username
+    : await generateUniqueUsername({
+        prismaClient: prisma,
+        email,
+        fallback: "user",
+      });
+
   const bcrypt = await import("bcrypt");
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, 13);
 
   const newUser = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: {
         email,
+        username: resolvedUsername,
         password: hashedPassword,
         roleId,
         status: USER_STATUS.ACTIVE,
@@ -190,6 +222,7 @@ export const createUser = async (userData) => {
 
     const profileData = {
       fullName,
+      nickname,
       phone,
       gender,
       dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
@@ -236,19 +269,41 @@ export const updateUser = async (id, updateData) => {
 
   const {
     fullName,
+    nickname,
     phone,
     gender,
     dateOfBirth,
     address,
     provinceCode,
     districtCode,
+    username,
     password,
     ...userData
   } = validatedData;
 
   if (password) {
     const bcrypt = await import("bcrypt");
-    userData.password = await bcrypt.hash(password, 10);
+    userData.password = await bcrypt.hash(password, 13);
+  }
+
+  // Handle username update
+  if (username !== undefined) {
+    const existingUsername = await prisma.user.findFirst({
+      where: {
+        username,
+        id: { not: userId },
+      },
+      select: { id: true },
+    });
+    if (existingUsername) {
+      throw new ServiceError(
+        "Username da duoc su dung",
+        400,
+        ERROR_CODES.EXISTED,
+      );
+    }
+
+    userData.username = username;
   }
 
   const updatedUser = await prisma.$transaction(async (tx) => {
@@ -266,6 +321,7 @@ export const updateUser = async (id, updateData) => {
 
     const profileData = {
       fullName,
+      nickname,
       phone,
       gender,
       dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,

@@ -27,15 +27,19 @@ import serviceBookingRoutes from "./booking/serviceBooking.route.js";
 import aiRoutes from "./ai/ai.route.js";
 import routingRoutes from "../modules/routing/routing.routes.js";
 import navigationRoutes from "../modules/navigation/navigation.routes.js";
+import dashboardRoutes from "./dashboard/dashboard.route.js";
+import notificationRoutes from "./notification/notification.route.js";
 import {
   authLimiter,
   apiLimiter,
+  businessApiLimiter,
   refreshLimiter,
   recoveryLimiter,
   routingLimiter,
   aiNavigateLimiter,
   navigationLimiter,
   navigationTelemetryLimiter,
+  changePasswordLimiter,
 } from "../middlewares/rateLimitMiddleware.js";
 
 export const registerRateLimiters = (app) => {
@@ -46,15 +50,21 @@ export const registerRateLimiters = (app) => {
   app.use("/api/auth/forgot-password", recoveryLimiter);
   app.use("/api/auth/reset-password", recoveryLimiter);
   app.use("/api/auth/resend-verification-public", recoveryLimiter);
+  app.use("/api/auth/change-password", changePasswordLimiter);
   app.use("/api/routes", routingLimiter);
   app.use("/api/ai/navigate", aiNavigateLimiter);
   app.use("/api/navigation/navigate", navigationLimiter);
   app.use("/api/navigation/telemetry", navigationTelemetryLimiter);
+  // Business routes have stricter limits due to sensitive operations
+  app.use("/api/business", businessApiLimiter);
+  app.use("/api/business/services", businessApiLimiter);
+  app.use("/api/business/bookings", businessApiLimiter);
   app.use("/api", apiLimiter);
 };
 
 export const registerApiRoutes = (app) => {
   app.use("/api/auth", authRoutes);
+  app.use("/api/dashboard", dashboardRoutes);
   app.use("/api/profile", profileRoutes);
   app.use("/api/audit-logs", auditLogRoutes);
   app.use("/api/email-verifications", emailVerificationRoutes);
@@ -78,6 +88,7 @@ export const registerApiRoutes = (app) => {
   app.use("/api/business/reviews", reviewRoutes);
   app.use("/api/business", businessRoutes);
   app.use("/api/feedback", feedbackRoutes);
+  app.use("/api/notifications", notificationRoutes);
   app.use("/api/ai", aiRoutes);
   app.use("/api/routes", routingRoutes);
   app.use("/api/navigation", navigationRoutes);

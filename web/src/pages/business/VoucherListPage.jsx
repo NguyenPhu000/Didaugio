@@ -49,24 +49,33 @@ import { cn } from "@/lib/utils";
 
 // ─── Voucher Form Modal ──────────────────────────────────────────────────────
 
+const getVoucherFormDefaults = (voucher) => ({
+  code: voucher?.code || "",
+  name: voucher?.name || "",
+  description: voucher?.description || "",
+  discountType: voucher?.discountType || "percentage",
+  discountValue: voucher?.discountValue ?? 0,
+  minOrderValue: voucher?.minOrderValue ?? 0,
+  maxDiscount: voucher?.maxDiscount ?? "",
+  maxUsage: voucher?.maxUsage ?? 100,
+  maxUsagePerUser: voucher?.maxUsagePerUser ?? 1,
+  appliesToPlaceId:
+    voucher?.applicableServices?.placeIds?.[0] != null
+      ? String(voucher.applicableServices.placeIds[0])
+      : "all",
+  startDate: voucher?.startDate ? String(voucher.startDate).split("T")[0] : "",
+  endDate: voucher?.endDate ? String(voucher.endDate).split("T")[0] : "",
+  isActive: voucher?.isActive ?? true,
+});
+
 const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
-  const [form, setForm] = useState({
-    code: voucher?.code || "",
-    name: voucher?.name || "",
-    description: voucher?.description || "",
-    discountType: voucher?.discountType || "percentage",
-    discountValue: voucher?.discountValue || 0,
-    minOrderValue: voucher?.minOrderValue || 0,
-    maxDiscount: voucher?.maxDiscount || "",
-    maxUsage: voucher?.maxUsage || 100,
-    maxUsagePerUser: voucher?.maxUsagePerUser || 1,
-    appliesToPlaceId:
-      voucher?.applicableServices?.placeIds?.[0]?.toString?.() || "all",
-    startDate: voucher?.startDate ? voucher.startDate.split("T")[0] : "",
-    endDate: voucher?.endDate ? voucher.endDate.split("T")[0] : "",
-    isActive: voucher?.isActive ?? true,
-  });
+  const [form, setForm] = useState(() => getVoucherFormDefaults(voucher));
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(getVoucherFormDefaults(voucher));
+  }, [open, voucher]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

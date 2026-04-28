@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
-import Mail from "lucide-react/dist/esm/icons/mail";
+import User from "lucide-react/dist/esm/icons/user";
 import Lock from "lucide-react/dist/esm/icons/lock";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Shield from "lucide-react/dist/esm/icons/shield";
@@ -72,7 +72,7 @@ const LoginPage = () => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      const response = await authService.login(data.email, data.password);
+      const response = await authService.login(data.identifier, data.password);
       if (response.success) {
         const dashboardUrl = resolvePostLoginRoute(response.data.user);
         if (dashboardUrl === AUTH_ROUTES.LOGIN) {
@@ -92,12 +92,15 @@ const LoginPage = () => {
       }
     } catch (error) {
       if (error?.errorCode === "EMAIL_NOT_VERIFIED") {
+        const normalizedIdentifier = String(data.identifier || "").trim();
+        const isEmailIdentifier = /\S+@\S+\.\S+/.test(normalizedIdentifier);
+        const query = isEmailIdentifier
+          ? `?email=${encodeURIComponent(normalizedIdentifier.toLowerCase())}`
+          : "";
         toast.error(
           "Email chưa xác thực. Vui lòng kiểm tra email hoặc gửi lại link xác thực.",
         );
-        navigate(
-          `/resend-verification?email=${encodeURIComponent(data.email)}`,
-        );
+        navigate(`/resend-verification${query}`);
         return;
       }
 
@@ -144,11 +147,11 @@ const LoginPage = () => {
           <div className="space-y-8">
             <div>
               <h1 className="text-5xl font-black text-white uppercase leading-tight mb-4">
-                SECURE
+                KIỂM SOÁT
                 <br />
-                ACCESS
+                TRUY CẬP
                 <br />
-                CONTROL
+                BẢO MẬT
               </h1>
               <div className="w-24 h-1 bg-[#F3E600]"></div>
             </div>
@@ -156,7 +159,7 @@ const LoginPage = () => {
             <p className="text-gray-400 font-mono text-sm uppercase leading-relaxed max-w-md">
               Hệ THỐNG QUẢN LÝ THÔNG MINH
               <br />
-              DU LỊCH CẦN THƠ // AUTHENTICATION MODULE
+              DU LỊCH CẦN THƠ // PHÂN HỆ XÁC THỰC
             </p>
 
             {/* Stats */}
@@ -164,19 +167,19 @@ const LoginPage = () => {
               <div className="bg-white/5 border border-white/10 p-3">
                 <div className="text-2xl font-black text-[#F3E600]">24/7</div>
                 <div className="text-[10px] text-gray-500 uppercase font-mono">
-                  UPTIME
+                  HOẠT ĐỘNG
                 </div>
               </div>
               <div className="bg-white/5 border border-white/10 p-3">
                 <div className="text-2xl font-black text-[#F3E600]">256</div>
                 <div className="text-[10px] text-gray-500 uppercase font-mono">
-                  ENCRYPTED
+                  MÃ HÓA
                 </div>
               </div>
               <div className="bg-white/5 border border-white/10 p-3">
                 <div className="text-2xl font-black text-[#F3E600]">100%</div>
                 <div className="text-[10px] text-gray-500 uppercase font-mono">
-                  SECURE
+                  BẢO MẬT
                 </div>
               </div>
             </div>
@@ -212,7 +215,7 @@ const LoginPage = () => {
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-1 h-8 bg-[#F3E600]"></div>
                 <h1 className="text-3xl font-black uppercase tracking-tight">
-                  LOGIN
+                  ĐĂNG NHẬP
                 </h1>
               </div>
               <p className="text-xs text-gray-500 uppercase font-mono ml-4">
@@ -221,38 +224,43 @@ const LoginPage = () => {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Email Input */}
+              {/* Email/Username Input */}
               <div className="space-y-2">
-                <label className="tim-meta flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  EMAIL ADDRESS
+                <label htmlFor="login-identifier" className="tim-meta flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  EMAIL OR USERNAME
                 </label>
                 <div className="relative">
                   <Input
-                    type="email"
-                    placeholder="YOUR@EMAIL.COM"
+                    id="login-identifier"
+                    type="text"
+                    name="identifier"
+                    placeholder="YOUR@EMAIL.COM OR USERNAME"
                     autoComplete="username"
+                    spellCheck={false}
                     className="rounded-none border-2 border-black h-12 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0 pl-4"
-                    {...register("email")}
+                    {...register("identifier")}
                   />
                 </div>
-                {errors.email && (
+                {errors.identifier && (
                   <p className="text-xs text-red-600 font-mono uppercase">
-                    {errors.email.message}
+                    {errors.identifier.message}
                   </p>
                 )}
               </div>
 
               {/* Password Input */}
               <div className="space-y-2">
-                <label className="tim-meta flex items-center gap-2">
+                <label htmlFor="login-password" className="tim-meta flex items-center gap-2">
                   <Lock className="h-4 w-4" />
                   PASSWORD
                 </label>
                 <div className="relative">
                   <Input
+                    id="login-password"
                     type="password"
-                    placeholder="••••••••"
+                    name="password"
+                    placeholder="Mật khẩu của bạn…"
                     autoComplete="current-password"
                     className="rounded-none border-2 border-black h-12 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0 pl-4"
                     {...register("password")}
@@ -271,7 +279,7 @@ const LoginPage = () => {
                   to="/auth/forgot-password"
                   className="text-xs text-gray-600 hover:text-black uppercase font-mono underline"
                 >
-                  FORGOT PASSWORD?
+                  QUÊN MẬT KHẨU?
                 </Link>
               </div>
 
@@ -282,10 +290,10 @@ const LoginPage = () => {
                 className="w-full rounded-none border-2 border-black bg-[#F3E600] text-black hover:bg-black hover:text-[#F3E600] h-12 uppercase font-black text-sm transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
               >
                 {isLoading ? (
-                  "AUTHENTICATING..."
+                  "ĐANG XÁC THỰC…"
                 ) : (
                   <>
-                    ACCESS SYSTEM <ArrowRight className="ml-2 h-4 w-4" />
+                    TRUY CẬP HỆ THỐNG <ArrowRight className="ml-2 h-4 w-4" />
                   </>
                 )}
               </Button>

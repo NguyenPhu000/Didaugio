@@ -22,6 +22,7 @@ import { TAB_BAR_HEIGHT } from "./_layout";
 import { TAB_SCREEN_PADDING, TAB_THEME } from "./tabTheme";
 import { UpcomingTripCard } from "../../src/modules/profile/components/UpcomingTripCard";
 import { MemoriesSection } from "../../src/modules/profile/components/MemoriesSection";
+import { resolveMediaUrl } from "../../src/lib/media-url";
 
 const ACCENT_BLUE = "#3478F6";
 
@@ -29,6 +30,8 @@ const ACCENT_BLUE = "#3478F6";
 function getDisplayName(profile, storedUser) {
   return (
     profile?.fullName ||
+    profile?.profile?.fullName ||
+    storedUser?.profile?.fullName ||
     storedUser?.fullName ||
     storedUser?.email?.split("@")[0] ||
     "Lữ khách"
@@ -36,11 +39,33 @@ function getDisplayName(profile, storedUser) {
 }
 
 function getAvatarUri(profile, storedUser) {
-  return profile?.avatar || storedUser?.avatar || null;
+  return resolveMediaUrl(
+    profile?.avatar ||
+      profile?.profile?.avatar ||
+      storedUser?.profile?.avatar ||
+      storedUser?.avatar ||
+      null,
+  );
 }
 
 function getLocation(profile, storedUser) {
-  return profile?.address || storedUser?.address || "Chưa cập nhật địa chỉ";
+  return (
+    profile?.address ||
+    profile?.profile?.address ||
+    storedUser?.profile?.address ||
+    storedUser?.address ||
+    "Chưa cập nhật địa chỉ"
+  );
+}
+
+function getBio(profile, storedUser) {
+  return (
+    profile?.bio ||
+    profile?.profile?.bio ||
+    storedUser?.profile?.bio ||
+    storedUser?.bio ||
+    ""
+  );
 }
 
 function formatCompactNumber(value) {
@@ -264,6 +289,7 @@ function LoggedInProfileScreen({ insets, storedUser }) {
   const displayName = getDisplayName(profile, storedUser);
   const avatarUri = getAvatarUri(profile, storedUser);
   const location = getLocation(profile, storedUser);
+  const bio = getBio(profile, storedUser);
   const tripsCount = trips?.length || 0;
   const stats = buildStats(profile, storedUser, tripsCount);
 
@@ -303,6 +329,11 @@ function LoggedInProfileScreen({ insets, storedUser }) {
 
           {/* Name + Location */}
           <Text style={styles.username}>{displayName}</Text>
+          {bio ? (
+            <Text style={styles.bioText} numberOfLines={2}>
+              {bio}
+            </Text>
+          ) : null}
           <View style={styles.locationPill}>
             <MaterialIcons name="location-on" size={16} color={ACCENT_BLUE} />
             <Text style={styles.locationText}>{location}</Text>
@@ -580,6 +611,15 @@ const styles = StyleSheet.create({
     fontFamily: TOKENS.font.heading,
     color: "#0F172A",
     marginTop: 16,
+  },
+  bioText: {
+    textAlign: "center",
+    marginTop: 6,
+    paddingHorizontal: 32,
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#475569",
+    fontFamily: TOKENS.font.regular,
   },
   locationPill: {
     flexDirection: "row",

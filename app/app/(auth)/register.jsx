@@ -83,18 +83,20 @@ export default function RegisterScreen() {
   const { register, isLoading, error, successMessage } = useRegister();
 
   const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const usernameRef = useRef(null);
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
   const confirmPasswordRef = useRef(null);
 
   const handleRegister = () => {
-    register({ fullName, email, password, confirmPassword });
+    register({ fullName, username, email, password, confirmPassword });
   };
 
   return (
@@ -125,7 +127,12 @@ export default function RegisterScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.card, { paddingBottom: Math.max(insets.bottom + 16, 28) }]}> 
+          <View
+            style={[
+              styles.card,
+              { paddingBottom: Math.max(insets.bottom + 16, 28) },
+            ]}
+          >
             <Text style={styles.title}>Tạo tài khoản</Text>
             <Text style={styles.subtitle}>
               Tham gia cùng chúng tôi để bắt đầu hành trình của bạn.
@@ -141,7 +148,20 @@ export default function RegisterScreen() {
               placeholder="Nguyễn Văn A"
               textContentType="name"
               returnKeyType="next"
+              onSubmitEditing={() => usernameRef.current?.focus()}
+            />
+
+            <Field
+              label="Username"
+              icon="at-sign"
+              value={username}
+              onChangeText={setUsername}
+              autoComplete="username"
+              placeholder="username_01"
+              textContentType="username"
+              returnKeyType="next"
               onSubmitEditing={() => emailRef.current?.focus()}
+              inputRef={usernameRef}
             />
 
             <Field
@@ -200,9 +220,16 @@ export default function RegisterScreen() {
             ) : null}
 
             {successMessage ? (
-              <View style={[styles.errorBox, { borderColor: "#6EE7B7", backgroundColor: "#ECFDF5" }]}>
+              <View
+                style={[
+                  styles.errorBox,
+                  { borderColor: "#6EE7B7", backgroundColor: "#ECFDF5" },
+                ]}
+              >
                 <Feather name="check-circle" size={16} color="#10B981" />
-                <Text style={[styles.errorText, { color: "#047857" }]}>{successMessage}</Text>
+                <Text style={[styles.errorText, { color: "#047857" }]}>
+                  {successMessage}
+                </Text>
               </View>
             ) : null}
 

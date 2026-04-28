@@ -2,6 +2,9 @@ import express from "express";
 import * as emailVerificationController from "../../controllers/activity/emailVerification.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
+import { validateParams } from "../../middlewares/validateSchema.js";
+import { idSchema } from "../../models/index.js";
+import { z } from "zod";
 
 const router = express.Router();
 
@@ -47,6 +50,7 @@ router.post(
   "/resend/:userId",
   authenticate,
   hasPermission("email_verification.create"),
+  validateParams(z.object({ userId: idSchema })),
   emailVerificationController.resend,
 );
 
@@ -59,6 +63,7 @@ router.post(
   "/manual-verify/:userId",
   authenticate,
   hasPermission("email_verification.create"),
+  validateParams(z.object({ userId: idSchema })),
   emailVerificationController.manualVerify,
 );
 

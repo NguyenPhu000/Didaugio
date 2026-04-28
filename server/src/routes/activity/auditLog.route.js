@@ -3,6 +3,9 @@ import * as auditLogController from "../../controllers/activity/auditLog.control
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { blockGuestFromAdmin } from "../../middlewares/blockGuestFromAdmin.js";
+import { validateParams } from "../../middlewares/validateSchema.js";
+import { idSchema } from "../../models/index.js";
+import { z } from "zod";
 
 const router = express.Router();
 
@@ -21,6 +24,11 @@ router.get("/", hasPermission("audit_log.view"), auditLogController.getAll);
  * @desc    Lấy chi tiết một audit log
  * @access  Private (Admin - cần quyền audit_log.view)
  */
-router.get("/:id", hasPermission("audit_log.view"), auditLogController.getById);
+router.get(
+  "/:id",
+  hasPermission("audit_log.view"),
+  validateParams(z.object({ id: idSchema })),
+  auditLogController.getById,
+);
 
 export default router;

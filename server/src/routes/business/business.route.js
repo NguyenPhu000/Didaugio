@@ -17,6 +17,7 @@ import {
   reject,
   suspend,
   reactivate,
+  terminate,
 } from "../../controllers/business/businessAdmin.controller.js";
 import { getDashboard } from "../../controllers/business/businessDashboard.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
@@ -28,11 +29,14 @@ import {
 } from "../../middlewares/validateSchema.js";
 import { businessDocUpload } from "../../middlewares/uploadMiddleware.js";
 import { requireActiveBusiness } from "../../middlewares/requireActiveBusiness.js";
+import { sanitizeBody } from "../../middlewares/sanitizeMiddleware.js";
 import {
   registerBusinessSchema,
   updateBusinessSchema,
   approveBusinessSchema,
   rejectBusinessSchema,
+  suspendBusinessSchema,
+  terminateBusinessSchema,
   signBusinessContractSchema,
   getBusinessesQuerySchema,
 } from "../../models/index.js";
@@ -47,6 +51,7 @@ router.get("/profile", getProfile);
 router.post(
   "/register",
   businessDocUpload,
+  sanitizeBody(["businessName", "fullName", "address", "taxCode"]),
   validateBody(registerBusinessSchema),
   auditLog({
     action: "CREATE",
@@ -60,6 +65,7 @@ router.post(
 router.put(
   "/profile",
   businessDocUpload,
+  sanitizeBody(["businessName", "fullName", "address", "taxCode"]),
   validateBody(updateBusinessSchema),
   auditLog({
     action: "UPDATE",
@@ -112,6 +118,7 @@ router.put(
 router.put(
   "/:id/reject",
   hasPermission("business.approve"),
+  sanitizeBody(["rejectionReason"]),
   validateBody(rejectBusinessSchema),
   auditLog({
     action: "REJECT",
@@ -127,10 +134,15 @@ router.put(
 router.put(
   "/:id/suspend",
   hasPermission("business.approve"),
+  sanitizeBody(["suspensionReason"]),
+  validateBody(suspendBusinessSchema),
   auditLog({
     action: "SUSPEND",
     tableName: "businesses",
-    getNewData: () => ({ status: "suspended" }),
+    getNewData: (req) => ({
+      status: "suspended",
+      suspensionReason: req.body.suspensionReason,
+    }),
   }),
   suspend,
 );
@@ -141,9 +153,25 @@ router.put(
   auditLog({
     action: "REACTIVATE",
     tableName: "businesses",
-    getNewData: () => ({ status: "approved" }),
+    getNewData: () => ({ status: "approved", suspensionReason: null }),
   }),
   reactivate,
+);
+
+router.put(
+  "/:id/terminate",
+  hasPermission("business.approve"),
+  sanitizeBody(["terminationReason"]),
+  validateBody(terminateBusinessSchema),
+  auditLog({
+    action: "TERMINATE",
+    tableName: "businesses",
+    getNewData: (req) => ({
+      status: "terminated",
+      terminationReason: req.body.terminationReason,
+    }),
+  }),
+  terminate,
 );
 
 export default router;

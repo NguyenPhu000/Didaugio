@@ -27,11 +27,15 @@ const PillItem = memo(function PillItem({
   return (
     <Pressable
       onPress={handlePress}
-      style={[styles.pill, isActive ? styles.pillActive : styles.pillInactive]}
+      style={({ pressed }) => [
+        styles.pill,
+        isActive ? styles.pillActive : styles.pillInactive,
+        pressed && styles.pillPressed,
+      ]}
     >
       <MaterialIcons
         name={icon}
-        size={16}
+        size={15}
         color={isActive ? APPLE_THEME.white : APPLE_THEME.textSecondary}
       />
       <Text style={[styles.pillText, isActive ? styles.pillTextActive : null]}>
@@ -116,34 +120,35 @@ export const CategoryPills = memo(
 
 const styles = StyleSheet.create({
   listContent: {
-    gap: 10,
-    paddingTop: 14,
-    paddingBottom: 6,
-    paddingRight: 14,
+    gap: 8,
+    paddingTop: 12,
+    paddingBottom: 4,
+    paddingRight: 16,
   },
   pill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: TOKENS.radius.pill,
+    gap: 7,
+    paddingHorizontal: 15,
+    paddingVertical: 9,
+    borderRadius: 999,
   },
   pillActive: {
     backgroundColor: APPLE_THEME.primary,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: APPLE_THEME.primary,
     ...Platform.select({
-      ios: {
-        ...TOKENS.shadow.sm,
-      },
-      android: { elevation: TOKENS.shadow.sm.elevation },
+      ios: TOKENS.shadow.sm,
+      android: { elevation: 2 },
     }),
   },
   pillInactive: {
     backgroundColor: APPLE_THEME.surface,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: APPLE_THEME.border,
+  },
+  pillPressed: {
+    opacity: 0.85,
   },
   pillText: {
     color: APPLE_THEME.textSecondary,

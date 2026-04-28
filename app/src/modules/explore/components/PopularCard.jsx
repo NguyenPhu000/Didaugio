@@ -36,7 +36,7 @@ function PopularCardInner({ place, onPress }) {
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.965, SPRING_CONFIG);
+    scale.value = withSpring(0.97, SPRING_CONFIG);
   };
   const handlePressOut = () => {
     scale.value = withSpring(1, SPRING_CONFIG);
@@ -49,6 +49,7 @@ function PopularCardInner({ place, onPress }) {
       onPressOut={handlePressOut}
       style={[styles.card, animatedStyle]}
     >
+      {/* Thumbnail */}
       <View style={styles.imageWrap}>
         {imageUri ? (
           <Image
@@ -62,32 +63,41 @@ function PopularCardInner({ place, onPress }) {
           <View style={styles.placeholder}>
             <MaterialIcons
               name="travel-explore"
-              size={30}
-              color="rgba(255,255,255,0.55)"
+              size={28}
+              color="rgba(0,0,0,0.15)"
             />
           </View>
         )}
       </View>
 
+      {/* Info column */}
       <View style={styles.infoCol}>
+        {/* Rating */}
         <View style={styles.ratingRow}>
-          <MaterialIcons name="star" size={14} color="#B45309" />
+          <MaterialIcons
+            name="star"
+            size={13}
+            color={hasRating ? "#F59E0B" : APPLE_THEME.textMuted}
+          />
           <Text style={styles.ratingText}>
-            {hasRating ? `${rating.toFixed(1)} (${ratingMeta})` : ratingMeta}
+            {hasRating ? `${rating.toFixed(1)} · ${ratingMeta}` : "Mới"}
           </Text>
         </View>
 
+        {/* Place name */}
         <Text style={styles.name} numberOfLines={2}>
           {place?.name}
         </Text>
 
+        {/* Location */}
         <View style={styles.locationRow}>
-          <MaterialIcons name="place" size={13} color={APPLE_THEME.primary} />
+          <MaterialIcons name="place" size={12} color={APPLE_THEME.textMuted} />
           <Text style={styles.location} numberOfLines={1}>
             {location}
           </Text>
         </View>
 
+        {/* Bottom: price + CTA */}
         <View style={styles.bottomRow}>
           <View style={styles.priceCol}>
             {priceLine ? (
@@ -103,7 +113,12 @@ function PopularCardInner({ place, onPress }) {
           </View>
 
           <View style={styles.ctaBtn}>
-            <Text style={styles.ctaText}>ĐẶT NGAY</Text>
+            <Text style={styles.ctaText}>Xem</Text>
+            <MaterialIcons
+              name="arrow-forward"
+              size={13}
+              color={APPLE_THEME.white}
+            />
           </View>
         </View>
       </View>
@@ -117,23 +132,21 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    borderRadius: TOKENS.radius["3xl"],
-    padding: 12,
+    gap: 14,
+    borderRadius: TOKENS.radius["2xl"],
+    padding: 10,
     backgroundColor: APPLE_THEME.surface,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: APPLE_THEME.border,
     ...Platform.select({
-      ios: {
-        ...TOKENS.shadow.sm,
-      },
-      android: { elevation: TOKENS.shadow.sm.elevation },
+      ios: TOKENS.shadow.sm,
+      android: { elevation: 2 },
     }),
   },
   imageWrap: {
-    width: 94,
-    height: 94,
-    borderRadius: 28,
+    width: 90,
+    height: 90,
+    borderRadius: 20,
     overflow: "hidden",
     backgroundColor: APPLE_THEME.surfaceMuted,
   },
@@ -146,7 +159,7 @@ const styles = StyleSheet.create({
   infoCol: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 3,
   },
   ratingRow: {
     flexDirection: "row",
@@ -155,14 +168,15 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     color: APPLE_THEME.textMuted,
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: TOKENS.font.semibold,
+    letterSpacing: 0.3,
   },
   name: {
     color: APPLE_THEME.text,
-    fontSize: 18,
-    lineHeight: 22,
-    letterSpacing: -0.3,
+    fontSize: 16,
+    lineHeight: 21,
+    letterSpacing: -0.4,
     fontFamily: TOKENS.font.heading,
   },
   locationRow: {
@@ -171,13 +185,13 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   location: {
-    color: APPLE_THEME.textSecondary,
+    color: APPLE_THEME.textMuted,
     fontSize: 12,
     fontFamily: TOKENS.font.medium,
     flex: 1,
   },
   bottomRow: {
-    marginTop: 4,
+    marginTop: 5,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -190,30 +204,33 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   priceMain: {
-    color: APPLE_THEME.primary,
-    fontSize: 18,
-    lineHeight: 22,
-    marginTop: 2,
+    color: APPLE_THEME.text,
+    fontSize: 15,
+    lineHeight: 20,
     fontFamily: TOKENS.font.heading,
+    letterSpacing: -0.2,
   },
   priceSuffix: {
     color: APPLE_THEME.textMuted,
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: TOKENS.font.medium,
   },
   ctaBtn: {
-    height: 36,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    height: 32,
     borderRadius: 999,
     backgroundColor: APPLE_THEME.primary,
-    paddingHorizontal: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    ...TOKENS.shadow.sm,
+    paddingHorizontal: 14,
+    ...Platform.select({
+      ios: TOKENS.shadow.sm,
+      android: { elevation: 2 },
+    }),
   },
   ctaText: {
     color: APPLE_THEME.white,
-    fontSize: 10,
-    letterSpacing: 1.2,
+    fontSize: 12,
     fontFamily: TOKENS.font.semibold,
   },
 });

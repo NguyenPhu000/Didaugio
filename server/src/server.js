@@ -1,4 +1,5 @@
 import express from "express";
+import { createServer } from "http";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
@@ -6,6 +7,7 @@ import errorHandler from "./middlewares/errorHandler.js";
 import logger from "./config/logger.js";
 import prisma from "./config/prismaClient.js";
 import { initNotificationService } from "./services/notification/notification.service.js";
+import { initSocketIO } from "./config/socketIO.js";
 import { validateEnv } from "./config/validateEnv.js";
 import { registerApiRoutes, registerRateLimiters } from "./routes/index.js";
 
@@ -68,7 +70,38 @@ const isOriginAllowed = (origin) => {
   });
 };
 
-app.use(helmet());
+app.disable("x-powered-by");
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://*.googleusercontent.com"],
+        connectSrc: ["'self'", ...allowedOriginPatterns, ...allowedOriginPatterns.map(o => o.replace(/^http/, "ws"))],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'", "https://res.cloudinary.com"],
+        frameSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        upgradeInsecureRequests: isProduction ? [] : null,
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    hsts: isProduction
+      ? {
+          maxAge: 31536000,
+          includeSubDomains: true,
+          preload: true,
+        }
+      : false,
+  }),
+);
 app.use(express.json({ limit: BODY_LIMIT }));
 app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true }));
 app.use(
@@ -114,9 +147,13 @@ app.use(errorHandler);
 
 initNotificationService();
 
-app.listen(PORT, () => {
+const httpServer = createServer(app);
+const io = initSocketIO(httpServer, allowedOriginPatterns);
+
+httpServer.listen(PORT, () => {
   logger.info(`Server is running on http://localhost:${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
 });
 
 export default app;
+export { io };

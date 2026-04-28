@@ -35,6 +35,14 @@ const menuData = {
       title: "Dashboard",
       icon: Home,
       url: ADMIN_ROUTES.DASHBOARD,
+      roles: [R.SUPER_ADMIN, R.ADMIN, R.STAFF],
+      badge: null,
+    },
+    {
+      title: "Dashboard",
+      icon: Home,
+      url: BUSINESS_ROUTES.DASHBOARD,
+      roles: [R.BUSINESS],
       badge: null,
     },
     {

@@ -2,16 +2,17 @@
  * Business Admin Service - SRP: Quản lý danh sách & duyệt/từ chối doanh nghiệp (Admin)
  */
 import prisma from "../../config/prismaClient.js";
-import { PAGINATION, BUSINESS_STATUS, ROLES } from "../../config/constants.js";
+import { PAGINATION, BUSINESS_STATUS, ROLES, BOOKING_STATUS, PAYMENT_STATUS } from "../../config/constants.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import { serializeBusiness } from "./business.serializer.js";
+import { sanitizeText } from "../../utils/sanitizeText.js";
 
 const defaultInclude = {
   owner: {
     select: {
       id: true,
       email: true,
-      profile: { select: { fullName: true } },
+      profile: { select: { fullName: true, phone: true, address: true } },
     },
   },
 };
@@ -22,14 +23,22 @@ const adminListSelect = {
   businessName: true,
   businessType: true,
   taxCode: true,
-  idCardNumber: true,
   bankName: true,
   bankAccount: true,
   bankOwner: true,
+  idCardNumber: true,
+  idCardFront: true,
+  idCardBack: true,
+  businessLicense: true,
   contractSigned: true,
   commissionRate: true,
   status: true,
   rejectionReason: true,
+  suspensionReason: true,
+  terminationReason: true,
+  terminatedAt: true,
+  documentUploadCount: true,
+  lastUploadAt: true,
   approvedBy: true,
   approvedAt: true,
   createdAt: true,
@@ -57,9 +66,9 @@ const ensureApprovedForSuspend = (business) => {
 };
 
 const ensureSuspendedForReactivate = (business) => {
-  if (business.status !== BUSINESS_STATUS.SUSPENDED) {
+  if (business.status !== BUSINESS_STATUS.SUSPENDED && business.status !== BUSINESS_STATUS.SUSPICIOUS) {
     const error = new Error(
-      "Chỉ doanh nghiệp đang tạm ngưng mới có thể kích hoạt lại",
+      "Chỉ doanh nghiệp đang tạm ngưng hoặc bị đánh dấu đáng ngờ mới có thể kích hoạt lại",
     );
     error.statusCode = 422;
     throw error;
@@ -142,30 +151,43 @@ export const getAll = async (params = {}) => {
   const summaryWhere = { ...where };
   delete summaryWhere.status;
 
-  const [rawData, total, statusGroups, totalInSummary, totalPlacesSummary] =
-    await Promise.all([
-      prisma.business.findMany({
-        where,
-        select: adminListSelect,
-        skip,
-        take: limit,
-        orderBy,
-      }),
-      prisma.business.count({ where }),
-      prisma.business.groupBy({
-        by: ["status"],
-        where: summaryWhere,
-        _count: { _all: true },
-      }),
-      prisma.business.count({ where: summaryWhere }),
-      prisma.place.count({
-        where: {
-          deletedAt: null,
-          businessId: { not: null },
-          business: { is: summaryWhere },
-        },
-      }),
-    ]);
+  const [
+    rawData,
+    total,
+    statusGroups,
+    totalInSummary,
+    totalPlacesSummary,
+    approvedWithoutContract,
+  ] = await Promise.all([
+    prisma.business.findMany({
+      where,
+      select: adminListSelect,
+      skip,
+      take: limit,
+      orderBy,
+    }),
+    prisma.business.count({ where }),
+    prisma.business.groupBy({
+      by: ["status"],
+      where: summaryWhere,
+      _count: { _all: true },
+    }),
+    prisma.business.count({ where: summaryWhere }),
+    prisma.place.count({
+      where: {
+        deletedAt: null,
+        businessId: { not: null },
+        business: { is: summaryWhere },
+      },
+    }),
+    prisma.business.count({
+      where: {
+        ...summaryWhere,
+        status: BUSINESS_STATUS.APPROVED,
+        contractSigned: false,
+      },
+    }),
+  ]);
 
   const byStatus = Object.fromEntries(
     statusGroups.map((g) => [g.status, g._count._all]),
@@ -177,6 +199,7 @@ export const getAll = async (params = {}) => {
     approved: byStatus.approved ?? 0,
     rejected: byStatus.rejected ?? 0,
     suspended: byStatus.suspended ?? 0,
+    approvedWithoutContract: approvedWithoutContract ?? 0,
     totalPlaces: totalPlacesSummary,
   };
 
@@ -192,7 +215,20 @@ export const getAll = async (params = {}) => {
 
 export const getById = async (id) => {
   const idNum = parseInt(id, 10);
-  const [business, bookingCount] = await Promise.all([
+  const now = new Date();
+  const [
+    business,
+    bookingCount,
+    bookingAggregate,
+    completedAggregate,
+    bookingStatusGroups,
+    paymentStatusGroups,
+    activeServiceCount,
+    inactiveServiceCount,
+    activeVoucherCount,
+    expiredVoucherCount,
+    placeStatusGroups,
+  ] = await Promise.all([
     prisma.business.findUnique({
       where: { id: idNum },
       include: {
@@ -215,6 +251,52 @@ export const getById = async (id) => {
     prisma.booking.count({
       where: { service: { businessId: idNum } },
     }),
+    prisma.booking.aggregate({
+      where: { businessId: idNum, deletedAt: null },
+      _sum: {
+        originalPrice: true,
+        discountAmount: true,
+        finalPrice: true,
+        commissionAmount: true,
+      },
+      _count: { _all: true },
+    }),
+    prisma.booking.aggregate({
+      where: { businessId: idNum, deletedAt: null, status: "completed" },
+      _sum: { finalPrice: true, commissionAmount: true },
+      _count: { _all: true },
+    }),
+    prisma.booking.groupBy({
+      by: ["status"],
+      where: { businessId: idNum, deletedAt: null },
+      _count: { _all: true },
+    }),
+    prisma.booking.groupBy({
+      by: ["paymentStatus"],
+      where: { businessId: idNum, deletedAt: null },
+      _count: { _all: true },
+    }),
+    prisma.businessService.count({
+      where: { businessId: idNum, isActive: true },
+    }),
+    prisma.businessService.count({
+      where: { businessId: idNum, isActive: false },
+    }),
+    prisma.voucher.count({
+      where: {
+        businessId: idNum,
+        isActive: true,
+        endDate: { gte: now },
+      },
+    }),
+    prisma.voucher.count({
+      where: { businessId: idNum, endDate: { lt: now } },
+    }),
+    prisma.place.groupBy({
+      by: ["status"],
+      where: { businessId: idNum, deletedAt: null },
+      _count: { _all: true },
+    }),
   ]);
 
   if (!business) {
@@ -223,10 +305,102 @@ export const getById = async (id) => {
     throw error;
   }
 
-  return serializeBusiness({
-    ...business,
-    _count: { ...business._count, bookings: bookingCount },
-  });
+  const toCountMap = (groups = [], key) =>
+    Object.fromEntries(groups.map((row) => [row[key], row._count._all]));
+
+  const bookingByStatus = toCountMap(bookingStatusGroups, "status");
+  const paymentByStatus = toCountMap(paymentStatusGroups, "paymentStatus");
+  const placeByStatus = toCountMap(placeStatusGroups, "status");
+
+  const sumOriginal = bookingAggregate?._sum?.originalPrice ?? 0;
+  const sumDiscount = bookingAggregate?._sum?.discountAmount ?? 0;
+  const sumFinal = bookingAggregate?._sum?.finalPrice ?? 0;
+  const sumCommission = bookingAggregate?._sum?.commissionAmount ?? 0;
+
+  const completedFinal = completedAggregate?._sum?.finalPrice ?? 0;
+  const completedCommission = completedAggregate?._sum?.commissionAmount ?? 0;
+  const completedNet = completedFinal - completedCommission;
+  const completedCommissionPct =
+    completedFinal > 0
+      ? Number(((completedCommission / completedFinal) * 100).toFixed(2))
+      : 0;
+
+  const complianceChecklist = {
+    hasTaxCode: Boolean(business.taxCode),
+    hasIdCardFront: Boolean(business.idCardFront),
+    idCardFrontUrl: business.idCardFront || null,
+    hasIdCardBack: Boolean(business.idCardBack),
+    idCardBackUrl: business.idCardBack || null,
+    hasBusinessLicense: Boolean(business.businessLicense),
+    businessLicenseUrl: business.businessLicense || null,
+    hasBankInfo: Boolean(
+      business.bankName && business.bankAccount && business.bankOwner,
+    ),
+    hasSignedContract: Boolean(business.contractSigned),
+    hasCommissionRate: business.commissionRate != null,
+  };
+
+  const riskFlags = [];
+  if (
+    !complianceChecklist.hasSignedContract &&
+    business.status === BUSINESS_STATUS.APPROVED
+  ) {
+    riskFlags.push("Doanh nghiệp đã duyệt nhưng chưa ký hợp đồng");
+  }
+  if (!complianceChecklist.hasBusinessLicense) {
+    riskFlags.push("Thiếu giấy phép kinh doanh");
+  }
+  if (!complianceChecklist.hasBankInfo) {
+    riskFlags.push("Thiếu thông tin ngân hàng đầy đủ");
+  }
+  if ((paymentByStatus.unpaid ?? 0) > 0) {
+    riskFlags.push("Có booking chưa thanh toán");
+  }
+
+  const serialized = serializeBusiness(
+    {
+      ...business,
+      _count: { ...business._count, bookings: bookingCount },
+    },
+    { decryptSensitive: true },
+  );
+
+  return {
+    ...serialized,
+    adminInsights: {
+      financialSummary: {
+        totalBookings: bookingAggregate?._count?._all ?? 0,
+        totalOriginalRevenue: sumOriginal,
+        totalDiscount: sumDiscount,
+        totalFinalRevenue: sumFinal,
+        totalCommission: sumCommission,
+        totalNetRevenue: sumFinal - sumCommission,
+        completedBookings: completedAggregate?._count?._all ?? 0,
+        completedRevenue: completedFinal,
+        completedCommission,
+        completedNetRevenue: completedNet,
+        completedCommissionSharePct: completedCommissionPct,
+      },
+      contractSummary: {
+        contractSigned: Boolean(business.contractSigned),
+        contractSignedAt: business.contractSignedAt,
+        contractVersion: business.contractVersion,
+        signerMetadata: business.signerMetadata ?? null,
+        commissionRate: serialized.commissionRate,
+      },
+      operationsSummary: {
+        activeServiceCount,
+        inactiveServiceCount,
+        activeVoucherCount,
+        expiredVoucherCount,
+        placeStatusCounts: placeByStatus,
+      },
+      bookingStatusCounts: bookingByStatus,
+      paymentStatusCounts: paymentByStatus,
+      complianceChecklist,
+      riskFlags,
+    },
+  };
 };
 
 export const approve = async (id, data = {}, approvedBy) => {
@@ -269,6 +443,12 @@ export const approve = async (id, data = {}, approvedBy) => {
       data: { roleId: ROLES.BUSINESS },
     });
 
+    // Auto-set places from HIDDEN to APPROVED when business approved (KYC unlock)
+    await tx.place.updateMany({
+      where: { businessId: parseInt(id), status: "hidden", deletedAt: null },
+      data: { status: "approved" },
+    });
+
     return updatedBusiness;
   });
 
@@ -282,6 +462,8 @@ export const approve = async (id, data = {}, approvedBy) => {
 };
 
 export const reject = async (id, rejectionReason, rejectedBy) => {
+  const sanitizedReason = sanitizeText(rejectionReason);
+
   const businessToReview = await prisma.business.findUnique({
     where: { id: parseInt(id) },
     select: { id: true, status: true },
@@ -299,7 +481,7 @@ export const reject = async (id, rejectionReason, rejectedBy) => {
     where: { id: parseInt(id) },
     data: {
       status: BUSINESS_STATUS.REJECTED,
-      rejectionReason,
+      rejectionReason: sanitizedReason,
       approvedBy: null,
       approvedAt: null,
     },
@@ -309,17 +491,24 @@ export const reject = async (id, rejectionReason, rejectedBy) => {
   eventEmitter.emit(EVENTS.BUSINESS.REJECTED, {
     businessId: business.id,
     rejectedBy,
-    reason: rejectionReason,
+    reason: sanitizedReason,
     ownerId: business.ownerId,
   });
 
   return serializeBusiness(business);
 };
 
-export const suspend = async (id, suspendedBy) => {
+export const suspend = async (id, suspensionReason, suspendedBy) => {
+  const sanitizedReason = sanitizeText(suspensionReason);
+  if (!sanitizedReason || sanitizedReason.length < 10) {
+    const error = new Error("Lý do tạm khóa phải có ít nhất 10 ký tự");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const businessToReview = await prisma.business.findUnique({
     where: { id: parseInt(id) },
-    select: { id: true, status: true },
+    select: { id: true, status: true, ownerId: true },
   });
 
   if (!businessToReview) {
@@ -330,23 +519,121 @@ export const suspend = async (id, suspendedBy) => {
 
   ensureApprovedForSuspend(businessToReview);
 
-  const business = await prisma.business.update({
-    where: { id: parseInt(id) },
-    data: {
-      status: BUSINESS_STATUS.SUSPENDED,
-      approvedBy: suspendedBy ?? null,
-      approvedAt: new Date(),
-    },
-    include: defaultInclude,
+  const result = await prisma.$transaction(async (tx) => {
+    // 1. Update business status
+    const business = await tx.business.update({
+      where: { id: parseInt(id) },
+      data: {
+        status: BUSINESS_STATUS.SUSPENDED,
+        suspensionReason: sanitizedReason,
+        approvedBy: suspendedBy ?? null,
+        approvedAt: new Date(),
+      },
+      include: defaultInclude,
+    });
+
+    // 2. Cascade: Set all places to HIDDEN (not visible to customers)
+    await tx.place.updateMany({
+      where: { businessId: parseInt(id), deletedAt: null },
+      data: { status: "hidden" },
+    });
+
+    // 3. Find affected bookings (PENDING or CONFIRMED, not yet completed/cancelled)
+    const affectedBookings = await tx.booking.findMany({
+      where: {
+        businessId: parseInt(id),
+        status: { in: [BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED] },
+        deletedAt: null,
+      },
+      include: { payment: true },
+    });
+
+    const bookingIdsToCancel = [];
+    const refundsToProcess = [];
+
+    for (const booking of affectedBookings) {
+      const useDateTime = new Date(booking.useDate);
+      if (booking.useTime) {
+        const [hours, minutes] = booking.useTime.split(":");
+        useDateTime.setHours(parseInt(hours), parseInt(minutes));
+      } else {
+        useDateTime.setHours(23, 59, 59);
+      }
+
+      // If booking time has passed, just cancel without refund
+      const now = new Date();
+      if (useDateTime < now) {
+        bookingIdsToCancel.push(booking.id);
+      } else {
+        // Booking in future: cancel + refund 100%
+        bookingIdsToCancel.push(booking.id);
+        if (booking.payment && booking.payment.status === PAYMENT_STATUS.PAID) {
+          refundsToProcess.push({
+            bookingId: booking.id,
+            amount: booking.payment.amount,
+            paymentId: booking.payment.id,
+          });
+        }
+      }
+    }
+
+    // 4. Cancel bookings
+    if (bookingIdsToCancel.length > 0) {
+      await tx.booking.updateMany({
+        where: { id: { in: bookingIdsToCancel } },
+        data: {
+          status: BOOKING_STATUS.CANCELLED,
+          cancelReason: `Doanh nghiệp bị tạm khóa: ${sanitizedReason.substring(0, 100)}`,
+          cancelledBy: String(suspendedBy || "system"),
+          cancelledAt: new Date(),
+        },
+      });
+
+      // Create action logs
+      for (const bid of bookingIdsToCancel) {
+        await tx.bookingActionLog.create({
+          data: {
+            bookingId: bid,
+            action: "auto_cancel_suspension",
+            actorUserId: suspendedBy,
+            metadata: { reason: sanitizedReason },
+          },
+        });
+      }
+    }
+
+    // 5. Process refunds (mark as fully refunded)
+    for (const refund of refundsToProcess) {
+      await tx.payment.update({
+        where: { id: refund.paymentId },
+        data: {
+          status: "fully_refunded",
+          refundAmount: refund.amount,
+          refundedAt: new Date(),
+          refundReason: `Hoàn tiền do DN bị tạm khóa: ${sanitizedReason.substring(0, 100)}`,
+        },
+      });
+    }
+
+    return { business, cancelledCount: bookingIdsToCancel.length, refundCount: refundsToProcess.length };
   });
 
-  return serializeBusiness(business);
+  eventEmitter.emit(EVENTS.BUSINESS.SUSPENDED, {
+    businessId: result.business.id,
+    suspendedBy,
+    reason: sanitizedReason,
+    ownerId: result.business.ownerId,
+    cancelledBookings: result.cancelledCount,
+    refundedBookings: result.refundCount,
+  });
+
+  return serializeBusiness(result.business);
 };
 
 export const reactivate = async (id, reactivatedBy) => {
   const businessToReview = await prisma.business.findUnique({
     where: { id: parseInt(id) },
-    select: { id: true, status: true },
+    select: { id: true, status: true, ownerId: true },
   });
 
   if (!businessToReview) {
@@ -357,15 +644,179 @@ export const reactivate = async (id, reactivatedBy) => {
 
   ensureSuspendedForReactivate(businessToReview);
 
-  const business = await prisma.business.update({
-    where: { id: parseInt(id) },
-    data: {
-      status: BUSINESS_STATUS.APPROVED,
-      approvedBy: reactivatedBy ?? null,
-      approvedAt: new Date(),
-    },
-    include: defaultInclude,
+  const business = await prisma.$transaction(async (tx) => {
+    // 1. Update business status
+    const updated = await tx.business.update({
+      where: { id: parseInt(id) },
+      data: {
+        status: BUSINESS_STATUS.APPROVED,
+        suspensionReason: null,
+        approvedBy: reactivatedBy ?? null,
+        approvedAt: new Date(),
+      },
+      include: defaultInclude,
+    });
+
+    // 2. Restore places from hidden to approved (they were hidden during suspension)
+    await tx.place.updateMany({
+      where: { businessId: parseInt(id), status: "hidden", deletedAt: null },
+      data: { status: "approved" },
+    });
+
+    return updated;
+  });
+
+  eventEmitter.emit(EVENTS.BUSINESS.REACTIVATED, {
+    businessId: business.id,
+    reactivatedBy,
+    ownerId: business.ownerId,
   });
 
   return serializeBusiness(business);
+};
+
+const ensureApprovedOrSuspendedForTerminate = (business) => {
+  if (
+    business.status !== BUSINESS_STATUS.APPROVED &&
+    business.status !== BUSINESS_STATUS.SUSPENDED
+  ) {
+    const error = new Error(
+      "Chỉ doanh nghiệp đã duyệt hoặc đang tạm ngưng mới có thể chấm dứt hợp đồng",
+    );
+    error.statusCode = 422;
+    throw error;
+  }
+};
+
+export const terminate = async (id, terminationReason, terminatedBy) => {
+  const sanitizedReason = sanitizeText(terminationReason);
+  if (!sanitizedReason || sanitizedReason.length < 10) {
+    const error = new Error("Lý do chấm dứt hợp đồng phải có ít nhất 10 ký tự");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const businessToReview = await prisma.business.findUnique({
+    where: { id: parseInt(id) },
+    select: { id: true, status: true, ownerId: true },
+  });
+
+  if (!businessToReview) {
+    const error = new Error("Doanh nghiệp không tồn tại");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  ensureApprovedOrSuspendedForTerminate(businessToReview);
+
+  const result = await prisma.$transaction(async (tx) => {
+    // 1. Update business to TERMINATED (read-only archive)
+    const business = await tx.business.update({
+      where: { id: parseInt(id) },
+      data: {
+        status: BUSINESS_STATUS.TERMINATED,
+        terminationReason: sanitizedReason,
+        terminatedAt: new Date(),
+        suspensionReason: null,
+        approvedBy: terminatedBy ?? null,
+      },
+      include: defaultInclude,
+    });
+
+    // 2. Cascade: Hide all places permanently
+    await tx.place.updateMany({
+      where: { businessId: parseInt(id), deletedAt: null },
+      data: { status: "hidden" },
+    });
+
+    // 3. Soft delete all services (mark as inactive)
+    await tx.businessService.updateMany({
+      where: { businessId: parseInt(id), isActive: true },
+      data: { isActive: false },
+    });
+
+    // 4. Deactivate all vouchers
+    await tx.voucher.updateMany({
+      where: { businessId: parseInt(id), isActive: true },
+      data: { isActive: false },
+    });
+
+    // 5. Cancel ALL bookings (not just pending/confirmed - ALL active ones)
+    const affectedBookings = await tx.booking.findMany({
+      where: {
+        businessId: parseInt(id),
+        status: { notIn: [BOOKING_STATUS.CANCELLED, BOOKING_STATUS.NO_SHOW, BOOKING_STATUS.COMPLETED] },
+        deletedAt: null,
+      },
+      include: { payment: true },
+    });
+
+    const bookingIdsToCancel = affectedBookings.map((b) => b.id);
+    const refundsToProcess = affectedBookings
+      .filter((b) => b.payment && b.payment.status === PAYMENT_STATUS.PAID)
+      .map((b) => ({
+        paymentId: b.payment.id,
+        amount: b.payment.amount,
+        bookingId: b.id,
+      }));
+
+    if (bookingIdsToCancel.length > 0) {
+      await tx.booking.updateMany({
+        where: { id: { in: bookingIdsToCancel } },
+        data: {
+          status: BOOKING_STATUS.CANCELLED,
+          cancelReason: `Hợp đồng doanh nghiệp bị chấm dứt: ${sanitizedReason.substring(0, 100)}`,
+          cancelledBy: String(terminatedBy || "system"),
+          cancelledAt: new Date(),
+        },
+      });
+
+      for (const bid of bookingIdsToCancel) {
+        await tx.bookingActionLog.create({
+          data: {
+            bookingId: bid,
+            action: "auto_cancel_termination",
+            actorUserId: terminatedBy,
+            metadata: { reason: sanitizedReason },
+          },
+        });
+      }
+    }
+
+    // 6. Full refund for all paid bookings
+    for (const refund of refundsToProcess) {
+      await tx.payment.update({
+        where: { id: refund.paymentId },
+        data: {
+          status: "fully_refunded",
+          refundAmount: refund.amount,
+          refundedAt: new Date(),
+          refundReason: `Hoàn tiền do chấm dứt hợp đồng DN: ${sanitizedReason.substring(0, 100)}`,
+        },
+      });
+    }
+
+    // 7. Revoke business role from owner (downgrade to regular user)
+    await tx.user.updateMany({
+      where: { id: business.ownerId, roleId: ROLES.BUSINESS },
+      data: { roleId: ROLES.USER },
+    });
+
+    return {
+      business,
+      cancelledCount: bookingIdsToCancel.length,
+      refundCount: refundsToProcess.length,
+    };
+  });
+
+  eventEmitter.emit(EVENTS.BUSINESS.TERMINATED, {
+    businessId: result.business.id,
+    terminatedBy,
+    reason: sanitizedReason,
+    ownerId: result.business.ownerId,
+    cancelledBookings: result.cancelledCount,
+    refundedBookings: result.refundCount,
+  });
+
+  return serializeBusiness(result.business);
 };

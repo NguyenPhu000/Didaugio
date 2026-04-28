@@ -40,6 +40,8 @@ import {
   getPlaceReviewCount,
 } from "../../components/composed/PlacePreviewCard";
 import { trackEvent } from "../../lib/analytics";
+import { resolveMediaUrl } from "../../lib/media-url";
+import { useAuthStore } from "../../stores/authStore";
 import { DistrictLayer, WardLayer } from "./components/BoundaryLayer";
 import {
   CATEGORY_MARKER_STYLES,
@@ -201,6 +203,7 @@ export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const authUser = useAuthStore((state) => state.user);
 
   const mapRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -339,6 +342,29 @@ export default function MapScreen() {
         allAreasKey: ALL_AREAS_KEY,
       }),
     [allPlaces, searchText, activeCategoryId, activeArea, quickFilters],
+  );
+
+  const currentUserNickname = useMemo(() => {
+    const nickname =
+      authUser?.profile?.nickname || authUser?.nickname || authUser?.username;
+    if (typeof nickname === "string" && nickname.trim()) {
+      return nickname.trim();
+    }
+
+    const fullName = authUser?.profile?.fullName || authUser?.fullName;
+    if (typeof fullName === "string" && fullName.trim()) {
+      return fullName.trim();
+    }
+
+    return null;
+  }, [authUser]);
+
+  const currentUserAvatarUri = useMemo(
+    () =>
+      resolveMediaUrl(
+        authUser?.profile?.avatar || authUser?.avatar || authUser?.photoURL,
+      ),
+    [authUser],
   );
 
   const mapBoundaryOverlays = useMemo(
@@ -765,7 +791,11 @@ export default function MapScreen() {
         >
           {mapBoundaryOverlays}
 
-          <CurrentLocationMarker location={currentLocation} />
+          <CurrentLocationMarker
+            location={currentLocation}
+            nickname={currentUserNickname}
+            avatarUri={currentUserAvatarUri}
+          />
 
           <RouteBuilderStopsMarkerLayer stops={routeBuilderDraftStops} />
 

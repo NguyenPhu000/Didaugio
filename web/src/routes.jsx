@@ -10,31 +10,29 @@ import {
   BUSINESS_ROUTES,
   PLACES_ALIAS,
 } from "@/constants/routes";
-import {
-  DashboardPage,
-  LoginPage,
-  RegisterPage,
-  ProfilePage,
-  SettingsPage,
-  UserManagePage,
-  EmailVerificationPage,
-  PasswordResetPage,
-  AuditLogsPage,
-  LoginHistoryPage,
-  NotFoundPage,
-  PlaceWizardPage,
-  PlaceListPage,
-  PlacePendingPage,
-  MapPage,
-  CategoryManagementPage,
-  TagManagementPage,
-  DistrictListPage,
-  BusinessListPage,
-  BusinessPendingPage,
-  BusinessProfilePage,
-  BusinessRegisterPage,
-  ServiceListPage,
-} from "@/pages";
+import DashboardPage from "@/pages/DashboardPage";
+import LoginPage from "@/pages/auth/LoginPage";
+import RegisterPage from "@/pages/auth/RegisterPage";
+import ProfilePage from "@/pages/ProfilePage";
+import SettingsPage from "@/pages/admin/SettingsPage";
+import UserManagePage from "@/pages/UserManagePage";
+import EmailVerificationPage from "@/pages/EmailVerificationPage";
+import PasswordResetPage from "@/pages/PasswordResetPage";
+import AuditLogsPage from "@/pages/AuditLogsPage";
+import LoginHistoryPage from "@/pages/LoginHistoryPage";
+import NotFoundPage from "@/pages/NotFoundPage";
+import PlaceWizardPage from "@/pages/admin/PlaceWizardPage";
+import PlaceListPage from "@/pages/admin/PlaceListPage";
+import PlacePendingPage from "@/pages/admin/PlacePendingPage";
+import MapPage from "@/pages/admin/MapPage";
+import CategoryManagementPage from "@/pages/admin/CategoryManagementPage";
+import TagManagementPage from "@/pages/admin/TagManagementPage";
+import DistrictListPage from "@/pages/admin/DistrictListPage";
+import BusinessListPage from "@/pages/admin/BusinessListPage";
+import BusinessPendingPage from "@/pages/admin/BusinessPendingPage";
+import BusinessProfilePage from "@/pages/business/BusinessProfilePage";
+import BusinessRegisterPage from "@/pages/business/BusinessRegisterPage";
+import ServiceListPage from "@/pages/business/ServiceListPage";
 import BookingListPage from "@/pages/business/BookingListPage";
 import BookingDetailPage from "@/pages/business/BookingDetailPage";
 import BookingSchedulePage from "@/pages/business/BookingSchedulePage";
@@ -101,17 +99,11 @@ const ProtectedAdmin = ({ children, roles }) => (
 const AppRoutes = () => {
   return (
     <Routes>
-      {/* ===== Public auth routes ===== */}
+      {/* ===== Public auth routes (primary) ===== */}
       <Route path={AUTH_ROUTES.LOGIN} element={<LoginPage />} />
       <Route path={AUTH_ROUTES.REGISTER} element={<RegisterPage />} />
-      <Route path={AUTH_PREFIX_ROUTES.LOGIN} element={<LoginPage />} />
-      <Route path={AUTH_PREFIX_ROUTES.REGISTER} element={<RegisterPage />} />
       <Route
         path={AUTH_ROUTES.FORGOT_PASSWORD}
-        element={<ForgotPasswordPage />}
-      />
-      <Route
-        path={AUTH_PREFIX_ROUTES.FORGOT_PASSWORD}
         element={<ForgotPasswordPage />}
       />
       <Route
@@ -119,25 +111,22 @@ const AppRoutes = () => {
         element={<ResetPasswordPage />}
       />
       <Route
-        path={AUTH_PREFIX_ROUTES.RESET_PASSWORD}
-        element={<ResetPasswordPage />}
-      />
-      <Route
         path={AUTH_ROUTES.VERIFY_EMAIL}
-        element={<VerifyEmailPublicPage />}
-      />
-      <Route
-        path={AUTH_PREFIX_ROUTES.VERIFY_EMAIL}
         element={<VerifyEmailPublicPage />}
       />
       <Route
         path={AUTH_ROUTES.RESEND_VERIFICATION}
         element={<ResendVerificationPage />}
       />
-      <Route
-        path={AUTH_PREFIX_ROUTES.RESEND_VERIFICATION}
-        element={<ResendVerificationPage />}
-      />
+
+      {/* Legacy /auth/* prefix — redirect to primary paths */}
+      {Object.entries(AUTH_PREFIX_ROUTES).map(([key, prefixPath]) => (
+        <Route
+          key={prefixPath}
+          path={prefixPath}
+          element={<Navigate to={AUTH_ROUTES[key]} replace />}
+        />
+      ))}
 
       {/* Redirect root to dashboard - Business -> business dashboard */}
       <Route path="/" element={<RootRedirect />} />
@@ -307,7 +296,7 @@ const AppRoutes = () => {
         }
       />
       <Route
-        path="/admin/places/edit/:id"
+        path={ADMIN_ROUTES.PLACES_EDIT_PATTERN}
         element={
           <ProtectedAdmin roles={placeRoles}>
             <PlaceWizardPage />
@@ -357,118 +346,39 @@ const AppRoutes = () => {
         }
       />
 
-      <Route
-        path={BUSINESS_ROUTES.BOOKING_SCHEDULE}
-        element={
-          <ProtectedRoute roles={[ROLES.BUSINESS]}>
-            <AdminLayout>
-              <BusinessGuard>
-                <BookingSchedulePage />
-              </BusinessGuard>
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path={BUSINESS_ROUTES.BOOKING_QUICK}
-        element={
-          <ProtectedRoute roles={[ROLES.BUSINESS]}>
-            <AdminLayout>
-              <BusinessGuard>
-                <BookingQuickProcessPage />
-              </BusinessGuard>
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path={BUSINESS_ROUTES.BOOKINGS}
-        element={
-          <ProtectedRoute roles={[ROLES.BUSINESS]}>
-            <AdminLayout>
-              <BusinessGuard>
-                <BookingListPage />
-              </BusinessGuard>
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path={BUSINESS_ROUTES.BOOKING_DETAIL(":id")}
-        element={
-          <ProtectedRoute roles={[ROLES.BUSINESS]}>
-            <AdminLayout>
-              <BusinessGuard>
-                <BookingDetailPage />
-              </BusinessGuard>
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path={BUSINESS_ROUTES.DASHBOARD}
-        element={
-          <ProtectedRoute roles={[ROLES.BUSINESS]}>
-            <AdminLayout>
-              <BusinessGuard>
-                <BusinessDashboardPage />
-              </BusinessGuard>
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path={BUSINESS_ROUTES.REVENUE}
-        element={
-          <ProtectedRoute roles={[ROLES.BUSINESS]}>
-            <AdminLayout>
-              <BusinessGuard>
-                <RevenuePage />
-              </BusinessGuard>
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path={BUSINESS_ROUTES.REVIEWS}
-        element={
-          <ProtectedRoute roles={[ROLES.BUSINESS]}>
-            <AdminLayout>
-              <BusinessGuard>
-                <ReviewListPage />
-              </BusinessGuard>
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path={BUSINESS_ROUTES.VOUCHERS}
-        element={
-          <ProtectedRoute roles={[ROLES.BUSINESS]}>
-            <AdminLayout>
-              <BusinessGuard>
-                <VoucherListPage />
-              </BusinessGuard>
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path={BUSINESS_ROUTES.SERVICES}
-        element={
-          <ProtectedRoute roles={[ROLES.BUSINESS]}>
-            <AdminLayout>
-              <BusinessGuard>
-                <ServiceListPage />
-              </BusinessGuard>
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
+      {/* Business guarded routes — DRY wrapper */}
+      {[
+        {
+          path: BUSINESS_ROUTES.BOOKING_SCHEDULE,
+          element: <BookingSchedulePage />,
+        },
+        {
+          path: BUSINESS_ROUTES.BOOKING_QUICK,
+          element: <BookingQuickProcessPage />,
+        },
+        { path: BUSINESS_ROUTES.BOOKINGS, element: <BookingListPage /> },
+        {
+          path: BUSINESS_ROUTES.BOOKING_DETAIL(":id"),
+          element: <BookingDetailPage />,
+        },
+        { path: BUSINESS_ROUTES.DASHBOARD, element: <BusinessDashboardPage /> },
+        { path: BUSINESS_ROUTES.REVENUE, element: <RevenuePage /> },
+        { path: BUSINESS_ROUTES.REVIEWS, element: <ReviewListPage /> },
+        { path: BUSINESS_ROUTES.VOUCHERS, element: <VoucherListPage /> },
+        { path: BUSINESS_ROUTES.SERVICES, element: <ServiceListPage /> },
+      ].map(({ path, element }) => (
+        <Route
+          key={path}
+          path={path}
+          element={
+            <ProtectedRoute roles={[ROLES.BUSINESS]}>
+              <AdminLayout>
+                <BusinessGuard>{element}</BusinessGuard>
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+      ))}
 
       {/* Legacy: hợp đồng gộp vào Hồ sơ (Phương án A) */}
       <Route

@@ -36,8 +36,10 @@ import {
 } from "@/components/business/DashboardWidgets";
 import { DESIGN } from "@/components/business/dashboardWidgetHelpers";
 import { cn } from "@/lib/utils";
-import FileUploader from "@/components/business/FileUploader";
 import ContractSignModal from "@/components/business/ContractSignModal";
+import DocumentImageUploadField from "@/components/business/DocumentImageUploadField";
+import { DOCUMENT_SAMPLE_IMAGES } from "@/components/business/documentImageConstants";
+import { isImageSource, resolveMediaUrl } from "@/utils/mediaUrl";
 
 // ─── Validation Schema ────────────────────────────────────────────────────────
 
@@ -127,6 +129,25 @@ const FormField = ({ label, error, required, children }) => (
     </Label>
     {children}
     {error && <p className="text-[11px] text-destructive">{error}</p>}
+  </div>
+);
+
+const resolveImagePreview = (raw) => {
+  const resolved = resolveMediaUrl(raw);
+  return isImageSource(resolved) ? resolved : null;
+};
+
+const DocumentPreviewCard = ({ label, src, alt, previewClassName }) => (
+  <div className="rounded-lg border border-border/60 p-3">
+    <p className="text-xs text-muted-foreground">{label}</p>
+    <div
+      className={cn(
+        "mt-2 overflow-hidden rounded-md border border-border/60 bg-muted/30",
+        previewClassName,
+      )}
+    >
+      <img src={src} alt={alt} className="h-full w-full object-cover" />
+    </div>
   </div>
 );
 
@@ -270,6 +291,28 @@ const BusinessProfilePage = () => {
       documentFiles.businessLicense.length > 0,
     [documentFiles],
   );
+  const existingDocumentPreviews = useMemo(
+    () => ({
+      idCardFront: resolveImagePreview(business?.idCardFront),
+      idCardBack: resolveImagePreview(business?.idCardBack),
+      businessLicense: resolveImagePreview(business?.businessLicense),
+    }),
+    [business?.businessLicense, business?.idCardBack, business?.idCardFront],
+  );
+  const previewSources = useMemo(
+    () => ({
+      portrait:
+        existingDocumentPreviews.businessLicense ||
+        DOCUMENT_SAMPLE_IMAGES.portrait,
+      idCardFront:
+        existingDocumentPreviews.idCardFront ||
+        DOCUMENT_SAMPLE_IMAGES.idCardFront,
+      idCardBack:
+        existingDocumentPreviews.idCardBack ||
+        DOCUMENT_SAMPLE_IMAGES.idCardBack,
+    }),
+    [existingDocumentPreviews],
+  );
 
   if (loading) return <ProfileSkeleton />;
 
@@ -373,31 +416,35 @@ const BusinessProfilePage = () => {
             </div>
           </SectionCard>
 
-          <SectionCard title="Giấy tờ xác minh" titleIcon={CheckCircle2}>
-            <div className="space-y-2.5">
-              <div className="rounded-lg border border-border/60 p-3">
-                <p className="text-xs text-muted-foreground">
-                  CCCD/CMND mặt trước
-                </p>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  {business?.idCardFront ? "Đã tải lên" : "Chưa tải lên"}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border/60 p-3">
-                <p className="text-xs text-muted-foreground">
-                  CCCD/CMND mặt sau
-                </p>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  {business?.idCardBack ? "Đã tải lên" : "Chưa tải lên"}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border/60 p-3">
-                <p className="text-xs text-muted-foreground">
-                  Giấy phép kinh doanh
-                </p>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  {business?.businessLicense ? "Đã tải lên" : "Chưa tải lên"}
-                </p>
+          <SectionCard
+            title="Giấy tờ xác minh"
+            titleIcon={CheckCircle2}
+            className="lg:col-span-2"
+          >
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Hồ sơ hiển thị ảnh mẫu mặc định. Nếu bạn đã tải ảnh thật thì hệ
+                thống sẽ ưu tiên hiển thị ảnh đó.
+              </p>
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                <DocumentPreviewCard
+                  label="Giấy phép kinh doanh / Chứng nhận"
+                  src={previewSources.portrait}
+                  alt="Giấy phép kinh doanh"
+                  previewClassName="h-[300px] sm:h-[360px]"
+                />
+                <DocumentPreviewCard
+                  label="Ảnh mặt trước CC/CCCD"
+                  src={previewSources.idCardFront}
+                  alt="CCCD mặt trước"
+                  previewClassName="h-[220px] sm:h-[260px]"
+                />
+                <DocumentPreviewCard
+                  label="Ảnh mặt sau CC/CCCD"
+                  src={previewSources.idCardBack}
+                  alt="CCCD mặt sau"
+                  previewClassName="h-[220px] sm:h-[260px]"
+                />
               </div>
             </div>
           </SectionCard>
@@ -539,43 +586,80 @@ const BusinessProfilePage = () => {
             <SectionCard
               title="Cập nhật giấy tờ xác minh"
               titleIcon={CheckCircle2}
+              className="lg:col-span-2"
             >
               <div className="space-y-4">
-                <FileUploader
-                  label="CCCD/CMND mặt trước"
-                  maxFiles={1}
-                  value={documentFiles.idCardFront}
-                  onChange={(files) =>
-                    setDocumentFiles((prev) => ({
-                      ...prev,
-                      idCardFront: files,
-                    }))
-                  }
-                  hint="Tùy chọn thay thế tệp hiện tại, tối đa 10MB"
-                />
+                <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <h4 className="text-sm font-semibold text-foreground">
+                    Upload hình ảnh giấy tờ
+                  </h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Mặc định hệ thống hiển thị ảnh mẫu. Khi bạn chọn ảnh mới,
+                    preview sẽ cập nhật ngay theo ảnh của bạn.
+                  </p>
 
-                <FileUploader
-                  label="CCCD/CMND mặt sau"
-                  maxFiles={1}
-                  value={documentFiles.idCardBack}
-                  onChange={(files) =>
-                    setDocumentFiles((prev) => ({ ...prev, idCardBack: files }))
-                  }
-                  hint="Tùy chọn thay thế tệp hiện tại, tối đa 10MB"
-                />
+                  <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
+                    <DocumentImageUploadField
+                      label="Giấy phép kinh doanh / Chứng nhận"
+                      required
+                      value={documentFiles.businessLicense}
+                      onChange={(files) =>
+                        setDocumentFiles((prev) => ({
+                          ...prev,
+                          businessLicense: files,
+                        }))
+                      }
+                      hint="Tải lên hình chụp Giấy phép kinh doanh hoặc giấy chứng nhận liên quan"
+                      fallbackPreview={
+                        existingDocumentPreviews.businessLicense ||
+                        DOCUMENT_SAMPLE_IMAGES.portrait
+                      }
+                      previewAlt="Giấy phép kinh doanh"
+                      previewClassName="h-[300px] sm:h-[360px]"
+                      disabled={saving}
+                    />
 
-                <FileUploader
-                  label="Giấy phép kinh doanh"
-                  maxFiles={1}
-                  value={documentFiles.businessLicense}
-                  onChange={(files) =>
-                    setDocumentFiles((prev) => ({
-                      ...prev,
-                      businessLicense: files,
-                    }))
-                  }
-                  hint="Tùy chọn thay thế tệp hiện tại, tối đa 10MB"
-                />
+                    <DocumentImageUploadField
+                      label="Ảnh mặt trước CC/CCCD"
+                      required
+                      value={documentFiles.idCardFront}
+                      onChange={(files) =>
+                        setDocumentFiles((prev) => ({
+                          ...prev,
+                          idCardFront: files,
+                        }))
+                      }
+                      hint="Tải lên ảnh mặt trước CC/CCCD có định dạng PNG, JPEG, JPG"
+                      fallbackPreview={
+                        existingDocumentPreviews.idCardFront ||
+                        DOCUMENT_SAMPLE_IMAGES.idCardFront
+                      }
+                      previewAlt="CCCD mặt trước"
+                      previewClassName="h-[220px] sm:h-[260px]"
+                      disabled={saving}
+                    />
+
+                    <DocumentImageUploadField
+                      label="Ảnh mặt sau CC/CCCD"
+                      required
+                      value={documentFiles.idCardBack}
+                      onChange={(files) =>
+                        setDocumentFiles((prev) => ({
+                          ...prev,
+                          idCardBack: files,
+                        }))
+                      }
+                      hint="Tải lên ảnh mặt sau CC/CCCD có định dạng PNG, JPEG, JPG"
+                      fallbackPreview={
+                        existingDocumentPreviews.idCardBack ||
+                        DOCUMENT_SAMPLE_IMAGES.idCardBack
+                      }
+                      previewAlt="CCCD mặt sau"
+                      previewClassName="h-[220px] sm:h-[260px]"
+                      disabled={saving}
+                    />
+                  </div>
+                </div>
               </div>
             </SectionCard>
           </div>

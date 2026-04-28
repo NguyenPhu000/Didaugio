@@ -1,23 +1,21 @@
 import { memo, useCallback } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../constants/design-tokens";
+import { TOKENS } from "../../../constants/design-tokens";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation, formatRatingLabel } from "../utils/exploreHelpers";
 
-const EST_ITEM_SIZE = 92;
+const EST_ITEM_SIZE = 100;
 
 const PlaceRow = memo(function PlaceRow({ place, onPress }) {
   const img = resolvePlaceImageUri(place);
@@ -41,10 +39,10 @@ const PlaceRow = memo(function PlaceRow({ place, onPress }) {
           />
         ) : (
           <View style={styles.thumbFallback}>
-            <MaterialIcons
-              name="place"
-              size={22}
-              color={APPLE_THEME.textMuted}
+            <MaterialCommunityIcons
+              name="map-marker-outline"
+              size={24}
+              color="#9CA3AF"
             />
           </View>
         )}
@@ -55,23 +53,23 @@ const PlaceRow = memo(function PlaceRow({ place, onPress }) {
           {place?.name || "Địa điểm"}
         </Text>
         <View style={styles.metaRow}>
-          <MaterialIcons name="place" size={12} color={APPLE_THEME.textMuted} />
+          <MaterialCommunityIcons name="map-marker-outline" size={14} color="#6B7280" />
           <Text style={styles.metaText} numberOfLines={1}>
             {location}
           </Text>
         </View>
         <View style={styles.metaRow}>
-          <MaterialIcons name="star" size={12} color="#FF9F0A" />
-          <Text style={styles.metaText} numberOfLines={1}>
+          <MaterialCommunityIcons name="star" size={14} color="#000000" />
+          <Text style={[styles.metaText, { color: "#000" }]} numberOfLines={1}>
             {rating > 0 ? `${rating.toFixed(1)} • ${ratingMeta}` : ratingMeta}
           </Text>
         </View>
       </View>
 
-      <MaterialIcons
+      <MaterialCommunityIcons
         name="chevron-right"
-        size={20}
-        color={APPLE_THEME.textMuted}
+        size={24}
+        color="#D1D5DB"
       />
     </Pressable>
   );
@@ -104,10 +102,10 @@ function ExplorePlaceListInner({
   if (!loading && (!Array.isArray(data) || data.length === 0)) {
     return (
       <View style={styles.empty}>
-        <MaterialIcons
-          name="travel-explore"
-          size={42}
-          color={APPLE_THEME.textMuted}
+        <MaterialCommunityIcons
+          name="compass-outline"
+          size={50}
+          color="#D1D5DB"
         />
         <Text style={styles.emptyTitle}>{emptyTitle}</Text>
         <Text style={styles.emptyCopy}>{emptyCopy}</Text>
@@ -128,7 +126,7 @@ function ExplorePlaceListInner({
       ListFooterComponent={
         fetchingMore ? (
           <ActivityIndicator
-            color={APPLE_THEME.focusBlue}
+            color="#000000"
             style={styles.footerLoader}
           />
         ) : null
@@ -146,33 +144,45 @@ export const ExplorePlaceList = memo(ExplorePlaceListInner);
 const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: TOKENS.space[6],
-    paddingTop: 12,
-    paddingBottom: 24,
+    paddingTop: 16,
+    paddingBottom: 40,
   },
   rowSeparator: {
-    height: 10,
+    height: 12,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    padding: 11,
-    borderRadius: TOKENS.radius["2xl"],
-    backgroundColor: "rgba(255,255,255,0.96)",
+    gap: 14,
+    padding: 12,
+    borderRadius: 20,
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: APPLE_THEME.border,
-    ...TOKENS.shadow.sm,
+    borderColor: "#F3F4F6",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
   },
   rowPressed: {
-    opacity: 0.95,
-    transform: [{ scale: 0.99 }],
+    opacity: 0.9,
+    transform: [{ scale: 0.98 }],
   },
   thumb: {
-    width: 72,
-    height: 72,
+    width: 80,
+    height: 80,
     borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: APPLE_THEME.surfaceMuted,
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   thumbFallback: {
     flex: 1,
@@ -182,10 +192,10 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 6,
   },
   name: {
-    color: APPLE_THEME.text,
+    color: "#000000",
     fontSize: 16.5,
     fontFamily: TOKENS.font.semibold,
     letterSpacing: -0.3,
@@ -193,35 +203,35 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 6,
   },
   metaText: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 12,
-    fontFamily: TOKENS.font.body,
+    color: "#6B7280", // Gray 500
+    fontSize: 13,
+    fontFamily: TOKENS.font.medium,
     flex: 1,
   },
   empty: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 44,
-    gap: 10,
+    paddingHorizontal: 40,
+    gap: 12,
   },
   emptyTitle: {
-    color: APPLE_THEME.text,
-    fontSize: 17,
-    fontFamily: TOKENS.font.heading,
+    color: "#000000",
+    fontSize: 18,
+    fontFamily: TOKENS.font.semibold,
     textAlign: "center",
   },
   emptyCopy: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 13,
-    lineHeight: 19,
+    color: "#6B7280",
+    fontSize: 14,
+    lineHeight: 20,
     fontFamily: TOKENS.font.body,
     textAlign: "center",
   },
   footerLoader: {
-    paddingVertical: 18,
+    paddingVertical: 20,
   },
 });

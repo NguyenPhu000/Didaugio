@@ -1,137 +1,124 @@
 import { memo, useCallback, useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../../constants/design-tokens";
+import { useCategories } from "../hooks/useExplore";
+import { normalizeText } from "../utils/exploreHelpers";
 
+// Tên khóa và keyword để match với danh sách category từ API
 const ACTIONS = Object.freeze([
   {
-    key: "nearby",
-    title: "Gần bạn",
-    subtitle: "Khoảng cách & ETA",
-    icon: "near-me",
-    tone: "blue",
-    href: "/explore/nearby",
+    key: "restaurants",
+    title: "Ẩm thực",
+    icon: "silverware-fork-knife",
+    keywords: ["ẩm thực", "food", "nhà hàng", "quán ăn"],
   },
   {
-    key: "topRated",
-    title: "Top đánh giá",
-    subtitle: "Được yêu thích",
-    icon: "star",
-    tone: "amber",
-    href: "/explore/top-rated",
+    key: "hotel",
+    title: "Khách sạn",
+    icon: "bed-outline",
+    keywords: ["khách sạn", "lưu trú", "hotel", "resort", "homestay"],
   },
   {
-    key: "newest",
-    title: "Mới nhất",
-    subtitle: "Vừa cập nhật",
-    icon: "schedule",
-    tone: "blue",
-    href: "/explore/newest",
+    key: "cafe",
+    title: "Cafe",
+    icon: "coffee-outline",
+    keywords: ["cafe", "cà phê", "coffee", "quán nước"],
   },
   {
-    key: "categories",
-    title: "Danh mục",
-    subtitle: "Chọn chủ đề",
-    icon: "category",
-    tone: "ink",
-    href: "/explore/categories",
+    key: "shopping",
+    title: "Mua sắm",
+    icon: "shopping-outline",
+    keywords: ["mua sắm", "shopping", "chợ", "siêu thị", "cửa hàng"],
   },
   {
-    key: "districts",
-    title: "Theo quận",
-    subtitle: "Khám phá khu vực",
-    icon: "map",
-    tone: "ink",
-    href: "/explore/districts",
+    key: "culture",
+    title: "Văn hóa",
+    icon: "bank-outline",
+    keywords: ["văn hóa", "bảo tàng", "di tích", "lịch sử", "chùa"],
+  },
+  {
+    key: "events",
+    title: "Sự kiện",
+    icon: "calendar-blank-outline",
+    keywords: ["sự kiện", "lễ hội", "festival"],
+  },
+  {
+    key: "nature",
+    title: "Thiên nhiên",
+    icon: "leaf",
+    keywords: ["thiên nhiên", "sinh thái", "nature", "khu du lịch"],
+  },
+  {
+    key: "more",
+    title: "Tất cả",
+    icon: "dots-horizontal",
+    keywords: [],
   },
 ]);
 
-function toneStyles(tone) {
-  if (tone === "amber") {
-    return {
-      iconBg: "#FFF4DE",
-      iconColor: "#B45309",
-      border: "rgba(180, 83, 9, 0.18)",
-    };
-  }
-  if (tone === "ink") {
-    return {
-      iconBg: "#EEF2FF",
-      iconColor: "#1E3A8A",
-      border: "rgba(30, 58, 138, 0.16)",
-    };
-  }
-  return {
-    iconBg: "rgba(0, 113, 227, 0.12)",
-    iconColor: APPLE_THEME.focusBlue,
-    border: "rgba(0, 113, 227, 0.16)",
-  };
-}
-
 function ExploreQuickActionsInner() {
   const router = useRouter();
+  const { data: categories = [] } = useCategories(); // Lấy danh sách category thực
+
   const items = useMemo(() => ACTIONS, []);
 
+  // Theme trắng/đen chủ đạo theo yêu cầu
+  const ICON_COLOR = "#000000"; // Black accent
+  const BORDER_COLOR = "#E5E5E5"; // Light gray border
+
   const handlePress = useCallback(
-    (href) => {
-      if (href) router.push(href);
+    (item) => {
+      if (item.key === "more") {
+        router.push("/explore/categories"); // Xem tất cả danh mục
+        return;
+      }
+
+      // Tìm ID của category tương ứng từ API
+      const matchedCat = categories.find((c) => {
+        const catName = normalizeText(c.name);
+        return item.keywords.some((kw) => catName.includes(normalizeText(kw)));
+      });
+
+      if (matchedCat?.id) {
+        // Nảy ra list địa điểm chuẩn
+        router.push({ pathname: "/explore/category/[id]", params: { id: matchedCat.id } });
+      } else {
+        // Nếu không tìm thấy map trực tiếp, mở tất cả
+        router.push("/explore/categories");
+      }
     },
-    [router],
+    [router, categories],
   );
 
   return (
-    <View style={styles.wrap}>
-      <Text style={styles.heading}>Khám phá nhanh</Text>
-      <View style={styles.grid}>
-        {items.map((item) => {
-          const tone = toneStyles(item.tone);
-          return (
-            <Pressable
-              key={item.key}
-              onPress={() => handlePress(item.href)}
-              style={({ pressed }) => [
-                styles.card,
-                pressed && styles.cardPressed,
-              ]}
-            >
-              <View
-                style={[
-                  styles.iconWrap,
-                  {
-                    backgroundColor: tone.iconBg,
-                    borderColor: tone.border,
-                  },
-                ]}
-              >
-                <MaterialIcons
-                  name={item.icon}
-                  size={20}
-                  color={tone.iconColor}
-                />
-              </View>
-              <View style={styles.textWrap}>
-                <Text style={styles.title} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text style={styles.subtitle} numberOfLines={2}>
-                  {item.subtitle}
-                </Text>
-              </View>
-              <View style={styles.arrowWrap}>
-                <MaterialIcons
-                  name="chevron-right"
-                  size={17}
-                  color={APPLE_THEME.textMuted}
-                />
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
+    <View style={styles.grid}>
+      {items.map((item) => (
+        <View key={item.key} style={styles.itemContainer}>
+          <Pressable
+            onPress={() => handlePress(item)}
+            style={({ pressed }) => [
+              styles.iconWrapper,
+              pressed && styles.iconWrapperPressed,
+            ]}
+          >
+            <View style={[styles.iconCircle, { borderColor: BORDER_COLOR }]}>
+              <MaterialCommunityIcons
+                name={item.icon}
+                size={24}
+                color={ICON_COLOR}
+              />
+            </View>
+          </Pressable>
+          <Text style={styles.title} numberOfLines={1}>
+            {item.title}
+          </Text>
+        </View>
+      ))}
     </View>
   );
 }
@@ -139,73 +126,52 @@ function ExploreQuickActionsInner() {
 export const ExploreQuickActions = memo(ExploreQuickActionsInner);
 
 const styles = StyleSheet.create({
-  wrap: {
-    marginTop: 18,
-    paddingHorizontal: TOKENS.space[6],
-  },
-  heading: {
-    color: APPLE_THEME.text,
-    fontSize: 21,
-    fontFamily: TOKENS.font.heading,
-    marginBottom: 10,
-  },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
-    rowGap: 10,
+    paddingHorizontal: 16,
+    rowGap: 24,
+    marginTop: 20,
+    marginBottom: 10,
+    justifyContent: "flex-start",
   },
-  card: {
-    width: "48.5%",
-    minHeight: 118,
-    borderRadius: TOKENS.radius["2xl"],
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.border,
-    justifyContent: "space-between",
-    ...TOKENS.shadow.sm,
+  itemContainer: {
+    width: "25%",
+    alignItems: "center",
+    gap: 8,
   },
-  cardPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.95,
-  },
-  iconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+  iconWrapper: {
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
   },
-  textWrap: {
-    gap: 4,
-    flex: 1,
-    minWidth: 0,
-    marginTop: 10,
+  iconWrapperPressed: {
+    opacity: 0.5,
+    transform: [{ scale: 0.94 }],
+  },
+  iconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#ffffff", // Trắng nền
+    borderWidth: 1, // Viền đen nhạt
+    alignItems: "center",
+    justifyContent: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
   },
   title: {
-    color: APPLE_THEME.text,
-    fontSize: 17,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 12,
-    lineHeight: 17,
-    fontFamily: TOKENS.font.body,
-  },
-  arrowWrap: {
-    marginTop: 8,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_THEME.surfaceElevated,
+    color: "#404040", // Đen nhạt / Xám đậm cho chữ phụ
+    fontSize: 13,
+    fontFamily: TOKENS.font.medium,
+    textAlign: "center",
   },
 });

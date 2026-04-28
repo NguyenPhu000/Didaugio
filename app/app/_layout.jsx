@@ -6,6 +6,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import {
   useFonts,
   BeVietnamPro_400Regular,
@@ -94,32 +95,34 @@ export default function RootLayout() {
         <KeyboardProvider>
           <AppProvider>
             <View style={{ flex: 1 }}>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(auth)" options={{ animation: "fade" }} />
-                <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
-                <Stack.Screen
-                  name="place/[id]"
-                  options={{ animation: "slide_from_right" }}
-                />
-                <Stack.Screen
-                  name="profile/settings"
-                  options={{ animation: "slide_from_right" }}
-                />
-                <Stack.Screen
-                  name="profile/bookings"
-                  options={{ animation: "slide_from_right" }}
-                />
-                <Stack.Screen
-                  name="profile/booking/[id]"
-                  options={{ animation: "slide_from_right" }}
-                />
-                <Stack.Screen
-                  name="onboarding"
-                  options={{ animation: "fade" }}
-                />
-              </Stack>
-              <AIFloatingButton />
-              <OfflineToast />
+              <BottomSheetModalProvider>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(auth)" options={{ animation: "fade" }} />
+                  <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
+                  <Stack.Screen
+                    name="place/[id]"
+                    options={{ animation: "slide_from_right" }}
+                  />
+                  <Stack.Screen
+                    name="profile/settings"
+                    options={{ animation: "slide_from_right" }}
+                  />
+                  <Stack.Screen
+                    name="profile/bookings"
+                    options={{ animation: "slide_from_right" }}
+                  />
+                  <Stack.Screen
+                    name="profile/booking/[id]"
+                    options={{ animation: "slide_from_right" }}
+                  />
+                  <Stack.Screen
+                    name="onboarding"
+                    options={{ animation: "fade" }}
+                  />
+                </Stack>
+                <AIFloatingButton />
+                <OfflineToast />
+              </BottomSheetModalProvider>
             </View>
           </AppProvider>
         </KeyboardProvider>

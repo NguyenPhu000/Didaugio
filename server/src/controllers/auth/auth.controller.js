@@ -127,7 +127,7 @@ export const forgotPassword = async (req, res, next) => {
     const result = await authService.forgotPassword(req.body, ipAddress);
     res.json({
       success: true,
-      data: result.resetToken ? { resetToken: result.resetToken } : null,
+      data: null,
       message: result.message,
     });
   } catch (error) {
@@ -178,9 +178,7 @@ export const resendVerification = async (req, res, next) => {
     const result = await authService.resendVerificationEmail(req.user.userId);
     res.json({
       success: true,
-      data: result.verificationToken
-        ? { verificationToken: result.verificationToken }
-        : null,
+      data: null,
       message: result.message,
     });
   } catch (error) {

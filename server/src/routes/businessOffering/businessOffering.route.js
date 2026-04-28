@@ -23,7 +23,6 @@ import {
 const router = express.Router();
 
 router.use(authenticate);
-router.use(requireActiveBusiness({ requireContractSigned: true }));
 
 // Business owner: business.manage_services | Admin: business.view_detail
 const serviceAccessPermission = [
@@ -31,32 +30,13 @@ const serviceAccessPermission = [
   "business.view_detail",
 ];
 
-router.get(
-  "/",
-  hasPermission(serviceAccessPermission),
-  validateQuery(getBusinessServicesQuerySchema),
-  controller.getAll,
-);
+// Read and create operations: only require approved business (draft allowed before contract)
+router.get("/", hasPermission(serviceAccessPermission), validateQuery(getBusinessServicesQuerySchema), controller.getAll);
+router.get("/:id", hasPermission(serviceAccessPermission), checkBusinessOwnership("service"), controller.getById);
+router.post("/", requireActiveBusiness(), hasPermission("business.manage_services"), validateBody(createServiceSchema), auditLog({ action: "CREATE", tableName: "business_services", getRecordId: (req, body) => body?.data?.id, getNewData: (req) => ({ name: req.body.name, price: req.body.price }) }), controller.create);
 
-router.get(
-  "/:id",
-  hasPermission(serviceAccessPermission),
-  checkBusinessOwnership("service"),
-  controller.getById,
-);
-
-router.post(
-  "/",
-  hasPermission("business.manage_services"),
-  validateBody(createServiceSchema),
-  auditLog({
-    action: "CREATE",
-    tableName: "business_services",
-    getRecordId: (req, body) => body?.data?.id,
-    getNewData: (req) => ({ name: req.body.name, price: req.body.price }),
-  }),
-  controller.create,
-);
+// Operational routes: require contract signed
+router.use(requireActiveBusiness({ requireContractSigned: true }));
 
 // checkBusinessOwnership + manage_services: đồng bộ RBAC với POST tạo dịch vụ
 router.put(

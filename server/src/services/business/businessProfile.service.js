@@ -8,6 +8,25 @@ import {
   serializeBusiness,
   mapBusinessDataToPrisma,
 } from "./business.serializer.js";
+import { uploadImage } from "../../utils/cloudinaryService.js";
+
+const uploadLegalDocument = async (fileData) => {
+  if (!fileData) return null;
+  if (fileData.startsWith("http")) return fileData;
+  try {
+    const file = fileData.startsWith("data:") ? fileData : `data:image/jpeg;base64,${fileData}`;
+    const result = await uploadImage(file, { 
+      upload_preset: "Didaugio_Secure",
+      folder: "didaugio/legal" 
+    });
+    return result.url;
+  } catch (error) {
+    console.error("Cloudinary upload error:", error);
+    const err = new Error("Lỗi tải lên tài liệu pháp lý");
+    err.statusCode = 500;
+    throw err;
+  }
+};
 
 const defaultInclude = {
   owner: {
@@ -110,13 +129,13 @@ const mapProfileResponse = async (business) => {
       businessName: serialized.businessName,
       businessType: serialized.businessType,
       taxCode: serialized.taxCode,
-      idCardNumber: serialized.idCardNumber,
+      idCardNumber: serialized.idCardNumberMasked,
       idCardFront: serialized.idCardFront,
       idCardBack: serialized.idCardBack,
       businessLicense: serialized.businessLicense,
       bankName: serialized.bankName,
-      bankAccountNumber: serialized.bankAccountNumber,
-      bankAccountOwner: serialized.bankAccountOwner,
+      bankAccountNumber: serialized.bankAccountNumberMasked,
+      bankAccountOwner: serialized.bankAccountOwnerMasked,
       commissionRate: serialized.commissionRate,
       contractSigned: serialized.contractSigned,
       status: serialized.status,
@@ -188,6 +207,16 @@ export const register = async (data, userId) => {
     const error = new Error("Bạn đã có hồ sơ doanh nghiệp");
     error.statusCode = 400;
     throw error;
+  }
+
+  if (data.idCardFront) {
+    data.idCardFront = await uploadLegalDocument(data.idCardFront);
+  }
+  if (data.idCardBack) {
+    data.idCardBack = await uploadLegalDocument(data.idCardBack);
+  }
+  if (data.businessLicense) {
+    data.businessLicense = await uploadLegalDocument(data.businessLicense);
   }
 
   const prismaData = mapBusinessDataToPrisma(data);
@@ -272,6 +301,14 @@ export const updateProfile = async (data, userId) => {
     throw error;
   }
 
+  if (business.status === BUSINESS_STATUS.TERMINATED) {
+    const error = new Error(
+      "Hợp đồng doanh nghiệp đã chấm dứt. Không thể cập nhật hồ sơ.",
+    );
+    error.statusCode = 410;
+    throw error;
+  }
+
   if (
     data.bankAccountNumber != null &&
     data.bankAccountNumber !== "" &&
@@ -282,7 +319,46 @@ export const updateProfile = async (data, userId) => {
     throw error;
   }
 
+  if (data.idCardFront) {
+    data.idCardFront = await uploadLegalDocument(data.idCardFront);
+  }
+  if (data.idCardBack) {
+    data.idCardBack = await uploadLegalDocument(data.idCardBack);
+  }
+  if (data.businessLicense) {
+    data.businessLicense = await uploadLegalDocument(data.businessLicense);
+  }
+
+  // Rate limit: max 3 document uploads per 24h
+  const DOC_UPLOAD_FIELDS = ["idCardFront", "idCardBack", "businessLicense"];
+  const hasNewUploads = DOC_UPLOAD_FIELDS.some(
+    (f) => data[f] && !data[f].startsWith("http"),
+  );
+
   const prismaData = mapBusinessDataToPrisma(data);
+
+  if (hasNewUploads) {
+    const now = new Date();
+    const lastUpload = business.lastUploadAt ? new Date(business.lastUploadAt) : null;
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // Reset counter if last upload was more than 24h ago
+    const currentCount = (lastUpload && lastUpload >= twentyFourHoursAgo)
+      ? business.documentUploadCount || 0
+      : 0;
+
+    const newCount = currentCount + 1;
+
+    if (newCount > 3) {
+      // Flag as SUSPICIOUS — auto-lock
+      prismaData.status = BUSINESS_STATUS.SUSPICIOUS;
+      prismaData.suspensionReason = "Tải lên tài liệu quá 3 lần trong 24 giờ — có thể hoạt động đáng ngờ";
+    }
+
+    prismaData.documentUploadCount = newCount;
+    prismaData.lastUploadAt = now;
+  }
+
   const profileData = {
     fullName: data.fullName,
     phone: data.phone,
@@ -291,24 +367,39 @@ export const updateProfile = async (data, userId) => {
   const hasProfileUpdates = Object.values(profileData).some(
     (value) => value !== undefined,
   );
-  const hasVerificationUpdates =
-    data.businessName !== undefined ||
-    data.businessType !== undefined ||
-    data.taxCode !== undefined ||
-    data.idCardNumber !== undefined ||
-    data.idCardFront !== undefined ||
-    data.idCardBack !== undefined ||
-    data.businessLicense !== undefined;
 
+  // Sensitive fields that trigger re-verification
+  const SENSITIVE_FIELDS = [
+    "businessName", "businessType", "taxCode",
+    "idCardNumber", "idCardFront", "idCardBack",
+    "businessLicense", "bankAccountNumber", "bankAccountOwner", "bankName",
+  ];
+
+  // Track which sensitive fields actually changed (diff)
+  const changedFields = SENSITIVE_FIELDS.filter((field) => {
+    if (data[field] === undefined) return false;
+    const prismaKey = field === "bankAccountNumber" ? "bankAccount"
+      : field === "bankAccountOwner" ? "bankOwner" : field;
+    const oldValue = business[prismaKey];
+    const newValue = prismaData[prismaKey];
+    // Compare: if old was null and new has value, or values differ
+    if (newValue === undefined) return false;
+    return String(oldValue ?? "") !== String(newValue ?? "");
+  });
+
+  const hasVerificationUpdates = changedFields.length > 0;
+
+  // Per-item reset: only reset status if sensitive fields changed, don't reset contract
   if (
     business.status === BUSINESS_STATUS.REJECTED ||
-    (hasVerificationUpdates && business.status !== BUSINESS_STATUS.PENDING)
+    (hasVerificationUpdates && business.status === BUSINESS_STATUS.APPROVED)
   ) {
     prismaData.status = BUSINESS_STATUS.PENDING;
     prismaData.rejectionReason = null;
     prismaData.approvedBy = null;
     prismaData.approvedAt = null;
-    prismaData.contractSigned = false;
+    // Don't reset contractSigned — only reset if contract-related fields changed
+    // Contract remains valid unless business itself is rejected
   }
 
   const updated = await prisma.$transaction(async (tx) => {
@@ -327,6 +418,7 @@ export const updateProfile = async (data, userId) => {
     });
   });
 
+  // Emit RESUBMITTED if status changed back to PENDING
   if (
     business.status !== BUSINESS_STATUS.PENDING &&
     updated.status === BUSINESS_STATUS.PENDING
@@ -335,6 +427,15 @@ export const updateProfile = async (data, userId) => {
       businessId: updated.id,
       ownerId: updated.ownerId,
       businessName: updated.businessName,
+    });
+  }
+
+  // Emit DOCUMENT_UPDATED with diff for admin notification
+  if (changedFields.length > 0) {
+    eventEmitter.emit(EVENTS.BUSINESS.DOCUMENT_UPDATED, {
+      businessId: updated.id,
+      ownerId: updated.ownerId,
+      changedFields,
     });
   }
 

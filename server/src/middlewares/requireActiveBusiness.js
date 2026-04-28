@@ -45,7 +45,35 @@ export const requireActiveBusiness = (options = {}) => {
         });
       }
 
+      if (business.status === BUSINESS_STATUS.TERMINATED) {
+        return res.status(410).json({
+          success: false,
+          data: null,
+          message: "Hợp đồng doanh nghiệp đã chấm dứt. Tài khoản ở chế độ chỉ đọc.",
+          errorCode: "BUSINESS_TERMINATED",
+        });
+      }
+
+      if (business.status === BUSINESS_STATUS.SUSPICIOUS) {
+        // Allow read-only access for GET requests
+        if (req.method === "GET") {
+          req.activeBusiness = business;
+          return next();
+        }
+        return res.status(423).json({
+          success: false,
+          data: null,
+          message: "Tài khoản doanh nghiệp đang bị khóa do hoạt động đáng ngờ. Vui lòng liên hệ quản trị viên.",
+          errorCode: "BUSINESS_SUSPICIOUS",
+        });
+      }
+
       if (business.status === BUSINESS_STATUS.SUSPENDED) {
+        // Allow read-only access for GET requests
+        if (req.method === "GET") {
+          req.activeBusiness = business;
+          return next();
+        }
         return res.status(423).json({
           success: false,
           data: null,

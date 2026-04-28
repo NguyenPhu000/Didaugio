@@ -69,6 +69,7 @@ model UserPermission {
 model User {
   id                 Int                  @id @default(autoincrement())
   email              String               @unique
+  username           String               @unique
   password           String
   roleId             Int                  @default(5) @map("role_id")
   status             String               @default("active")
@@ -90,6 +91,8 @@ model User {
   feedbackReports    FeedbackReport[]     @relation("Reporter")
   resolvedReports    FeedbackReport[]     @relation("Resolver")
   notifications      NotificationGlobal[]
+  notificationRecipients NotificationRecipient[]
+  pushSubscription   PushSubscription?
   passwordResets     PasswordReset[]
   payments           Payment[]
   approvedPlaces     Place[]              @relation("ApprovedBy")
@@ -112,6 +115,7 @@ model UserProfile {
   id                   Int       @id @default(autoincrement())
   userId               Int       @unique @map("user_id")
   fullName             String?   @map("full_name")
+  nickname             String?
   phone                String?
   avatar               String?
   dateOfBirth          DateTime? @map("date_of_birth") @db.Date
@@ -273,13 +277,46 @@ model NotificationGlobal {
   scheduledAt   DateTime? @map("scheduled_at")
   sentAt        DateTime? @map("sent_at")
   status        String    @default("draft")
+  readAt        DateTime? @map("read_at")
   successCount  Int       @default(0) @map("success_count")
   failCount     Int       @default(0) @map("fail_count")
   createdBy     Int       @map("created_by")
   createdAt     DateTime  @default(now()) @map("created_at")
   createdByUser User      @relation(fields: [createdBy], references: [id])
+  recipients    NotificationRecipient[]
 
   @@map("notifications_global")
+}
+
+model NotificationRecipient {
+  id             Int                @id @default(autoincrement())
+  notificationId Int                @map("notification_id")
+  userId         Int                @map("user_id")
+  businessId     Int?               @map("business_id")
+  roleId         Int?               @map("role_id")
+  readAt         DateTime?          @map("read_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  notification   NotificationGlobal @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business       Business?          @relation(fields: [businessId], references: [id], onDelete: SetNull)
+
+  @@unique([notificationId, userId])
+  @@index([userId, readAt(sort: Desc), createdAt(sort: Desc)])
+  @@index([businessId, readAt])
+  @@index([roleId, readAt])
+  @@map("notification_recipients")
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+  endpoint  String
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
 }
 
 model DistrictCantho {
@@ -685,8 +722,13 @@ model Business {
   commissionRate   Decimal           @default(10.00) @map("commission_rate") @db.Decimal(4, 2)
   status           String            @default("pending")
   rejectionReason  String?           @map("rejection_reason")
+  suspensionReason String?           @map("suspension_reason")
+  terminationReason String?         @map("termination_reason")
+  documentUploadCount Int            @default(0) @map("document_upload_count")
+  lastUploadAt       DateTime?       @map("last_upload_at")
   approvedBy       Int?              @map("approved_by")
   approvedAt       DateTime?         @map("approved_at")
+  terminatedAt     DateTime?         @map("terminated_at")
   createdAt        DateTime          @default(now()) @map("created_at")
   updatedAt        DateTime          @updatedAt @map("updated_at")
   contractSignedAt DateTime?         @map("contract_signed_at")
@@ -694,6 +736,7 @@ model Business {
   signerMetadata   Json?             @map("signer_metadata")
   autoApproveRules AutoApproveRule[]
   bookings         Booking[]
+  notificationRecipients NotificationRecipient[]
   services         BusinessService[]
   owner            User              @relation(fields: [ownerId], references: [id])
   places           Place[]

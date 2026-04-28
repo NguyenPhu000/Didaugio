@@ -998,7 +998,7 @@ export const hardDeletePlace = async (id) => {
 export const approvePlace = async (id, userId) => {
   const existing = await prisma.place.findUnique({
     where: { id, deletedAt: null },
-    select: { id: true, status: true },
+    select: { id: true, status: true, createdBy: true },
   });
 
   if (!existing) {
@@ -1043,7 +1043,7 @@ export const approvePlace = async (id, userId) => {
 export const rejectPlace = async (id, userId, reason) => {
   const existing = await prisma.place.findUnique({
     where: { id, deletedAt: null },
-    select: { id: true, status: true },
+    select: { id: true, status: true, createdBy: true },
   });
 
   if (!existing) {
@@ -1156,7 +1156,7 @@ export const toggleFeatured = async (id, isFeatured) => {
 export const submitForReview = async (id) => {
   const existing = await prisma.place.findUnique({
     where: { id, deletedAt: null },
-    select: { id: true, status: true },
+    select: { id: true, status: true, businessId: true },
   });
 
   if (!existing) {
@@ -1176,6 +1176,21 @@ export const submitForReview = async (id) => {
       "Chỉ có thể gửi duyệt từ trạng thái Bản nháp hoặc Bị từ chối",
       400,
     );
+  }
+
+  // KYC Lock: Block publish if business hasn't signed contract
+  if (existing.businessId) {
+    const business = await prisma.business.findUnique({
+      where: { id: existing.businessId },
+      select: { contractSigned: true, status: true },
+    });
+    if (business && !business.contractSigned) {
+      throw new ServiceError(
+        ERROR_CODES.INVALID_INPUT,
+        "Vui lòng ký hợp đồng doanh nghiệp trước khi đăng địa điểm",
+        403,
+      );
+    }
   }
 
   const place = await prisma.place.update({

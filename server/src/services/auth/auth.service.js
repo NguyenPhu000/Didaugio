@@ -22,6 +22,8 @@ import {
 import * as emailVerificationService from "../activity/emailVerification.service.js";
 import * as passwordResetService from "../activity/passwordReset.service.js";
 import ServiceError from "../../utils/serviceError.js";
+import { generateUniqueUsername } from "../../utils/username.js";
+import { OAuth2Client } from "google-auth-library";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -118,13 +120,26 @@ export const register = async (data) => {
     throw new ServiceError(ERROR_MESSAGES.EXISTED, 400, ERROR_CODES.EXISTED);
   }
 
-  // Hash password
-  const hashedPassword = await bcrypt.hash(validated.password, 12);
+  // Check existing username
+  const existingUsername = await prisma.user.findUnique({
+    where: { username: validated.username },
+  });
+  if (existingUsername) {
+    throw new ServiceError(
+      "Username da duoc su dung",
+      400,
+      ERROR_CODES.EXISTED,
+    );
+  }
+
+  // Hash password with increased cost factor (13 rounds ~ 2x slower than 12)
+  const hashedPassword = await bcrypt.hash(validated.password, 13);
 
   // Create user - Default to BUSINESS role (3) for web registration
   const user = await prisma.user.create({
     data: {
       email: validated.email,
+      username: validated.username,
       password: hashedPassword,
       roleId: validated.roleId || 3, // Default: BUSINESS, not GUEST
       status: USER_STATUS.ACTIVE, // Assuming active by default for now
@@ -169,13 +184,25 @@ export const register = async (data) => {
 export const login = async (data, clientInfo = {}) => {
   const validated = loginSchema.parse(data);
 
-  const user = await prisma.user.findUnique({
-    where: { email: validated.email },
-    include: {
-      role: true,
-      profile: true,
-    },
-  });
+  // Find user by email or username
+  let user;
+  if (validated.email) {
+    user = await prisma.user.findUnique({
+      where: { email: validated.email },
+      include: {
+        role: true,
+        profile: true,
+      },
+    });
+  } else if (validated.username) {
+    user = await prisma.user.findUnique({
+      where: { username: validated.username },
+      include: {
+        role: true,
+        profile: true,
+      },
+    });
+  }
 
   if (!user) {
     throw new ServiceError(
@@ -461,7 +488,7 @@ export const changePassword = async (userId, data) => {
     );
   }
 
-  const hashedPassword = await bcrypt.hash(validated.newPassword, 12);
+  const hashedPassword = await bcrypt.hash(validated.newPassword, 13);
 
   await prisma.user.update({
     where: { id: userId },
@@ -480,10 +507,12 @@ export const forgotPassword = async (data, ipAddress = null) => {
 
   const result = await passwordResetService.create(validated.email, ipAddress);
 
+  // SECURITY: Never return reset token in response, even in development
+  // Token should only be sent via email channel
+  void result; // Acknowledge usage to prevent lint errors
+
   return {
     message: "Nếu email tồn tại, bạn sẽ nhận được link đặt lại mật khẩu",
-    ...(process.env.NODE_ENV === "development" &&
-      result?.rawToken && { resetToken: result.rawToken }),
   };
 };
 
@@ -623,24 +652,19 @@ export const loginWithGoogle = async (
     options.expectedAudience || process.env.GOOGLE_CLIENT_ID || null;
   const expectedNonce = options.expectedNonce || null;
 
-  // Xác thực id_token với Google (không cần thêm package)
-  const tokenInfoRes = await fetch(
-    `https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${idToken}`,
-  );
-
-  if (!tokenInfoRes.ok) {
+  // Xác thực id_token với google-auth-library
+  const client = new OAuth2Client(expectedAudience);
+  let tokenInfo;
+  
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: expectedAudience,
+    });
+    tokenInfo = ticket.getPayload();
+  } catch (error) {
     throw new ServiceError(
-      "id_token Google không hợp lệ hoặc đã hết hạn",
-      401,
-      "INVALID_GOOGLE_TOKEN",
-    );
-  }
-
-  const tokenInfo = await tokenInfoRes.json();
-
-  if (tokenInfo.error) {
-    throw new ServiceError(
-      `Google token error: ${tokenInfo.error_description || tokenInfo.error}`,
+      `Google token error: ${error.message}`,
       401,
       "INVALID_GOOGLE_TOKEN",
     );
@@ -707,12 +731,20 @@ export const loginWithGoogle = async (
   });
 
   if (!user) {
+    const generatedUsername = await generateUniqueUsername({
+      prismaClient: prisma,
+      email,
+      preferred: name,
+      fallback: "google_user",
+    });
+
     // Tạo tài khoản mới với role USER (5) — khách du lịch dùng mobile app
     // ROLES.USER = 5: regular tourist, không phải STAFF nội bộ hay GUEST ẩn danh
     user = await prisma.user.create({
       data: {
         email,
-        password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 12),
+        username: generatedUsername,
+        password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 13),
         roleId: ROLES.USER, // 5 — USER role: khách du lịch đã xác thực qua Google
         status: USER_STATUS.ACTIVE,
         emailVerified: true, // Google đã xác thực rồi
@@ -728,12 +760,24 @@ export const loginWithGoogle = async (
   } else {
     const shouldUpdateAvatar = picture && !user.profile?.avatar;
     const shouldVerifyEmail = !user.emailVerified;
+    const shouldBackfillUsername = !user.username;
 
-    if (shouldUpdateAvatar || shouldVerifyEmail) {
+    const nextUsername = shouldBackfillUsername
+      ? await generateUniqueUsername({
+          prismaClient: prisma,
+          email,
+          preferred: name,
+          fallback: "google_user",
+          excludeUserId: user.id,
+        })
+      : null;
+
+    if (shouldUpdateAvatar || shouldVerifyEmail || shouldBackfillUsername) {
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
           ...(shouldVerifyEmail ? { emailVerified: true } : {}),
+          ...(shouldBackfillUsername ? { username: nextUsername } : {}),
           ...(shouldUpdateAvatar
             ? {
                 profile: {

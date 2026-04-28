@@ -174,9 +174,9 @@ export const reset = async (rawToken, newPassword) => {
     throw error;
   }
 
-  // Hash new password
+  // Hash new password with increased cost factor
   const bcrypt = await import("bcrypt");
-  const hashedPassword = await bcrypt.hash(newPassword, 12);
+  const hashedPassword = await bcrypt.hash(newPassword, 13);
 
   // Update password, revoke all sessions, and mark token as used
   await prisma.$transaction([

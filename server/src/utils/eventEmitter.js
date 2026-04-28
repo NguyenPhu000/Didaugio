@@ -32,6 +32,10 @@ export const EVENTS = {
     APPROVED: "business:approved",
     REJECTED: "business:rejected",
     RESUBMITTED: "business:resubmitted",
+    SUSPENDED: "business:suspended",
+    REACTIVATED: "business:reactivated",
+    TERMINATED: "business:terminated",
+    DOCUMENT_UPDATED: "business:document_updated",
   },
 };
 

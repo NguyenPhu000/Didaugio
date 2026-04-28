@@ -15,6 +15,17 @@ export const createUserSchema = z.object({
     .toLowerCase()
     .trim(),
 
+  username: z
+    .string()
+    .min(3, "Username phải có ít nhất 3 ký tự")
+    .max(30, "Username tối đa 30 ký tự")
+    .trim()
+    .regex(
+      /^[a-zA-Z0-9_]{3,30}$/,
+      "Username chỉ được chứa chữ cái, số và dấu gạch dưới",
+    )
+    .optional(),
+
   password: z
     .string({ required_error: "Mật khẩu không được để trống" })
     .min(6, "Mật khẩu phải có ít nhất 6 ký tự")
@@ -30,6 +41,7 @@ export const createUserSchema = z.object({
     }),
 
   fullName: z.string().max(100).optional(),
+  nickname: z.string().min(2).max(50).optional(),
   phone: z.string().max(20).optional(),
   gender: z.enum(["male", "female", "other"]).optional(),
   dateOfBirth: z.string().optional(),
@@ -45,6 +57,17 @@ export const updateUserSchema = z.object({
     .email("Email không hợp lệ")
     .toLowerCase()
     .trim()
+    .optional(),
+
+  username: z
+    .string()
+    .min(3, "Username phải có ít nhất 3 ký tự")
+    .max(30, "Username tối đa 30 ký tự")
+    .trim()
+    .regex(
+      /^[a-zA-Z0-9_]{3,30}$/,
+      "Username chỉ được chứa chữ cái, số và dấu gạch dưới",
+    )
     .optional(),
 
   password: z
@@ -66,6 +89,7 @@ export const updateUserSchema = z.object({
 
   emailVerified: z.boolean().optional(),
   fullName: z.string().max(100).optional(),
+  nickname: z.string().min(2).max(50).optional().nullable(),
   phone: z.string().max(20).optional(),
   gender: z.enum(["male", "female", "other"]).optional(),
   dateOfBirth: z.string().optional(),

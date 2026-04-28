@@ -32,6 +32,7 @@ export const ADMIN_ROUTES = {
   PLACES: "/admin/places",
   PLACES_PENDING: "/admin/places/pending",
   PLACES_NEW: "/admin/places/new",
+  PLACES_EDIT_PATTERN: "/admin/places/edit/:id",
   PLACES_EDIT: (id) => `/admin/places/edit/${id}`,
 
   BUSINESS_LIST: "/admin/business",

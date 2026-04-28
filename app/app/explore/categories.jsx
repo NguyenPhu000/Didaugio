@@ -1,17 +1,131 @@
-import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { memo, useMemo } from "react";
 import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../src/constants/design-tokens";
-import { useCategories } from "../../src/modules/explore/hooks/useExplore";
-import { getCategoryIcon } from "../../src/modules/explore/utils/exploreHelpers";
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { TOKENS } from "../../src/constants/design-tokens";
+import {
+  useCategories,
+  useExplore,
+} from "../../src/modules/explore/hooks/useExplore";
 import { ExploreListScaffold } from "../../src/modules/explore/components/ExploreListScaffold";
+import {
+  SmallPlaceCard,
+  SMALL_CARD_W,
+} from "../../src/modules/explore/components/SmallPlaceCard";
 
-export default function ExploreCategoriesScreen() {
+// Map custom modern icons for categories
+const CATEGORY_ICON_MAP = {
+  "ẩm thực": "silverware-fork-knife",
+  "khách sạn": "bed-outline",
+  "lưu trú": "bed-outline",
+  "cafe": "coffee-outline",
+  "cà phê": "coffee-outline",
+  "mua sắm": "shopping-outline",
+  "chợ": "storefront-outline",
+  "văn hóa": "bank-outline",
+  "bảo tàng": "bank-outline",
+  "lịch sử": "bank-outline",
+  "thiên nhiên": "leaf",
+  "sinh thái": "pine-tree",
+  "sự kiện": "calendar-blank-outline",
+  "chùa": "temple-buddhist",
+  "giải trí": "gamepad-variant-outline",
+  "phương tiện": "bus",
+  "di chuyển": "car-outline",
+  "biển": "beach",
+};
+
+function getModernIcon(name) {
+  const lower = name.toLowerCase();
+  for (const [key, icon] of Object.entries(CATEGORY_ICON_MAP)) {
+    if (lower.includes(key)) return icon;
+  }
+  return "shape-outline";
+}
+
+// ==== CATEGORY ROW SECTION ====
+const CategorySection = memo(function CategorySection({ category }) {
   const router = useRouter();
+  // Fetch places specific to this category
+  const { data, isLoading } = useExplore({
+    categoryId: category.id,
+    enabled: true,
+  });
+
+  const places = useMemo(
+    () => data?.pages.flatMap((p) => p?.data || []) ?? [],
+    [data],
+  );
+
+  // If no places and done loading, hide the row entirely
+  if (!isLoading && places.length === 0) return null;
+
+  return (
+    <View style={styles.sectionContainer}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleWrap}>
+          <View style={styles.sectionIcon}>
+            <MaterialCommunityIcons name={category.icon} size={18} color="#000" />
+          </View>
+          <Text style={styles.sectionTitle}>{category.name}</Text>
+        </View>
+
+        <Pressable
+          hitSlop={10}
+          onPress={() =>
+            router.push({
+              pathname: "/explore/category/[id]",
+              params: { id: String(category.id) },
+            })
+          }
+          style={({ pressed }) => [
+            styles.viewAllBtn,
+            pressed && { opacity: 0.6 },
+          ]}
+        >
+          <Text style={styles.viewAllText}>Xem tất cả</Text>
+          <MaterialCommunityIcons name="chevron-right" size={16} color="#6B7280" />
+        </Pressable>
+      </View>
+
+      {isLoading ? (
+        <View style={styles.loaderWrap}>
+          <ActivityIndicator color="#000" />
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          snapToInterval={SMALL_CARD_W + 16}
+          decelerationRate="fast"
+        >
+          {places.slice(0, 8).map((place) => ( // Show max 8 places per row inline
+            <View key={place.id} style={styles.cardWrapper}>
+              <SmallPlaceCard
+                place={place}
+                onPress={() =>
+                  router.push({ pathname: "/place/[id]", params: { id: place.id } })
+                }
+              />
+            </View>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+});
+
+// ==== MAIN SCREEN ====
+export default function ExploreCategoriesScreen() {
   const { data: categories = [], isLoading } = useCategories();
 
   const items = useMemo(
@@ -19,94 +133,93 @@ export default function ExploreCategoriesScreen() {
       categories.map((c) => ({
         id: c.id,
         name: c.name,
-        icon: getCategoryIcon(c.name),
+        icon: getModernIcon(c.name),
       })),
     [categories],
   );
 
   return (
     <ExploreListScaffold
-      title="Danh mục"
-      subtitle="Chọn chủ đề bạn muốn khám phá."
+      title="Khám phá theo danh mục"
+      subtitle="Tìm điểm đến hoàn hảo cho bạn."
     >
-      <View style={styles.list}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.mainScroll}
+      >
         {isLoading ? (
-          <Text style={styles.loadingText}>Đang tải...</Text>
+          <Text style={styles.loadingText}>Đang tải danh mục...</Text>
         ) : (
           items.map((item) => (
-            <Pressable
-              key={item.id}
-              onPress={() =>
-                router.push({
-                  pathname: "/explore/category/[id]",
-                  params: { id: String(item.id) },
-                })
-              }
-              style={({ pressed }) => [
-                styles.row,
-                pressed && { opacity: 0.95, transform: [{ scale: 0.99 }] },
-              ]}
-            >
-              <View style={styles.iconWrap}>
-                <MaterialIcons name={item.icon} size={20} color={APPLE_THEME.primary} />
-              </View>
-              <Text style={styles.name} numberOfLines={1}>
-                {item.name}
-              </Text>
-              <MaterialIcons
-                name="chevron-right"
-                size={20}
-                color={APPLE_THEME.textMuted}
-              />
-            </Pressable>
+            <CategorySection key={item.id} category={item} />
           ))
         )}
-      </View>
+      </ScrollView>
     </ExploreListScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  list: {
-    paddingHorizontal: TOKENS.space[6],
-    paddingTop: 16,
-    paddingBottom: 24,
-    gap: 10,
+  mainScroll: {
+    paddingTop: 10,
+    paddingBottom: 80,
+    gap: 36, // Large spacing between category rows like App Store
   },
   loadingText: {
-    color: APPLE_THEME.textSecondary,
+    color: "#6B7280",
     fontSize: 14,
     fontFamily: TOKENS.font.body,
-    paddingVertical: 20,
+    paddingVertical: 30,
     textAlign: "center",
   },
-  row: {
+  sectionContainer: {
+    // each section block
+  },
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: TOKENS.radius["3xl"],
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-    ...TOKENS.shadow.sm,
+    justifyContent: "space-between",
+    paddingHorizontal: TOKENS.space[6],
+    marginBottom: 14,
   },
-  iconWrap: {
-    width: 42,
-    height: 42,
+  sectionTitleWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sectionIcon: {
+    width: 28,
+    height: 28,
     borderRadius: 14,
+    backgroundColor: "#F3F4F6", 
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: APPLE_THEME.surfaceElevated,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.border,
   },
-  name: {
-    flex: 1,
-    minWidth: 0,
-    color: APPLE_THEME.text,
-    fontSize: 15.5,
-    fontFamily: TOKENS.font.semibold,
+  sectionTitle: {
+    color: "#000000",
+    fontSize: 22, // App Store big heading
+    fontFamily: TOKENS.font.heading,
+    letterSpacing: -0.5,
+  },
+  viewAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  viewAllText: {
+    color: "#8E8E93", // iOS System secondary color
+    fontSize: 15,
+    fontFamily: TOKENS.font.medium,
+  },
+  loaderWrap: {
+    height: 220,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scrollContent: {
+    paddingHorizontal: TOKENS.space[6],
+    paddingBottom: 8, // slight shadow bleed space
+  },
+  cardWrapper: {
+    marginRight: 16,
   },
 });
-

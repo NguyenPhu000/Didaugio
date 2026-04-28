@@ -41,12 +41,12 @@ export const validateSchema = (schema, source = "body") => {
         });
       }
 
+      console.error("[validateSchema] Internal error:", error);
       return res.status(500).json({
         success: false,
         data: null,
-        message: "Lỗi xử lý validation",
+        message: "Lỗi hệ thống, vui lòng thử lại sau",
         errorCode: ERROR_CODES.INTERNAL_ERROR,
-        error: error.message,
       });
     }
   };

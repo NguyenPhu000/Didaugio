@@ -471,6 +471,7 @@ export const getMyProfileSummary = async (userId) => {
   return {
     id: user.id,
     email: user.email,
+    username: user.username,
     status: user.status,
     profile: user.profile,
     stats: user._count,
