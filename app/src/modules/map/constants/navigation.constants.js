@@ -1,0 +1,1 @@
+export const NAVIGATION_EVENT_DEDUP_MS = 1800;

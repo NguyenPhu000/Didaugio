@@ -15,6 +15,7 @@ import { useState } from "react";
 import {
   Button,
   Avatar,
+  AvatarImage,
   AvatarFallback,
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,7 @@ import AnimatedIcon from "@/components/ui/animated-icon";
 import { ROLE_NAMES } from "@/constants/constants";
 import { cn } from "@/lib/utils";
 import { useLogout } from "@/hooks/useLogout";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -48,9 +50,36 @@ const Navbar = () => {
     { label: "Cai dat", path: "/settings", icon: Settings, type: "rotate" },
   ];
 
-  const getInitials = (email) => {
+  const getInitials = (displayName, email) => {
+    if (displayName) {
+      return String(displayName).charAt(0).toUpperCase();
+    }
     return email ? email.charAt(0).toUpperCase() : "U";
   };
+
+  const resolveRoleLabel = () => {
+    if (ROLE_NAMES[user?.roleId]) {
+      return ROLE_NAMES[user.roleId];
+    }
+
+    const rawRole = String(user?.role?.name || user?.roleName || "").trim();
+    const normalizedRole = rawRole.toLowerCase().replace(/\s+/g, "_");
+    if (normalizedRole === "member") {
+      return ROLE_NAMES[5] || "User";
+    }
+
+    const numericRoleMatch = rawRole.match(/^ROLE[-_\s]?(\d+)$/i);
+    if (numericRoleMatch) {
+      const roleById = ROLE_NAMES[Number(numericRoleMatch[1])];
+      if (roleById) return roleById;
+    }
+
+    return rawRole || "User";
+  };
+
+  const displayName = user?.fullName || user?.profile?.fullName || user?.email;
+  const avatarSrc = resolveMediaUrl(user?.avatar || user?.profile?.avatar);
+  const roleLabel = resolveRoleLabel().toUpperCase();
 
   return (
     <nav className="bg-[#1A1A1A] text-white border-b border-white/10 sticky top-0 z-50 shadow-md">
@@ -114,8 +143,12 @@ const Navbar = () => {
                   className="relative h-10 w-10 rounded-full hover:bg-white/10 ring-offset-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                 >
                   <Avatar className="h-9 w-9 border border-white/20">
+                    <AvatarImage
+                      src={avatarSrc || undefined}
+                      alt={displayName || "Avatar"}
+                    />
                     <AvatarFallback className="bg-[#1A1A1A] text-white text-xs font-mono">
-                      {getInitials(user?.email)}
+                      {getInitials(displayName, user?.email)}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -128,10 +161,10 @@ const Navbar = () => {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none text-white uppercase tracking-wider">
-                      {user?.email}
+                      {displayName}
                     </p>
                     <p className="text-[10px] leading-none text-gray-500 font-mono mt-1">
-                      {ROLE_NAMES[user?.roleId]} // USER
+                      {roleLabel}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -203,10 +236,10 @@ const Navbar = () => {
                 <div className="flex items-center justify-between px-3">
                   <div>
                     <p className="text-sm font-medium text-white">
-                      {user?.email}
+                      {displayName}
                     </p>
                     <p className="text-[10px] text-gray-500 font-mono mt-1">
-                      {ROLE_NAMES[user?.roleId]}
+                      {roleLabel}
                     </p>
                   </div>
                   <Button

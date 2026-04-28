@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import * as SecureStore from "expo-secure-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const ACCESS_TOKEN_KEY = "didaugio_access_token";
 const REFRESH_TOKEN_KEY = "didaugio_refresh_token";
@@ -58,7 +59,7 @@ export const useAuthStore = create((set, get) => ({
         await Promise.all([
           safeGetItem(ACCESS_TOKEN_KEY),
           safeGetItem(REFRESH_TOKEN_KEY),
-          safeGetItem(USER_KEY),
+          AsyncStorage.getItem(USER_KEY),
         ]);
 
       accessToken = storedAccessToken || null;
@@ -69,7 +70,7 @@ export const useAuthStore = create((set, get) => ({
           user = JSON.parse(userJson);
         } catch {
           user = null;
-          await safeDeleteItem(USER_KEY);
+          await AsyncStorage.removeItem(USER_KEY);
         }
       }
 
@@ -112,8 +113,8 @@ export const useAuthStore = create((set, get) => ({
         ? safeSetItem(REFRESH_TOKEN_KEY, nextRefreshToken)
         : safeDeleteItem(REFRESH_TOKEN_KEY),
       nextUser
-        ? safeSetItem(USER_KEY, JSON.stringify(nextUser))
-        : safeDeleteItem(USER_KEY),
+        ? AsyncStorage.setItem(USER_KEY, JSON.stringify(nextUser))
+        : AsyncStorage.removeItem(USER_KEY),
     ]);
   },
 
@@ -129,7 +130,7 @@ export const useAuthStore = create((set, get) => ({
     await Promise.all([
       safeDeleteItem(ACCESS_TOKEN_KEY),
       safeDeleteItem(REFRESH_TOKEN_KEY),
-      safeDeleteItem(USER_KEY),
+      AsyncStorage.removeItem(USER_KEY),
     ]);
   },
 

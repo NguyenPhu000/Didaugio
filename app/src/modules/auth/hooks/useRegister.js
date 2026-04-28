@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { registerApi } from "../api/authApi";
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 
 export function useRegister() {
   const [isLoading, setIsLoading] = useState(false);
@@ -9,12 +10,13 @@ export function useRegister() {
   const [successMessage, setSuccessMessage] = useState(null);
 
   const register = useCallback(
-    async ({ fullName, email, password, confirmPassword }) => {
+    async ({ fullName, username, email, password, confirmPassword }) => {
       setError(null);
       setSuccessMessage(null);
 
       const normalizedEmail = email.trim().toLowerCase();
       const trimmedFullName = fullName.trim();
+      const trimmedUsername = String(username || "").trim();
 
       if (trimmedFullName.length < 2) {
         setError("Họ tên phải có ít nhất 2 ký tự.");
@@ -23,6 +25,18 @@ export function useRegister() {
 
       if (!normalizedEmail) {
         setError("Vui lòng nhập email.");
+        return false;
+      }
+
+      if (!trimmedUsername) {
+        setError("Vui lòng nhập username.");
+        return false;
+      }
+
+      if (!USERNAME_REGEX.test(trimmedUsername)) {
+        setError(
+          "Username phải từ 3-30 ký tự và chỉ gồm chữ, số, dấu gạch dưới.",
+        );
         return false;
       }
 
@@ -49,6 +63,7 @@ export function useRegister() {
       setIsLoading(true);
       try {
         const res = await registerApi({
+          username: trimmedUsername,
           email: normalizedEmail,
           password,
           confirmPassword,
@@ -56,12 +71,12 @@ export function useRegister() {
         });
 
         setSuccessMessage(
-          res?.message || "Đăng ký thành công. Vui lòng kiểm tra email để xác thực.",
+          res?.message ||
+            "Đăng ký thành công. Vui lòng kiểm tra email để xác thực.",
         );
         return true;
       } catch (err) {
-        const msg =
-          err?.message || "Đăng ký thất bại. Vui lòng thử lại.";
+        const msg = err?.message || "Đăng ký thất bại. Vui lòng thử lại.";
         setError(msg);
         return false;
       } finally {

@@ -19,23 +19,19 @@ import {
   CATEGORY_MARKER_STYLES,
   DEFAULT_CATEGORY_ICON,
 } from "./config/mapConfig";
+import { MAP_TEXT } from "./constants/mapText.constants";
+import {
+  BUDGET_PRICE_RANGES,
+  PREMIUM_PRICE_RANGES,
+  QUICK_FILTER_OPTIONS,
+} from "./constants/filter.constants";
 import {
   PlacePreviewCard,
   getPlaceRatingValue,
   getPlaceReviewCount,
 } from "../../components/composed/PlacePreviewCard";
+import { isPlaceOpenNow } from "./utils/placeFilter";
 import { TOKENS } from "../../constants/design-tokens";
-
-const QUICK_FILTER_OPTIONS = [
-  { key: "topRated", label: "Danh gia cao", icon: "star" },
-  { key: "trending", label: "Trending", icon: "local-fire-department" },
-  { key: "budget", label: "Gia re", icon: "savings" },
-  { key: "premium", label: "Cao cap", icon: "workspace-premium" },
-  { key: "openNow", label: "Mo cua", icon: "schedule" },
-];
-
-const BUDGET_PRICE_RANGES = new Set(["FREE", "BUDGET", "MODERATE"]);
-const PREMIUM_PRICE_RANGES = new Set(["EXPENSIVE", "LUXURY"]);
 
 const toSearchableText = (place) =>
   [
@@ -48,44 +44,6 @@ const toSearchableText = (place) =>
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
-
-const parseTimeToMinutes = (timeText) => {
-  if (typeof timeText !== "string") return null;
-  const [hourText, minuteText] = timeText.split(":");
-  const hour = Number(hourText);
-  const minute = Number(minuteText);
-  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
-  return hour * 60 + minute;
-};
-
-const isPlaceOpenNow = (place) => {
-  const openingHours = Array.isArray(place?.openingHours)
-    ? place.openingHours
-    : [];
-
-  if (openingHours.length === 0) return true;
-
-  const now = new Date();
-  const currentDay = now.getDay();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentSchedule = openingHours.find(
-    (item) => Number(item?.dayOfWeek) === currentDay,
-  );
-
-  if (!currentSchedule) return true;
-  if (currentSchedule?.isClosed) return false;
-
-  const openMinutes = parseTimeToMinutes(currentSchedule?.openTime);
-  const closeMinutes = parseTimeToMinutes(currentSchedule?.closeTime);
-
-  if (openMinutes == null || closeMinutes == null) return true;
-
-  if (closeMinutes >= openMinutes) {
-    return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
-  }
-
-  return currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
-};
 
 const CategoryChip = memo(({ category, active, onToggle }) => {
   const meta =
@@ -298,12 +256,9 @@ export default function MapScreenWeb() {
             color={TOKENS.color.primary[600]}
           />
           <View style={styles.noticeTextWrap}>
-            <Text style={styles.noticeTitle}>
-              Che do web dang su dung danh sach
-            </Text>
+            <Text style={styles.noticeTitle}>{MAP_TEXT.web.noticeTitle}</Text>
             <Text style={styles.noticeSubtext}>
-              Ban do native khong ho tro tren web. Ban van co the tim, loc va mo
-              dia diem tren Google Maps.
+              {MAP_TEXT.web.noticeSubtext}
             </Text>
           </View>
         </View>
@@ -317,14 +272,14 @@ export default function MapScreenWeb() {
           <TextInput
             value={searchText}
             onChangeText={setSearchText}
-            placeholder="Tim kiem dia diem..."
+            placeholder={MAP_TEXT.search.placeholder}
             placeholderTextColor={TOKENS.color.neutral[400]}
             style={styles.searchInput}
             returnKeyType="search"
             onSubmitEditing={() => Keyboard.dismiss()}
           />
           {searchText ? (
-            <Pressable onPress={() => setSearchText(" ".trim())}>
+            <Pressable onPress={() => setSearchText("")}>
               <MaterialIcons
                 name="close"
                 size={18}
@@ -342,7 +297,7 @@ export default function MapScreenWeb() {
             keyboardShouldPersistTaps="handled"
           >
             <CategoryChip
-              category={{ id: null, name: "Tat ca" }}
+              category={{ id: null, name: MAP_TEXT.web.allCategories }}
               active={activeCategoryId === null}
               onToggle={handleCategoryToggle}
             />
@@ -374,13 +329,13 @@ export default function MapScreenWeb() {
         </ScrollView>
 
         <Text style={styles.summaryText}>
-          Tim thay {visiblePlaces.length} dia diem
+          {MAP_TEXT.web.summaryFound(visiblePlaces.length)}
         </Text>
 
         {isPlacesLoading ? (
           <View style={styles.centerState}>
             <ActivityIndicator size="large" color={TOKENS.color.primary[500]} />
-            <Text style={styles.stateText}>Dang tai du lieu...</Text>
+            <Text style={styles.stateText}>{MAP_TEXT.web.loadingPlaces}</Text>
           </View>
         ) : null}
 
@@ -391,14 +346,12 @@ export default function MapScreenWeb() {
               size={24}
               color={TOKENS.color.error}
             />
-            <Text style={styles.stateText}>
-              Khong tai duoc du lieu dia diem
-            </Text>
+            <Text style={styles.stateText}>{MAP_TEXT.web.placesLoadError}</Text>
             <Pressable
               onPress={() => refetchPlaces?.()}
               style={styles.retryButton}
             >
-              <Text style={styles.retryText}>Thu lai</Text>
+              <Text style={styles.retryText}>{MAP_TEXT.errors.retry}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -411,7 +364,7 @@ export default function MapScreenWeb() {
               color={TOKENS.color.neutral[500]}
             />
             <Text style={styles.stateText}>
-              Khong co dia diem phu hop bo loc
+              {MAP_TEXT.web.noPlacesForFilters}
             </Text>
           </View>
         ) : null}
@@ -435,7 +388,9 @@ export default function MapScreenWeb() {
                     size={16}
                     color={TOKENS.color.primary[700]}
                   />
-                  <Text style={styles.mapButtonText}>Mo tren Google Maps</Text>
+                  <Text style={styles.mapButtonText}>
+                    {MAP_TEXT.web.openInGoogleMaps}
+                  </Text>
                 </Pressable>
               </View>
             ))

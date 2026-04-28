@@ -118,13 +118,22 @@ export const reject = async (id, reason) => {
   return response;
 };
 
-export const suspend = async (id) => {
-  const response = await api.put(`${BASE_URL}/${id}/suspend`);
+export const suspend = async (id, suspensionReason) => {
+  const response = await api.put(`${BASE_URL}/${id}/suspend`, {
+    suspensionReason,
+  });
   return response;
 };
 
 export const reactivate = async (id) => {
   const response = await api.put(`${BASE_URL}/${id}/reactivate`);
+  return response;
+};
+
+export const terminate = async (id, terminationReason) => {
+  const response = await api.put(`${BASE_URL}/${id}/terminate`, {
+    terminationReason,
+  });
   return response;
 };
 
@@ -141,4 +150,5 @@ export default {
   reject,
   suspend,
   reactivate,
+  terminate,
 };

@@ -100,29 +100,36 @@ const getClusterVisual = (pointCount) => {
  * PlaceMarker — Image-based marker for New Architecture compatibility.
  * Custom view markers don't work on Fabric, so we use image + pinColor.
  */
-const PlaceMarker = memo(({ place, isActive, onSelectPlace }) => {
-  const handlePress = useCallback(() => {
-    onSelectPlace?.(place);
-  }, [onSelectPlace, place]);
+const PlaceMarker = memo(
+  ({ place, isActive, onSelectPlace, onLongPressPlace }) => {
+    const handlePress = useCallback(() => {
+      onSelectPlace?.(place);
+    }, [onSelectPlace, place]);
 
-  const markerColor = isActive
-    ? "#0284c7"
-    : place?.isFeatured
-      ? "#f59e0b"
-      : CATEGORY_MARKER_STYLES[place?.categoryId]?.color || "#ef4444";
+    const handleLongPress = useCallback(() => {
+      onLongPressPlace?.(place);
+    }, [onLongPressPlace, place]);
 
-  return (
-    <Marker
-      coordinate={{ latitude: place.latitude, longitude: place.longitude }}
-      onPress={handlePress}
-      anchor={{ x: 0.5, y: 1 }}
-      image={place.markerImageUri ? { uri: place.markerImageUri } : undefined}
-      pinColor={markerColor}
-      tracksViewChanges={false}
-      title={place?.name}
-    />
-  );
-});
+    const markerColor = isActive
+      ? "#0284c7"
+      : place?.isFeatured
+        ? "#f59e0b"
+        : CATEGORY_MARKER_STYLES[place?.categoryId]?.color || "#ef4444";
+
+    return (
+      <Marker
+        coordinate={{ latitude: place.latitude, longitude: place.longitude }}
+        onPress={handlePress}
+        onLongPress={handleLongPress}
+        anchor={{ x: 0.5, y: 1 }}
+        image={place.markerImageUri ? { uri: place.markerImageUri } : undefined}
+        pinColor={markerColor}
+        tracksViewChanges={false}
+        title={place?.name}
+      />
+    );
+  },
+);
 
 const MapView = memo(
   forwardRef(
@@ -131,7 +138,9 @@ const MapView = memo(
         places = [],
         selectedPlaceId = null,
         onSelectPlace,
+        onLongPressPlace,
         onPressMap,
+        onLongPressMap,
         style,
         tileUrls,
         mapType = "standard",
@@ -349,6 +358,7 @@ const MapView = memo(
           minZoomLevel={MAP_CONFIGS.CONSTRAINTS.minZoomLevel}
           maxZoomLevel={MAP_CONFIGS.CONSTRAINTS.maxZoomLevel}
           onPress={onPressMap}
+          onLongPress={onLongPressMap}
           onRegionChangeComplete={handleRegionChangeComplete}
           edgePadding={{ top: 120, right: 120, bottom: 120, left: 120 }}
         >
@@ -372,6 +382,7 @@ const MapView = memo(
               place={place}
               isActive={place.id === selectedPlaceId}
               onSelectPlace={onSelectPlace}
+              onLongPressPlace={onLongPressPlace}
             />
           ))}
 

@@ -1,14 +1,34 @@
 import client from "../../../api/client";
 import { ENDPOINTS } from "../../../api/endpoints";
 
+const isEmailIdentifier = (value) => /\S+@\S+\.\S+/.test(value);
+
+const buildLoginPayload = (identifier, password) => {
+  const normalizedIdentifier = String(identifier || "").trim();
+
+  return {
+    ...(isEmailIdentifier(normalizedIdentifier)
+      ? { email: normalizedIdentifier.toLowerCase() }
+      : { username: normalizedIdentifier }),
+    password,
+  };
+};
+
 export const loginGoogleApi = (idToken) =>
   client.post(ENDPOINTS.auth.loginGoogle, { idToken });
 
-export const loginApi = (email, password) =>
-  client.post(ENDPOINTS.auth.login, { email, password });
+export const loginApi = (identifier, password) =>
+  client.post(ENDPOINTS.auth.login, buildLoginPayload(identifier, password));
 
-export const registerApi = ({ email, password, confirmPassword, fullName }) =>
+export const registerApi = ({
+  username,
+  email,
+  password,
+  confirmPassword,
+  fullName,
+}) =>
   client.post(ENDPOINTS.auth.register, {
+    username,
     email,
     password,
     confirmPassword,

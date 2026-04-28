@@ -90,13 +90,13 @@ export default function LoginScreen() {
   const { continueAsGuest } = useAuth();
   const { login, isLoading, error } = useLogin();
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const passwordRef = useRef(null);
 
-  const handleEmailLogin = () => {
-    login(email, password);
+  const handleLogin = () => {
+    login(identifier, password);
   };
 
   return (
@@ -139,14 +139,13 @@ export default function LoginScreen() {
             </Text>
 
             <Field
-              label="Email"
-              icon="mail"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoComplete="email"
-              placeholder="you@example.com"
-              textContentType="emailAddress"
+              label="Email hoặc Username"
+              icon="user"
+              value={identifier}
+              onChangeText={setIdentifier}
+              autoComplete="username"
+              placeholder="you@example.com hoặc username"
+              textContentType="username"
               returnKeyType="next"
               onSubmitEditing={() => passwordRef.current?.focus()}
             />
@@ -164,7 +163,7 @@ export default function LoginScreen() {
               onToggleVisibility={() => setShowPassword((v) => !v)}
               textContentType="password"
               returnKeyType="go"
-              onSubmitEditing={handleEmailLogin}
+              onSubmitEditing={handleLogin}
               inputRef={passwordRef}
             />
 
@@ -183,7 +182,7 @@ export default function LoginScreen() {
             ) : null}
 
             <Pressable
-              onPress={handleEmailLogin}
+              onPress={handleLogin}
               disabled={isLoading}
               style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
             >

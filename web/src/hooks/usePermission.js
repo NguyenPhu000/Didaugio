@@ -1,8 +1,9 @@
 import { useAuthStore } from "@/stores/authStore";
+import { ROLES } from "@/constants/constants";
 
 /**
  * PERMISSION HOOK
- * Hook để check permissions của user
+ * Hook to check user permissions using ROLES constants
  */
 
 export function usePermission() {
@@ -10,16 +11,14 @@ export function usePermission() {
 
   /**
    * Check if user has a specific permission
-   * @param {string} permission - Permission năme (e.g., "category.create")
+   * @param {string} permission - Permission name (e.g., "category.create")
    * @returns {boolean}
    */
   const hasPermission = (permission) => {
     if (!user) return false;
 
-    // Super Admin (roleId = 1) has all permissions
-    if (user.roleId === 1) return true;
+    if (user.roleId === ROLES.SUPER_ADMIN) return true;
 
-    // Check if user has the permission in their permissions array
     if (user.permissions && Array.isArray(user.permissions)) {
       return user.permissions.includes(permission);
     }
@@ -29,24 +28,24 @@ export function usePermission() {
 
   /**
    * Check if user has ANY of the given permissions
-   * @param {string[]} permissions - Array of permission nămes
+   * @param {string[]} permissions - Array of permission names
    * @returns {boolean}
    */
   const hasAnyPermission = (permissions) => {
     if (!user) return false;
-    if (user.roleId === 1) return true;
+    if (user.roleId === ROLES.SUPER_ADMIN) return true;
 
     return permissions.some((permission) => hasPermission(permission));
   };
 
   /**
    * Check if user has ALL of the given permissions
-   * @param {string[]} permissions - Array of permission nămes
+   * @param {string[]} permissions - Array of permission names
    * @returns {boolean}
    */
   const hasAllPermissions = (permissions) => {
     if (!user) return false;
-    if (user.roleId === 1) return true;
+    if (user.roleId === ROLES.SUPER_ADMIN) return true;
 
     return permissions.every((permission) => hasPermission(permission));
   };
@@ -56,7 +55,7 @@ export function usePermission() {
    * @returns {boolean}
    */
   const isSuperAdmin = () => {
-    return user?.roleId === 1;
+    return user?.roleId === ROLES.SUPER_ADMIN;
   };
 
   /**
@@ -64,7 +63,7 @@ export function usePermission() {
    * @returns {boolean}
    */
   const isAdmin = () => {
-    return user?.roleId === 1 || user?.roleId === 2;
+    return user?.roleId === ROLES.SUPER_ADMIN || user?.roleId === ROLES.ADMIN;
   };
 
   /**
@@ -72,7 +71,7 @@ export function usePermission() {
    * @returns {boolean}
    */
   const isBusiness = () => {
-    return user?.roleId === 3;
+    return user?.roleId === ROLES.BUSINESS;
   };
 
   return {

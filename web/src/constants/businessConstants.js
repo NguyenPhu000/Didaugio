@@ -25,6 +25,8 @@ export const BUSINESS_STATUS_LABELS = {
   [BUSINESS_STATUS.APPROVED]: "Đã duyệt",
   [BUSINESS_STATUS.REJECTED]: "Bị từ chối",
   [BUSINESS_STATUS.SUSPENDED]: "Tạm ngưng",
+  [BUSINESS_STATUS.TERMINATED]: "Chấm dứt hợp đồng",
+  [BUSINESS_STATUS.SUSPICIOUS]: "Đáng ngờ",
 };
 
 export const SERVICE_TYPE_LABELS = {

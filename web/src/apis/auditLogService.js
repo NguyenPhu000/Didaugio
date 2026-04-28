@@ -104,6 +104,8 @@ export const auditLogService = {
       "email_verifications",
       "password_resets",
       "audit_logs",
+      "businesses",
+      "places",
     ];
   },
 };

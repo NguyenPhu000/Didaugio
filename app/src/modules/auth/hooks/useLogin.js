@@ -11,18 +11,32 @@ export function useLogin() {
   const [error, setError] = useState(null);
 
   const login = useCallback(
-    async (email, password) => {
+    async (identifier, password) => {
       setError(null);
 
-      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedIdentifier = String(identifier || "").trim();
+      const identifierLooksLikeEmail = /\S+@\S+\.\S+/.test(
+        normalizedIdentifier,
+      );
+      const normalizedLoginIdentifier = identifierLooksLikeEmail
+        ? normalizedIdentifier.toLowerCase()
+        : normalizedIdentifier;
 
-      if (!normalizedEmail) {
-        setError("Vui lòng nhập email.");
+      if (!normalizedLoginIdentifier) {
+        setError("Vui lòng nhập email hoặc username.");
         return false;
       }
 
-      if (!/\S+@\S+\.\S+/.test(normalizedEmail)) {
-        setError("Email không hợp lệ.");
+      if (identifierLooksLikeEmail) {
+        if (!/\S+@\S+\.\S+/.test(normalizedLoginIdentifier)) {
+          setError("Email không hợp lệ.");
+          return false;
+        }
+      } else if (
+        normalizedLoginIdentifier.length < 3 ||
+        !/^[a-zA-Z0-9_]+$/.test(normalizedLoginIdentifier)
+      ) {
+        setError("Username phải từ 3 ký tự và chỉ gồm chữ, số, dấu gạch dưới.");
         return false;
       }
 
@@ -33,7 +47,7 @@ export function useLogin() {
 
       setIsLoading(true);
       try {
-        const res = await loginApi(normalizedEmail, password);
+        const res = await loginApi(normalizedLoginIdentifier, password);
         const { accessToken, refreshToken, user, errorMessage } =
           normalizeAuthSessionResponse(res);
 
@@ -53,7 +67,7 @@ export function useLogin() {
       } catch (err) {
         if (err?.code === "EMAIL_NOT_VERIFIED") {
           setError(
-            "Email chưa xác thực. Vui lòng kiểm tra hộp thư và xác thực trước khi đăng nhập.",
+            "Email chưa xác thực. Vui lòng đăng nhập bằng email để nhận lại liên kết xác thực.",
           );
           return false;
         }

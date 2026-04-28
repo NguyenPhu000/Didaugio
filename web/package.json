@@ -55,6 +55,7 @@
     "react-map-gl": "^7.1.7",
     "react-router-dom": "^7.11.0",
     "rxjs": "^7.8.2",
+    "socket.io-client": "^4.8.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.3.3",

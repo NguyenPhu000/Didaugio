@@ -115,10 +115,10 @@ const useBusinessStore = create(
         }
       },
 
-      suspendBusiness: async (id) => {
+      suspendBusiness: async (id, suspensionReason) => {
         set({ loading: true, error: null });
         try {
-          const response = await businessApi.suspend(id);
+          const response = await businessApi.suspend(id, suspensionReason);
           await get().refetchBusinessList();
           set({ loading: false });
           return response;
@@ -132,6 +132,19 @@ const useBusinessStore = create(
         set({ loading: true, error: null });
         try {
           const response = await businessApi.reactivate(id);
+          await get().refetchBusinessList();
+          set({ loading: false });
+          return response;
+        } catch (error) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+
+      terminateBusiness: async (id, terminationReason) => {
+        set({ loading: true, error: null });
+        try {
+          const response = await businessApi.terminate(id, terminationReason);
           await get().refetchBusinessList();
           set({ loading: false });
           return response;

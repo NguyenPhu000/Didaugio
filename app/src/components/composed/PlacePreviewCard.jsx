@@ -5,9 +5,9 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { TOKENS } from "../../constants/design-tokens";
 import { resolvePlaceImageUri } from "../../lib/media-url";
 
-const STITCH_PRIMARY = "#101E2C";
-const STITCH_TEXT = "#191C1E";
-const STITCH_MUTED = "#54647A";
+const STITCH_PRIMARY = "#0F172A";
+const STITCH_TEXT = "#0B1220";
+const STITCH_MUTED = "#64748B";
 
 const PRICE_RANGE_LABELS = {
   FREE: "Miễn phí",
@@ -118,16 +118,22 @@ export const PlacePreviewCard = memo(
     onViewDetail,
     onToggleSelection,
     onAddToTrip,
+    onStartRoute,
+    travelEtaLabel,
+    travelDistanceLabel,
+    travelLoading = false,
     compact = false,
     selected = false,
     detailLabel = "Xem chi tiết",
     selectedLabel = "Đã chọn",
     unselectedLabel = "Chọn",
     addToTripLabel = "Add vào trip",
+    routeActionLabel = "Chỉ đường",
     showCloseButton = true,
     showDetailAction = true,
     showSelectionAction = false,
     showAddToTripAction = false,
+    showRouteAction = false,
   }) => {
     if (!place) return null;
 
@@ -148,7 +154,10 @@ export const PlacePreviewCard = memo(
       showSelectionAction && typeof onToggleSelection === "function";
     const canShowAddToTripAction =
       showAddToTripAction && typeof onAddToTrip === "function";
+    const canShowRouteAction =
+      showRouteAction && typeof onStartRoute === "function";
     const selectionLabel = selected ? selectedLabel : unselectedLabel;
+    const hasTravelInfo = Boolean(travelEtaLabel || travelDistanceLabel);
 
     return (
       <View
@@ -231,6 +240,33 @@ export const PlacePreviewCard = memo(
             </Text>
           </View>
 
+          {travelLoading || hasTravelInfo ? (
+            <View style={styles.travelInfoRow}>
+              <MaterialIcons
+                name="directions-car"
+                size={compact ? 12 : 13}
+                color="#0A84FF"
+              />
+              <View style={styles.travelInfoPill}>
+                <Text
+                  style={[
+                    styles.travelInfoText,
+                    compact && styles.travelInfoTextCompact,
+                  ]}
+                >
+                  {travelLoading ? "Đang tính lộ trình..." : ""}
+                  {!travelLoading && travelEtaLabel ? travelEtaLabel : ""}
+                  {!travelLoading && travelEtaLabel && travelDistanceLabel
+                    ? " • "
+                    : ""}
+                  {!travelLoading && travelDistanceLabel
+                    ? travelDistanceLabel
+                    : ""}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
           <View style={[styles.metaRow, compact && styles.metaRowCompact]}>
             {rating > 0 ? (
               <View
@@ -305,7 +341,8 @@ export const PlacePreviewCard = memo(
 
             {canShowDetailAction ||
             canShowSelectionAction ||
-            canShowAddToTripAction ? (
+            canShowAddToTripAction ||
+            canShowRouteAction ? (
               <View
                 style={[
                   styles.actionGroup,
@@ -387,6 +424,30 @@ export const PlacePreviewCard = memo(
                     </Text>
                   </Pressable>
                 ) : null}
+
+                {canShowRouteAction ? (
+                  <Pressable
+                    onPress={() => onStartRoute(place)}
+                    style={[
+                      styles.routeButton,
+                      compact && styles.actionButtonCompact,
+                    ]}
+                  >
+                    <MaterialIcons
+                      name="directions"
+                      size={compact ? 13 : 14}
+                      color="#FFFFFF"
+                    />
+                    <Text
+                      style={[
+                        styles.routeButtonText,
+                        compact && styles.actionButtonTextCompact,
+                      ]}
+                    >
+                      {routeActionLabel}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
             ) : null}
           </View>
@@ -398,19 +459,19 @@ export const PlacePreviewCard = memo(
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(196,198,204,0.48)",
+    borderColor: "rgba(15,23,42,0.08)",
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    padding: 12,
+    padding: 13,
     shadowColor: "#191c1e",
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 14,
+    shadowOpacity: 0.08,
+    shadowRadius: 26,
+    elevation: 12,
   },
   cardCompact: {
     borderRadius: 20,
@@ -418,8 +479,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   cardSelected: {
-    borderColor: "rgba(16,30,44,0.28)",
-    backgroundColor: "rgba(245,247,249,0.96)",
+    borderColor: "rgba(14,165,233,0.32)",
+    backgroundColor: "rgba(240,249,255,0.96)",
   },
   thumbnailWrap: {
     width: 96,
@@ -448,9 +509,9 @@ const styles = StyleSheet.create({
     left: 6,
     right: 6,
     bottom: 6,
-    backgroundColor: "rgba(255,255,255,0.8)",
+    backgroundColor: "rgba(255,255,255,0.92)",
     borderWidth: 1,
-    borderColor: "rgba(196,198,204,0.66)",
+    borderColor: "rgba(15,23,42,0.08)",
     borderRadius: 999,
     paddingHorizontal: 8,
     height: 24,
@@ -504,9 +565,9 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F2F4F6",
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: "rgba(196,198,204,0.72)",
+    borderColor: "rgba(15,23,42,0.08)",
   },
   closeButtonCompact: {
     width: 24,
@@ -527,6 +588,30 @@ const styles = StyleSheet.create({
   locationTextCompact: {
     fontSize: 11,
   },
+  travelInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  travelInfoPill: {
+    flex: 1,
+    minWidth: 0,
+    backgroundColor: "rgba(10,132,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(10,132,255,0.22)",
+    borderRadius: 999,
+    height: 24,
+    justifyContent: "center",
+    paddingHorizontal: 10,
+  },
+  travelInfoText: {
+    color: "#0B3A66",
+    fontSize: 11,
+    fontFamily: TOKENS.font.semibold,
+  },
+  travelInfoTextCompact: {
+    fontSize: 10,
+  },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -539,9 +624,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: "#FFF7E6",
+    backgroundColor: "#FEF3C7",
     borderWidth: 1,
-    borderColor: "#FDE68A",
+    borderColor: "#FCD34D",
     borderRadius: 999,
     paddingHorizontal: 8,
     height: 24,
@@ -571,9 +656,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: "rgba(16,30,44,0.1)",
+    backgroundColor: "rgba(15,23,42,0.06)",
     borderWidth: 1,
-    borderColor: "rgba(16,30,44,0.16)",
+    borderColor: "rgba(15,23,42,0.12)",
     borderRadius: 999,
     paddingHorizontal: 8,
     height: 24,
@@ -623,11 +708,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   actionGroup: {
-    width: 126,
+    width: 132,
     gap: 6,
   },
   actionGroupCompact: {
-    width: 112,
+    width: 116,
     gap: 5,
   },
   actionButtonCompact: {
@@ -640,7 +725,7 @@ const styles = StyleSheet.create({
   detailButton: {
     height: 30,
     borderRadius: 999,
-    backgroundColor: STITCH_PRIMARY,
+    backgroundColor: "#0F172A",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -648,7 +733,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     shadowColor: "#191c1e",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.16,
+    shadowOpacity: 0.1,
     shadowRadius: 14,
     elevation: 6,
   },
@@ -662,8 +747,8 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(16,30,44,0.24)",
-    backgroundColor: "rgba(255,255,255,0.9)",
+    borderColor: "rgba(15,23,42,0.16)",
+    backgroundColor: "rgba(255,255,255,0.94)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -687,8 +772,8 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(16,30,44,0.2)",
-    backgroundColor: "rgba(255,255,255,0.88)",
+    borderColor: "rgba(15,23,42,0.14)",
+    backgroundColor: "rgba(248,250,252,0.96)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -700,5 +785,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: TOKENS.font.semibold,
     letterSpacing: 0.1,
+  },
+  routeButton: {
+    height: 30,
+    borderRadius: 999,
+    backgroundColor: "#0A84FF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    shadowColor: "#0A84FF",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  routeButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
+    letterSpacing: 0.2,
   },
 });

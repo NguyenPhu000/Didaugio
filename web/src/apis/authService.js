@@ -8,12 +8,19 @@ export const authService = {
   },
 
   // Đăng nhập
-  login: async (email, password, deviceInfo = {}) => {
-    const response = await api.post("/auth/login", {
-      email,
+  login: async (identifier, password, deviceInfo = {}) => {
+    const normalizedIdentifier = String(identifier || "").trim();
+    const isEmailIdentifier = /\S+@\S+\.\S+/.test(normalizedIdentifier);
+
+    const payload = {
       password,
       ...deviceInfo,
-    });
+      ...(isEmailIdentifier
+        ? { email: normalizedIdentifier.toLowerCase() }
+        : { username: normalizedIdentifier }),
+    };
+
+    const response = await api.post("/auth/login", payload);
     return response;
   },
 

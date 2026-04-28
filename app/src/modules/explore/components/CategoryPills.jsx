@@ -8,10 +8,10 @@ import {
   View,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { TOKENS } from "../../../constants/design-tokens";
-
-const ACTIVE_BG = "#101E2C";
-const INACTIVE_BG = TOKENS.color.card.light;
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
 
 const PillItem = memo(function PillItem({
   categoryId,
@@ -23,18 +23,26 @@ const PillItem = memo(function PillItem({
   const handlePress = useCallback(() => {
     onPressCategory(categoryId);
   }, [categoryId, onPressCategory]);
+  const resolvedActive = Boolean(isActive);
 
   return (
     <Pressable
       onPress={handlePress}
-      style={[styles.pill, isActive ? styles.pillActive : styles.pillInactive]}
+      style={({ pressed }) => [
+        styles.pill,
+        resolvedActive ? styles.pillActive : styles.pillInactive,
+        pressed && styles.pillPressed,
+      ]}
     >
       <MaterialIcons
         name={icon}
-        size={16}
-        color={isActive ? "#FFFFFF" : "#3A4858"}
+        size={17}
+        color={resolvedActive ? APPLE_THEME.white : APPLE_THEME.text}
       />
-      <Text style={[styles.pillText, isActive ? styles.pillTextActive : null]}>
+      <Text
+        style={[styles.pillText, resolvedActive ? styles.pillTextActive : null]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </Pressable>
@@ -56,7 +64,7 @@ function CategoryPillsInner({
         isActive={
           item.categoryId === null
             ? selectedCategory === null
-            : selectedCategory === item.categoryId
+            : String(selectedCategory) === String(item.categoryId)
         }
         label={item.label}
         onPressCategory={onSelectCategory}
@@ -117,42 +125,42 @@ export const CategoryPills = memo(
 const styles = StyleSheet.create({
   listContent: {
     gap: 10,
-    paddingTop: 14,
+    paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 6,
-    paddingRight: 14,
   },
   pill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    minHeight: 42,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: TOKENS.radius.pill,
+    borderRadius: 999,
   },
   pillActive: {
-    backgroundColor: ACTIVE_BG,
-    borderWidth: 0,
+    backgroundColor: APPLE_THEME.primary,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: APPLE_THEME.primary,
     ...Platform.select({
-      ios: {
-        shadowColor: "#191c1e",
-        shadowOffset: { width: 0, height: 9 },
-        shadowOpacity: 0.14,
-        shadowRadius: 18,
-      },
-      android: { elevation: 7 },
+      ios: TOKENS.shadow.sm,
+      android: { elevation: 2 },
     }),
   },
   pillInactive: {
-    backgroundColor: "rgba(255,255,255,0.82)",
-    borderWidth: 1,
-    borderColor: "rgba(196,198,204,0.75)",
+    backgroundColor: APPLE_THEME.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: APPLE_THEME.border,
+  },
+  pillPressed: {
+    opacity: 0.85,
   },
   pillText: {
-    color: "#3A4858",
-    fontSize: 13,
+    color: APPLE_THEME.text,
+    fontSize: 14,
     fontFamily: TOKENS.font.semibold,
   },
   pillTextActive: {
-    color: "#FFFFFF",
+    color: APPLE_THEME.white,
   },
 });

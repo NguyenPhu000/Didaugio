@@ -4,8 +4,6 @@ import {
   Keyboard,
   Modal,
   Pressable,
-  ScrollView,
-  StyleSheet,
   StatusBar,
   Text,
   TextInput,
@@ -19,17 +17,31 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { MaterialIcons } from "@expo/vector-icons";
-import * as Location from "expo-location";
 import { useHomeData } from "./hooks/useHomeData";
 import { useMapPlaces } from "./hooks/useMapPlaces";
 import { useBoundaryData } from "./hooks/useBoundaryData";
+import { useFilterState } from "./hooks/useFilterState";
+import { useNavigationStateMachine } from "./hooks/useNavigationStateMachine";
+import { useRouteBuilderController } from "./hooks/useRouteBuilderController";
 import MapView from "./components/MapView";
+import RouteBuilderPanel from "./components/route-builder/RouteBuilderPanel";
+import ArrivalConfirmModal from "./components/navigation/ArrivalConfirmModal";
+import NavigationStatusBanner from "./components/navigation/NavigationStatusBanner";
+import FilterGroupBar from "./components/filters/FilterGroupBar";
+import FilterPickerModal from "./components/filters/FilterPickerModal";
+import CurrentLocationMarker from "./components/map-overlays/CurrentLocationMarker";
+import RouteBuilderStopsMarkerLayer from "./components/map-overlays/RouteBuilderStopsMarkerLayer";
+import ActiveRouteLayer from "./components/map-overlays/ActiveRouteLayer";
+import { useMapRouting } from "./hooks/useMapRouting";
 import { AIEntryButton } from "../../components/composed/AIEntryButton";
 import {
   PlacePreviewCard,
   getPlaceRatingValue,
   getPlaceReviewCount,
 } from "../../components/composed/PlacePreviewCard";
+import { trackEvent } from "../../lib/analytics";
+import { resolveMediaUrl } from "../../lib/media-url";
+import { useAuthStore } from "../../stores/authStore";
 import { DistrictLayer, WardLayer } from "./components/BoundaryLayer";
 import {
   CATEGORY_MARKER_STYLES,
@@ -40,6 +52,16 @@ import {
 } from "./config/mapConfig";
 import { TOKENS } from "../../constants/design-tokens";
 import { FLOATING_TAB_CLEARANCE } from "../../../app/(tabs)/_layout";
+import { ALL_AREAS_KEY } from "./constants/filter.constants";
+import { ROUTE_BUILDER_LONG_PRESS_PICK_RADIUS_M } from "./constants/routeBuilder.constants";
+import { NAVIGATION_EVENT_DEDUP_MS } from "./constants/navigation.constants";
+import { MAP_TEXT } from "./constants/mapText.constants";
+import { distanceMeters } from "./utils/distance";
+import {
+  formatRouteDistance,
+  formatRouteEta,
+} from "./utils/routeBuilderMapper";
+import { filterVisiblePlaces, getPlaceDistrictMeta } from "./utils/placeFilter";
 
 const isNewArchitectureEnabled = global?.nativeFabricUIManager != null;
 
@@ -69,119 +91,26 @@ const MAP_CANVAS_STYLE = {
   width: "100%",
   height: "100%",
 };
+const PLACE_SPATIAL_INDEX_CELL_DEGREES = 0.003;
 
-const NAV_MENU_ITEMS = [
-  { key: "map", label: "Bản đồ", icon: "map", route: "/(tabs)/map" },
-  {
-    key: "ai",
-    label: "AI",
-    icon: "auto-awesome",
-    route: "/(tabs)/ai",
-  },
-  { key: "trips", label: "Chuyến đi", icon: "luggage", route: "/(tabs)/trips" },
-  {
-    key: "explore",
-    label: "Khám phá",
-    icon: "explore",
-    route: "/(tabs)/explore",
-  },
-  { key: "saved", label: "Đã lưu", icon: "bookmark", route: "/(tabs)/saved" },
-  { key: "profile", label: "Hồ sơ", icon: "person", route: "/(tabs)/profile" },
-];
-
-const QUICK_FILTER_OPTIONS = [
-  {
-    key: "topRated",
-    label: "Đánh giá cao",
-    icon: "star",
-  },
-  {
-    key: "trending",
-    label: "Trending",
-    icon: "local-fire-department",
-  },
-  {
-    key: "budget",
-    label: "Giá rẻ",
-    icon: "savings",
-  },
-  {
-    key: "premium",
-    label: "Cao cấp",
-    icon: "workspace-premium",
-  },
-  {
-    key: "openNow",
-    label: "Mở cửa gần nhất",
-    icon: "schedule",
-  },
-];
-
-const BUDGET_PRICE_RANGES = new Set(["FREE", "BUDGET", "MODERATE"]);
-const PREMIUM_PRICE_RANGES = new Set(["EXPENSIVE", "LUXURY"]);
-const ALL_AREAS_KEY = "__all_areas__";
-
-const parseTimeToMinutes = (timeText) => {
-  if (typeof timeText !== "string") return null;
-  const [hourText, minuteText] = timeText.split(":");
-  const hour = Number(hourText);
-  const minute = Number(minuteText);
-  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
-  return hour * 60 + minute;
+const getSpatialCellKey = (latitude, longitude) => {
+  const latCell = Math.floor(latitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
+  const lngCell = Math.floor(longitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
+  return `${latCell}:${lngCell}`;
 };
 
-const isPlaceOpenNow = (place) => {
-  const openingHours = Array.isArray(place?.openingHours)
-    ? place.openingHours
-    : [];
+const buildNearbySpatialKeys = (latitude, longitude) => {
+  const latCell = Math.floor(latitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
+  const lngCell = Math.floor(longitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
+  const keys = [];
 
-  // API chưa trả openingHours thì không loại bỏ marker hiện có.
-  if (openingHours.length === 0) return true;
-
-  const now = new Date();
-  const currentDay = now.getDay();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentSchedule = openingHours.find(
-    (item) => Number(item?.dayOfWeek) === currentDay,
-  );
-
-  if (!currentSchedule) return true;
-  if (currentSchedule?.isClosed) return false;
-
-  const openMinutes = parseTimeToMinutes(currentSchedule?.openTime);
-  const closeMinutes = parseTimeToMinutes(currentSchedule?.closeTime);
-
-  if (openMinutes == null || closeMinutes == null) return true;
-
-  if (closeMinutes >= openMinutes) {
-    return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+  for (let dLat = -1; dLat <= 1; dLat += 1) {
+    for (let dLng = -1; dLng <= 1; dLng += 1) {
+      keys.push(`${latCell + dLat}:${lngCell + dLng}`);
+    }
   }
 
-  // Trường hợp qua đêm: ví dụ 22:00 → 02:00.
-  return currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
-};
-
-const getPlaceDistrictMeta = (place) => {
-  const districtId =
-    place?.district?.id ?? place?.ward?.districtId ?? place?.districtId;
-  const districtName =
-    place?.district?.name ?? place?.ward?.district?.name ?? null;
-
-  if (districtId != null) {
-    return {
-      key: `id:${districtId}`,
-      name: districtName || `Khu vực ${districtId}`,
-    };
-  }
-
-  if (districtName) {
-    return {
-      key: `name:${districtName.trim().toLowerCase()}`,
-      name: districtName,
-    };
-  }
-
-  return null;
+  return keys;
 };
 
 const GlassPanel = ({ style, children, intensity = 40 }) => (
@@ -201,107 +130,6 @@ const GlassPanel = ({ style, children, intensity = 40 }) => (
     {children}
   </BlurView>
 );
-
-const CategoryChip = memo(({ category, active, onToggle }) => {
-  const meta =
-    category.id === null
-      ? { ...DEFAULT_CATEGORY_ICON, icon: "apps" }
-      : CATEGORY_MARKER_STYLES[category.id] || DEFAULT_CATEGORY_ICON;
-
-  const handlePress = useCallback(() => {
-    onToggle(category.id);
-  }, [onToggle, category.id]);
-
-  return (
-    <Pressable
-      onPress={handlePress}
-      className="h-[34px] rounded-full flex-row items-center px-3.5 gap-1.5"
-      style={{
-        backgroundColor: active ? "#0F172A" : "#FFFFFF",
-        borderWidth: 1,
-        borderColor: active ? "#0F172A" : "#E5E7EB",
-        flexShrink: 0,
-      }}
-    >
-      <MaterialIcons
-        name={meta.icon}
-        size={16}
-        color={active ? "#FFFFFF" : "#475569"}
-      />
-      <Text
-        className="text-[12px] font-semibold"
-        style={{
-          color: active ? "#FFFFFF" : "#0F172A",
-          letterSpacing: 0.2,
-        }}
-      >
-        {category.name}
-      </Text>
-    </Pressable>
-  );
-});
-
-const QuickFilterChip = memo(({ option, active, onToggle }) => {
-  const handlePress = useCallback(() => {
-    onToggle(option.key);
-  }, [onToggle, option.key]);
-
-  return (
-    <Pressable
-      onPress={handlePress}
-      className="h-[34px] rounded-full flex-row items-center px-3.5 gap-1.5"
-      style={{
-        backgroundColor: active ? TOKENS.color.primary[500] : "#FFFFFF",
-        borderWidth: 1,
-        borderColor: active ? TOKENS.color.primary[500] : "#E5E7EB",
-        flexShrink: 0,
-      }}
-    >
-      <MaterialIcons
-        name={option.icon}
-        size={15}
-        color={active ? "#FFFFFF" : "#475569"}
-      />
-      <Text
-        className="text-[12px] font-semibold"
-        style={{
-          color: active ? "#FFFFFF" : "#0F172A",
-          letterSpacing: 0.2,
-        }}
-      >
-        {option.label}
-      </Text>
-    </Pressable>
-  );
-});
-
-const AreaFilterChip = memo(({ label, active, onPress }) => (
-  <Pressable
-    onPress={onPress}
-    className="h-[34px] rounded-full flex-row items-center px-3.5 gap-1.5"
-    style={{
-      backgroundColor: active ? "#1D1D1F" : "#FFFFFF",
-      borderWidth: 1,
-      borderColor: active ? "#1D1D1F" : "#E5E7EB",
-      flexShrink: 0,
-    }}
-  >
-    <MaterialIcons
-      name="place"
-      size={15}
-      color={active ? "#FFFFFF" : "#475569"}
-    />
-    <Text
-      className="text-[12px] font-semibold"
-      style={{
-        color: active ? "#FFFFFF" : "#0F172A",
-        letterSpacing: 0.2,
-      }}
-    >
-      {label}
-    </Text>
-  </Pressable>
-));
 
 const LayerSwitcherModal = ({ visible, onClose, currentStyle, onSelect }) => {
   const options = Object.values(MAP_STYLES);
@@ -331,7 +159,7 @@ const LayerSwitcherModal = ({ visible, onClose, currentStyle, onSelect }) => {
             className="text-[15px] font-bold text-center mb-4"
             style={{ color: MAP_UI_THEME.text }}
           >
-            Chọn kiểu bản đồ
+            {MAP_TEXT.layerSwitcher.title}
           </Text>
           {options.map((opt) => {
             const active = currentStyle.key === opt.key;
@@ -396,25 +224,18 @@ export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const authUser = useAuthStore((state) => state.user);
 
   const mapRef = useRef(null);
   const searchInputRef = useRef(null);
   const lastAppliedFocusRef = useRef(null);
+  const lastNavigationEventRef = useRef({ signature: null, timestamp: 0 });
 
   const [mapStyle, setMapStyle] = useState(DEFAULT_MAP_STYLE);
   const [layerModalVisible, setLayerModalVisible] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const [activeCategoryId, setActiveCategoryId] = useState(null);
-  const [activeArea, setActiveArea] = useState(ALL_AREAS_KEY);
   const [selectedPlace, setSelectedPlace] = useState(null);
-  const [quickFilters, setQuickFilters] = useState({
-    topRated: false,
-    trending: false,
-    budget: false,
-    premium: false,
-    openNow: false,
-  });
 
   const {
     data: mapPlaces,
@@ -476,6 +297,26 @@ export default function MapScreen() {
     );
   }, [allPlaces]);
 
+  const {
+    activeFilterGroup,
+    activeCategoryId,
+    activeArea,
+    quickFilters,
+    filterPickerVisible,
+    activeFilterGroupMeta,
+    activeFilterSummaryLabel,
+    filterPickerOptions,
+    handleSelectFilterGroup,
+    handleOpenFilterPicker,
+    handleCloseFilterPicker,
+    handleSelectFilterOption,
+  } = useFilterState({
+    categories,
+    areaOptions,
+    categoryMarkerStyles: CATEGORY_MARKER_STYLES,
+    defaultCategoryIcon: DEFAULT_CATEGORY_ICON,
+  });
+
   const isLoading = isPlacesLoading && allPlaces.length === 0;
   const error = placesError;
 
@@ -509,72 +350,60 @@ export default function MapScreen() {
     }
   }, [allPlaces, selectedPlace]);
 
-  const visiblePlaces = useMemo(() => {
-    const normalizedSearch = searchText.trim().toLowerCase();
+  const visiblePlaces = useMemo(
+    () =>
+      filterVisiblePlaces({
+        places: allPlaces,
+        searchText,
+        activeCategoryId,
+        activeArea,
+        quickFilters,
+        getRatingValue: getPlaceRatingValue,
+        getReviewCount: getPlaceReviewCount,
+        allAreasKey: ALL_AREAS_KEY,
+      }),
+    [allPlaces, searchText, activeCategoryId, activeArea, quickFilters],
+  );
 
-    return allPlaces.filter((place) => {
-      if (
-        !Number.isFinite(place?.latitude) ||
-        !Number.isFinite(place?.longitude)
-      ) {
-        return false;
-      }
+  const visiblePlaceSpatialIndex = useMemo(() => {
+    const index = new Map();
 
-      const categoryId = place?.categoryId ?? place?.category?.id;
-      if (
-        activeCategoryId !== null &&
-        String(categoryId ?? "") !== String(activeCategoryId)
-      ) {
-        return false;
-      }
+    visiblePlaces.forEach((place) => {
+      const latitude = Number(place?.latitude);
+      const longitude = Number(place?.longitude);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
 
-      if (activeArea !== ALL_AREAS_KEY) {
-        const district = getPlaceDistrictMeta(place);
-        if (!district || district.key !== activeArea) {
-          return false;
-        }
-      }
-
-      if (normalizedSearch) {
-        const searchableText = [
-          place?.name,
-          place?.address,
-          place?.category?.name,
-          place?.ward?.name,
-          place?.district?.name,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        if (!searchableText.includes(normalizedSearch)) {
-          return false;
-        }
-      }
-
-      if (quickFilters.topRated && getPlaceRatingValue(place) < 4.5) {
-        return false;
-      }
-
-      if (quickFilters.trending && getPlaceReviewCount(place) < 20) {
-        return false;
-      }
-
-      const priceRangeKey = String(place?.priceRange || "").toUpperCase();
-      if (quickFilters.budget && !BUDGET_PRICE_RANGES.has(priceRangeKey)) {
-        return false;
-      }
-      if (quickFilters.premium && !PREMIUM_PRICE_RANGES.has(priceRangeKey)) {
-        return false;
-      }
-
-      if (quickFilters.openNow && !isPlaceOpenNow(place)) {
-        return false;
-      }
-
-      return true;
+      const key = getSpatialCellKey(latitude, longitude);
+      const bucket = index.get(key) || [];
+      bucket.push(place);
+      index.set(key, bucket);
     });
-  }, [activeArea, activeCategoryId, allPlaces, quickFilters, searchText]);
+
+    return index;
+  }, [visiblePlaces]);
+
+  const currentUserNickname = useMemo(() => {
+    const nickname =
+      authUser?.profile?.nickname || authUser?.nickname || authUser?.username;
+    if (typeof nickname === "string" && nickname.trim()) {
+      return nickname.trim();
+    }
+
+    const fullName = authUser?.profile?.fullName || authUser?.fullName;
+    if (typeof fullName === "string" && fullName.trim()) {
+      return fullName.trim();
+    }
+
+    return null;
+  }, [authUser]);
+
+  const currentUserAvatarUri = useMemo(
+    () =>
+      resolveMediaUrl(
+        authUser?.profile?.avatar || authUser?.avatar || authUser?.photoURL,
+      ),
+    [authUser],
+  );
 
   const mapBoundaryOverlays = useMemo(
     () => (
@@ -593,22 +422,179 @@ export default function MapScreen() {
     [visiblePlaces, selectedPlaceId, selectedPlace],
   );
 
-  const handleLocate = useCallback(async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === "granted") {
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        mapRef.current?.flyTo(
-          [location.coords.longitude, location.coords.latitude],
-          15,
-        );
-        return;
-      }
-    } catch {}
+  const focusMapForLocation = useCallback((location) => {
+    if (location) {
+      mapRef.current?.flyTo([location.longitude, location.latitude], 15);
+      return;
+    }
     mapRef.current?.flyTo([CAN_THO_CENTER.lng, CAN_THO_CENTER.lat], 12);
   }, []);
+
+  const routeBuilder = useRouteBuilderController({
+    allPlaces,
+    onSelectPlace: setSelectedPlace,
+    onLocationResolved: focusMapForLocation,
+  });
+
+  const {
+    currentLocation,
+    locateNow,
+    mode: routeBuilderMode,
+    setMode: setRouteBuilderMode,
+    draftStops: routeBuilderDraftStops,
+    canConfirm: routeBuilderCanConfirm,
+    hasConfirmedRoute: routeBuilderHasConfirmedRoute,
+    isDirty: routeBuilderIsDirty,
+    minimumStops: routeBuilderMinimumStops,
+    enabled: routeBuilderEnabled,
+    pendingArrival: routeBuilderPendingArrival,
+    recoveryMode: routeBuilderRecoveryMode,
+    activeTarget: routeBuilderActiveTarget,
+    distanceToActiveTargetLabel: routeBuilderDistanceToActiveTargetLabel,
+    completedLegs: routeBuilderCompletedLegs,
+    legCount: routeBuilderLegCount,
+    hasPendingArrival: routeBuilderHasPendingArrival,
+    completedView: routeBuilderCompletedView,
+    etaLabel: routeBuilderEtaLabel,
+    distanceLabel: routeBuilderDistanceLabel,
+    isRouteError: isRouteBuilderError,
+    isRouteFetching: isRouteBuilderFetching,
+    arrivalAlertVisible: routeBuilderArrivalAlertVisible,
+    recoveryCoordinates: routeBuilderRecoveryCoordinates,
+    recoverySource: routeBuilderRecoverySource,
+    legVisuals: routeBuilderLegVisuals,
+    addStopFromPlace: handleAddRouteBuilderStopFromPlace,
+    removeStop: handleRemoveRouteBuilderStop,
+    clear: handleClearRouteBuilder,
+    confirmRoute: handleConfirmRouteBuilder,
+    exit: handleExitRouteBuilder,
+    confirmArrivedLeg: handleConfirmArrivedRouteBuilderLeg,
+    dismissArrivalAlert: handleDismissRouteBuilderArrivalAlert,
+    resetProgress: handleResetRouteBuilderProgress,
+    toggleCompletedView: handleToggleCompletedLegView,
+    retryRoute: refetchRouteBuilder,
+    hasFinished: routeBuilderHasFinished,
+  } = routeBuilder;
+
+  const routeOriginFromCurrentLocation = useMemo(() => {
+    if (
+      !currentLocation ||
+      !Number.isFinite(currentLocation.latitude) ||
+      !Number.isFinite(currentLocation.longitude)
+    ) {
+      return null;
+    }
+
+    return {
+      lat: currentLocation.latitude,
+      lng: currentLocation.longitude,
+      name: MAP_TEXT.common.currentLocationName,
+    };
+  }, [currentLocation]);
+
+  const routeDestinationFromSelectedPlace = useMemo(() => {
+    if (
+      !activePlace ||
+      !Number.isFinite(activePlace.latitude) ||
+      !Number.isFinite(activePlace.longitude)
+    ) {
+      return null;
+    }
+
+    return {
+      lat: Number(activePlace.latitude),
+      lng: Number(activePlace.longitude),
+      name: activePlace.name || MAP_TEXT.common.destinationName,
+    };
+  }, [activePlace]);
+
+  const shouldSuppressSingleRoute = routeBuilderEnabled;
+
+  const routeOrigin = shouldSuppressSingleRoute
+    ? null
+    : routeOriginFromCurrentLocation;
+  const routeDestination = shouldSuppressSingleRoute
+    ? null
+    : routeDestinationFromSelectedPlace;
+
+  const routeEnabled = Boolean(routeOrigin && routeDestination);
+
+  const {
+    coordinates: routeCoordinates,
+    source: routeSource,
+    distanceM: routeDistanceM,
+    durationS: routeDurationS,
+    isError: isRouteError,
+    isFallback: isRouteFallback,
+    isFetching: isRouteFetching,
+    error: routeError,
+    refetch: refetchRoute,
+  } = useMapRouting({
+    origin: routeOrigin,
+    destination: routeDestination,
+    mode: "motorcycle",
+    enabled: routeEnabled,
+  });
+
+  const routeEtaLabel = useMemo(
+    () => formatRouteEta(routeDurationS),
+    [routeDurationS],
+  );
+  const routeDistanceLabel = useMemo(
+    () => formatRouteDistance(routeDistanceM),
+    [routeDistanceM],
+  );
+
+  const shouldShowPreviewTravelInfo = useMemo(() => {
+    if (shouldSuppressSingleRoute) return false;
+    if (!routeEnabled || !activePlace) return false;
+    return true;
+  }, [activePlace, routeEnabled, shouldSuppressSingleRoute]);
+
+  const previewTravelLoading =
+    shouldShowPreviewTravelInfo &&
+    isRouteFetching &&
+    !routeEtaLabel &&
+    !routeDistanceLabel;
+
+  const routeStatus = useMemo(() => {
+    if (routeBuilderMode || !routeEnabled) return null;
+
+    if (isRouteError) {
+      return {
+        type: "error",
+        icon: "wifi-off",
+        title: MAP_TEXT.errors.routeDirectionTitle,
+        message: routeError?.message || MAP_TEXT.errors.routeDirectionMessage,
+        canRetry: true,
+      };
+    }
+
+    if (routeSource === "fallback" || isRouteFallback) {
+      return {
+        type: "fallback",
+        icon: "info-outline",
+        title: MAP_TEXT.errors.routeFallbackTitle,
+        message: MAP_TEXT.errors.routeFallbackMessage,
+        canRetry: true,
+      };
+    }
+
+    return null;
+  }, [
+    isRouteError,
+    isRouteFallback,
+    routeBuilderMode,
+    routeEnabled,
+    routeError?.message,
+    routeSource,
+  ]);
+
+  const handleLocate = useCallback(async () => {
+    const location = await locateNow();
+    focusMapForLocation(location ?? null);
+    return location;
+  }, [focusMapForLocation, locateNow]);
 
   const handleSelectPlace = useCallback((place) => {
     setSelectedPlace(place);
@@ -616,6 +602,63 @@ export default function MapScreen() {
       mapRef.current?.flyTo([place.longitude, place.latitude], 15);
     }
   }, []);
+
+  const handleLongPressPlace = useCallback(
+    (place) => {
+      handleAddRouteBuilderStopFromPlace(place);
+    },
+    [handleAddRouteBuilderStopFromPlace],
+  );
+
+  const handleStartRouteFromPreview = useCallback(
+    async (place) => {
+      if (!place?.id) return;
+
+      const routeMode = MAP_TEXT.analytics.routeModeCurrentLocationToPlace;
+      const eventSignature = `${String(place.id)}:${routeMode}:${routeSource || MAP_TEXT.common.unknownValue}`;
+      const now = Date.now();
+
+      // Guard against rapid double-press firing duplicated analytics events.
+      if (
+        lastNavigationEventRef.current.signature === eventSignature &&
+        now - lastNavigationEventRef.current.timestamp <
+          NAVIGATION_EVENT_DEDUP_MS
+      ) {
+        return;
+      }
+
+      lastNavigationEventRef.current = {
+        signature: eventSignature,
+        timestamp: now,
+      };
+
+      trackEvent("navigation_started", {
+        placeId: place.id,
+        placeName: place.name || MAP_TEXT.common.unknownValue,
+        fromScreen: "map_preview",
+        routeMode,
+        routeSource: routeSource || MAP_TEXT.common.unknownValue,
+        distance: routeDistanceM ?? null,
+        duration: routeDurationS ?? null,
+        vehicleType: "motorcycle",
+        timestamp: new Date().toISOString(),
+      });
+
+      setSelectedPlace(place);
+      setRouteBuilderMode(false);
+
+      if (!currentLocation) {
+        await handleLocate();
+      }
+    },
+    [
+      currentLocation,
+      handleLocate,
+      routeDistanceM,
+      routeDurationS,
+      routeSource,
+    ],
+  );
 
   const handleClosePreview = useCallback(() => {
     setSelectedPlace(null);
@@ -626,38 +669,41 @@ export default function MapScreen() {
     setSelectedPlace(null);
   }, []);
 
-  const handleCategoryToggle = useCallback((categoryId) => {
-    setActiveCategoryId((prev) => (prev === categoryId ? null : categoryId));
-  }, []);
+  const handleMapLongPress = useCallback(
+    (event) => {
+      const latitude = Number(event?.nativeEvent?.coordinate?.latitude);
+      const longitude = Number(event?.nativeEvent?.coordinate?.longitude);
 
-  const handleQuickFilterToggle = useCallback((filterKey) => {
-    setQuickFilters((prev) => {
-      if (filterKey === "budget") {
-        return {
-          ...prev,
-          budget: !prev.budget,
-          premium: false,
-        };
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return;
       }
 
-      if (filterKey === "premium") {
-        return {
-          ...prev,
-          premium: !prev.premium,
-          budget: false,
-        };
+      let nearestPlace = null;
+      let minDistance = Number.POSITIVE_INFINITY;
+      const candidatePlaces = buildNearbySpatialKeys(latitude, longitude)
+        .flatMap((key) => visiblePlaceSpatialIndex.get(key) || []);
+
+      candidatePlaces.forEach((place) => {
+        const placeLat = Number(place?.latitude);
+        const placeLng = Number(place?.longitude);
+        if (!Number.isFinite(placeLat) || !Number.isFinite(placeLng)) return;
+
+        const meters = distanceMeters(latitude, longitude, placeLat, placeLng);
+        if (meters < minDistance) {
+          minDistance = meters;
+          nearestPlace = place;
+        }
+      });
+
+      if (
+        nearestPlace &&
+        minDistance <= ROUTE_BUILDER_LONG_PRESS_PICK_RADIUS_M
+      ) {
+        handleLongPressPlace(nearestPlace);
       }
-
-      return {
-        ...prev,
-        [filterKey]: !prev[filterKey],
-      };
-    });
-  }, []);
-
-  const handleAreaToggle = useCallback((areaKey) => {
-    setActiveArea(areaKey);
-  }, []);
+    },
+    [handleLongPressPlace, visiblePlaceSpatialIndex],
+  );
 
   const handleOpenPlaceDetail = useCallback(
     (place) => {
@@ -708,6 +754,14 @@ export default function MapScreen() {
     }
   }, [params, mapPlaces]);
 
+  const routeBuilderNavigationMeta = useNavigationStateMachine({
+    routeBuilderMode,
+    routeBuilderHasFinished,
+    routeBuilderPendingArrival,
+    routeBuilderRecoveryMode,
+    routeBuilderActiveTargetName: routeBuilderActiveTarget?.name,
+  });
+
   return (
     <View
       className="flex-1"
@@ -730,7 +784,7 @@ export default function MapScreen() {
               className="text-[14px] font-medium"
               style={{ color: MAP_UI_THEME.text }}
             >
-              Đang tải bản đồ...
+              {MAP_TEXT.loading.map}
             </Text>
           </View>
         ) : null}
@@ -742,7 +796,7 @@ export default function MapScreen() {
           >
             <MaterialIcons name="wifi-off" size={40} color="#FB7185" />
             <Text className="text-[14px]" style={{ color: MAP_UI_THEME.text }}>
-              Không tải được dữ liệu
+              {MAP_TEXT.errors.mapData}
             </Text>
             <Pressable
               onPress={refetch}
@@ -754,7 +808,9 @@ export default function MapScreen() {
                 size={18}
                 color={MAP_UI_THEME.text}
               />
-              <Text className="text-[14px] font-bold text-white">Thử lại</Text>
+              <Text className="text-[14px] font-bold text-white">
+                {MAP_TEXT.errors.retry}
+              </Text>
             </Pressable>
           </View>
         ) : null}
@@ -765,15 +821,90 @@ export default function MapScreen() {
           places={visiblePlaces}
           selectedPlaceId={activePlace?.id ?? null}
           onSelectPlace={handleSelectPlace}
+          onLongPressPlace={handleLongPressPlace}
           onPressMap={handleMapPress}
+          onLongPressMap={handleMapLongPress}
           tileUrls={mapStyle.urls}
           mapType={mapStyle.mapType || "standard"}
           useNativeCleanStyle={mapStyle.useNativeCleanStyle === true}
           style={MAP_CANVAS_STYLE}
         >
           {mapBoundaryOverlays}
+
+          <CurrentLocationMarker
+            location={currentLocation}
+            nickname={currentUserNickname}
+            avatarUri={currentUserAvatarUri}
+          />
+
+          <RouteBuilderStopsMarkerLayer stops={routeBuilderDraftStops} />
+
+          <ActiveRouteLayer
+            routeBuilderEnabled={routeBuilderEnabled}
+            routeBuilderRecoveryMode={routeBuilderRecoveryMode}
+            routeBuilderRecoveryCoordinates={routeBuilderRecoveryCoordinates}
+            routeBuilderRecoverySource={routeBuilderRecoverySource}
+            routeBuilderLegVisuals={routeBuilderLegVisuals}
+            routeCoordinates={routeCoordinates}
+            routeSource={routeSource}
+          />
         </MapView>
       </View>
+
+      <RouteBuilderPanel
+        visible={routeBuilderMode}
+        bottomOffset={FLOATING_TAB_CLEARANCE + 4}
+        statusLabel={routeBuilderNavigationMeta.label}
+        draftStops={routeBuilderDraftStops}
+        canConfirm={routeBuilderCanConfirm}
+        hasConfirmedRoute={routeBuilderHasConfirmedRoute}
+        isDirty={routeBuilderIsDirty}
+        minimumStops={routeBuilderMinimumStops}
+        enabled={routeBuilderEnabled}
+        pendingArrival={routeBuilderPendingArrival}
+        recoveryMode={routeBuilderRecoveryMode}
+        activeTargetName={routeBuilderActiveTarget?.name}
+        distanceToActiveTargetLabel={routeBuilderDistanceToActiveTargetLabel}
+        completedLegs={routeBuilderCompletedLegs}
+        legCount={routeBuilderLegCount}
+        hasPendingArrival={routeBuilderHasPendingArrival}
+        completedView={routeBuilderCompletedView}
+        etaLabel={routeBuilderEtaLabel}
+        distanceLabel={routeBuilderDistanceLabel}
+        isRouteError={isRouteBuilderError}
+        isRouteFetching={isRouteBuilderFetching}
+        onExit={handleExitRouteBuilder}
+        onRemoveStop={handleRemoveRouteBuilderStop}
+        onConfirmRoute={handleConfirmRouteBuilder}
+        onClear={handleClearRouteBuilder}
+        onConfirmArrived={handleConfirmArrivedRouteBuilderLeg}
+        onResetProgress={handleResetRouteBuilderProgress}
+        onToggleCompletedView={handleToggleCompletedLegView}
+        onRetryRoute={refetchRouteBuilder}
+      />
+
+      <ArrivalConfirmModal
+        visible={routeBuilderMode && routeBuilderArrivalAlertVisible}
+        targetName={routeBuilderPendingArrival?.targetName}
+        onDismiss={handleDismissRouteBuilderArrivalAlert}
+        onConfirm={handleConfirmArrivedRouteBuilderLeg}
+      />
+
+      <NavigationStatusBanner
+        visible={routeEnabled && Boolean(routeStatus)}
+        routeStatus={routeStatus}
+        routeEtaLabel={routeEtaLabel}
+        routeDistanceLabel={routeDistanceLabel}
+        isRouteFetching={isRouteFetching}
+        onRetry={refetchRoute}
+        bottomOffset={
+          routeBuilderMode
+            ? FLOATING_TAB_CLEARANCE + 82
+            : activePlace
+              ? FLOATING_TAB_CLEARANCE + 194
+              : FLOATING_TAB_CLEARANCE + 82
+        }
+      />
 
       <View
         className="flex-1 flex-col"
@@ -786,7 +917,7 @@ export default function MapScreen() {
             style={{ display: "none" }}
             onPress={undefined}
             accessibilityRole="button"
-            accessibilityLabel="Mo menu"
+            accessibilityLabel={MAP_TEXT.accessibility.openMenu}
           >
             <BlurView
               tint="light"
@@ -860,7 +991,7 @@ export default function MapScreen() {
                     ref={searchInputRef}
                     value={searchText}
                     onChangeText={setSearchText}
-                    placeholder="Tìm kiếm địa điểm..."
+                    placeholder={MAP_TEXT.search.placeholder}
                     placeholderTextColor={TOKENS.color.neutral[500]}
                     style={{
                       flex: 1,
@@ -908,7 +1039,7 @@ export default function MapScreen() {
                         fontFamily: TOKENS.font.semibold,
                       }}
                     >
-                      Hủy
+                      {MAP_TEXT.search.cancel}
                     </Text>
                   </Pressable>
                 </>
@@ -949,97 +1080,13 @@ export default function MapScreen() {
           </View>
         </View>
 
-        {categories.length > 0 ? (
-          <View className="mt-3 px-4" pointerEvents="auto">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{
-                paddingHorizontal: 10,
-                gap: 8,
-                paddingRight: 14,
-                paddingVertical: 2,
-              }}
-              style={{
-                maxHeight: 40,
-              }}
-              keyboardShouldPersistTaps="handled"
-            >
-              <CategoryChip
-                category={{ id: null, name: "Tất cả" }}
-                active={activeCategoryId === null}
-                onToggle={handleCategoryToggle}
-              />
-              {categories.map((category) => (
-                <CategoryChip
-                  key={category.id}
-                  category={category}
-                  active={activeCategoryId === category.id}
-                  onToggle={handleCategoryToggle}
-                />
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
-
-        {areaOptions.length > 0 ? (
-          <View className="mt-2 px-4" pointerEvents="auto">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{
-                paddingHorizontal: 10,
-                gap: 8,
-                paddingRight: 14,
-                paddingVertical: 2,
-              }}
-              style={{
-                maxHeight: 40,
-              }}
-              keyboardShouldPersistTaps="handled"
-            >
-              <AreaFilterChip
-                label="Tất cả khu vực"
-                active={activeArea === ALL_AREAS_KEY}
-                onPress={() => handleAreaToggle(ALL_AREAS_KEY)}
-              />
-              {areaOptions.map((area) => (
-                <AreaFilterChip
-                  key={area.key}
-                  label={area.name}
-                  active={activeArea === area.key}
-                  onPress={() => handleAreaToggle(area.key)}
-                />
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
-
-        <View className="mt-2 px-4" pointerEvents="auto">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: 10,
-              gap: 8,
-              paddingRight: 14,
-              paddingVertical: 2,
-            }}
-            style={{
-              maxHeight: 40,
-            }}
-            keyboardShouldPersistTaps="handled"
-          >
-            {QUICK_FILTER_OPTIONS.map((option) => (
-              <QuickFilterChip
-                key={option.key}
-                option={option}
-                active={quickFilters[option.key] === true}
-                onToggle={handleQuickFilterToggle}
-              />
-            ))}
-          </ScrollView>
-        </View>
+        <FilterGroupBar
+          activeFilterGroup={activeFilterGroup}
+          onSelectFilterGroup={handleSelectFilterGroup}
+          activeFilterGroupMeta={activeFilterGroupMeta}
+          activeFilterSummaryLabel={activeFilterSummaryLabel}
+          onOpenFilterPicker={handleOpenFilterPicker}
+        />
 
         <View
           pointerEvents="box-none"
@@ -1097,7 +1144,7 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {activePlace ? (
+      {activePlace && !routeBuilderMode ? (
         <View
           pointerEvents="box-none"
           style={{
@@ -1112,10 +1159,27 @@ export default function MapScreen() {
             place={activePlace}
             onClose={handleClosePreview}
             onViewDetail={handleOpenPlaceDetail}
+            onStartRoute={handleStartRouteFromPreview}
+            showRouteAction
+            travelEtaLabel={
+              shouldShowPreviewTravelInfo ? routeEtaLabel : undefined
+            }
+            travelDistanceLabel={
+              shouldShowPreviewTravelInfo ? routeDistanceLabel : undefined
+            }
+            travelLoading={previewTravelLoading}
             compact={isCompactPreviewCard}
           />
         </View>
       ) : null}
+
+      <FilterPickerModal
+        visible={filterPickerVisible}
+        activeFilterGroupLabel={activeFilterGroupMeta.label}
+        options={filterPickerOptions}
+        onClose={handleCloseFilterPicker}
+        onSelectOption={handleSelectFilterOption}
+      />
 
       <LayerSwitcherModal
         visible={layerModalVisible}

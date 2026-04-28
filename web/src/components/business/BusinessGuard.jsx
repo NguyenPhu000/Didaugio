@@ -64,6 +64,46 @@ const BusinessSuspendedView = () => (
   </div>
 );
 
+const BusinessTerminatedView = ({ reason }) => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="max-w-md w-full p-8 text-center space-y-4">
+      <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
+        <span className="text-3xl" aria-hidden="true">
+          ✕
+        </span>
+      </div>
+      <h1 className="text-2xl font-bold">Hợp đồng đã chấm dứt</h1>
+      <p className="text-gray-600">
+        Hợp đồng doanh nghiệp của bạn đã bị chấm dứt.
+        {reason ? ` Lý do: ${reason}` : ""} Tài khoản ở chế độ chỉ đọc.
+      </p>
+      <Link
+        to={BUSINESS_ROUTES.PROFILE}
+        className="inline-block px-6 py-2 bg-black text-white font-semibold rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        Xem hồ sơ
+      </Link>
+    </div>
+  </div>
+);
+
+const BusinessSuspiciousView = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="max-w-md w-full p-8 text-center space-y-4">
+      <div className="w-16 h-16 mx-auto bg-amber-100 rounded-full flex items-center justify-center">
+        <span className="text-3xl" aria-hidden="true">
+          ⚠
+        </span>
+      </div>
+      <h1 className="text-2xl font-bold">Tài khoản bị khóa</h1>
+      <p className="text-gray-600">
+        Tài khoản doanh nghiệp của bạn bị tạm khóa do hoạt động đáng ngờ.
+        Vui lòng liên hệ quản trị viên để được hỗ trợ.
+      </p>
+    </div>
+  </div>
+);
+
 /**
  * @param {Object} props
  * @param {React.ReactNode} props.children
@@ -118,9 +158,13 @@ const BusinessGuard = ({ children, allowWhenPendingOrRejected = false }) => {
       return <BusinessRejectedView reason={business.rejectionReason} />;
     if (business.status === BUSINESS_STATUS.SUSPENDED)
       return <BusinessSuspendedView />;
+    if (business.status === BUSINESS_STATUS.TERMINATED)
+      return <BusinessTerminatedView reason={business.terminationReason} />;
+    if (business.status === BUSINESS_STATUS.SUSPICIOUS)
+      return <BusinessSuspiciousView />;
     if (
       business.status === BUSINESS_STATUS.APPROVED &&
-      business.contractSigned === false
+      !business.contractSigned
     ) {
       return <Navigate to={BUSINESS_ROUTES.PROFILE_CONTRACT} replace />;
     }

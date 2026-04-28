@@ -21,8 +21,13 @@ const resolveRoleId = (decoded = {}) => {
 export const authenticate = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
+    // SSE fallback: accept token from query param
+    const queryToken = req.query?.token;
+    const token = (authHeader && authHeader.startsWith("Bearer "))
+      ? authHeader.split(" ")[1]
+      : queryToken;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
       return res.status(401).json({
         success: false,
         data: null,
@@ -31,7 +36,6 @@ export const authenticate = (req, res, next) => {
       });
     }
 
-    const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, JWT_SECRET);
 
     req.user = {

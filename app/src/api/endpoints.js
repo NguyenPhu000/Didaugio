@@ -21,6 +21,8 @@ export const ENDPOINTS = {
   profile: {
     get: "/profile",
     summary: "/profile/summary",
+    update: "/profile",
+    updateAvatar: "/profile/avatar",
     savedPlaces: "/profile/saved-places",
     savedPlaceById: (placeId) => `/profile/saved-places/${placeId}`,
     trips: "/profile/trips",
@@ -47,6 +49,16 @@ export const ENDPOINTS = {
   ai: {
     placeSummary: "/ai/place-summary",
     chat: "/ai/chat",
+    navigate: "/ai/navigate",
+  },
+  routing: {
+    health: "/routes/health",
+    calculate: "/routes/calculate",
+    legs: "/routes/legs",
+  },
+  navigation: {
+    navigate: "/navigation/navigate",
+    telemetry: "/navigation/telemetry",
   },
   boundaries: {
     districts: "/boundaries/districts",

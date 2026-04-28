@@ -167,7 +167,7 @@ export default function CategoryFormDialog({
           <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center justify-between">
             <span>{dialogTitle}</span>
             <span className="text-[10px] font-mono bg-white text-black px-2 py-0.5">
-              {category ? category.id.substring(0, 8) : "NEW"}
+              {category ? String(category.id).substring(0, 8) : "NEW"}
             </span>
           </DialogTitle>
           <DialogDescription className="text-gray-400 font-mono text-xs uppercase tracking-wider">

@@ -1,12 +1,20 @@
 import { memo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
-import { TOKENS } from "../../../constants/design-tokens";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
+import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation } from "../utils/exploreHelpers";
-
-const SECTION_PAD = 24;
 
 function BentoTile({ place, large = false, onPress }) {
   const imageUri = resolvePlaceImageUri(place);
@@ -30,12 +38,13 @@ function BentoTile({ place, large = false, onPress }) {
         <View style={styles.placeholder}>
           <MaterialIcons
             name="restaurant"
-            size={large ? 36 : 28}
-            color="#93C5FD"
+            size={large ? 34 : 26}
+            color="rgba(0,0,0,0.15)"
           />
         </View>
       )}
 
+      {/* Cinematic overlay */}
       <View
         pointerEvents="none"
         style={[
@@ -44,6 +53,7 @@ function BentoTile({ place, large = false, onPress }) {
         ]}
       />
 
+      {/* Content */}
       <View style={styles.contentWrap}>
         {!large ? (
           <View style={styles.pillMini}>
@@ -60,7 +70,7 @@ function BentoTile({ place, large = false, onPress }) {
           {place?.name || "Trải nghiệm đặc sắc"}
         </Text>
 
-        {large ? (
+        {large && location ? (
           <Text style={styles.subtitle} numberOfLines={1}>
             {location}
           </Text>
@@ -77,7 +87,7 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Trải nghiệm ẩm thực</Text>
+      <Text style={styles.heading}>Ẩm thực nổi bật</Text>
 
       <View style={styles.glassShell}>
         <View style={styles.grid}>
@@ -103,46 +113,45 @@ export const ExperienceBentoSection = memo(ExperienceBentoSectionInner);
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 26,
-    paddingHorizontal: SECTION_PAD,
+    marginTop: 28,
+    paddingHorizontal: TAB_SCREEN_PADDING,
   },
   heading: {
-    color: TOKENS.color.neutral[900],
-    fontSize: 31,
-    lineHeight: 38,
-    letterSpacing: -0.7,
+    color: APPLE_THEME.text,
+    fontSize: 28,
+    lineHeight: 34,
+    letterSpacing: -0.8,
     fontFamily: TOKENS.font.heading,
     marginBottom: 14,
   },
   glassShell: {
-    borderRadius: 34,
-    padding: 12,
-    backgroundColor: "rgba(255,255,255,0.86)",
-    borderWidth: 1,
-    borderColor: "rgba(196,198,204,0.42)",
-    shadowColor: "#191c1e",
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.08,
-    shadowRadius: 26,
-    elevation: 8,
+    borderRadius: 28,
+    padding: 10,
+    backgroundColor: APPLE_THEME.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: APPLE_THEME.border,
+    ...Platform.select({
+      ios: TOKENS.shadow.sm,
+      android: { elevation: 2 },
+    }),
   },
   grid: {
     flexDirection: "row",
-    gap: 10,
-    height: 308,
+    gap: 8,
+    height: 300,
   },
   sideColumn: {
     flex: 1,
-    gap: 10,
+    gap: 8,
   },
   tileBase: {
     overflow: "hidden",
-    borderRadius: 24,
-    backgroundColor: "#E0E3E5",
+    borderRadius: 20,
+    backgroundColor: APPLE_THEME.surfaceMuted,
     position: "relative",
   },
   tileLarge: {
-    flex: 1.18,
+    flex: 1.2,
   },
   tileSmall: {
     flex: 1,
@@ -151,22 +160,22 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#E0E3E5",
+    backgroundColor: APPLE_THEME.surfaceMuted,
   },
   overlayBase: {
     ...StyleSheet.absoluteFillObject,
   },
   overlayLarge: {
-    backgroundColor: "rgba(0,3,8,0.54)",
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
   overlaySmall: {
-    backgroundColor: "rgba(0,3,8,0.34)",
+    backgroundColor: "rgba(0,0,0,0.30)",
   },
   contentWrap: {
     position: "absolute",
-    left: 12,
-    right: 12,
-    bottom: 12,
+    left: 10,
+    right: 10,
+    bottom: 10,
   },
   pillMini: {
     alignSelf: "flex-start",
@@ -174,32 +183,31 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 999,
     justifyContent: "center",
-    marginBottom: 6,
-    backgroundColor: "rgba(255,255,255,0.86)",
-    borderWidth: 1,
-    borderColor: "rgba(224,227,229,0.9)",
+    marginBottom: 5,
+    backgroundColor: "rgba(255,255,255,0.88)",
   },
   pillMiniText: {
-    color: "#0F172A",
+    color: APPLE_THEME.text,
     fontSize: 10,
     fontFamily: TOKENS.font.semibold,
+    letterSpacing: 0.2,
   },
   title: {
     color: "#FFFFFF",
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
     fontFamily: TOKENS.font.heading,
   },
   titleLarge: {
-    fontSize: 30,
-    lineHeight: 34,
+    fontSize: 26,
+    lineHeight: 30,
   },
   titleSmall: {
-    fontSize: 19,
-    lineHeight: 22,
+    fontSize: 17,
+    lineHeight: 21,
   },
   subtitle: {
-    marginTop: 4,
-    color: "rgba(255,255,255,0.86)",
+    marginTop: 3,
+    color: "rgba(255,255,255,0.76)",
     fontSize: 11,
     fontFamily: TOKENS.font.medium,
   },

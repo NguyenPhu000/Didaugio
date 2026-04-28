@@ -120,9 +120,8 @@ export const hasPermission = (requiredPermission) => {
         return res.status(403).json({
           success: false,
           data: null,
-          message: `${ERROR_MESSAGES.FORBIDDEN}. Yêu cầu quyền: ${permissionsToCheck.join(" hoặc ")}`,
+          message: ERROR_MESSAGES.FORBIDDEN,
           errorCode: ERROR_CODES.FORBIDDEN,
-          requiredPermissions: permissionsToCheck,
         });
       }
 
@@ -208,10 +207,8 @@ export const requireAllPermissions = (requiredPermissions) => {
         return res.status(403).json({
           success: false,
           data: null,
-          message: `${ERROR_MESSAGES.FORBIDDEN}. Thiếu quyền: ${missingPermissions.join(", ")}`,
-          errorCode: "FORBIDDEN_MISSING_PERMISSIONS",
-          requiredPermissions,
-          missingPermissions,
+          message: ERROR_MESSAGES.FORBIDDEN,
+          errorCode: ERROR_CODES.FORBIDDEN,
         });
       }
 

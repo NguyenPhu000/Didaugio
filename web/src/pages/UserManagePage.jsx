@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { userService } from "@/apis/userService";
-import { ROLES } from "@/constants/constants";
+import { ROLES, ROLE_NAMES } from "@/constants/constants";
 import UserFormModal from "@/components/user/UserFormModal";
 import UserDetailModal from "@/components/user/UserDetailModal";
 import TimStatsCard from "@/components/admin/TimStatsCard";
@@ -49,6 +49,7 @@ import {
   DialogFooter,
 } from "@/components/ui";
 import { useToast } from "@/hooks/use-toast";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
 
 /**
  * USER MANAGEMENT PAGE - T.I.M STYLE (VIETNAMESE)
@@ -93,12 +94,15 @@ const UserManagePage = () => {
       const response = await userService.getAll(params);
 
       const userData = response.data.users || response.data || [];
+      const managedUsers = userData.filter(
+        (item) => Number(item?.roleId) !== ROLES.GUEST,
+      );
       const paginationData = response.data.pagination || {
         total: response.data.total || userData.length,
         totalPages: response.data.totalPages || 1,
       };
 
-      setUsers(userData);
+      setUsers(managedUsers);
       setPagination(paginationData);
     } catch {
       toast({
@@ -198,15 +202,27 @@ const UserManagePage = () => {
   };
 
   const getRoleBadge = (roleId) => {
-    // Mapping based on typically used IDs (adjust if your DB differs)
     const roles = {
-      1: {
-        label: "SUPER ADMIN",
+      [ROLES.SUPER_ADMIN]: {
+        label: ROLE_NAMES[ROLES.SUPER_ADMIN].toUpperCase(),
         class: "bg-red-600 text-white border-red-800",
       },
-      2: { label: "ADMIN", class: "bg-black text-white border-black" },
-      3: { label: "BUSINESS", class: "bg-blue-600 text-white border-blue-800" },
-      4: { label: "MEMBER", class: "bg-gray-200 text-black border-gray-400" },
+      [ROLES.ADMIN]: {
+        label: ROLE_NAMES[ROLES.ADMIN].toUpperCase(),
+        class: "bg-black text-white border-black",
+      },
+      [ROLES.BUSINESS]: {
+        label: ROLE_NAMES[ROLES.BUSINESS].toUpperCase(),
+        class: "bg-blue-600 text-white border-blue-800",
+      },
+      [ROLES.STAFF]: {
+        label: ROLE_NAMES[ROLES.STAFF].toUpperCase(),
+        class: "bg-indigo-600 text-white border-indigo-800",
+      },
+      [ROLES.USER]: {
+        label: ROLE_NAMES[ROLES.USER].toUpperCase(),
+        class: "bg-gray-200 text-black border-gray-400",
+      },
     };
     const role = roles[roleId] || {
       label: `ROLE-${roleId}`,
@@ -348,7 +364,8 @@ const UserManagePage = () => {
                 <SelectItem value="1">SUPER ADMIN</SelectItem>
                 <SelectItem value="2">ADMIN</SelectItem>
                 <SelectItem value="3">BUSINESS</SelectItem>
-                <SelectItem value="4">MEMBER</SelectItem>
+                <SelectItem value="4">STAFF</SelectItem>
+                <SelectItem value="5">USER</SelectItem>
               </SelectContent>
             </Select>
 
@@ -406,7 +423,13 @@ const UserManagePage = () => {
                       <td className="p-4 border-r border-black/5">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 border border-black rounded-none">
-                            <AvatarImage src={user.profile?.avatar} />
+                            <AvatarImage
+                              src={
+                                resolveMediaUrl(
+                                  user.avatar || user.profile?.avatar,
+                                ) || undefined
+                              }
+                            />
                             <AvatarFallback className="rounded-none bg-gray-200 font-bold font-mono">
                               {(user.username || user.email || "?")
                                 .substring(0, 2)

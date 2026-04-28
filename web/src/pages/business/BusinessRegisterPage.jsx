@@ -22,7 +22,8 @@ import {
   PageHeader,
   SectionCard,
 } from "@/components/business/DashboardWidgets";
-import FileUploader from "@/components/business/FileUploader";
+import DocumentImageUploadField from "@/components/business/DocumentImageUploadField";
+import { DOCUMENT_SAMPLE_IMAGES } from "@/components/business/documentImageConstants";
 
 const registerSchema = z.object({
   businessName: z.string().min(2, "Tên doanh nghiệp phải có ít nhất 2 ký tự"),
@@ -75,6 +76,10 @@ const BusinessRegisterPage = () => {
 
   const onSubmit = async (data) => {
     const nextErrors = {
+      businessLicense:
+        documents.businessLicense.length === 0
+          ? "Vui lòng tải ảnh Giấy phép kinh doanh / Chứng nhận"
+          : "",
       idCardFront:
         documents.idCardFront.length === 0
           ? "Vui lòng tải CCCD/CMND mặt trước"
@@ -82,10 +87,6 @@ const BusinessRegisterPage = () => {
       idCardBack:
         documents.idCardBack.length === 0
           ? "Vui lòng tải CCCD/CMND mặt sau"
-          : "",
-      businessLicense:
-        documents.businessLicense.length === 0
-          ? "Vui lòng tải giấy phép kinh doanh"
           : "",
     };
 
@@ -180,56 +181,71 @@ const BusinessRegisterPage = () => {
           </div>
 
           <SectionCard title="Giấy tờ xác minh" bodyClassName="space-y-4">
-            <FileUploader
-              label="CCCD/CMND mặt trước"
-              required
-              maxFiles={1}
-              value={documents.idCardFront}
-              onChange={(files) => {
-                setDocuments((prev) => ({ ...prev, idCardFront: files }));
-                setDocumentErrors((prev) => ({ ...prev, idCardFront: "" }));
-              }}
-              hint="Định dạng JPG/PNG/PDF, tối đa 10MB"
-            />
-            {documentErrors.idCardFront && (
-              <p className="text-[11px] text-destructive">
-                {documentErrors.idCardFront}
+            <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+              <h4 className="text-sm font-semibold text-foreground">
+                Upload hình ảnh giấy tờ
+              </h4>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Ảnh mẫu sẽ hiển thị mặc định. Khi chọn ảnh mới, preview sẽ đổi
+                ngay theo ảnh bạn tải lên.
               </p>
-            )}
 
-            <FileUploader
-              label="CCCD/CMND mặt sau"
-              required
-              maxFiles={1}
-              value={documents.idCardBack}
-              onChange={(files) => {
-                setDocuments((prev) => ({ ...prev, idCardBack: files }));
-                setDocumentErrors((prev) => ({ ...prev, idCardBack: "" }));
-              }}
-              hint="Định dạng JPG/PNG/PDF, tối đa 10MB"
-            />
-            {documentErrors.idCardBack && (
-              <p className="text-[11px] text-destructive">
-                {documentErrors.idCardBack}
-              </p>
-            )}
+              <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
+                <DocumentImageUploadField
+                  label="Giấy phép kinh doanh / Chứng nhận"
+                  required
+                  value={documents.businessLicense}
+                  onChange={(files) => {
+                    setDocuments((prev) => ({
+                      ...prev,
+                      businessLicense: files,
+                    }));
+                    setDocumentErrors((prev) => ({
+                      ...prev,
+                      businessLicense: "",
+                    }));
+                  }}
+                  hint="Tải lên hình chụp Giấy phép kinh doanh hoặc giấy chứng nhận liên quan"
+                  fallbackPreview={DOCUMENT_SAMPLE_IMAGES.portrait}
+                  previewAlt="Giấy phép kinh doanh"
+                  previewClassName="h-[300px] sm:h-[360px]"
+                  error={documentErrors.businessLicense}
+                  disabled={isLoading}
+                />
 
-            <FileUploader
-              label="Giấy phép kinh doanh"
-              required
-              maxFiles={1}
-              value={documents.businessLicense}
-              onChange={(files) => {
-                setDocuments((prev) => ({ ...prev, businessLicense: files }));
-                setDocumentErrors((prev) => ({ ...prev, businessLicense: "" }));
-              }}
-              hint="Định dạng JPG/PNG/PDF, tối đa 10MB"
-            />
-            {documentErrors.businessLicense && (
-              <p className="text-[11px] text-destructive">
-                {documentErrors.businessLicense}
-              </p>
-            )}
+                <DocumentImageUploadField
+                  label="Ảnh mặt trước CC/CCCD"
+                  required
+                  value={documents.idCardFront}
+                  onChange={(files) => {
+                    setDocuments((prev) => ({ ...prev, idCardFront: files }));
+                    setDocumentErrors((prev) => ({ ...prev, idCardFront: "" }));
+                  }}
+                  hint="Tải lên ảnh mặt trước CC/CCCD có định dạng PNG, JPEG, JPG"
+                  fallbackPreview={DOCUMENT_SAMPLE_IMAGES.idCardFront}
+                  previewAlt="CCCD mặt trước"
+                  previewClassName="h-[220px] sm:h-[260px]"
+                  error={documentErrors.idCardFront}
+                  disabled={isLoading}
+                />
+
+                <DocumentImageUploadField
+                  label="Ảnh mặt sau CC/CCCD"
+                  required
+                  value={documents.idCardBack}
+                  onChange={(files) => {
+                    setDocuments((prev) => ({ ...prev, idCardBack: files }));
+                    setDocumentErrors((prev) => ({ ...prev, idCardBack: "" }));
+                  }}
+                  hint="Tải lên ảnh mặt sau CC/CCCD có định dạng PNG, JPEG, JPG"
+                  fallbackPreview={DOCUMENT_SAMPLE_IMAGES.idCardBack}
+                  previewAlt="CCCD mặt sau"
+                  previewClassName="h-[220px] sm:h-[260px]"
+                  error={documentErrors.idCardBack}
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
           </SectionCard>
 
           <Button type="submit" disabled={isLoading} className="w-full gap-2">

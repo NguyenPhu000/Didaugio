@@ -1,12 +1,26 @@
 import { memo, useCallback } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { TOKENS } from "../../../constants/design-tokens";
+import { FlashList } from "@shopify/flash-list";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
+import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { PopularCard } from "./PopularCard";
 
-const TEXT_COLOR = "#0F172A";
-const PAD = 24;
+const EST_ITEM_SIZE = 116;
+
+const keyExtractor = (item, index) =>
+  item?.id != null ? String(item.id) : `popular-${index}`;
 
 function PopularSectionInner({ places, onPressPlace, title = "Phổ biến" }) {
+  const renderItem = useCallback(
+    ({ item }) => (
+      <PopularCard place={item} onPress={() => onPressPlace(item)} />
+    ),
+    [onPressPlace],
+  );
+
   if (!places?.length) return null;
 
   return (
@@ -15,15 +29,14 @@ function PopularSectionInner({ places, onPressPlace, title = "Phổ biến" }) {
         <Text style={styles.title}>{title}</Text>
       </View>
 
-      <View style={styles.list}>
-        {places.map((place) => (
-          <PopularCard
-            key={String(place?.id)}
-            place={place}
-            onPress={() => onPressPlace(place)}
-          />
-        ))}
-      </View>
+      <FlashList
+        data={places}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        estimatedItemSize={EST_ITEM_SIZE}
+        scrollEnabled={false}
+        contentContainerStyle={styles.list}
+      />
     </View>
   );
 }
@@ -33,7 +46,7 @@ export const PopularSection = memo(PopularSectionInner);
 const styles = StyleSheet.create({
   container: {
     marginTop: 28,
-    paddingHorizontal: PAD,
+    paddingHorizontal: TAB_SCREEN_PADDING,
   },
   header: {
     flexDirection: "row",
@@ -42,7 +55,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   title: {
-    color: TEXT_COLOR,
+    color: APPLE_THEME.text,
     fontSize: 22,
     lineHeight: 28,
     letterSpacing: -0.5,
