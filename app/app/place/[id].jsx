@@ -13,11 +13,18 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
+import * as ImageManipulator from "expo-image-manipulator";
+import * as ImagePicker from "expo-image-picker";
 import { MaterialIcons } from "@expo/vector-icons";
-import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
+import BottomSheet, {
+  BottomSheetScrollView,
+  BottomSheetTextInput,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import {
+  useCreateReview,
   usePlaceDetail,
   usePlaceReviews,
 } from "../../src/modules/place/hooks/usePlaceDetail";
@@ -64,6 +71,11 @@ const PRICE_RANGE_LABELS = {
   EXPENSIVE: "Cao cấp",
   LUXURY: "Sang trọng",
 };
+const REVIEW_MEDIA_LIMIT = 5;
+const REVIEW_IMAGE_WIDTH = 1000;
+const REVIEW_IMAGE_COMPRESS = 0.72;
+const MAIN_REVIEW_LIMIT = 5;
+const REVIEW_FILTER_RATINGS = [5, 4, 3, 2, 1];
 
 function formatReviewCount(value, t) {
   const count = Number(value || 0);
@@ -270,12 +282,26 @@ const StarRow = ({ rating, size = 16 }) =>
     />
   ));
 
+function getReviewMediaUri(media) {
+  return resolveMediaUrl(
+    media?.mediaData ||
+      media?.thumbnailUrl ||
+      media?.secureUrl ||
+      media?.url ||
+      null,
+  );
+}
+
 function ReviewCard({ review, t }) {
   const author =
     review?.user?.profile?.fullName ||
     review?.user?.email?.split("@")[0] ||
     t("Ẩn danh", "Anonymous");
   const avatar = resolveMediaUrl(review?.user?.profile?.avatar);
+  const media = (review?.media || []).map(getReviewMediaUri).filter(Boolean);
+  const visibleReplies = (review?.replies || []).filter(
+    (reply) => reply?.status !== "hidden",
+  );
 
   return (
     <View style={styles.reviewCard}>
@@ -294,7 +320,21 @@ function ReviewCard({ review, t }) {
           )}
         </View>
         <View style={styles.reviewMeta}>
-          <Text style={styles.reviewAuthor}>{author}</Text>
+          <View style={styles.reviewAuthorRow}>
+            <Text style={styles.reviewAuthor}>{author}</Text>
+            {review?.isVerifiedPurchase ? (
+              <View style={styles.verifiedReviewBadge}>
+                <MaterialIcons
+                  name="verified"
+                  size={12}
+                  color={PALETTE.success}
+                />
+                <Text style={styles.verifiedReviewText}>
+                  {t("Đã xác thực", "Verified")}
+                </Text>
+              </View>
+            ) : null}
+          </View>
           <View style={styles.reviewStars}>
             <StarRow rating={review?.rating || 0} size={12} />
           </View>
@@ -307,6 +347,44 @@ function ReviewCard({ review, t }) {
       </View>
       {review?.content ? (
         <Text style={styles.reviewContent}>{review.content}</Text>
+      ) : null}
+      {media.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.reviewMediaScroller}
+          contentContainerStyle={styles.reviewMediaList}
+        >
+          {media.slice(0, REVIEW_MEDIA_LIMIT).map((uri, index) => (
+            <Image
+              key={`${uri}-${index}`}
+              source={{ uri }}
+              style={styles.reviewMediaImage}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+            />
+          ))}
+        </ScrollView>
+      ) : null}
+      {visibleReplies.length > 0 ? (
+        <View style={styles.reviewReplyList}>
+          {visibleReplies.map((reply) => (
+            <View key={reply.id} style={styles.reviewReplyCard}>
+              <View style={styles.reviewReplyHeader}>
+                <MaterialIcons
+                  name="storefront"
+                  size={15}
+                  color={PALETTE.primaryDark}
+                />
+                <Text style={styles.reviewReplyAuthor}>
+                  {reply?.user?.profile?.fullName ||
+                    t("Phản hồi từ doanh nghiệp", "Business reply")}
+                </Text>
+              </View>
+              <Text style={styles.reviewReplyContent}>{reply.content}</Text>
+            </View>
+          ))}
+        </View>
       ) : null}
     </View>
   );
@@ -584,6 +662,371 @@ function TripSelectorSheet({ placeId, placeName, onClose, t }) {
   );
 }
 
+function ReviewComposerSheetContent({
+  placeName,
+  isSubmitting,
+  onClose,
+  onSubmit,
+  t,
+}) {
+  const [rating, setRating] = useState(5);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [images, setImages] = useState([]);
+  const [isPicking, setIsPicking] = useState(false);
+  const [isProcessingSubmit, setIsProcessingSubmit] = useState(false);
+
+  const handlePickImages = useCallback(async () => {
+    const remainingSlots = REVIEW_MEDIA_LIMIT - images.length;
+    if (remainingSlots <= 0) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        t("Cần quyền truy cập ảnh", "Photo permission required"),
+        t(
+          "Hãy cấp quyền để đính kèm ảnh thực tế của địa điểm.",
+          "Please allow photo access to attach place photos.",
+        ),
+      );
+      return;
+    }
+
+    setIsPicking(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsMultipleSelection: true,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.9,
+        selectionLimit: remainingSlots,
+      });
+
+      if (!result.canceled) {
+        setImages((current) =>
+          [...current, ...result.assets].slice(0, REVIEW_MEDIA_LIMIT),
+        );
+      }
+    } finally {
+      setIsPicking(false);
+    }
+  }, [images.length, t]);
+
+  const handleRemoveImage = useCallback((indexToRemove) => {
+    setImages((current) =>
+      current.filter((_, index) => index !== indexToRemove),
+    );
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
+    const trimmedContent = content.trim();
+    const trimmedTitle = title.trim();
+
+    if (!trimmedContent) {
+      Alert.alert(
+        t("Thiếu nội dung", "Missing content"),
+        t("Vui lòng nhập cảm nhận của bạn.", "Please enter your review."),
+      );
+      return;
+    }
+
+    setIsProcessingSubmit(true);
+    try {
+      const media = await Promise.all(
+        images.map(async (asset, index) => {
+          const result = await ImageManipulator.manipulateAsync(
+            asset.uri,
+            [{ resize: { width: REVIEW_IMAGE_WIDTH } }],
+            {
+              compress: REVIEW_IMAGE_COMPRESS,
+              format: ImageManipulator.SaveFormat.JPEG,
+              base64: true,
+            },
+          );
+
+          return {
+            mediaData: `data:image/jpeg;base64,${result.base64}`,
+            mediaType: "image",
+            order: index,
+          };
+        }),
+      );
+
+      await onSubmit({
+        rating,
+        title: trimmedTitle || null,
+        content: trimmedContent,
+        media,
+      });
+      setRating(5);
+      setTitle("");
+      setContent("");
+      setImages([]);
+    } catch (error) {
+      Alert.alert(
+        t("Không thể gửi đánh giá", "Could not submit review"),
+        error?.message ||
+          t("Vui lòng thử lại sau.", "Please try again later."),
+      );
+    } finally {
+      setIsProcessingSubmit(false);
+    }
+  }, [content, images, onSubmit, rating, t, title]);
+
+  const isBusy = isSubmitting || isProcessingSubmit;
+
+  return (
+    <BottomSheetScrollView
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.reviewSheetContent}
+    >
+      <View style={styles.reviewModalHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.reviewModalTitle}>
+            {t("Viết đánh giá", "Write review")}
+          </Text>
+          {placeName ? (
+            <Text style={styles.reviewModalSubtitle} numberOfLines={1}>
+              {placeName}
+            </Text>
+          ) : null}
+        </View>
+        <Pressable onPress={onClose} style={styles.reviewModalClose}>
+          <MaterialIcons name="close" size={20} color={PALETTE.textMuted} />
+        </Pressable>
+      </View>
+
+      <View style={styles.reviewRatingPicker}>
+        {[1, 2, 3, 4, 5].map((value) => (
+          <Pressable key={value} onPress={() => setRating(value)} hitSlop={8}>
+            <MaterialIcons
+              name={value <= rating ? "star" : "star-border"}
+              size={34}
+              color="#FBBF24"
+            />
+          </Pressable>
+        ))}
+      </View>
+
+      <BottomSheetTextInput
+        value={title}
+        onChangeText={setTitle}
+        placeholder={t("Tiêu đề ngắn (không bắt buộc)", "Short title")}
+        placeholderTextColor={PALETTE.textSoft}
+        style={styles.reviewInput}
+        maxLength={120}
+        returnKeyType="next"
+      />
+      <BottomSheetTextInput
+        value={content}
+        onChangeText={setContent}
+        placeholder={t(
+          "Chia sẻ trải nghiệm của bạn...",
+          "Share your experience...",
+        )}
+        placeholderTextColor={PALETTE.textSoft}
+        style={[styles.reviewInput, styles.reviewContentInput]}
+        maxLength={2000}
+        multiline
+        textAlignVertical="top"
+      />
+
+      <View style={styles.reviewImageHeader}>
+        <Text style={styles.reviewImageTitle}>
+          {t("Ảnh thực tế", "Real photos")}
+        </Text>
+        <Text style={styles.reviewImageCount}>
+          {images.length}/{REVIEW_MEDIA_LIMIT}
+        </Text>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.reviewPickerList}
+      >
+        {images.map((asset, index) => (
+          <View key={`${asset.uri}-${index}`} style={styles.reviewPickItem}>
+            <Image
+              source={{ uri: asset.uri }}
+              style={styles.reviewPickImage}
+              contentFit="cover"
+            />
+            <Pressable
+              onPress={() => handleRemoveImage(index)}
+              style={styles.reviewPickRemove}
+            >
+              <MaterialIcons name="close" size={14} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        ))}
+        {images.length < REVIEW_MEDIA_LIMIT ? (
+          <Pressable
+            onPress={handlePickImages}
+            disabled={isPicking || isBusy}
+            style={styles.reviewAddImageButton}
+          >
+            {isPicking ? (
+              <ActivityIndicator size="small" color={PALETTE.primary} />
+            ) : (
+              <>
+                <MaterialIcons
+                  name="add-photo-alternate"
+                  size={24}
+                  color={PALETTE.primaryDark}
+                />
+                <Text style={styles.reviewAddImageText}>
+                  {t("Thêm ảnh", "Add photo")}
+                </Text>
+              </>
+            )}
+          </Pressable>
+        ) : null}
+      </ScrollView>
+
+      <Pressable
+        onPress={handleSubmit}
+        disabled={isBusy}
+        style={[
+          styles.reviewSubmitButton,
+          isBusy && styles.reviewSubmitButtonDisabled,
+        ]}
+      >
+        {isBusy ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Text style={styles.reviewSubmitText}>
+            {t("Gửi đánh giá", "Submit review")}
+          </Text>
+        )}
+      </Pressable>
+    </BottomSheetScrollView>
+  );
+}
+
+function AllReviewsSheetContent({ reviews, totalCount, onClose, t }) {
+  const [ratingFilter, setRatingFilter] = useState(null);
+  const [photosOnly, setPhotosOnly] = useState(false);
+
+  const filteredReviews = useMemo(() => {
+    return [...reviews]
+      .filter((review) =>
+        ratingFilter ? Number(review?.rating) === ratingFilter : true,
+      )
+      .filter((review) =>
+        photosOnly ? Array.isArray(review?.media) && review.media.length > 0 : true,
+      )
+      .sort((a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0));
+  }, [photosOnly, ratingFilter, reviews]);
+
+  return (
+    <BottomSheetView style={styles.allReviewsSheet}>
+      <View style={styles.allReviewsHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.reviewModalTitle}>
+            {t("Tất cả đánh giá", "All reviews")}
+          </Text>
+          <Text style={styles.reviewModalSubtitle}>
+            {formatReviewCount(totalCount, t)}
+          </Text>
+        </View>
+        <Pressable onPress={onClose} style={styles.reviewModalClose}>
+          <MaterialIcons name="close" size={20} color={PALETTE.textMuted} />
+        </Pressable>
+      </View>
+
+      <View style={styles.reviewFilterWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.reviewFilterRow}
+        >
+          <Pressable
+            onPress={() => setRatingFilter(null)}
+            style={[
+              styles.reviewFilterChip,
+              ratingFilter == null && styles.reviewFilterChipActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.reviewFilterText,
+                ratingFilter == null && styles.reviewFilterTextActive,
+              ]}
+            >
+              {t("Mới nhất", "Latest")}
+            </Text>
+          </Pressable>
+          {REVIEW_FILTER_RATINGS.map((rating) => (
+            <Pressable
+              key={rating}
+              onPress={() =>
+                setRatingFilter((current) =>
+                  current === rating ? null : rating,
+                )
+              }
+              style={[
+                styles.reviewFilterChip,
+                ratingFilter === rating && styles.reviewFilterChipActive,
+              ]}
+            >
+              <MaterialIcons
+                name="star"
+                size={14}
+                color={ratingFilter === rating ? "#FFFFFF" : PALETTE.accent}
+              />
+              <Text
+                style={[
+                  styles.reviewFilterText,
+                  ratingFilter === rating && styles.reviewFilterTextActive,
+                ]}
+              >
+                {rating}
+              </Text>
+            </Pressable>
+          ))}
+          <Pressable
+            onPress={() => setPhotosOnly((value) => !value)}
+            style={[
+              styles.reviewFilterChip,
+              photosOnly && styles.reviewFilterChipActive,
+            ]}
+          >
+            <MaterialIcons
+              name="photo-library"
+              size={14}
+              color={photosOnly ? "#FFFFFF" : PALETTE.primaryDark}
+            />
+            <Text
+              style={[
+                styles.reviewFilterText,
+                photosOnly && styles.reviewFilterTextActive,
+              ]}
+            >
+              {t("Có ảnh", "With photos")}
+            </Text>
+          </Pressable>
+        </ScrollView>
+      </View>
+
+      {filteredReviews.length === 0 ? (
+        <View style={styles.allReviewsEmpty}>
+          <Text style={styles.emptyReviewText}>
+            {t("Không có đánh giá phù hợp", "No matching reviews")}
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredReviews}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={({ item }) => <ReviewCard review={item} t={t} />}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.allReviewsList}
+        />
+      )}
+    </BottomSheetView>
+  );
+}
+
 export default function PlaceDetailScreen() {
   const { id } = useLocalSearchParams();
   const placeId = useMemo(() => {
@@ -597,15 +1040,22 @@ export default function PlaceDetailScreen() {
   const { t } = useI18n();
   const accessToken = useAuthStore((state) => state.accessToken);
   const bottomSheetRef = useRef(null);
+  const writeReviewSheetRef = useRef(null);
+  const allReviewsSheetRef = useRef(null);
   const imageListRef = useRef(null);
   const SCREEN_WIDTH = Dimensions.get("window").width;
+  const writeReviewSnapPoints = useMemo(() => ["62%", "92%"], []);
+  const allReviewsSnapPoints = useMemo(() => ["70%", "96%"], []);
 
   const { data: place, isLoading, isError, error } = usePlaceDetail(placeId);
-  const { data: reviewData } = usePlaceReviews(placeId, { limit: 5 });
+  const { data: reviewData } = usePlaceReviews(placeId, { limit: 50 });
   const reviews = reviewData?.reviews || [];
+  const totalReviews = Number(reviewData?.pagination?.total || reviews.length);
+  const recentReviews = reviews.slice(0, MAIN_REVIEW_LIMIT);
 
   const saveMutation = useSavePlace();
   const unsaveMutation = useUnsavePlace();
+  const createReviewMutation = useCreateReview(placeId);
   const [activeImage, setActiveImage] = useState(0);
   const [isSavedLocal, setIsSavedLocal] = useState(false);
 
@@ -729,6 +1179,46 @@ export default function PlaceDetailScreen() {
 
     router.push(`/booking/${id}`);
   }, [accessToken, id, router, t]);
+
+  const handleOpenReviewComposer = useCallback(() => {
+    if (!accessToken) {
+      Alert.alert(
+        t("Cần đăng nhập", "Login required"),
+        t(
+          "Hãy đăng nhập để viết đánh giá địa điểm.",
+          "Please log in to write a review.",
+        ),
+        [
+          { text: t("Để sau", "Later"), style: "cancel" },
+          {
+            text: t("Đăng nhập", "Login"),
+            onPress: () => router.push("/(auth)/login"),
+          },
+        ],
+      );
+      return;
+    }
+    writeReviewSheetRef.current?.expand();
+  }, [accessToken, router, t]);
+
+  const handleSubmitReview = useCallback(
+    async (payload) => {
+      await createReviewMutation.mutateAsync(payload);
+      writeReviewSheetRef.current?.close();
+      Alert.alert(
+        t("Đã gửi đánh giá", "Review submitted"),
+        t(
+          "Cảm ơn bạn đã chia sẻ trải nghiệm.",
+          "Thank you for sharing your experience.",
+        ),
+      );
+    },
+    [createReviewMutation, t],
+  );
+
+  const handleOpenAllReviews = useCallback(() => {
+    allReviewsSheetRef.current?.expand();
+  }, []);
 
   const handleOpenUrl = useCallback(async (url) => {
     if (!url) return;
@@ -1144,15 +1634,36 @@ export default function PlaceDetailScreen() {
             actionLabel={
               accessToken ? t("Viết đánh giá", "Write review") : undefined
             }
+            onActionPress={handleOpenReviewComposer}
           >
-            {reviews.length === 0 ? (
+            {recentReviews.length === 0 ? (
               <Text style={styles.emptyReviewText}>
                 {t("Chưa có đánh giá nào", "No reviews yet")}
               </Text>
             ) : (
-              reviews.map((review) => (
-                <ReviewCard key={review.id} review={review} t={t} />
-              ))
+              <>
+                {recentReviews.map((review) => (
+                  <ReviewCard key={review.id} review={review} t={t} />
+                ))}
+                {totalReviews > MAIN_REVIEW_LIMIT ? (
+                  <Pressable
+                    onPress={handleOpenAllReviews}
+                    style={styles.seeAllReviewsButton}
+                  >
+                    <Text style={styles.seeAllReviewsText}>
+                      {t(
+                        `Xem tất cả ${totalReviews} đánh giá`,
+                        `See all ${totalReviews} reviews`,
+                      )}
+                    </Text>
+                    <MaterialIcons
+                      name="keyboard-arrow-up"
+                      size={18}
+                      color={PALETTE.primaryDark}
+                    />
+                  </Pressable>
+                ) : null}
+              </>
             )}
           </SectionCard>
         </View>
@@ -1190,6 +1701,41 @@ export default function PlaceDetailScreen() {
           </Text>
         </Pressable>
       </BlurView>
+
+      <BottomSheet
+        ref={writeReviewSheetRef}
+        index={-1}
+        snapPoints={writeReviewSnapPoints}
+        enablePanDownToClose
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
+        backgroundStyle={styles.reviewSheetBackground}
+        handleIndicatorStyle={styles.reviewSheetIndicator}
+      >
+        <ReviewComposerSheetContent
+          placeName={place?.name}
+          isSubmitting={createReviewMutation.isPending}
+          t={t}
+          onClose={() => writeReviewSheetRef.current?.close()}
+          onSubmit={handleSubmitReview}
+        />
+      </BottomSheet>
+
+      <BottomSheet
+        ref={allReviewsSheetRef}
+        index={-1}
+        snapPoints={allReviewsSnapPoints}
+        enablePanDownToClose
+        backgroundStyle={styles.reviewSheetBackground}
+        handleIndicatorStyle={styles.reviewSheetIndicator}
+      >
+        <AllReviewsSheetContent
+          reviews={reviews}
+          totalCount={totalReviews}
+          t={t}
+          onClose={() => allReviewsSheetRef.current?.close()}
+        />
+      </BottomSheet>
 
       <BottomSheet
         ref={bottomSheetRef}
@@ -1751,6 +2297,23 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     fontFamily: TOKENS.font.medium,
   },
+  seeAllReviewsButton: {
+    height: 48,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: PALETTE.border,
+    backgroundColor: PALETTE.primarySoft,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 4,
+  },
+  seeAllReviewsText: {
+    color: PALETTE.primaryDark,
+    fontSize: 14,
+    fontFamily: TOKENS.font.semibold,
+  },
   reviewCard: {
     padding: 16,
     borderRadius: 20,
@@ -1774,9 +2337,29 @@ const styles = StyleSheet.create({
     fontFamily: TOKENS.font.heading,
   },
   reviewMeta: { flex: 1 },
+  reviewAuthorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+  },
   reviewAuthor: {
     color: PALETTE.text,
     fontSize: 14,
+    fontFamily: TOKENS.font.semibold,
+  },
+  verifiedReviewBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    backgroundColor: "#ECFDF5",
+  },
+  verifiedReviewText: {
+    color: PALETTE.success,
+    fontSize: 10,
     fontFamily: TOKENS.font.semibold,
   },
   reviewStars: { flexDirection: "row", gap: 1, marginTop: 2 },
@@ -1791,6 +2374,264 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginTop: 12,
     fontFamily: TOKENS.font.body,
+  },
+  reviewMediaScroller: { marginTop: 12 },
+  reviewMediaList: { gap: 8, paddingRight: 4 },
+  reviewMediaImage: {
+    width: 92,
+    height: 92,
+    borderRadius: 16,
+    backgroundColor: PALETTE.borderSoft,
+  },
+  reviewReplyList: {
+    gap: 8,
+    marginTop: 12,
+  },
+  reviewReplyCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: PALETTE.primary,
+    borderRadius: 16,
+    padding: 12,
+    backgroundColor: "#FFFFFF",
+  },
+  reviewReplyHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
+  },
+  reviewReplyAuthor: {
+    color: PALETTE.primaryDark,
+    fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
+  },
+  reviewReplyContent: {
+    color: PALETTE.textMuted,
+    fontSize: 13,
+    lineHeight: 20,
+    fontFamily: TOKENS.font.body,
+  },
+  reviewSheetBackground: {
+    backgroundColor: PALETTE.surface,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+  },
+  reviewSheetIndicator: {
+    width: 42,
+    backgroundColor: PALETTE.border,
+  },
+  reviewSheetContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 32,
+  },
+  allReviewsSheet: {
+    flex: 1,
+    paddingHorizontal: 18,
+    paddingTop: 8,
+  },
+  allReviewsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 14,
+  },
+  reviewFilterWrap: {
+    marginHorizontal: -18,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: PALETTE.borderSoft,
+    paddingBottom: 12,
+  },
+  reviewFilterRow: {
+    gap: 8,
+    paddingHorizontal: 18,
+  },
+  reviewFilterChip: {
+    minHeight: 36,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: PALETTE.border,
+    backgroundColor: PALETTE.surfaceAlt,
+    paddingHorizontal: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  reviewFilterChipActive: {
+    borderColor: PALETTE.primary,
+    backgroundColor: PALETTE.primary,
+  },
+  reviewFilterText: {
+    color: PALETTE.textMuted,
+    fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
+  },
+  reviewFilterTextActive: {
+    color: "#FFFFFF",
+  },
+  allReviewsList: {
+    paddingBottom: 32,
+  },
+  allReviewsEmpty: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  reviewModalBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(15,23,42,0.38)",
+  },
+  reviewModalScrim: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  reviewKeyboardAvoider: {
+    width: "100%",
+    justifyContent: "flex-end",
+  },
+  reviewModalCard: {
+    maxHeight: "88%",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 24,
+    backgroundColor: PALETTE.surface,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: -12 },
+    shadowOpacity: 0.16,
+    shadowRadius: 28,
+    elevation: 18,
+  },
+  reviewModalContent: {
+    paddingBottom: 8,
+  },
+  reviewModalHandle: {
+    alignSelf: "center",
+    width: 44,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: PALETTE.border,
+    marginBottom: 16,
+  },
+  reviewModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 14,
+  },
+  reviewModalTitle: {
+    color: PALETTE.text,
+    fontSize: 20,
+    fontFamily: TOKENS.font.heading,
+  },
+  reviewModalSubtitle: {
+    color: PALETTE.textMuted,
+    fontSize: 13,
+    marginTop: 4,
+    fontFamily: TOKENS.font.body,
+  },
+  reviewModalClose: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: PALETTE.surfaceAlt,
+  },
+  reviewRatingPicker: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginBottom: 16,
+  },
+  reviewInput: {
+    minHeight: 48,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: PALETTE.border,
+    backgroundColor: PALETTE.surfaceAlt,
+    color: PALETTE.text,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    fontFamily: TOKENS.font.body,
+    marginBottom: 10,
+  },
+  reviewContentInput: {
+    minHeight: 104,
+    lineHeight: 21,
+  },
+  reviewImageHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  reviewImageTitle: {
+    color: PALETTE.text,
+    fontSize: 14,
+    fontFamily: TOKENS.font.semibold,
+  },
+  reviewImageCount: {
+    color: PALETTE.textMuted,
+    fontSize: 12,
+    fontFamily: TOKENS.font.medium,
+  },
+  reviewPickerList: { gap: 10, paddingRight: 4 },
+  reviewPickItem: {
+    width: 82,
+    height: 82,
+    borderRadius: 18,
+    overflow: "hidden",
+    backgroundColor: PALETTE.borderSoft,
+  },
+  reviewPickImage: { width: 82, height: 82 },
+  reviewPickRemove: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(15,23,42,0.72)",
+  },
+  reviewAddImageButton: {
+    width: 82,
+    height: 82,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: PALETTE.primary,
+    backgroundColor: PALETTE.primarySoft,
+  },
+  reviewAddImageText: {
+    color: PALETTE.primaryDark,
+    fontSize: 11,
+    fontFamily: TOKENS.font.semibold,
+  },
+  reviewSubmitButton: {
+    height: 54,
+    borderRadius: 27,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: PALETTE.primary,
+    marginTop: 18,
+  },
+  reviewSubmitButtonDisabled: {
+    opacity: 0.75,
+  },
+  reviewSubmitText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontFamily: TOKENS.font.semibold,
   },
   bottomBar: {
     position: "absolute",

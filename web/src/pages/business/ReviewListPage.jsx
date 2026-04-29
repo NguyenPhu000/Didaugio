@@ -19,6 +19,9 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  Image as ImageIcon,
+  AlertTriangle,
+  Clock,
 } from "lucide-react";
 import api from "@/constants/api";
 import { getMyPlaces } from "@/apis/businessApi";
@@ -42,8 +45,18 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
 
 const REVIEW_API = "/business/reviews";
+const REVIEW_MEDIA_PREVIEW_LIMIT = 5;
+const QUICK_REPLY_TEMPLATES = [
+  "Cảm ơn bạn đã chia sẻ trải nghiệm. Chúng tôi rất vui khi được phục vụ bạn và mong sớm gặp lại bạn.",
+  "Cảm ơn góp ý của bạn. Chúng tôi đã ghi nhận phản hồi này để cải thiện chất lượng dịch vụ.",
+  "Rất tiếc vì trải nghiệm của bạn chưa như kỳ vọng. Chúng tôi sẽ kiểm tra lại ngay và phản hồi hướng xử lý sớm nhất.",
+];
+
+const NEGATIVE_REPLY_TEMPLATE =
+  "Rất tiếc vì trải nghiệm của bạn chưa tốt. Chúng tôi xin ghi nhận và sẽ kiểm tra lại để cải thiện ngay.";
 
 // ─── Star Rating ──────────────────────────────────────────────────────────────
 
@@ -61,6 +74,11 @@ const StarRating = ({ rating, size = "sm" }) => {
   );
 };
 
+const getReviewMediaSrc = (media) =>
+  resolveMediaUrl(
+    media?.mediaData || media?.thumbnailUrl || media?.secureUrl || media?.url,
+  );
+
 // ─── Review Card ──────────────────────────────────────────────────────────────
 
 const ReviewCard = ({
@@ -75,6 +93,7 @@ const ReviewCard = ({
   onCancelReply,
   onContentChange,
   onSendReply,
+  quickReplyTemplates,
   onStartEditReply,
   onCancelEditReply,
   onEditContentChange,
@@ -86,6 +105,10 @@ const ReviewCard = ({
     date ? new Date(date).toLocaleDateString("vi-VN") : "";
   const hasReplied = review.replies?.length > 0;
   const isReplying = replyingTo === review.id;
+  const mediaItems = (review.media || [])
+    .map((media) => ({ ...media, src: getReviewMediaSrc(media) }))
+    .filter((media) => media.src)
+    .slice(0, REVIEW_MEDIA_PREVIEW_LIMIT);
 
   const getModerateReplyIcon = (reply) => {
     if (actionLoadingByReply[reply.id]) {
@@ -118,6 +141,14 @@ const ReviewCard = ({
                 Chưa phản hồi
               </Badge>
             )}
+            {review.isVerifiedPurchase && (
+              <Badge
+                variant="outline"
+                className="text-[10px] border-emerald-200 bg-emerald-50 text-emerald-700"
+              >
+                Đã xác thực
+              </Badge>
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {review.place?.name} · {formatDate(review.createdAt)}
@@ -133,6 +164,27 @@ const ReviewCard = ({
         <p className="text-sm text-muted-foreground leading-relaxed">
           {review.content}
         </p>
+      )}
+      {mediaItems.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {mediaItems.map((media, index) => (
+            <a
+              key={media.id || `${media.src}-${index}`}
+              href={media.src}
+              target="_blank"
+              rel="noreferrer"
+              className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-muted"
+              title={media.caption || "Ảnh đánh giá"}
+            >
+              <img
+                src={media.src}
+                alt={media.caption || `Ảnh đánh giá ${index + 1}`}
+                className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                loading="lazy"
+              />
+            </a>
+          ))}
+        </div>
       )}
 
       {/* Existing replies */}
@@ -239,45 +291,77 @@ const ReviewCard = ({
 
       {/* Reply UI */}
       {isReplying ? (
-        <div className="flex gap-2 items-start">
-          <Textarea
-            autoFocus
-            placeholder="Nhập phản hồi..."
-            value={replyContent}
-            onChange={(e) => onContentChange(e.target.value)}
-            rows={2}
-            className="flex-1 text-sm"
-          />
-          <div className="flex flex-col gap-1">
-            <Button
-              size="sm"
-              className="h-9 w-9 p-0"
-              onClick={onSendReply}
-              disabled={sending}
-            >
-              <Send className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 w-9 p-0"
-              onClick={onCancelReply}
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {quickReplyTemplates.map((template) => (
+              <Button
+                key={template}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-full px-2.5 text-[11px]"
+                onClick={() => onContentChange(template)}
+              >
+                {template.slice(0, 34)}...
+              </Button>
+            ))}
+          </div>
+          <div className="flex gap-2 items-start">
+            <Textarea
+              autoFocus
+              placeholder="Nhập phản hồi..."
+              value={replyContent}
+              onChange={(e) => onContentChange(e.target.value)}
+              rows={2}
+              className="flex-1 text-sm"
+            />
+            <div className="flex flex-col gap-1">
+              <Button
+                size="sm"
+                className="h-9 w-9 p-0"
+                onClick={onSendReply}
+                disabled={sending}
+              >
+                <Send className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 w-9 p-0"
+                onClick={onCancelReply}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
         </div>
       ) : (
         !hasReplied && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 h-8 text-xs"
-            onClick={() => onStartReply(review.id)}
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            Phản hồi
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-8 text-xs"
+              onClick={() => onStartReply(review.id)}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              Phản hồi
+            </Button>
+            {review.rating <= 2 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-8 text-xs border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                onClick={() => {
+                  onStartReply(review.id);
+                  onContentChange(NEGATIVE_REPLY_TEMPLATE);
+                }}
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Xử lý nhanh
+              </Button>
+            )}
+          </div>
         )
       )}
     </div>
@@ -316,6 +400,7 @@ const ReviewListPage = () => {
   const [search, setSearch] = useState("");
   const [selectedPlaceId, setSelectedPlaceId] = useState("all");
   const [ratingFilter, setRatingFilter] = useState("0");
+  const [mediaFilter, setMediaFilter] = useState("all");
   const [tabFilter, setTabFilter] = useState("all");
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyContent, setReplyContent] = useState("");
@@ -333,6 +418,7 @@ const ReviewListPage = () => {
           search,
           placeId: selectedPlaceId !== "all" ? selectedPlaceId : undefined,
           rating: ratingFilter !== "0" ? ratingFilter : undefined,
+          hasMedia: mediaFilter === "with-media" ? true : undefined,
           page: 1,
           limit: 50,
         },
@@ -343,7 +429,7 @@ const ReviewListPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, ratingFilter, selectedPlaceId]);
+  }, [search, ratingFilter, selectedPlaceId, mediaFilter]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -371,11 +457,17 @@ const ReviewListPage = () => {
       return reviews.filter((r) => r.replies?.length > 0);
     if (tabFilter === "unreplied")
       return reviews.filter((r) => !r.replies?.length);
+    if (tabFilter === "attention")
+      return reviews.filter((r) => Number(r.rating) <= 2 && !r.replies?.length);
     return reviews;
   }, [reviews, tabFilter]);
 
   const unrepliedCount = useMemo(
     () => reviews.filter((r) => !r.replies?.length).length,
+    [reviews],
+  );
+  const attentionCount = useMemo(
+    () => reviews.filter((r) => Number(r.rating) <= 2 && !r.replies?.length).length,
     [reviews],
   );
 
@@ -484,7 +576,7 @@ const ReviewListPage = () => {
 
       {/* Stats Overview */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Average rating */}
           <SectionCard>
             <div className="flex flex-col items-center justify-center py-4 gap-2">
@@ -498,8 +590,42 @@ const ReviewListPage = () => {
             </div>
           </SectionCard>
 
+          <SectionCard>
+            <div className="flex flex-col items-center justify-center py-4 gap-2">
+              <MessageSquare className="h-6 w-6 text-primary" />
+              <p className="text-3xl font-bold text-foreground">
+                {Number(stats.responseRate || 0).toFixed(1)}%
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Tỷ lệ đã phản hồi
+              </p>
+            </div>
+          </SectionCard>
+
+          <SectionCard>
+            <div className="flex flex-col items-center justify-center py-4 gap-2">
+              <Clock className="h-6 w-6 text-primary" />
+              <p className="text-3xl font-bold text-foreground">
+                {Number(stats.avgResponseTimeHours || 0).toFixed(1)}h
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Thời gian phản hồi TB
+              </p>
+            </div>
+          </SectionCard>
+
+          <SectionCard>
+            <div className="flex flex-col items-center justify-center py-4 gap-2">
+              <AlertTriangle className="h-6 w-6 text-amber-500" />
+              <p className="text-3xl font-bold text-foreground">
+                {Math.max((stats.total || 0) - (stats.repliedCount || 0), 0)}
+              </p>
+              <p className="text-xs text-muted-foreground">Chưa phản hồi</p>
+            </div>
+          </SectionCard>
+
           {/* Rating distribution */}
-          <SectionCard title="Phân bố xếp hạng" className="md:col-span-2">
+          <SectionCard title="Phân bố xếp hạng" className="md:col-span-4">
             <div className="space-y-2.5">
               {[5, 4, 3, 2, 1].map((r) => (
                 <RatingBar
@@ -547,6 +673,20 @@ const ReviewListPage = () => {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={mediaFilter} onValueChange={setMediaFilter}>
+              <SelectTrigger className="h-8 text-xs w-32">
+                <SelectValue placeholder="Ảnh đánh giá" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả ảnh</SelectItem>
+                <SelectItem value="with-media">
+                  <span className="inline-flex items-center gap-1.5">
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    Có ảnh
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <Input
@@ -577,6 +717,12 @@ const ReviewListPage = () => {
               >
                 Đã phản hồi ({reviews.length - unrepliedCount})
               </TabsTrigger>
+              <TabsTrigger
+                value="attention"
+                className={DESIGN.tabUnderlineTrigger}
+              >
+                Cần xử lý ({attentionCount})
+              </TabsTrigger>
             </TabsList>
             {isPendingTransition && (
               <p className="py-1 text-[11px] text-muted-foreground">
@@ -585,7 +731,7 @@ const ReviewListPage = () => {
             )}
           </div>
 
-          {["all", "unreplied", "replied"].map((tab) => (
+          {["all", "unreplied", "replied", "attention"].map((tab) => (
             <TabsContent key={tab} value={tab} className="mt-0">
               <div className="p-5">
                 {(() => {
@@ -633,7 +779,11 @@ const ReviewListPage = () => {
                           editContent={editContent}
                           sending={sending}
                           actionLoadingByReply={actionLoadingByReply}
-                          onStartReply={setReplyingTo}
+                          quickReplyTemplates={QUICK_REPLY_TEMPLATES}
+                          onStartReply={(reviewId) => {
+                            setReplyingTo(reviewId);
+                            setReplyContent("");
+                          }}
                           onCancelReply={() => {
                             setReplyingTo(null);
                             setReplyContent("");

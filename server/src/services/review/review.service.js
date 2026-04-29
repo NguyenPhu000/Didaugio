@@ -12,6 +12,16 @@ const defaultInclude = {
     },
   },
   place: { select: { id: true, name: true } },
+  media: {
+    orderBy: { order: "asc" },
+    select: {
+      id: true,
+      mediaData: true,
+      mediaType: true,
+      caption: true,
+      order: true,
+    },
+  },
   replies: {
     include: {
       user: {
@@ -24,6 +34,14 @@ const defaultInclude = {
     orderBy: { createdAt: "asc" },
   },
 };
+
+const normalizeReviewMediaResponse = (review) => ({
+  ...review,
+  media: (review.media || []).map((item) => ({
+    ...item,
+    thumbnailUrl: item.thumbnailUrl || item.mediaData,
+  })),
+});
 
 export const getAll = async (params = {}, userId, roleId) => {
   const page = parseInt(params.page) || PAGINATION.DEFAULT_PAGE;
@@ -79,6 +97,13 @@ export const getAll = async (params = {}, userId, roleId) => {
       where.placeId = requestedPlaceId;
     }
   }
+  if (String(params.hasMedia) === "true") {
+    where.media = { some: {} };
+  }
+  if (String(params.needsAttention) === "true") {
+    where.rating = { lte: 2 };
+    where.replies = { none: {} };
+  }
 
   const [data, total] = await Promise.all([
     prisma.review.findMany({
@@ -92,7 +117,7 @@ export const getAll = async (params = {}, userId, roleId) => {
   ]);
 
   return {
-    data,
+    data: data.map(normalizeReviewMediaResponse),
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
   };
 };
@@ -120,7 +145,7 @@ export const getById = async (id, options = {}) => {
     );
   }
 
-  return review;
+  return normalizeReviewMediaResponse(review);
 };
 
 export const reply = async (reviewId, content, userId, options = {}) => {
@@ -172,7 +197,16 @@ export const getStats = async (userId, roleId) => {
       where: { ownerId: userId },
       select: { id: true },
     });
-    if (!business) return { total: 0, avgRating: 0, byRating: {} };
+    if (!business) {
+      return {
+        total: 0,
+        avgRating: 0,
+        byRating: {},
+        repliedCount: 0,
+        responseRate: 0,
+        avgResponseTimeHours: 0,
+      };
+    }
 
     const placeIds = await prisma.place.findMany({
       where: { businessId: business.id, deletedAt: null },
@@ -181,7 +215,7 @@ export const getStats = async (userId, roleId) => {
     where.placeId = { in: placeIds.map((p) => p.id) };
   }
 
-  const [total, avgResult, byRating] = await Promise.all([
+  const [total, avgResult, byRating, reviewsWithFirstReply] = await Promise.all([
     prisma.review.count({ where }),
     prisma.review.aggregate({ where, _avg: { rating: true } }),
     prisma.review.groupBy({
@@ -189,13 +223,39 @@ export const getStats = async (userId, roleId) => {
       where,
       _count: { id: true },
     }),
+    prisma.review.findMany({
+      where,
+      select: {
+        createdAt: true,
+        replies: {
+          orderBy: { createdAt: "asc" },
+          take: 1,
+          select: { createdAt: true },
+        },
+      },
+    }),
   ]);
+  const repliedReviews = reviewsWithFirstReply.filter(
+    (review) => review.replies.length > 0,
+  );
+  const totalResponseHours = repliedReviews.reduce((sum, review) => {
+    const firstReply = review.replies[0];
+    const diffMs = firstReply.createdAt.getTime() - review.createdAt.getTime();
+    return sum + Math.max(diffMs, 0) / (1000 * 60 * 60);
+  }, 0);
 
   return {
     total,
     avgRating: avgResult._avg.rating
       ? Number(avgResult._avg.rating.toFixed(1))
       : 0,
+    repliedCount: repliedReviews.length,
+    responseRate:
+      total > 0 ? Number(((repliedReviews.length / total) * 100).toFixed(1)) : 0,
+    avgResponseTimeHours:
+      repliedReviews.length > 0
+        ? Number((totalResponseHours / repliedReviews.length).toFixed(1))
+        : 0,
     byRating: byRating.reduce(
       (acc, item) => ({ ...acc, [item.rating]: item._count.id }),
       {},

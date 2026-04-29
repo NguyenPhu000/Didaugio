@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { paginationSchema } from "../commonSchema.js";
+
+export const reviewStatusSchema = z.enum(["visible", "hidden", "pending", "reported"]);
 
 export const replyReviewSchema = z.object({
   content: z
@@ -17,6 +20,30 @@ export const updateReplySchema = z.object({
 });
 
 export const moderateReplySchema = z.object({
+  status: z.enum(["visible", "hidden"], {
+    required_error: "Trạng thái moderation là bắt buộc",
+  }),
+});
+
+export const adminReviewQuerySchema = paginationSchema.extend({
+  search: z.string().trim().max(200).optional(),
+  status: z
+    .enum(["all", "visible", "hidden", "pending", "reported"])
+    .optional()
+    .default("all"),
+  rating: z.coerce.number().int().min(1).max(5).optional(),
+  hasMedia: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => value === "true"),
+});
+
+export const moderateReviewSchema = z.object({
+  status: reviewStatusSchema,
+  adminNote: z.string().trim().max(1000).optional().nullable(),
+});
+
+export const adminModerateReplySchema = z.object({
   status: z.enum(["visible", "hidden"], {
     required_error: "Trạng thái moderation là bắt buộc",
   }),

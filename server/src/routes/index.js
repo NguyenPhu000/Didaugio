@@ -22,6 +22,7 @@ import bookingPublicRoutes from "./booking/bookingPublic.route.js";
 import autoApproveRuleRoutes from "./autoApproveRule/autoApproveRule.route.js";
 import voucherRoutes from "./voucher/voucher.route.js";
 import reviewRoutes from "./review/review.route.js";
+import adminReviewRoutes from "./review/adminReview.route.js";
 import feedbackRoutes from "./feedback/feedback.route.js";
 import serviceBookingRoutes from "./booking/serviceBooking.route.js";
 import aiRoutes from "./ai/ai.route.js";
@@ -86,6 +87,7 @@ export const registerApiRoutes = (app) => {
   app.use("/api/business/booking-auto-rules", autoApproveRuleRoutes);
   app.use("/api/business/vouchers", voucherRoutes);
   app.use("/api/business/reviews", reviewRoutes);
+  app.use("/api/admin/reviews", adminReviewRoutes);
   app.use("/api/business", businessRoutes);
   app.use("/api/feedback", feedbackRoutes);
   app.use("/api/notifications", notificationRoutes);

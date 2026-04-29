@@ -37,6 +37,7 @@ export const ADMIN_ROUTES = {
 
   BUSINESS_LIST: "/admin/business",
   BUSINESS_PENDING: "/admin/business/pending",
+  REVIEWS_MODERATION: "/admin/reviews",
 
   EMAIL_VERIFICATIONS: "/email-verifications",
   PASSWORD_RESETS: "/password-resets",

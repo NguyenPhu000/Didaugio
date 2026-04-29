@@ -1,0 +1,478 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
+import {
+  AlertTriangle,
+  Eye,
+  EyeOff,
+  Image as ImageIcon,
+  MessageSquare,
+  Search,
+  ShieldAlert,
+  Star,
+} from "lucide-react";
+import {
+  getAdminReviewStats,
+  getAdminReviews,
+  moderateAdminReview,
+  moderateAdminReviewReply,
+} from "@/apis/adminReviewApi";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
+import { cn } from "@/lib/utils";
+
+const STATUS_OPTIONS = [
+  { value: "all", label: "Tất cả" },
+  { value: "reported", label: "Bị report" },
+  { value: "pending", label: "Chờ duyệt" },
+  { value: "visible", label: "Đang hiển thị" },
+  { value: "hidden", label: "Đã ẩn" },
+];
+
+const REVIEW_STATUS_LABELS = {
+  visible: "Đang hiển thị",
+  hidden: "Đã ẩn",
+  pending: "Chờ duyệt",
+  reported: "Bị report",
+};
+
+const REVIEW_STATUS_CLASSES = {
+  visible: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  hidden: "border-slate-200 bg-slate-100 text-slate-700",
+  pending: "border-amber-200 bg-amber-50 text-amber-700",
+  reported: "border-red-200 bg-red-50 text-red-700",
+};
+
+const formatDate = (date) =>
+  date ? new Date(date).toLocaleString("vi-VN") : "Không rõ";
+
+const getMediaSrc = (media) =>
+  resolveMediaUrl(
+    media?.mediaData || media?.thumbnailUrl || media?.secureUrl || media?.url,
+  );
+
+const StarRating = ({ rating }) => (
+  <div className="flex items-center gap-0.5">
+    {[1, 2, 3, 4, 5].map((value) => (
+      <Star
+        key={value}
+        className={cn(
+          "h-4 w-4",
+          value <= Number(rating)
+            ? "fill-yellow-400 text-yellow-400"
+            : "text-muted-foreground/30",
+        )}
+      />
+    ))}
+  </div>
+);
+
+const StatCard = ({ title, value, icon: Icon, tone = "default" }) => (
+  <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {title}
+        </p>
+        <p className="mt-2 text-3xl font-bold text-foreground">{value}</p>
+      </div>
+      <div
+        className={cn(
+          "flex h-11 w-11 items-center justify-center rounded-2xl",
+          tone === "danger"
+            ? "bg-red-50 text-red-600"
+            : tone === "warning"
+              ? "bg-amber-50 text-amber-600"
+              : "bg-primary/10 text-primary",
+        )}
+      >
+        <Icon className="h-5 w-5" />
+      </div>
+    </div>
+  </div>
+);
+
+const ReviewCard = ({
+  review,
+  note,
+  actionLoading,
+  onNoteChange,
+  onModerateReview,
+  onModerateReply,
+}) => {
+  const author =
+    review.user?.profile?.fullName ||
+    review.user?.email?.split("@")[0] ||
+    "Ẩn danh";
+  const mediaItems = (review.media || [])
+    .map((media) => ({ ...media, src: getMediaSrc(media) }))
+    .filter((media) => media.src)
+    .slice(0, 5);
+  const statusClass =
+    REVIEW_STATUS_CLASSES[review.status] || REVIEW_STATUS_CLASSES.pending;
+  const isHidden = review.status === "hidden";
+
+  return (
+    <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-foreground">{author}</span>
+            <StarRating rating={review.rating} />
+            <Badge variant="outline" className={statusClass}>
+              {REVIEW_STATUS_LABELS[review.status] || review.status}
+            </Badge>
+            {mediaItems.length > 0 && (
+              <Badge variant="outline" className="gap-1">
+                <ImageIcon className="h-3 w-3" />
+                {mediaItems.length} ảnh
+              </Badge>
+            )}
+            {review.isVerifiedPurchase && (
+              <Badge
+                variant="outline"
+                className="border-emerald-200 bg-emerald-50 text-emerald-700"
+              >
+                Đã xác thực
+              </Badge>
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            {review.place?.name || "Không rõ địa điểm"} ·{" "}
+            {review.place?.business?.businessName || "Chưa gắn business"} ·{" "}
+            {formatDate(review.createdAt)}
+          </p>
+
+          {review.title && (
+            <p className="font-medium text-foreground">{review.title}</p>
+          )}
+          {review.content && (
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {review.content}
+            </p>
+          )}
+
+          {mediaItems.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {mediaItems.map((media, index) => (
+                <a
+                  key={media.id || `${media.src}-${index}`}
+                  href={media.src}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-muted"
+                >
+                  <img
+                    src={media.src}
+                    alt={media.caption || `Ảnh đánh giá ${index + 1}`}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </a>
+              ))}
+            </div>
+          )}
+
+          {review.replies?.length > 0 && (
+            <div className="space-y-2 border-l-2 border-primary/30 pl-4">
+              {review.replies.map((reply) => (
+                <div
+                  key={reply.id}
+                  className="rounded-xl bg-muted/60 p-3 text-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium text-primary">
+                      {reply.user?.profile?.fullName ||
+                        reply.user?.email ||
+                        "Doanh nghiệp"}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {reply.status === "hidden" && (
+                        <Badge variant="outline">Đã ẩn</Badge>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs"
+                        loading={actionLoading === `reply-${reply.id}`}
+                        onClick={() =>
+                          onModerateReply(
+                            review.id,
+                            reply.id,
+                            reply.status === "hidden" ? "visible" : "hidden",
+                          )
+                        }
+                      >
+                        {reply.status === "hidden" ? "Hiện" : "Ẩn"}
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">{reply.content}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="w-full space-y-2 lg:w-72">
+          <Textarea
+            value={note}
+            onChange={(event) => onNoteChange(review.id, event.target.value)}
+            placeholder="Note nội bộ cho moderation..."
+            rows={3}
+            className="text-sm"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant={isHidden ? "outline" : "destructive"}
+              size="sm"
+              loading={actionLoading === `review-${review.id}-hidden`}
+              onClick={() =>
+                onModerateReview(review.id, isHidden ? "visible" : "hidden")
+              }
+            >
+              {isHidden ? (
+                <Eye className="h-4 w-4" />
+              ) : (
+                <EyeOff className="h-4 w-4" />
+              )}
+              {isHidden ? "Khôi phục" : "Ẩn"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              loading={actionLoading === `review-${review.id}-reported`}
+              onClick={() => onModerateReview(review.id, "reported")}
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Report
+            </Button>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+};
+
+const AdminReviewModerationPage = () => {
+  const [reviews, setReviews] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("reported");
+  const [rating, setRating] = useState("all");
+  const [hasMedia, setHasMedia] = useState("all");
+  const [notesByReview, setNotesByReview] = useState({});
+  const [actionLoading, setActionLoading] = useState(null);
+
+  const params = useMemo(
+    () => ({
+      search,
+      status,
+      rating: rating !== "all" ? rating : undefined,
+      hasMedia: hasMedia === "with-media" ? "true" : undefined,
+      page: 1,
+      limit: 50,
+    }),
+    [hasMedia, rating, search, status],
+  );
+
+  const loadReviews = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await getAdminReviews(params);
+      setReviews(response.data || []);
+      setNotesByReview((current) => {
+        const next = { ...current };
+        (response.data || []).forEach((review) => {
+          if (next[review.id] === undefined) {
+            next[review.id] = review.adminNote || "";
+          }
+        });
+        return next;
+      });
+    } catch (error) {
+      toast.error(error?.message || "Không thể tải danh sách đánh giá");
+    } finally {
+      setLoading(false);
+    }
+  }, [params]);
+
+  const loadStats = useCallback(async () => {
+    try {
+      const response = await getAdminReviewStats();
+      setStats(response);
+    } catch {
+      setStats(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadReviews();
+  }, [loadReviews]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  const handleNoteChange = (reviewId, value) => {
+    setNotesByReview((current) => ({ ...current, [reviewId]: value }));
+  };
+
+  const handleModerateReview = async (reviewId, nextStatus) => {
+    setActionLoading(`review-${reviewId}-${nextStatus}`);
+    try {
+      await moderateAdminReview(reviewId, {
+        status: nextStatus,
+        adminNote: notesByReview[reviewId] || null,
+      });
+      toast.success("Đã cập nhật trạng thái đánh giá");
+      await Promise.all([loadReviews(), loadStats()]);
+    } catch (error) {
+      toast.error(error?.message || "Không thể moderation đánh giá");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleModerateReply = async (reviewId, replyId, nextStatus) => {
+    setActionLoading(`reply-${replyId}`);
+    try {
+      await moderateAdminReviewReply(reviewId, replyId, { status: nextStatus });
+      toast.success("Đã cập nhật phản hồi");
+      await loadReviews();
+    } catch (error) {
+      toast.error(error?.message || "Không thể moderation phản hồi");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  return (
+    <div className="min-h-screen space-y-6 p-6 lg:p-8">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl font-bold text-foreground">
+            Moderation đánh giá
+          </h1>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Giám sát toàn bộ review, xử lý report, ẩn/khôi phục review và phản hồi.
+        </p>
+      </div>
+
+      {stats && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+          <StatCard title="Tổng review" value={stats.total} icon={Star} />
+          <StatCard
+            title="Bị report"
+            value={stats.reported}
+            icon={AlertTriangle}
+            tone="danger"
+          />
+          <StatCard
+            title="Chờ duyệt"
+            value={stats.pending}
+            icon={MessageSquare}
+            tone="warning"
+          />
+          <StatCard title="Đã ẩn" value={stats.hidden} icon={EyeOff} />
+          <StatCard title="Rating TB" value={stats.avgRating} icon={Star} />
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Tìm nội dung, địa điểm, người dùng, note..."
+              className="pl-9"
+            />
+          </div>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="w-full lg:w-44">
+              <SelectValue placeholder="Trạng thái" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={rating} onValueChange={setRating}>
+            <SelectTrigger className="w-full lg:w-36">
+              <SelectValue placeholder="Số sao" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả sao</SelectItem>
+              {[5, 4, 3, 2, 1].map((value) => (
+                <SelectItem key={value} value={String(value)}>
+                  {value} sao
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={hasMedia} onValueChange={setHasMedia}>
+            <SelectTrigger className="w-full lg:w-40">
+              <SelectValue placeholder="Ảnh" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả ảnh</SelectItem>
+              <SelectItem value="with-media">Có ảnh</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="space-y-3 rounded-2xl border border-border bg-card p-5"
+            >
+              <Skeleton className="h-5 w-56" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          ))
+        ) : reviews.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border p-10 text-center text-muted-foreground">
+            Không có đánh giá phù hợp.
+          </div>
+        ) : (
+          reviews.map((review) => (
+            <ReviewCard
+              key={review.id}
+              review={review}
+              note={notesByReview[review.id] || ""}
+              actionLoading={actionLoading}
+              onNoteChange={handleNoteChange}
+              onModerateReview={handleModerateReview}
+              onModerateReply={handleModerateReply}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default AdminReviewModerationPage;
