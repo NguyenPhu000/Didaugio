@@ -272,17 +272,20 @@ export const reorderPlaceImagesSchema = z.object({
 
 export const createPlaceReviewSchema = z.object({
   rating: z.coerce.number().int().min(1).max(5),
+  bookingId: z.coerce.number().int().positive().optional().nullable(),
+  title: z.string().trim().max(120).optional().nullable(),
   content: z.string().trim().max(2000).optional().nullable(),
   media: z
     .array(
       z.object({
         mediaData: z.string().min(1),
-        mediaType: z.string().trim().min(1).max(50),
+        thumbnailUrl: z.string().trim().optional().nullable(),
+        mediaType: z.string().trim().min(1).max(50).default("image"),
         caption: z.string().max(200).optional().nullable(),
         order: z.number().int().min(0).optional(),
       }),
     )
-    .max(10)
+    .max(5, "Chỉ được đính kèm tối đa 5 ảnh")
     .optional(),
 });
 

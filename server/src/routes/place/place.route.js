@@ -5,6 +5,7 @@ import {
   authenticateOptional,
 } from "../../middlewares/authMiddleware.js";
 import { requirePermission } from "../../middlewares/permissionMiddleware.js";
+import { reviewCreateLimiter } from "../../middlewares/rateLimitMiddleware.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
 import { checkPlaceOwnership } from "../../middlewares/placeMiddleware.js";
 import {
@@ -75,6 +76,7 @@ router.get(
 );
 router.post(
   "/:id/reviews",
+  reviewCreateLimiter,
   authenticate,
   validateParams(placeIdParamSchema),
   validateBody(createPlaceReviewSchema),

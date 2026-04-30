@@ -30,6 +30,7 @@ import TagManagementPage from "@/pages/admin/TagManagementPage";
 import DistrictListPage from "@/pages/admin/DistrictListPage";
 import BusinessListPage from "@/pages/admin/BusinessListPage";
 import BusinessPendingPage from "@/pages/admin/BusinessPendingPage";
+import AdminReviewModerationPage from "@/pages/admin/AdminReviewModerationPage";
 import BusinessProfilePage from "@/pages/business/BusinessProfilePage";
 import BusinessRegisterPage from "@/pages/business/BusinessRegisterPage";
 import ServiceListPage from "@/pages/business/ServiceListPage";
@@ -318,6 +319,14 @@ const AppRoutes = () => {
         element={
           <ProtectedAdmin roles={adminRoles}>
             <BusinessPendingPage />
+          </ProtectedAdmin>
+        }
+      />
+      <Route
+        path={ADMIN_ROUTES.REVIEWS_MODERATION}
+        element={
+          <ProtectedAdmin roles={adminRoles}>
+            <AdminReviewModerationPage />
           </ProtectedAdmin>
         }
       />

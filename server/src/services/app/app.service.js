@@ -1,4 +1,5 @@
 import prisma from "../../config/prismaClient.js";
+import { ERROR_CODES } from "../../config/messages.js";
 import { PRIMARY_GEMINI_MODEL } from "../../config/geminiClient.js";
 import { mapGeminiError } from "../../lib/geminiErrorHandler.js";
 import {
@@ -6,6 +7,7 @@ import {
   generateItinerary,
 } from "../ai/gemini.service.js";
 import routingService from "../routing/routing.service.js";
+import ServiceError from "../../utils/serviceError.js";
 
 const isRoutingEnabled =
   String(process.env.ROUTING_ENABLED ?? "true") !== "false";
@@ -26,6 +28,170 @@ const approvedPlaceWhere = {
   deletedAt: null,
   status: "approved",
 };
+
+const REVIEW_MEDIA_LIMIT = 5;
+const REVIEW_COOLDOWN_MINUTES = Number(
+  process.env.REVIEW_COOLDOWN_MINUTES || 10,
+);
+const REVIEW_DUPLICATE_WINDOW_HOURS = Number(
+  process.env.REVIEW_DUPLICATE_WINDOW_HOURS || 24,
+);
+const REVIEW_RECENT_LIMIT = Number(process.env.REVIEW_RECENT_LIMIT || 5);
+const REVIEW_BLOCKED_TERMS = String(process.env.REVIEW_BLOCKED_TERMS || "")
+  .split(",")
+  .map((term) => term.trim().toLowerCase())
+  .filter(Boolean);
+
+const REVIEW_STATUS = {
+  VISIBLE: "visible",
+  PENDING: "pending",
+};
+
+const normalizeReviewMedia = (media = []) =>
+  Array.isArray(media)
+    ? media
+        .slice(0, REVIEW_MEDIA_LIMIT)
+        .map((item, index) => ({
+          mediaData: String(item?.mediaData || "").trim(),
+          thumbnailUrl: String(item?.thumbnailUrl || item?.mediaData || "").trim(),
+          mediaType: String(item?.mediaType || "image").trim() || "image",
+          caption: item?.caption ? String(item.caption).trim() : null,
+          order: toInt(item?.order, index) ?? index,
+        }))
+        .filter((item) => item.mediaData)
+    : [];
+
+const normalizeReviewMediaResponse = (review) => {
+  if (!review) return review;
+  return {
+    ...review,
+    media: (review.media || []).map((item) => ({
+      ...item,
+      thumbnailUrl: item.thumbnailUrl || item.mediaData,
+    })),
+  };
+};
+
+const normalizeReviewText = (value = "") =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+const hasBlockedReviewTerm = (payload = {}) => {
+  if (REVIEW_BLOCKED_TERMS.length === 0) return false;
+  const text = normalizeReviewText(`${payload.title || ""} ${payload.content || ""}`);
+  return REVIEW_BLOCKED_TERMS.some((term) => text.includes(term));
+};
+
+const hasRepeatedTextPattern = (payload = {}) => {
+  const text = normalizeReviewText(`${payload.title || ""} ${payload.content || ""}`);
+  if (text.length < 12) return false;
+  return /(.)\1{8,}/.test(text) || /(.{3,})\1{3,}/.test(text);
+};
+
+async function enforceReviewSpamPolicy(placeId, userId, payload = {}) {
+  const now = new Date();
+  const cooldownSince = new Date(
+    now.getTime() - REVIEW_COOLDOWN_MINUTES * 60 * 1000,
+  );
+  const duplicateSince = new Date(
+    now.getTime() - REVIEW_DUPLICATE_WINDOW_HOURS * 60 * 60 * 1000,
+  );
+  const normalizedContent = normalizeReviewText(payload.content);
+
+  const [existingReview, recentUserReviews, duplicateReview] =
+    await Promise.all([
+      prisma.review.findUnique({
+        where: { placeId_userId: { placeId, userId } },
+        select: { id: true, updatedAt: true },
+      }),
+      prisma.review.count({
+        where: {
+          userId,
+          createdAt: { gte: duplicateSince },
+          deletedAt: null,
+        },
+      }),
+      normalizedContent
+        ? prisma.review.findFirst({
+            where: {
+              userId,
+              placeId: { not: placeId },
+              content: { equals: payload.content, mode: "insensitive" },
+              createdAt: { gte: duplicateSince },
+              deletedAt: null,
+            },
+            select: { id: true },
+          })
+        : null,
+    ]);
+
+  if (existingReview && existingReview.updatedAt > cooldownSince) {
+    throw new ServiceError(
+      "Bạn vừa cập nhật đánh giá, vui lòng thử lại sau",
+      429,
+      "REVIEW_COOLDOWN",
+    );
+  }
+
+  if (!existingReview && recentUserReviews >= REVIEW_RECENT_LIMIT) {
+    throw new ServiceError(
+      "Bạn đã gửi quá nhiều đánh giá trong thời gian ngắn",
+      429,
+      "REVIEW_RATE_LIMIT",
+    );
+  }
+
+  if (duplicateReview) {
+    throw new ServiceError(
+      "Nội dung đánh giá bị trùng lặp trong thời gian ngắn",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+
+  return {
+    existingReview,
+    isSuspicious:
+      hasBlockedReviewTerm(payload) || hasRepeatedTextPattern(payload),
+  };
+}
+
+async function resolveReviewBooking(placeId, userId, bookingId) {
+  const bookingWhere = {
+    userId,
+    status: "completed",
+    deletedAt: null,
+    service: { placeId },
+  };
+
+  if (bookingId) {
+    const booking = await prisma.booking.findFirst({
+      where: {
+        ...bookingWhere,
+        id: parseInt(bookingId, 10),
+      },
+      select: { id: true },
+    });
+
+    if (!booking) {
+      throw new ServiceError(
+        "Booking không hợp lệ hoặc chưa hoàn tất cho địa điểm này",
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
+
+    return booking;
+  }
+
+  return prisma.booking.findFirst({
+    where: bookingWhere,
+    orderBy: [{ completedAt: "desc" }, { useDate: "desc" }],
+    select: { id: true },
+  });
+}
 
 const parseTermsObject = (terms) => {
   if (!terms || typeof terms !== "string") return null;
@@ -290,13 +456,31 @@ export const getPlaceReviews = async (placeId, query = {}) => {
             caption: true,
           },
         },
+        replies: {
+          where: { status: "visible" },
+          orderBy: [{ createdAt: "asc" }],
+          select: {
+            id: true,
+            content: true,
+            status: true,
+            createdAt: true,
+            user: {
+              select: {
+                id: true,
+                profile: {
+                  select: { fullName: true },
+                },
+              },
+            },
+          },
+        },
       },
     }),
     prisma.review.count({ where }),
   ]);
 
   return {
-    data: reviews,
+    data: reviews.map(normalizeReviewMediaResponse),
     pagination: {
       page,
       limit,
@@ -328,51 +512,97 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
     throw error;
   }
 
-  const review = await prisma.review.upsert({
-    where: {
-      placeId_userId: {
+  const spamPolicy = await enforceReviewSpamPolicy(placeId, userId, payload);
+  const linkedBooking = await resolveReviewBooking(
+    placeId,
+    userId,
+    payload.bookingId,
+  );
+  const media = normalizeReviewMedia(payload.media);
+  const reviewStatus = spamPolicy.isSuspicious
+    ? REVIEW_STATUS.PENDING
+    : REVIEW_STATUS.VISIBLE;
+
+  const review = await prisma.$transaction(async (tx) => {
+    const savedReview = await tx.review.upsert({
+      where: {
+        placeId_userId: {
+          placeId,
+          userId,
+        },
+      },
+      create: {
         placeId,
         userId,
+        rating,
+        bookingId: linkedBooking?.id || null,
+        title: payload.title || null,
+        content: payload.content || null,
+        visitType: payload.visitType || null,
+        status: reviewStatus,
+        isVerifiedPurchase: Boolean(linkedBooking),
       },
-    },
-    create: {
-      placeId,
-      userId,
-      rating,
-      title: payload.title || null,
-      content: payload.content || null,
-      visitType: payload.visitType || null,
-      status: "visible",
-    },
-    update: {
-      rating,
-      title: payload.title || null,
-      content: payload.content || null,
-      visitType: payload.visitType || null,
-      status: "visible",
-      deletedAt: null,
-    },
+      update: {
+        rating,
+        bookingId: linkedBooking?.id || null,
+        title: payload.title || null,
+        content: payload.content || null,
+        visitType: payload.visitType || null,
+        status: reviewStatus,
+        isVerifiedPurchase: Boolean(linkedBooking),
+        deletedAt: null,
+      },
+    });
+
+    await tx.reviewMedia.deleteMany({ where: { reviewId: savedReview.id } });
+    if (media.length > 0) {
+      await tx.reviewMedia.createMany({
+        data: media.map((item) => ({
+          reviewId: savedReview.id,
+          mediaData: item.mediaData,
+          mediaType: item.mediaType,
+          caption: item.caption,
+          order: item.order,
+        })),
+      });
+    }
+
+    const aggregate = await tx.review.aggregate({
+      where: {
+        placeId,
+        deletedAt: null,
+        status: "visible",
+      },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+
+    await tx.place.update({
+      where: { id: placeId },
+      data: {
+        ratingAvg: Number((aggregate._avg.rating || 0).toFixed(1)),
+        ratingCount: aggregate._count.rating,
+      },
+    });
+
+    return tx.review.findUnique({
+      where: { id: savedReview.id },
+      include: {
+        media: {
+          orderBy: [{ order: "asc" }],
+          select: {
+            id: true,
+            mediaData: true,
+            mediaType: true,
+            caption: true,
+            order: true,
+          },
+        },
+      },
+    });
   });
 
-  const aggregate = await prisma.review.aggregate({
-    where: {
-      placeId,
-      deletedAt: null,
-      status: "visible",
-    },
-    _avg: { rating: true },
-    _count: { rating: true },
-  });
-
-  await prisma.place.update({
-    where: { id: placeId },
-    data: {
-      ratingAvg: Number((aggregate._avg.rating || 0).toFixed(1)),
-      ratingCount: aggregate._count.rating,
-    },
-  });
-
-  return review;
+  return normalizeReviewMediaResponse(review);
 };
 
 export const getServices = async (query = {}) => {

@@ -74,6 +74,14 @@ export const businessApiLimiter = createLimiter({
   message: "Qua nhieu yeu cau, vui long thu lai sau",
 });
 
+export const reviewCreateLimiter = createLimiter({
+  envKey: "REVIEW_CREATE_RATE_LIMIT_MAX",
+  devDefault: 60,
+  prodDefault: 10,
+  windowMs: 10 * 60 * 1000,
+  message: "Qua nhieu yeu cau gui danh gia, vui long thu lai sau",
+});
+
 export const routingLimiter = createLimiter({
   devDefault: 1200,
   prodDefault: 180,

@@ -150,6 +150,12 @@ const menuData = {
         { title: "Chờ duyệt", url: ADMIN_ROUTES.BUSINESS_PENDING },
       ],
     },
+    {
+      title: "Moderation đánh giá",
+      icon: Star,
+      url: ADMIN_ROUTES.REVIEWS_MODERATION,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+    },
   ],
   users: [
     {
