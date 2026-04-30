@@ -142,7 +142,7 @@ export const getAllPlaces = async (filters = {}) => {
   if (createdBy) where.createdBy = parseInt(createdBy);
   if (filters.businessId && !ownerUserId)
     where.businessId = parseInt(filters.businessId);
-  if (priceRange) where.priceRange = priceRange;
+  if (priceRange && priceRange !== "all") where.priceRange = priceRange;
   if (minRating) where.ratingAvg = { gte: parseFloat(minRating) };
 
   const ownershipOr = [];
@@ -184,6 +184,7 @@ export const getAllPlaces = async (filters = {}) => {
       orderBy = [{ ratingAvg: "desc" }, { ratingCount: "desc" }];
       break;
     case "popular":
+    case "views":
       orderBy = [{ viewCount: "desc" }];
       break;
     case "name":
@@ -417,7 +418,7 @@ export const getPlaceBySlug = async (slug, incrementView = false) => {
   // Increment view count
   if (incrementView) {
     await prisma.place.update({
-      where: { id },
+      where: { id: place.id },
       data: { viewCount: { increment: 1 } },
     });
   }

@@ -745,7 +745,15 @@ export const terminate = async (id, terminationReason, terminatedBy) => {
     const affectedBookings = await tx.booking.findMany({
       where: {
         businessId: parseInt(id),
-        status: { notIn: [BOOKING_STATUS.CANCELLED, BOOKING_STATUS.NO_SHOW, BOOKING_STATUS.COMPLETED] },
+        status: {
+          notIn: [
+            BOOKING_STATUS.CANCELLED,
+            BOOKING_STATUS.REJECTED,
+            BOOKING_STATUS.EXPIRED,
+            BOOKING_STATUS.NO_SHOW,
+            BOOKING_STATUS.COMPLETED,
+          ],
+        },
         deletedAt: null,
       },
       include: { payment: true },

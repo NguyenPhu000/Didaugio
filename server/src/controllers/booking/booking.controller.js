@@ -60,6 +60,7 @@ export const reschedule = async (req, res, next) => {
       req.params.id,
       req.body.bookingTime,
       req.user.userId,
+      req.body.businessNote,
     );
     res.json({
       success: true,
@@ -93,6 +94,7 @@ export const quickReject = async (req, res, next) => {
       req.params.id,
       req.body.cancelReason,
       req.user.userId,
+      req.body.businessNote,
     );
     res.json({
       success: true,
@@ -156,6 +158,7 @@ export const confirm = async (req, res, next) => {
     const booking = await bookingService.confirm(
       req.params.id,
       req.user.userId,
+      req.body.note,
     );
     res.json({
       success: true,

@@ -20,6 +20,7 @@ import {
   TOKENS,
 } from "../../../constants/design-tokens";
 import { useExplore, useCategories } from "../hooks/useExplore";
+import { useBoundaryData } from "../../map/hooks/useBoundaryData";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation, normalizeText } from "../utils/exploreHelpers";
 
@@ -31,6 +32,22 @@ const CHIP_SHADOW = {
   elevation: 2,
 };
 const SEARCH_DEBOUNCE_MS = 300;
+const PRICE_FILTERS = [
+  { label: "Miễn phí", value: "FREE" },
+  { label: "Bình dân", value: "BUDGET" },
+  { label: "Trung bình", value: "MODERATE" },
+  { label: "Cao cấp", value: "EXPENSIVE" },
+];
+const RATING_FILTERS = [
+  { label: "4.5+", value: 4.5 },
+  { label: "4.0+", value: 4 },
+  { label: "3.5+", value: 3.5 },
+];
+const SORT_OPTIONS = [
+  { label: "Mới nhất", value: "newest" },
+  { label: "Đánh giá", value: "rating" },
+  { label: "Phổ biến", value: "popular" },
+];
 
 const buildPlaceSearchIndex = (place) =>
   normalizeText(
@@ -46,6 +63,27 @@ const buildPlaceSearchIndex = (place) =>
       .filter(Boolean)
       .join(" "),
   );
+
+const pickDistricts = (geojson) => {
+  const features = Array.isArray(geojson?.features) ? geojson.features : [];
+  return features
+    .map((feature) => ({
+      id:
+        feature?.properties?.id ??
+        feature?.properties?.districtId ??
+        feature?.properties?.gid ??
+        feature?.id ??
+        null,
+      name:
+        feature?.properties?.name ||
+        feature?.properties?.district ||
+        feature?.properties?.ten ||
+        "Khu vực",
+    }))
+    .filter((district) => district.id != null && district.name)
+    .sort((a, b) => String(a.name).localeCompare(String(b.name), "vi"))
+    .slice(0, 12);
+};
 
 const SearchResultItem = memo(function SearchResultItem({
   place,
@@ -115,7 +153,12 @@ function SearchOverlayInner({ visible, onClose }) {
   const [text, setText] = useState("");
   const [debouncedText, setDebouncedText] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedDistrict, setSelectedDistrict] = useState(null);
+  const [selectedPriceRange, setSelectedPriceRange] = useState(null);
+  const [selectedMinRating, setSelectedMinRating] = useState(null);
+  const [selectedSortBy, setSelectedSortBy] = useState("newest");
   const { data: categories = [] } = useCategories();
+  const { districts } = useBoundaryData();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -124,12 +167,24 @@ function SearchOverlayInner({ visible, onClose }) {
     return () => clearTimeout(timer);
   }, [text]);
 
-  const isActive = debouncedText.length > 0 || selectedCategory !== null;
+  const districtOptions = useMemo(() => pickDistricts(districts), [districts]);
+
+  const isActive =
+    debouncedText.length > 0 ||
+    selectedCategory !== null ||
+    selectedDistrict !== null ||
+    selectedPriceRange !== null ||
+    selectedMinRating !== null ||
+    selectedSortBy !== "newest";
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useExplore({
       search: debouncedText,
       categoryId: selectedCategory,
+      districtId: selectedDistrict,
+      priceRange: selectedPriceRange,
+      minRating: selectedMinRating,
+      sortBy: selectedSortBy,
       enabled: visible && isActive,
     });
 
@@ -156,6 +211,10 @@ function SearchOverlayInner({ visible, onClose }) {
     setText("");
     setDebouncedText("");
     setSelectedCategory(null);
+    setSelectedDistrict(null);
+    setSelectedPriceRange(null);
+    setSelectedMinRating(null);
+    setSelectedSortBy("newest");
     onClose();
   }, [onClose]);
 
@@ -240,6 +299,10 @@ function SearchOverlayInner({ visible, onClose }) {
                 setText("");
                 setDebouncedText("");
                 setSelectedCategory(null);
+                setSelectedDistrict(null);
+                setSelectedPriceRange(null);
+                setSelectedMinRating(null);
+                setSelectedSortBy("newest");
               }}
               style={styles.clearFilterBtn}
             >
@@ -255,7 +318,8 @@ function SearchOverlayInner({ visible, onClose }) {
 
         {/* Category chips */}
         {categories.length > 0 ? (
-          <View style={styles.categoryWrap}>
+          <View style={styles.filterWrap}>
+            <Text style={styles.filterLabel}>Danh mục</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -302,6 +366,140 @@ function SearchOverlayInner({ visible, onClose }) {
           </View>
         ) : null}
 
+        {districtOptions.length > 0 ? (
+          <View style={styles.filterWrap}>
+            <Text style={styles.filterLabel}>Khu vực</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipRow}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Pressable
+                onPress={() => setSelectedDistrict(null)}
+                style={[
+                  styles.chip,
+                  selectedDistrict === null ? styles.chipActive : null,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    selectedDistrict === null ? styles.chipTextActive : null,
+                  ]}
+                >
+                  Tất cả
+                </Text>
+              </Pressable>
+
+              {districtOptions.map((district) => {
+                const id = Number(district.id);
+                if (!Number.isInteger(id) || id <= 0) return null;
+                const active = selectedDistrict === id;
+                return (
+                  <Pressable
+                    key={String(district.id)}
+                    onPress={() => setSelectedDistrict(active ? null : id)}
+                    style={[styles.chip, active ? styles.chipActive : null]}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        active ? styles.chipTextActive : null,
+                      ]}
+                    >
+                      {district.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        <View style={styles.filterWrap}>
+          <Text style={styles.filterLabel}>Giá</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+            keyboardShouldPersistTaps="handled"
+          >
+            {PRICE_FILTERS.map((item) => {
+              const active = selectedPriceRange === item.value;
+              return (
+                <Pressable
+                  key={item.value}
+                  onPress={() =>
+                    setSelectedPriceRange(active ? null : item.value)
+                  }
+                  style={[styles.chip, active ? styles.chipActive : null]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      active ? styles.chipTextActive : null,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        <View style={styles.filterWrap}>
+          <Text style={styles.filterLabel}>Đánh giá & sắp xếp</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+            keyboardShouldPersistTaps="handled"
+          >
+            {RATING_FILTERS.map((item) => {
+              const active = selectedMinRating === item.value;
+              return (
+                <Pressable
+                  key={String(item.value)}
+                  onPress={() =>
+                    setSelectedMinRating(active ? null : item.value)
+                  }
+                  style={[styles.chip, active ? styles.chipActive : null]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      active ? styles.chipTextActive : null,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+            {SORT_OPTIONS.map((item) => {
+              const active = selectedSortBy === item.value;
+              return (
+                <Pressable
+                  key={item.value}
+                  onPress={() => setSelectedSortBy(item.value)}
+                  style={[styles.chip, active ? styles.chipActive : null]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      active ? styles.chipTextActive : null,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
         {/* Results */}
         {isLoading ? (
           <View style={styles.emptyState}>
@@ -328,7 +526,7 @@ function SearchOverlayInner({ visible, onClose }) {
             />
             <Text style={styles.emptyTitle}>Không tìm thấy kết quả</Text>
             <Text style={styles.emptyCopy}>
-              Thử từ khóa khác hoặc đổi danh mục.
+              Thử từ khóa khác hoặc đổi bộ lọc.
             </Text>
           </View>
         ) : (
@@ -423,10 +621,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: TOKENS.font.semibold,
   },
-  categoryWrap: {
-    maxHeight: 56,
+  filterWrap: {
     flexShrink: 0,
     marginBottom: 2,
+  },
+  filterLabel: {
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    color: APPLE_THEME.textSecondary,
+    fontSize: 11,
+    fontFamily: TOKENS.font.semibold,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
   chipRow: {
     gap: 8,

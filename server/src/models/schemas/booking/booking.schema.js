@@ -72,8 +72,10 @@ export const refundBookingSchema = z.object({
 
 export const rescheduleBookingSchema = z.object({
   bookingTime: z.string().min(8, "bookingTime là bắt buộc (ISO 8601)"),
+  businessNote: z.string().max(500).optional().nullable(),
 });
 
 export const quickRejectSchema = z.object({
-  cancelReason: z.string().max(500).optional(),
+  cancelReason: z.string().min(5).max(500).optional(),
+  businessNote: z.string().max(500).optional().nullable(),
 });

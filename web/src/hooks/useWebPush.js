@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "@/constants/api";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -16,13 +16,7 @@ export const useWebPush = () => {
   const user = useAuthStore((state) => state.user);
   const userId = user?.userId || user?.id;
 
-  useEffect(() => {
-    if (!userId) return;
-    // Auto-register SW and check existing subscription
-    registerAndCheck();
-  }, [userId]);
-
-  const registerAndCheck = async () => {
+  const registerAndCheck = useCallback(async () => {
     try {
       const reg = await navigator.serviceWorker?.register("/sw.js");
       if (!reg) return;
@@ -32,7 +26,17 @@ export const useWebPush = () => {
     } catch (err) {
       console.warn("[WebPush] SW registration failed:", err.message);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!userId || typeof window === "undefined") return;
+    // Auto-register SW and check existing subscription
+    const timeoutId = window.setTimeout(() => {
+      registerAndCheck();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [registerAndCheck, userId]);
 
   const requestPermissionAndSubscribe = async () => {
     if (typeof window === "undefined" || !("Notification" in window)) {

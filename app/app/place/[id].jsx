@@ -538,8 +538,18 @@ function TripSelectorSheet({ placeId, placeName, onClose, t }) {
     async (tripId) => {
       setSelectedTripId(tripId);
       try {
+        const parsedPlaceId = parseInt(placeId, 10);
+        if (!Number.isFinite(parsedPlaceId) || parsedPlaceId <= 0) {
+          throw new Error(
+            t(
+              "Không xác định được địa điểm để thêm vào chuyến đi.",
+              "Could not resolve this place for the trip.",
+            ),
+          );
+        }
+
         await addMutation.mutateAsync({
-          placeId: parseInt(placeId, 10),
+          placeId: parsedPlaceId,
           dayNumber: 1,
           order: 0,
         });
@@ -548,7 +558,7 @@ function TripSelectorSheet({ placeId, placeName, onClose, t }) {
         setSelectedTripId(null);
       }
     },
-    [addMutation, onClose, placeId],
+    [addMutation, onClose, placeId, t],
   );
 
   return (
@@ -1029,10 +1039,9 @@ function AllReviewsSheetContent({ reviews, totalCount, onClose, t }) {
 
 export default function PlaceDetailScreen() {
   const { id } = useLocalSearchParams();
-  const placeId = useMemo(() => {
+  const placeIdentifier = useMemo(() => {
     const raw = Array.isArray(id) ? id[0] : id;
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    return String(raw ?? "").trim();
   }, [id]);
 
   const router = useRouter();
@@ -1047,15 +1056,20 @@ export default function PlaceDetailScreen() {
   const writeReviewSnapPoints = useMemo(() => ["62%", "92%"], []);
   const allReviewsSnapPoints = useMemo(() => ["70%", "96%"], []);
 
-  const { data: place, isLoading, isError, error } = usePlaceDetail(placeId);
-  const { data: reviewData } = usePlaceReviews(placeId, { limit: 50 });
+  const { data: place, isLoading, isError, error } =
+    usePlaceDetail(placeIdentifier);
+  const resolvedPlaceId = useMemo(() => {
+    const parsed = Number(place?.id);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }, [place?.id]);
+  const { data: reviewData } = usePlaceReviews(resolvedPlaceId, { limit: 50 });
   const reviews = reviewData?.reviews || [];
   const totalReviews = Number(reviewData?.pagination?.total || reviews.length);
   const recentReviews = reviews.slice(0, MAIN_REVIEW_LIMIT);
 
   const saveMutation = useSavePlace();
   const unsaveMutation = useUnsavePlace();
-  const createReviewMutation = useCreateReview(placeId);
+  const createReviewMutation = useCreateReview(resolvedPlaceId);
   const [activeImage, setActiveImage] = useState(0);
   const [isSavedLocal, setIsSavedLocal] = useState(false);
 
@@ -1138,6 +1152,8 @@ export default function PlaceDetailScreen() {
   }, [place, router]);
 
   const handleAddToTrip = useCallback(() => {
+    if (!place?.id) return;
+
     if (!accessToken) {
       Alert.alert(
         t("Cần đăng nhập", "Login required"),
@@ -1156,7 +1172,7 @@ export default function PlaceDetailScreen() {
       return;
     }
     bottomSheetRef.current?.expand();
-  }, [accessToken, router, t]);
+  }, [accessToken, place?.id, router, t]);
 
   const handleGetTicket = useCallback(() => {
     if (!accessToken) {
@@ -1177,8 +1193,9 @@ export default function PlaceDetailScreen() {
       return;
     }
 
-    router.push(`/booking/${id}`);
-  }, [accessToken, id, router, t]);
+    if (!place?.id) return;
+    router.push(`/booking/${place.id}`);
+  }, [accessToken, place?.id, router, t]);
 
   const handleOpenReviewComposer = useCallback(() => {
     if (!accessToken) {
@@ -1405,7 +1422,10 @@ export default function PlaceDetailScreen() {
               {place?.name}
             </Text>
 
-            <Pressable style={styles.heroReviewLink}>
+            <Pressable
+              onPress={handleOpenAllReviews}
+              style={styles.heroReviewLink}
+            >
               <Text style={styles.heroReviewText}>
                 {formatReviewCount(reviewCount, t)}
               </Text>
@@ -1747,7 +1767,7 @@ export default function PlaceDetailScreen() {
       >
         <BottomSheetView style={{ flex: 1 }}>
           <TripSelectorSheet
-            placeId={id}
+            placeId={resolvedPlaceId}
             placeName={place?.name}
             t={t}
             onClose={() => bottomSheetRef.current?.close()}

@@ -2,11 +2,15 @@ import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,6 +19,7 @@ import { PlaceCard } from "../../src/components/composed/PlaceCard";
 import { PlaceCardSkeleton } from "../../src/components/ui/Skeleton";
 import { GuestGate } from "../../src/components/ui/GuestGate";
 import {
+  useSavePlace,
   useSavedPlaces,
   useUnsavePlace,
 } from "../../src/modules/saved/hooks/useSaved";
@@ -24,6 +29,8 @@ import { TAB_BAR_HEIGHT } from "./_layout";
 import { TAB_CARD_RADIUS, TAB_SCREEN_PADDING, TAB_THEME } from "./tabTheme";
 
 const ALL_AREAS_KEY = "__all_areas__";
+const ALL_COLLECTIONS_KEY = "__all_collections__";
+const NOTES_COLLECTION_KEY = "__notes__";
 
 function getPlaceArea(place) {
   const districtId =
@@ -42,6 +49,27 @@ function getPlaceArea(place) {
     return {
       key: `name:${districtName.trim().toLowerCase()}`,
       name: districtName,
+    };
+  }
+
+  return null;
+}
+
+function getPlaceCollection(place) {
+  const categoryId = place?.category?.id ?? place?.categoryId;
+  const categoryName = place?.category?.name ?? place?.categoryName ?? null;
+
+  if (categoryId != null) {
+    return {
+      key: `category:${categoryId}`,
+      name: categoryName || `Danh mục ${categoryId}`,
+    };
+  }
+
+  if (categoryName) {
+    return {
+      key: `category-name:${categoryName.trim().toLowerCase()}`,
+      name: categoryName,
     };
   }
 
@@ -105,6 +133,9 @@ function SummaryTile({ item }) {
 function SavedHeader({
   count,
   totalCount,
+  collectionOptions,
+  activeCollection,
+  onChangeCollection,
   areaOptions,
   activeArea,
   onChangeArea,
@@ -172,6 +203,62 @@ function SavedHeader({
           contentContainerStyle={styles.areaFilterRow}
         >
           <Pressable
+            onPress={() => onChangeCollection(ALL_COLLECTIONS_KEY)}
+            style={[
+              styles.areaChip,
+              activeCollection === ALL_COLLECTIONS_KEY && styles.areaChipActive,
+            ]}
+          >
+            <MaterialIcons
+              name="collections-bookmark"
+              size={14}
+              color={
+                activeCollection === ALL_COLLECTIONS_KEY ? "#FFFFFF" : "#1D1D1F"
+              }
+            />
+            <Text
+              style={[
+                styles.areaChipText,
+                activeCollection === ALL_COLLECTIONS_KEY &&
+                  styles.areaChipTextActive,
+              ]}
+            >
+              Tất cả bộ sưu tập ({totalCount})
+            </Text>
+          </Pressable>
+
+          {collectionOptions.map((collection) => {
+            const active = activeCollection === collection.key;
+            return (
+              <Pressable
+                key={collection.key}
+                onPress={() => onChangeCollection(collection.key)}
+                style={[styles.areaChip, active && styles.areaChipActive]}
+              >
+                <MaterialIcons
+                  name={collection.icon || "category"}
+                  size={14}
+                  color={active ? "#FFFFFF" : "#1D1D1F"}
+                />
+                <Text
+                  style={[
+                    styles.areaChipText,
+                    active && styles.areaChipTextActive,
+                  ]}
+                >
+                  {collection.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.areaFilterRow}
+        >
+          <Pressable
             onPress={() => onChangeArea(ALL_AREAS_KEY)}
             style={[
               styles.areaChip,
@@ -220,6 +307,68 @@ function SavedHeader({
         </ScrollView>
       </View>
     </View>
+  );
+}
+
+function NoteEditorModal({
+  visible,
+  placeName,
+  value,
+  saving,
+  onChangeText,
+  onClose,
+  onSubmit,
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.modalBackdrop}
+      >
+        <View style={styles.noteModalCard}>
+          <View style={styles.noteModalIcon}>
+            <MaterialIcons name="edit-note" size={22} color={TAB_THEME.primary} />
+          </View>
+          <Text style={styles.noteModalTitle}>Ghi chú cá nhân</Text>
+          <Text style={styles.noteModalSubtitle} numberOfLines={2}>
+            {placeName || "Địa điểm đã lưu"}
+          </Text>
+          <TextInput
+            value={value}
+            onChangeText={onChangeText}
+            placeholder="VD: Đi buổi chiều, thử món đặc trưng, phù hợp đi nhóm..."
+            placeholderTextColor="rgba(29, 29, 31, 0.42)"
+            multiline
+            maxLength={500}
+            style={styles.noteInput}
+            textAlignVertical="top"
+          />
+          <View style={styles.noteModalActions}>
+            <Pressable
+              onPress={onClose}
+              disabled={saving}
+              style={[styles.noteModalButton, styles.noteModalCancel]}
+            >
+              <Text style={styles.noteModalCancelText}>Hủy</Text>
+            </Pressable>
+            <Pressable
+              onPress={onSubmit}
+              disabled={saving}
+              style={[styles.noteModalButton, styles.noteModalSubmit]}
+            >
+              <Text style={styles.noteModalSubmitText}>
+                {saving ? "Đang lưu..." : "Lưu ghi chú"}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -294,7 +443,41 @@ export default function SavedScreen() {
     isRefetching,
   } = useSavedPlaces(isLoggedIn);
   const unsaveMutation = useUnsavePlace();
+  const saveMutation = useSavePlace();
   const [activeArea, setActiveArea] = useState(ALL_AREAS_KEY);
+  const [activeCollection, setActiveCollection] = useState(ALL_COLLECTIONS_KEY);
+  const [noteTarget, setNoteTarget] = useState(null);
+  const [noteDraft, setNoteDraft] = useState("");
+
+  const collectionOptions = useMemo(() => {
+    const map = new Map();
+    let noteCount = 0;
+
+    savedData.forEach((entry) => {
+      const place = entry?.place || entry;
+      const collection = getPlaceCollection(place);
+      if (collection && !map.has(collection.key)) {
+        map.set(collection.key, collection);
+      }
+      if (String(entry?.note || "").trim()) {
+        noteCount += 1;
+      }
+    });
+
+    const collections = Array.from(map.values()).sort((a, b) =>
+      String(a.name).localeCompare(String(b.name), "vi"),
+    );
+
+    if (noteCount > 0) {
+      collections.unshift({
+        key: NOTES_COLLECTION_KEY,
+        name: `Có ghi chú (${noteCount})`,
+        icon: "edit-note",
+      });
+    }
+
+    return collections;
+  }, [savedData]);
 
   const areaOptions = useMemo(() => {
     const map = new Map();
@@ -310,13 +493,48 @@ export default function SavedScreen() {
   }, [savedData]);
 
   const filteredSavedData = useMemo(() => {
-    if (activeArea === ALL_AREAS_KEY) return savedData;
     return savedData.filter((entry) => {
       const place = entry?.place || entry;
+      if (activeCollection === NOTES_COLLECTION_KEY) {
+        if (!String(entry?.note || "").trim()) return false;
+      } else if (activeCollection !== ALL_COLLECTIONS_KEY) {
+        const collection = getPlaceCollection(place);
+        if (collection?.key !== activeCollection) return false;
+      }
+
+      if (activeArea === ALL_AREAS_KEY) return true;
       const area = getPlaceArea(place);
       return area?.key === activeArea;
     });
-  }, [activeArea, savedData]);
+  }, [activeArea, activeCollection, savedData]);
+
+  const handleOpenNoteEditor = useCallback((entry) => {
+    const place = entry?.place || entry;
+    setNoteTarget({
+      placeId: place?.id,
+      placeName: place?.name,
+    });
+    setNoteDraft(entry?.note || "");
+  }, []);
+
+  const handleCloseNoteEditor = useCallback(() => {
+    if (saveMutation.isPending) return;
+    setNoteTarget(null);
+    setNoteDraft("");
+  }, [saveMutation.isPending]);
+
+  const handleSaveNote = useCallback(async () => {
+    if (!noteTarget?.placeId) return;
+    try {
+      await saveMutation.mutateAsync({
+        placeId: noteTarget.placeId,
+        note: noteDraft.trim() || null,
+      });
+      handleCloseNoteEditor();
+    } catch {
+      Alert.alert("Không lưu được ghi chú", "Vui lòng thử lại sau ít phút.");
+    }
+  }, [handleCloseNoteEditor, noteDraft, noteTarget?.placeId, saveMutation]);
 
   const handleUnsave = useCallback(
     (placeId) => {
@@ -349,6 +567,15 @@ export default function SavedScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <NoteEditorModal
+        visible={!!noteTarget}
+        placeName={noteTarget?.placeName}
+        value={noteDraft}
+        saving={saveMutation.isPending}
+        onChangeText={setNoteDraft}
+        onClose={handleCloseNoteEditor}
+        onSubmit={handleSaveNote}
+      />
       <FlatList
         data={!isLoading && !isError ? filteredSavedData : []}
         keyExtractor={(item) => String(item.id)}
@@ -366,6 +593,9 @@ export default function SavedScreen() {
           <SavedHeader
             count={filteredSavedData.length}
             totalCount={savedData.length}
+            collectionOptions={collectionOptions}
+            activeCollection={activeCollection}
+            onChangeCollection={setActiveCollection}
             areaOptions={areaOptions}
             activeArea={activeArea}
             onChangeArea={setActiveArea}
@@ -401,6 +631,27 @@ export default function SavedScreen() {
                   color="#1D1D1F"
                 />
                 <Text style={styles.unsaveButtonText}>Bỏ lưu địa điểm</Text>
+              </Pressable>
+              {item?.note ? (
+                <View style={styles.savedNoteCard}>
+                  <MaterialIcons
+                    name="sticky-note-2"
+                    size={15}
+                    color={TAB_THEME.primary}
+                  />
+                  <Text style={styles.savedNoteText} numberOfLines={3}>
+                    {item.note}
+                  </Text>
+                </View>
+              ) : null}
+              <Pressable
+                onPress={() => handleOpenNoteEditor(item)}
+                style={styles.noteButton}
+              >
+                <MaterialIcons name="edit-note" size={16} color="#1D1D1F" />
+                <Text style={styles.noteButtonText}>
+                  {item?.note ? "Sửa ghi chú" : "Thêm ghi chú"}
+                </Text>
               </Pressable>
             </View>
           );
@@ -656,6 +907,118 @@ const styles = StyleSheet.create({
   unsaveButtonText: {
     color: "#1D1D1F",
     fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
+  },
+  savedNoteCard: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: "rgba(59, 130, 246, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(59, 130, 246, 0.14)",
+  },
+  savedNoteText: {
+    flex: 1,
+    color: TAB_THEME.text,
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: TOKENS.font.body,
+  },
+  noteButton: {
+    marginTop: 10,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: TOKENS.radius.full,
+    borderWidth: 1,
+    borderColor: "rgba(29, 29, 31, 0.14)",
+    backgroundColor: "#FFFFFF",
+  },
+  noteButtonText: {
+    color: "#1D1D1F",
+    fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    backgroundColor: "rgba(15, 23, 42, 0.45)",
+  },
+  noteModalCard: {
+    borderRadius: 28,
+    padding: 22,
+    gap: 12,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.18)",
+    ...TOKENS.shadow.lg,
+  },
+  noteModalIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(59, 130, 246, 0.12)",
+  },
+  noteModalTitle: {
+    color: TAB_THEME.text,
+    fontSize: 22,
+    fontFamily: TOKENS.font.heading,
+  },
+  noteModalSubtitle: {
+    color: TAB_THEME.textMuted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: TOKENS.font.body,
+  },
+  noteInput: {
+    minHeight: 120,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: TAB_THEME.text,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: TOKENS.font.body,
+    backgroundColor: "#F8FBFF",
+    borderWidth: 1,
+    borderColor: "rgba(29, 29, 31, 0.1)",
+  },
+  noteModalActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  noteModalButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: TOKENS.radius.full,
+    paddingVertical: 12,
+  },
+  noteModalCancel: {
+    backgroundColor: "#F2F4F7",
+  },
+  noteModalSubmit: {
+    backgroundColor: TAB_THEME.primary,
+  },
+  noteModalCancelText: {
+    color: TAB_THEME.text,
+    fontSize: 14,
+    fontFamily: TOKENS.font.semibold,
+  },
+  noteModalSubmitText: {
+    color: "#FFFFFF",
+    fontSize: 14,
     fontFamily: TOKENS.font.semibold,
   },
   centerCardWrap: {

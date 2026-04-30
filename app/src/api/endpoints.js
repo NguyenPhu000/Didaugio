@@ -40,6 +40,12 @@ export const ENDPOINTS = {
     bookingLinkTrip: (id) => `/profile/bookings/${id}/link-trip`,
     pushToken: "/profile/push-token",
   },
+  notifications: {
+    list: "/notifications",
+    unreadCount: "/notifications/unread-count",
+    markRead: (id) => `/notifications/${id}/read`,
+    markAllRead: "/notifications/mark-all-read",
+  },
   booking: {
     createByService: (serviceId) => `/services/${serviceId}/book`,
     create: "/business/bookings",

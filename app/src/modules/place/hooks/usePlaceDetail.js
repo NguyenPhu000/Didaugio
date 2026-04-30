@@ -51,12 +51,19 @@ export function usePlaceReviews(id, params = {}) {
 
 export function useCreateReview(placeId) {
   const qc = useQueryClient();
+  const parsedId = Number(placeId);
+  const isValidId = Number.isFinite(parsedId) && parsedId > 0;
 
   return useMutation({
-    mutationFn: (payload) => createReviewApi(placeId, payload),
+    mutationFn: (payload) => {
+      if (!isValidId) {
+        throw new Error("Không xác định được địa điểm để gửi đánh giá");
+      }
+      return createReviewApi(parsedId, payload);
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["place-reviews", placeId] });
-      qc.invalidateQueries({ queryKey: ["place", placeId] });
+      qc.invalidateQueries({ queryKey: ["place-reviews", parsedId] });
+      qc.invalidateQueries({ queryKey: ["place"] });
     },
   });
 }

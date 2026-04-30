@@ -23,7 +23,7 @@ import {
   useTrips,
 } from "../../src/modules/trips/hooks/useTrips";
 
-const STEP_LABELS = ["Dịch vụ", "Xác nhận", "Thanh toán"];
+const STEP_LABELS = ["Dịch vụ", "Xác nhận", "Gửi yêu cầu"];
 const WEEKDAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
 const buildTimeSlots = ({
@@ -341,6 +341,7 @@ export default function BookingScreen() {
   const insets = useSafeAreaInsets();
   const accessToken = useAuthStore((s) => s.accessToken);
   const isGuest = useAuthStore((s) => s.isGuest);
+  const currentUser = useAuthStore((s) => s.user);
   const isLoggedIn = Boolean(accessToken) && !isGuest;
 
   const [step, setStep] = useState(1);
@@ -362,6 +363,11 @@ export default function BookingScreen() {
   const [nowTs, setNowTs] = useState(() => Date.now());
   const [bookingDone, setBookingDone] = useState(false);
   const [linkedTripSummary, setLinkedTripSummary] = useState(null);
+  const [guestName, setGuestName] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [requestNote, setRequestNote] = useState("");
+  const didPrefillContactRef = useRef(false);
 
   const { data: place } = usePlaceDetail(placeId);
   const { data: services = [], isLoading: servicesLoading } =
@@ -374,6 +380,16 @@ export default function BookingScreen() {
     const timer = setInterval(() => setNowTs(Date.now()), 30_000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (didPrefillContactRef.current || !currentUser) return;
+
+    const profile = currentUser.profile || {};
+    setGuestName(profile.fullName || currentUser.fullName || "");
+    setGuestPhone(profile.phone || currentUser.phone || "");
+    setGuestEmail(currentUser.email || "");
+    didPrefillContactRef.current = true;
+  }, [currentUser]);
 
   const calendarDays = useMemo(
     () => buildCalendarDays(calendarMonth),
@@ -486,6 +502,16 @@ export default function BookingScreen() {
     !!selectedTime &&
     isSelectedTimeAvailable &&
     (tripLinkMode !== "existing" || !!selectedTripId);
+  const normalizedGuestName = guestName.trim();
+  const normalizedGuestPhone = guestPhone.trim();
+  const normalizedGuestEmail = guestEmail.trim();
+  const normalizedRequestNote = requestNote.trim();
+  const hasValidContact =
+    normalizedGuestName.length >= 2 &&
+    normalizedGuestPhone.replace(/\D/g, "").length >= 8 &&
+    (!normalizedGuestEmail || /\S+@\S+\.\S+/.test(normalizedGuestEmail));
+  const isSubmittingBooking =
+    bookingMutation.isPending || createTripMutation.isPending;
 
   if (!isLoggedIn) {
     return (
@@ -588,6 +614,14 @@ export default function BookingScreen() {
   }
 
   const handleConfirmBooking = async () => {
+    if (!hasValidContact) {
+      Alert.alert(
+        "Thiếu thông tin liên hệ",
+        "Vui lòng nhập họ tên và số điện thoại hợp lệ để địa điểm xác nhận booking.",
+      );
+      return;
+    }
+
     if (!isSelectedTimeAvailable) {
       Alert.alert(
         "Khung giờ không còn khả dụng",
@@ -641,7 +675,10 @@ export default function BookingScreen() {
         quantity,
         useDate: selectedDate,
         useTime: selectedTime,
-        note: "",
+        guestName: normalizedGuestName,
+        guestPhone: normalizedGuestPhone,
+        guestEmail: normalizedGuestEmail || undefined,
+        note: normalizedRequestNote || null,
       });
 
       const linkedTrip = bookingRes?.data?.linkedTrip || null;
@@ -1629,7 +1666,7 @@ export default function BookingScreen() {
                 marginBottom: 16,
               }}
             >
-              Xác nhận và thanh toán
+              Gửi yêu cầu đặt chỗ
             </Text>
 
             <View
@@ -1644,7 +1681,7 @@ export default function BookingScreen() {
               }}
             >
               <MaterialIcons
-                name="payment"
+                name="fact-check"
                 size={40}
                 color={BOOKING_THEME.neon}
               />
@@ -1656,7 +1693,7 @@ export default function BookingScreen() {
                   textAlign: "center",
                 }}
               >
-                Thanh toán khi đến nơi
+                Thanh toán tại địa điểm
               </Text>
               <Text
                 style={{
@@ -1666,9 +1703,107 @@ export default function BookingScreen() {
                   lineHeight: 20,
                 }}
               >
-                Hiện tại chúng tôi hỗ trợ thanh toán trực tiếp tại địa điểm.
-                {"\n"}Đặt chỗ sẽ được xác nhận qua điện thoại.
+                Gửi yêu cầu trước, địa điểm sẽ xác nhận qua điện thoại. Bạn
+                thanh toán trực tiếp khi đến nơi.
               </Text>
+
+              <View style={{ width: "100%", gap: 10 }}>
+                <Text
+                  style={{
+                    color: BOOKING_THEME.text,
+                    fontSize: 14,
+                    fontWeight: "800",
+                  }}
+                >
+                  Thông tin liên hệ
+                </Text>
+
+                <TextInput
+                  value={guestName}
+                  onChangeText={setGuestName}
+                  placeholder="Họ tên người đặt"
+                  placeholderTextColor={BOOKING_THEME.textMuted}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: BOOKING_THEME.glassBorder,
+                    backgroundColor: BOOKING_THEME.backgroundElevated,
+                    borderRadius: 14,
+                    color: BOOKING_THEME.text,
+                    fontSize: 13,
+                    paddingHorizontal: 12,
+                    paddingVertical: 11,
+                  }}
+                  autoCapitalize="words"
+                  maxLength={100}
+                />
+
+                <TextInput
+                  value={guestPhone}
+                  onChangeText={setGuestPhone}
+                  placeholder="Số điện thoại xác nhận"
+                  placeholderTextColor={BOOKING_THEME.textMuted}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: BOOKING_THEME.glassBorder,
+                    backgroundColor: BOOKING_THEME.backgroundElevated,
+                    borderRadius: 14,
+                    color: BOOKING_THEME.text,
+                    fontSize: 13,
+                    paddingHorizontal: 12,
+                    paddingVertical: 11,
+                  }}
+                  keyboardType="phone-pad"
+                  maxLength={20}
+                />
+
+                <TextInput
+                  value={guestEmail}
+                  onChangeText={setGuestEmail}
+                  placeholder="Email nhận thông tin (không bắt buộc)"
+                  placeholderTextColor={BOOKING_THEME.textMuted}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: BOOKING_THEME.glassBorder,
+                    backgroundColor: BOOKING_THEME.backgroundElevated,
+                    borderRadius: 14,
+                    color: BOOKING_THEME.text,
+                    fontSize: 13,
+                    paddingHorizontal: 12,
+                    paddingVertical: 11,
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  maxLength={120}
+                />
+
+                <TextInput
+                  value={requestNote}
+                  onChangeText={setRequestNote}
+                  placeholder="Ghi chú cho địa điểm (không bắt buộc)"
+                  placeholderTextColor={BOOKING_THEME.textMuted}
+                  style={{
+                    minHeight: 82,
+                    borderWidth: 1,
+                    borderColor: BOOKING_THEME.glassBorder,
+                    backgroundColor: BOOKING_THEME.backgroundElevated,
+                    borderRadius: 14,
+                    color: BOOKING_THEME.text,
+                    fontSize: 13,
+                    paddingHorizontal: 12,
+                    paddingVertical: 11,
+                    textAlignVertical: "top",
+                  }}
+                  multiline
+                  maxLength={500}
+                />
+
+                {!hasValidContact ? (
+                  <Text style={{ color: "#F59E0B", fontSize: 12 }}>
+                    Cần họ tên và số điện thoại hợp lệ để địa điểm liên hệ xác
+                    nhận.
+                  </Text>
+                ) : null}
+              </View>
 
               <View
                 style={{
@@ -1834,34 +1969,42 @@ export default function BookingScreen() {
         ) : (
           <Pressable
             onPress={handleConfirmBooking}
-            disabled={bookingMutation.isPending || createTripMutation.isPending}
+            disabled={isSubmittingBooking || !hasValidContact}
             style={{
-              backgroundColor: BOOKING_THEME.neon,
+              backgroundColor: hasValidContact
+                ? BOOKING_THEME.neon
+                : BOOKING_THEME.surfaceMuted,
               borderRadius: 22,
               paddingVertical: 16,
               alignItems: "center",
               flexDirection: "row",
               justifyContent: "center",
               gap: 8,
-              shadowColor: BOOKING_THEME.neon,
+              shadowColor: hasValidContact ? BOOKING_THEME.neon : "transparent",
               shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.35,
+              shadowOpacity: hasValidContact ? 0.35 : 0,
               shadowRadius: 20,
-              elevation: 10,
+              elevation: hasValidContact ? 10 : 0,
             }}
           >
-            {bookingMutation.isPending || createTripMutation.isPending ? (
+            {isSubmittingBooking ? (
               <ActivityIndicator size="small" color={BOOKING_THEME.white} />
             ) : (
               <MaterialIcons
                 name="check-circle"
                 size={18}
-                color={BOOKING_THEME.white}
+                color={
+                  hasValidContact
+                    ? BOOKING_THEME.white
+                    : BOOKING_THEME.textSecondary
+                }
               />
             )}
             <Text
               style={{
-                color: BOOKING_THEME.white,
+                color: hasValidContact
+                  ? BOOKING_THEME.white
+                  : BOOKING_THEME.textSecondary,
                 fontSize: 15,
                 fontWeight: "800",
               }}

@@ -30,4 +30,8 @@ export const QUERY_KEYS = {
     list: () => ["trips", "list"],
     detail: (id) => ["trips", "detail", id],
   },
+  notifications: {
+    all: () => ["notifications"],
+    list: (filters) => ["notifications", "list", filters],
+  },
 };

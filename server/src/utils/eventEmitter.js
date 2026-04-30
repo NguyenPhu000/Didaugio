@@ -24,6 +24,8 @@ export const EVENTS = {
     CREATED: "booking:created",
     CONFIRMED: "booking:confirmed",
     CANCELLED: "booking:cancelled",
+    REJECTED: "booking:rejected",
+    EXPIRED: "booking:expired",
     COMPLETED: "booking:completed",
     NO_SHOW: "booking:no_show",
   },

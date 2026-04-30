@@ -17,9 +17,10 @@ export const getSchedule = async (params = {}) => {
   return response;
 };
 
-export const reschedule = async (id, bookingTime) => {
+export const reschedule = async (id, bookingTime, data = {}) => {
   const response = await api.patch(`${BASE_URL}/${id}/reschedule`, {
     bookingTime,
+    ...data,
   });
   return response;
 };
@@ -29,9 +30,10 @@ export const quickApprove = async (id) => {
   return response;
 };
 
-export const quickReject = async (id, cancelReason) => {
+export const quickReject = async (id, cancelReason, data = {}) => {
   const response = await api.post(`${BASE_URL}/${id}/quick-reject`, {
     cancelReason,
+    ...data,
   });
   return response;
 };

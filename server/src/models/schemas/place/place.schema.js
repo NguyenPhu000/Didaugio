@@ -178,10 +178,11 @@ export const getPlacesQuerySchema = paginationLargeSchema.extend({
     .enum(["all", "pending", "approved", "rejected", "draft"])
     .optional(),
   priceRange: z.enum(["all", ...PRICE_RANGE_VALUES]).optional(),
+  minRating: z.coerce.number().min(0).max(5).optional(),
   isFeatured: z.coerce.boolean().optional(),
   isVerified: z.coerce.boolean().optional(),
   sortBy: z
-    .enum(["newest", "oldest", "rating", "views", "name"])
+    .enum(["newest", "oldest", "rating", "popular", "views", "name"])
     .default("newest"),
   limit: z.coerce.number().int().min(1).max(500).default(10),
 });

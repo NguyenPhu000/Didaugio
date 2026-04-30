@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -10,12 +10,16 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useCreateTrip } from "../../src/modules/trips/hooks/useTrips";
+import { addDestinationApi } from "../../src/modules/trips/api/tripsApi";
+import { useSavedPlaces } from "../../src/modules/saved/hooks/useSaved";
 import { AIEntryButton } from "../../src/components/composed/AIEntryButton";
 import { CustomDatePicker } from "../../src/components/ui/CustomDatePicker";
+import { QUERY_KEYS } from "../../src/constants/query-keys";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -83,16 +87,100 @@ function LabeledInput({
   );
 }
 
+function getSavedPlace(entry) {
+  return entry?.place || entry;
+}
+
+function SavedPlacePicker({ savedPlaces, selectedIds, onToggle }) {
+  if (!savedPlaces.length) {
+    return (
+      <View style={styles.savedEmptyCard}>
+        <MaterialIcons
+          name="bookmark-border"
+          size={18}
+          color={TRIP_THEME.textMuted}
+        />
+        <Text style={styles.savedEmptyText}>
+          Chưa có địa điểm đã lưu. Bạn vẫn có thể tạo chuyến đi trống rồi thêm
+          địa điểm sau.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.savedPickerRow}
+    >
+      {savedPlaces.map((entry) => {
+        const place = getSavedPlace(entry);
+        const placeId = Number(place?.id);
+        if (!Number.isInteger(placeId) || placeId <= 0) return null;
+
+        const selected = selectedIds.includes(placeId);
+        return (
+          <Pressable
+            key={`${entry?.id || placeId}:${placeId}`}
+            onPress={() => onToggle(placeId)}
+            style={[styles.savedPlaceChip, selected && styles.savedPlaceActive]}
+          >
+            <View
+              style={[
+                styles.savedPlaceIcon,
+                selected && styles.savedPlaceIconActive,
+              ]}
+            >
+              <MaterialIcons
+                name={selected ? "check" : "place"}
+                size={16}
+                color={selected ? TRIP_THEME.white : TRIP_THEME.primary}
+              />
+            </View>
+            <Text
+              style={[
+                styles.savedPlaceName,
+                selected && styles.savedPlaceNameActive,
+              ]}
+              numberOfLines={2}
+            >
+              {place?.name || "Địa điểm"}
+            </Text>
+            {entry?.note ? (
+              <Text
+                style={[
+                  styles.savedPlaceNote,
+                  selected && styles.savedPlaceNoteActive,
+                ]}
+                numberOfLines={2}
+              >
+                {entry.note}
+              </Text>
+            ) : null}
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
 export default function CreateTripScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const createMutation = useCreateTrip();
+  const { data: savedPlaces = [], isLoading: isSavedLoading } =
+    useSavedPlaces(true);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [totalDays, setTotalDays] = useState(null);
+  const [selectedSavedPlaceIds, setSelectedSavedPlaceIds] = useState([]);
+  const [isAddingDestinations, setIsAddingDestinations] = useState(false);
+  const [destinationError, setDestinationError] = useState(null);
 
   // Tự động tính totalDays khi user chọn date range
   useEffect(() => {
@@ -110,11 +198,27 @@ export default function CreateTripScreen() {
     }
   };
 
-  const canSubmit = title.trim().length > 0 && !createMutation.isPending;
+  const selectedSavedCount = selectedSavedPlaceIds.length;
+  const canSubmit =
+    title.trim().length > 0 &&
+    !createMutation.isPending &&
+    !isAddingDestinations;
+
+  const savedPlacesPreview = useMemo(() => savedPlaces.slice(0, 12), [savedPlaces]);
+
+  const toggleSavedPlace = (placeId) => {
+    setSelectedSavedPlaceIds((prev) =>
+      prev.includes(placeId)
+        ? prev.filter((id) => id !== placeId)
+        : [...prev, placeId],
+    );
+    setDestinationError(null);
+  };
 
   const handleCreate = async () => {
     if (!canSubmit) return;
     try {
+      setDestinationError(null);
       const result = await createMutation.mutateAsync({
         title: title.trim(),
         description: description.trim() || undefined,
@@ -124,12 +228,36 @@ export default function CreateTripScreen() {
       });
       const newId = result?.data?.id;
       if (newId) {
+        if (selectedSavedPlaceIds.length > 0) {
+          setIsAddingDestinations(true);
+          await Promise.all(
+            selectedSavedPlaceIds.map((placeId, index) =>
+              addDestinationApi(newId, {
+                placeId,
+                dayNumber: 1,
+                order: index,
+                note: "Thêm từ địa điểm đã lưu",
+              }),
+            ),
+          );
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() }),
+            queryClient.invalidateQueries({
+              queryKey: QUERY_KEYS.trips.detail(newId),
+            }),
+          ]);
+        }
         router.replace(`/trip/${newId}`);
       } else {
         router.back();
       }
-    } catch {
-      // lỗi được xử lý bởi createMutation.isError
+    } catch (error) {
+      setDestinationError(
+        error?.message ||
+          "Không thể thêm địa điểm đã lưu vào chuyến đi. Vui lòng thử lại.",
+      );
+    } finally {
+      setIsAddingDestinations(false);
     }
   };
 
@@ -232,8 +360,42 @@ export default function CreateTripScreen() {
           ) : null}
         </FormSection>
 
+        {/* ── Saved places section ── */}
+        <FormSection title="Thêm địa điểm đã lưu" icon="collections-bookmark">
+          <Text style={styles.helperText}>
+            Chọn các địa điểm muốn đưa vào ngày 1. Bạn có thể sắp xếp lại trong
+            chi tiết chuyến đi sau khi tạo.
+          </Text>
+          {isSavedLoading ? (
+            <View style={styles.savedLoadingRow}>
+              <ActivityIndicator size="small" color={TRIP_THEME.primary} />
+              <Text style={styles.savedLoadingText}>
+                Đang tải địa điểm đã lưu...
+              </Text>
+            </View>
+          ) : (
+            <SavedPlacePicker
+              savedPlaces={savedPlacesPreview}
+              selectedIds={selectedSavedPlaceIds}
+              onToggle={toggleSavedPlace}
+            />
+          )}
+          {selectedSavedCount > 0 ? (
+            <View style={styles.selectedSummary}>
+              <MaterialIcons
+                name="check-circle"
+                size={15}
+                color={TRIP_THEME.primary}
+              />
+              <Text style={styles.selectedSummaryText}>
+                Sẽ thêm {selectedSavedCount} địa điểm vào lịch trình
+              </Text>
+            </View>
+          ) : null}
+        </FormSection>
+
         {/* ── Error ── */}
-        {createMutation.isError ? (
+        {createMutation.isError || destinationError ? (
           <View style={styles.errorCard}>
             <MaterialIcons
               name="error-outline"
@@ -241,7 +403,8 @@ export default function CreateTripScreen() {
               color={TOKENS.color.error}
             />
             <Text style={styles.errorText}>
-              {createMutation.error?.message ||
+              {destinationError ||
+                createMutation.error?.message ||
                 "Có lỗi xảy ra, vui lòng thử lại"}
             </Text>
           </View>
@@ -257,7 +420,7 @@ export default function CreateTripScreen() {
             pressed && canSubmit && styles.primaryBtnPressed,
           ]}
         >
-          {createMutation.isPending ? (
+          {createMutation.isPending || isAddingDestinations ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <MaterialIcons
@@ -272,7 +435,7 @@ export default function CreateTripScreen() {
               !canSubmit && styles.primaryBtnTextDisabled,
             ]}
           >
-            Tạo chuyến đi
+            {isAddingDestinations ? "Đang thêm địa điểm..." : "Tạo chuyến đi"}
           </Text>
         </Pressable>
 
@@ -421,6 +584,108 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: TOKENS.font.medium,
     color: TRIP_THEME.warning,
+  },
+  /* ── Saved places ── */
+  helperText: {
+    marginTop: -6,
+    marginBottom: 12,
+    color: TRIP_THEME.textMuted,
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: TOKENS.font.body,
+  },
+  savedLoadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: TOKENS.radius.lg,
+    padding: 14,
+    backgroundColor: TRIP_THEME.surfaceElevated,
+  },
+  savedLoadingText: {
+    color: TRIP_THEME.textMuted,
+    fontSize: 13,
+    fontFamily: TOKENS.font.medium,
+  },
+  savedEmptyCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    borderRadius: TOKENS.radius.lg,
+    padding: 14,
+    backgroundColor: TRIP_THEME.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TRIP_THEME.borderSoft,
+  },
+  savedEmptyText: {
+    flex: 1,
+    color: TRIP_THEME.textMuted,
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: TOKENS.font.body,
+  },
+  savedPickerRow: {
+    gap: 10,
+    paddingRight: 6,
+  },
+  savedPlaceChip: {
+    width: 172,
+    minHeight: 118,
+    borderRadius: 22,
+    padding: 14,
+    gap: 8,
+    backgroundColor: TRIP_THEME.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TRIP_THEME.borderSoft,
+  },
+  savedPlaceActive: {
+    backgroundColor: TRIP_THEME.primary,
+    borderColor: TRIP_THEME.primary,
+  },
+  savedPlaceIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: TRIP_THEME.primaryTint,
+  },
+  savedPlaceIconActive: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  savedPlaceName: {
+    color: TRIP_THEME.text,
+    fontSize: 14,
+    lineHeight: 19,
+    fontFamily: TOKENS.font.semibold,
+  },
+  savedPlaceNameActive: {
+    color: TRIP_THEME.white,
+  },
+  savedPlaceNote: {
+    color: TRIP_THEME.textMuted,
+    fontSize: 12,
+    lineHeight: 17,
+    fontFamily: TOKENS.font.body,
+  },
+  savedPlaceNoteActive: {
+    color: "rgba(255,255,255,0.78)",
+  },
+  selectedSummary: {
+    marginTop: 12,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: TOKENS.radius.full,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: TRIP_THEME.primaryTint,
+  },
+  selectedSummaryText: {
+    color: TRIP_THEME.primary,
+    fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
   },
   /* ── Error ── */
   errorCard: {

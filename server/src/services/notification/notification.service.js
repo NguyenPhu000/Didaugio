@@ -557,6 +557,35 @@ eventEmitter.on(
   },
 );
 
+eventEmitter.on(
+  EVENTS.BOOKING.REJECTED,
+  async ({ bookingId, bookingCode, rejectedBy, rejectReason, userId }) => {
+    await notifyUser(
+      userId,
+      "Booking bị từ chối",
+      `Booking ${bookingCode} bị từ chối. Lý do: ${rejectReason || "Địa điểm không thể nhận yêu cầu này"}`,
+      { bookingId, type: "booking_rejected", rejectReason },
+      rejectedBy,
+    ).catch((error) => {
+      console.error("[Notification] Error processing BOOKING.REJECTED:", error);
+    });
+  },
+);
+
+eventEmitter.on(
+  EVENTS.BOOKING.EXPIRED,
+  async ({ bookingId, bookingCode, userId }) => {
+    await notifyUser(
+      userId,
+      "Booking đã hết hạn",
+      `Booking #${bookingCode} đã hết hạn vì quá thời gian xử lý.`,
+      { bookingId, type: "booking_expired" },
+    ).catch((error) => {
+      console.error("[Notification] Error processing BOOKING.EXPIRED:", error);
+    });
+  },
+);
+
 eventEmitter.on(EVENTS.BOOKING.COMPLETED, async ({ bookingId, bookingCode, completedBy, userId }) => {
   await notifyUser(
     userId,

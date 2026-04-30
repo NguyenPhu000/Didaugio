@@ -11,6 +11,7 @@ import {
   Search,
   Eye,
   CalendarRange,
+  CalendarClock,
   Clock,
   CheckCheck,
   XCircle,
@@ -66,6 +67,8 @@ const STATUS_TABS = [
   { value: BOOKING_STATUS.CONFIRMED, label: "Đã xác nhận" },
   { value: BOOKING_STATUS.COMPLETED, label: "Hoàn thành" },
   { value: BOOKING_STATUS.CANCELLED, label: "Đã hủy" },
+  { value: BOOKING_STATUS.REJECTED, label: "Bị từ chối" },
+  { value: BOOKING_STATUS.EXPIRED, label: "Hết hạn" },
 ];
 
 const PAGE_SIZE = 20;
@@ -118,6 +121,148 @@ const CancelModal = ({ open, onConfirm, onCancel }) => {
   );
 };
 
+const RejectModal = ({ open, onConfirm, onCancel }) => {
+  const [reason, setReason] = useState("");
+  const [businessNote, setBusinessNote] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    const id = requestAnimationFrame(() => {
+      setReason("");
+      setBusinessNote("");
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onCancel}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-destructive">
+            <XCircle className="h-5 w-5" />
+            Từ chối yêu cầu
+          </DialogTitle>
+          <DialogDescription>
+            Dùng cho booking đang chờ xác nhận. Khách sẽ nhận thông báo từ chối.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Lý do từ chối</Label>
+            <Textarea
+              autoFocus
+              placeholder="VD: Khung giờ này đã kín chỗ..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="min-h-[90px]"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Ghi chú nội bộ (tuỳ chọn)</Label>
+            <Textarea
+              placeholder="Chỉ hiển thị cho business/admin"
+              value={businessNote}
+              onChange={(e) => setBusinessNote(e.target.value)}
+              className="min-h-[70px]"
+            />
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Quay lại
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              if (reason.trim().length < 5) {
+                toast.error("Lý do phải có ít nhất 5 ký tự");
+                return;
+              }
+              onConfirm(reason.trim(), businessNote.trim() || null);
+            }}
+          >
+            Từ chối
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const RescheduleModal = ({ open, booking, onConfirm, onCancel }) => {
+  const initialDate = String(booking?.useDate || booking?.bookingAt || "").slice(
+    0,
+    10,
+  );
+  const initialTime = booking?.useTime || "09:00";
+  const [date, setDate] = useState(initialDate);
+  const [time, setTime] = useState(initialTime);
+  const [businessNote, setBusinessNote] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    const id = requestAnimationFrame(() => {
+      setDate(initialDate);
+      setTime(initialTime);
+      setBusinessNote("");
+    });
+    return () => cancelAnimationFrame(id);
+  }, [initialDate, initialTime, open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onCancel}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarClock className="h-5 w-5" />
+            Đổi lịch booking
+          </DialogTitle>
+          <DialogDescription>
+            Có thể đổi lịch booking đang chờ hoặc đã xác nhận. Server sẽ kiểm tra
+            capacity trước khi lưu.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Ngày dùng</Label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Giờ dùng</Label>
+            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Ghi chú nội bộ (tuỳ chọn)</Label>
+          <Textarea
+            placeholder="VD: Đổi lịch theo yêu cầu khách qua điện thoại"
+            value={businessNote}
+            onChange={(e) => setBusinessNote(e.target.value)}
+            className="min-h-[80px]"
+          />
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Quay lại
+          </Button>
+          <Button
+            onClick={() => {
+              if (!date || !time) {
+                toast.error("Vui lòng chọn ngày và giờ dùng");
+                return;
+              }
+              const bookingTime = new Date(`${date}T${time}:00`).toISOString();
+              onConfirm(bookingTime, businessNote.trim() || null);
+            }}
+          >
+            Lưu lịch mới
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // ─── Booking Item ─────────────────────────────────────────────────────────────
 
 const BookingItem = ({
@@ -126,6 +271,8 @@ const BookingItem = ({
   onSelect,
   onConfirm,
   onCancel,
+  onReject,
+  onReschedule,
   onComplete,
   onNoShow,
   onView,
@@ -198,9 +345,18 @@ const BookingItem = ({
             <Button
               variant="ghost"
               size="sm"
+              className="h-8 w-8 p-0 text-amber-700 hover:bg-amber-50"
+              title="Đổi lịch"
+              onClick={() => onReschedule(bk)}
+            >
+              <CalendarClock className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
-              title="Hủy"
-              onClick={() => onCancel(bk.id)}
+              title="Từ chối"
+              onClick={() => onReject(bk.id)}
             >
               <X className="h-3.5 w-3.5" />
             </Button>
@@ -209,6 +365,24 @@ const BookingItem = ({
 
         {isConfirmed && (
           <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-amber-700 hover:bg-amber-50"
+              title="Đổi lịch"
+              onClick={() => onReschedule(bk)}
+            >
+              <CalendarClock className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+              title="Hủy booking đã xác nhận"
+              onClick={() => onCancel(bk.id)}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -252,6 +426,8 @@ const BookingListPage = () => {
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState([]);
   const [cancelModal, setCancelModal] = useState(null);
+  const [rejectModal, setRejectModal] = useState(null);
+  const [rescheduleModal, setRescheduleModal] = useState(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [isPendingTransition, startTransition] = useTransition();
 
@@ -313,6 +489,30 @@ const BookingListPage = () => {
       refresh();
     } catch (error) {
       toastApiErrorIfNeeded(error, "Không thể xác nhận");
+    }
+  };
+
+  const handleRejectConfirmed = async (reason, businessNote) => {
+    try {
+      await bookingApi.quickReject(rejectModal, reason, { businessNote });
+      toast.success("Đã từ chối yêu cầu đặt chỗ");
+      setRejectModal(null);
+      refresh();
+    } catch (error) {
+      toastApiErrorIfNeeded(error, "Không thể từ chối");
+    }
+  };
+
+  const handleRescheduleConfirmed = async (bookingTime, businessNote) => {
+    try {
+      await bookingApi.reschedule(rescheduleModal.id, bookingTime, {
+        businessNote,
+      });
+      toast.success("Đã đổi lịch booking");
+      setRescheduleModal(null);
+      refresh();
+    } catch (error) {
+      toastApiErrorIfNeeded(error, "Không thể đổi lịch");
     }
   };
 
@@ -440,6 +640,18 @@ const BookingListPage = () => {
       iconColor: "rose",
     },
     {
+      key: BOOKING_STATUS.REJECTED,
+      label: "Bị từ chối",
+      icon: XCircle,
+      iconColor: "amber",
+    },
+    {
+      key: BOOKING_STATUS.EXPIRED,
+      label: "Hết hạn",
+      icon: AlertTriangle,
+      iconColor: "primary",
+    },
+    {
       key: BOOKING_STATUS.NO_SHOW,
       label: "Không đến",
       icon: UserX,
@@ -465,7 +677,7 @@ const BookingListPage = () => {
       />
 
       {/* Status Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         {statCards.map(({ key, label }) =>
           loading ? (
             <StatCardSkeleton key={key} />
@@ -624,6 +836,8 @@ const BookingListPage = () => {
                           onSelect={toggleSelect}
                           onConfirm={handleConfirm}
                           onCancel={(id) => setCancelModal(id)}
+                          onReject={(id) => setRejectModal(id)}
+                          onReschedule={(booking) => setRescheduleModal(booking)}
                           onComplete={handleComplete}
                           onNoShow={handleNoShow}
                           onView={(id) =>
@@ -654,6 +868,17 @@ const BookingListPage = () => {
         open={!!cancelModal}
         onConfirm={handleCancelConfirmed}
         onCancel={() => setCancelModal(null)}
+      />
+      <RejectModal
+        open={!!rejectModal}
+        onConfirm={handleRejectConfirmed}
+        onCancel={() => setRejectModal(null)}
+      />
+      <RescheduleModal
+        open={!!rescheduleModal}
+        booking={rescheduleModal}
+        onConfirm={handleRescheduleConfirmed}
+        onCancel={() => setRescheduleModal(null)}
       />
 
       <BulkActionBar

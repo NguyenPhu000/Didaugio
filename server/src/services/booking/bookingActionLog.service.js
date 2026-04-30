@@ -8,6 +8,7 @@ export const BOOKING_ACTION = {
   QUICK_REJECT: "quick_reject",
   AUTO_APPROVE: "auto_approve",
   AUTO_APPROVE_FAILED: "auto_approve_failed",
+  AUTO_EXPIRE: "auto_expire",
 };
 
 /**

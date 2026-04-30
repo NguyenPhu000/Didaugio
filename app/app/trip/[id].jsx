@@ -58,6 +58,16 @@ const BOOKING_STATUS_META = {
     color: "#5A5A5E",
     bg: "#ECECEF",
   },
+  rejected: {
+    label: "Bị từ chối",
+    color: "#8A4B12",
+    bg: "#F2E8DF",
+  },
+  expired: {
+    label: "Hết hạn",
+    color: "#5A5A5E",
+    bg: "#ECECEF",
+  },
   no_show: {
     label: "Không đến",
     color: "#5A5A5E",

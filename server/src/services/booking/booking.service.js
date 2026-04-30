@@ -1,4 +1,5 @@
 import prisma from "../../config/prismaClient.js";
+import logger from "../../config/logger.js";
 import {
   PAGINATION,
   ROLES,
@@ -19,6 +20,20 @@ import {
   BOOKING_ACTION,
 } from "./bookingActionLog.service.js";
 import { toUseDateOnly, toUseTimeString } from "../../utils/bookingTimeSlot.js";
+import {
+  assertBookingTransition,
+  BOOKING_TRANSITION,
+} from "./bookingStateMachine.js";
+
+let expirePendingBookingsEnumWarned = false;
+
+function isBookingStatusEnumMismatchError(error) {
+  const msg = String(error?.message || "");
+  return (
+    msg.includes("invalid input value for enum") &&
+    (msg.includes("BookingStatus") || msg.includes("booking_status"))
+  );
+}
 
 const defaultInclude = {
   service: {
@@ -69,6 +84,8 @@ const generateBookingCode = () => {
 
 const QR_CREATED_WINDOW_MS = 2 * 60 * 60 * 1000;
 const DEFAULT_QR_GRACE_MINUTES = 30;
+const DEFAULT_PENDING_EXPIRY_GRACE_MINUTES = 0;
+const EXPIRE_PENDING_BATCH_SIZE = 100;
 const BOOKING_TRIP_NOTE_PREFIX = "[BOOKING_LINK]";
 
 // TODO(phase-next): move service deposit policy out of `terms` JSON into Prisma columns.
@@ -184,6 +201,117 @@ const toUtcDateOnly = (value) => {
       0,
     ),
   );
+};
+
+const resolvePendingExpiryGraceMinutes = () => {
+  const minutes = parseInt(process.env.BOOKING_PENDING_EXPIRY_GRACE_MINUTES, 10);
+  if (Number.isFinite(minutes) && minutes >= 0) return minutes;
+  return DEFAULT_PENDING_EXPIRY_GRACE_MINUTES;
+};
+
+const resolvePendingExpiryCutoff = (referenceDate = new Date()) => {
+  const base =
+    referenceDate instanceof Date ? referenceDate : new Date(referenceDate);
+  const safeBase = Number.isNaN(base.getTime()) ? new Date() : base;
+  return new Date(
+    safeBase.getTime() - resolvePendingExpiryGraceMinutes() * 60_000,
+  );
+};
+
+const buildExpiredPendingWhere = (cutoff) => ({
+  status: BOOKING_STATUS.PENDING,
+  deletedAt: null,
+  OR: [
+    { bookingAt: { lt: cutoff } },
+    {
+      bookingAt: null,
+      useDate: { lt: toUtcDateOnly(cutoff) || cutoff },
+    },
+  ],
+});
+
+export const expirePendingBookings = async ({
+  referenceDate = new Date(),
+  limit = EXPIRE_PENDING_BATCH_SIZE,
+} = {}) => {
+  const cutoff = resolvePendingExpiryCutoff(referenceDate);
+  const take = Math.min(
+    Math.max(parseInt(limit, 10) || EXPIRE_PENDING_BATCH_SIZE, 1),
+    EXPIRE_PENDING_BATCH_SIZE,
+  );
+
+  try {
+    const expiredBookings = await prisma.$transaction(async (tx) => {
+      const candidates = await tx.booking.findMany({
+        where: buildExpiredPendingWhere(cutoff),
+        select: {
+          id: true,
+          bookingCode: true,
+          userId: true,
+          bookingAt: true,
+          useDate: true,
+          useTime: true,
+        },
+        take,
+        orderBy: [{ bookingAt: "asc" }, { id: "asc" }],
+      });
+
+      if (candidates.length === 0) return [];
+
+      const expiredAt = new Date();
+      await tx.booking.updateMany({
+        where: {
+          id: { in: candidates.map((booking) => booking.id) },
+          status: BOOKING_STATUS.PENDING,
+        },
+        data: {
+          status: BOOKING_STATUS.EXPIRED,
+          cancelReason: "Yêu cầu đặt chỗ đã quá thời hạn xử lý",
+          cancelledBy: "system",
+          cancelledAt: expiredAt,
+        },
+      });
+
+      await Promise.all(
+        candidates.map((booking) =>
+          appendBookingActionLog(tx, {
+            bookingId: booking.id,
+            action: BOOKING_ACTION.AUTO_EXPIRE,
+            actorUserId: null,
+            metadata: {
+              cutoff: cutoff.toISOString(),
+              bookingAt: booking.bookingAt?.toISOString?.() || null,
+              useDate: booking.useDate?.toISOString?.() || null,
+              useTime: booking.useTime || null,
+            },
+          }),
+        ),
+      );
+
+      return candidates;
+    });
+
+    expiredBookings.forEach((booking) => {
+      eventEmitter.emit(EVENTS.BOOKING.EXPIRED, {
+        bookingId: booking.id,
+        bookingCode: booking.bookingCode,
+        userId: booking.userId,
+      });
+    });
+
+    return { count: expiredBookings.length, bookings: expiredBookings };
+  } catch (error) {
+    if (isBookingStatusEnumMismatchError(error)) {
+      if (!expirePendingBookingsEnumWarned) {
+        expirePendingBookingsEnumWarned = true;
+        logger.warn(
+          "expirePendingBookings skipped: PostgreSQL enum BookingStatus is missing rejected/expired. Run: cd server && npm run migrate:dev (or prisma migrate deploy).",
+        );
+      }
+      return { count: 0, bookings: [] };
+    }
+    throw error;
+  }
 };
 
 const computeTripDayNumber = (tripStartDate, bookingUseDate, fallbackDate) => {
@@ -385,6 +513,8 @@ const linkBookingIntoTripTx = async (
 };
 
 export const getAll = async (params = {}, userId, roleId) => {
+  await expirePendingBookings();
+
   const page = parseInt(params.page) || PAGINATION.DEFAULT_PAGE;
   const limit = Math.min(
     parseInt(params.limit) || PAGINATION.DEFAULT_LIMIT,
@@ -459,6 +589,8 @@ export const getAll = async (params = {}, userId, roleId) => {
 };
 
 export const getMyBookings = async (userId, params = {}) => {
+  await expirePendingBookings();
+
   const page = parseInt(params.page) || PAGINATION.DEFAULT_PAGE;
   const limit = Math.min(
     parseInt(params.limit) || PAGINATION.DEFAULT_LIMIT,
@@ -494,6 +626,8 @@ export const getMyBookings = async (userId, params = {}) => {
 };
 
 export const getMyBookingDetail = async (bookingId, userId) => {
+  await expirePendingBookings();
+
   const booking = await prisma.booking.findFirst({
     where: {
       id: parseInt(bookingId, 10),
@@ -608,6 +742,8 @@ export const linkMyBookingToTrip = async (bookingId, userId, payload = {}) => {
 };
 
 export const getById = async (id) => {
+  await expirePendingBookings();
+
   const booking = await prisma.booking.findUnique({
     where: { id: parseInt(id) },
     include: {
@@ -651,6 +787,8 @@ export const getById = async (id) => {
 };
 
 export const getStats = async (userId, roleId) => {
+  await expirePendingBookings();
+
   const where = {};
 
   if (roleId > ROLES.ADMIN) {
@@ -886,7 +1024,9 @@ export const create = async (payload = {}, userId) => {
   return result;
 };
 
-export const confirm = async (bookingId, userId) => {
+export const confirm = async (bookingId, userId, businessNote = undefined) => {
+  await expirePendingBookings();
+
   const booking = await prisma.$transaction(async (tx) => {
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
@@ -894,13 +1034,18 @@ export const confirm = async (bookingId, userId) => {
       include: { service: true, user: true },
     });
 
-    if (!existing || existing.status !== BOOKING_STATUS.PENDING) {
+    if (!existing) {
       throw new ServiceError(
-        "Booking không hợp lệ hoặc đã xử lý",
-        400,
-        ERROR_CODES.VALIDATION_ERROR,
+        "Booking không tồn tại",
+        404,
+        ERROR_CODES.NOT_FOUND,
       );
     }
+    assertBookingTransition(
+      existing.status,
+      BOOKING_TRANSITION.REQUEST_CONFIRM,
+      "Chỉ có thể xác nhận booking đang chờ",
+    );
 
     const at = existing.bookingAt
       ? new Date(existing.bookingAt)
@@ -925,6 +1070,7 @@ export const confirm = async (bookingId, userId) => {
       data: {
         status: BOOKING_STATUS.CONFIRMED,
         confirmedAt: new Date(),
+        ...(businessNote !== undefined && { businessNote }),
       },
       include: defaultInclude,
     });
@@ -933,7 +1079,7 @@ export const confirm = async (bookingId, userId) => {
       bookingId: updated.id,
       action: BOOKING_ACTION.APPROVE,
       actorUserId: userId,
-      metadata: { source: "confirm" },
+      metadata: { source: "confirm", businessNote: businessNote || null },
     });
 
     return updated;
@@ -956,18 +1102,18 @@ export const cancel = async (bookingId, cancelReason, userId) => {
       where: { id: parseInt(bookingId) },
     });
 
-    if (
-      !existing ||
-      ![BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED].includes(
-        existing.status,
-      )
-    ) {
+    if (!existing) {
       throw new ServiceError(
-        "Booking không hợp lệ hoặc đã xử lý",
-        400,
-        ERROR_CODES.VALIDATION_ERROR,
+        "Booking không tồn tại",
+        404,
+        ERROR_CODES.NOT_FOUND,
       );
     }
+    assertBookingTransition(
+      existing.status,
+      BOOKING_TRANSITION.USER_CANCEL,
+      "Chỉ có thể hủy booking đang chờ hoặc đã xác nhận",
+    );
 
     const updated = await tx.booking.update({
       where: { id: parseInt(bookingId) },
@@ -1008,14 +1154,18 @@ export const complete = async (bookingId, userId) => {
       include: { service: { include: { business: true } } },
     });
 
-    if (!existing || existing.status !== BOOKING_STATUS.CONFIRMED) {
-      throw Object.assign(
-        new Error("Chỉ có thể hoàn thành booking đã xác nhận"),
-        {
-          statusCode: 400,
-        },
+    if (!existing) {
+      throw new ServiceError(
+        "Booking không tồn tại",
+        404,
+        ERROR_CODES.NOT_FOUND,
       );
     }
+    assertBookingTransition(
+      existing.status,
+      BOOKING_TRANSITION.COMPLETE,
+      "Chỉ có thể hoàn thành booking đã xác nhận",
+    );
 
     const commissionRate = existing.service.business?.commissionRate || 10;
     const commissionAmount = (existing.finalPrice * commissionRate) / 100;
@@ -1050,13 +1200,11 @@ export const markNoShow = async (bookingId, userId) => {
   if (!existing) {
     throw new ServiceError("Booking không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
-  if (existing.status !== BOOKING_STATUS.CONFIRMED) {
-    const err = new ServiceError(
-      `Chỉ có thể đánh dấu không đến với booking đã xác nhận (hiện tại: ${existing.status})`,
-      422,
-    );
-    throw err;
-  }
+  assertBookingTransition(
+    existing.status,
+    BOOKING_TRANSITION.MARK_NO_SHOW,
+    `Chỉ có thể đánh dấu không đến với booking đã xác nhận (hiện tại: ${existing.status})`,
+  );
 
   const booking = await prisma.booking.update({
     where: { id: parseInt(bookingId) },

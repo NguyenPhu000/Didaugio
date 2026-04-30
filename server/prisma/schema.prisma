@@ -902,6 +902,8 @@ enum BookingStatus {
   confirmed
   completed
   cancelled
+  rejected
+  expired
   no_show
 }
 
@@ -913,4 +915,5 @@ enum BookingAction {
   quick_reject
   auto_approve
   auto_approve_failed
+  auto_expire
 }

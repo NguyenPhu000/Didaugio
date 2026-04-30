@@ -10,9 +10,19 @@ export function useExplore({
   search = "",
   categoryId = null,
   districtId = null,
+  priceRange = null,
+  minRating = null,
+  sortBy = "newest",
   enabled = true,
 } = {}) {
-  const filters = { search, categoryId, districtId };
+  const filters = {
+    search,
+    categoryId,
+    districtId,
+    priceRange,
+    minRating,
+    sortBy,
+  };
   return useInfiniteQuery({
     queryKey: QUERY_KEYS.explore.list(filters),
     queryFn: ({ pageParam = 1 }) =>
@@ -23,6 +33,9 @@ export function useExplore({
         search: search || undefined,
         categoryId: categoryId || undefined,
         districtId: districtId || undefined,
+        priceRange: priceRange || undefined,
+        minRating: minRating || undefined,
+        sortBy: sortBy || undefined,
       }).then((res) => ({
         ...res,
         data: normalizePlaces(res?.data),

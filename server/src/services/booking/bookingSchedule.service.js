@@ -3,6 +3,7 @@ import { BOOKING_STATUS } from "../../config/constants.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import logger from "../../config/logger.js";
 import ServiceError from "../../utils/serviceError.js";
+import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import {
   combineUseDateAndTime,
   deriveTimeSlot,
@@ -19,8 +20,12 @@ import {
   checkAvailability,
   lockBookingRow,
 } from "./bookingAvailability.service.js";
-import { getById } from "./booking.service.js";
+import { expirePendingBookings, getById } from "./booking.service.js";
 import { autoApproveConditionsSchema } from "../../models/index.js";
+import {
+  assertBookingTransition,
+  BOOKING_TRANSITION,
+} from "./bookingStateMachine.js";
 
 const scheduleInclude = {
   service: {
@@ -90,6 +95,8 @@ function matchRuleConditions(conditions, booking) {
  * Lịch theo ngày: nhóm 4 khung giờ + cờ overbooking.
  */
 export async function getScheduleByDate(businessId, dateStr) {
+  await expirePendingBookings();
+
   const useDate = parseYmd(dateStr);
 
   const rows = await prisma.booking.findMany({
@@ -159,7 +166,10 @@ export async function rescheduleBooking(
   bookingId,
   bookingTimeIso,
   actorUserId,
+  businessNote = undefined,
 ) {
+  await expirePendingBookings();
+
   const newAt = new Date(bookingTimeIso);
   if (Number.isNaN(newAt.getTime())) {
     throw new ServiceError(
@@ -182,17 +192,11 @@ export async function rescheduleBooking(
         ERROR_CODES.NOT_FOUND,
       );
     }
-    if (
-      ![BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED].includes(
-        existing.status,
-      )
-    ) {
-      throw new ServiceError(
-        "Chỉ có thể đổi lịch booking đang chờ hoặc đã xác nhận",
-        400,
-        ERROR_CODES.VALIDATION_ERROR,
-      );
-    }
+    assertBookingTransition(
+      existing.status,
+      BOOKING_TRANSITION.RESCHEDULE,
+      "Chỉ có thể đổi lịch booking đang chờ hoặc đã xác nhận",
+    );
 
     const avail = await checkAvailability(tx, {
       serviceId: existing.serviceId,
@@ -217,6 +221,7 @@ export async function rescheduleBooking(
         bookingAt: newAt,
         useDate,
         useTime,
+        ...(businessNote !== undefined && { businessNote }),
       },
     });
 
@@ -224,7 +229,10 @@ export async function rescheduleBooking(
       bookingId: existing.id,
       action: BOOKING_ACTION.RESCHEDULE,
       actorUserId,
-      metadata: { newBookingAt: newAt.toISOString() },
+      metadata: {
+        newBookingAt: newAt.toISOString(),
+        businessNote: businessNote || null,
+      },
     });
   });
 
@@ -233,6 +241,8 @@ export async function rescheduleBooking(
 }
 
 export async function quickApproveBooking(bookingId, actorUserId) {
+  await expirePendingBookings();
+
   await prisma.$transaction(async (tx) => {
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
@@ -246,13 +256,11 @@ export async function quickApproveBooking(bookingId, actorUserId) {
         ERROR_CODES.NOT_FOUND,
       );
     }
-    if (existing.status !== BOOKING_STATUS.PENDING) {
-      throw new ServiceError(
-        "Chỉ có thể duyệt nhanh booking đang chờ xác nhận",
-        400,
-        ERROR_CODES.VALIDATION_ERROR,
-      );
-    }
+    assertBookingTransition(
+      existing.status,
+      BOOKING_TRANSITION.REQUEST_CONFIRM,
+      "Chỉ có thể duyệt nhanh booking đang chờ xác nhận",
+    );
 
     const at = resolveBookingAt(existing);
     const avail = await checkAvailability(tx, {
@@ -284,10 +292,25 @@ export async function quickApproveBooking(bookingId, actorUserId) {
     });
   });
 
-  return getById(bookingId);
+  const booking = await getById(bookingId);
+  eventEmitter.emit(EVENTS.BOOKING.CONFIRMED, {
+    bookingId: booking.id,
+    bookingCode: booking.bookingCode,
+    confirmedBy: actorUserId,
+    userId: booking.userId,
+  });
+
+  return booking;
 }
 
-export async function quickRejectBooking(bookingId, cancelReason, actorUserId) {
+export async function quickRejectBooking(
+  bookingId,
+  cancelReason,
+  actorUserId,
+  businessNote = undefined,
+) {
+  await expirePendingBookings();
+
   await prisma.$transaction(async (tx) => {
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
@@ -300,21 +323,20 @@ export async function quickRejectBooking(bookingId, cancelReason, actorUserId) {
         ERROR_CODES.NOT_FOUND,
       );
     }
-    if (existing.status !== BOOKING_STATUS.PENDING) {
-      throw new ServiceError(
-        "Chỉ có thể từ chối nhanh booking đang chờ xác nhận",
-        400,
-        ERROR_CODES.VALIDATION_ERROR,
-      );
-    }
+    assertBookingTransition(
+      existing.status,
+      BOOKING_TRANSITION.REQUEST_REJECT,
+      "Chỉ có thể từ chối nhanh booking đang chờ xác nhận",
+    );
 
     await tx.booking.update({
       where: { id: existing.id },
       data: {
-        status: BOOKING_STATUS.CANCELLED,
+        status: BOOKING_STATUS.REJECTED,
         cancelReason: cancelReason || "Từ chối nhanh",
         cancelledBy: String(actorUserId),
         cancelledAt: new Date(),
+        ...(businessNote !== undefined && { businessNote }),
       },
     });
 
@@ -322,11 +344,23 @@ export async function quickRejectBooking(bookingId, cancelReason, actorUserId) {
       bookingId: existing.id,
       action: BOOKING_ACTION.QUICK_REJECT,
       actorUserId,
-      metadata: { cancelReason: cancelReason || null },
+      metadata: {
+        cancelReason: cancelReason || null,
+        businessNote: businessNote || null,
+      },
     });
   });
 
-  return getById(bookingId);
+  const booking = await getById(bookingId);
+  eventEmitter.emit(EVENTS.BOOKING.REJECTED, {
+    bookingId: booking.id,
+    bookingCode: booking.bookingCode,
+    rejectedBy: actorUserId,
+    rejectReason: booking.cancelReason,
+    userId: booking.userId,
+  });
+
+  return booking;
 }
 
 /**
