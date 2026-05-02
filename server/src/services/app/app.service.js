@@ -716,6 +716,10 @@ export const getMySavedPlaces = async (userId, query = {}) => {
     place: approvedPlaceWhere,
   };
 
+  if (query.collectionName) {
+    where.collectionName = String(query.collectionName).trim();
+  }
+
   const [items, total] = await Promise.all([
     prisma.favorite.findMany({
       where,
@@ -767,7 +771,8 @@ export const getMySavedPlaces = async (userId, query = {}) => {
   };
 };
 
-export const savePlace = async (userId, placeId, note = null) => {
+/** `collectionNameInput` chỉ bỏ qua khi thực sự không truyền (undefined); không dùng default `null` để tránh gọi 3 đối số vẫn bị coi là “đổi collection”. */
+export const savePlace = async (userId, placeId, note = null, collectionNameInput) => {
   const place = await prisma.place.findFirst({
     where: {
       id: placeId,
@@ -782,6 +787,14 @@ export const savePlace = async (userId, placeId, note = null) => {
     throw error;
   }
 
+  const shouldUpdateCollection = collectionNameInput !== undefined;
+  const collectionName =
+    shouldUpdateCollection &&
+    typeof collectionNameInput === "string" &&
+    collectionNameInput.trim()
+      ? collectionNameInput.trim().slice(0, 80)
+      : null;
+
   const favorite = await prisma.favorite.upsert({
     where: {
       userId_placeId: {
@@ -793,9 +806,11 @@ export const savePlace = async (userId, placeId, note = null) => {
       userId,
       placeId,
       note,
+      ...(shouldUpdateCollection && { collectionName }),
     },
     update: {
       note,
+      ...(shouldUpdateCollection && { collectionName }),
     },
   });
 
@@ -811,6 +826,60 @@ export const unsavePlace = async (userId, placeId) => {
   });
 
   return { success: true };
+};
+
+export const getMySavedCollections = async (userId) => {
+  const groups = await prisma.favorite.groupBy({
+    by: ["collectionName"],
+    where: {
+      userId,
+      collectionName: { not: null },
+      place: approvedPlaceWhere,
+    },
+    _count: { id: true },
+    orderBy: { collectionName: "asc" },
+  });
+
+  return groups
+    .filter((item) => String(item.collectionName || "").trim())
+    .map((item) => ({
+      name: item.collectionName,
+      count: item._count.id,
+    }));
+};
+
+export const renameMySavedCollection = async (userId, fromName, toName) => {
+  const from = String(fromName || "").trim();
+  const to = String(toName || "").trim().slice(0, 80);
+
+  if (!from || !to) {
+    const error = new Error("Tên bộ sưu tập không hợp lệ");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const result = await prisma.favorite.updateMany({
+    where: { userId, collectionName: from },
+    data: { collectionName: to },
+  });
+
+  return { name: to, updatedCount: result.count };
+};
+
+export const deleteMySavedCollection = async (userId, name) => {
+  const collectionName = String(name || "").trim();
+  if (!collectionName) {
+    const error = new Error("Tên bộ sưu tập không hợp lệ");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const result = await prisma.favorite.updateMany({
+    where: { userId, collectionName },
+    data: { collectionName: null },
+  });
+
+  return { name: collectionName, updatedCount: result.count };
 };
 
 export const getMyTrips = async (userId, query = {}) => {
@@ -1569,6 +1638,9 @@ export default {
   getMySavedPlaces,
   savePlace,
   unsavePlace,
+  getMySavedCollections,
+  renameMySavedCollection,
+  deleteMySavedCollection,
   getMyTrips,
   generateAndSaveTrip,
   createTrip,

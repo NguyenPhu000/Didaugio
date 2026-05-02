@@ -195,7 +195,7 @@ const ReviewCard = ({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-primary">
-                    {reply.user?.profile?.fullName || "Doanh nghiệp"}
+                    {review.place?.name}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
                     {formatDate(reply.createdAt)}

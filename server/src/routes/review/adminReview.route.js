@@ -47,7 +47,8 @@ router.patch(
     getRecordId: (req) => parseInt(req.params.id, 10),
     getNewData: (req) => ({
       status: req.body.status,
-      adminNote: req.body.adminNote || null,
+      adminNote: req.body.adminNote ?? null,
+      moderationReason: req.body.moderationReason ?? null,
     }),
   }),
   controller.moderateReview,
@@ -61,7 +62,10 @@ router.patch(
     action: "ADMIN_MODERATE_REVIEW_REPLY",
     tableName: "review_replies",
     getRecordId: (req) => parseInt(req.params.replyId, 10),
-    getNewData: (req) => ({ status: req.body.status }),
+    getNewData: (req) => ({
+      status: req.body.status,
+      moderationReason: req.body.moderationReason ?? null,
+    }),
   }),
   controller.moderateReply,
 );

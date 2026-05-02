@@ -25,6 +25,9 @@ export const ENDPOINTS = {
     updateAvatar: "/profile/avatar",
     savedPlaces: "/profile/saved-places",
     savedPlaceById: (placeId) => `/profile/saved-places/${placeId}`,
+    savedCollections: "/profile/saved-collections",
+    savedCollectionByName: (name) =>
+      `/profile/saved-collections/${encodeURIComponent(name)}`,
     trips: "/profile/trips",
     generateTrip: "/profile/trips/generate",
     createTrip: "/profile/trips",

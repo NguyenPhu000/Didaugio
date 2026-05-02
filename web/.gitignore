@@ -1,4 +1,5 @@
 .env
+.env.e2e
 # Logs
 logs
 *.log
@@ -12,6 +13,7 @@ node_modules
 dist
 dist-ssr
 *.local
+e2e
 
 # Editor directories and files
 .vscode/*
@@ -33,3 +35,9 @@ dist-ssr
 test
 types
 vitest.config.js
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/

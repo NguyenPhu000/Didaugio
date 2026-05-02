@@ -99,6 +99,7 @@ model User {
   places             Place[]              @relation("CreatedBy")
   reviewReplies      ReviewReply[]
   reviews            Review[]
+  reviewModerationActions ReviewModerationLog[] @relation("ReviewModerationActor")
   systemConfigs      SystemConfig[]
   trips              Trip[]
   checkins           UserCheckin[]
@@ -438,6 +439,7 @@ model Place {
   isVerified       Boolean            @default(false) @map("is_verified")
   isFeatured       Boolean            @default(false) @map("is_featured")
   status           String             @default("pending")
+  isSeeded         Boolean            @default(false) @map("is_seeded")
   rejectionReason  String?            @map("rejection_reason")
   approvedBy       Int?               @map("approved_by")
   approvedAt       DateTime?          @map("approved_at")
@@ -465,6 +467,8 @@ model Place {
   @@index([categoryId])
   @@index([districtId])
   @@index([status])
+  @@index([status, categoryId, districtId])
+  @@index([isSeeded])
   @@index([latitude, longitude])
   @@index([ratingAvg(sort: Desc)])
   @@index([slug])
@@ -544,12 +548,14 @@ model Review {
   helpfulCount       Int           @default(0) @map("helpful_count")
   status             String        @default("visible")
   isVerifiedPurchase Boolean       @default(false) @map("is_verified_purchase")
+  isSeeded           Boolean       @default(false) @map("is_seeded")
   adminNote          String?       @map("admin_note")
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")
   deletedAt          DateTime?     @map("deleted_at")
   media              ReviewMedia[]
   replies            ReviewReply[]
+  moderationLogs     ReviewModerationLog[]
   booking            Booking?      @relation(fields: [bookingId], references: [id])
   place              Place         @relation(fields: [placeId], references: [id])
   user               User          @relation(fields: [userId], references: [id])
@@ -558,6 +564,7 @@ model Review {
   @@index([placeId])
   @@index([userId])
   @@index([rating])
+  @@index([isSeeded])
   @@map("reviews")
 }
 
@@ -584,20 +591,44 @@ model ReviewReply {
   updatedAt DateTime @updatedAt @map("updated_at")
   review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id])
+  moderationLogs ReviewModerationLog[]
 
   @@map("review_replies")
 }
 
+model ReviewModerationLog {
+  id           Int      @id @default(autoincrement())
+  reviewId     Int      @map("review_id")
+  replyId      Int?     @map("reply_id")
+  actorUserId  Int      @map("actor_user_id")
+  action       String
+  fromStatus   String?  @map("from_status")
+  toStatus     String?  @map("to_status")
+  reason       String?
+  noteSnapshot String?  @map("note_snapshot")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  review Review       @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reply  ReviewReply? @relation(fields: [replyId], references: [id], onDelete: SetNull)
+  actor  User         @relation("ReviewModerationActor", fields: [actorUserId], references: [id])
+
+  @@index([reviewId])
+  @@index([createdAt])
+  @@map("review_moderation_logs")
+}
+
 model Favorite {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @map("user_id")
-  placeId   Int      @map("place_id")
-  note      String?
-  createdAt DateTime @default(now()) @map("created_at")
-  place     Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  placeId        Int      @map("place_id")
+  note           String?
+  collectionName String?  @map("collection_name")
+  createdAt      DateTime @default(now()) @map("created_at")
+  place          Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, placeId])
+  @@index([userId, collectionName])
   @@map("favorites")
 }
 

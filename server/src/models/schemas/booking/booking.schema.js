@@ -79,3 +79,14 @@ export const quickRejectSchema = z.object({
   cancelReason: z.string().min(5).max(500).optional(),
   businessNote: z.string().max(500).optional().nullable(),
 });
+
+export const bookingListQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+  status: z.string().optional(),
+  placeId: z.coerce.number().int().positive().optional(),
+  businessId: z.coerce.number().int().positive().optional(),
+  search: z.string().optional(),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional(),
+});

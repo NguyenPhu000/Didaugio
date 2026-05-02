@@ -1,5 +1,6 @@
 import * as categoryService from "../../services/category/category.service.js";
 import { ERROR_CODES } from "../../config/messages.js";
+import { setPublicListCache } from "../../utils/httpCacheHeaders.js";
 
 /**
  * CATEGORY CONTROLLER
@@ -14,6 +15,7 @@ export const getCategories = async (req, res, next) => {
     // Format: tree hoặc flat
     if (format === "tree") {
       const tree = await categoryService.getCategoryTree(parentId || null);
+      setPublicListCache(res);
       return res.json({
         success: true,
         data: tree,
@@ -29,6 +31,7 @@ export const getCategories = async (req, res, next) => {
       search,
     });
 
+    setPublicListCache(res);
     res.json({
       success: true,
       data: categories,
@@ -50,6 +53,7 @@ export const getCategoryTree = async (req, res, next) => {
       maxLevel,
     );
 
+    setPublicListCache(res);
     res.json({
       success: true,
       data: tree,

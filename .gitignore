@@ -10,7 +10,7 @@ skills
 .env
 .agents/skills
 .vscode
-
+.github\workflows
 .agents
 .git_bk
 .agent

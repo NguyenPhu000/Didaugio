@@ -275,7 +275,41 @@ export const getMyPlaces = async (userId) => {
 
   const places = await prisma.place.findMany({
     where,
-    select: { id: true, name: true, address: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      address: true,
+      status: true,
+      thumbnail: true,
+      latitude: true,
+      longitude: true,
+      ratingAvg: true,
+      ratingCount: true,
+      viewCount: true,
+      isFeatured: true,
+      isVerified: true,
+      categoryId: true,
+      districtId: true,
+      priceRange: true,
+      priceFrom: true,
+      priceTo: true,
+      shortDescription: true,
+      phone: true,
+      createdBy: true,
+      createdAt: true,
+      category: { select: { id: true, name: true, icon: true } },
+      district: { select: { id: true, name: true } },
+      ward: { select: { id: true, name: true } },
+      images: {
+        select: { id: true, secureUrl: true, thumbnailUrl: true, imageData: true, order: true, isCover: true },
+        orderBy: { order: "asc" },
+        take: 5,
+      },
+      business: {
+        select: { id: true, businessName: true, status: true },
+      },
+    },
     orderBy: { name: "asc" },
   });
 

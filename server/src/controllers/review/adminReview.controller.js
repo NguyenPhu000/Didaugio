@@ -32,6 +32,7 @@ export const moderateReview = async (req, res, next) => {
     const review = await adminReviewService.moderateReview(
       req.params.id,
       req.body,
+      req.user.userId,
     );
     res.json({
       success: true,
@@ -50,7 +51,8 @@ export const moderateReply = async (req, res, next) => {
   try {
     const reply = await adminReviewService.moderateReply(
       req.params.replyId,
-      req.body.status,
+      req.body,
+      req.user.userId,
     );
     res.json({
       success: true,

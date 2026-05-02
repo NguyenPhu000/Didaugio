@@ -17,6 +17,7 @@ import {
   BarChart3,
   Star,
   Store,
+  TrendingUp,
 } from "lucide-react";
 import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/constants";
@@ -106,6 +107,16 @@ const menuData = {
       ],
     },
     {
+      title: "Địa điểm của tôi",
+      icon: MapPin,
+      roles: [R.BUSINESS],
+      items: [
+        { title: "Quản lý địa điểm", url: BUSINESS_ROUTES.PLACES },
+        { title: "Thêm địa điểm", url: BUSINESS_ROUTES.PLACES_NEW },
+      ],
+      badge: null,
+    },
+    {
       title: "Dịch vụ",
       icon: Ticket,
       url: BUSINESS_ROUTES.SERVICES,
@@ -125,6 +136,12 @@ const menuData = {
       title: "Khuyến mãi",
       icon: Ticket,
       url: BUSINESS_ROUTES.VOUCHERS,
+      roles: [R.BUSINESS],
+    },
+    {
+      title: "Báo cáo",
+      icon: BarChart3,
+      url: BUSINESS_ROUTES.REPORTS,
       roles: [R.BUSINESS],
     },
     {
@@ -149,6 +166,18 @@ const menuData = {
         { title: "Danh sách", url: ADMIN_ROUTES.BUSINESS_LIST },
         { title: "Chờ duyệt", url: ADMIN_ROUTES.BUSINESS_PENDING },
       ],
+    },
+    {
+      title: "Thống kê nâng cao",
+      icon: TrendingUp,
+      url: ADMIN_ROUTES.ANALYTICS,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+    },
+    {
+      title: "Quản lý nội dung",
+      icon: FileText,
+      url: ADMIN_ROUTES.CMS,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
     },
     {
       title: "Moderation đánh giá",

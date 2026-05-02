@@ -42,6 +42,7 @@ const defaultInclude = {
       name: true,
       price: true,
       businessId: true,
+      business: { select: { id: true, businessName: true, status: true } },
       place: { select: { id: true, name: true } },
     },
   },
@@ -543,6 +544,9 @@ export const getAll = async (params = {}, userId, roleId) => {
       placeId: parseInt(params.placeId),
     };
   }
+  if (params.businessId) {
+    where.businessId = parseInt(params.businessId);
+  }
   if (params.search) {
     where.OR = [
       { bookingCode: { contains: params.search, mode: "insensitive" } },
@@ -690,6 +694,7 @@ export const getMyBookingQR = async (bookingId, userId) => {
   const qrCode = await generateBookingQR(booking.bookingCode, baseUrl);
   return { bookingCode: booking.bookingCode, qrCode };
 };
+
 
 export const linkMyBookingToTrip = async (bookingId, userId, payload = {}) => {
   const parsedBookingId = parseInt(bookingId, 10);

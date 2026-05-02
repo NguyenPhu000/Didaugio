@@ -153,7 +153,7 @@ const PlacePopup = ({ place, onClose }) => {
   const { selectPlace } = useMapContext();
   const price = PRICE_LABELS[place.priceRange];
   const rating = Number(place.averageRating ?? place.ratingAvg ?? 0);
-  const imgSrc = place.thumbnail || place.images?.[0]?.url;
+  const imgSrc = place.thumbnail || place.images?.[0]?.secureUrl || place.images?.[0]?.thumbnailUrl || place.images?.[0]?.imageData || place.images?.[0]?.url;
 
   return (
     <div
@@ -390,7 +390,7 @@ const RoutingPicker = ({
 
 const PlacePin = ({ place, isActive, onClick }) => {
   const { color } = getCategoryConfig(place.categoryId);
-  const imgSrc = place.thumbnail || place.images?.[0]?.url;
+  const imgSrc = place.thumbnail || place.images?.[0]?.secureUrl || place.images?.[0]?.thumbnailUrl || place.images?.[0]?.imageData || place.images?.[0]?.url;
   let pinStateClass = "border-2 border-white group-hover:border-blue-400";
   if (isActive) {
     pinStateClass = "border-[3px] border-blue-500 ring-2 ring-blue-300";

@@ -4,13 +4,17 @@ const TIMELINE_DAYS = 7;
 const TOP_PLACES_LIMIT = 5;
 const TOP_CATEGORIES_LIMIT = 10;
 
+const activeUserWhere = { deletedAt: null };
+const activePlaceWhere = { deletedAt: null };
+
 const getDashboardStats = async () => {
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const oneWeekAgo = new Date(Date.now() - TIMELINE_DAYS * 24 * 60 * 60 * 1000);
+  const now = new Date();
 
   const [
     totalUsers,
-    activeUsers,
+    activeUserRows,
     usersByRole,
     totalPlaces,
     placesByStatus,
@@ -25,54 +29,83 @@ const getDashboardStats = async () => {
     totalViews,
     averageRating,
   ] = await Promise.all([
-    prisma.user.count(),
-    prisma.loginHistory.count({
+    prisma.user.count({ where: activeUserWhere }),
+    prisma.userSession.groupBy({
+      by: ["userId"],
       where: {
-        createdAt: { gte: oneDayAgo },
-        status: "active",
+        lastUsedAt: { gte: oneDayAgo },
+        isActive: true,
+        user: activeUserWhere,
       },
-      distinct: ["userId"],
+      _count: { _all: true },
     }),
     prisma.user.groupBy({
       by: ["roleId"],
+      where: activeUserWhere,
       _count: { id: true },
     }),
-    prisma.place.count(),
+    prisma.place.count({ where: activePlaceWhere }),
     prisma.place.groupBy({
       by: ["status"],
+      where: activePlaceWhere,
       _count: { id: true },
     }),
-    prisma.place.count({ where: { isFeatured: true } }),
+    prisma.place.count({
+      where: { ...activePlaceWhere, isFeatured: true },
+    }),
     prisma.place.findMany({
+      where: activePlaceWhere,
       take: TOP_PLACES_LIMIT,
       orderBy: { viewCount: "desc" },
-      select: { id: true, name: true, viewCount: true, averageRating: true },
+      select: { id: true, name: true, viewCount: true, ratingAvg: true },
     }),
-    prisma.category.findMany({
-      select: {
-        id: true,
-        name: true,
-        _count: { select: { places: true } },
-      },
-      orderBy: { places: { _count: "desc" } },
-      take: TOP_CATEGORIES_LIMIT,
-    }),
+    (async () => {
+      const rows = await prisma.category.findMany({
+        select: {
+          id: true,
+          name: true,
+          _count: {
+            select: {
+              places: { where: activePlaceWhere },
+            },
+          },
+        },
+        take: 100,
+      });
+      return rows
+        .sort((a, b) => b._count.places - a._count.places)
+        .slice(0, TOP_CATEGORIES_LIMIT);
+    })(),
     prisma.auditLog.count({
       where: { createdAt: { gte: oneWeekAgo } },
     }),
-    prisma.loginHistory.count(),
-    prisma.loginHistory.count({
-      where: { status: "active", expiresAt: { gt: new Date() } },
+    prisma.userSession.count({
+      where: { user: activeUserWhere },
+    }),
+    prisma.userSession.count({
+      where: {
+        isActive: true,
+        expiresAt: { gt: now },
+        user: activeUserWhere,
+      },
     }),
     prisma.emailVerification.count({
-      where: { verified: false, expiresAt: { gt: new Date() } },
+      where: { verifiedAt: null, expiresAt: { gt: now } },
     }),
     prisma.passwordReset.count({
-      where: { used: false, expiresAt: { gt: new Date() } },
+      where: { usedAt: null, expiresAt: { gt: now } },
     }),
-    prisma.place.aggregate({ _sum: { viewCount: true } }),
-    prisma.place.aggregate({ _avg: { averageRating: true } }),
+    prisma.place.aggregate({
+      where: activePlaceWhere,
+      _sum: { viewCount: true },
+    }),
+    prisma.place.aggregate({
+      where: activePlaceWhere,
+      _avg: { ratingAvg: true },
+    }),
   ]);
+
+  const activeUsers = activeUserRows.length;
 
   const placeStatusMap = Object.fromEntries(
     placesByStatus.map((item) => [item.status, item._count.id]),
@@ -94,11 +127,15 @@ const getDashboardStats = async () => {
       approved: placeStatusMap.approved || 0,
       pending: placeStatusMap.pending || 0,
       rejected: placeStatusMap.rejected || 0,
+      hidden: placeStatusMap.hidden || 0,
       draft: placeStatusMap.draft || 0,
       featured: featuredPlaces,
       totalViews: totalViews._sum.viewCount || 0,
-      averageRating: Number((averageRating._avg.averageRating || 0).toFixed(1)),
-      topViewed: topViewedPlaces,
+      averageRating: Number((averageRating._avg.ratingAvg || 0).toFixed(1)),
+      topViewed: topViewedPlaces.map((p) => ({
+        ...p,
+        averageRating: p.ratingAvg != null ? Number(p.ratingAvg) : null,
+      })),
     },
     categories: categoriesWithPlaceCounts.map((cat) => ({
       id: cat.id,
@@ -130,14 +167,16 @@ const getActivityTimeline = async () => {
 
     const dateRange = { gte: date, lt: nextDate };
 
-    const [logins, auditLogs] = await Promise.all([
-      prisma.loginHistory.count({ where: { createdAt: dateRange } }),
+    const [sessionTouches, auditLogs] = await Promise.all([
+      prisma.userSession.count({
+        where: { lastUsedAt: dateRange },
+      }),
       prisma.auditLog.count({ where: { createdAt: dateRange } }),
     ]);
 
     timeline.push({
       date: date.toISOString().split("T")[0],
-      logins,
+      logins: sessionTouches,
       activities: auditLogs,
     });
   }

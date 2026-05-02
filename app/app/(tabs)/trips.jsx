@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
-import { View, FlatList, StyleSheet } from "react-native";
+import { View, FlatList, StyleSheet, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTrips } from "../../src/modules/trips/hooks/useTrips";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useTripsCached } from "../../src/modules/trips/hooks/useTripsOffline";
 import { useAuthStore } from "../../src/stores/authStore";
 import { GuestGate } from "../../src/components/ui/GuestGate";
+import { OfflineBanner } from "../../src/components/ui/OfflineBanner";
 import { TAB_BAR_HEIGHT } from "./_layout";
 import { TripsDashboard } from "../../src/modules/trips/components/TripsDashboard";
 import { TripCard } from "../../src/modules/trips/components/TripCard";
@@ -22,13 +24,15 @@ export default function TripsScreen() {
   const isGuest = useAuthStore((s) => s.isGuest);
   const isLoggedIn = !!accessToken && !isGuest;
   const [activeFilter, setActiveFilter] = useState("all");
+  const [isOffline, setIsOffline] = useState(false);
 
+  // Use cached trips hook for offline support
   const {
     data: trips = [],
     isLoading,
     isError,
     refetch,
-  } = useTrips(isLoggedIn);
+  } = useTripsCached(isLoggedIn);
 
   const filteredTrips = useMemo(
     () =>
@@ -63,6 +67,7 @@ export default function TripsScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <OfflineBanner onNetworkChange={setIsOffline} />
       <FlatList
         data={!isLoading && !isError ? filteredTrips : []}
         renderItem={({ item }) => (

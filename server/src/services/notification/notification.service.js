@@ -542,6 +542,53 @@ eventEmitter.on(EVENTS.BOOKING.CONFIRMED, async ({ bookingId, bookingCode, confi
   });
 });
 
+const formatRescheduleTimeVi = (iso) => {
+  try {
+    return new Date(iso).toLocaleString("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      weekday: "short",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+};
+
+eventEmitter.on(
+  EVENTS.BOOKING.RESCHEDULED,
+  async ({
+    bookingId,
+    bookingCode,
+    userId,
+    rescheduledBy,
+    newBookingAt,
+    businessNote,
+  }) => {
+    const when = newBookingAt ? formatRescheduleTimeVi(newBookingAt) : "";
+    const noteSuffix =
+      businessNote && String(businessNote).trim()
+        ? ` Ghi chú: ${String(businessNote).trim()}`
+        : "";
+    await notifyUser(
+      userId,
+      "Lịch đặt chỗ đã đổi",
+      `Booking #${bookingCode} được dời sang ${when}.${noteSuffix}`,
+      {
+        bookingId,
+        type: "booking_rescheduled",
+        newBookingAt: newBookingAt || null,
+      },
+      rescheduledBy,
+    ).catch((error) => {
+      console.error("[Notification] Error processing BOOKING.RESCHEDULED:", error);
+    });
+  },
+);
+
 eventEmitter.on(
   EVENTS.BOOKING.CANCELLED,
   async ({ bookingId, bookingCode, cancelledBy, cancelReason, userId }) => {

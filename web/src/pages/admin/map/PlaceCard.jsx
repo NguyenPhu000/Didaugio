@@ -4,7 +4,7 @@ import { PRICE_LABELS } from "@/modules/map";
 const PlaceCard = ({ place, onClick }) => {
   const price = PRICE_LABELS[place.priceRange];
   const rating = Number(place.averageRating ?? place.ratingAvg ?? 0);
-  const imgSrc = place.thumbnail || place.images?.[0]?.url;
+  const imgSrc = place.thumbnail || place.images?.[0]?.secureUrl || place.images?.[0]?.thumbnailUrl || place.images?.[0]?.imageData || place.images?.[0]?.url;
 
   return (
     <button

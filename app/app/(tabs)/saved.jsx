@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import {
   Alert,
   FlatList,
@@ -15,14 +15,18 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
+import NetInfo from "@react-native-community/netinfo";
 import { PlaceCard } from "../../src/components/composed/PlaceCard";
 import { PlaceCardSkeleton } from "../../src/components/ui/Skeleton";
 import { GuestGate } from "../../src/components/ui/GuestGate";
+import { OfflineBanner } from "../../src/components/ui/OfflineBanner";
 import {
   useSavePlace,
+  useSavedCollections,
   useSavedPlaces,
   useUnsavePlace,
 } from "../../src/modules/saved/hooks/useSaved";
+import { useSavedPlacesCached } from "../../src/modules/saved/hooks/useSavedOffline";
 import { useAuthStore } from "../../src/stores/authStore";
 import { TOKENS } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "./_layout";
@@ -74,6 +78,20 @@ function getPlaceCollection(place) {
   }
 
   return null;
+}
+
+function getEntryCollection(entry) {
+  const customName = String(entry?.collectionName || "").trim();
+  if (customName) {
+    return {
+      key: `custom:${customName.toLowerCase()}`,
+      name: customName,
+      icon: "collections-bookmark",
+      rawName: customName,
+    };
+  }
+
+  return getPlaceCollection(entry?.place || entry);
 }
 
 function buildSummary(count) {
@@ -314,8 +332,10 @@ function NoteEditorModal({
   visible,
   placeName,
   value,
+  collectionName,
   saving,
   onChangeText,
+  onChangeCollectionName,
   onClose,
   onSubmit,
 }) {
@@ -347,6 +367,14 @@ function NoteEditorModal({
             maxLength={500}
             style={styles.noteInput}
             textAlignVertical="top"
+          />
+          <TextInput
+            value={collectionName}
+            onChangeText={onChangeCollectionName}
+            placeholder="Tên bộ sưu tập riêng (VD: Đi với gia đình)"
+            placeholderTextColor="rgba(29, 29, 31, 0.42)"
+            maxLength={80}
+            style={styles.collectionInput}
           />
           <View style={styles.noteModalActions}>
             <Pressable
@@ -435,27 +463,40 @@ export default function SavedScreen() {
   const isLoggedIn = !!accessToken && !isGuest;
 
   const {
-    data: savedData = [],
+    savedData = [],
     isLoading,
     isError,
     error,
     refetch,
     isRefetching,
-  } = useSavedPlaces(isLoggedIn);
+  } = useSavedPlacesCached(isLoggedIn);
+  const { data: savedCollections = [] } = useSavedCollections(isLoggedIn);
   const unsaveMutation = useUnsavePlace();
   const saveMutation = useSavePlace();
   const [activeArea, setActiveArea] = useState(ALL_AREAS_KEY);
   const [activeCollection, setActiveCollection] = useState(ALL_COLLECTIONS_KEY);
   const [noteTarget, setNoteTarget] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
+  const [collectionDraft, setCollectionDraft] = useState("");
+  const [isOffline, setIsOffline] = useState(false);
 
   const collectionOptions = useMemo(() => {
     const map = new Map();
     let noteCount = 0;
 
+    savedCollections.forEach((collection) => {
+      const name = String(collection?.name || "").trim();
+      if (!name) return;
+      map.set(`custom:${name.toLowerCase()}`, {
+        key: `custom:${name.toLowerCase()}`,
+        name: `${name} (${collection.count || 0})`,
+        icon: "collections-bookmark",
+        rawName: name,
+      });
+    });
+
     savedData.forEach((entry) => {
-      const place = entry?.place || entry;
-      const collection = getPlaceCollection(place);
+      const collection = getEntryCollection(entry);
       if (collection && !map.has(collection.key)) {
         map.set(collection.key, collection);
       }
@@ -477,7 +518,7 @@ export default function SavedScreen() {
     }
 
     return collections;
-  }, [savedData]);
+  }, [savedCollections, savedData]);
 
   const areaOptions = useMemo(() => {
     const map = new Map();
@@ -498,7 +539,7 @@ export default function SavedScreen() {
       if (activeCollection === NOTES_COLLECTION_KEY) {
         if (!String(entry?.note || "").trim()) return false;
       } else if (activeCollection !== ALL_COLLECTIONS_KEY) {
-        const collection = getPlaceCollection(place);
+        const collection = getEntryCollection(entry);
         if (collection?.key !== activeCollection) return false;
       }
 
@@ -515,12 +556,14 @@ export default function SavedScreen() {
       placeName: place?.name,
     });
     setNoteDraft(entry?.note || "");
+    setCollectionDraft(entry?.collectionName || "");
   }, []);
 
   const handleCloseNoteEditor = useCallback(() => {
     if (saveMutation.isPending) return;
     setNoteTarget(null);
     setNoteDraft("");
+    setCollectionDraft("");
   }, [saveMutation.isPending]);
 
   const handleSaveNote = useCallback(async () => {
@@ -529,12 +572,19 @@ export default function SavedScreen() {
       await saveMutation.mutateAsync({
         placeId: noteTarget.placeId,
         note: noteDraft.trim() || null,
+        collectionName: collectionDraft.trim() || null,
       });
       handleCloseNoteEditor();
     } catch {
       Alert.alert("Không lưu được ghi chú", "Vui lòng thử lại sau ít phút.");
     }
-  }, [handleCloseNoteEditor, noteDraft, noteTarget?.placeId, saveMutation]);
+  }, [
+    collectionDraft,
+    handleCloseNoteEditor,
+    noteDraft,
+    noteTarget?.placeId,
+    saveMutation,
+  ]);
 
   const handleUnsave = useCallback(
     (placeId) => {
@@ -567,12 +617,15 @@ export default function SavedScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <OfflineBanner onNetworkChange={setIsOffline} />
       <NoteEditorModal
         visible={!!noteTarget}
         placeName={noteTarget?.placeName}
         value={noteDraft}
+        collectionName={collectionDraft}
         saving={saveMutation.isPending}
         onChangeText={setNoteDraft}
+        onChangeCollectionName={setCollectionDraft}
         onClose={handleCloseNoteEditor}
         onSubmit={handleSaveNote}
       />
@@ -641,6 +694,18 @@ export default function SavedScreen() {
                   />
                   <Text style={styles.savedNoteText} numberOfLines={3}>
                     {item.note}
+                  </Text>
+                </View>
+              ) : null}
+              {item?.collectionName ? (
+                <View style={styles.savedCollectionCard}>
+                  <MaterialIcons
+                    name="collections-bookmark"
+                    size={15}
+                    color={TAB_THEME.primary}
+                  />
+                  <Text style={styles.savedNoteText} numberOfLines={1}>
+                    {item.collectionName}
                   </Text>
                 </View>
               ) : null}
@@ -921,6 +986,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(59, 130, 246, 0.14)",
   },
+  savedCollectionCard: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: "rgba(16, 185, 129, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.14)",
+  },
   savedNoteText: {
     flex: 1,
     color: TAB_THEME.text,
@@ -988,6 +1065,17 @@ const styles = StyleSheet.create({
     color: TAB_THEME.text,
     fontSize: 14,
     lineHeight: 20,
+    fontFamily: TOKENS.font.body,
+    backgroundColor: "#F8FBFF",
+    borderWidth: 1,
+    borderColor: "rgba(29, 29, 31, 0.1)",
+  },
+  collectionInput: {
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: TAB_THEME.text,
+    fontSize: 14,
     fontFamily: TOKENS.font.body,
     backgroundColor: "#F8FBFF",
     borderWidth: 1,

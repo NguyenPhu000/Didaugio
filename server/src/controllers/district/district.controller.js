@@ -1,5 +1,6 @@
 import * as districtService from "../../services/district/district.service.js";
 import { ERROR_CODES } from "../../config/messages.js";
+import { setPublicListCache } from "../../utils/httpCacheHeaders.js";
 
 /**
  * GET /api/districts - Lấy danh sách quận/huyện
@@ -13,6 +14,7 @@ export const getDistricts = async (req, res, next) => {
       search,
     });
 
+    setPublicListCache(res);
     res.json({
       success: true,
       data: districts,
@@ -94,6 +96,7 @@ export const getWardsByDistrict = async (req, res, next) => {
       wardType,
     });
 
+    setPublicListCache(res);
     res.json({
       success: true,
       data: wards,

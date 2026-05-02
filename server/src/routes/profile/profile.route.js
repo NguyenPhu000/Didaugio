@@ -23,6 +23,21 @@ router.put(
 );
 
 router.get("/saved-places", authenticate, profileController.getSavedPlaces);
+router.get(
+  "/saved-collections",
+  authenticate,
+  profileController.getSavedCollections,
+);
+router.patch(
+  "/saved-collections/:name",
+  authenticate,
+  profileController.renameSavedCollection,
+);
+router.delete(
+  "/saved-collections/:name",
+  authenticate,
+  profileController.deleteSavedCollection,
+);
 router.post(
   "/saved-places/:placeId",
   authenticate,

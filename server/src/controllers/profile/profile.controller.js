@@ -152,6 +152,7 @@ export const savePlace = async (req, res, next) => {
       getUserId(req),
       placeId,
       req.body?.note || null,
+      req.body?.collectionName,
     );
     res.status(201).json({ success: true, data, message: "Đã lưu địa điểm" });
   } catch (error) {
@@ -173,6 +174,52 @@ export const unsavePlace = async (req, res, next) => {
 
     await appService.unsavePlace(getUserId(req), placeId);
     res.json({ success: true, data: null, message: "Đã bỏ lưu địa điểm" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSavedCollections = async (req, res, next) => {
+  try {
+    const data = await appService.getMySavedCollections(getUserId(req));
+    res.json({
+      success: true,
+      data,
+      message: "Lấy danh sách bộ sưu tập đã lưu thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const renameSavedCollection = async (req, res, next) => {
+  try {
+    const data = await appService.renameMySavedCollection(
+      getUserId(req),
+      req.params.name,
+      req.body?.name,
+    );
+    res.json({
+      success: true,
+      data,
+      message: "Đã đổi tên bộ sưu tập",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteSavedCollection = async (req, res, next) => {
+  try {
+    const data = await appService.deleteMySavedCollection(
+      getUserId(req),
+      req.params.name,
+    );
+    res.json({
+      success: true,
+      data,
+      message: "Đã xóa bộ sưu tập",
+    });
   } catch (error) {
     next(error);
   }
@@ -478,6 +525,9 @@ export default {
   getSavedPlaces,
   savePlace,
   unsavePlace,
+  getSavedCollections,
+  renameSavedCollection,
+  deleteSavedCollection,
   getMyTrips,
   getMyBookings,
   getMyBookingDetail,

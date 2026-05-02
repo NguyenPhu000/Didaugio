@@ -10,6 +10,10 @@
   "scripts": {
     "start": "nodemon --exec babel-node src/server.js",
     "test:booking-state": "node --test src/services/booking/__tests__/bookingStateMachine.test.js",
+    "test:booking-db": "node --test src/services/booking/__tests__/bookingPrisma.integration.test.js",
+    "test:saved-db": "node --test src/services/app/__tests__/savedCollections.integration.test.js",
+    "test:mvp-api": "npm run test:booking-state && npm run test:booking-db && npm run test:saved-db",
+    "seed:cold-start": "node scripts/seedColdStart.js",
     "studio": "prisma studio --schema=prisma/schema.prisma --port 5555",
     "migrate:dev": "prisma migrate dev --schema=prisma/schema.prisma",
     "migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",

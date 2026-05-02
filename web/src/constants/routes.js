@@ -43,6 +43,9 @@ export const ADMIN_ROUTES = {
   PASSWORD_RESETS: "/password-resets",
   AUDIT_LOGS: "/audit-logs",
   LOGIN_HISTORY: "/login-history",
+
+  ANALYTICS: "/admin/analytics",
+  CMS: "/admin/cms",
 };
 
 export const BUSINESS_ROUTES = {
@@ -51,6 +54,11 @@ export const BUSINESS_ROUTES = {
   /** Deep link: mục Hợp đồng trong Hồ sơ (một bản ghi Business, không còn /business/contracts) */
   PROFILE_CONTRACT: "/business/profile?section=contract",
   REGISTER: "/business/register",
+  MAP: "/business/map",
+  PLACES: "/business/places",
+  PLACES_NEW: "/business/places/new",
+  PLACES_EDIT_PATTERN: "/business/places/edit/:id",
+  PLACES_EDIT: (id) => `/business/places/edit/${id}`,
   SERVICES: "/business/services",
   BOOKINGS: "/business/bookings",
   BOOKING_SCHEDULE: "/business/bookings/schedule",
@@ -58,6 +66,7 @@ export const BUSINESS_ROUTES = {
   BOOKING_DETAIL: (id) => `/business/bookings/${id}`,
   VOUCHERS: "/business/vouchers",
   REVENUE: "/business/revenue",
+  REPORTS: "/business/reports",
   REVIEWS: "/business/reviews",
 };
 

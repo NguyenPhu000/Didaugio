@@ -1,20 +1,12 @@
 import api from "@/constants/api";
 
 export const dashboardService = {
-  getStats: async () => {
-    const response = await api.get("/dashboard/stats");
-    return response.data;
-  },
+  /** Trả về `{ success, data, message }` (axios đã unwrap response.data một lần). */
+  getStats: () => api.get("/dashboard/stats"),
 
-  getTimeline: async () => {
-    const response = await api.get("/dashboard/timeline");
-    return response.data;
-  },
+  getTimeline: () => api.get("/dashboard/timeline"),
 
-  getHealth: async () => {
-    const response = await api.get("/dashboard/health");
-    return response.data;
-  },
+  getHealth: () => api.get("/dashboard/health"),
 };
 
 export default dashboardService;

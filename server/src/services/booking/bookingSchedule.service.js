@@ -237,7 +237,18 @@ export async function rescheduleBooking(
   });
 
   logger.info("Booking rescheduled", { bookingId, bookingTimeIso });
-  return getById(bookingId);
+
+  const booking = await getById(bookingId);
+  eventEmitter.emit(EVENTS.BOOKING.RESCHEDULED, {
+    bookingId: booking.id,
+    bookingCode: booking.bookingCode,
+    userId: booking.userId,
+    rescheduledBy: actorUserId,
+    newBookingAt: newAt.toISOString(),
+    businessNote: businessNote ?? null,
+  });
+
+  return booking;
 }
 
 export async function quickApproveBooking(bookingId, actorUserId) {

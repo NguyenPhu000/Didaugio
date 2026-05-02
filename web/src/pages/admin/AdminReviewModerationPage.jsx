@@ -9,6 +9,7 @@ import {
   Search,
   ShieldAlert,
   Star,
+  Tag,
 } from "lucide-react";
 import {
   getAdminReviewStats,
@@ -105,8 +106,12 @@ const StatCard = ({ title, value, icon: Icon, tone = "default" }) => (
 const ReviewCard = ({
   review,
   note,
+  moderationReason,
+  replyReasons,
   actionLoading,
   onNoteChange,
+  onModerationReasonChange,
+  onReplyReasonChange,
   onModerateReview,
   onModerateReply,
 }) => {
@@ -138,6 +143,11 @@ const ReviewCard = ({
                 {mediaItems.length} ảnh
               </Badge>
             )}
+            {review.isSeeded && (
+              <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-800">
+                Seed
+              </Badge>
+            )}
             {review.isVerifiedPurchase && (
               <Badge
                 variant="outline"
@@ -153,6 +163,44 @@ const ReviewCard = ({
             {review.place?.business?.businessName || "Chưa gắn business"} ·{" "}
             {formatDate(review.createdAt)}
           </p>
+
+          {(review.moderationLogs?.length ?? 0) > 0 && (
+            <details className="rounded-xl bg-muted/40 px-3 py-2 text-xs">
+              <summary className="cursor-pointer font-medium text-muted-foreground">
+                Nhật ký moderation ({review.moderationLogs.length})
+              </summary>
+              <ul className="mt-2 space-y-2 text-muted-foreground">
+                {review.moderationLogs.map((log) => (
+                  <li key={log.id} className="border-l-2 border-primary/30 pl-2">
+                    <span className="text-foreground">
+                      {log.action === "REVIEW_STATUS"
+                        ? "Review"
+                        : log.action === "REPLY_STATUS"
+                          ? "Phản hồi"
+                          : log.action}
+                    </span>
+                    {log.fromStatus || log.toStatus ? (
+                      <>
+                        {": "}
+                        <span className="font-mono">
+                          {log.fromStatus ?? "—"} → {log.toStatus ?? "—"}
+                        </span>
+                      </>
+                    ) : null}
+                    {log.reason ? (
+                      <span className="mt-0.5 block italic text-foreground/80">
+                        Lý do: {log.reason}
+                      </span>
+                    ) : null}
+                    <span className="mt-0.5 block text-[10px] uppercase tracking-wide">
+                      {log.actor?.profile?.fullName || log.actor?.email || "Admin"} ·{" "}
+                      {formatDate(log.createdAt)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
 
           {review.title && (
             <p className="font-medium text-foreground">{review.title}</p>
@@ -211,6 +259,7 @@ const ReviewCard = ({
                             review.id,
                             reply.id,
                             reply.status === "hidden" ? "visible" : "hidden",
+                            replyReasons[reply.id] || "",
                           )
                         }
                       >
@@ -219,6 +268,15 @@ const ReviewCard = ({
                     </div>
                   </div>
                   <p className="mt-1 text-muted-foreground">{reply.content}</p>
+                  {reply.status === "visible" && (
+                    <Textarea
+                      value={replyReasons[reply.id] || ""}
+                      onChange={(e) => onReplyReasonChange(reply.id, e.target.value)}
+                      placeholder="Lý do khi ẩn phản hồi (bắt buộc)"
+                      rows={2}
+                      className="mt-2 text-xs"
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -231,6 +289,15 @@ const ReviewCard = ({
             onChange={(event) => onNoteChange(review.id, event.target.value)}
             placeholder="Note nội bộ cho moderation..."
             rows={3}
+            className="text-sm"
+          />
+          <Textarea
+            value={moderationReason}
+            onChange={(event) =>
+              onModerationReasonChange(review.id, event.target.value)
+            }
+            placeholder="Lý do can thiệp (bắt buộc khi Ẩn / Report)..."
+            rows={2}
             className="text-sm"
           />
           <div className="grid grid-cols-2 gap-2">
@@ -271,21 +338,34 @@ const AdminReviewModerationPage = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("reported");
+  const [queue, setQueue] = useState("all");
+  const [sort, setSort] = useState("created_desc");
+  const [isSeededFilter, setIsSeededFilter] = useState("all");
   const [rating, setRating] = useState("all");
   const [hasMedia, setHasMedia] = useState("all");
   const [notesByReview, setNotesByReview] = useState({});
+  const [reasonsByReview, setReasonsByReview] = useState({});
+  const [replyReasons, setReplyReasons] = useState({});
   const [actionLoading, setActionLoading] = useState(null);
 
   const params = useMemo(
     () => ({
       search,
-      status,
+      status: queue === "needs_action" ? "all" : status,
       rating: rating !== "all" ? rating : undefined,
       hasMedia: hasMedia === "with-media" ? "true" : undefined,
+      queue,
+      sort,
+      isSeeded:
+        isSeededFilter === "seeded"
+          ? "true"
+          : isSeededFilter === "not-seeded"
+            ? "false"
+            : undefined,
       page: 1,
       limit: 50,
     }),
-    [hasMedia, rating, search, status],
+    [hasMedia, isSeededFilter, queue, rating, search, sort, status],
   );
 
   const loadReviews = useCallback(async () => {
@@ -298,6 +378,15 @@ const AdminReviewModerationPage = () => {
         (response.data || []).forEach((review) => {
           if (next[review.id] === undefined) {
             next[review.id] = review.adminNote || "";
+          }
+        });
+        return next;
+      });
+      setReasonsByReview((current) => {
+        const next = { ...current };
+        (response.data || []).forEach((review) => {
+          if (next[review.id] === undefined) {
+            next[review.id] = "";
           }
         });
         return next;
@@ -326,8 +415,22 @@ const AdminReviewModerationPage = () => {
     loadStats();
   }, [loadStats]);
 
+  useEffect(() => {
+    if (sort === "priority" && queue === "all") {
+      setQueue("needs_action");
+    }
+  }, [queue, sort]);
+
   const handleNoteChange = (reviewId, value) => {
     setNotesByReview((current) => ({ ...current, [reviewId]: value }));
+  };
+
+  const handleModerationReasonChange = (reviewId, value) => {
+    setReasonsByReview((current) => ({ ...current, [reviewId]: value }));
+  };
+
+  const handleReplyReasonChange = (replyId, value) => {
+    setReplyReasons((current) => ({ ...current, [replyId]: value }));
   };
 
   const handleModerateReview = async (reviewId, nextStatus) => {
@@ -336,6 +439,10 @@ const AdminReviewModerationPage = () => {
       await moderateAdminReview(reviewId, {
         status: nextStatus,
         adminNote: notesByReview[reviewId] || null,
+        moderationReason:
+          nextStatus === "hidden" || nextStatus === "reported"
+            ? reasonsByReview[reviewId] || null
+            : null,
       });
       toast.success("Đã cập nhật trạng thái đánh giá");
       await Promise.all([loadReviews(), loadStats()]);
@@ -346,11 +453,17 @@ const AdminReviewModerationPage = () => {
     }
   };
 
-  const handleModerateReply = async (reviewId, replyId, nextStatus) => {
+  const handleModerateReply = async (reviewId, replyId, nextStatus, reasonText) => {
     setActionLoading(`reply-${replyId}`);
     try {
-      await moderateAdminReviewReply(reviewId, replyId, { status: nextStatus });
+      await moderateAdminReviewReply(reviewId, replyId, {
+        status: nextStatus,
+        ...(nextStatus === "hidden" && {
+          moderationReason: reasonText?.trim() || null,
+        }),
+      });
       toast.success("Đã cập nhật phản hồi");
+      setReplyReasons((current) => ({ ...current, [replyId]: "" }));
       await loadReviews();
     } catch (error) {
       toast.error(error?.message || "Không thể moderation phản hồi");
@@ -374,7 +487,7 @@ const AdminReviewModerationPage = () => {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
           <StatCard title="Tổng review" value={stats.total} icon={Star} />
           <StatCard
             title="Bị report"
@@ -389,6 +502,7 @@ const AdminReviewModerationPage = () => {
             tone="warning"
           />
           <StatCard title="Đã ẩn" value={stats.hidden} icon={EyeOff} />
+          <StatCard title="Dữ liệu seed" value={stats.seeded ?? 0} icon={Tag} />
           <StatCard title="Rating TB" value={stats.avgRating} icon={Star} />
         </div>
       )}
@@ -404,7 +518,35 @@ const AdminReviewModerationPage = () => {
               className="pl-9"
             />
           </div>
-          <Select value={status} onValueChange={setStatus}>
+          <Select value={queue} onValueChange={setQueue}>
+            <SelectTrigger className="w-full lg:w-48">
+              <SelectValue placeholder="Hàng đợi" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả review</SelectItem>
+              <SelectItem value="needs_action">Cần xử lý (chờ/report)</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={setSort}>
+            <SelectTrigger className="w-full lg:w-48">
+              <SelectValue placeholder="Sắp xếp" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="created_desc">Mới nhất trước</SelectItem>
+              <SelectItem value="priority">Ưu tiên (report → chờ)</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={isSeededFilter} onValueChange={setIsSeededFilter}>
+            <SelectTrigger className="w-full lg:w-40">
+              <SelectValue placeholder="Nguồn" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Mọi nguồn</SelectItem>
+              <SelectItem value="seeded">Chỉ seed</SelectItem>
+              <SelectItem value="not-seeded">Không seed</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={status} onValueChange={setStatus} disabled={queue === "needs_action"}>
             <SelectTrigger className="w-full lg:w-44">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
@@ -463,8 +605,12 @@ const AdminReviewModerationPage = () => {
               key={review.id}
               review={review}
               note={notesByReview[review.id] || ""}
+              moderationReason={reasonsByReview[review.id] || ""}
+              replyReasons={replyReasons}
               actionLoading={actionLoading}
               onNoteChange={handleNoteChange}
+              onModerationReasonChange={handleModerationReasonChange}
+              onReplyReasonChange={handleReplyReasonChange}
               onModerateReview={handleModerateReview}
               onModerateReply={handleModerateReply}
             />

@@ -56,8 +56,13 @@ const DashboardPage = () => {
           fetchPlaces({ limit: 10 }),
         ]);
 
-        if (statsRes?.success && statsRes.data) {
-          const { places: placeStats, users: userStats } = statsRes.data;
+        const statsPayload =
+          statsRes?.success === true && statsRes?.data != null
+            ? statsRes.data
+            : statsRes;
+
+        if (statsPayload?.places && statsPayload?.users) {
+          const { places: placeStats, users: userStats } = statsPayload;
           setStats({
             total: placeStats?.total || 0,
             approved: placeStats?.approved || 0,

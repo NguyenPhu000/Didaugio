@@ -10,6 +10,7 @@ import { initNotificationService } from "./services/notification/notification.se
 import { initSocketIO } from "./config/socketIO.js";
 import { validateEnv } from "./config/validateEnv.js";
 import { registerApiRoutes, registerRateLimiters } from "./routes/index.js";
+import { startPendingBookingExpireScheduler } from "./schedulers/pendingBookingExpire.scheduler.js";
 
 dotenv.config({ override: true });
 validateEnv();
@@ -153,6 +154,7 @@ const io = initSocketIO(httpServer, allowedOriginPatterns);
 httpServer.listen(PORT, () => {
   logger.info(`Server is running on http://localhost:${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
+  startPendingBookingExpireScheduler();
 });
 
 export default app;

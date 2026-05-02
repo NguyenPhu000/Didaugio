@@ -1,13 +1,5 @@
-import {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  useDeferredValue,
-  lazy,
-  Suspense,
-  useRef,
-} from "react";
+import { useState, useEffect, useMemo, useCallback, useDeferredValue, lazy, Suspense, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { centroid as turfCentroid } from "@turf/turf";
 import usePlaceStore from "@/stores/placeStore";
 import useCategoryStore from "@/stores/categoryStore";
@@ -53,6 +45,7 @@ const PlaceDetailDialog = lazy(
 const FETCH_LIMIT = 500;
 
 const MapPageContent = () => {
+  const navigate = useNavigate();
   const {
     flyTo,
     selectArea,
@@ -88,7 +81,6 @@ const MapPageContent = () => {
     if (!categories.length) fetchCategories();
   }, [fetchPlaces, fetchCategories, categories.length]);
 
-  // Register the "open detail" handler so PlaceMarkers popup button works
   useEffect(() => {
     setOnSelectPlace((place) => {
       setSelectedPlaceDetail(place);
@@ -137,7 +129,6 @@ const MapPageContent = () => {
     return map;
   }, [districts]);
 
-  // Defer the search query so typing doesn't block map interactions
   const deferredSearch = useDeferredValue(searchQuery);
 
   const filteredPlaces = useMemo(() => {
@@ -248,13 +239,14 @@ const MapPageContent = () => {
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm kiếm địa điểm..."
+                placeholder="Tìm kiếm địa điểm…"
                 className="w-full h-9 border border-gray-200 rounded-lg pl-9 pr-8 text-sm focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                  aria-label="Xóa tìm kiếm"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -279,12 +271,14 @@ const MapPageContent = () => {
                   : "border-gray-200 hover:bg-gray-100"
               }`}
               title="Chỉ đường"
+              aria-label="Chế độ chỉ đường"
             >
               <Route className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode(viewMode === "map" ? "list" : "map")}
               className={`h-8 w-8 rounded-lg flex items-center justify-center border transition-colors ${viewMode === "list" ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 hover:bg-gray-100"}`}
+              aria-label={viewMode === "map" ? "Chuyển sang danh sách" : "Chuyển sang bản đồ"}
             >
               {viewMode === "map" ? (
                 <List className="h-4 w-4" />
@@ -295,13 +289,14 @@ const MapPageContent = () => {
             <button
               onClick={() => setSidebarOpen((v) => !v)}
               className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
+              aria-label="Bật/tắt thanh bên"
             >
               <Layers className="h-4 w-4" />
             </button>
             <button
               onClick={toggleFullscreen}
               className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
-              title={fullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
+              aria-label={fullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
             >
               {fullscreen ? (
                 <Minimize2 className="h-4 w-4" />
@@ -315,7 +310,6 @@ const MapPageContent = () => {
         {/* Routing bar */}
         {routingMode && (
           <div className="flex items-center gap-3 px-4 py-2 bg-blue-950 border-b border-blue-800 flex-shrink-0">
-            {/* Origin */}
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center shrink-0">
                 <Navigation2 className="w-3 h-3 text-white fill-white" />
@@ -331,7 +325,6 @@ const MapPageContent = () => {
 
             <span className="text-blue-500 shrink-0">→</span>
 
-            {/* Destination */}
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center shrink-0">
                 <Flag className="w-3 h-3 text-white fill-white" />
@@ -345,7 +338,6 @@ const MapPageContent = () => {
               </span>
             </div>
 
-            {/* Route info */}
             {routing.routeInfo && (
               <div className="flex items-center gap-3 shrink-0 bg-blue-900/60 rounded-lg px-3 py-1">
                 <span className="text-[12px] font-black text-white">
@@ -374,7 +366,7 @@ const MapPageContent = () => {
                 setRoutingMode(false);
               }}
               className="shrink-0 text-blue-400 hover:text-white transition-colors"
-              title="Đóng chỉ đường"
+              aria-label="Đóng chỉ đường"
             >
               <X className="w-4 h-4" />
             </button>
@@ -432,7 +424,7 @@ const MapPageContent = () => {
                     <_Icon className="h-3.5 w-3.5" />
                     {label}
                     {id === "filters" && hasActiveFilters && (
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full" aria-label="Có bộ lọc đang bật" />
                     )}
                   </button>
                 ))}
@@ -455,6 +447,7 @@ const MapPageContent = () => {
                         <button
                           onClick={resetSelection}
                           className="text-[10px] text-red-500 hover:text-red-700 font-bold"
+                          aria-label="Bỏ chọn khu vực"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -576,7 +569,7 @@ const MapPageContent = () => {
                   <div className="text-center">
                     <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                     <p className="text-sm font-medium text-gray-500">
-                      Đang tải bản đồ...
+                      Đang tải bản đồ…
                     </p>
                   </div>
                 </div>
@@ -641,8 +634,10 @@ const MapPageContent = () => {
           <div className="flex items-center gap-4 text-[10px] font-mono text-gray-400">
             <span>
               HIỂN THỊ:{" "}
-              <span className="text-white">{filteredPlaces.length}</span> /{" "}
-              {places.length}
+              <span className="text-white">
+                {filteredPlaces.length}
+              </span>{" "}
+              / {places.length}
             </span>
             {hasActiveFilters && (
               <span className="text-yellow-400">● BỘ LỌC ĐANG BẬT</span>
@@ -654,7 +649,7 @@ const MapPageContent = () => {
             )}
           </div>
           <span className="text-[10px] font-mono text-gray-500">
-            CẦN THƠ — {districtList.length || 9} QUẬN/HUYỆN
+            CẨN THƠ — {districtList.length || 9} QUẬN/HUYỆN
           </span>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import { ProtectedRoute } from "@/layouts";
 import { AdminLayout } from "@/layouts";
+import { BusinessLayout } from "@/layouts";
 import { ROLES } from "@/constants";
 import {
   AUTH_ROUTES,
@@ -41,13 +42,17 @@ import BookingQuickProcessPage from "@/pages/business/BookingQuickProcessPage";
 import VoucherListPage from "@/pages/business/VoucherListPage";
 import BusinessDashboardPage from "@/pages/business/BusinessDashboardPage";
 import RevenuePage from "@/pages/business/RevenuePage";
+import BusinessReportCenterPage from "@/pages/business/BusinessReportCenterPage";
 import ReviewListPage from "@/pages/business/ReviewListPage";
+import BusinessPlacePage from "@/pages/business/BusinessPlacePage";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
 import VerifyEmailPublicPage from "@/pages/auth/VerifyEmailPublicPage";
 import ResendVerificationPage from "@/pages/auth/ResendVerificationPage";
 import RoleManagePage from "@/pages/RoleManagePage";
 import PermissionManagePage from "@/pages/PermissionManagePage";
+import AdminAnalyticsPage from "@/pages/admin/AdminAnalyticsPage";
+import CMSContentPage from "@/pages/admin/CMSContentPage";
 import BusinessGuard from "@/components/business/BusinessGuard";
 import { resolvePostLoginRoute, resolveRoleId } from "@/utils/authRouting";
 
@@ -87,13 +92,31 @@ const allStaffRoles = [
   ROLES.BUSINESS,
   ROLES.STAFF,
 ]; // GUEST excluded
-const placeRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BUSINESS];
+const placeRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 const superAdminOnly = [ROLES.SUPER_ADMIN];
 
 /** Wrap page in ProtectedRoute + AdminLayout */
 const ProtectedAdmin = ({ children, roles }) => (
   <ProtectedRoute roles={roles}>
     <AdminLayout>{children}</AdminLayout>
+  </ProtectedRoute>
+);
+
+const ProtectedBusiness = ({
+  children,
+  allowWhenPendingOrRejected = false,
+  skipBusinessGuard = false,
+}) => (
+  <ProtectedRoute roles={[ROLES.BUSINESS]}>
+    <BusinessLayout>
+      {skipBusinessGuard ? (
+        children
+      ) : (
+        <BusinessGuard allowWhenPendingOrRejected={allowWhenPendingOrRejected}>
+          {children}
+        </BusinessGuard>
+      )}
+    </BusinessLayout>
   </ProtectedRoute>
 );
 
@@ -331,27 +354,43 @@ const AppRoutes = () => {
         }
       />
 
+      {/* Admin Booking Operations */}
+
+      {/* Admin Analytics */}
+      <Route
+        path={ADMIN_ROUTES.ANALYTICS}
+        element={
+          <ProtectedAdmin roles={adminRoles}>
+            <AdminAnalyticsPage />
+          </ProtectedAdmin>
+        }
+      />
+
+      {/* CMS Content Management */}
+      <Route
+        path={ADMIN_ROUTES.CMS}
+        element={
+          <ProtectedAdmin roles={adminRoles}>
+            <CMSContentPage />
+          </ProtectedAdmin>
+        }
+      />
+
       {/* ===== Business Portal Routes ===== */}
       <Route
         path={BUSINESS_ROUTES.REGISTER}
         element={
-          <ProtectedRoute roles={[ROLES.BUSINESS]}>
-            <AdminLayout>
-              <BusinessRegisterPage />
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedBusiness skipBusinessGuard>
+            <BusinessRegisterPage />
+          </ProtectedBusiness>
         }
       />
       <Route
         path={BUSINESS_ROUTES.PROFILE}
         element={
-          <ProtectedRoute roles={[ROLES.BUSINESS]}>
-            <AdminLayout>
-              <BusinessGuard allowWhenPendingOrRejected>
-                <BusinessProfilePage />
-              </BusinessGuard>
-            </AdminLayout>
-          </ProtectedRoute>
+          <ProtectedBusiness allowWhenPendingOrRejected>
+            <BusinessProfilePage />
+          </ProtectedBusiness>
         }
       />
 
@@ -374,20 +413,42 @@ const AppRoutes = () => {
         { path: BUSINESS_ROUTES.REVENUE, element: <RevenuePage /> },
         { path: BUSINESS_ROUTES.REVIEWS, element: <ReviewListPage /> },
         { path: BUSINESS_ROUTES.VOUCHERS, element: <VoucherListPage /> },
+        { path: BUSINESS_ROUTES.REPORTS, element: <BusinessReportCenterPage /> },
         { path: BUSINESS_ROUTES.SERVICES, element: <ServiceListPage /> },
+        { path: BUSINESS_ROUTES.PLACES, element: <BusinessPlacePage /> },
       ].map(({ path, element }) => (
         <Route
           key={path}
           path={path}
           element={
-            <ProtectedRoute roles={[ROLES.BUSINESS]}>
-              <AdminLayout>
-                <BusinessGuard>{element}</BusinessGuard>
-              </AdminLayout>
-            </ProtectedRoute>
+            <ProtectedBusiness>{element}</ProtectedBusiness>
           }
         />
       ))}
+
+      {/* Business Place Wizard - New */}
+      <Route
+        path={BUSINESS_ROUTES.PLACES_NEW}
+        element={
+          <ProtectedBusiness>
+            <PlaceWizardPage />
+          </ProtectedBusiness>
+        }
+      />
+      {/* Redirect /business/map to /business/places?tab=map */}
+      <Route
+        path={BUSINESS_ROUTES.MAP}
+        element={<Navigate to={`${BUSINESS_ROUTES.PLACES}?tab=map`} replace />}
+      />
+      {/* Business Place Wizard - Edit */}
+      <Route
+        path={BUSINESS_ROUTES.PLACES_EDIT_PATTERN}
+        element={
+          <ProtectedBusiness>
+            <PlaceWizardPage />
+          </ProtectedBusiness>
+        }
+      />
 
       {/* Legacy: hợp đồng gộp vào Hồ sơ (Phương án A) */}
       <Route
