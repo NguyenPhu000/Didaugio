@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getTripDetailApi,
@@ -39,13 +40,50 @@ export function useAddDestination(tripId) {
   });
 }
 
+/**
+ * Remove a destination from a trip with optimistic update.
+ * The destination is immediately removed from UI while the API call runs.
+ * On error, the previous state is restored.
+ */
 export function useRemoveDestination(tripId) {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (destId) => removeDestinationApi(tripId, destId),
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.trips.detail(tripId),
-      }),
+
+    onMutate: async (destId) => {
+      const queryKey = QUERY_KEYS.trips.detail(tripId);
+
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousTrip = queryClient.getQueryData(queryKey);
+
+      // Optimistically remove the destination
+      queryClient.setQueryData(queryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          destinations: (old.destinations || []).filter(
+            (dest) => dest.id !== destId,
+          ),
+        };
+      });
+
+      return { previousTrip };
+    },
+
+    onError: (_err, _destId, context) => {
+      // Restore on failure
+      if (context?.previousTrip) {
+        queryClient.setQueryData(
+          QUERY_KEYS.trips.detail(tripId),
+          context.previousTrip,
+        );
+      }
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.detail(tripId) });
+    },
   });
 }

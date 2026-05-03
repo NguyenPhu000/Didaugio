@@ -1,11 +1,12 @@
 import { memo } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../../constants/design-tokens";
 import { getUserName } from "../utils/exploreHelpers";
+import { NotificationBell } from "../../../components/composed/NotificationBell";
 
 function ExploreHeaderInner({ user }) {
   const userName = getUserName(user);
@@ -25,14 +26,7 @@ function ExploreHeaderInner({ user }) {
         </View>
       </View>
 
-      <Pressable style={styles.iconButton}>
-        <View style={styles.alertDot} />
-        <MaterialIcons
-          name="notifications-none"
-          size={20}
-          color={APPLE_THEME.text}
-        />
-      </Pressable>
+      <NotificationBell size={38} />
     </View>
   );
 }
@@ -91,27 +85,5 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontFamily: TOKENS.font.heading,
     letterSpacing: -0.2,
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_THEME.surfaceElevated,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.border,
-    position: "relative",
-  },
-  alertDot: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-    backgroundColor: APPLE_THEME.focusBlue,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.white,
   },
 });

@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
-import Check from "lucide-react/dist/esm/icons/check";
-import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import {
+  ArrowLeft,
+  Check,
+  MapPin,
+} from "lucide-react";
 import usePlaceStore from "@/stores/placeStore";
-import { Button, Card } from "@/components/ui";
+import { Button } from "@/components/ui/Button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import StepBasicInfo from "@/components/place/StepBasicInfo";
@@ -14,9 +16,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * PLACE WIZARD PAGE
- * Multi-step form để tạo/chỉnh sửa địa điểm
+ * Multi-step form de tao/chinh sua dia diem
  */
-
 const PlaceWizardPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -34,7 +35,6 @@ const PlaceWizardPage = () => {
 
   const isEditMode = !!id;
 
-  // Load place data if editing
   useEffect(() => {
     if (isEditMode) {
       fetchPlaceById(parseInt(id))
@@ -65,7 +65,7 @@ const PlaceWizardPage = () => {
   const steps = [
     {
       number: 1,
-      title: "Thông tin cơ bản",
+      title: "Cơ bản",
       description: "Tên & Danh mục",
       component: StepBasicInfo,
     },
@@ -77,8 +77,8 @@ const PlaceWizardPage = () => {
     },
     {
       number: 3,
-      title: "Hoàn tất",
-      description: "Xem trước & Lưu",
+      title: "Xem trước",
+      description: "Kiểm tra & Lưu",
       component: StepPreview,
     },
   ];
@@ -91,74 +91,57 @@ const PlaceWizardPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-20">
+    <div className="min-h-screen bg-muted/30 pb-20">
       {/* Top Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-40 bg-white/80 backdrop-blur-md">
+      <div className="bg-background border-b sticky top-0 z-40">
         <div className="container mx-auto max-w-5xl px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="icon"
               onClick={handleBack}
-              className="rounded-full hover:bg-slate-100"
+              className="rounded-full"
             >
-              <ArrowLeft className="h-5 w-5 text-slate-600" />
+              <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <h1 className="text-lg font-semibold flex items-center gap-2">
                 {isEditMode ? "Chỉnh sửa địa điểm" : "Thêm địa điểm mới"}
-                {!isEditMode && (
-                  <Sparkles className="h-4 w-4 text-yellow-500 fill-yellow-500 animate-pulse" />
-                )}
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Bước {currentStep}</span>
-            <span className="text-slate-300">/</span>
+            <span className="text-muted-foreground/50">/</span>
             <span>{totalSteps}</span>
           </div>
         </div>
 
-        {/* Progress Bar Line */}
-        <div className="h-0.5 w-full bg-slate-100 overflow-hidden">
+        {/* Progress Bar */}
+        <div className="h-1 w-full bg-muted">
           <div
-            className="h-full bg-primary transition-all duration-500 ease-out shadow-[0_0_10px_rgba(14,107,168,0.5)]"
+            className="h-full bg-primary transition-all duration-500 ease-out"
             style={{ width: `${(currentStep / totalSteps) * 100}%` }}
           />
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* Stepper Visual */}
+        {/* Stepper */}
         <div className="mb-10 px-4">
           <div className="flex items-center justify-between relative">
             {/* Connecting Lines */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-slate-200 -z-10" />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-border -z-10" />
 
             {steps.map((step) => {
               const isActive = step.number === currentStep;
               const isCompleted = step.number < currentStep;
-              let stepCircleClass = "bg-white border-slate-200 text-slate-400";
-              if (isActive) {
-                stepCircleClass =
-                  "bg-primary border-white shadow-lg shadow-primary/20 scale-110";
-              } else if (isCompleted) {
-                stepCircleClass = "bg-primary border-primary/10 text-white";
-              }
-
-              let stepTitleClass = "text-slate-400";
-              if (isActive) {
-                stepTitleClass = "text-slate-800";
-              } else if (isCompleted) {
-                stepTitleClass = "text-primary";
-              }
 
               return (
                 <div
                   key={step.number}
-                  className="flex flex-col items-center bg-transparent gap-2 cursor-pointer group"
+                  className="flex flex-col items-center bg-background gap-2 cursor-pointer group"
                   onClick={() =>
                     !loading &&
                     step.number < currentStep &&
@@ -167,33 +150,30 @@ const PlaceWizardPage = () => {
                 >
                   <div
                     className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center border-4 transition-all duration-300 z-10",
-                      stepCircleClass,
+                      "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 z-10",
+                      isActive && "border-primary bg-primary text-primary-foreground",
+                      isCompleted && "border-primary bg-primary text-primary-foreground",
+                      !isActive && !isCompleted && "border-border bg-background text-muted-foreground"
                     )}
                   >
                     {isCompleted ? (
                       <Check className="h-5 w-5" />
                     ) : (
-                      <span
-                        className={cn(
-                          "font-bold",
-                          isActive ? "text-white" : "",
-                        )}
-                      >
-                        {step.number}
-                      </span>
+                      <span className="font-semibold">{step.number}</span>
                     )}
                   </div>
                   <div className="flex flex-col items-center">
                     <span
                       className={cn(
-                        "text-sm font-bold transition-colors",
-                        stepTitleClass,
+                        "text-sm font-medium transition-colors",
+                        isActive && "text-foreground",
+                        isCompleted && "text-primary",
+                        !isActive && !isCompleted && "text-muted-foreground"
                       )}
                     >
                       {step.title}
                     </span>
-                    <span className="text-xs text-slate-400 hidden sm:block">
+                    <span className="text-xs text-muted-foreground hidden sm:block">
                       {step.description}
                     </span>
                   </div>
@@ -204,7 +184,7 @@ const PlaceWizardPage = () => {
         </div>
 
         {/* Step Content */}
-        <div className="">
+        <div>
           {StepComponent && <StepComponent isEditMode={isEditMode} />}
         </div>
       </div>

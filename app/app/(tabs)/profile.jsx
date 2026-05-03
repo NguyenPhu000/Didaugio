@@ -23,6 +23,7 @@ import { TAB_SCREEN_PADDING, TAB_THEME } from "./tabTheme";
 import { UpcomingTripCard } from "../../src/modules/profile/components/UpcomingTripCard";
 import { MemoriesSection } from "../../src/modules/profile/components/MemoriesSection";
 import { resolveMediaUrl } from "../../src/lib/media-url";
+import { NotificationBell } from "../../src/components/composed/NotificationBell";
 
 const ACCENT_BLUE = "#3478F6";
 
@@ -106,9 +107,12 @@ function ProfileHeader({ onSettingsPress }) {
         <MaterialIcons name="arrow-back" size={26} color="#0F172A" />
       </Pressable>
       <Text style={styles.headerTitle}>HỒ SƠ</Text>
-      <Pressable onPress={onSettingsPress} style={styles.settingsBtn}>
-        <MaterialIcons name="settings" size={26} color="#64748B" />
-      </Pressable>
+      <View style={styles.headerRight}>
+        <NotificationBell size={42} />
+        <Pressable onPress={onSettingsPress} style={styles.settingsBtn}>
+          <MaterialIcons name="settings" size={26} color="#64748B" />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -574,6 +578,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: TOKENS.font.semibold,
     color: "#0F172A",
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   settingsBtn: { padding: 4 },
 

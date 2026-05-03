@@ -449,6 +449,7 @@ model Place {
   deletedAt        DateTime?          @map("deleted_at")
   markerUrl        String?            @map("marker_url")
   businessServices BusinessService[]
+  resources       PlaceResource[]
   favorites        Favorite[]
   amenities        PlaceAmenity[]
   images           PlaceImage[]
@@ -788,6 +789,17 @@ model BusinessService {
   unit            String    @default("luot")
   durationMinutes Int?      @map("duration_minutes")
   maxCapacity     Int?      @map("max_capacity")
+
+  // ─── Booking Model Config ───────────────────────────────────────────────
+  bookingModel    String    @default("capacity") @map("booking_model")
+  // Models: "capacity" (vè/tour), "resource" (bàn/phòng), "slot" (固定时间槽)
+
+  slotDurationMinutes Int?   @map("slot_duration_minutes")
+  bufferMinutes      Int?   @map("buffer_minutes")
+  minLeadMinutes     Int?   @map("min_lead_minutes")
+  maxAdvanceDays     Int     @default(30) @map("max_advance_days")
+  allowOverbooking   Boolean @default(false) @map("allow_overbooking")
+
   thumbnail       String?
   images          Json?
   includes        Json?
@@ -798,10 +810,32 @@ model BusinessService {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
   bookings        Booking[]
+  resources       PlaceResource[]
   business        Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   place           Place     @relation(fields: [placeId], references: [id])
 
   @@map("business_services")
+}
+
+// ─── Place Resources (for RESOURCE model: tables, rooms, seats) ─────────────────
+
+model PlaceResource {
+  id          Int       @id @default(autoincrement())
+  placeId    Int       @map("place_id")
+  serviceId  Int?      @map("service_id")
+  name       String                    // e.g., "Bàn 1", "Phòng VIP"
+  code       String?                  // e.g., "T1", "P-VIP"
+  resourceType String                  @map("resource_type") // "table", "room", "seat", "vehicle"
+  capacity   Int?                     // Số người tối đa
+  status     String   @default("active") // "active", "maintenance", "inactive"
+  position   Int       @default(0)     // Thứ tự hiển thị
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  place      Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  service    BusinessService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  bookings   Booking[]
+
+  @@map("place_resources")
 }
 
 model Voucher {
@@ -865,7 +899,15 @@ model Booking {
   serviceId        Int                @map("service_id")
   quantity         Int                @default(1)
   useDate          DateTime           @map("use_date") @db.Date
-  useTime          String?            @map("use_time")
+  useTime          String?            @map("use_time")          // Legacy: giờ dạng string "14:00"
+  endTimeStr       String?            @map("end_time_str")      // Legacy: giờ kết thúc dạng string "16:00"
+
+  // ─── Proper Timestamps for Overlap Handling ───────────────────────────────────
+  // Dùng cho mô hình RESOURCE (đặt bàn/phòng) cần check overlap chính xác
+  startTime        DateTime?          @map("start_time") @db.Timestamptz  // VD: 2026-05-03T14:00:00+07:00
+  endTime          DateTime?          @map("end_time") @db.Timestamptz     // VD: 2026-05-03T16:00:00+07:00
+
+  resourceId       Int?              @map("resource_id")
   guestName        String             @map("guest_name")
   guestPhone       String             @map("guest_phone")
   guestEmail       String?            @map("guest_email")
@@ -893,6 +935,7 @@ model Booking {
   service          BusinessService    @relation(fields: [serviceId], references: [id])
   user             User               @relation(fields: [userId], references: [id])
   voucher          Voucher?           @relation(fields: [voucherId], references: [id])
+  resource         PlaceResource?     @relation(fields: [resourceId], references: [id])
   payment          Payment?
   reviews          Review[]
 
@@ -900,7 +943,18 @@ model Booking {
   @@index([serviceId])
   @@index([status])
   @@index([useDate])
+  @@index([resourceId])
   @@index([businessId, bookingAt])
+
+  // ─── Composite Indexes for Overlap Queries ─────────────────────────────────────
+  // Dùng cho mô hình RESOURCE - tìm booking trùng thời gian
+  @@index([resourceId, useDate, status])
+  @@index([serviceId, useDate, status])
+
+  // Dùng cho check availability với startTime/endTime
+  @@index([resourceId, startTime, endTime])
+  @@index([serviceId, startTime, endTime])
+
   @@map("bookings")
 }
 

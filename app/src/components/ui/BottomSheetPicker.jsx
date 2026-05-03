@@ -86,7 +86,7 @@ export const BottomSheetPicker = forwardRef(
 
         <BottomSheetFlatList
           data={data}
-          keyExtractor={(i) => String(i.value)}
+          keyExtractor={(item, index) => String(item.value ?? index)}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}

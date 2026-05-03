@@ -1,24 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
+import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
   ArrowLeft,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  CalendarDays,
   MapPin,
   Clock,
   Users,
   Phone,
   Eye,
-  Loader2,
+  LayoutGrid,
+  LayoutList,
+  AlertCircle,
+  CircleCheck,
+  CircleX,
 } from "lucide-react";
 import * as bookingApi from "@/apis/bookingService";
 import { getMyPlaces } from "@/apis/businessApi";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BOOKING_STATUS } from "@/constants/constants";
-import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -29,6 +31,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+
+// ─── Booking Models ───────────────────────────────────────────────────────────────
+
+const BOOKING_MODELS = {
+  CAPACITY: "capacity",  // Vé/Tour - theo số lượng
+  RESOURCE: "resource", // Bàn/Phòng - theo tài nguyên cụ thể
+  SLOT: "slot",         // Khung giờ cố định
+};
 
 // ─── Time Slots ─────────────────────────────────────────────────────────────────
 
@@ -54,10 +64,23 @@ const TIME_SLOTS = [
 // ─── Status Colors ───────────────────────────────────────────────────────────────
 
 const STATUS_COLORS = {
-  [BOOKING_STATUS.PENDING]: { bg: "bg-amber-50", border: "border-l-amber-500", text: "text-amber-700", dot: "bg-amber-500", ring: "ring-amber-200" },
-  [BOOKING_STATUS.CONFIRMED]: { bg: "bg-blue-50", border: "border-l-blue-500", text: "text-blue-700", dot: "bg-blue-500", ring: "ring-blue-200" },
-  [BOOKING_STATUS.COMPLETED]: { bg: "bg-emerald-50", border: "border-l-emerald-500", text: "text-emerald-700", dot: "bg-emerald-500", ring: "ring-emerald-200" },
-  [BOOKING_STATUS.CANCELLED]: { bg: "bg-slate-100", border: "border-l-slate-400", text: "text-slate-600", dot: "bg-slate-400", ring: "ring-slate-200" },
+  [BOOKING_STATUS.PENDING]: { bg: "bg-amber-50", border: "border-l-amber-500", text: "text-amber-700", dot: "bg-amber-500" },
+  [BOOKING_STATUS.CONFIRMED]: { bg: "bg-blue-50", border: "border-l-blue-500", text: "text-blue-700", dot: "bg-blue-500" },
+  [BOOKING_STATUS.COMPLETED]: { bg: "bg-emerald-50", border: "border-l-emerald-500", text: "text-emerald-700", dot: "bg-emerald-500" },
+  [BOOKING_STATUS.CANCELLED]: { bg: "bg-slate-100", border: "border-l-slate-300", text: "text-slate-500", dot: "bg-slate-400" },
+  [BOOKING_STATUS.REJECTED]: { bg: "bg-rose-50", border: "border-l-rose-500", text: "text-rose-700", dot: "bg-rose-500" },
+  [BOOKING_STATUS.EXPIRED]: { bg: "bg-orange-50", border: "border-l-orange-500", text: "text-orange-700", dot: "bg-orange-500" },
+  [BOOKING_STATUS.NO_SHOW]: { bg: "bg-purple-50", border: "border-l-purple-500", text: "text-purple-700", dot: "bg-purple-500" },
+};
+
+const STATUS_LABELS = {
+  [BOOKING_STATUS.PENDING]: "Chờ xác nhận",
+  [BOOKING_STATUS.CONFIRMED]: "Đã xác nhận",
+  [BOOKING_STATUS.COMPLETED]: "Hoàn thành",
+  [BOOKING_STATUS.CANCELLED]: "Đã hủy",
+  [BOOKING_STATUS.REJECTED]: "Bị từ chối",
+  [BOOKING_STATUS.EXPIRED]: "Hết hạn",
+  [BOOKING_STATUS.NO_SHOW]: "Không đến",
 };
 
 // ─── Helper Functions ────────────────────────────────────────────────────────────
@@ -86,9 +109,48 @@ const toDateString = (date) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
+// API returns nested: { service: { place: { id, name } } }
+const getPlaceFromBooking = (booking) => {
+  return booking.service?.place || booking.place || null;
+};
+
+const getServiceFromBooking = (booking) => {
+  return booking.service || null;
+};
+
+// ─── Capacity Indicator ─────────────────────────────────────────────────────────
+
+function CapacityIndicator({ used, capacity, className }) {
+  if (capacity === null || capacity === undefined) return null;
+
+  const percentage = Math.min((used / capacity) * 100, 100);
+  const isFull = used >= capacity;
+  const isWarning = percentage >= 80 && !isFull;
+
+  return (
+    <div className={cn("flex items-center gap-1.5", className)}>
+      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all",
+            isFull ? "bg-red-500" : isWarning ? "bg-amber-500" : "bg-emerald-500"
+          )}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      <span className={cn(
+        "text-[10px] font-medium tabular-nums",
+        isFull ? "text-red-600" : isWarning ? "text-amber-600" : "text-gray-500"
+      )}>
+        {used}/{capacity}
+      </span>
+    </div>
+  );
+}
+
 // ─── Booking Card ───────────────────────────────────────────────────────────────
 
-function BookingCard({ booking, onClick }) {
+function BookingCard({ booking, onClick, compact = false }) {
   const colors = STATUS_COLORS[booking.status] || STATUS_COLORS[BOOKING_STATUS.PENDING];
 
   return (
@@ -104,23 +166,69 @@ function BookingCard({ booking, onClick }) {
     >
       <div className="flex items-start justify-between gap-1">
         <span className="font-semibold text-xs text-gray-900 truncate line-clamp-1">
-          {booking.user?.profile?.fullName || booking.guestName || booking.user?.fullName || "Khách"}
+          {booking.user?.fullName || booking.guestName || "Khách"}
         </span>
+        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0 mt-1", colors.dot)} />
       </div>
       {booking.service?.name && (
         <p className="text-[10px] text-gray-500 truncate mt-0.5">{booking.service.name}</p>
       )}
-      {booking.partySize && (
-        <p className="text-[10px] text-gray-400 flex items-center gap-0.5 mt-0.5">
-          <Users className="h-2.5 w-2.5" />
-          {booking.partySize} khách
+      {booking.resource && (
+        <p className="text-[10px] text-primary font-medium flex items-center gap-0.5 mt-0.5">
+          <MapPin className="h-2.5 w-2.5" />
+          {booking.resource.name}
         </p>
       )}
-      {booking.user?.profile?.phone && (
-        <p className="text-[10px] text-gray-400 flex items-center gap-0.5 mt-0.5">
-          <Phone className="h-2.5 w-2.5" />
-          {booking.user.profile.phone}
-        </p>
+      {!compact && (
+        <>
+          {booking.partySize && (
+            <p className="text-[10px] text-gray-400 flex items-center gap-0.5 mt-0.5">
+              <Users className="h-2.5 w-2.5" />
+              {booking.partySize} khách
+            </p>
+          )}
+          {booking.user?.phone && (
+            <p className="text-[10px] text-gray-400 flex items-center gap-0.5 mt-0.5">
+              <Phone className="h-2.5 w-2.5" />
+              {booking.user.phone}
+            </p>
+          )}
+        </>
+      )}
+    </button>
+  );
+}
+
+// ─── Resource Timeline Card (for RESOURCE model) ─────────────────────────────────
+
+function ResourceTimelineCard({ booking, onClick }) {
+  const colors = STATUS_COLORS[booking.status] || STATUS_COLORS[BOOKING_STATUS.PENDING];
+  const service = getServiceFromBooking(booking);
+
+  // Calculate width based on duration (default 60 minutes)
+  const duration = service?.durationMinutes || 60;
+  const widthPercent = (duration / 60) * (100 / 6); // 6 hours = 100%
+
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(booking)}
+      className={cn(
+        "absolute top-1 rounded-lg border border-l-4 p-1.5 min-w-[80px] max-w-[200px] transition-all",
+        "hover:shadow-lg hover:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        colors.bg,
+        colors.border
+      )}
+      style={{ width: `${Math.max(widthPercent, 25)}%` }}
+    >
+      <p className="text-[10px] font-semibold text-gray-900 truncate">
+        {booking.user?.fullName || booking.guestName || "Khách"}
+      </p>
+      <p className="text-[9px] text-gray-500 truncate">
+        {booking.useTime} {booking.endTimeStr && `- ${booking.endTimeStr}`}
+      </p>
+      {booking.partySize && (
+        <p className="text-[9px] text-gray-400">{booking.partySize} khách</p>
       )}
     </button>
   );
@@ -128,10 +236,162 @@ function BookingCard({ booking, onClick }) {
 
 // ─── Empty Cell ────────────────────────────────────────────────────────────────
 
-function EmptyCell() {
+function EmptyCell({ showCapacity }) {
   return (
     <div className="w-full h-full flex items-center justify-center opacity-30">
       <div className="w-4 h-4 rounded-full border-2 border-dashed border-gray-300" />
+    </div>
+  );
+}
+
+// ─── Day Column (Grid View) ─────────────────────────────────────────────────────
+
+function DayColumnGrid({ date, bookings, servicesMap, onViewBooking }) {
+  const isToday = isSameDay(date, new Date());
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+  // Group bookings by time slot
+  const getBookingsForSlot = (timeId) => {
+    const slotHour = parseInt(timeId.split(":")[0], 10);
+    return bookings.filter((b) => {
+      if (!b.useTime) return false;
+      const bookingHour = parseInt(b.useTime.split(":")[0], 10);
+      return bookingHour === slotHour;
+    });
+  };
+
+  // Calculate capacity for a slot
+  const getSlotCapacity = (timeId) => {
+    const slotBookings = getBookingsForSlot(timeId);
+    const totalUsed = slotBookings.reduce((sum, b) => sum + (b.quantity || 1), 0);
+
+    // Get max capacity from services (simplified - take first service's capacity)
+    const firstBooking = slotBookings[0];
+    const maxCapacity = firstBooking?.service?.maxCapacity || null;
+
+    return { used: totalUsed, capacity: maxCapacity };
+  };
+
+  return (
+    <div className={cn("flex-1 min-w-[120px] border-r border-gray-100 last:border-r-0", isToday && "bg-primary/5")}>
+      {/* Time Grid */}
+      {TIME_SLOTS.map((slot) => {
+        const slotBookings = getBookingsForSlot(slot.id);
+        const capacity = getSlotCapacity(slot.id);
+
+        return (
+          <div
+            key={slot.id}
+            className={cn(
+              "h-20 border-b border-gray-100 p-1 transition-colors",
+              slotBookings.length > 0 && "bg-gray-50/50"
+            )}
+          >
+            {slotBookings.length > 0 ? (
+              <div className="h-full flex flex-col gap-1">
+                {slotBookings.slice(0, 2).map((booking) => (
+                  <BookingCard
+                    key={booking.id}
+                    booking={booking}
+                    onClick={onViewBooking}
+                    compact
+                  />
+                ))}
+                {slotBookings.length > 2 && (
+                  <p className="text-[10px] text-gray-500 text-center">
+                    +{slotBookings.length - 2} more
+                  </p>
+                )}
+              </div>
+            ) : (
+              <EmptyCell />
+            )}
+            {/* Capacity Indicator */}
+            {capacity.capacity && (
+              <CapacityIndicator
+                used={capacity.used}
+                capacity={capacity.capacity}
+                className="mt-auto"
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Day Column (Timeline View for RESOURCE model) ───────────────────────────────
+
+function DayColumnTimeline({ date, bookings, onViewBooking }) {
+  const isToday = isSameDay(date, new Date());
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+  // Group by resource
+  const bookingsByResource = useMemo(() => {
+    const groups = {};
+    bookings.forEach((b) => {
+      const resourceId = b.resource?.id || "unassigned";
+      if (!groups[resourceId]) {
+        groups[resourceId] = [];
+      }
+      groups[resourceId].push(b);
+    });
+    return groups;
+  }, [bookings]);
+
+  // Get unique resources
+  const resources = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    bookings.forEach((b) => {
+      if (b.resource && !seen.has(b.resource.id)) {
+        seen.add(b.resource.id);
+        result.push(b.resource);
+      }
+    });
+    return result;
+  }, [bookings]);
+
+  return (
+    <div className={cn("flex-1 min-w-[120px] border-r border-gray-100 last:border-r-0", isToday && "bg-primary/5")}>
+      {/* Timeline Grid */}
+      <div className="relative h-[calc(16*5rem)] border-b border-gray-100">
+        {/* Time labels */}
+        {TIME_SLOTS.map((slot, idx) => (
+          <div
+            key={slot.id}
+            className={cn(
+              "absolute left-0 w-full h-20 border-b border-gray-100",
+              idx % 2 === 1 && "bg-gray-50/30"
+            )}
+            style={{ top: `${idx * 5}rem` }}
+          >
+            <span className="absolute -top-3 left-1 text-[10px] text-gray-400">
+              {slot.label}
+            </span>
+          </div>
+        ))}
+
+        {/* Bookings */}
+        {bookings.map((booking) => {
+          const startHour = parseInt(booking.useTime?.split(":")[0] || "9", 10);
+          const topPercent = ((startHour - 6) / 15) * 100;
+
+          return (
+            <div
+              key={booking.id}
+              className="absolute left-1 right-1"
+              style={{ top: `${topPercent}%` }}
+            >
+              <ResourceTimelineCard
+                booking={booking}
+                onClick={onViewBooking}
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -143,17 +403,19 @@ function BookingDetailModal({ booking, open, onClose }) {
 
   const colors = STATUS_COLORS[booking.status] || STATUS_COLORS[BOOKING_STATUS.PENDING];
   const useDate = booking.useDate ? new Date(booking.useDate) : new Date(booking.bookingAt);
+  const service = getServiceFromBooking(booking);
+  const place = getPlaceFromBooking(booking);
 
   return (
     <div className={cn("fixed inset-0 z-50 flex items-center justify-center", !open && "pointer-events-none")}>
       <div
-        className={cn("fixed inset-0 bg-black/50 transition-opacity", !open && "opacity-0")}
+        className={cn("fixed inset-0 bg-black/50 transition-opacity duration-200", open ? "opacity-100" : "opacity-0")}
         onClick={onClose}
       />
       <div
         className={cn(
-          "relative bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto transition-transform",
-          open ? "scale-100" : "scale-95"
+          "relative bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto transition-all duration-200",
+          open ? "scale-100 opacity-100" : "scale-95 opacity-0"
         )}
       >
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
@@ -178,10 +440,7 @@ function BookingDetailModal({ booking, open, onClose }) {
             <div className="flex items-center gap-2">
               <span className={cn("w-2 h-2 rounded-full", colors.dot)} />
               <span className={cn("font-semibold", colors.text)}>
-                {booking.status === BOOKING_STATUS.PENDING && "Chờ xác nhận"}
-                {booking.status === BOOKING_STATUS.CONFIRMED && "Đã xác nhận"}
-                {booking.status === BOOKING_STATUS.COMPLETED && "Hoàn thành"}
-                {booking.status === BOOKING_STATUS.CANCELLED && "Đã hủy"}
+                {STATUS_LABELS[booking.status] || booking.status}
               </span>
             </div>
           </div>
@@ -192,11 +451,11 @@ function BookingDetailModal({ booking, open, onClose }) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-500">Tên</p>
-                <p className="font-medium">{booking.user?.profile?.fullName || booking.guestName || "Khách"}</p>
+                <p className="font-medium">{booking.user?.fullName || booking.guestName || "Khách"}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Số điện thoại</p>
-                <p className="font-medium">{booking.user?.profile?.phone || booking.guestPhone || "-"}</p>
+                <p className="font-medium">{booking.user?.phone || booking.guestPhone || "-"}</p>
               </div>
               <div className="col-span-2">
                 <p className="text-xs text-gray-500">Email</p>
@@ -222,7 +481,10 @@ function BookingDetailModal({ booking, open, onClose }) {
               </div>
               <div>
                 <p className="text-xs text-gray-500">Giờ</p>
-                <p className="font-medium">{booking.useTime || "-"}</p>
+                <p className="font-medium">
+                  {booking.useTime || "-"}
+                  {booking.endTimeStr && ` - ${booking.endTimeStr}`}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Số khách</p>
@@ -238,31 +500,43 @@ function BookingDetailModal({ booking, open, onClose }) {
           </div>
 
           {/* Service & Place */}
-          {(booking.service || booking.place) && (
+          {(service || place) && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Dịch vụ & Địa điểm</h3>
               <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                {booking.place && (
+                {place && (
                   <div className="flex items-start gap-2">
                     <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
                     <div>
-                      <p className="font-medium">{booking.place.name}</p>
-                      {booking.place.address && (
-                        <p className="text-xs text-gray-500">{booking.place.address}</p>
+                      <p className="font-medium">{place.name}</p>
+                      {place.address && (
+                        <p className="text-xs text-gray-500">{place.address}</p>
                       )}
                     </div>
                   </div>
                 )}
-                {booking.service && (
+                {service && (
                   <div className="flex items-start gap-2">
                     <Clock className="h-4 w-4 text-gray-400 mt-0.5" />
                     <div>
-                      <p className="font-medium">{booking.service.name}</p>
-                      {booking.service.price && (
-                        <p className="text-xs text-gray-500">
-                          {booking.service.price.toLocaleString("vi-VN")} đ
-                        </p>
+                      <p className="font-medium">{service.name}</p>
+                      {service.durationMinutes && (
+                        <p className="text-xs text-gray-500">{service.durationMinutes} phút</p>
                       )}
+                      {service.maxCapacity && (
+                        <p className="text-xs text-gray-500">Sức chứa: {service.maxCapacity}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {booking.resource && (
+                  <div className="flex items-start gap-2">
+                    <Users className="h-4 w-4 text-primary mt-0.5" />
+                    <div>
+                      <p className="font-medium text-primary">{booking.resource.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {booking.resource.resourceType} {booking.resource.code && `(${booking.resource.code})`}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -314,6 +588,7 @@ const BookingSchedulePage = () => {
   const [selectedPlaceId, setSelectedPlaceId] = useState("all");
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [viewMode, setViewMode] = useState("grid"); // "grid" | "timeline"
 
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
 
@@ -329,7 +604,7 @@ const BookingSchedulePage = () => {
       .catch(() => {});
   }, []);
 
-  // Load bookings for the week using getAll API with date range
+  // Load bookings for the week
   const loadBookings = useCallback(async () => {
     setLoading(true);
     try {
@@ -339,13 +614,11 @@ const BookingSchedulePage = () => {
       const res = await bookingApi.getAll({
         fromDate,
         toDate,
-        limit: 500, // Get up to 500 bookings for the week
+        limit: 500,
       });
 
-      console.log("[BookingSchedule] API Response:", res.data);
       setAllBookings(res.data || []);
     } catch (e) {
-      console.error("[BookingSchedule] Load error:", e);
       toastApiErrorIfNeeded(e);
     } finally {
       setLoading(false);
@@ -359,7 +632,7 @@ const BookingSchedulePage = () => {
   // Filter bookings by place
   const filteredBookings = useMemo(() => {
     if (selectedPlaceId === "all") return allBookings;
-    return allBookings.filter((b) => b.place?.id === Number(selectedPlaceId));
+    return allBookings.filter((b) => getPlaceFromBooking(b)?.id === Number(selectedPlaceId));
   }, [allBookings, selectedPlaceId]);
 
   // Get bookings for a specific day
@@ -370,18 +643,6 @@ const BookingSchedulePage = () => {
     });
   }, [filteredBookings]);
 
-  // Get bookings for a specific time slot on a specific day
-  const getBookingsForSlot = useCallback((date, timeId) => {
-    const dayBookings = getBookingsForDay(date);
-    const slotHour = parseInt(timeId.split(":")[0], 10);
-
-    return dayBookings.filter((b) => {
-      if (!b.useTime) return false;
-      const bookingHour = parseInt(b.useTime.split(":")[0], 10);
-      return bookingHour === slotHour;
-    });
-  }, [getBookingsForDay]);
-
   // Stats
   const stats = useMemo(() => ({
     total: filteredBookings.length,
@@ -389,6 +650,29 @@ const BookingSchedulePage = () => {
     confirmed: filteredBookings.filter((b) => b.status === BOOKING_STATUS.CONFIRMED).length,
     completed: filteredBookings.filter((b) => b.status === BOOKING_STATUS.COMPLETED).length,
   }), [filteredBookings]);
+
+  // Determine view mode based on booking model
+  const activeBookingModel = useMemo(() => {
+    // Get unique booking models from filtered bookings
+    const models = new Set();
+    filteredBookings.forEach((b) => {
+      const model = b.service?.bookingModel || BOOKING_MODELS.CAPACITY;
+      models.add(model);
+    });
+
+    // If any booking uses RESOURCE model, use timeline view
+    if (models.has(BOOKING_MODELS.RESOURCE)) {
+      return BOOKING_MODELS.RESOURCE;
+    }
+    return BOOKING_MODELS.CAPACITY;
+  }, [filteredBookings]);
+
+  // Auto-switch view mode based on booking model
+  useEffect(() => {
+    if (activeBookingModel === BOOKING_MODELS.RESOURCE) {
+      setViewMode("timeline");
+    }
+  }, [activeBookingModel]);
 
   // Navigation
   const goToPrevWeek = () => {
@@ -440,19 +724,56 @@ const BookingSchedulePage = () => {
               </Link>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Lịch đặt chỗ</h1>
-                <p className="text-sm text-gray-500">Xem và quản lý lịch theo tuần</p>
+                <p className="text-sm text-gray-500">
+                  {activeBookingModel === BOOKING_MODELS.RESOURCE
+                    ? "Quản lý theo tài nguyên (bàn/phòng)"
+                    : "Quản lý theo sức chứa"}
+                </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadBookings}
-              disabled={loading}
-              className="gap-2"
-            >
-              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-              <span className="hidden sm:inline">Làm mới</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* View Mode Toggle */}
+              {activeBookingModel === BOOKING_MODELS.RESOURCE && (
+                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("grid")}
+                    className={cn(
+                      "p-2 rounded-md transition-colors",
+                      viewMode === "grid"
+                        ? "bg-white shadow-sm text-primary"
+                        : "text-gray-500 hover:text-gray-700"
+                    )}
+                    aria-label="Xem dạng lưới"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("timeline")}
+                    className={cn(
+                      "p-2 rounded-md transition-colors",
+                      viewMode === "timeline"
+                        ? "bg-white shadow-sm text-primary"
+                        : "text-gray-500 hover:text-gray-700"
+                    )}
+                    aria-label="Xem dạng timeline"
+                  >
+                    <LayoutList className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadBookings}
+                disabled={loading}
+                className="gap-2"
+              >
+                <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+                <span className="hidden sm:inline">Làm mới</span>
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -526,6 +847,26 @@ const BookingSchedulePage = () => {
               </span>
             </div>
           )}
+
+          {/* Model indicator */}
+          <div className={cn(
+            "ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium",
+            activeBookingModel === BOOKING_MODELS.RESOURCE
+              ? "bg-purple-50 text-purple-700 border border-purple-200"
+              : "bg-blue-50 text-blue-700 border border-blue-200"
+          )}>
+            {activeBookingModel === BOOKING_MODELS.RESOURCE ? (
+              <>
+                <Users className="h-3.5 w-3.5" />
+                Mô hình: Tài nguyên
+              </>
+            ) : (
+              <>
+                <CircleCheck className="h-3.5 w-3.5" />
+                Mô hình: Sức chứa
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -564,7 +905,6 @@ const BookingSchedulePage = () => {
               {weekDays.map((day) => {
                 const isToday = isSameDay(day, new Date());
                 const dayBookings = getBookingsForDay(day);
-                const isWeekend = day.getDay() === 0 || day.getDay() === 6;
 
                 return (
                   <div
@@ -576,7 +916,7 @@ const BookingSchedulePage = () => {
                   >
                     <p className={cn(
                       "text-[10px] uppercase tracking-wide",
-                      isWeekend ? "text-red-500" : "text-gray-500"
+                      (day.getDay() === 0 || day.getDay() === 6) ? "text-red-500" : "text-gray-500"
                     )}>
                       {day.toLocaleDateString("vi-VN", { weekday: "short" })}
                     </p>
@@ -597,7 +937,7 @@ const BookingSchedulePage = () => {
             </div>
 
             {/* Time Grid */}
-            <div className="flex max-h-[600px] overflow-y-auto">
+            <div className="flex max-h-[700px] overflow-y-auto">
               {/* Time labels */}
               <div className="w-16 bg-gray-50 border-r border-gray-200 shrink-0">
                 {TIME_SLOTS.map((slot) => (
@@ -610,49 +950,24 @@ const BookingSchedulePage = () => {
                 ))}
               </div>
 
-              {/* Day columns with bookings */}
-              {weekDays.map((day) => {
-                const isToday = isSameDay(day, new Date());
-                const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-
-                return (
-                  <div
+              {/* Day columns */}
+              {weekDays.map((day) => (
+                viewMode === "timeline" ? (
+                  <DayColumnTimeline
                     key={day.toISOString()}
-                    className={cn(
-                      "flex-1 min-w-[120px] border-r border-gray-100 last:border-r-0",
-                      isToday && "bg-primary/[0.02]"
-                    )}
-                  >
-                    {TIME_SLOTS.map((slot) => {
-                      const slotBookings = getBookingsForSlot(day, slot.id);
-
-                      return (
-                        <div
-                          key={slot.id}
-                          className={cn(
-                            "h-20 border-b border-gray-100 p-1 transition-colors",
-                            slotBookings.length > 0 && "bg-gray-50/50"
-                          )}
-                        >
-                          {slotBookings.length > 0 ? (
-                            <div className="h-full space-y-1 overflow-y-auto">
-                              {slotBookings.map((booking) => (
-                                <BookingCard
-                                  key={booking.id}
-                                  booking={booking}
-                                  onClick={handleViewBooking}
-                                />
-                              ))}
-                            </div>
-                          ) : (
-                            <EmptyCell />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
+                    date={day}
+                    bookings={getBookingsForDay(day)}
+                    onViewBooking={handleViewBooking}
+                  />
+                ) : (
+                  <DayColumnGrid
+                    key={day.toISOString()}
+                    date={day}
+                    bookings={getBookingsForDay(day)}
+                    onViewBooking={handleViewBooking}
+                  />
+                )
+              ))}
             </div>
           </div>
         )}
@@ -671,6 +986,14 @@ const BookingSchedulePage = () => {
             <span className="w-3 h-3 bg-emerald-50 border-l-2 border-l-emerald-500 rounded" />
             <span>Hoàn thành</span>
           </div>
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-3 w-3 text-amber-500" />
+            <span>≥80% sức chứa</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CircleX className="h-3 w-3 text-red-500" />
+            <span>Đầy sức chứa</span>
+          </div>
         </div>
       </div>
 
@@ -678,7 +1001,11 @@ const BookingSchedulePage = () => {
       <BookingDetailModal
         booking={selectedBooking}
         open={detailOpen}
-        onClose={() => setDetailOpen(false)}
+        onClose={() => {
+          setDetailOpen(false);
+          // Clear after animation completes
+          setTimeout(() => setSelectedBooking(null), 300);
+        }}
       />
     </div>
   );

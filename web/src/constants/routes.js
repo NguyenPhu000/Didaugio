@@ -20,6 +20,7 @@ export const ADMIN_ROUTES = {
   DASHBOARD: "/dashboard",
   PROFILE: "/profile",
   SETTINGS: "/settings",
+  NOTIFICATIONS: "/notifications",
 
   USERS: "/users",
   ROLES: "/roles",

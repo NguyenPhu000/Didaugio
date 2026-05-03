@@ -2,6 +2,7 @@ import prisma from "../../config/prismaClient.js";
 import { PAGINATION } from "../../config/constants.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
+import { flushPattern } from "../cache/cache.service.js";
 
 const MOD_ACTION_REVIEW = "REVIEW_STATUS";
 const MOD_ACTION_REPLY = "REPLY_STATUS";
@@ -328,6 +329,10 @@ export const moderateReview = async (id, data = {}, actorUserId) => {
     await recalculatePlaceRating(tx, existing.placeId);
 
     return normalizeReviewMediaResponse(review);
+  }).then((result) => {
+    // Flush place cache since rating changed
+    flushPattern("places:");
+    return result;
   });
 };
 

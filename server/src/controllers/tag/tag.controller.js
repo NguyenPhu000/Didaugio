@@ -1,5 +1,11 @@
 import * as tagService from "../../services/tag/tag.service.js";
 import { ERROR_CODES } from "../../config/messages.js";
+import {
+  get as cacheGet,
+  set as cacheSet,
+  flushPattern,
+  TTL,
+} from "../../services/cache/cache.service.js";
 
 /**
  * TAG CONTROLLER
@@ -9,6 +15,12 @@ import { ERROR_CODES } from "../../config/messages.js";
 // GET /api/tags - Lấy danh sách tags
 export const getTags = async (req, res, next) => {
   try {
+    const cacheKey = "tags:list";
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const { tagType, isActive, search, sortBy } = req.query;
 
     const tags = await tagService.getAllTags({
@@ -18,12 +30,14 @@ export const getTags = async (req, res, next) => {
       sortBy,
     });
 
-    res.json({
+    const body = {
       success: true,
       data: tags,
       total: tags.length,
       message: "Lấy danh sách tag thành công",
-    });
+    };
+    cacheSet(cacheKey, body, TTL.STATIC);
+    res.json(body);
   } catch (error) {
     next(error);
   }
@@ -32,15 +46,23 @@ export const getTags = async (req, res, next) => {
 // GET /api/tags/popular - Lấy popular tags
 export const getPopularTags = async (req, res, next) => {
   try {
+    const cacheKey = "tags:popular";
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const { limit = 20, tagType } = req.query;
 
     const tags = await tagService.getPopularTags(limit, tagType);
 
-    res.json({
+    const body = {
       success: true,
       data: tags,
       message: "Lấy danh sách tag phổ biến thành công",
-    });
+    };
+    cacheSet(cacheKey, body, TTL.STATIC);
+    res.json(body);
   } catch (error) {
     next(error);
   }
@@ -128,6 +150,8 @@ export const createTag = async (req, res, next) => {
       color,
     });
 
+    flushPattern("tags:");
+
     res.status(201).json({
       success: true,
       message: "Tag created successfully",
@@ -144,6 +168,8 @@ export const bulkCreateTags = async (req, res, next) => {
     const { tags } = req.body;
 
     const created = await tagService.bulkCreateTags(tags);
+
+    flushPattern("tags:");
 
     res.status(201).json({
       success: true,
@@ -170,6 +196,8 @@ export const updateTag = async (req, res, next) => {
       isActive,
     });
 
+    flushPattern("tags:");
+
     res.json({
       success: true,
       message: "Tag updated successfully",
@@ -186,6 +214,8 @@ export const deleteTag = async (req, res, next) => {
     const { id } = req.params;
 
     const result = await tagService.deleteTag(id);
+
+    flushPattern("tags:");
 
     res.json({
       success: true,

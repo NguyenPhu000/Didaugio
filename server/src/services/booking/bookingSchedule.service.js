@@ -32,8 +32,13 @@ const scheduleInclude = {
     select: {
       id: true,
       name: true,
+      price: true,
       maxCapacity: true,
-      place: { select: { id: true, name: true } },
+      durationMinutes: true,
+      bookingModel: true,
+      slotDurationMinutes: true,
+      allowOverbooking: true,
+      place: { select: { id: true, name: true, address: true } },
     },
   },
   user: {
@@ -41,6 +46,15 @@ const scheduleInclude = {
       id: true,
       email: true,
       profile: { select: { fullName: true, phone: true } },
+    },
+  },
+  resource: {
+    select: {
+      id: true,
+      name: true,
+      code: true,
+      resourceType: true,
+      capacity: true,
     },
   },
 };
@@ -154,11 +168,26 @@ export async function getScheduleByDate(businessId, dateStr) {
     slotBuckets[slot]?.push(item);
   }
 
+  // Build capacity summary per slot
+  const slotCapacities = {};
+  for (const slotKey of Object.keys(slotBuckets)) {
+    const slotBookings = slotBuckets[slotKey];
+    const totalUsed = slotBookings.reduce((sum, b) => sum + b.quantity, 0);
+    const maxCap = slotBookings[0]?.service?.maxCapacity || null;
+    slotCapacities[slotKey] = {
+      used: totalUsed,
+      capacity: maxCap,
+      remaining: maxCap ? Math.max(0, maxCap - totalUsed) : null,
+      isFull: maxCap ? totalUsed >= maxCap : false,
+    };
+  }
+
   return {
     date: dateStr,
     businessId,
     slots: slotBuckets,
     overbookingIds: [...overbookingIds],
+    capacities: slotCapacities,
   };
 }
 
@@ -215,12 +244,20 @@ export async function rescheduleBooking(
     const useDate = toUseDateOnly(newAt);
     const useTime = toUseTimeString(newAt);
 
+    // Update startTime/endTime for RESOURCE model
+    const startTime = existing.service?.bookingModel === "resource" ? newAt : null;
+    const endTime = startTime && existing.service?.durationMinutes
+      ? new Date(newAt.getTime() + existing.service.durationMinutes * 60_000)
+      : null;
+
     await tx.booking.update({
       where: { id: existing.id },
       data: {
         bookingAt: newAt,
         useDate,
         useTime,
+        startTime,
+        endTime,
         ...(businessNote !== undefined && { businessNote }),
       },
     });

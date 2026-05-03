@@ -1,40 +1,30 @@
-import { Toaster } from "react-hot-toast";
-import { Toaster as Sonner } from "sonner";
+import { Toaster } from "sonner";
 
 /**
  * TOAST PROVIDER
- * Centralized toast notification configuration
+ * Centralized toast notification configuration — sonner only
  */
 export const ToastProvider = ({ children }) => {
   return (
     <>
-      {/* React Hot Toast */}
       <Toaster
         position="top-right"
+        richColors
+        theme="light"
         toastOptions={{
-          duration: 3000,
-          style: {
-            background: "#363636",
-            color: "#fff",
-          },
-          success: {
-            iconTheme: {
-              primary: "#22c55e",
-              secondary: "#fff",
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: "#ef4444",
-              secondary: "#fff",
-            },
+          classNames: {
+            toast: "border border-gray-200 bg-white shadow-lg rounded-xl",
+            title: "text-sm font-semibold text-gray-900",
+            description: "text-xs text-gray-500 mt-0.5",
+            success:
+              "border-emerald-200 bg-emerald-50 text-emerald-800",
+            error:
+              "border-red-200 bg-red-50 text-red-800",
+            warning:
+              "border-amber-200 bg-amber-50 text-amber-800",
           },
         }}
       />
-      
-      {/* Sonner */}
-      <Sonner richColors position="top-right" />
-      
       {children}
     </>
   );

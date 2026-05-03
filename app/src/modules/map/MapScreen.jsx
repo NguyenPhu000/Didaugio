@@ -51,7 +51,7 @@ import {
   DEFAULT_MAP_STYLE,
 } from "./config/mapConfig";
 import { TOKENS } from "../../constants/design-tokens";
-import { FLOATING_TAB_CLEARANCE } from "../../../app/(tabs)/_layout";
+import { FLOATING_TAB_CLEARANCE, TAB_BAR_HEIGHT } from "../../../app/(tabs)/_layout";
 import { ALL_AREAS_KEY } from "./constants/filter.constants";
 import { ROUTE_BUILDER_LONG_PRESS_PICK_RADIUS_M } from "./constants/routeBuilder.constants";
 import { NAVIGATION_EVENT_DEDUP_MS } from "./constants/navigation.constants";
@@ -131,90 +131,7 @@ const GlassPanel = ({ style, children, intensity = 40 }) => (
   </BlurView>
 );
 
-const LayerSwitcherModal = ({ visible, onClose, currentStyle, onSelect }) => {
-  const options = Object.values(MAP_STYLES);
 
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <Pressable
-        className="flex-1 items-center justify-center"
-        style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
-        onPress={onClose}
-      >
-        <View
-          className="rounded-2xl p-4 w-[260px]"
-          style={{
-            elevation: 10,
-            backgroundColor: MAP_UI_THEME.backgroundElevated,
-            borderWidth: 1,
-            borderColor: MAP_UI_THEME.border,
-          }}
-        >
-          <Text
-            className="text-[15px] font-bold text-center mb-4"
-            style={{ color: MAP_UI_THEME.text }}
-          >
-            {MAP_TEXT.layerSwitcher.title}
-          </Text>
-          {options.map((opt) => {
-            const active = currentStyle.key === opt.key;
-            return (
-              <Pressable
-                key={opt.key}
-                onPress={() => {
-                  onSelect(opt);
-                  onClose();
-                }}
-                className="flex-row items-center gap-3 py-3 px-3 rounded-xl mb-1"
-                style={
-                  active
-                    ? { backgroundColor: "rgba(0,240,255,0.12)" }
-                    : undefined
-                }
-              >
-                <MaterialIcons
-                  name={
-                    opt.key === "satellite"
-                      ? "satellite"
-                      : opt.key === "osm"
-                        ? "map"
-                        : "layers"
-                  }
-                  size={22}
-                  color={
-                    active ? MAP_UI_THEME.neon : MAP_UI_THEME.textSecondary
-                  }
-                />
-                <Text
-                  className="text-[14px] font-medium flex-1"
-                  style={{
-                    color: active
-                      ? MAP_UI_THEME.text
-                      : MAP_UI_THEME.textSecondary,
-                  }}
-                >
-                  {opt.label}
-                </Text>
-                {active ? (
-                  <MaterialIcons
-                    name="check"
-                    size={20}
-                    color={MAP_UI_THEME.neon}
-                  />
-                ) : null}
-              </Pressable>
-            );
-          })}
-        </View>
-      </Pressable>
-    </Modal>
-  );
-};
 
 export default function MapScreen() {
   const { width: viewportWidth, height: viewportHeight } =
@@ -1119,27 +1036,93 @@ export default function MapScreen() {
               </GlassPanel>
             </Pressable>
 
-            <Pressable
-              className="w-[44px] h-[44px]"
-              onPress={() => setLayerModalVisible(true)}
-            >
-              <GlassPanel
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  alignItems: "center",
-                  justifyContent: "center",
+            <View className="flex-row items-center gap-2">
+              {layerModalVisible && (
+                <GlassPanel
+                  style={{
+                    flexDirection: "row",
+                    padding: 4,
+                    borderRadius: 26,
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                  intensity={80}
+                >
+                  <Pressable
+                    onPress={() => {
+                      LayoutAnimation.configureNext(
+                        LayoutAnimation.Presets.easeInEaseOut,
+                      );
+                      setMapStyle(MAP_STYLES.OSM);
+                      setLayerModalVisible(false);
+                    }}
+                    className="w-[44px] h-[44px] rounded-full items-center justify-center"
+                    style={{
+                      backgroundColor:
+                        mapStyle.key === "osm" ? "#1D1D1F" : "transparent",
+                    }}
+                  >
+                    <MaterialIcons
+                      name="map"
+                      size={20}
+                      color={
+                        mapStyle.key === "osm" ? "#FFFFFF" : MAP_UI_THEME.text
+                      }
+                    />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      LayoutAnimation.configureNext(
+                        LayoutAnimation.Presets.easeInEaseOut,
+                      );
+                      setMapStyle(MAP_STYLES.HYBRID);
+                      setLayerModalVisible(false);
+                    }}
+                    className="w-[44px] h-[44px] rounded-full items-center justify-center"
+                    style={{
+                      backgroundColor:
+                        mapStyle.key === "hybrid" ? "#1D1D1F" : "transparent",
+                    }}
+                  >
+                    <MaterialIcons
+                      name="satellite"
+                      size={20}
+                      color={
+                        mapStyle.key === "hybrid"
+                          ? "#FFFFFF"
+                          : MAP_UI_THEME.text
+                      }
+                    />
+                  </Pressable>
+                </GlassPanel>
+              )}
+              <Pressable
+                className="w-[44px] h-[44px]"
+                onPress={() => {
+                  LayoutAnimation.configureNext(
+                    LayoutAnimation.Presets.easeInEaseOut,
+                  );
+                  setLayerModalVisible(!layerModalVisible);
                 }}
-                intensity={52}
               >
-                <MaterialIcons
-                  name="layers"
-                  size={20}
-                  color={MAP_UI_THEME.text}
-                />
-              </GlassPanel>
-            </Pressable>
+                <GlassPanel
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                  intensity={52}
+                >
+                  <MaterialIcons
+                    name={layerModalVisible ? "close" : "layers"}
+                    size={20}
+                    color={MAP_UI_THEME.text}
+                  />
+                </GlassPanel>
+              </Pressable>
+            </View>
           </View>
         </View>
       </View>
@@ -1181,12 +1164,7 @@ export default function MapScreen() {
         onSelectOption={handleSelectFilterOption}
       />
 
-      <LayerSwitcherModal
-        visible={layerModalVisible}
-        onClose={() => setLayerModalVisible(false)}
-        currentStyle={mapStyle}
-        onSelect={setMapStyle}
-      />
+
     </View>
   );
 }

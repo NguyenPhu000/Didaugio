@@ -15,6 +15,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import ProfilePage from "@/pages/ProfilePage";
+import NotificationsPage from "@/pages/NotificationsPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
 import UserManagePage from "@/pages/UserManagePage";
 import EmailVerificationPage from "@/pages/EmailVerificationPage";
@@ -174,6 +175,14 @@ const AppRoutes = () => {
           <ProtectedAdmin>
             <ProfilePage />
           </ProtectedAdmin>
+        }
+      />
+      <Route
+        path={ADMIN_ROUTES.NOTIFICATIONS}
+        element={
+          <ProtectedRoute>
+            <NotificationsPage />
+          </ProtectedRoute>
         }
       />
       <Route

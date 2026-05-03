@@ -8,6 +8,8 @@ import {
   Settings,
   Calendar,
   Check,
+  ExternalLink,
+  Store,
 } from "lucide-react";
 import {
   Button,
@@ -26,6 +28,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/animate-ui/components/radix/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/animate-ui/components/radix/popover";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { useLogout } from "@/hooks/useLogout";
@@ -33,9 +40,12 @@ import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { useWebPush } from "@/hooks/useWebPush";
 import { useNotifications } from "@/hooks/useNotifications";
 import { resolveRoleId } from "@/utils/authRouting";
+import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const ROUTE_LABELS = {
   [ADMIN_ROUTES.DASHBOARD]: "Tổng quan",
+  [ADMIN_ROUTES.NOTIFICATIONS]: "Thông báo",
   [ADMIN_ROUTES.PLACES]: "Địa điểm",
   [ADMIN_ROUTES.CATEGORIES]: "Danh mục",
   [ADMIN_ROUTES.TAGS]: "Thẻ tag",
@@ -58,6 +68,18 @@ const ROUTE_LABELS = {
 };
 
 const REVIEW_NOTIFICATION_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF];
+
+function formatTime(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function AdminHeader() {
   const user = useAuthStore((state) => state.user);
@@ -105,13 +127,22 @@ function AdminHeader() {
       if (type.includes("business") || metadata.businessId) {
         return ADMIN_ROUTES.BUSINESS_LIST;
       }
+      if (type.includes("review") || metadata.reviewId) {
+        return ADMIN_ROUTES.REVIEWS_MODERATION;
+      }
       return ADMIN_ROUTES.DASHBOARD;
     }
 
+    if ((type.includes("booking") || metadata.bookingId) && metadata.bookingId) {
+      return BUSINESS_ROUTES.BOOKING_DETAIL(metadata.bookingId);
+    }
     if (type.includes("booking")) return BUSINESS_ROUTES.BOOKINGS;
     if (type.includes("review")) return BUSINESS_ROUTES.REVIEWS;
     if (type.includes("business") || type.includes("document")) {
       return BUSINESS_ROUTES.PROFILE;
+    }
+    if ((type.includes("place") || metadata.placeId) && metadata.placeId) {
+      return BUSINESS_ROUTES.PLACES_EDIT(metadata.placeId);
     }
     return BUSINESS_ROUTES.DASHBOARD;
   };
@@ -173,13 +204,13 @@ function AdminHeader() {
         </div>
 
         {/* Notifications */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <Popover>
+          <PopoverTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
               aria-label="Thông báo"
-              className="relative h-9 w-9 rounded-full hover:bg-sidebar-accent text-sidebar-foreground"
+              className="relative h-9 w-9 rounded-full hover:bg-accent text-sidebar-foreground"
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
@@ -188,74 +219,120 @@ function AdminHeader() {
                 </span>
               )}
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80 mt-2 bg-sidebar border-sidebar-border text-sidebar-foreground">
-            <DropdownMenuLabel className="text-xs font-mono uppercase tracking-widest opacity-60 flex items-center justify-between">
-              Thông báo
-              {unreadCount > 0 && <span className="text-red-500">{unreadCount} mới</span>}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-sidebar-border" />
-            {unreadCount > 0 && (
-              <DropdownMenuItem
-                className="flex items-center gap-2 text-[10px] font-mono uppercase text-sidebar-foreground/70 focus:bg-sidebar-accent"
-                onClick={() => markAllAsRead()}
-              >
-                <Check className="h-3 w-3" />
-                Đánh dấu tất cả đã đọc
-              </DropdownMenuItem>
-            )}
-            {unreadCount > 0 && <DropdownMenuSeparator className="bg-sidebar-border" />}
-            {notifications.length === 0 ? (
-              <div className="py-6 text-center text-xs text-sidebar-foreground/40 font-mono">Không có thông báo mới</div>
-            ) : (
-              notifications.slice(0, 5).map((n) => (
-                <DropdownMenuItem
-                  key={n.id}
-                  className="flex flex-col items-start gap-0.5 py-2 px-3 focus:bg-sidebar-accent cursor-pointer"
-                  onClick={() => {
-                    markAsRead(n.id);
-                    navigate(resolveNotificationRoute(n));
-                  }}
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            sideOffset={8}
+            className="w-[360px] p-0 overflow-hidden !bg-white border border-gray-200 shadow-xl rounded-2xl"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Thông báo</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  {unreadCount > 0
+                    ? `${unreadCount} chưa đọc`
+                    : "Cập nhật từ đặt chỗ và hệ thống"}
+                </p>
+              </div>
+              {unreadCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => markAllAsRead()}
+                  className="h-7 px-2 text-[11px] text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                 >
-                  <span className="text-xs font-semibold leading-tight">{n.title}</span>
-                  <span className="text-[10px] text-sidebar-foreground/50 line-clamp-2">{n.message}</span>
-                  <span className="text-[9px] text-sidebar-foreground/30 font-mono mt-0.5">
-                    {n.createdAt ? new Date(n.createdAt).toLocaleString("vi-VN") : ""}
-                  </span>
-                </DropdownMenuItem>
-              ))
-            )}
-            {notifications.length > 5 && (
-              <>
-                <DropdownMenuSeparator className="bg-sidebar-border" />
-                <DropdownMenuItem className="text-center text-[10px] font-mono uppercase text-sidebar-foreground/50 focus:bg-sidebar-accent">
-                  Xem tất cả
-                </DropdownMenuItem>
-              </>
-            )}
+                  <Check className="mr-1 h-3 w-3" />
+                  Đọc hết
+                </Button>
+              )}
+            </div>
+
+            {/* List */}
+            <ScrollArea className="max-h-[360px]">
+              {notifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-2">
+                  <Bell className="h-8 w-8 text-gray-200" />
+                  <p className="text-sm font-medium text-gray-400">Chưa có thông báo</p>
+                  <p className="text-[11px] text-gray-300 text-center px-4">
+                    Khi booking được xác nhận hoặc có thay đổi trạng thái, bạn sẽ thấy ở đây.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col">
+                  {notifications.map((n) => {
+                    const unread = !n.readAt;
+                    return (
+                      <button
+                        key={n.id}
+                        onClick={() => {
+                          markAsRead(n.id);
+                          navigate(resolveNotificationRoute(n));
+                        }}
+                        className={cn(
+                          "flex flex-col gap-0.5 px-4 py-3 text-left transition-colors hover:bg-gray-50 border-b border-gray-50 last:border-0",
+                          unread && "bg-blue-50/50 hover:bg-blue-50"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-[13px] font-semibold text-gray-900 leading-tight line-clamp-1">
+                            {n.title || "Thông báo"}
+                          </span>
+                          {unread && (
+                            <span className="shrink-0 mt-1 h-2 w-2 rounded-full bg-blue-500" />
+                          )}
+                        </div>
+                        <span className="text-[12px] text-gray-500 line-clamp-2 leading-relaxed">
+                          {n.message || n.body || ""}
+                        </span>
+                        <span className="text-[10px] text-gray-300 font-mono mt-0.5">
+                          {formatTime(n.createdAt)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </ScrollArea>
+
             {/* Web Push toggle */}
             {!isSubscribed && permission !== "denied" && (
               <>
-                <DropdownMenuSeparator className="bg-sidebar-border" />
-                <DropdownMenuItem
-                  className="flex items-center gap-2 text-[10px] font-mono uppercase text-sidebar-foreground/70 focus:bg-sidebar-accent"
-                  onClick={() => requestPermissionAndSubscribe()}
-                >
-                  <Bell className="h-3 w-3" />
-                  Bật thông báo trình duyệt
-                </DropdownMenuItem>
-              </>
-            )}
-            {isSubscribed && (
-              <>
-                <DropdownMenuSeparator className="bg-sidebar-border" />
-                <div className="px-3 py-1.5 text-[9px] font-mono text-emerald-600/70 flex items-center gap-1">
-                  <Check className="h-3 w-3" /> Thông báo trình duyệt đã bật
+                <div className="border-t border-gray-100 px-4 py-2.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => requestPermissionAndSubscribe()}
+                    className="w-full justify-start h-8 text-[11px] text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                  >
+                    <Bell className="mr-2 h-3 w-3" />
+                    Bật thông báo trình duyệt
+                  </Button>
                 </div>
               </>
             )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            {isSubscribed && (
+              <div className="border-t border-gray-100 px-4 py-2">
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-600">
+                  <Check className="h-3 w-3" /> Thông báo trình duyệt đã bật
+                </div>
+              </div>
+            )}
+            {notifications.length > 0 && (
+              <div className="border-t border-gray-100 px-4 py-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate(ADMIN_ROUTES.NOTIFICATIONS)}
+                  className="w-full justify-center h-8 text-[12px] font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                >
+                  Xem tất cả thông báo
+                  <ExternalLink className="ml-1.5 h-3 w-3" />
+                </Button>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
 
         {/* Profile */}
         <DropdownMenu>
@@ -292,6 +369,14 @@ function AdminHeader() {
             >
               <User className="h-4 w-4" /> Hồ sơ cá nhân
             </DropdownMenuItem>
+            {[ROLES.BUSINESS].includes(currentRoleId) && (
+              <DropdownMenuItem
+                onClick={() => navigate(BUSINESS_ROUTES.PROFILE)}
+                className="focus:bg-sidebar-accent gap-2"
+              >
+                <Store className="h-4 w-4" /> Hồ sơ doanh nghiệp
+              </DropdownMenuItem>
+            )}
             {[ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(user?.roleId) && (
               <DropdownMenuItem
                 onClick={() => navigate(ADMIN_ROUTES.SETTINGS)}

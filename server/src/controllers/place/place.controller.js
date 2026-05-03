@@ -3,6 +3,16 @@ import { ERROR_CODES } from "../../config/messages.js";
 import appService from "../../services/app/app.service.js";
 import prisma from "../../config/prismaClient.js";
 import { ROLES } from "../../config/constants.js";
+import {
+  buildKey,
+  get as cacheGet,
+  set as cacheSet,
+  flushPattern,
+  TTL,
+} from "../../services/cache/cache.service.js";
+
+/** Flush all place-related cache entries after any mutation. */
+const invalidatePlaces = () => flushPattern("places:");
 
 /**
  * GET /api/places - Lấy danh sách địa điểm
@@ -26,6 +36,7 @@ export const getPlaces = async (req, res, next) => {
     } = req.query;
 
     let businessId = req.query.businessId;
+    const isPublicRequest = !req.user || req.user.roleId >= ROLES.BUSINESS;
 
     const filters = {
       categoryId,
@@ -62,14 +73,29 @@ export const getPlaces = async (req, res, next) => {
       }
     }
 
+    // Cache only public/guest requests (no auth-specific filters)
+    const cacheKey = isPublicRequest ? buildKey("places:list", filters) : null;
+    if (cacheKey) {
+      const cached = cacheGet(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+    }
+
     const result = await placeService.getAllPlaces(filters);
 
-    res.json({
+    const body = {
       success: true,
       data: result.data,
       pagination: result.pagination,
       message: "Lấy danh sách địa điểm thành công",
-    });
+    };
+
+    if (cacheKey) {
+      cacheSet(cacheKey, body, TTL.PLACES);
+    }
+
+    res.json(body);
   } catch (error) {
     next(error);
   }
@@ -82,6 +108,18 @@ export const getNearbyPlaces = async (req, res, next) => {
   try {
     const { latitude, longitude, radius, limit, categoryId } = req.query;
 
+    const cacheKey = buildKey("places:nearby", {
+      latitude,
+      longitude,
+      radius,
+      limit,
+      categoryId,
+    });
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const places = await placeService.getNearbyPlaces({
       latitude,
       longitude,
@@ -90,11 +128,14 @@ export const getNearbyPlaces = async (req, res, next) => {
       categoryId,
     });
 
-    res.json({
+    const body = {
       success: true,
       data: places,
       message: "Lấy danh sách địa điểm gần bạn thành công",
-    });
+    };
+
+    cacheSet(cacheKey, body, TTL.PLACES);
+    res.json(body);
   } catch (error) {
     next(error);
   }
@@ -108,6 +149,15 @@ export const getPlaceById = async (req, res, next) => {
     const { id } = req.params;
     const incrementView = req.query.view === "true";
 
+    // Skip cache when incrementing view count
+    if (!incrementView) {
+      const cacheKey = buildKey("places:detail:id", { id });
+      const cached = cacheGet(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+    }
+
     const place = await placeService.getPlaceById(id, incrementView);
 
     if (!place) {
@@ -119,11 +169,17 @@ export const getPlaceById = async (req, res, next) => {
       });
     }
 
-    res.json({
+    const body = {
       success: true,
       data: place,
       message: "Lấy chi tiết địa điểm thành công",
-    });
+    };
+
+    if (!incrementView) {
+      cacheSet(buildKey("places:detail:id", { id }), body, TTL.PLACES);
+    }
+
+    res.json(body);
   } catch (error) {
     next(error);
   }
@@ -137,6 +193,14 @@ export const getPlaceBySlug = async (req, res, next) => {
     const { slug } = req.params;
     const incrementView = req.query.view === "true";
 
+    if (!incrementView) {
+      const cacheKey = buildKey("places:detail:slug", { slug });
+      const cached = cacheGet(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+    }
+
     const place = await placeService.getPlaceBySlug(slug, incrementView);
 
     if (!place) {
@@ -148,11 +212,17 @@ export const getPlaceBySlug = async (req, res, next) => {
       });
     }
 
-    res.json({
+    const body = {
       success: true,
       data: place,
       message: "Lấy địa điểm theo slug thành công",
-    });
+    };
+
+    if (!incrementView) {
+      cacheSet(buildKey("places:detail:slug", { slug }), body, TTL.PLACES);
+    }
+
+    res.json(body);
   } catch (error) {
     next(error);
   }
@@ -236,6 +306,8 @@ export const createPlace = async (req, res, next) => {
       req.user.userId,
     );
 
+    invalidatePlaces();
+
     res.status(201).json({
       success: true,
       message: "Tạo địa điểm thành công",
@@ -261,6 +333,8 @@ export const updatePlace = async (req, res, next) => {
       req.user.roleId,
     );
 
+    invalidatePlaces();
+
     res.json({
       success: true,
       message: "Cập nhật địa điểm thành công",
@@ -279,6 +353,8 @@ export const deletePlace = async (req, res, next) => {
 
     const result = await placeService.deletePlace(id);
 
+    invalidatePlaces();
+
     res.json({
       success: true,
       message: result.message,
@@ -296,6 +372,8 @@ export const approvePlace = async (req, res, next) => {
     const { id } = req.params;
 
     const place = await placeService.approvePlace(id, req.user.userId);
+
+    invalidatePlaces();
 
     res.json({
       success: true,
@@ -317,6 +395,8 @@ export const rejectPlace = async (req, res, next) => {
 
     const place = await placeService.rejectPlace(id, req.user.userId, reason);
 
+    invalidatePlaces();
+
     res.json({
       success: true,
       message: "Từ chối địa điểm thành công",
@@ -337,6 +417,8 @@ export const updateStatus = async (req, res, next) => {
 
     const place = await placeService.updateStatus(id, status, req.user.roleId);
 
+    invalidatePlaces();
+
     res.json({
       success: true,
       message: "Cập nhật trạng thái thành công",
@@ -356,6 +438,8 @@ export const toggleFeatured = async (req, res, next) => {
     const { isFeatured } = req.body;
 
     const place = await placeService.toggleFeatured(id, isFeatured);
+
+    invalidatePlaces();
 
     res.json({
       success: true,
@@ -378,6 +462,8 @@ export const submitForReview = async (req, res, next) => {
 
     const place = await placeService.submitForReview(id);
 
+    invalidatePlaces();
+
     res.json({
       success: true,
       message: "Gửi duyệt thành công",
@@ -398,6 +484,8 @@ export const addImages = async (req, res, next) => {
 
     const result = await placeService.addImages(id, images, req.user.userId);
 
+    invalidatePlaces();
+
     res.status(201).json({
       success: true,
       message: "Thêm ảnh thành công",
@@ -417,6 +505,8 @@ export const deleteImage = async (req, res, next) => {
 
     await placeService.deleteImage(id, imageId);
 
+    invalidatePlaces();
+
     res.json({
       success: true,
       message: "Xóa ảnh thành công",
@@ -434,6 +524,8 @@ export const setCoverImage = async (req, res, next) => {
     const { id, imageId } = req.params;
 
     await placeService.setCoverImage(id, imageId);
+
+    invalidatePlaces();
 
     res.json({
       success: true,
@@ -454,6 +546,8 @@ export const reorderImages = async (req, res, next) => {
 
     await placeService.reorderImages(id, imageOrders);
 
+    invalidatePlaces();
+
     res.json({
       success: true,
       message: "Sắp xếp ảnh thành công",
@@ -468,13 +562,22 @@ export const reorderImages = async (req, res, next) => {
  */
 export const getStats = async (req, res, next) => {
   try {
+    const cacheKey = "places:stats";
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const stats = await placeService.getPlaceStats();
 
-    res.json({
+    const body = {
       success: true,
       data: stats,
       message: "Lấy thống kê địa điểm thành công",
-    });
+    };
+
+    cacheSet(cacheKey, body, TTL.PLACES);
+    res.json(body);
   } catch (error) {
     next(error);
   }
@@ -484,12 +587,22 @@ const getUserId = (req) => req.user?.userId || req.user?.id || null;
 
 export const getHomeData = async (req, res, next) => {
   try {
+    const cacheKey = buildKey("places:home", req.query);
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const data = await appService.getHomeData(req.query);
-    res.json({
+
+    const body = {
       success: true,
       data,
       message: "Lấy dữ liệu trang chủ thành công",
-    });
+    };
+
+    cacheSet(cacheKey, body, TTL.PLACES);
+    res.json(body);
   } catch (error) {
     next(error);
   }

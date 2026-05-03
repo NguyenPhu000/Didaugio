@@ -785,7 +785,7 @@ const BookingListPage = () => {
       setTotal(response.pagination?.total || 0);
 
       // Expand all places by default
-      const uniquePlaces = [...new Set(response.data?.map(b => b.place?.id).filter(Boolean))];
+      const uniquePlaces = [...new Set(response.data?.map(b => getPlaceFromBooking(b)?.id).filter(Boolean))];
       if (uniquePlaces.length > 0) {
         setExpandedPlaces(prev => {
           const updated = { ...prev };
@@ -953,17 +953,26 @@ const BookingListPage = () => {
     return bk?.status === BOOKING_STATUS.PENDING;
   });
 
+  // ─── Helper: get place from booking ────────────────────────────────────────────
+
+  // API returns nested: { service: { place: { id, name } } }
+  // Serialize flattens user, but place stays nested in service
+  const getPlaceFromBooking = (booking) => {
+    return booking.service?.place || booking.place || null;
+  };
+
   // ─── Grouped Bookings ───────────────────────────────────────────────────────
 
   // Group by place
   const groupedByPlace = useMemo(() => {
     const groups = {};
     bookings.forEach((booking) => {
-      const placeId = booking.place?.id || "no-place";
-      const placeName = booking.place?.name || "Không xác định";
+      const place = getPlaceFromBooking(booking);
+      const placeId = place?.id || "no-place";
+      const placeName = place?.name || "Không xác định";
       if (!groups[placeId]) {
         groups[placeId] = {
-          place: booking.place || { id: placeId, name: placeName },
+          place: place || { id: placeId, name: placeName, address: null },
           bookings: [],
         };
       }

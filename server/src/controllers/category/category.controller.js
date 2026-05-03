@@ -1,6 +1,12 @@
 import * as categoryService from "../../services/category/category.service.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import { setPublicListCache } from "../../utils/httpCacheHeaders.js";
+import {
+  get as cacheGet,
+  set as cacheSet,
+  flushPattern,
+  TTL,
+} from "../../services/cache/cache.service.js";
 
 /**
  * CATEGORY CONTROLLER
@@ -14,16 +20,32 @@ export const getCategories = async (req, res, next) => {
 
     // Format: tree hoặc flat
     if (format === "tree") {
+      const cacheKey = "categories:tree";
+      const cached = cacheGet(cacheKey);
+      if (cached) {
+        setPublicListCache(res);
+        return res.json(cached);
+      }
+
       const tree = await categoryService.getCategoryTree(parentId || null);
-      setPublicListCache(res);
-      return res.json({
+      const body = {
         success: true,
         data: tree,
         message: "Lấy cây danh mục thành công",
-      });
+      };
+      cacheSet(cacheKey, body, TTL.STATIC);
+      setPublicListCache(res);
+      return res.json(body);
     }
 
     // Flat list
+    const cacheKey = "categories:list";
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      setPublicListCache(res);
+      return res.json(cached);
+    }
+
     const categories = await categoryService.getAllCategories({
       parentId,
       level,
@@ -31,13 +53,15 @@ export const getCategories = async (req, res, next) => {
       search,
     });
 
-    setPublicListCache(res);
-    res.json({
+    const body = {
       success: true,
       data: categories,
       total: categories.length,
       message: "Lấy danh sách danh mục thành công",
-    });
+    };
+    cacheSet(cacheKey, body, TTL.STATIC);
+    setPublicListCache(res);
+    res.json(body);
   } catch (error) {
     next(error);
   }
@@ -48,17 +72,26 @@ export const getCategoryTree = async (req, res, next) => {
   try {
     const { parentId, maxLevel } = req.query;
 
+    const cacheKey = "categories:tree";
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      setPublicListCache(res);
+      return res.json(cached);
+    }
+
     const tree = await categoryService.getCategoryTree(
       parentId || null,
       maxLevel,
     );
 
-    setPublicListCache(res);
-    res.json({
+    const body = {
       success: true,
       data: tree,
       message: "Lấy cây danh mục thành công",
-    });
+    };
+    cacheSet(cacheKey, body, TTL.STATIC);
+    setPublicListCache(res);
+    res.json(body);
   } catch (error) {
     next(error);
   }
@@ -159,6 +192,8 @@ export const createCategory = async (req, res, next) => {
       order: order || 0,
     });
 
+    flushPattern("categories:");
+
     res.status(201).json({
       success: true,
       message: "Category created successfully",
@@ -197,6 +232,8 @@ export const updateCategory = async (req, res, next) => {
       isActive,
     });
 
+    flushPattern("categories:");
+
     res.json({
       success: true,
       message: "Category updated successfully",
@@ -213,6 +250,8 @@ export const deleteCategory = async (req, res, next) => {
     const { id } = req.params;
 
     const result = await categoryService.deleteCategory(id);
+
+    flushPattern("categories:");
 
     res.json({
       success: true,

@@ -16,6 +16,7 @@ import {
   TOKENS,
 } from "../../src/constants/design-tokens";
 import { useMyBookings } from "../../src/modules/booking/hooks/useBooking";
+import { NotificationBell } from "../../src/components/composed/NotificationBell";
 
 const STATUS_META = {
   pending: {
@@ -102,9 +103,12 @@ export default function MyBookingsScreen() {
           </Text>
         </View>
 
-        <Pressable onPress={refetch} style={styles.iconBtn}>
-          <MaterialIcons name="refresh" size={20} color={THEME.textSecondary} />
-        </Pressable>
+        <View style={styles.headerRight}>
+          <NotificationBell size={40} />
+          <Pressable onPress={refetch} style={styles.iconBtn}>
+            <MaterialIcons name="refresh" size={20} color={THEME.textSecondary} />
+          </Pressable>
+        </View>
       </View>
 
       {isLoading ? (
@@ -285,6 +289,11 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.surface,
     borderWidth: 1,
     borderColor: THEME.border,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   headerBody: {
     flex: 1,

@@ -42,10 +42,7 @@ export const MAP_TEXT = Object.freeze({
   mapConfig: {
     mapStyles: {
       osm: "Bản đồ",
-      cartoLight: "Tối giản",
-      admin: "Hành chính",
-      satellite: "Vệ tinh",
-      hybrid: "Hybrid",
+      hybrid: "Vệ tinh",
     },
     categoryLabels: {
       cuisine: "Ẩm thực",

@@ -1,12 +1,13 @@
 import { memo } from "react";
 import { Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { MaterialIcons, Ionicons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../../constants/design-tokens";
 import { getGreeting, getUserName } from "../utils/exploreHelpers";
 import { resolveMediaUrl } from "../../../lib/media-url";
+import { NotificationBell } from "../../../components/composed/NotificationBell";
 
 function ExploreModernHeaderInner({ user, onPressSearch }) {
   const userName = getUserName(user);
@@ -36,14 +37,7 @@ function ExploreModernHeaderInner({ user, onPressSearch }) {
           </View>
         </View>
 
-        <Pressable style={styles.bellButton}>
-          <Ionicons
-            name="notifications-outline"
-            size={22}
-            color={APPLE_THEME.text}
-          />
-          <View style={styles.notificationDot} />
-        </Pressable>
+        <NotificationBell size={44} />
       </View>
 
       {/* Title */}
@@ -94,7 +88,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#F1F5F9", // Slate 100
+    backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -112,36 +106,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: APPLE_THEME.text,
     fontFamily: TOKENS.font.semibold,
-  },
-  bellButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APPLE_THEME.borderSoft || "#E2E8F0",
-    alignItems: "center",
-    justifyContent: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
-      },
-      android: { elevation: 1 },
-    }),
-  },
-  notificationDot: {
-    position: "absolute",
-    top: 13,
-    right: 12,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#FF2D55", // Red dot
-    borderWidth: 1.5,
-    borderColor: APPLE_THEME.surface,
   },
   /* — Title — */
   titleWrap: {
@@ -167,9 +131,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: APPLE_THEME.surface,
     height: 54,
-    borderRadius: 999, // Pill shape
+    borderRadius: 999,
     paddingLeft: 16,
-    paddingRight: 6, // Smaller padding on right for the inner button
+    paddingRight: 6,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: APPLE_THEME.borderSoft || "#E2E8F0",
     ...Platform.select({
@@ -192,7 +156,7 @@ const styles = StyleSheet.create({
   locationButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#000000", // Black accent matching the theme
+    backgroundColor: "#000000",
     height: 42,
     paddingHorizontal: 16,
     borderRadius: 999,

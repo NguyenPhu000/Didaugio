@@ -41,9 +41,14 @@ const defaultInclude = {
       id: true,
       name: true,
       price: true,
+      maxCapacity: true,
+      durationMinutes: true,
+      bookingModel: true,
+      slotDurationMinutes: true,
+      allowOverbooking: true,
       businessId: true,
       business: { select: { id: true, businessName: true, status: true } },
-      place: { select: { id: true, name: true } },
+      place: { select: { id: true, name: true, address: true } },
     },
   },
   user: {
@@ -56,6 +61,15 @@ const defaultInclude = {
           phone: true,
         },
       },
+    },
+  },
+  resource: {
+    select: {
+      id: true,
+      name: true,
+      code: true,
+      resourceType: true,
+      capacity: true,
     },
   },
 };
@@ -949,6 +963,12 @@ export const create = async (payload = {}, userId) => {
   const useDate = toUseDateOnly(bookingAt);
   const useTime = payload.useTime || toUseTimeString(bookingAt);
 
+  // Tính startTime/endTime cho RESOURCE model
+  const startTime = service.bookingModel === "resource" ? bookingAt : null;
+  const endTime = startTime && service.durationMinutes
+    ? new Date(bookingAt.getTime() + service.durationMinutes * 60_000)
+    : null;
+
   const guestName =
     payload.guestName || user.profile?.fullName || user.email || "Khách";
   const guestPhone = payload.guestPhone || user.profile?.phone || "0000000000";
@@ -981,6 +1001,8 @@ export const create = async (payload = {}, userId) => {
         quantity,
         useDate,
         useTime,
+        startTime,
+        endTime,
         guestName,
         guestPhone,
         guestEmail,

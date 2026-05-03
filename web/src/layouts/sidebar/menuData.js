@@ -94,19 +94,6 @@ const menuData = {
   ],
   business: [
     {
-      title: "Hồ sơ doanh nghiệp",
-      icon: Store,
-      roles: [R.BUSINESS],
-      items: [
-        { title: "Thông tin & giấy tờ", url: BUSINESS_ROUTES.PROFILE },
-        {
-          title: "Hợp đồng",
-          url: BUSINESS_ROUTES.PROFILE_CONTRACT,
-          icon: FileText,
-        },
-      ],
-    },
-    {
       title: "Địa điểm của tôi",
       icon: MapPin,
       roles: [R.BUSINESS],

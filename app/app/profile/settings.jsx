@@ -17,6 +17,7 @@ import { useAuth } from "../../src/modules/auth/hooks/useAuth";
 import { useAuthStore } from "../../src/stores/authStore";
 import { useUIStore } from "../../src/stores/uiStore";
 import { useProfile } from "../../src/modules/profile/hooks/useProfile";
+import { useNotifications } from "../../src/modules/notifications/hooks/useNotifications";
 import { TOKENS } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "../(tabs)/_layout";
 import { TAB_SCREEN_PADDING, TAB_THEME } from "../(tabs)/tabTheme";
@@ -96,6 +97,15 @@ function SectionHeader({ text }) {
   return <Text style={styles.sectionHeaderText}>{text}</Text>;
 }
 
+function NotificationBadge({ count }) {
+  const displayCount = count > 99 ? "99+" : String(count);
+  return (
+    <View style={styles.notifBadge}>
+      <Text style={styles.notifBadgeText}>{displayCount}</Text>
+    </View>
+  );
+}
+
 function LogoutConfirmModal({ visible, onCancel, onConfirm }) {
   return (
     <Modal
@@ -146,6 +156,8 @@ export default function SettingsScreen() {
 
   const { logout } = useAuth();
   const { data: profile, refetch, isRefetching } = useProfile(isLoggedIn);
+  const { data: notifData } = useNotifications({ enabled: isLoggedIn });
+  const unreadCount = notifData?.unreadCount ?? 0;
 
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
@@ -319,6 +331,29 @@ export default function SettingsScreen() {
             icon="notifications"
             iconBg="rgba(239,68,68,0.08)"
             iconColor="#EF4444"
+            title="Thông báo"
+            subtitle={(() => {
+              const count = unreadCount;
+              return count > 0
+                ? `${count} thông báo mới chưa đọc`
+                : "Không có thông báo mới";
+            })()}
+            onPress={() => router.push("/profile/notifications")}
+            rightElement={
+              unreadCount > 0 ? (
+                <NotificationBadge count={unreadCount} />
+              ) : (
+                <MaterialIcons name="chevron-right" size={24} color="#64748B" />
+              )
+            }
+          />
+          <View style={styles.divider} />
+
+          {/* Push Notifications toggle */}
+          <SettingRow
+            icon="notifications-active"
+            iconBg="rgba(0,113,227,0.08)"
+            iconColor="#0071E3"
             title="Thông báo đẩy"
             subtitle={pushEnabled ? "Bật" : "Tắt"}
             rightElement={
@@ -561,6 +596,23 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     marginLeft: 8,
     marginBottom: 10,
+  },
+
+  /* Notification badge */
+  notifBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#FF3B30",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+  },
+  notifBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontFamily: TOKENS.font.semibold,
+    fontWeight: "600",
   },
 
   /* Language badge */
