@@ -56,61 +56,6 @@ const getPreviewPriceLabel = (place) => {
   return PRICE_RANGE_LABELS[priceRangeKey] || "Liên hệ";
 };
 
-const getPreviewOpenState = (place) => {
-  const openingHours = Array.isArray(place?.openingHours)
-    ? place.openingHours
-    : [];
-
-  if (openingHours.length === 0) {
-    return {
-      label: "Giờ mở cửa cập nhật sau",
-      icon: "schedule",
-      textColor: STITCH_MUTED,
-      bgColor: "#F2F4F6",
-    };
-  }
-
-  const now = new Date();
-  const currentDay = now.getDay();
-  const currentSchedule = openingHours.find(
-    (item) => Number(item?.dayOfWeek) === currentDay,
-  );
-
-  if (!currentSchedule) {
-    return {
-      label: "Giờ mở cửa cập nhật sau",
-      icon: "schedule",
-      textColor: STITCH_MUTED,
-      bgColor: "#F2F4F6",
-    };
-  }
-
-  if (currentSchedule?.isClosed) {
-    return {
-      label: "Hôm nay đóng cửa",
-      icon: "do-not-disturb-on",
-      textColor: "#B91C1C",
-      bgColor: "#FEE2E2",
-    };
-  }
-
-  if (currentSchedule?.openTime && currentSchedule?.closeTime) {
-    return {
-      label: `${currentSchedule.openTime} - ${currentSchedule.closeTime}`,
-      icon: "schedule",
-      textColor: "#047857",
-      bgColor: "#DCFCE7",
-    };
-  }
-
-  return {
-    label: "Mở cửa hôm nay",
-    icon: "schedule",
-    textColor: "#047857",
-    bgColor: "#DCFCE7",
-  };
-};
-
 export const PlacePreviewCard = memo(
   ({
     place,
@@ -144,8 +89,6 @@ export const PlacePreviewCard = memo(
       place?.address ||
       [place?.ward?.name, place?.district?.name].filter(Boolean).join(", ") ||
       "Cần Thơ";
-    const categoryLabel = place?.category?.name || "Điểm đến nổi bật";
-    const openState = getPreviewOpenState(place);
     const reviewLabel = formatReviewCount(reviewCount);
     const priceLabel = getPreviewPriceLabel(place);
     const canShowDetailAction =
@@ -158,6 +101,9 @@ export const PlacePreviewCard = memo(
       showRouteAction && typeof onStartRoute === "function";
     const selectionLabel = selected ? selectedLabel : unselectedLabel;
     const hasTravelInfo = Boolean(travelEtaLabel || travelDistanceLabel);
+    const travelLabel = travelLoading
+      ? "Đang tính..."
+      : [travelEtaLabel, travelDistanceLabel].filter(Boolean).join(" · ");
 
     return (
       <View
@@ -179,46 +125,26 @@ export const PlacePreviewCard = memo(
             />
           ) : (
             <View style={styles.thumbnailFallback}>
-              <MaterialIcons name="place" size={24} color="#64748b" />
+              <MaterialIcons name="place" size={22} color="#94A3B8" />
             </View>
           )}
-
-          <View
-            style={[
-              styles.categoryBadge,
-              compact && styles.categoryBadgeCompact,
-            ]}
-          >
-            <Text
-              numberOfLines={1}
-              style={[
-                styles.categoryText,
-                compact && styles.categoryTextCompact,
-              ]}
-            >
-              {categoryLabel}
-            </Text>
-          </View>
         </View>
 
         <View style={[styles.content, compact && styles.contentCompact]}>
           <View style={styles.headerRow}>
             <Text
-              numberOfLines={2}
+              numberOfLines={1}
               style={[styles.title, compact && styles.titleCompact]}
             >
               {place?.name || "Địa điểm"}
             </Text>
-
             {showCloseButton ? (
               <Pressable
                 onPress={onClose}
-                style={[
-                  styles.closeButton,
-                  compact && styles.closeButtonCompact,
-                ]}
+                hitSlop={8}
+                style={styles.closeButton}
               >
-                <MaterialIcons name="close" size={16} color="#64748B" />
+                <MaterialIcons name="close" size={14} color="#94A3B8" />
               </Pressable>
             ) : null}
           </View>
@@ -226,8 +152,8 @@ export const PlacePreviewCard = memo(
           <View style={styles.locationRow}>
             <MaterialIcons
               name="place"
-              size={compact ? 12 : 13}
-              color={STITCH_PRIMARY}
+              size={12}
+              color={STITCH_MUTED}
             />
             <Text
               numberOfLines={1}
@@ -238,217 +164,101 @@ export const PlacePreviewCard = memo(
             >
               {locationLabel}
             </Text>
+            {hasTravelInfo || travelLoading ? (
+              <>
+                <Text style={styles.dotSep}>·</Text>
+                <MaterialIcons
+                  name="directions-car"
+                  size={11}
+                  color="#0A84FF"
+                />
+                <Text numberOfLines={1} style={styles.travelText}>
+                  {travelLabel}
+                </Text>
+              </>
+            ) : null}
           </View>
 
-          {travelLoading || hasTravelInfo ? (
-            <View style={styles.travelInfoRow}>
-              <MaterialIcons
-                name="directions-car"
-                size={compact ? 12 : 13}
-                color="#0A84FF"
-              />
-              <View style={styles.travelInfoPill}>
-                <Text
-                  style={[
-                    styles.travelInfoText,
-                    compact && styles.travelInfoTextCompact,
-                  ]}
-                >
-                  {travelLoading ? "Đang tính lộ trình..." : ""}
-                  {!travelLoading && travelEtaLabel ? travelEtaLabel : ""}
-                  {!travelLoading && travelEtaLabel && travelDistanceLabel
-                    ? " • "
-                    : ""}
-                  {!travelLoading && travelDistanceLabel
-                    ? travelDistanceLabel
-                    : ""}
-                </Text>
-              </View>
-            </View>
-          ) : null}
-
-          <View style={[styles.metaRow, compact && styles.metaRowCompact]}>
+          <View style={styles.metaRow}>
             {rating > 0 ? (
-              <View
-                style={[styles.metaPill, compact && styles.metaPillCompact]}
-              >
+              <>
                 <MaterialIcons
                   name="star"
-                  size={compact ? 12 : 13}
+                  size={12}
                   color="#F59E0B"
                 />
-                <Text
-                  style={[
-                    styles.metaPillText,
-                    compact && styles.metaPillTextCompact,
-                  ]}
-                >
-                  {rating.toFixed(1)}
-                </Text>
-              </View>
+                <Text style={styles.metaText}>{rating.toFixed(1)}</Text>
+                <Text style={styles.dotSep}>·</Text>
+              </>
             ) : null}
-
-            <Text
-              numberOfLines={1}
-              style={[styles.reviewText, compact && styles.reviewTextCompact]}
-            >
+            <Text numberOfLines={1} style={styles.metaText}>
               {reviewLabel}
             </Text>
-
             {priceLabel ? (
-              <View
-                style={[styles.pricePill, compact && styles.pricePillCompact]}
-              >
-                <MaterialIcons
-                  name="payments"
-                  size={compact ? 11 : 12}
-                  color={STITCH_PRIMARY}
-                />
-                <Text
-                  numberOfLines={1}
-                  style={[styles.priceText, compact && styles.priceTextCompact]}
-                >
+              <>
+                <Text style={styles.dotSep}>·</Text>
+                <Text numberOfLines={1} style={styles.metaText}>
                   {priceLabel}
                 </Text>
-              </View>
+              </>
             ) : null}
           </View>
 
-          <View style={[styles.footerRow, compact && styles.footerRowCompact]}>
-            <View
-              style={[
-                styles.openStatePill,
-                compact && styles.openStatePillCompact,
-                { backgroundColor: openState.bgColor },
-              ]}
-            >
-              <MaterialIcons
-                name={openState.icon}
-                size={compact ? 11 : 12}
-                color={openState.textColor}
-              />
-              <Text
-                numberOfLines={1}
+          <View style={styles.actionsRow}>
+            {canShowRouteAction ? (
+              <Pressable
+                onPress={() => onStartRoute(place)}
+                style={[styles.actionBtn, styles.routeBtn]}
+              >
+                <MaterialIcons name="directions" size={14} color="#FFFFFF" />
+                <Text style={styles.routeBtnText}>{routeActionLabel}</Text>
+              </Pressable>
+            ) : null}
+            {canShowDetailAction ? (
+              <Pressable
+                onPress={() => onViewDetail(place)}
+                style={[styles.actionBtn, styles.detailBtn]}
+              >
+                <MaterialIcons name="arrow-forward" size={13} color="#FFFFFF" />
+                <Text style={styles.detailBtnText}>{detailLabel}</Text>
+              </Pressable>
+            ) : null}
+            {canShowSelectionAction ? (
+              <Pressable
+                onPress={() => onToggleSelection(place)}
                 style={[
-                  styles.openStateText,
-                  compact && styles.openStateTextCompact,
-                  { color: openState.textColor },
+                  styles.actionBtn,
+                  styles.selectionBtn,
+                  selected && styles.selectionBtnActive,
                 ]}
               >
-                {openState.label}
-              </Text>
-            </View>
-
-            {canShowDetailAction ||
-            canShowSelectionAction ||
-            canShowAddToTripAction ||
-            canShowRouteAction ? (
-              <View
-                style={[
-                  styles.actionGroup,
-                  compact && styles.actionGroupCompact,
-                ]}
+                <MaterialIcons
+                  name={selected ? "check-circle" : "radio-button-unchecked"}
+                  size={13}
+                  color={selected ? "#FFFFFF" : STITCH_PRIMARY}
+                />
+                <Text
+                  style={[
+                    styles.selectionBtnText,
+                    selected && styles.selectionBtnTextActive,
+                  ]}
+                >
+                  {selectionLabel}
+                </Text>
+              </Pressable>
+            ) : null}
+            {canShowAddToTripAction ? (
+              <Pressable
+                onPress={() => onAddToTrip(place)}
+                style={[styles.actionBtn, styles.addTripBtn]}
               >
-                {canShowDetailAction ? (
-                  <Pressable
-                    onPress={() => onViewDetail(place)}
-                    style={[
-                      styles.detailButton,
-                      compact && styles.actionButtonCompact,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.detailButtonText,
-                        compact && styles.actionButtonTextCompact,
-                      ]}
-                    >
-                      {detailLabel}
-                    </Text>
-                    <MaterialIcons
-                      name="arrow-forward"
-                      size={compact ? 13 : 14}
-                      color="#FFFFFF"
-                    />
-                  </Pressable>
-                ) : null}
-
-                {canShowSelectionAction ? (
-                  <Pressable
-                    onPress={() => onToggleSelection(place)}
-                    style={[
-                      styles.selectionButton,
-                      selected && styles.selectionButtonActive,
-                      compact && styles.actionButtonCompact,
-                    ]}
-                  >
-                    <MaterialIcons
-                      name={
-                        selected ? "check-circle" : "radio-button-unchecked"
-                      }
-                      size={compact ? 13 : 14}
-                      color={selected ? "#FFFFFF" : STITCH_PRIMARY}
-                    />
-                    <Text
-                      style={[
-                        styles.selectionButtonText,
-                        selected && styles.selectionButtonTextActive,
-                        compact && styles.actionButtonTextCompact,
-                      ]}
-                    >
-                      {selectionLabel}
-                    </Text>
-                  </Pressable>
-                ) : null}
-
-                {canShowAddToTripAction ? (
-                  <Pressable
-                    onPress={() => onAddToTrip(place)}
-                    style={[
-                      styles.addToTripButton,
-                      compact && styles.actionButtonCompact,
-                    ]}
-                  >
-                    <MaterialIcons
-                      name="playlist-add-check-circle"
-                      size={compact ? 13 : 14}
-                      color={STITCH_PRIMARY}
-                    />
-                    <Text
-                      style={[
-                        styles.addToTripButtonText,
-                        compact && styles.actionButtonTextCompact,
-                      ]}
-                    >
-                      {addToTripLabel}
-                    </Text>
-                  </Pressable>
-                ) : null}
-
-                {canShowRouteAction ? (
-                  <Pressable
-                    onPress={() => onStartRoute(place)}
-                    style={[
-                      styles.routeButton,
-                      compact && styles.actionButtonCompact,
-                    ]}
-                  >
-                    <MaterialIcons
-                      name="directions"
-                      size={compact ? 13 : 14}
-                      color="#FFFFFF"
-                    />
-                    <Text
-                      style={[
-                        styles.routeButtonText,
-                        compact && styles.actionButtonTextCompact,
-                      ]}
-                    >
-                      {routeActionLabel}
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
+                <MaterialIcons
+                  name="playlist-add-check-circle"
+                  size={13}
+                  color={STITCH_PRIMARY}
+                />
+                <Text style={styles.addTripBtnText}>{addToTripLabel}</Text>
+              </Pressable>
             ) : null}
           </View>
         </View>
@@ -459,41 +269,40 @@ export const PlacePreviewCard = memo(
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderRadius: 24,
+    backgroundColor: "rgba(255,255,255,0.97)",
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.08)",
+    borderColor: "rgba(15,23,42,0.06)",
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    padding: 13,
-    shadowColor: "#191c1e",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 26,
-    elevation: 12,
+    gap: 11,
+    padding: 10,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
+    elevation: 8,
   },
   cardCompact: {
-    borderRadius: 20,
-    padding: 10,
-    gap: 10,
+    borderRadius: 16,
+    padding: 8,
+    gap: 9,
   },
   cardSelected: {
-    borderColor: "rgba(14,165,233,0.32)",
-    backgroundColor: "rgba(240,249,255,0.96)",
+    borderColor: "rgba(14,165,233,0.3)",
+    backgroundColor: "rgba(240,249,255,0.97)",
   },
   thumbnailWrap: {
-    width: 96,
-    height: 108,
-    borderRadius: 16,
+    width: 80,
+    height: 80,
+    borderRadius: 14,
     overflow: "hidden",
-    backgroundColor: "#E0E3E5",
-    position: "relative",
+    backgroundColor: "#E2E8F0",
   },
   thumbnailWrapCompact: {
-    width: 84,
-    height: 96,
-    borderRadius: 14,
+    width: 68,
+    height: 68,
+    borderRadius: 12,
   },
   thumbnail: {
     width: "100%",
@@ -504,307 +313,135 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  categoryBadge: {
-    position: "absolute",
-    left: 6,
-    right: 6,
-    bottom: 6,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.08)",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    height: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  categoryBadgeCompact: {
-    left: 5,
-    right: 5,
-    bottom: 5,
-    height: 22,
-    paddingHorizontal: 7,
-  },
-  categoryText: {
-    color: STITCH_PRIMARY,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.3,
-  },
-  categoryTextCompact: {
-    fontSize: 10,
-  },
   content: {
     flex: 1,
     minWidth: 0,
-    gap: 7,
+    gap: 4,
   },
   contentCompact: {
-    gap: 6,
+    gap: 3,
   },
   headerRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
+    alignItems: "center",
+    gap: 6,
   },
   title: {
     flex: 1,
     color: STITCH_TEXT,
-    fontSize: 16,
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 19,
     fontFamily: TOKENS.font.heading,
     letterSpacing: -0.2,
   },
   titleCompact: {
-    fontSize: 15,
-    lineHeight: 19,
+    fontSize: 14,
+    lineHeight: 18,
   },
   closeButton: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.08)",
-  },
-  closeButtonCompact: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
   },
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 3,
   },
   locationText: {
-    flex: 1,
     color: STITCH_MUTED,
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: TOKENS.font.medium,
+    flexShrink: 1,
   },
   locationTextCompact: {
-    fontSize: 11,
+    fontSize: 10,
   },
-  travelInfoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+  dotSep: {
+    color: "#CBD5E1",
+    fontSize: 10,
+    fontFamily: TOKENS.font.medium,
+    marginHorizontal: 1,
   },
-  travelInfoPill: {
-    flex: 1,
-    minWidth: 0,
-    backgroundColor: "rgba(10,132,255,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(10,132,255,0.22)",
-    borderRadius: 999,
-    height: 24,
-    justifyContent: "center",
-    paddingHorizontal: 10,
-  },
-  travelInfoText: {
-    color: "#0B3A66",
+  travelText: {
+    color: "#0A84FF",
     fontSize: 11,
     fontFamily: TOKENS.font.semibold,
-  },
-  travelInfoTextCompact: {
-    fontSize: 10,
+    flexShrink: 1,
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 4,
   },
-  metaRowCompact: {
-    gap: 6,
-  },
-  metaPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "#FEF3C7",
-    borderWidth: 1,
-    borderColor: "#FCD34D",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    height: 24,
-  },
-  metaPillCompact: {
-    height: 22,
-    paddingHorizontal: 7,
-  },
-  metaPillText: {
-    color: "#92400E",
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  metaPillTextCompact: {
-    fontSize: 10,
-  },
-  reviewText: {
-    flex: 1,
+  metaText: {
     color: STITCH_MUTED,
     fontSize: 11,
     fontFamily: TOKENS.font.medium,
   },
-  reviewTextCompact: {
-    fontSize: 10,
-  },
-  pricePill: {
+  actionsRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    backgroundColor: "rgba(15,23,42,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.12)",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    height: 24,
-    maxWidth: 112,
-  },
-  pricePillCompact: {
-    height: 22,
-    paddingHorizontal: 7,
-    maxWidth: 96,
-  },
-  priceText: {
-    color: STITCH_PRIMARY,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  priceTextCompact: {
-    fontSize: 10,
-  },
-  footerRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-  },
-  footerRowCompact: {
     gap: 6,
+    marginTop: 2,
   },
-  openStatePill: {
-    flex: 1,
-    minWidth: 0,
+  actionBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     borderRadius: 999,
-    paddingHorizontal: 8,
-    height: 26,
-  },
-  openStatePillCompact: {
-    height: 24,
-    paddingHorizontal: 7,
-  },
-  openStateText: {
-    flex: 1,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  openStateTextCompact: {
-    fontSize: 10,
-  },
-  actionGroup: {
-    width: 132,
-    gap: 6,
-  },
-  actionGroupCompact: {
-    width: 116,
-    gap: 5,
-  },
-  actionButtonCompact: {
-    height: 28,
     paddingHorizontal: 10,
+    height: 28,
   },
-  actionButtonTextCompact: {
-    fontSize: 11,
+  routeBtn: {
+    backgroundColor: "#0A84FF",
+    shadowColor: "#0A84FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  detailButton: {
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "#0F172A",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    shadowColor: "#191c1e",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 14,
-    elevation: 6,
-  },
-  detailButtonText: {
+  routeBtnText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.2,
   },
-  selectionButton: {
-    height: 30,
-    borderRadius: 999,
+  detailBtn: {
+    backgroundColor: "#0F172A",
+  },
+  detailBtnText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontFamily: TOKENS.font.semibold,
+  },
+  selectionBtn: {
     borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.16)",
-    backgroundColor: "rgba(255,255,255,0.94)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingHorizontal: 12,
+    borderColor: "rgba(15,23,42,0.14)",
+    backgroundColor: "#FFFFFF",
   },
-  selectionButtonActive: {
+  selectionBtnActive: {
     borderColor: STITCH_PRIMARY,
     backgroundColor: STITCH_PRIMARY,
   },
-  selectionButtonText: {
+  selectionBtnText: {
     color: STITCH_PRIMARY,
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.1,
   },
-  selectionButtonTextActive: {
+  selectionBtnTextActive: {
     color: "#FFFFFF",
   },
-  addToTripButton: {
-    height: 30,
-    borderRadius: 999,
+  addTripBtn: {
     borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.14)",
-    backgroundColor: "rgba(248,250,252,0.96)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingHorizontal: 12,
+    borderColor: "rgba(15,23,42,0.12)",
+    backgroundColor: "#F8FAFC",
   },
-  addToTripButtonText: {
+  addTripBtnText: {
     color: STITCH_PRIMARY,
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.1,
-  },
-  routeButton: {
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "#0A84FF",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    shadowColor: "#0A84FF",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    elevation: 6,
-  },
-  routeButtonText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.2,
   },
 });

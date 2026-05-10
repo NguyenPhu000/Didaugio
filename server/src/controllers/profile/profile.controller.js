@@ -481,6 +481,48 @@ export const removeDestination = async (req, res, next) => {
   }
 };
 
+export const reorderDestinations = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.id);
+    if (!tripId)
+      return res.status(400).json({ success: false, data: null, message: "ID khong hop le", errorCode: ERROR_CODES.VALIDATION_ERROR });
+    const { dayNumber, orderedIds } = req.body;
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0)
+      return res.status(400).json({ success: false, data: null, message: "Danh sach sap xep khong hop le", errorCode: ERROR_CODES.VALIDATION_ERROR });
+    const destinations = await appService.reorderDestinations(tripId, getUserId(req), { dayNumber, orderedIds });
+    res.json({ success: true, data: destinations, message: "Da cap nhat thu tu lich trinh" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateDestination = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.id);
+    const destId = parseId(req.params.destId);
+    if (!tripId || !destId)
+      return res.status(400).json({ success: false, data: null, message: "ID khong hop le", errorCode: ERROR_CODES.VALIDATION_ERROR });
+    const dest = await appService.updateDestination(tripId, destId, getUserId(req), req.body);
+    res.json({ success: true, data: dest, message: "Da cap nhat dia diem" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const moveDestination = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.id);
+    const destId = parseId(req.params.destId);
+    if (!tripId || !destId)
+      return res.status(400).json({ success: false, data: null, message: "ID khong hop le", errorCode: ERROR_CODES.VALIDATION_ERROR });
+    const { newDayNumber, newOrder } = req.body;
+    const dest = await appService.moveDestination(tripId, destId, getUserId(req), { newDayNumber, newOrder });
+    res.json({ success: true, data: dest, message: "Da chuyen dia diem sang ngay khac" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updatePushToken = async (req, res) => {
   try {
     const userId = req.user?.userId;
@@ -540,5 +582,8 @@ export default {
   deleteTrip,
   addDestination,
   removeDestination,
+  reorderDestinations,
+  updateDestination,
+  moveDestination,
   updatePushToken,
 };

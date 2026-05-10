@@ -24,6 +24,8 @@ export function useSavedPlaces(enabled = true) {
     queryFn: () => getSavedPlacesApi(),
     enabled,
     select: (data) => data?.data || [],
+    retry: 2,
+    staleTime: 1000 * 60 * 2,
   });
 }
 

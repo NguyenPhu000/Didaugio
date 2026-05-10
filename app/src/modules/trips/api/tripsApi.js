@@ -21,3 +21,12 @@ export const addDestinationApi = (tripId, data) =>
 
 export const removeDestinationApi = (tripId, destId) =>
   client.delete(ENDPOINTS.profile.removeDestination(tripId, destId));
+
+export const reorderDestinationsApi = (tripId, data) =>
+  client.patch(ENDPOINTS.profile.reorderDestinations(tripId), data);
+
+export const updateDestinationApi = (tripId, destId, data) =>
+  client.patch(ENDPOINTS.profile.updateDestination(tripId, destId), data);
+
+export const moveDestinationApi = (tripId, destId, data) =>
+  client.patch(ENDPOINTS.profile.moveDestination(tripId, destId), data);

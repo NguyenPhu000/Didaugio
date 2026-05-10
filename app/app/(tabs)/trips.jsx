@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { View, FlatList, StyleSheet, Text } from "react-native";
+import { View, FlatList, StyleSheet, RefreshControl, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -17,6 +17,12 @@ import {
 } from "../../src/modules/trips/components/TripsStates";
 import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../src/constants/design-tokens";
 
+const SEPARATOR_HEIGHT = 10;
+
+function ItemSeparator() {
+  return <View style={styles.separator} />;
+}
+
 export default function TripsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -26,12 +32,12 @@ export default function TripsScreen() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [isOffline, setIsOffline] = useState(false);
 
-  // Use cached trips hook for offline support
   const {
     data: trips = [],
     isLoading,
     isError,
     refetch,
+    isRefetching,
   } = useTripsCached(isLoggedIn);
 
   const filteredTrips = useMemo(
@@ -55,6 +61,15 @@ export default function TripsScreen() {
     [router],
   );
 
+  const renderTripCard = useCallback(
+    ({ item }) => (
+      <TripCard trip={item} onPress={() => handlePressTrip(item.id)} />
+    ),
+    [handlePressTrip],
+  );
+
+  const keyExtractor = useCallback((item) => String(item.id), []);
+
   if (!isLoggedIn) {
     return (
       <GuestGate
@@ -70,27 +85,30 @@ export default function TripsScreen() {
       <OfflineBanner onNetworkChange={setIsOffline} />
       <FlatList
         data={!isLoading && !isError ? filteredTrips : []}
-        renderItem={({ item }) => (
-          <TripCard trip={item} onPress={() => handlePressTrip(item.id)} />
-        )}
-        keyExtractor={(item) => String(item.id)}
+        renderItem={renderTripCard}
+        keyExtractor={keyExtractor}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          <>
-            {!isLoading && !isError && (
-              <TripsDashboard
-                trips={trips}
-                filteredCount={filteredTrips.length}
-                activeFilter={activeFilter}
-                onSelectFilter={setActiveFilter}
-                onCreate={handleCreate}
-                onOpenHero={handlePressTrip}
-              />
-            )}
-          </>
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor="#1D1D1F"
+            colors={["#1D1D1F"]}
+          />
         }
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ListHeaderComponent={
+          !isLoading && !isError ? (
+            <TripsDashboard
+              trips={trips}
+              filteredCount={filteredTrips.length}
+              activeFilter={activeFilter}
+              onSelectFilter={setActiveFilter}
+              onOpenHero={handlePressTrip}
+            />
+          ) : null
+        }
+        ItemSeparatorComponent={ItemSeparator}
         ListEmptyComponent={
           isLoading ? (
             <LoadingState />
@@ -102,6 +120,18 @@ export default function TripsScreen() {
         }
         ListFooterComponent={<View style={styles.footerSpace} />}
       />
+
+      {/* Floating Action Button — bottom-right for one-handed reach */}
+      <Pressable
+        onPress={handleCreate}
+        style={({ pressed }) => [
+          styles.fab,
+          { bottom: TAB_BAR_HEIGHT + insets.bottom + 20 },
+          pressed && styles.fabPressed,
+        ]}
+      >
+        <MaterialIcons name="add" size={26} color="#FFFFFF" />
+      </Pressable>
     </View>
   );
 }
@@ -115,9 +145,28 @@ const styles = StyleSheet.create({
     paddingBottom: TAB_BAR_HEIGHT + 24,
   },
   separator: {
-    height: 18,
+    height: SEPARATOR_HEIGHT,
   },
   footerSpace: {
     height: 16,
+  },
+  fab: {
+    position: "absolute",
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#1D1D1F",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  fabPressed: {
+    backgroundColor: "#000000",
+    transform: [{ scale: 0.92 }],
   },
 });

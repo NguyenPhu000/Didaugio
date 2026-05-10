@@ -2,7 +2,10 @@
  * tripTheme.js — shared design tokens for the Trips module.
  * Uses TAB_THEME colors for visual consistency across the app.
  */
-import { TAB_SCREEN_PADDING, TAB_CARD_RADIUS } from "../../../app/(tabs)/tabTheme";
+import {
+  TAB_SCREEN_PADDING,
+  TAB_CARD_RADIUS,
+} from "../../../../app/(tabs)/tabTheme";
 
 export { TAB_SCREEN_PADDING, TAB_CARD_RADIUS };
 

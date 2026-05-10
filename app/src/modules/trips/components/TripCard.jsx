@@ -21,7 +21,7 @@ export const TripCard = memo(function TripCard({ trip, onPress }) {
   const destinationCount = trip.destinations?.length || 0;
   const dateRange = getDateRangeLabel(trip);
   const daysLabel = `${trip.totalDays || 1} ngày`;
-  const timelineLabel = getTimelineLabel(trip);
+  const timeline = getTimelineLabel(trip);
   const placesLabel =
     destinationCount === 0
       ? "Chưa có điểm đến"
@@ -31,254 +31,198 @@ export const TripCard = memo(function TripCard({ trip, onPress }) {
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
-        styles.tripCard,
-        pressed && styles.tripCardPressed,
+        styles.card,
+        pressed && styles.cardPressed,
       ]}
     >
-      <View style={styles.tripVisual}>
+      {/* Thumbnail */}
+      <View style={styles.thumbWrap}>
         {cover ? (
-          <Image
-            source={{ uri: cover }}
-            style={styles.tripImage}
-            contentFit="cover"
-            transition={300}
-            cachePolicy="memory-disk"
-          />
-        ) : (
-          <View style={styles.tripImageFallback}>
-            <View style={styles.tripFallbackGlow} />
-            <MaterialIcons
-              name="landscape"
-              size={42}
-              color={APPLE_THEME.textMuted}
+          <>
+            <Image
+              source={{ uri: cover }}
+              style={styles.thumb}
+              contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
             />
+            <LinearGradient
+              colors={["transparent", "rgba(0,0,0,0.12)"]}
+              style={StyleSheet.absoluteFill}
+            />
+          </>
+        ) : (
+          <View style={styles.thumbFallback}>
+            <MaterialIcons name="landscape" size={22} color="rgba(0,0,0,0.2)" />
           </View>
         )}
-
-        <LinearGradient
-          colors={["transparent", "rgba(0, 0, 0, 0.36)", "rgba(0, 0, 0, 0.62)"]}
-          locations={[0, 0.6, 1]}
-          style={styles.tripImageShade}
+        {/* Status indicator */}
+        <View
+          style={[styles.statusDot, { backgroundColor: status.accent }]}
         />
+      </View>
 
-        <View style={styles.tripTopRow}>
-          <View style={[styles.statusPill, { backgroundColor: status.bg }]}>
-            <MaterialIcons name={status.icon} size={14} color={status.text} />
-            <Text style={[styles.statusText, { color: status.text }]}>
+      {/* Content */}
+      <View style={styles.content}>
+        <Text style={styles.title} numberOfLines={1}>
+          {trip.title || "Chuyến đi mới"}
+        </Text>
+
+        <View style={styles.metaRow}>
+          <MaterialIcons
+            name="event"
+            size={12}
+            color={APPLE_THEME.textMuted}
+          />
+          <Text style={styles.metaText} numberOfLines={1}>
+            {dateRange}
+          </Text>
+          <View style={styles.metaDot} />
+          <MaterialIcons
+            name="schedule"
+            size={12}
+            color={APPLE_THEME.textMuted}
+          />
+          <Text style={styles.metaText}>{daysLabel}</Text>
+        </View>
+
+        <View style={styles.bottomRow}>
+          <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+            <View
+              style={[styles.statusBadgeDot, { backgroundColor: status.text }]}
+            />
+            <Text style={[styles.statusLabel, { color: status.text }]}>
               {status.label}
             </Text>
           </View>
-
-          <View style={styles.timelinePill}>
-            <MaterialIcons name="schedule" size={13} color={APPLE_THEME.text} />
-            <Text style={styles.timelinePillText}>{timelineLabel}</Text>
-          </View>
-        </View>
-
-        <View style={styles.tripHeroText}>
-          <Text style={styles.tripTitle} numberOfLines={2}>
-            {trip.title || "Chuyến đi mới"}
-          </Text>
-          <Text style={styles.tripSubtitle} numberOfLines={2}>
-            {trip.description ||
-              "Sắp xếp điểm đến, lịch trình và ghi chú cho từng hành trình."}
-          </Text>
+          <Text style={styles.placesText}>{placesLabel}</Text>
         </View>
       </View>
 
-      <View style={styles.tripBody}>
-        <View style={styles.metricRow}>
-          <View style={styles.metricPill}>
-            <MaterialIcons
-              name="calendar-month"
-              size={15}
-              color={APPLE_THEME.primary}
-            />
-            <Text style={styles.metricText}>{dateRange}</Text>
-          </View>
-          <View style={styles.metricPill}>
-            <MaterialIcons name="route" size={15} color={APPLE_THEME.primary} />
-            <Text style={styles.metricText}>{daysLabel}</Text>
-          </View>
-        </View>
-
-        <View style={styles.tripFooter}>
-          <View style={styles.tripPlaceSummary}>
-            <View
-              style={[styles.tripAccentDot, { backgroundColor: status.accent }]}
-            />
-            <Text style={styles.tripFooterText}>{placesLabel}</Text>
-          </View>
-
-          <View style={styles.openTripWrap}>
-            <Text style={styles.openTripText}>Mở chi tiết</Text>
-            <MaterialIcons
-              name="arrow-forward"
-              size={16}
-              color={APPLE_THEME.white}
-            />
-          </View>
-        </View>
+      {/* Arrow */}
+      <View style={styles.arrowWrap}>
+        <MaterialIcons
+          name="chevron-right"
+          size={18}
+          color={APPLE_THEME.textMuted}
+        />
       </View>
     </Pressable>
   );
 });
 
 const styles = StyleSheet.create({
-  tripCard: {
+  card: {
     marginHorizontal: TAB_SCREEN_PADDING,
-    borderRadius: TOKENS.radius["2xl"],
-    overflow: "hidden",
-    backgroundColor: APPLE_THEME.surface,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-    ...TOKENS.shadow.sm,
+    borderColor: "rgba(0,0,0,0.05)",
+    padding: 12,
+    paddingRight: 8,
+    gap: 14,
   },
-  tripCardPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.95,
+  cardPressed: {
+    backgroundColor: "#FAFAFA",
+    transform: [{ scale: 0.985 }],
   },
-  tripVisual: {
-    height: 228,
-    backgroundColor: APPLE_THEME.surfaceMuted,
-    justifyContent: "space-between",
+  thumbWrap: {
+    width: 76,
+    height: 76,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#F5F5F7",
+    flexShrink: 0,
   },
-  tripImage: {
-    ...StyleSheet.absoluteFillObject,
+  thumb: {
+    width: "100%",
+    height: "100%",
   },
-  tripImageFallback: {
-    ...StyleSheet.absoluteFillObject,
+  thumbFallback: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: APPLE_THEME.surfaceMuted,
+    backgroundColor: "#F0F0F2",
   },
-  tripFallbackGlow: {
+  statusDot: {
     position: "absolute",
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: APPLE_THEME.primaryTint,
+    top: 6,
+    right: 6,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
   },
-  tripImageShade: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  tripTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    zIndex: 1,
-  },
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: TOKENS.radius.full,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
-  },
-  statusText: {
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-  },
-  timelinePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: TOKENS.radius.full,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.85)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.92)",
-  },
-  timelinePillText: {
-    color: APPLE_THEME.text,
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-  },
-  tripHeroText: {
-    paddingHorizontal: 18,
-    paddingBottom: 20,
-    gap: 6,
-    zIndex: 1,
-  },
-  tripTitle: {
-    color: "#FFFFFF",
-    fontSize: 25,
-    lineHeight: 30,
-    fontFamily: TOKENS.font.heading,
-  },
-  tripSubtitle: {
-    color: "rgba(245, 245, 247, 0.88)",
-    fontSize: 14.5,
-    lineHeight: 20,
-    fontFamily: TOKENS.font.body,
-    maxWidth: "94%",
-  },
-  tripBody: {
-    padding: 18,
-    gap: 16,
-  },
-  metricRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  metricPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: APPLE_THEME.surfaceElevated,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.border,
-  },
-  metricText: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-  },
-  tripFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  tripPlaceSummary: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+  content: {
     flex: 1,
+    minWidth: 0,
+    gap: 5,
   },
-  tripAccentDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  title: {
+    color: APPLE_THEME.text,
+    fontSize: 16,
+    fontFamily: TOKENS.font.semibold,
+    letterSpacing: -0.3,
   },
-  tripFooterText: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 13.5,
-    fontFamily: TOKENS.font.medium,
-  },
-  openTripWrap: {
+  metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    backgroundColor: APPLE_THEME.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 12,
+    gap: 4,
   },
-  openTripText: {
-    color: APPLE_THEME.white,
-    fontSize: 13,
+  metaText: {
+    color: APPLE_THEME.textMuted,
+    fontSize: 12,
+    fontFamily: TOKENS.font.body,
+    flexShrink: 1,
+    letterSpacing: -0.1,
+  },
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: "rgba(0,0,0,0.15)",
+    marginHorizontal: 2,
+  },
+  bottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 2,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 3.5,
+    borderRadius: 999,
+  },
+  statusBadgeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  statusLabel: {
+    fontSize: 11,
     fontFamily: TOKENS.font.semibold,
+    letterSpacing: -0.1,
+  },
+  placesText: {
+    color: APPLE_THEME.textMuted,
+    fontSize: 11,
+    fontFamily: TOKENS.font.body,
+    letterSpacing: -0.1,
+  },
+  arrowWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
 });

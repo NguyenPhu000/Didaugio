@@ -33,8 +33,10 @@ import {
   useUnsavePlace,
 } from "../../src/modules/saved/hooks/useSaved";
 import { useAuthStore } from "../../src/stores/authStore";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTrips } from "../../src/modules/trips/hooks/useTrips";
-import { useAddDestination } from "../../src/modules/trips/hooks/useTripDetail";
+import { addDestinationApi } from "../../src/modules/trips/api/tripsApi";
+import { QUERY_KEYS } from "../../src/constants/query-keys";
 import { GLASS_THEME, TOKENS } from "../../src/constants/design-tokens";
 import { resolveMediaUrl } from "../../src/lib/media-url";
 import { useI18n } from "../../src/hooks/useI18n";
@@ -531,12 +533,12 @@ function DetailRow({ icon, label, value, onPress, highlight = false }) {
 function TripSelectorSheet({ placeId, placeName, onClose, t }) {
   const router = useRouter();
   const { data: trips = [], isLoading } = useTrips();
-  const [selectedTripId, setSelectedTripId] = useState(null);
-  const addMutation = useAddDestination(selectedTripId);
+  const queryClient = useQueryClient();
+  const [loadingTripId, setLoadingTripId] = useState(null);
 
   const handleSelect = useCallback(
     async (tripId) => {
-      setSelectedTripId(tripId);
+      setLoadingTripId(tripId);
       try {
         const parsedPlaceId = parseInt(placeId, 10);
         if (!Number.isFinite(parsedPlaceId) || parsedPlaceId <= 0) {
@@ -548,17 +550,21 @@ function TripSelectorSheet({ placeId, placeName, onClose, t }) {
           );
         }
 
-        await addMutation.mutateAsync({
+        await addDestinationApi(tripId, {
           placeId: parsedPlaceId,
           dayNumber: 1,
           order: 0,
         });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.detail(tripId) });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.list() });
         onClose();
       } catch {
-        setSelectedTripId(null);
+        // error handled by toast interceptor
+      } finally {
+        setLoadingTripId(null);
       }
     },
-    [addMutation, onClose, placeId, t],
+    [onClose, placeId, queryClient, t],
   );
 
   return (
@@ -611,11 +617,11 @@ function TripSelectorSheet({ placeId, placeName, onClose, t }) {
             keyExtractor={(item) => String(item.id)}
             renderItem={({ item }) => {
               const isAdding =
-                selectedTripId === item.id && addMutation.isPending;
+                loadingTripId === item.id;
               return (
                 <Pressable
                   onPress={() => handleSelect(item.id)}
-                  disabled={addMutation.isPending}
+                  disabled={loadingTripId !== null}
                   style={styles.tripItem}
                 >
                   <View style={styles.tripItemIcon}>
@@ -774,8 +780,7 @@ function ReviewComposerSheetContent({
     } catch (error) {
       Alert.alert(
         t("Không thể gửi đánh giá", "Could not submit review"),
-        error?.message ||
-          t("Vui lòng thử lại sau.", "Please try again later."),
+        error?.message || t("Vui lòng thử lại sau.", "Please try again later."),
       );
     } finally {
       setIsProcessingSubmit(false);
@@ -923,9 +928,13 @@ function AllReviewsSheetContent({ reviews, totalCount, onClose, t }) {
         ratingFilter ? Number(review?.rating) === ratingFilter : true,
       )
       .filter((review) =>
-        photosOnly ? Array.isArray(review?.media) && review.media.length > 0 : true,
+        photosOnly
+          ? Array.isArray(review?.media) && review.media.length > 0
+          : true,
       )
-      .sort((a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0));
+      .sort(
+        (a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0),
+      );
   }, [photosOnly, ratingFilter, reviews]);
 
   return (
@@ -1056,8 +1065,12 @@ export default function PlaceDetailScreen() {
   const writeReviewSnapPoints = useMemo(() => ["62%", "92%"], []);
   const allReviewsSnapPoints = useMemo(() => ["70%", "96%"], []);
 
-  const { data: place, isLoading, isError, error } =
-    usePlaceDetail(placeIdentifier);
+  const {
+    data: place,
+    isLoading,
+    isError,
+    error,
+  } = usePlaceDetail(placeIdentifier);
   const resolvedPlaceId = useMemo(() => {
     const parsed = Number(place?.id);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -10,9 +11,10 @@ import {
   View,
 } from "react-native";
 import { Image } from "expo-image";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   BOOKING_APPLE_THEME as THEME,
   TOKENS,
@@ -27,6 +29,19 @@ import {
   useCreateTrip,
   useTrips,
 } from "../../../src/modules/trips/hooks/useTrips";
+import { useOffline } from "../../../src/hooks/useOffline";
+
+const QR_CACHE_KEY = "@booking_qr_cache";
+const QR_CACHE_VERSION = "v1";
+const QR_CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+const TerminalStatuses = new Set([
+  "completed",
+  "cancelled",
+  "rejected",
+  "expired",
+  "no_show",
+]);
 
 const STATUS_META = {
   pending: {
@@ -108,13 +123,51 @@ export default function BookingDetailScreen() {
     isRefetching,
   } = useMyBookingDetail(bookingId);
 
+  const { isOffline } = useOffline();
+  const [cachedQr, setCachedQr] = useState(null);
+
   const canShowQr = booking?.status === "confirmed";
+  const isTerminal = TerminalStatuses.has(booking?.status);
   const {
     data: qrData,
     isLoading: qrLoading,
     error: qrError,
     refetch: refetchQr,
-  } = useMyBookingQR(bookingId, { enabled: canShowQr });
+  } = useMyBookingQR(bookingId, { enabled: canShowQr && !isOffline });
+
+  const activeQrCode = qrData?.qrCode || cachedQr?.qrCode || null;
+
+  // Cache QR to AsyncStorage when fetched successfully
+  useEffect(() => {
+    if (!qrData?.qrCode || !bookingId) return;
+    const cacheEntry = {
+      data: { qrCode: qrData.qrCode, bookingCode: qrData.bookingCode },
+      timestamp: Date.now(),
+      version: QR_CACHE_VERSION,
+    };
+    AsyncStorage.setItem(
+      `${QR_CACHE_KEY}:${bookingId}`,
+      JSON.stringify(cacheEntry),
+    ).catch(() => {});
+    setCachedQr(cacheEntry.data);
+  }, [qrData, bookingId]);
+
+  // Load cached QR on mount (for offline support)
+  useEffect(() => {
+    if (!bookingId || !canShowQr) return;
+    AsyncStorage.getItem(`${QR_CACHE_KEY}:${bookingId}`)
+      .then((raw) => {
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (
+          parsed?.version === QR_CACHE_VERSION &&
+          Date.now() - parsed.timestamp < QR_CACHE_EXPIRY_MS
+        ) {
+          setCachedQr(parsed.data);
+        }
+      })
+      .catch(() => {});
+  }, [bookingId, canShowQr]);
 
   const { data: trips = [] } = useTrips(true);
   const createTripMutation = useCreateTrip();
@@ -302,35 +355,104 @@ export default function BookingDetailScreen() {
           </Text>
         </View>
 
+        {/* QR Check-in Card */}
         {canShowQr ? (
-          <View style={styles.card}>
-            <Text style={styles.qrTitle}>Mã QR check-in</Text>
+          <View style={[styles.card, styles.qrCard]}>
+            <View style={styles.qrHeaderRow}>
+              <Ionicons name="qr-code" size={18} color={THEME.primary} />
+              <Text style={styles.qrTitle}>Mã QR check-in</Text>
+            </View>
             <Text style={styles.qrHint}>
               Đưa mã này cho phía doanh nghiệp quét khi bạn đến sử dụng dịch vụ.
             </Text>
 
-            {qrLoading ? (
-              <View style={styles.qrLoading}>
+            {qrLoading && !activeQrCode ? (
+              <View style={styles.qrLoadingContainer}>
                 <ActivityIndicator size="small" color={THEME.primary} />
+                <Text style={styles.qrLoadingText}>Đang tải mã QR...</Text>
               </View>
-            ) : qrData?.qrCode ? (
-              <Image
-                source={{ uri: qrData.qrCode }}
-                style={styles.qrImage}
-                contentFit="contain"
-              />
+            ) : activeQrCode ? (
+              <View style={styles.qrImageWrapper}>
+                <Image
+                  source={{ uri: activeQrCode }}
+                  style={styles.qrImage}
+                  contentFit="contain"
+                />
+                {/* Offline indicator */}
+                {isOffline && (
+                  <View style={styles.qrOfflineTag}>
+                    <Ionicons name="cloud-offline" size={12} color="#fff" />
+                    <Text style={styles.qrOfflineTagText}>Offline</Text>
+                  </View>
+                )}
+              </View>
             ) : (
-              <Text style={styles.qrErrorText}>
-                {qrError?.message || "Chưa tải được mã QR, vui lòng thử lại."}
-              </Text>
+              <View style={styles.qrErrorContainer}>
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={20}
+                  color={THEME.danger}
+                />
+                <Text style={styles.qrErrorText}>
+                  {qrError?.message || "Chưa tải được mã QR."}
+                </Text>
+                <Pressable style={styles.qrRetryBtn} onPress={() => refetchQr()}>
+                  <Text style={styles.qrRetryBtnText}>Thử lại</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {/* Booking code below QR */}
+            {activeQrCode && (
+              <View style={styles.qrCodeLabel}>
+                <Text style={styles.qrCodeLabelText}>
+                  {booking.bookingCode}
+                </Text>
+              </View>
+            )}
+
+            {/* Expired overlay for terminal statuses */}
+            {isTerminal && (
+              <View style={styles.qrOverlay}>
+                <View style={styles.qrOverlayBadge}>
+                  <Ionicons
+                    name={
+                      booking.status === "completed"
+                        ? "checkmark-circle"
+                        : "close-circle"
+                    }
+                    size={28}
+                    color="#fff"
+                  />
+                  <Text style={styles.qrOverlayText}>
+                    {booking.status === "completed"
+                      ? "Đã sử dụng"
+                      : statusMeta.label}
+                  </Text>
+                </View>
+              </View>
             )}
           </View>
         ) : (
-          <View style={styles.card}>
-            <Text style={styles.qrTitle}>Mã QR check-in</Text>
-            <Text style={styles.qrHint}>
-              QR sẽ xuất hiện khi booking chuyển sang trạng thái "Đã xác nhận".
-            </Text>
+          <View style={[styles.card, styles.qrCard]}>
+            <View style={styles.qrHeaderRow}>
+              <Ionicons name="qr-code" size={18} color={THEME.textMuted} />
+              <Text style={[styles.qrTitle, { color: THEME.textMuted }]}>
+                Mã QR check-in
+              </Text>
+            </View>
+            <View style={styles.qrPlaceholder}>
+              <Ionicons
+                name="time-outline"
+                size={32}
+                color={THEME.textMuted}
+              />
+              <Text style={styles.qrPlaceholderText}>
+                {isTerminal
+                  ? "QR không khả dụng cho booking này."
+                  : "QR sẽ xuất hiện khi booking được xác nhận."}
+              </Text>
+            </View>
           </View>
         )}
 
@@ -549,6 +671,23 @@ const styles = StyleSheet.create({
   mt12: {
     marginTop: 12,
   },
+  qrCard: {
+    padding: 18,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+      },
+      android: { elevation: 4 },
+    }),
+  },
+  qrHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   qrTitle: {
     fontSize: 16,
     color: THEME.text,
@@ -561,28 +700,127 @@ const styles = StyleSheet.create({
     color: THEME.textSecondary,
     fontFamily: TOKENS.font.regular,
   },
-  qrLoading: {
-    marginTop: 16,
-    height: 210,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: THEME.border,
+  qrLoadingContainer: {
+    marginTop: 20,
+    height: 200,
+    borderRadius: 16,
     backgroundColor: THEME.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
+    gap: 10,
+  },
+  qrLoadingText: {
+    fontSize: 13,
+    color: THEME.textMuted,
+    fontFamily: TOKENS.font.medium,
+  },
+  qrImageWrapper: {
+    marginTop: 16,
+    alignItems: "center",
+    position: "relative",
   },
   qrImage: {
-    marginTop: 12,
-    width: "100%",
+    width: 220,
     height: 220,
-    borderRadius: 12,
+    borderRadius: 16,
     backgroundColor: THEME.white,
+    borderWidth: 1,
+    borderColor: THEME.border,
+  },
+  qrOfflineTag: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  qrOfflineTagText: {
+    color: "#fff",
+    fontSize: 10,
+    fontFamily: TOKENS.font.semibold,
+  },
+  qrCodeLabel: {
+    marginTop: 12,
+    alignSelf: "center",
+    backgroundColor: THEME.surfaceMuted,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  qrCodeLabelText: {
+    fontSize: 13,
+    color: THEME.text,
+    fontFamily: TOKENS.font.semibold,
+    letterSpacing: 1.5,
+  },
+  qrOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.82)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  qrOverlayBadge: {
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  qrOverlayText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: TOKENS.font.semibold,
+  },
+  qrErrorContainer: {
+    marginTop: 16,
+    height: 160,
+    borderRadius: 16,
+    backgroundColor: THEME.surfaceMuted,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
   qrErrorText: {
-    marginTop: 10,
     color: THEME.danger,
     fontSize: 13,
     fontFamily: TOKENS.font.medium,
+    textAlign: "center",
+    paddingHorizontal: 16,
+  },
+  qrRetryBtn: {
+    marginTop: 4,
+    backgroundColor: THEME.primary,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  qrRetryBtnText: {
+    color: THEME.white,
+    fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
+  },
+  qrPlaceholder: {
+    marginTop: 16,
+    height: 120,
+    borderRadius: 16,
+    backgroundColor: THEME.surfaceMuted,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  qrPlaceholderText: {
+    fontSize: 13,
+    color: THEME.textMuted,
+    fontFamily: TOKENS.font.regular,
+    textAlign: "center",
+    paddingHorizontal: 20,
   },
   actionRow: {
     flexDirection: "row",

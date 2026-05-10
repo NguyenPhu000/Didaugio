@@ -12,13 +12,17 @@ import {
 } from "../../../../src/constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 
-// Lottie hoặc skeleton sẽ đẹp hơn, nhưng tạm thời fallback ActivityIndicator
 export function LoadingState() {
   return (
     <View style={styles.loadingState}>
-      <ActivityIndicator size="large" color={APPLE_THEME.primary} />
+      <View style={styles.loadingIconWrap}>
+        <ActivityIndicator size="small" color="#1D1D1F" />
+      </View>
+      <Text style={styles.loadingTitle}>
+        Chuẩn bị hành trình
+      </Text>
       <Text style={styles.loadingText}>
-        Đang chuẩn bị dữ liệu hành trình...
+        Đang đồng bộ dữ liệu chuyến đi...
       </Text>
     </View>
   );
@@ -30,28 +34,38 @@ export function EmptyTrips({ onCreate, activeFilter }) {
   return (
     <View style={styles.centerCardWrap}>
       <View style={styles.centerCard}>
-        <View style={styles.centerIconBlock}>
-          <View style={styles.centerIconPulse} />
+        <View
+          style={[
+            styles.centerIconBlock,
+            isFiltered && styles.centerIconFiltered,
+          ]}
+        >
           <MaterialIcons
             name={isFiltered ? "filter-alt-off" : "explore"}
-            size={42}
-            color={APPLE_THEME.primary}
+            size={36}
+            color={isFiltered ? APPLE_THEME.textMuted : "#1D1D1F"}
           />
         </View>
 
         <Text style={styles.centerTitle}>
           {isFiltered
-            ? "Không có kết quả phù hợp"
-            : "Bắt đầu khám phá thế giới"}
+            ? "Không có kết quả"
+            : "Khám phá thế giới"}
         </Text>
         <Text style={styles.centerCopy}>
           {isFiltered
             ? "Thử đổi bộ lọc để xem lại các hành trình khác trong tài khoản của bạn."
-            : "Tạo hành trình đầu tiên để gom điểm đến, lịch trình và ghi chú vào cùng một nơi thật gọn gàng."}
+            : "Tạo hành trình đầu tiên để gom điểm đến, lịch trình và ghi chú vào cùng một nơi gọn gàng."}
         </Text>
 
         {!isFiltered ? (
-          <Pressable onPress={onCreate} style={styles.primaryButton}>
+          <Pressable
+            onPress={onCreate}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.primaryButtonPressed,
+            ]}
+          >
             <MaterialIcons name="add" size={18} color="#FFFFFF" />
             <Text style={styles.primaryButtonText}>Tạo chuyến đi mới</Text>
           </Pressable>
@@ -65,19 +79,25 @@ export function ErrorState({ onRetry }) {
   return (
     <View style={styles.centerCardWrap}>
       <View style={styles.centerCard}>
-        <View style={[styles.centerIconBlock, styles.errorIconBlock]}>
+        <View style={styles.errorIconBlock}>
           <MaterialIcons
             name="cloud-off"
-            size={42}
-            color={TOKENS.color.error}
+            size={36}
+            color="#FF3B30"
           />
         </View>
         <Text style={styles.centerTitle}>Không tải được dữ liệu</Text>
         <Text style={styles.centerCopy}>
           Vui lòng kiểm tra lại kết nối mạng và thử lại để đồng bộ hành trình.
         </Text>
-        <Pressable onPress={onRetry} style={styles.errorButton}>
-          <MaterialIcons name="refresh" size={18} color={TOKENS.color.error} />
+        <Pressable
+          onPress={onRetry}
+          style={({ pressed }) => [
+            styles.errorButton,
+            pressed && styles.errorButtonPressed,
+          ]}
+        >
+          <MaterialIcons name="refresh" size={18} color="#FF3B30" />
           <Text style={styles.errorButtonText}>Thử lại</Text>
         </Pressable>
       </View>
@@ -89,94 +109,123 @@ const styles = StyleSheet.create({
   loadingState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 36,
-    gap: 16,
+    paddingHorizontal: 40,
+    paddingTop: 56,
+    paddingBottom: 40,
+    gap: 10,
+  },
+  loadingIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(0,0,0,0.04)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  loadingTitle: {
+    color: APPLE_THEME.text,
+    fontSize: 17,
+    fontFamily: TOKENS.font.semibold,
+    letterSpacing: -0.3,
   },
   loadingText: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 15,
-    fontFamily: TOKENS.font.medium,
+    color: APPLE_THEME.textMuted,
+    fontSize: 14,
+    fontFamily: TOKENS.font.body,
+    letterSpacing: -0.1,
   },
+
   centerCardWrap: {
     paddingHorizontal: TAB_SCREEN_PADDING,
-    paddingTop: 12,
+    paddingTop: 16,
   },
   centerCard: {
     borderRadius: 28,
-    padding: 32,
-    backgroundColor: APPLE_THEME.surface,
+    padding: 36,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-    ...TOKENS.shadow.sm,
+    borderColor: "rgba(0,0,0,0.05)",
   },
   centerIconBlock: {
-    width: 96,
-    height: 96,
-    borderRadius: 32,
+    width: 88,
+    height: 88,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: APPLE_THEME.primaryTint,
-    marginBottom: 20,
-    overflow: "hidden",
+    backgroundColor: "rgba(0,0,0,0.04)",
+    marginBottom: 24,
   },
-  centerIconPulse: {
-    position: "absolute",
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: "rgba(0, 0, 0, 0.06)",
+  centerIconFiltered: {
+    backgroundColor: "rgba(0,0,0,0.03)",
   },
   errorIconBlock: {
-    backgroundColor: "rgba(255, 59, 48, 0.12)",
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 59, 48, 0.08)",
+    marginBottom: 24,
   },
   centerTitle: {
     color: APPLE_THEME.text,
     fontSize: 22,
     textAlign: "center",
     fontFamily: TOKENS.font.heading,
+    letterSpacing: -0.4,
   },
   centerCopy: {
-    marginTop: 12,
-    color: APPLE_THEME.textSecondary,
+    marginTop: 10,
+    color: APPLE_THEME.textMuted,
     fontSize: 15,
     lineHeight: 22,
     textAlign: "center",
     fontFamily: TOKENS.font.body,
-    maxWidth: 320,
+    maxWidth: 300,
+    letterSpacing: -0.1,
   },
   primaryButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginTop: 24,
+    marginTop: 28,
     borderRadius: TOKENS.radius.full,
     paddingHorizontal: 24,
     paddingVertical: 14,
-    backgroundColor: APPLE_THEME.primary,
+    backgroundColor: "#1D1D1F",
+  },
+  primaryButtonPressed: {
+    backgroundColor: "#000000",
+    transform: [{ scale: 0.97 }],
   },
   primaryButtonText: {
-    color: APPLE_THEME.white,
+    color: "#FFFFFF",
     fontSize: 15,
     fontFamily: TOKENS.font.semibold,
+    letterSpacing: -0.2,
   },
   errorButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginTop: 24,
+    marginTop: 28,
     borderRadius: TOKENS.radius.full,
     paddingHorizontal: 24,
     paddingVertical: 14,
-    backgroundColor: "#FFF1F2",
+    backgroundColor: "rgba(255, 59, 48, 0.08)",
     borderWidth: 1,
-    borderColor: "#FECDD3",
+    borderColor: "rgba(255, 59, 48, 0.15)",
+  },
+  errorButtonPressed: {
+    backgroundColor: "rgba(255, 59, 48, 0.12)",
+    transform: [{ scale: 0.97 }],
   },
   errorButtonText: {
-    color: TOKENS.color.error,
+    color: "#FF3B30",
     fontSize: 15,
     fontFamily: TOKENS.font.semibold,
+    letterSpacing: -0.2,
   },
 });

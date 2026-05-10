@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useCallback, useEffect } from "react";
 import {
   Dimensions,
   Platform,
@@ -13,8 +13,10 @@ import { MaterialIcons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withSpring,
 } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -33,10 +35,12 @@ const PAD = 24;
 const CARD_W = Math.min(300, SCREEN_W - PAD * 2 - 16);
 const CARD_H = 400;
 
-const SPRING_CONFIG = { damping: 14, stiffness: 180 };
+const SPRING_CONFIG = TOKENS.spring.press;
 
-function FeaturedCardInner({ place, onPress }) {
+function FeaturedCardInner({ place, onPress, index = 0 }) {
   const scale = useSharedValue(1);
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(30);
   const imageUri = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place);
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
@@ -45,20 +49,34 @@ function FeaturedCardInner({ place, onPress }) {
   const priceLine = formatPriceLine(place);
   const categoryName = place?.category?.name || "Đề xuất";
 
+  // Staggered entrance
+  useEffect(() => {
+    const delay = 200 + index * 100;
+    opacity.value = withDelay(delay, withSpring(1, TOKENS.spring.entrance));
+    translateY.value = withDelay(delay, withSpring(0, TOKENS.spring.entrance));
+  }, [index, opacity, translateY]);
+
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [{ scale: scale.value }, { translateY: translateY.value }],
+    opacity: opacity.value,
   }));
 
-  const handlePressIn = () => {
+  const handlePressIn = useCallback(() => {
     scale.value = withSpring(0.97, SPRING_CONFIG);
-  };
-  const handlePressOut = () => {
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
     scale.value = withSpring(1, SPRING_CONFIG);
-  };
+  }, [scale]);
+
+  const handlePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress?.();
+  }, [onPress]);
 
   return (
     <AnimatedPressable
-      onPress={onPress}
+      onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={[styles.card, animatedStyle]}

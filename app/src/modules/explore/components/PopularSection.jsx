@@ -1,6 +1,13 @@
-import { memo, useCallback } from "react";
+import { memo, useCallback, useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -8,15 +15,35 @@ import {
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { PopularCard } from "./PopularCard";
 
-const EST_ITEM_SIZE = 116;
+const EST_ITEM_SIZE = 140;
 
 const keyExtractor = (item, index) =>
   item?.id != null ? String(item.id) : `popular-${index}`;
 
 function PopularSectionInner({ places, onPressPlace, title = "Phổ biến" }) {
+  const sectionOpacity = useSharedValue(0);
+  const sectionY = useSharedValue(20);
+
+  // Section entrance animation
+  useEffect(() => {
+    sectionOpacity.value = withDelay(
+      200,
+      withTiming(1, { duration: 400 }),
+    );
+    sectionY.value = withDelay(
+      200,
+      withSpring(0, TOKENS.spring.entrance),
+    );
+  }, [sectionOpacity, sectionY]);
+
+  const sectionAnimStyle = useAnimatedStyle(() => ({
+    opacity: sectionOpacity.value,
+    transform: [{ translateY: sectionY.value }],
+  }));
+
   const renderItem = useCallback(
-    ({ item }) => (
-      <PopularCard place={item} onPress={() => onPressPlace(item)} />
+    ({ item, index }) => (
+      <PopularCard place={item} onPress={() => onPressPlace(item)} index={index} />
     ),
     [onPressPlace],
   );
@@ -24,7 +51,7 @@ function PopularSectionInner({ places, onPressPlace, title = "Phổ biến" }) {
   if (!places?.length) return null;
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, sectionAnimStyle]}>
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>
       </View>
@@ -37,7 +64,7 @@ function PopularSectionInner({ places, onPressPlace, title = "Phổ biến" }) {
         scrollEnabled={false}
         contentContainerStyle={styles.list}
       />
-    </View>
+    </Animated.View>
   );
 }
 

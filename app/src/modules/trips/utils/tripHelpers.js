@@ -1,7 +1,7 @@
 export const FILTERS = [
   { key: "all", label: "Tất cả" },
-  { key: "active", label: "Đang lên kế hoạch" },
-  { key: "done", label: "Đã hoàn thành" },
+  { key: "active", label: "Sắp tới" },
+  { key: "done", label: "Hoàn thành" },
 ];
 
 export const STATUS_THEME = {
@@ -64,7 +64,11 @@ export function getDaysUntil(dateStr) {
   const target = new Date(dateStr);
   if (Number.isNaN(target.getTime())) return null;
 
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
   const startOfTarget = new Date(
     target.getFullYear(),
     target.getMonth(),
@@ -91,10 +95,16 @@ export function getTimelineLabel(trip) {
 
 export function getHeroTrip(trips) {
   const candidates = trips
-    .filter((trip) => trip.status !== "completed" && trip.status !== "cancelled")
+    .filter(
+      (trip) => trip.status !== "completed" && trip.status !== "cancelled",
+    )
     .sort((a, b) => {
-      const aDate = a.startDate ? new Date(a.startDate).getTime() : Number.MAX_SAFE_INTEGER;
-      const bDate = b.startDate ? new Date(b.startDate).getTime() : Number.MAX_SAFE_INTEGER;
+      const aDate = a.startDate
+        ? new Date(a.startDate).getTime()
+        : Number.MAX_SAFE_INTEGER;
+      const bDate = b.startDate
+        ? new Date(b.startDate).getTime()
+        : Number.MAX_SAFE_INTEGER;
       return aDate - bDate;
     });
 
@@ -133,14 +143,14 @@ export function buildSummary(trips) {
       icon: "place",
       value: String(totalDestinations),
       label: "Điểm đến",
-      tone: "green",
+      tone: "teal",
     },
     {
       key: "done",
       icon: "task-alt",
       value: String(completedCount),
       label: "Đã xong",
-      tone: "red",
+      tone: "green",
     },
   ];
 }
@@ -204,14 +214,15 @@ export function formatPrice(amount) {
 }
 
 /**
- * Format distance in km — one decimal place under 10 km.
+ * Format distance from meters into a human-readable string.
+ * Returns meters for <1000m, kilometers for >=1000m.
  */
-export function formatDistance(km) {
-  const value = Number(km);
-  if (!Number.isFinite(value) || value <= 0) return null;
-  if (value < 10) return `${value.toFixed(1)} km`;
-  return `${Math.round(value)} km`;
-}
+export const formatDistance = (meters) => {
+  const m = parseFloat(meters);
+  if (isNaN(m)) return null;
+  if (m < 1000) return `${Math.round(m)}m`;
+  return `${(m / 1000).toFixed(1)}km`;
+};
 
 /**
  * Format booking date/time for display.
@@ -354,7 +365,12 @@ export function sortBookingsByTime(a, b) {
  * A booking belongs if it is linked to the trip OR its place is in the trip's destinations
  * AND its useDate falls within the trip day range.
  */
-export function buildTripDetailBookings({ bookings, trip, tripDays, dayCount }) {
+export function buildTripDetailBookings({
+  bookings,
+  trip,
+  tripDays,
+  dayCount,
+}) {
   if (!trip) return [];
 
   const normalizedTripId = Number(trip?.id);
@@ -384,9 +400,7 @@ export function buildTripDetailBookings({ bookings, trip, tripDays, dayCount }) 
           : fallbackDayNumber;
 
       const inTripDayRange =
-        Number.isInteger(dayNumber) &&
-        dayNumber >= 1 &&
-        dayNumber <= dayCount;
+        Number.isInteger(dayNumber) && dayNumber >= 1 && dayNumber <= dayCount;
       const inTripPlace =
         Number.isInteger(placeId) && tripPlaceIds.has(placeId);
       const isLinkedToCurrentTrip =

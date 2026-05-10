@@ -1627,6 +1627,76 @@ export const removeDestination = async (tripId, destId, userId) => {
   await prisma.tripDestination.delete({ where: { id: destId } });
 };
 
+export const reorderDestinations = async (tripId, userId, { dayNumber, orderedIds }) => {
+  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
+  if (!trip) {
+    const err = new Error("Khong tim thay chuyen di");
+    err.statusCode = 404;
+    throw err;
+  }
+  await prisma.$transaction(
+    orderedIds.map((destId, index) =>
+      prisma.tripDestination.update({
+        where: { id: toInt(destId) },
+        data: { order: index },
+      }),
+    ),
+  );
+  return prisma.tripDestination.findMany({
+    where: { tripId, dayNumber: toInt(dayNumber, 1) },
+    orderBy: { order: "asc" },
+    include: { place: { select: TRIP_PLACE_SELECT } },
+  });
+};
+
+export const updateDestination = async (tripId, destId, userId, data) => {
+  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
+  if (!trip) {
+    const err = new Error("Khong tim thay chuyen di");
+    err.statusCode = 404;
+    throw err;
+  }
+  const dest = await prisma.tripDestination.findFirst({ where: { id: destId, tripId } });
+  if (!dest) {
+    const err = new Error("Khong tim thay dia diem");
+    err.statusCode = 404;
+    throw err;
+  }
+  const updateData = {};
+  if (data.startTime !== undefined) updateData.startTime = data.startTime;
+  if (data.endTime !== undefined) updateData.endTime = data.endTime;
+  if (data.durationMinutes !== undefined) updateData.durationMinutes = toInt(data.durationMinutes);
+  if (data.note !== undefined) updateData.note = data.note;
+  return prisma.tripDestination.update({
+    where: { id: destId },
+    data: updateData,
+    include: { place: { select: TRIP_PLACE_SELECT } },
+  });
+};
+
+export const moveDestination = async (tripId, destId, userId, { newDayNumber, newOrder }) => {
+  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
+  if (!trip) {
+    const err = new Error("Khong tim thay chuyen di");
+    err.statusCode = 404;
+    throw err;
+  }
+  const dest = await prisma.tripDestination.findFirst({ where: { id: destId, tripId } });
+  if (!dest) {
+    const err = new Error("Khong tim thay dia diem");
+    err.statusCode = 404;
+    throw err;
+  }
+  return prisma.tripDestination.update({
+    where: { id: destId },
+    data: {
+      dayNumber: toInt(newDayNumber),
+      order: toInt(newOrder, 0),
+    },
+    include: { place: { select: TRIP_PLACE_SELECT } },
+  });
+};
+
 export default {
   getHomeData,
   searchPlaces,
@@ -1649,5 +1719,8 @@ export default {
   deleteTrip,
   addDestination,
   removeDestination,
+  reorderDestinations,
+  updateDestination,
+  moveDestination,
   submitFeedback,
 };

@@ -73,6 +73,21 @@ router.delete(
   authenticate,
   profileController.removeDestination,
 );
+router.patch(
+  "/trips/:id/destinations/reorder",
+  authenticate,
+  profileController.reorderDestinations,
+);
+router.patch(
+  "/trips/:id/destinations/:destId",
+  authenticate,
+  profileController.updateDestination,
+);
+router.patch(
+  "/trips/:id/destinations/:destId/move",
+  authenticate,
+  profileController.moveDestination,
+);
 
 router.patch("/push-token", authenticate, profileController.updatePushToken);
 

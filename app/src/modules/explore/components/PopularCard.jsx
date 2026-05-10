@@ -1,12 +1,15 @@
-import { memo } from "react";
+import { memo, useCallback, useEffect } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -20,10 +23,12 @@ import {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const SPRING_CONFIG = { damping: 15, stiffness: 200 };
+const SPRING_CONFIG = TOKENS.spring.press;
 
-function PopularCardInner({ place, onPress }) {
+function PopularCardInner({ place, onPress, index = 0 }) {
   const scale = useSharedValue(1);
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(18);
   const imageUri = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place) || "Cần Thơ";
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
@@ -31,20 +36,39 @@ function PopularCardInner({ place, onPress }) {
   const ratingMeta = formatRatingLabel(place);
   const priceLine = formatPriceLine(place);
 
+  useEffect(() => {
+    const delay = 100 + index * 70;
+    opacity.value = withDelay(
+      delay,
+      withTiming(1, { duration: 320 }),
+    );
+    translateY.value = withDelay(
+      delay,
+      withSpring(0, TOKENS.spring.entrance),
+    );
+  }, [index, opacity, translateY]);
+
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [{ scale: scale.value }, { translateY: translateY.value }],
+    opacity: opacity.value,
   }));
 
-  const handlePressIn = () => {
+  const handlePressIn = useCallback(() => {
     scale.value = withSpring(0.97, SPRING_CONFIG);
-  };
-  const handlePressOut = () => {
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
     scale.value = withSpring(1, SPRING_CONFIG);
-  };
+  }, [scale]);
+
+  const handlePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress?.();
+  }, [onPress]);
 
   return (
     <AnimatedPressable
-      onPress={onPress}
+      onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={[styles.card, animatedStyle]}
@@ -68,6 +92,8 @@ function PopularCardInner({ place, onPress }) {
             />
           </View>
         )}
+        {/* Subtle gradient on thumbnail */}
+        <View style={styles.imageGradient} pointerEvents="none" />
       </View>
 
       {/* Info column */}
@@ -144,9 +170,9 @@ const styles = StyleSheet.create({
     }),
   },
   imageWrap: {
-    width: 90,
-    height: 90,
-    borderRadius: 20,
+    width: 110,
+    height: 110,
+    borderRadius: 22,
     overflow: "hidden",
     backgroundColor: APPLE_THEME.surfaceMuted,
   },
@@ -155,6 +181,14 @@ const styles = StyleSheet.create({
     backgroundColor: APPLE_THEME.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
+  },
+  imageGradient: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: "30%",
+    backgroundColor: "rgba(0,0,0,0.06)",
   },
   infoCol: {
     flex: 1,

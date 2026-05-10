@@ -1,4 +1,4 @@
-import { memo, useCallback } from "react";
+import { memo, useCallback, useRef } from "react";
 import {
   FlatList,
   Platform,
@@ -8,10 +8,21 @@ import {
   View,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../../constants/design-tokens";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const SPRING_CONFIG = TOKENS.spring.snappy;
 
 const PillItem = memo(function PillItem({
   categoryId,
@@ -20,34 +31,60 @@ const PillItem = memo(function PillItem({
   label,
   onPressCategory,
 }) {
+  const scale = useSharedValue(1);
+  const bgProgress = useSharedValue(isActive ? 1 : 0);
+
+  // Animate background on active change
+  if (isActive && bgProgress.value !== 1) {
+    bgProgress.value = withSpring(1, SPRING_CONFIG);
+  } else if (!isActive && bgProgress.value !== 0) {
+    bgProgress.value = withSpring(0, SPRING_CONFIG);
+  }
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    backgroundColor: isActive ? APPLE_THEME.primary : APPLE_THEME.surface,
+    borderColor: isActive ? APPLE_THEME.primary : APPLE_THEME.border,
+  }));
+
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.94, SPRING_CONFIG);
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, SPRING_CONFIG);
+  }, [scale]);
+
   const handlePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPressCategory(categoryId);
   }, [categoryId, onPressCategory]);
-  const resolvedActive = Boolean(isActive);
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={handlePress}
-      style={({ pressed }) => [
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={[
         styles.pill,
-        resolvedActive ? styles.pillActive : styles.pillInactive,
-        pressed && styles.pillPressed,
+        animatedStyle,
+        isActive ? styles.pillActiveShadow : null,
       ]}
     >
       <MaterialIcons
         name={icon}
         size={17}
-        color={resolvedActive ? APPLE_THEME.white : APPLE_THEME.text}
+        color={isActive ? APPLE_THEME.white : APPLE_THEME.text}
       />
       <Text
-        style={[styles.pillText, resolvedActive ? styles.pillTextActive : null]}
+        style={[styles.pillText, isActive ? styles.pillTextActive : null]}
         numberOfLines={1}
       >
         {label}
       </Text>
-    </Pressable>
+    </AnimatedPressable>
   );
-}, arePillItemPropsEqual);
+});
 
 const keyExtractor = (item) => item.key;
 
@@ -83,16 +120,6 @@ function CategoryPillsInner({
       contentContainerStyle={styles.listContent}
       keyboardShouldPersistTaps="handled"
     />
-  );
-}
-
-function arePillItemPropsEqual(prev, next) {
-  return (
-    prev.categoryId === next.categoryId &&
-    prev.icon === next.icon &&
-    prev.isActive === next.isActive &&
-    prev.label === next.label &&
-    prev.onPressCategory === next.onPressCategory
   );
 }
 
@@ -137,23 +164,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 999,
-  },
-  pillActive: {
-    backgroundColor: APPLE_THEME.primary,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APPLE_THEME.primary,
+  },
+  pillActiveShadow: {
     ...Platform.select({
-      ios: TOKENS.shadow.sm,
-      android: { elevation: 2 },
+      ios: {
+        shadowColor: APPLE_THEME.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+      },
+      android: { elevation: 3 },
     }),
-  },
-  pillInactive: {
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APPLE_THEME.border,
-  },
-  pillPressed: {
-    opacity: 0.85,
   },
   pillText: {
     color: APPLE_THEME.text,

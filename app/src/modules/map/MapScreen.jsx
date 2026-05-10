@@ -818,7 +818,7 @@ export default function MapScreen() {
           routeBuilderMode
             ? FLOATING_TAB_CLEARANCE + 82
             : activePlace
-              ? FLOATING_TAB_CLEARANCE + 194
+              ? FLOATING_TAB_CLEARANCE + 124
               : FLOATING_TAB_CLEARANCE + 82
         }
       />
@@ -828,44 +828,11 @@ export default function MapScreen() {
         style={{ paddingTop: (insets.top || 0) + 12 }}
         pointerEvents="box-none"
       >
-        <View className="flex-row items-start px-4 gap-3" pointerEvents="auto">
+        <View className="flex-row items-center px-4 gap-3" pointerEvents="auto">
+          {/* Search bar — full width glass pill */}
           <Pressable
-            className="w-[48px] h-[48px]"
-            style={{ display: "none" }}
-            onPress={undefined}
-            accessibilityRole="button"
-            accessibilityLabel={MAP_TEXT.accessibility.openMenu}
-          >
-            <BlurView
-              tint="light"
-              intensity={80}
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(255, 255, 255, 0.85)",
-                borderWidth: 1,
-                borderColor: "rgba(255, 255, 255, 0.5)",
-                overflow: "hidden",
-              }}
-            >
-              <MaterialIcons
-                name="menu"
-                size={24}
-                color={TOKENS.color.neutral[700]}
-              />
-            </BlurView>
-          </Pressable>
-
-          {/* Search bar expanding */}
-          <View
-            style={{
-              flex: searchOpen ? 1 : 0,
-              width: searchOpen ? undefined : 48,
-              height: 48,
-            }}
+            onPress={searchOpen ? undefined : openSearch}
+            style={{ flex: 1 }}
           >
             <BlurView
               tint="light"
@@ -875,17 +842,16 @@ export default function MapScreen() {
                 flexDirection: "row",
                 alignItems: "center",
                 overflow: "hidden",
-                height: 48,
-                backgroundColor: "rgba(255, 255, 255, 0.85)",
+                height: 44,
+                backgroundColor: "rgba(255, 255, 255, 0.88)",
                 borderWidth: 1,
                 borderColor: "rgba(255, 255, 255, 0.5)",
               }}
             >
-              <Pressable
-                onPress={searchOpen ? undefined : openSearch}
+              <View
                 style={{
-                  width: 48,
-                  height: 48,
+                  width: 44,
+                  height: 44,
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
@@ -893,14 +859,14 @@ export default function MapScreen() {
               >
                 <MaterialIcons
                   name="search"
-                  size={22}
+                  size={20}
                   color={
                     searchOpen
                       ? TOKENS.color.primary[500]
-                      : TOKENS.color.neutral[700]
+                      : TOKENS.color.neutral[500]
                   }
                 />
-              </Pressable>
+              </View>
 
               {searchOpen ? (
                 <>
@@ -909,92 +875,97 @@ export default function MapScreen() {
                     value={searchText}
                     onChangeText={setSearchText}
                     placeholder={MAP_TEXT.search.placeholder}
-                    placeholderTextColor={TOKENS.color.neutral[500]}
+                    placeholderTextColor={TOKENS.color.neutral[400]}
                     style={{
                       flex: 1,
-                      height: 48,
-                      fontSize: 15,
-                      fontWeight: "700",
+                      height: 44,
+                      fontSize: 14,
                       color: TOKENS.color.neutral[900],
-                      paddingRight: 8,
-                      fontFamily: TOKENS.font.semibold,
+                      fontFamily: TOKENS.font.medium,
                     }}
                     returnKeyType="search"
-                    onSubmitEditing={() => Keyboard.dismiss()} // Chỉ đóng bàn phím, để user thấy marker kết quả
+                    onSubmitEditing={() => Keyboard.dismiss()}
                     autoCorrect={false}
                   />
                   {searchText.length > 0 ? (
                     <Pressable
                       onPress={() => setSearchText("")}
+                      hitSlop={8}
                       style={{
-                        width: 44,
-                        height: 48,
+                        width: 36,
+                        height: 44,
                         alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
                       <MaterialIcons
                         name="close"
-                        size={20}
-                        color={TOKENS.color.neutral[500]}
+                        size={18}
+                        color={TOKENS.color.neutral[400]}
                       />
                     </Pressable>
                   ) : null}
                   <Pressable
                     onPress={closeSearch}
+                    hitSlop={8}
                     style={{
                       paddingRight: 14,
-                      paddingLeft: 6,
-                      height: 48,
+                      paddingLeft: 4,
+                      height: 44,
                       justifyContent: "center",
                     }}
                   >
                     <Text
                       style={{
-                        color: TOKENS.color.neutral[600],
-                        fontSize: 14,
-                        fontFamily: TOKENS.font.semibold,
+                        color: TOKENS.color.neutral[500],
+                        fontSize: 13,
+                        fontFamily: TOKENS.font.medium,
                       }}
                     >
                       {MAP_TEXT.search.cancel}
                     </Text>
                   </Pressable>
                 </>
-              ) : null}
+              ) : (
+                <Text
+                  style={{
+                    flex: 1,
+                    color: TOKENS.color.neutral[400],
+                    fontSize: 14,
+                    fontFamily: TOKENS.font.medium,
+                    paddingRight: 14,
+                  }}
+                  numberOfLines={1}
+                >
+                  {MAP_TEXT.search.placeholder}
+                </Text>
+              )}
             </BlurView>
-          </View>
+          </Pressable>
 
-          {/* Vùng trống để đẩy Profile */}
-          {!searchOpen ? <View style={{ flex: 1 }} /> : null}
-
-          <View className="items-end gap-2">
+          {/* Profile avatar */}
+          {!searchOpen ? (
             <Pressable
-              className="w-[48px] h-[48px]"
               onPress={() => router.push("/(tabs)/profile")}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(255, 255, 255, 0.88)",
+                borderWidth: 1,
+                borderColor: "rgba(255, 255, 255, 0.5)",
+                overflow: "hidden",
+              }}
             >
-              <BlurView
-                tint="light"
-                intensity={80}
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 24,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "rgba(255, 255, 255, 0.85)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255, 255, 255, 0.5)",
-                  overflow: "hidden",
-                }}
-              >
-                <MaterialIcons
-                  name="person"
-                  size={24}
-                  color={TOKENS.color.neutral[700]}
-                />
-              </BlurView>
+              <MaterialIcons
+                name="person"
+                size={22}
+                color={TOKENS.color.neutral[600]}
+              />
             </Pressable>
-          </View>
+          ) : null}
         </View>
 
         <FilterGroupBar
@@ -1005,99 +976,110 @@ export default function MapScreen() {
           onOpenFilterPicker={handleOpenFilterPicker}
         />
 
+        {/* Floating action buttons — vertical stack */}
         <View
           pointerEvents="box-none"
           style={{
             position: "absolute",
             right: 14,
-            bottom: FLOATING_TAB_CLEARANCE + 84,
+            bottom: activePlace && !routeBuilderMode
+              ? FLOATING_TAB_CLEARANCE + 108
+              : FLOATING_TAB_CLEARANCE + 12,
             zIndex: 55,
           }}
         >
-          <View className="items-end gap-3" pointerEvents="auto">
-            <AIEntryButton onPress={() => router.push("/(tabs)/ai")} />
-
-            <Pressable className="w-[44px] h-[44px]" onPress={handleLocate}>
+          <View style={{ alignItems: "flex-end", gap: 10 }} pointerEvents="auto">
+            {/* Layer picker popover */}
+            {layerModalVisible && (
               <GlassPanel
                 style={{
-                  width: 44,
-                  height: 44,
+                  flexDirection: "row",
+                  padding: 3,
                   borderRadius: 22,
                   alignItems: "center",
-                  justifyContent: "center",
+                  gap: 3,
                 }}
-                intensity={52}
+                intensity={80}
               >
-                <MaterialIcons
-                  name="my-location"
-                  size={20}
-                  color={MAP_UI_THEME.neon}
-                />
+                <Pressable
+                  onPress={() => {
+                    LayoutAnimation.configureNext(
+                      LayoutAnimation.Presets.easeInEaseOut,
+                    );
+                    setMapStyle(MAP_STYLES.OSM);
+                    setLayerModalVisible(false);
+                  }}
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 19,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor:
+                      mapStyle.key === "osm" ? "#1D1D1F" : "transparent",
+                  }}
+                >
+                  <MaterialIcons
+                    name="map"
+                    size={18}
+                    color={
+                      mapStyle.key === "osm" ? "#FFFFFF" : MAP_UI_THEME.text
+                    }
+                  />
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    LayoutAnimation.configureNext(
+                      LayoutAnimation.Presets.easeInEaseOut,
+                    );
+                    setMapStyle(MAP_STYLES.HYBRID);
+                    setLayerModalVisible(false);
+                  }}
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 19,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor:
+                      mapStyle.key === "hybrid" ? "#1D1D1F" : "transparent",
+                  }}
+                >
+                  <MaterialIcons
+                    name="satellite"
+                    size={18}
+                    color={
+                      mapStyle.key === "hybrid"
+                        ? "#FFFFFF"
+                        : MAP_UI_THEME.text
+                    }
+                  />
+                </Pressable>
               </GlassPanel>
-            </Pressable>
+            )}
 
-            <View className="flex-row items-center gap-2">
-              {layerModalVisible && (
+            {/* Locate + Layer row */}
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Pressable onPress={handleLocate}>
                 <GlassPanel
                   style={{
-                    flexDirection: "row",
-                    padding: 4,
-                    borderRadius: 26,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
                     alignItems: "center",
-                    gap: 4,
+                    justifyContent: "center",
                   }}
-                  intensity={80}
+                  intensity={52}
                 >
-                  <Pressable
-                    onPress={() => {
-                      LayoutAnimation.configureNext(
-                        LayoutAnimation.Presets.easeInEaseOut,
-                      );
-                      setMapStyle(MAP_STYLES.OSM);
-                      setLayerModalVisible(false);
-                    }}
-                    className="w-[44px] h-[44px] rounded-full items-center justify-center"
-                    style={{
-                      backgroundColor:
-                        mapStyle.key === "osm" ? "#1D1D1F" : "transparent",
-                    }}
-                  >
-                    <MaterialIcons
-                      name="map"
-                      size={20}
-                      color={
-                        mapStyle.key === "osm" ? "#FFFFFF" : MAP_UI_THEME.text
-                      }
-                    />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      LayoutAnimation.configureNext(
-                        LayoutAnimation.Presets.easeInEaseOut,
-                      );
-                      setMapStyle(MAP_STYLES.HYBRID);
-                      setLayerModalVisible(false);
-                    }}
-                    className="w-[44px] h-[44px] rounded-full items-center justify-center"
-                    style={{
-                      backgroundColor:
-                        mapStyle.key === "hybrid" ? "#1D1D1F" : "transparent",
-                    }}
-                  >
-                    <MaterialIcons
-                      name="satellite"
-                      size={20}
-                      color={
-                        mapStyle.key === "hybrid"
-                          ? "#FFFFFF"
-                          : MAP_UI_THEME.text
-                      }
-                    />
-                  </Pressable>
+                  <MaterialIcons
+                    name="my-location"
+                    size={19}
+                    color={MAP_UI_THEME.neon}
+                  />
                 </GlassPanel>
-              )}
+              </Pressable>
+
               <Pressable
-                className="w-[44px] h-[44px]"
                 onPress={() => {
                   LayoutAnimation.configureNext(
                     LayoutAnimation.Presets.easeInEaseOut,
@@ -1107,9 +1089,9 @@ export default function MapScreen() {
               >
                 <GlassPanel
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -1117,12 +1099,15 @@ export default function MapScreen() {
                 >
                   <MaterialIcons
                     name={layerModalVisible ? "close" : "layers"}
-                    size={20}
+                    size={19}
                     color={MAP_UI_THEME.text}
                   />
                 </GlassPanel>
               </Pressable>
             </View>
+
+            {/* AI button */}
+            <AIEntryButton onPress={() => router.push("/(tabs)/ai")} compact />
           </View>
         </View>
       </View>

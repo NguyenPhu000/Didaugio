@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useCallback, useEffect } from "react";
 import {
   Platform,
   Pressable,
@@ -8,6 +8,14 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -16,15 +24,55 @@ import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation } from "../utils/exploreHelpers";
 
-function BentoTile({ place, large = false, onPress }) {
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const SPRING_CONFIG = TOKENS.spring.press;
+
+function BentoTile({ place, large = false, onPress, index = 0 }) {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(0);
+  const tileScale = useSharedValue(0.92);
   const imageUri = resolvePlaceImageUri(place);
   const category = place?.category?.name || "Ẩm thực";
   const location = getPlaceLocation(place);
 
+  // Staggered entrance
+  useEffect(() => {
+    const delay = 150 + index * 80;
+    opacity.value = withDelay(
+      delay,
+      withTiming(1, { duration: 350 }),
+    );
+    tileScale.value = withDelay(
+      delay,
+      withSpring(1, TOKENS.spring.entrance),
+    );
+  }, [index, opacity, tileScale]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value * tileScale.value }],
+    opacity: opacity.value,
+  }));
+
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.96, SPRING_CONFIG);
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, SPRING_CONFIG);
+  }, [scale]);
+
+  const handlePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress?.();
+  }, [onPress]);
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.tileBase, large ? styles.tileLarge : styles.tileSmall]}
+    <AnimatedPressable
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={[styles.tileBase, large ? styles.tileLarge : styles.tileSmall, animatedStyle]}
     >
       {imageUri ? (
         <Image
@@ -76,36 +124,62 @@ function BentoTile({ place, large = false, onPress }) {
           </Text>
         ) : null}
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
 function ExperienceBentoSectionInner({ places, onPressPlace }) {
+  const sectionOpacity = useSharedValue(0);
+  const sectionY = useSharedValue(24);
+
+  useEffect(() => {
+    sectionOpacity.value = withDelay(
+      200,
+      withTiming(1, { duration: 400 }),
+    );
+    sectionY.value = withDelay(
+      200,
+      withSpring(0, { damping: 18, stiffness: 160 }),
+    );
+  }, [sectionOpacity, sectionY]);
+
+  const sectionAnimStyle = useAnimatedStyle(() => ({
+    opacity: sectionOpacity.value,
+    transform: [{ translateY: sectionY.value }],
+  }));
+
   if (!Array.isArray(places) || places.length < 3) return null;
 
   const [hero, topRight, bottomRight] = places;
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, sectionAnimStyle]}>
       <Text style={styles.heading}>Ẩm thực nổi bật</Text>
 
       <View style={styles.glassShell}>
         <View style={styles.grid}>
-          <BentoTile place={hero} large onPress={() => onPressPlace(hero)} />
+          <BentoTile
+            place={hero}
+            large
+            index={0}
+            onPress={() => onPressPlace(hero)}
+          />
 
           <View style={styles.sideColumn}>
             <BentoTile
               place={topRight}
+              index={1}
               onPress={() => onPressPlace(topRight)}
             />
             <BentoTile
               place={bottomRight}
+              index={2}
               onPress={() => onPressPlace(bottomRight)}
             />
           </View>
         </View>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -118,9 +192,9 @@ const styles = StyleSheet.create({
   },
   heading: {
     color: APPLE_THEME.text,
-    fontSize: 28,
-    lineHeight: 34,
-    letterSpacing: -0.8,
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: -0.5,
     fontFamily: TOKENS.font.heading,
     marginBottom: 14,
   },

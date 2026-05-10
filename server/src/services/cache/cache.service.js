@@ -29,7 +29,9 @@ const cache = new NodeCache({
 export function buildKey(prefix, params = {}) {
   const sorted = Object.keys(params)
     .sort()
-    .filter((k) => params[k] !== undefined && params[k] !== null && params[k] !== "")
+    .filter(
+      (k) => params[k] !== undefined && params[k] !== null && params[k] !== "",
+    )
     .map((k) => `${k}:${params[k]}`)
     .join("|");
   return sorted ? `${prefix}:${sorted}` : prefix;

@@ -2,11 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import NetInfo from "@react-native-community/netinfo";
-import {
-  getMyTripsApi,
-  createTripApi,
-  deleteTripApi,
-} from "../api/tripsApi";
+import { getMyTripsApi, createTripApi, deleteTripApi } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 
 const TRIPS_CACHE_KEY = "@trips_cache";
@@ -155,11 +151,13 @@ export function useTripsCached(enabled = true) {
   }, [query.data]);
 
   return {
-    data: isOffline ? (cachedData || []) : (query.data || []),
-    isLoading: query.isLoading || (isOffline && !cachedData && query.isFetching),
+    data: isOffline ? cachedData || [] : query.data || [],
+    isLoading:
+      query.isLoading || (isOffline && !cachedData && query.isFetching),
     isError: isOffline ? false : query.isError,
     isOffline,
     refetch: query.refetch,
+    isRefetching: query.isRefetching,
   };
 }
 

@@ -37,6 +37,9 @@ export const ENDPOINTS = {
     addDestination: (tripId) => `/profile/trips/${tripId}/destinations`,
     removeDestination: (tripId, destId) =>
       `/profile/trips/${tripId}/destinations/${destId}`,
+    reorderDestinations: (tripId) => `/profile/trips/${tripId}/destinations/reorder`,
+    updateDestination: (tripId, destId) => `/profile/trips/${tripId}/destinations/${destId}`,
+    moveDestination: (tripId, destId) => `/profile/trips/${tripId}/destinations/${destId}/move`,
     bookings: "/profile/bookings",
     bookingDetail: (id) => `/profile/bookings/${id}`,
     bookingQr: (id) => `/profile/bookings/${id}/qr`,
