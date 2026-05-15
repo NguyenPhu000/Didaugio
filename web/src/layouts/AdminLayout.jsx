@@ -17,6 +17,7 @@ import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES, ROLE_NAMES } from "@/constants/constants";
 import { APP_META } from "@/constants/brand";
 import * as placeService from "@/apis/placeService";
+import { usePermission } from "@/hooks/usePermission";
 
 // Extracted sub-components
 import {
@@ -34,6 +35,7 @@ import {
  */
 const AdminLayout = ({ children }) => {
   const { user } = useAuthStore();
+  const { hasPermission } = usePermission();
   const [pendingPlacesCount, setPendingPlacesCount] = useState(0);
 
   useEffect(() => {
@@ -65,7 +67,7 @@ const AdminLayout = ({ children }) => {
   }, [user?.roleId]);
 
   const menuDataView = useMemo(() => {
-    const filtered = filterMenuByRole(menuData, user?.roleId);
+    const filtered = filterMenuByRole(menuData, { roleId: user?.roleId, hasPermission });
 
     if (filtered.main && user?.roleId === ROLES.BUSINESS) {
       filtered.main = filtered.main.map((item) =>
@@ -95,7 +97,7 @@ const AdminLayout = ({ children }) => {
     }
 
     return filtered;
-  }, [pendingPlacesCount, user?.roleId]);
+  }, [pendingPlacesCount, user?.roleId, hasPermission]);
 
   return (
     <SidebarProvider>

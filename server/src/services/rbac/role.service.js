@@ -7,6 +7,7 @@ import {
 } from "../../models/index.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
+import { invalidateRoleCache } from "../../utils/permissionCache.js";
 
 /**
  * Lấy danh sách tất cả vai trò
@@ -226,7 +227,7 @@ export const getRolePermissions = async (roleId) => {
  * @param {object} permissionData - { permissionIds: [1, 2, 3] }
  * @returns {Promise<object>} Thông tin vai trò sau khi cập nhật
  */
-export const updateRolePermissions = async (roleId, permissionData) => {
+export const updateRolePermissions = async (roleId, permissionData, currentUser = null) => {
   // Validate inputs
   const validatedId = validateRoleId(roleId);
   const { permissionIds } = validateUpdateRolePermissions(permissionData);
@@ -247,6 +248,24 @@ export const updateRolePermissions = async (roleId, permissionData) => {
       "Không tìm thấy vai trò",
       404,
       ERROR_CODES.NOT_FOUND,
+    );
+  }
+
+  // Super Admin role (id=1) is always protected — uses wildcard, no need to edit
+  if (role.id === 1) {
+    throw new ServiceError(
+      "Không thể thay đổi quyền của Super Admin (tự động có toàn quyền)",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
+  }
+
+  // Block non-Super-Admin from modifying system roles
+  if (role.isSystem && currentUser?.roleId !== 1) {
+    throw new ServiceError(
+      "Không thể thay đổi quyền của vai trò hệ thống",
+      403,
+      ERROR_CODES.FORBIDDEN,
     );
   }
 
@@ -299,6 +318,9 @@ export const updateRolePermissions = async (roleId, permissionData) => {
 
     return updatedRole;
   });
+
+  // Invalidate permission cache for all users with this role
+  invalidateRoleCache(validatedId);
 
   // Transform data
   return {

@@ -3,7 +3,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
+  TouchableOpacity,
   ScrollView,
   StyleSheet,
   Text,
@@ -25,7 +25,7 @@ import Animated, {
 
 import { useCreateTrip } from "../../src/modules/trips/hooks/useTrips";
 import { addDestinationApi } from "../../src/modules/trips/api/tripsApi";
-import { useSavedPlaces } from "../../src/modules/saved/hooks/useSaved";
+import { useSavedPlacesCached } from "../../src/modules/saved/hooks/useSavedOffline";
 import { CustomDatePicker } from "../../src/components/ui/CustomDatePicker";
 import { toYmdString } from "../../src/modules/trips/utils/tripHelpers";
 import { QUERY_KEYS } from "../../src/constants/query-keys";
@@ -34,7 +34,7 @@ import { HeroSection } from "../../src/modules/trips/components/create-trip/Hero
 import { SavedPlacesGrid } from "../../src/modules/trips/components/create-trip/SavedPlacesGrid";
 import s, { T } from "../../src/modules/trips/utils/tripDetailTokens";
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 function calcTotalDays(start, end) {
   if (!start || !end) return null;
@@ -75,8 +75,8 @@ export default function CreateTripScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const createMutation = useCreateTrip();
-  const { data: savedPlaces = [], isLoading: isSavedLoading, isError: isSavedError } =
-    useSavedPlaces(true);
+  const { savedData: savedPlaces = [], isLoading: isSavedLoading, isError: isSavedError } =
+    useSavedPlacesCached(true);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -210,16 +210,14 @@ export default function CreateTripScreen() {
     >
       {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <Pressable
+        <TouchableOpacity
+          activeOpacity={0.7}
           onPress={() => router.back()}
           hitSlop={12}
-          style={({ pressed }) => [
-            styles.backBtn,
-            pressed && { backgroundColor: "rgba(0,0,0,0.08)" },
-          ]}
+          style={styles.backBtn}
         >
           <MaterialIcons name="close" size={20} color={T.ink} />
-        </Pressable>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Chuyến đi mới</Text>
         <View style={{ width: 40 }} />
       </View>
@@ -337,7 +335,8 @@ export default function CreateTripScreen() {
 
       {/* ── Bottom Bar ── */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 10 }]}>
-        <AnimatedPressable
+        <AnimatedTouchable
+          activeOpacity={0.8}
           onPress={handleCreate}
           onPressIn={handleCtaPressIn}
           onPressOut={handleCtaPressOut}
@@ -365,7 +364,7 @@ export default function CreateTripScreen() {
               </Text>
             </View>
           )}
-        </AnimatedPressable>
+        </AnimatedTouchable>
       </View>
     </KeyboardAvoidingView>
   );

@@ -22,7 +22,9 @@ import {
   Image as ImageIcon,
   AlertTriangle,
   Clock,
+  Download,
 } from "lucide-react";
+import { exportToCsv, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 import api from "@/constants/api";
 import { getMyPlaces } from "@/apis/businessApi";
 import {
@@ -565,14 +567,57 @@ const ReviewListPage = () => {
     }
   };
 
+  const STATUS_LABELS = {
+    visible: "Đang hiển thị",
+    hidden: "Đã ẩn",
+    pending: "Chờ duyệt",
+    reported: "Bị report",
+  };
+
+  const handleExportCsv = () => {
+    if (!reviews || reviews.length === 0) {
+      toast.error("Không có dữ liệu để xuất");
+      return;
+    }
+
+    exportToCsv({
+      columns: [
+        { key: "id", label: "ID" },
+        { key: (row) => row.user?.profile?.fullName || row.user?.email?.split("@")[0] || "Ẩn danh", label: "Khách hàng" },
+        { key: (row) => row.user?.email || "", label: "Email" },
+        { key: "rating", label: "Đánh giá" },
+        { key: "comment", label: "Nội dung" },
+        { key: (row) => STATUS_LABELS[row.status] || row.status, label: "Trạng thái" },
+        { key: (row) => row.place?.name || "", label: "Địa điểm" },
+        { key: (row) => row.reply?.content || "", label: "Phản hồi" },
+        { key: (row) => row._count?.replies ?? 0, label: "Số phản hồi" },
+        { key: (row) => (row.media || []).length, label: "Số media" },
+        { key: (row) => formatCsvDate(row.createdAt), label: "Thời gian" },
+      ],
+      data: reviews,
+      filename: slugifyFilename("danh_sach_danh_gia"),
+    });
+
+    toast.success(`Đã xuất ${reviews.length} bản ghi`);
+  };
+
   return (
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
       {/* Header */}
-      <PageHeader
-        title="Quản lý đánh giá"
-        subtitle="Xem và phản hồi đánh giá từ khách hàng"
-        badge={stats?.total || undefined}
-      />
+      <div className="flex items-center justify-between">
+        <PageHeader
+          title="Quản lý đánh giá"
+          subtitle="Xem và phản hồi đánh giá từ khách hàng"
+          badge={stats?.total || undefined}
+        />
+        <button
+          onClick={handleExportCsv}
+          className="h-9 px-3 flex items-center gap-1.5 border border-black bg-white hover:bg-black hover:text-white transition-colors font-mono text-xs uppercase font-bold shrink-0"
+        >
+          <Download className="h-4 w-4" />
+          CSV
+        </button>
+      </div>
 
       {/* Stats Overview */}
       {stats && (

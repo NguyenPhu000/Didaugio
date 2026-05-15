@@ -1,5 +1,5 @@
 import { memo, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -29,10 +29,12 @@ const StatPill = memo(function StatPill({ icon, value, label, tone }) {
   return (
     <View style={styles.statPill}>
       <View style={[styles.statIconWrap, { backgroundColor: theme.bg }]}>
-        <MaterialIcons name={icon} size={16} color={theme.color} />
+        <MaterialIcons name={icon} size={20} color={theme.color} />
       </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <View style={styles.statContent}>
+        <Text style={styles.statValue}>{value}</Text>
+        <Text style={styles.statLabel}>{label}</Text>
+      </View>
     </View>
   );
 });
@@ -43,6 +45,7 @@ export function TripsDashboard({
   activeFilter,
   onSelectFilter,
   onOpenHero,
+  onCreate,
 }) {
   const heroTrip = useMemo(() => getHeroTrip(trips), [trips]);
   const summary = useMemo(() => buildSummary(trips), [trips]);
@@ -58,23 +61,24 @@ export function TripsDashboard({
       {/* ── Header ── */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Chuyến đi</Text>
+          <Text style={styles.headerTitle}>Hành trình</Text>
           <Text style={styles.headerSubtitle}>
             {trips.length > 0
-              ? `${trips.length} hành trình`
-              : "Bắt đầu lập kế hoạch"}
+              ? `${trips.length} chuyến đi của bạn`
+              : "Khởi tạo kỷ niệm mới"}
           </Text>
         </View>
+        <TouchableOpacity activeOpacity={0.7} onPress={onCreate} style={styles.headerIconWrap}>
+          <MaterialIcons name="add" size={28} color="#1D1D1F" />
+        </TouchableOpacity>
       </View>
 
       {/* ── Hero Trip Card ── */}
       {heroTrip ? (
-        <Pressable
+        <TouchableOpacity
+          activeOpacity={0.85}
           onPress={() => onOpenHero(heroTrip.id)}
-          style={({ pressed }) => [
-            styles.heroCard,
-            pressed && { transform: [{ scale: 0.975 }] },
-          ]}
+          style={styles.heroCard}
         >
           {heroCover ? (
             <Image
@@ -92,12 +96,12 @@ export function TripsDashboard({
           )}
           <LinearGradient
             colors={[
-              "transparent",
-              "rgba(0,0,0,0.15)",
-              "rgba(0,0,0,0.55)",
-              "rgba(0,0,0,0.85)",
+              "rgba(0,0,0,0.1)",
+              "rgba(0,0,0,0.3)",
+              "rgba(0,0,0,0.7)",
+              "rgba(0,0,0,0.9)",
             ]}
-            locations={[0, 0.3, 0.65, 1]}
+            locations={[0, 0.4, 0.7, 1]}
             style={StyleSheet.absoluteFill}
           />
 
@@ -106,64 +110,83 @@ export function TripsDashboard({
             <View style={styles.heroArrow}>
               <MaterialIcons
                 name="arrow-forward"
-                size={16}
-                color="rgba(255,255,255,0.9)"
+                size={18}
+                color="#FFFFFF"
               />
             </View>
           </View>
 
           {/* Bottom content */}
           <View style={styles.heroContent}>
-            <View style={styles.heroBadge}>
-              <View style={styles.heroDot} />
-              <Text style={styles.heroBadgeText}>
-                {timelineLabel || "Sắp tới"}
-              </Text>
+            <View style={styles.heroBadgeWrap}>
+              <View style={styles.heroBadge}>
+                <View style={styles.heroDot} />
+                <Text style={styles.heroBadgeText}>
+                  {timelineLabel || "Sắp tới"}
+                </Text>
+              </View>
             </View>
+            
             <Text style={styles.heroTitle} numberOfLines={2}>
               {heroTrip.title || "Chuyến đi mới"}
             </Text>
+            
             <View style={styles.heroMeta}>
-              <MaterialIcons
-                name="event"
-                size={13}
-                color="rgba(255,255,255,0.75)"
-              />
-              <Text style={styles.heroMetaText}>
-                {getDateRangeLabel(heroTrip)}
-              </Text>
+              <View style={styles.heroMetaItem}>
+                <MaterialIcons
+                  name="event"
+                  size={14}
+                  color="rgba(255,255,255,0.8)"
+                />
+                <Text style={styles.heroMetaText}>
+                  {getDateRangeLabel(heroTrip)}
+                </Text>
+              </View>
               <View style={styles.heroMetaDivider} />
-              <MaterialIcons
-                name="place"
-                size={13}
-                color="rgba(255,255,255,0.75)"
-              />
-              <Text style={styles.heroMetaText}>
-                {heroTrip.destinations?.length || 0} điểm đến
-              </Text>
+              <View style={styles.heroMetaItem}>
+                <MaterialIcons
+                  name="place"
+                  size={14}
+                  color="rgba(255,255,255,0.8)"
+                />
+                <Text style={styles.heroMetaText}>
+                  {heroTrip.destinations?.length || 0} điểm đến
+                </Text>
+              </View>
             </View>
           </View>
-        </Pressable>
+        </TouchableOpacity>
       ) : (
-        <Pressable
+        <TouchableOpacity
+          activeOpacity={0.8}
           onPress={onCreate}
-          style={({ pressed }) => [
-            styles.heroEmpty,
-            pressed && { opacity: 0.85 },
-          ]}
+          style={styles.heroEmpty}
         >
-          <View style={styles.heroEmptyIcon}>
-            <MaterialIcons name="add-location-alt" size={28} color="#1D1D1F" />
+          <LinearGradient
+            colors={["#F8F9FA", "#F1F3F5"]}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.heroEmptyIconWrap}>
+            <LinearGradient
+              colors={["#007AFF", "#0056b3"]}
+              style={StyleSheet.absoluteFill}
+            />
+            <MaterialIcons name="add-location-alt" size={28} color="#FFFFFF" />
           </View>
-          <Text style={styles.heroEmptyTitle}>Tạo chuyến đi đầu tiên</Text>
-          <Text style={styles.heroEmptyCopy}>
-            Lên kế hoạch cho kỳ nghỉ sắp tới của bạn
-          </Text>
-        </Pressable>
+          <View style={styles.heroEmptyTextWrap}>
+            <Text style={styles.heroEmptyTitle}>Tạo chuyến đi đầu tiên</Text>
+            <Text style={styles.heroEmptyCopy}>
+              Bắt đầu hành trình khám phá thế giới của bạn
+            </Text>
+          </View>
+          <View style={styles.heroEmptyArrow}>
+             <MaterialIcons name="arrow-forward" size={20} color="#007AFF" />
+          </View>
+        </TouchableOpacity>
       )}
 
-      {/* ── Stats Strip ── */}
-      <View style={styles.statsRow}>
+      {/* ── Stats Strip (Grid) ── */}
+      <View style={styles.statsGrid}>
         {summary.map((item) => (
           <StatPill
             key={item.key}
@@ -178,14 +201,15 @@ export function TripsDashboard({
       {/* ── Section Header + Filters ── */}
       <View style={styles.sectionRow}>
         <Text style={styles.sectionTitle}>
-          {filteredCount > 0 ? `${filteredCount} chuyến` : "Chuyến đi"}
+          {filteredCount > 0 ? `Danh sách (${filteredCount})` : "Danh sách"}
         </Text>
         <View style={styles.filterGroup}>
           {FILTERS.map((filter) => {
             const active = activeFilter === filter.key;
             return (
-              <Pressable
+              <TouchableOpacity
                 key={filter.key}
+                activeOpacity={0.7}
                 onPress={() => onSelectFilter(filter.key)}
                 style={[
                   styles.filterChip,
@@ -200,7 +224,7 @@ export function TripsDashboard({
                 >
                   {filter.label}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -213,37 +237,52 @@ const styles = StyleSheet.create({
   dashboardWrap: {
     paddingHorizontal: TAB_SCREEN_PADDING,
     paddingTop: 8,
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
 
   /* ── Header ── */
   header: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 12,
-    marginBottom: 20,
+    marginTop: 16,
+    marginBottom: 24,
   },
   headerTitle: {
     color: APPLE_THEME.text,
-    fontSize: 32,
+    fontSize: 34,
     fontFamily: TOKENS.font.heading,
-    letterSpacing: -0.8,
+    letterSpacing: -1,
   },
   headerSubtitle: {
     color: APPLE_THEME.textMuted,
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: TOKENS.font.body,
-    marginTop: 2,
+    marginTop: 4,
     letterSpacing: -0.2,
+  },
+  headerIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F2F2F7",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   /* ── Hero Card ── */
   heroCard: {
-    height: 220,
-    borderRadius: 24,
+    height: 280,
+    borderRadius: 28,
     overflow: "hidden",
-    marginBottom: 20,
+    marginBottom: 24,
+    backgroundColor: "#1C1C1E",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+    position: "relative",
   },
   heroTopRow: {
     position: "absolute",
@@ -252,100 +291,122 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   heroArrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.15)",
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.3)",
   },
   heroContent: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 20,
-    gap: 8,
+    padding: 24,
+    gap: 10,
+  },
+  heroBadgeWrap: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    overflow: "hidden",
+    marginBottom: 4,
   },
   heroBadge: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.15)",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     gap: 6,
-    borderWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.25)",
   },
   heroDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: "#34C759",
+    shadowColor: "#34C759",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
   },
   heroBadgeText: {
     color: "#FFFFFF",
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
+    fontSize: 12,
+    fontFamily: TOKENS.font.bold,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   heroTitle: {
     color: "#FFFFFF",
-    fontSize: 24,
+    fontSize: 28,
     fontFamily: TOKENS.font.heading,
-    lineHeight: 30,
-    letterSpacing: -0.4,
+    lineHeight: 34,
+    letterSpacing: -0.5,
   },
   heroMeta: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 8,
+    marginTop: 4,
+  },
+  heroMetaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   heroMetaText: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 13,
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 14,
     fontFamily: TOKENS.font.medium,
     letterSpacing: -0.1,
   },
   heroMetaDivider: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: "rgba(255,255,255,0.4)",
     marginHorizontal: 4,
   },
 
   /* ── Hero Empty ── */
   heroEmpty: {
-    height: 160,
+    height: 120,
     borderRadius: 24,
-    backgroundColor: "#FAFAFA",
-    borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.06)",
-    borderStyle: "dashed",
+    overflow: "hidden",
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  heroEmptyIcon: {
+  heroEmptyIconWrap: {
     width: 56,
     height: 56,
-    borderRadius: 28,
-    backgroundColor: "rgba(0,0,0,0.05)",
+    borderRadius: 20,
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 16,
+  },
+  heroEmptyTextWrap: {
+    flex: 1,
   },
   heroEmptyTitle: {
     color: APPLE_THEME.text,
     fontSize: 17,
     fontFamily: TOKENS.font.semibold,
     letterSpacing: -0.3,
+    marginBottom: 4,
   },
   heroEmptyCopy: {
     color: APPLE_THEME.textMuted,
@@ -353,43 +414,60 @@ const styles = StyleSheet.create({
     fontFamily: TOKENS.font.body,
     letterSpacing: -0.1,
   },
-
-  /* ── Stats Strip ── */
-  statsRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 24,
-  },
-  statPill: {
-    flex: 1,
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 14,
-    paddingHorizontal: 4,
-    borderRadius: 18,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
-  },
-  statIconWrap: {
+  heroEmptyArrow: {
     width: 32,
     height: 32,
-    borderRadius: 10,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,122,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 12,
+  },
+
+  /* ── Stats Strip (Grid) ── */
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 12,
+    marginBottom: 28,
+  },
+  statPill: {
+    width: "48%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
+  statContent: {
+    flex: 1,
+  },
   statValue: {
     color: APPLE_THEME.text,
-    fontSize: 20,
+    fontSize: 22,
     fontFamily: TOKENS.font.heading,
     letterSpacing: -0.4,
   },
   statLabel: {
     color: APPLE_THEME.textMuted,
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: TOKENS.font.medium,
-    letterSpacing: 0.2,
-    textTransform: "uppercase",
+    marginTop: 2,
   },
 
   /* ── Section + Filters ── */
@@ -397,30 +475,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 14,
+    marginBottom: 16,
   },
   sectionTitle: {
     color: APPLE_THEME.text,
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
   filterGroup: {
     flexDirection: "row",
-    gap: 6,
+    gap: 8,
   },
   filterChip: {
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    backgroundColor: "rgba(0,0,0,0.04)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#F2F2F7",
   },
   filterChipActive: {
     backgroundColor: "#1D1D1F",
   },
   filterChipText: {
     color: APPLE_THEME.textMuted,
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: TOKENS.font.semibold,
     letterSpacing: -0.1,
   },

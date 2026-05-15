@@ -2,11 +2,15 @@ import { useState, useEffect, useCallback } from "react";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
 import Eye from "lucide-react/dist/esm/icons/eye";
-import Filter from "lucide-react/dist/esm/icons/filter";
 import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 import Edit from "lucide-react/dist/esm/icons/edit";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
-import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
+import Shield from "lucide-react/dist/esm/icons/shield";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import Monitor from "lucide-react/dist/esm/icons/monitor";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import X from "lucide-react/dist/esm/icons/x";
+import Download from "lucide-react/dist/esm/icons/download";
 import toast from "react-hot-toast";
 import {
   Card,
@@ -21,6 +25,7 @@ import {
 } from "@/components/ui";
 import auditLogService from "@/apis/auditLogService";
 import { formatDateTime } from "@/utils/dateUtils";
+import { exportToCsv, fetchAllPages, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 import TimStatsCard from "@/components/admin/TimStatsCard";
 
 const AuditLogsPage = () => {
@@ -38,9 +43,11 @@ const AuditLogsPage = () => {
   // Filters
   const [actionFilter, setActionFilter] = useState("all");
   const [tableFilter, setTableFilter] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 15;
 
   // Fetch logs
   const fetchLogs = useCallback(async () => {
@@ -51,13 +58,14 @@ const AuditLogsPage = () => {
         limit: itemsPerPage,
         action: actionFilter === "all" ? undefined : actionFilter,
         tableName: tableFilter === "all" ? undefined : tableFilter,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
       };
       const response = await auditLogService.getAll(params);
       if (response.success) {
         setLogs(response.data || []);
         setTotalPages(response.pagination?.totalPages || 1);
 
-        // Calculate stats from current logs
         const allLogs = response.data || [];
         setStats({
           total: response.pagination?.total || allLogs.length,
@@ -77,7 +85,7 @@ const AuditLogsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, actionFilter, tableFilter]);
+  }, [currentPage, actionFilter, tableFilter, startDate, endDate]);
 
   useEffect(() => {
     fetchLogs();
@@ -97,22 +105,72 @@ const AuditLogsPage = () => {
     }
   };
 
-  // Get action color
-  const getActionColor = (action) => {
-    const colors = {
-      CREATE: "bg-green-100 text-green-700",
-      UPDATE: "bg-blue-100 text-blue-700",
-      DELETE: "bg-red-100 text-red-700",
-      UPDATE_ROLE: "bg-orange-100 text-orange-700",
-      UPDATE_PERMISSIONS: "bg-purple-100 text-purple-700",
-      ASSIGN_TAGS: "bg-cyan-100 text-cyan-700",
-    };
-    return colors[action] || "bg-gray-100 text-gray-700";
+  // Export CSV
+  const handleExportCsv = async () => {
+    try {
+      toast.loading("Đang xuất dữ liệu...", { id: "csv-export" });
+      const allData = await fetchAllPages(auditLogService.getAll, {
+        action: actionFilter === "all" ? undefined : actionFilter,
+        tableName: tableFilter === "all" ? undefined : tableFilter,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      });
+
+      exportToCsv({
+        columns: [
+          { key: "id", label: "ID" },
+          { key: (row) => row.user?.profile?.fullName || "N/A", label: "Người thực hiện" },
+          { key: (row) => row.user?.email || "", label: "Email" },
+          { key: (row) => row.user?.role?.displayName || row.user?.role?.name || "", label: "Vai trò" },
+          { key: "action", label: "Hành động" },
+          { key: "tableName", label: "Đối tượng" },
+          { key: "recordId", label: "Record ID" },
+          { key: "description", label: "Mô tả" },
+          { key: "ipAddress", label: "IP" },
+          { key: (row) => formatCsvDate(row.createdAt), label: "Thời gian" },
+        ],
+        data: allData,
+        filename: slugifyFilename("nhat_ky_he_thong"),
+      });
+
+      toast.success(`Đã xuất ${allData.length} bản ghi`, { id: "csv-export" });
+    } catch {
+      toast.error("Lỗi khi xuất dữ liệu", { id: "csv-export" });
+    }
+  };
+
+  // Clear all filters
+  const clearFilters = () => {
+    setActionFilter("all");
+    setTableFilter("all");
+    setStartDate("");
+    setEndDate("");
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters =
+    actionFilter !== "all" || tableFilter !== "all" || startDate || endDate;
+
+  // Get role display name
+  const getRoleDisplay = (log) => {
+    const role = log.user?.role;
+    if (role?.displayName) return role.displayName;
+    if (role?.name) {
+      const names = {
+        super_admin: "Super Admin",
+        admin: "Admin",
+        business: "Business",
+        staff: "Staff",
+        user: "User",
+        guest: "Guest",
+      };
+      return names[role.name] || role.name;
+    }
+    return "N/A";
   };
 
   return (
     <div className="min-h-screen p-8 bg-background relative">
-      {/* Enhanced grid background with dots */}
       <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none"></div>
       <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none"></div>
 
@@ -127,21 +185,31 @@ const AuditLogsPage = () => {
                 <span className="tim-system bg-black text-white px-2 py-1">
                   SYSTEM // AUDIT TRACKING
                 </span>
-                <p className="tim-meta">LỊCH SỚ HOẠT ĐỘNG QUẢN TRỊ VIÊN</p>
+                <p className="tim-meta">LỊCH SỬ HOẠT ĐỘNG HỆ THỐNG</p>
               </div>
             </div>
           </div>
-          <Button
-            onClick={() => fetchLogs()}
-            disabled={loading}
-            variant="outline"
-            className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleExportCsv}
+              variant="outline"
+              className="h-12 rounded-none border border-black hover:bg-black hover:text-white px-4 font-mono text-xs uppercase font-bold"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              CSV
+            </Button>
+            <Button
+              onClick={() => fetchLogs()}
+              disabled={loading}
+              variant="outline"
+              className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
         </div>
 
-        {/* Thống kê nhanh (theo trang hiện tại) */}
+        {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <TimStatsCard
             title="TỔNG GHI NHẬN"
@@ -175,39 +243,88 @@ const AuditLogsPage = () => {
 
         {/* Filter Bar */}
         <div className="bg-white border border-black p-4 shadow-sm">
-          <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
             <span className="tim-meta">BỘ LỌC DỮ LIỆU</span>
-            <div className="flex gap-2">
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="rounded-none border border-red-300 text-red-600 hover:bg-red-50 h-8 text-xs"
+              >
+                <X className="w-3 h-3 mr-1" />
+                XÓA BỘ LỌC
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-3 flex-wrap items-end">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-mono uppercase text-gray-500">
+                Hành động
+              </label>
               <select
                 value={actionFilter}
                 onChange={(e) => {
                   setActionFilter(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50"
+                className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50 min-w-[180px]"
               >
                 <option value="all">TẤT CẢ HÀNH ĐỘNG</option>
                 {auditLogService.getActionTypes().map((action) => (
                   <option key={action} value={action}>
-                    {action}
+                    {auditLogService.getActionLabel(action)} ({action})
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-mono uppercase text-gray-500">
+                Bảng dữ liệu
+              </label>
               <select
                 value={tableFilter}
                 onChange={(e) => {
                   setTableFilter(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50"
+                className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50 min-w-[180px]"
               >
                 <option value="all">TẤT CẢ BẢNG</option>
                 {auditLogService.getTableNames().map((table) => (
                   <option key={table} value={table}>
-                    {table}
+                    {auditLogService.getTableLabel(table)} ({table})
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-mono uppercase text-gray-500">
+                Từ ngày
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="h-10 px-3 border border-black rounded-none bg-white font-mono text-sm focus:outline-none focus:bg-yellow-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-mono uppercase text-gray-500">
+                Đến ngày
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="h-10 px-3 border border-black rounded-none bg-white font-mono text-sm focus:outline-none focus:bg-yellow-50"
+              />
             </div>
           </div>
         </div>
@@ -233,6 +350,16 @@ const AuditLogsPage = () => {
                   <div className="font-bold uppercase text-gray-400">
                     KHÔNG TÌM THẤY DỮ LIỆU
                   </div>
+                  {hasActiveFilters && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearFilters}
+                      className="mt-3 rounded-none border border-black hover:bg-black hover:text-white"
+                    >
+                      XÓA BỘ LỌC
+                    </Button>
+                  )}
                 </div>
               );
             }
@@ -242,76 +369,104 @@ const AuditLogsPage = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-black text-white tim-table-header">
-                      <th className="p-4 border-r border-black/20 w-[60px]">
+                      <th className="p-3 border-r border-black/20 w-[50px]">
                         ID
                       </th>
-                      <th className="p-4 border-r border-black/20">USER</th>
-                      <th className="p-4 border-r border-black/20">
+                      <th className="p-3 border-r border-black/20 min-w-[200px]">
+                        NGƯỜI THỰC HIỆN
+                      </th>
+                      <th className="p-3 border-r border-black/20 w-[100px]">
+                        VAI TRÒ
+                      </th>
+                      <th className="p-3 border-r border-black/20 w-[130px]">
                         HÀNH ĐỘNG
                       </th>
-                      <th className="p-4 border-r border-black/20">BẢNG</th>
-                      <th className="p-4 border-r border-black/20">
-                        RECORD ID
+                      <th className="p-3 border-r border-black/20 w-[120px]">
+                        ĐỐI TƯỢNG
                       </th>
-                      <th className="p-4 border-r border-black/20">MÔ TẢ</th>
-                      <th className="p-4 border-r border-black/20">
+                      <th className="p-3 border-r border-black/20">
+                        MÔ TẢ HOẠT ĐỘNG
+                      </th>
+                      <th className="p-3 border-r border-black/20 w-[90px]">
+                        IP
+                      </th>
+                      <th className="p-3 border-r border-black/20 w-[140px]">
                         THỜI GIAN
                       </th>
-                      <th className="p-4 text-center">CHI TIẾT</th>
+                      <th className="p-3 text-center w-[60px]">CHI TIẾT</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black/5">
                     {logs.map((log) => (
                       <tr
                         key={log.id}
-                        className="hover:bg-yellow-50 group transition-colors"
+                        className="hover:bg-yellow-50/50 group transition-colors"
                       >
-                        <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
+                        <td className="p-3 font-mono text-sm text-gray-400 border-r border-black/5">
                           #{log.id}
                         </td>
-                        <td className="p-4 border-r border-black/5">
-                          <div>
-                            <div className="font-bold uppercase text-sm">
-                              {log.user?.profile?.fullName || "N/A"}
+                        <td className="p-3 border-r border-black/5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-black text-white flex items-center justify-center text-[10px] font-mono font-bold shrink-0">
+                              {(log.user?.profile?.fullName || "N/A")
+                                .substring(0, 2)
+                                .toUpperCase()}
                             </div>
-                            <div className="text-gray-500 text-xs font-mono">
-                              {log.user?.email || "N/A"}
+                            <div className="min-w-0">
+                              <div className="font-bold text-sm truncate">
+                                {log.user?.profile?.fullName || "N/A"}
+                              </div>
+                              <div className="text-gray-500 text-[11px] font-mono truncate">
+                                {log.user?.email || "N/A"}
+                              </div>
                             </div>
                           </div>
                         </td>
-                        <td className="p-4 border-r border-black/5">
+                        <td className="p-3 border-r border-black/5">
                           <span
-                            className={`px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${getActionColor(log.action)}`}
+                            className={`px-2 py-0.5 text-[10px] font-bold uppercase font-mono border ${auditLogService.getRoleColor(log.user?.role?.name)}`}
+                          >
+                            {getRoleDisplay(log)}
+                          </span>
+                        </td>
+                        <td className="p-3 border-r border-black/5">
+                          <span
+                            className={`px-2 py-0.5 text-[10px] font-bold uppercase font-mono border ${auditLogService.getActionColor(log.action)}`}
                           >
                             {log.action}
                           </span>
                         </td>
-                        <td className="p-4 border-r border-black/5">
-                          <span className="font-mono text-sm font-medium">
-                            {log.tableName}
-                          </span>
+                        <td className="p-3 border-r border-black/5">
+                          <div>
+                            <div className="font-mono text-xs font-medium">
+                              {auditLogService.getTableLabel(log.tableName)}
+                            </div>
+                            <div className="text-[10px] text-gray-400 font-mono">
+                              {log.tableName} #{log.recordId}
+                            </div>
+                          </div>
                         </td>
-                        <td className="p-4 border-r border-black/5">
-                          <span className="font-mono text-sm text-gray-600">
-                            {log.recordId}
-                          </span>
-                        </td>
-                        <td className="p-4 border-r border-black/5">
-                          <span className="text-sm text-gray-600">
+                        <td className="p-3 border-r border-black/5">
+                          <span className="text-sm text-gray-700 line-clamp-2">
                             {log.description || "—"}
                           </span>
                         </td>
-                        <td className="p-4 border-r border-black/5">
-                          <span className="font-mono text-sm text-gray-500">
+                        <td className="p-3 border-r border-black/5">
+                          <span className="font-mono text-[11px] text-gray-500">
+                            {log.ipAddress || "—"}
+                          </span>
+                        </td>
+                        <td className="p-3 border-r border-black/5">
+                          <span className="font-mono text-[11px] text-gray-500">
                             {formatDateTime(log.createdAt)}
                           </span>
                         </td>
-                        <td className="p-4 text-center">
+                        <td className="p-3 text-center">
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => handleViewDetail(log)}
-                            className="rounded-none border border-transparent hover:border-black hover:bg-white h-8"
+                            className="rounded-none border border-transparent hover:border-black hover:bg-white h-8 w-8 p-0"
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -327,8 +482,19 @@ const AuditLogsPage = () => {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between p-4 border-t border-black bg-gray-50 font-mono text-xs uppercase">
-              <div>HIỂN THỊ {logs.length} KẾT QUẢ</div>
+              <div>
+                TRANG {currentPage}/{totalPages} &middot; {logs.length} KẾT QUẢ
+              </div>
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="rounded-none border-black h-8 hover:bg-black hover:text-white px-2"
+                >
+                  &laquo;
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -352,12 +518,21 @@ const AuditLogsPage = () => {
                 >
                   SAU
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="rounded-none border-black h-8 hover:bg-black hover:text-white px-2"
+                >
+                  &raquo;
+                </Button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Detail Modal - T.I.M Style */}
+        {/* Detail Modal */}
         <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
           <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto rounded-none border-2 border-black">
             <DialogHeader className="border-b-2 border-black pb-4">
@@ -365,7 +540,7 @@ const AuditLogsPage = () => {
                 <div className="accent-bar h-12"></div>
                 <div>
                   <DialogTitle className="tim-title text-2xl">
-                    LOG DETAIL
+                    CHI TIẾT HOẠT ĐỘNG
                   </DialogTitle>
                   <div className="tim-meta mt-1">
                     AUDIT LOG #{selectedLog?.id}
@@ -375,33 +550,30 @@ const AuditLogsPage = () => {
             </DialogHeader>
 
             {selectedLog && (
-              <div className="space-y-6 pt-4">
-                {/* Main Info Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 border border-black p-4">
+              <div className="space-y-5 pt-4">
+                {/* Action & Table Info */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-gray-50 border border-black p-3">
                     <label className="tim-meta block mb-2">HÀNH ĐỘNG</label>
                     <span
-                      className={`px-3 py-1.5 rounded-none border border-black text-xs font-bold uppercase font-mono inline-block ${getActionColor(selectedLog.action)}`}
+                      className={`px-3 py-1.5 rounded-none border text-xs font-bold uppercase font-mono inline-block ${auditLogService.getActionColor(selectedLog.action)}`}
                     >
-                      {selectedLog.action}
+                      {auditLogService.getActionLabel(selectedLog.action)} (
+                      {selectedLog.action})
                     </span>
                   </div>
 
-                  <div className="bg-gray-50 border border-black p-4">
-                    <label className="tim-meta block mb-2">BẢNG</label>
-                    <div className="font-mono font-bold uppercase text-sm">
-                      {selectedLog.tableName}
+                  <div className="bg-gray-50 border border-black p-3">
+                    <label className="tim-meta block mb-2">ĐỐI TƯỢNG</label>
+                    <div className="font-mono font-bold text-sm">
+                      {auditLogService.getTableLabel(selectedLog.tableName)}
+                    </div>
+                    <div className="text-[10px] text-gray-400 font-mono mt-0.5">
+                      {selectedLog.tableName} #{selectedLog.recordId}
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 border border-black p-4">
-                    <label className="tim-meta block mb-2">RECORD ID</label>
-                    <div className="font-mono text-sm">
-                      {selectedLog.recordId}
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 border border-black p-4">
+                  <div className="bg-gray-50 border border-black p-3">
                     <label className="tim-meta block mb-2">THỜI GIAN</label>
                     <div className="font-mono text-sm">
                       {formatDateTime(selectedLog.createdAt)}
@@ -409,64 +581,113 @@ const AuditLogsPage = () => {
                   </div>
                 </div>
 
+                {/* Description */}
+                {selectedLog.description && (
+                  <div className="bg-yellow-50 border-l-4 border-l-[#F3E600] border border-black p-4">
+                    <label className="tim-meta block mb-2">
+                      MÔ TẢ HOẠT ĐỘNG
+                    </label>
+                    <div className="text-sm font-medium">
+                      {selectedLog.description}
+                    </div>
+                  </div>
+                )}
+
                 {/* User Info */}
                 <div className="bg-white border-l-4 border-l-[#F3E600] border border-black p-4">
-                  <label className="tim-meta block mb-2">NGƯỜI THỰC HIỆN</label>
+                  <label className="tim-meta block mb-3">
+                    NGƯỜI THỰC HIỆN
+                  </label>
                   <div className="flex items-center gap-4">
-                    <div className="bg-black text-white px-3 py-2 rounded-none">
-                      <span className="font-mono text-xs uppercase">
-                        {(
-                          selectedLog.user?.profile?.fullName || "N/A"
-                        ).substring(0, 2)}
+                    <div className="bg-black text-white w-12 h-12 flex items-center justify-center rounded-none">
+                      <span className="font-mono text-sm uppercase font-bold">
+                        {(selectedLog.user?.profile?.fullName || "N/A")
+                          .substring(0, 2)
+                          .toUpperCase()}
                       </span>
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <div className="font-bold uppercase text-sm">
                         {selectedLog.user?.profile?.fullName || "N/A"}
                       </div>
                       <div className="font-mono text-xs text-gray-500">
                         {selectedLog.user?.email || "N/A"}
                       </div>
+                      <div className="mt-1">
+                        <span
+                          className={`px-2 py-0.5 text-[10px] font-bold uppercase font-mono border inline-flex items-center gap-1 ${auditLogService.getRoleColor(selectedLog.user?.role?.name)}`}
+                        >
+                          <Shield className="w-3 h-3" />
+                          {getRoleDisplay(selectedLog)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Description */}
-                {selectedLog.description && (
-                  <div className="bg-gray-50 border border-black p-4">
-                    <label className="tim-meta block mb-2">MÔ TẢ</label>
-                    <div className="text-sm">{selectedLog.description}</div>
+                {/* Technical Metadata */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-50 border border-black p-3">
+                    <label className="tim-meta block mb-2 flex items-center gap-1">
+                      <Globe className="w-3 h-3" /> ĐỊA CHỈ IP
+                    </label>
+                    <div className="font-mono text-sm">
+                      {selectedLog.ipAddress || "Không xác định"}
+                    </div>
                   </div>
-                )}
+                  <div className="bg-gray-50 border border-black p-3">
+                    <label className="tim-meta block mb-2 flex items-center gap-1">
+                      <Monitor className="w-3 h-3" /> THIẾT BỊ
+                    </label>
+                    <div className="font-mono text-xs text-gray-600 break-all line-clamp-2">
+                      {selectedLog.userAgent || "Không xác định"}
+                    </div>
+                  </div>
+                </div>
 
                 {/* Data Comparison */}
-                <div className="grid grid-cols-2 gap-4">
-                  {selectedLog.oldData && (
-                    <div className="bg-white border border-black">
-                      <div className="bg-black text-white p-3 border-b border-black">
-                        <span className="tim-meta text-white">DỮ LIỆU CŨ</span>
-                      </div>
-                      <div className="p-4 max-h-64 overflow-y-auto">
-                        <pre className="text-xs font-mono whitespace-pre-wrap">
-                          {JSON.stringify(selectedLog.oldData, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
+                {(selectedLog.oldData || selectedLog.newData) && (
+                  <div>
+                    <label className="tim-meta block mb-3">
+                      THAY ĐỔI DỮ LIỆU
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedLog.oldData && (
+                        <div className="bg-white border border-black">
+                          <div className="bg-red-600 text-white p-2 border-b border-black">
+                            <span className="tim-meta text-white flex items-center gap-1">
+                              <X className="w-3 h-3" /> DỮ LIỆU CŨ
+                            </span>
+                          </div>
+                          <div className="p-3 max-h-64 overflow-y-auto">
+                            <pre className="text-xs font-mono whitespace-pre-wrap text-gray-700">
+                              {typeof selectedLog.oldData === "string"
+                                ? selectedLog.oldData
+                                : JSON.stringify(selectedLog.oldData, null, 2)}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
 
-                  {selectedLog.newData && (
-                    <div className="bg-white border border-black">
-                      <div className="bg-black text-white p-3 border-b border-black">
-                        <span className="tim-meta text-white">DỮ LIỆU MỚI</span>
-                      </div>
-                      <div className="p-4 max-h-64 overflow-y-auto">
-                        <pre className="text-xs font-mono whitespace-pre-wrap">
-                          {JSON.stringify(selectedLog.newData, null, 2)}
-                        </pre>
-                      </div>
+                      {selectedLog.newData && (
+                        <div className="bg-white border border-black">
+                          <div className="bg-emerald-600 text-white p-2 border-b border-black">
+                            <span className="tim-meta text-white flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" /> DỮ LIỆU MỚI
+                            </span>
+                          </div>
+                          <div className="p-3 max-h-64 overflow-y-auto">
+                            <pre className="text-xs font-mono whitespace-pre-wrap text-gray-700">
+                              {typeof selectedLog.newData === "string"
+                                ? selectedLog.newData
+                                : JSON.stringify(selectedLog.newData, null, 2)}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Close Button */}
                 <div className="flex justify-end pt-4 border-t border-black">

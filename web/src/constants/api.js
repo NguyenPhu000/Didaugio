@@ -4,6 +4,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { AUTH_ROUTES } from "./routes";
 import { API_TIMEOUT } from "./timing";
 import { applyBusinessApiErrorUx } from "@/utils/businessApiErrorUx";
+import { toast } from "sonner";
 
 /**
  * Instance axios dùng chung. Trên response lỗi, có thể truyền:
@@ -190,6 +191,29 @@ api.interceptors.response.use(
       !isLogoutInProgress
     ) {
       clearAuthAndRedirect();
+    }
+
+    // Handle 403 Forbidden — permissions may have been revoked mid-session
+    if (response?.status === 403 && !isPublicRequest && hasAccessToken) {
+      const errorCode = response?.data?.errorCode;
+
+      // If the 403 is from a permission/auth endpoint itself, force logout to avoid infinite loops
+      const isPermissionEndpoint =
+        normalizeRequestPath(requestUrl).includes("/permissions") ||
+        errorCode === "FORBIDDEN_USER" ||
+        errorCode === "FORBIDDEN_SYSTEM_ROLE";
+
+      if (isPermissionEndpoint) {
+        clearAuthAndRedirect();
+        return Promise.reject(error);
+      }
+
+      if (!originalRequest?.skipPermissionToast && !originalRequest?._403Shown) {
+        originalRequest._403Shown = true;
+        toast.error(
+          "Quyền truy cập của bạn đã thay đổi, vui lòng tải lại trang.",
+        );
+      }
     }
 
     if (response?.status === 400 && response?.data?.errors) {

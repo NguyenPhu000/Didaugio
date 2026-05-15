@@ -375,6 +375,24 @@ export const deleteUser = async (id) => {
     );
   }
 
+  // Last Super Admin protection
+  const userWithRole = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { roleId: true },
+  });
+  if (userWithRole?.roleId === ROLES.SUPER_ADMIN) {
+    const superAdminCount = await prisma.user.count({
+      where: { roleId: ROLES.SUPER_ADMIN, deletedAt: null },
+    });
+    if (superAdminCount <= 1) {
+      throw new ServiceError(
+        "Không thể xóa Super Admin cuối cùng trong hệ thống",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
+  }
+
   const deletedUser = await prisma.user.update({
     where: { id: userId },
     data: {
@@ -429,6 +447,20 @@ export const updateUserRole = async (userId, newRoleId, currentUser) => {
       404,
       ERROR_CODES.NOT_FOUND,
     );
+  }
+
+  // Last Super Admin protection — cannot demote the last super admin
+  if (targetUser.roleId === ROLES.SUPER_ADMIN && validRoleId !== ROLES.SUPER_ADMIN) {
+    const superAdminCount = await prisma.user.count({
+      where: { roleId: ROLES.SUPER_ADMIN, deletedAt: null },
+    });
+    if (superAdminCount <= 1) {
+      throw new ServiceError(
+        "Không thể thay đổi vai trò của Super Admin cuối cùng",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
   }
 
   // Check hierarchy

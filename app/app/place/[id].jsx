@@ -555,7 +555,9 @@ function TripSelectorSheet({ placeId, placeName, onClose, t }) {
           dayNumber: 1,
           order: 0,
         });
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.detail(tripId) });
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.trips.detail(tripId),
+        });
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.list() });
         onClose();
       } catch {
@@ -616,8 +618,7 @@ function TripSelectorSheet({ placeId, placeName, onClose, t }) {
             data={trips}
             keyExtractor={(item) => String(item.id)}
             renderItem={({ item }) => {
-              const isAdding =
-                loadingTripId === item.id;
+              const isAdding = loadingTripId === item.id;
               return (
                 <Pressable
                   onPress={() => handleSelect(item.id)}

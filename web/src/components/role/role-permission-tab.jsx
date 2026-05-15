@@ -27,9 +27,10 @@ import {
   Save,
   RefreshCw,
   SearchX,
+  Shield,
 } from "lucide-react";
 
-export function RolePermissionTab({ role, onUpdated, onClose }) {
+export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [allPermissions, setAllPermissions] = useState({});
@@ -48,15 +49,17 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         roleService.getRolePermissions(role.id),
       ]);
 
-      if (permissionsResponse?.success && permissionsResponse.permissions) {
-        setAllPermissions(permissionsResponse.permissions);
+      const permData = permissionsResponse?.data || permissionsResponse;
+      if (permData && permData.permissions) {
+        setAllPermissions(permData.permissions);
 
         const currentPermissionIds = new Set();
+        const rolePermData = rolePermissionsResponse?.data || rolePermissionsResponse;
         if (
-          rolePermissionsResponse?.success &&
-          rolePermissionsResponse.data?.permissions
+          rolePermData?.success &&
+          rolePermData.data?.permissions
         ) {
-          Object.values(rolePermissionsResponse.data.permissions).forEach(
+          Object.values(rolePermData.data.permissions).forEach(
             (perms) => {
               perms.forEach((p) => currentPermissionIds.add(p.id));
             },
@@ -66,7 +69,7 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
         setSelectedPermissions(currentPermissionIds);
         setInitialPermissions(currentPermissionIds);
 
-        const modules = Object.keys(permissionsResponse.permissions);
+        const modules = Object.keys(permData.permissions);
         setExpandedModules(new Set(modules.slice(0, 3)));
       }
     } catch (error) {
@@ -235,6 +238,16 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
 
   return (
     <div className="space-y-4 pb-4">
+      {/* Read-only banner */}
+      {readOnly && (
+        <div className="bg-yellow-50 border border-[#F3E600] p-3 flex items-center gap-2">
+          <Shield className="h-4 w-4 text-yellow-600" />
+          <p className="text-xs font-mono text-yellow-800 uppercase">
+            Chế độ xem quyền — Super Admin tự động có toàn quyền truy cập
+          </p>
+        </div>
+      )}
+
       {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
@@ -287,28 +300,30 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
             />
           </div>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSelectAll}
-            disabled={stats.selected === stats.total}
-            className="flex-1 sm:flex-none rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
-          >
-            <CheckCircle className="h-3 w-3 mr-2" />
-            CHỌN TẤT
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDeselectAll}
-            disabled={stats.selected === 0}
-            className="flex-1 sm:flex-none rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
-          >
-            <XCircle className="h-3 w-3 mr-2" />
-            BỎ CHỌN
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSelectAll}
+              disabled={stats.selected === stats.total}
+              className="flex-1 sm:flex-none rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
+            >
+              <CheckCircle className="h-3 w-3 mr-2" />
+              CHỌN TẤT
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDeselectAll}
+              disabled={stats.selected === 0}
+              className="flex-1 sm:flex-none rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
+            >
+              <XCircle className="h-3 w-3 mr-2" />
+              BỎ CHỌN
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Permissions List */}
@@ -346,6 +361,7 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
                       <Checkbox
                         checked={moduleCheckedState}
                         onCheckedChange={() => handleToggleModule(module)}
+                        disabled={readOnly}
                         className="data-[state=checked]:bg-[#F3E600] data-[state=checked]:border-black data-[state=checked]:text-black rounded-none border-2"
                       />
                     </div>
@@ -387,6 +403,7 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
                         onCheckedChange={() =>
                           handleTogglePermission(permission.id)
                         }
+                        disabled={readOnly}
                       />
                     ))}
                   </div>
@@ -404,25 +421,27 @@ export function RolePermissionTab({ role, onUpdated, onClose }) {
           onClick={onClose}
           className="rounded-none border border-black hover:bg-gray-100 uppercase text-xs font-bold"
         >
-          HỦY
+          {readOnly ? "ĐÓNG" : "HỦY"}
         </Button>
-        <Button
-          onClick={handleSave}
-          disabled={!hasChanges || saving}
-          className="rounded-none bg-black hover:bg-[#F3E600] hover:text-black text-white border border-black shadow-hard uppercase text-xs font-bold"
-        >
-          {saving ? (
-            <span className="flex items-center gap-2">
-              <RefreshCw className="h-3 w-3 animate-spin" />
-              ĐANG LƯU...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <Save className="h-3 w-3" />
-              LƯU THAY ĐỔI
-            </span>
-          )}
-        </Button>
+        {!readOnly && (
+          <Button
+            onClick={handleSave}
+            disabled={!hasChanges || saving}
+            className="rounded-none bg-black hover:bg-[#F3E600] hover:text-black text-white border border-black shadow-hard uppercase text-xs font-bold"
+          >
+            {saving ? (
+              <span className="flex items-center gap-2">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                ĐANG LƯU...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Save className="h-3 w-3" />
+                LƯU THAY ĐỔI
+              </span>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,10 @@
 import prisma from "../config/prismaClient.js";
 import { ROLES } from "../config/constants.js";
 import { ERROR_MESSAGES, ERROR_CODES } from "../config/messages.js";
+import {
+  getCachedPermissions,
+  setCachedPermissions,
+} from "../utils/permissionCache.js";
 
 const SYSTEM_RESTRICTED_PERMISSIONS = {
   [ROLES.ADMIN]: new Set([
@@ -35,6 +39,12 @@ async function getUserPermissions(userId, roleId) {
     return { isSuperAdmin: true, permissions: new Set(["*"]) };
   }
 
+  const cacheKey = `${userId}:${roleId}`;
+  const cached = getCachedPermissions(cacheKey);
+  if (cached) {
+    return { isSuperAdmin: false, permissions: cached.permissions };
+  }
+
   const [rolePermissions, customPermissions] = await Promise.all([
     prisma.rolePermission.findMany({
       where: { roleId },
@@ -50,6 +60,8 @@ async function getUserPermissions(userId, roleId) {
     ...rolePermissions.map((rp) => rp.permission.name),
     ...customPermissions.map((up) => up.permission.name),
   ]);
+
+  setCachedPermissions(cacheKey, { permissions: allPermissions });
 
   return { isSuperAdmin: false, permissions: allPermissions };
 }
@@ -240,21 +252,12 @@ export const loadUserPermissions = async (req, res, next) => {
     }
 
     if (user.roleId === ROLES.SUPER_ADMIN) {
-      const allPermissions = await prisma.permission.findMany({
-        select: { name: true },
-      });
-      req.userPermissions = new Set(allPermissions.map((p) => p.name));
+      req.userPermissions = new Set(["*"]);
       return next();
     }
 
-    const userPermissions = await prisma.rolePermission.findMany({
-      where: { roleId: user.roleId },
-      include: { permission: { select: { name: true } } },
-    });
-
-    req.userPermissions = new Set(
-      userPermissions.map((rp) => rp.permission.name),
-    );
+    const { permissions } = await getUserPermissions(user.userId, user.roleId);
+    req.userPermissions = permissions;
 
     next();
   } catch (error) {

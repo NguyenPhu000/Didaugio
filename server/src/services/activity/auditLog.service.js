@@ -1,16 +1,40 @@
 import prisma from "../../config/prismaClient.js";
 
+const USER_INCLUDE = {
+  user: {
+    select: {
+      id: true,
+      email: true,
+      roleId: true,
+      role: {
+        select: {
+          id: true,
+          name: true,
+          displayName: true,
+        },
+      },
+      profile: {
+        select: {
+          fullName: true,
+          avatar: true,
+        },
+      },
+    },
+  },
+};
+
 /**
  * Lấy danh sách audit logs (sắp xếp DESC - mới nhất lên đầu)
  */
 export const getAll = async (query) => {
-  const { page, limit, userId, action, tableName, startDate, endDate } = query;
+  const { page, limit, userId, action, tableName, recordId, startDate, endDate } = query;
   const skip = (page - 1) * limit;
 
   const where = {};
   if (userId) where.userId = userId;
   if (action) where.action = action;
   if (tableName) where.tableName = tableName;
+  if (recordId) where.recordId = recordId;
   if (startDate || endDate) {
     where.createdAt = {};
     if (startDate) where.createdAt.gte = new Date(startDate);
@@ -20,21 +44,9 @@ export const getAll = async (query) => {
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
       where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            profile: {
-              select: {
-                fullName: true,
-              },
-            },
-          },
-        },
-      },
+      include: USER_INCLUDE,
       orderBy: {
-        createdAt: "desc", // Mới nhất lên đầu
+        createdAt: "desc",
       },
       skip,
       take: limit,
@@ -59,19 +71,7 @@ export const getAll = async (query) => {
 export const getById = async (id) => {
   const log = await prisma.auditLog.findUnique({
     where: { id },
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          profile: {
-            select: {
-              fullName: true,
-            },
-          },
-        },
-      },
-    },
+    include: USER_INCLUDE,
   });
 
   if (!log) {
@@ -93,6 +93,7 @@ export const create = async (data) => {
       action: data.action,
       tableName: data.tableName,
       recordId: data.recordId,
+      description: data.description || null,
       oldData: data.oldData || null,
       newData: data.newData || null,
       ipAddress: data.ipAddress || null,

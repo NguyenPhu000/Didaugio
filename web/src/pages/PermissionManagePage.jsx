@@ -52,12 +52,13 @@ export default function PermissionManagePage() {
       setLoading(true);
       const response = await permissionService.getPermissionsByModule(true);
 
-      if (response && response.permissions) {
-        setPermissions(response.permissions);
-        setModuleStats(response.moduleStats || {});
+      const data = response?.data || response;
+      if (data && data.permissions) {
+        setPermissions(data.permissions);
+        setModuleStats(data.moduleStats || {});
         setStats({
-          totalPermissions: response.totalPermissions,
-          totalModules: response.totalModules,
+          totalPermissions: data.totalPermissions,
+          totalModules: data.totalModules,
         });
       }
     } catch (error) {

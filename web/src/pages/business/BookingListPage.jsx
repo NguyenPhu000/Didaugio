@@ -33,11 +33,13 @@ import {
   Users,
   CircleDollarSign,
   Loader2,
+  Download,
 } from "lucide-react";
 import * as bookingApi from "@/apis/bookingService";
 import { getMyPlaces } from "@/apis/businessApi";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BOOKING_STATUS } from "@/constants/constants";
+import { exportToCsv, fetchAllPages, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 import {
   PageHeader,
   EmptyState,
@@ -832,6 +834,58 @@ const BookingListPage = () => {
     loadStats();
   }, [loadBookings, loadStats]);
 
+  // ─── CSV Export ───────────────────────────────────────────────────────────
+
+  const STATUS_LABELS = {
+    pending: "Chờ xác nhận",
+    confirmed: "Đã xác nhận",
+    completed: "Hoàn thành",
+    cancelled: "Đã hủy",
+    rejected: "Từ chối",
+    no_show: "Không đến",
+    expired: "Hết hạn",
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      toast.loading("Đang xuất dữ liệu...", { id: "csv-export" });
+      const allData = await fetchAllPages(async (params) => {
+        const res = await bookingApi.getAll({
+          ...params,
+          ...(selectedPlace && { placeId: selectedPlace }),
+          ...(statusTab !== "all" && { status: statusTab }),
+          ...(searchQuery && { search: searchQuery }),
+          ...(fromDate && { fromDate }),
+          ...(toDate && { toDate }),
+        });
+        return res;
+      });
+
+      exportToCsv({
+        columns: [
+          { key: "id", label: "ID" },
+          { key: (row) => row.customerName || row.user?.profile?.fullName || "", label: "Khách hàng" },
+          { key: (row) => row.customerEmail || row.user?.email || "", label: "Email" },
+          { key: (row) => row.customerPhone || row.user?.profile?.phone || "", label: "Điện thoại" },
+          { key: (row) => row.place?.name || "", label: "Địa điểm" },
+          { key: (row) => row.service?.name || "", label: "Dịch vụ" },
+          { key: (row) => STATUS_LABELS[row.status] || row.status, label: "Trạng thái" },
+          { key: (row) => row.bookingDate || "", label: "Ngày đặt" },
+          { key: (row) => row.bookingTime || "", label: "Giờ đặt" },
+          { key: (row) => row.totalAmount || 0, label: "Tổng tiền" },
+          { key: (row) => row.quantity || 1, label: "Số lượng" },
+          { key: (row) => formatCsvDate(row.createdAt), label: "Tạo lúc" },
+        ],
+        data: allData,
+        filename: slugifyFilename("danh_sach_dat_cho"),
+      });
+
+      toast.success(`Đã xuất ${allData.length} bản ghi`, { id: "csv-export" });
+    } catch {
+      toast.error("Lỗi khi xuất dữ liệu", { id: "csv-export" });
+    }
+  };
+
   // ─── Action Handlers ───────────────────────────────────────────────────────
 
   const handleConfirm = async (id) => {
@@ -1008,12 +1062,22 @@ const BookingListPage = () => {
               <h1 className="text-2xl font-bold text-gray-900">Quản lý đặt chỗ</h1>
               <p className="text-sm text-gray-500 mt-0.5">Xử lý nhanh chóng các yêu cầu đặt chỗ</p>
             </div>
-            {pendingSelected.length > 0 && (
-              <Button onClick={handleBulkConfirm} disabled={bulkLoading} className="gap-2">
-                {bulkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                Xác nhận {pendingSelected.length} đặt chỗ
+            <div className="flex gap-2">
+              <Button
+                onClick={handleExportCsv}
+                variant="outline"
+                className="h-9 rounded-none border border-black hover:bg-black hover:text-white px-3 font-mono text-xs uppercase font-bold"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                CSV
               </Button>
-            )}
+              {pendingSelected.length > 0 && (
+                <Button onClick={handleBulkConfirm} disabled={bulkLoading} className="gap-2">
+                  {bulkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Xác nhận {pendingSelected.length} đặt chỗ
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Stat Cards */}

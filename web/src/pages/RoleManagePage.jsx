@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { RoleManagementModal } from "@/components/role/role-management-modal";
 import { Button } from "@/components/ui/Button";
 import TimStatsCard from "@/components/admin/TimStatsCard";
+import { usePermission } from "@/hooks/usePermission";
+import { ROLES } from "@/constants/constants";
 import {
   RefreshCw,
   ShieldAlert,
@@ -13,6 +15,8 @@ import {
   Crown,
   Lock,
   BarChart3,
+  ShieldOff,
+  Eye,
 } from "lucide-react";
 
 // Lucide mapping
@@ -30,6 +34,8 @@ export default function RoleManagePage() {
   const [loading, setLoading] = useState(true);
   const [selectedRole, setSelectedRole] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [isReadOnly, setIsReadOnly] = useState(false);
+  const { isSuperAdmin } = usePermission();
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -42,7 +48,7 @@ export default function RoleManagePage() {
 
       if (response?.success && response.data) {
         const filteredRoles = response.data.filter(
-          (role) => role.name !== "guest",
+          (role) => role.name !== "guest" && role.name !== "user",
         );
         setRoles(filteredRoles);
       }
@@ -58,8 +64,9 @@ export default function RoleManagePage() {
     fetchRoles();
   }, [fetchRoles]);
 
-  const handleManagePermissions = (role) => {
+  const handleManagePermissions = (role, readOnly = false) => {
     setSelectedRole(role);
+    setIsReadOnly(readOnly);
     setModalOpen(true);
   };
 
@@ -223,13 +230,28 @@ export default function RoleManagePage() {
                         </span>
                       </div>
 
-                      <Button
-                        onClick={() => handleManagePermissions(role)}
-                        className="w-full bg-white border border-black text-black hover:bg-black hover:text-white rounded-none h-9 text-xs font-bold uppercase tracking-wider"
-                      >
-                        <Lock className="w-3 h-3 mr-2" />
-                        Cấu hình quyền
-                      </Button>
+                      {role.isSystem && !isSuperAdmin() ? (
+                        <div className="w-full bg-gray-50 border border-gray-300 text-gray-400 rounded-none h-9 text-xs font-bold uppercase tracking-wider flex items-center justify-center cursor-not-allowed">
+                          <ShieldOff className="w-3 h-3 mr-2" />
+                          Vai trò hệ thống
+                        </div>
+                      ) : role.id === ROLES.SUPER_ADMIN ? (
+                        <Button
+                          onClick={() => handleManagePermissions(role, true)}
+                          className="w-full bg-white border border-black text-black hover:bg-black hover:text-white rounded-none h-9 text-xs font-bold uppercase tracking-wider"
+                        >
+                          <Eye className="w-3 h-3 mr-2" />
+                          Xem quyền
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => handleManagePermissions(role)}
+                          className="w-full bg-white border border-black text-black hover:bg-black hover:text-white rounded-none h-9 text-xs font-bold uppercase tracking-wider"
+                        >
+                          <Lock className="w-3 h-3 mr-2" />
+                          Cấu hình quyền
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );
@@ -244,6 +266,7 @@ export default function RoleManagePage() {
             onOpenChange={setModalOpen}
             role={selectedRole}
             onUpdated={handlePermissionsUpdated}
+            readOnly={isReadOnly}
           />
         )}
       </div>

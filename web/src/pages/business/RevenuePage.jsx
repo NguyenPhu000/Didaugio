@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { BarChart3, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { BarChart3, DollarSign, TrendingUp, TrendingDown, Download } from "lucide-react";
+import toast from "react-hot-toast";
 import useBusinessStore from "@/stores/businessStore";
 import { BOOKING_STATUS } from "@/constants/constants";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
+import { exportToCsv, slugifyFilename } from "@/utils/csvExport";
 import {
   PageHeader,
   StatCard,
@@ -64,13 +66,55 @@ const RevenuePage = () => {
     };
   }, [fetchDashboard]);
 
+  const handleExportCsv = () => {
+    const totalRevenue = overview?.totalRevenue ?? stats?.totalRevenue ?? 0;
+    const totalCommission = overview?.totalCommission ?? stats?.totalCommission ?? 0;
+    const netRevenue = overview?.netRevenue ?? stats?.netRevenue ?? 0;
+    const bookingsTotal = overview?.bookingsTotal ?? stats?.bookingsCount ?? 0;
+    const byStatus = overview?.bookingsByStatus || {};
+
+    const data = STATUS_ROWS.map(({ key, label }) => ({
+      status: label,
+      count: byStatus[key] || 0,
+      percentage: bookingsTotal > 0 ? (((byStatus[key] || 0) / bookingsTotal) * 100).toFixed(1) + "%" : "0%",
+    }));
+
+    // Add summary rows
+    data.push({ status: "--- TỔNG QUAN ---", count: "", percentage: "" });
+    data.push({ status: "Tổng doanh thu", count: totalRevenue, percentage: "" });
+    data.push({ status: "Hoa hồng hệ thống", count: totalCommission, percentage: "" });
+    data.push({ status: "Doanh thu ròng", count: netRevenue, percentage: "" });
+    data.push({ status: "Tổng đặt chỗ", count: bookingsTotal, percentage: "" });
+
+    exportToCsv({
+      columns: [
+        { key: "status", label: "Trạng thái" },
+        { key: "count", label: "Số lượng" },
+        { key: "percentage", label: "Tỷ lệ" },
+      ],
+      data,
+      filename: slugifyFilename("bao_cao_doanh_thu"),
+    });
+
+    toast.success("Đã xuất báo cáo doanh thu");
+  };
+
   return (
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
       {/* Header */}
-      <PageHeader
-        title="Doanh thu"
-        subtitle="Tổng quan tài chính từ tất cả dịch vụ và đặt chỗ"
-      />
+      <div className="flex items-center justify-between">
+        <PageHeader
+          title="Doanh thu"
+          subtitle="Tổng quan tài chính từ tất cả dịch vụ và đặt chỗ"
+        />
+        <button
+          onClick={handleExportCsv}
+          className="h-9 px-3 flex items-center gap-1.5 border border-black bg-white hover:bg-black hover:text-white transition-colors font-mono text-xs uppercase font-bold shrink-0"
+        >
+          <Download className="h-4 w-4" />
+          CSV
+        </button>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

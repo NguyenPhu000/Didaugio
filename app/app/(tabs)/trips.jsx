@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { View, FlatList, StyleSheet, RefreshControl, Pressable } from "react-native";
+import { View, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -105,6 +105,7 @@ export default function TripsScreen() {
               activeFilter={activeFilter}
               onSelectFilter={setActiveFilter}
               onOpenHero={handlePressTrip}
+              onCreate={handleCreate}
             />
           ) : null
         }
@@ -122,16 +123,16 @@ export default function TripsScreen() {
       />
 
       {/* Floating Action Button — bottom-right for one-handed reach */}
-      <Pressable
+      <TouchableOpacity
+        activeOpacity={0.8}
         onPress={handleCreate}
-        style={({ pressed }) => [
+        style={[
           styles.fab,
           { bottom: TAB_BAR_HEIGHT + insets.bottom + 20 },
-          pressed && styles.fabPressed,
         ]}
       >
         <MaterialIcons name="add" size={26} color="#FFFFFF" />
-      </Pressable>
+      </TouchableOpacity>
     </View>
   );
 }

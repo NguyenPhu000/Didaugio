@@ -21,9 +21,11 @@ import {
   AlertTriangle,
   LayoutGrid,
   Table2,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import useBusinessStore from "@/stores/businessStore";
+import { exportToCsv, slugifyFilename } from "@/utils/csvExport";
 import BusinessReviewApproveModal from "@/components/admin/BusinessReviewApproveModal";
 import BusinessDetailModal from "@/components/admin/BusinessDetailModal";
 import TimStatsCard from "@/components/admin/TimStatsCard";
@@ -220,6 +222,34 @@ const KYCProgress = ({ biz }) => {
     }
   };
 
+  const handleExportCsv = () => {
+    if (!businesses || businesses.length === 0) {
+      toast.error("Không có dữ liệu để xuất");
+      return;
+    }
+
+    exportToCsv({
+      columns: [
+        { key: "id", label: "ID" },
+        { key: "businessName", label: "Tên doanh nghiệp" },
+        { key: (row) => BUSINESS_TYPE_LABELS[row.businessType] || row.businessType, label: "Loại hình" },
+        { key: "status", label: "Trạng thái" },
+        { key: (row) => row.owner?.email || "", label: "Email chủ" },
+        { key: (row) => row.owner?.profile?.fullName || "", label: "Tên chủ" },
+        { key: (row) => row.taxCode || "", label: "Mã số thuế" },
+        { key: (row) => (row.contractSigned ? "Đã ký" : "Chưa ký"), label: "Hợp đồng" },
+        { key: (row) => row._count?.places ?? 0, label: "Địa điểm" },
+        { key: (row) => row._count?.services ?? 0, label: "Dịch vụ" },
+        { key: (row) => row._count?.vouchers ?? 0, label: "Voucher" },
+        { key: (row) => row._count?.bookings ?? 0, label: "Booking" },
+      ],
+      data: businesses,
+      filename: slugifyFilename("danh_sach_doanh_nghiep"),
+    });
+
+    toast.success(`Đã xuất ${businesses.length} bản ghi`);
+  };
+
   const s = summary || {
     totalBusinesses: 0,
     pending: 0,
@@ -248,16 +278,27 @@ const KYCProgress = ({ biz }) => {
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="h-12 w-12 flex items-center justify-center border border-black bg-white hover:bg-gray-100 transition-colors shrink-0 self-start md:self-auto"
-            title="Làm mới"
-          >
-            <RefreshCw
-              className={`h-5 w-5 text-black ${loading ? "animate-spin" : ""}`}
-            />
-          </button>
+          <div className="flex gap-2 self-start md:self-auto">
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              className="h-12 px-4 flex items-center justify-center border border-black bg-white hover:bg-black hover:text-white transition-colors shrink-0 font-mono text-xs uppercase font-bold gap-2"
+              title="Xuất CSV"
+            >
+              <Download className="h-4 w-4" />
+              CSV
+            </button>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="h-12 w-12 flex items-center justify-center border border-black bg-white hover:bg-gray-100 transition-colors shrink-0"
+              title="Làm mới"
+            >
+              <RefreshCw
+                className={`h-5 w-5 text-black ${loading ? "animate-spin" : ""}`}
+              />
+            </button>
+          </div>
         </div>
 
         {/* Stats — cùng kiểu danh mục */}

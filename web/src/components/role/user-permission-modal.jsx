@@ -69,22 +69,24 @@ export function UserPermissionModal({
       const permissionsResponse =
         await permissionService.getPermissionsByModule(false);
 
-      if (!permissionsResponse || !permissionsResponse.permissions) {
+      const permData = permissionsResponse?.data || permissionsResponse;
+      if (!permData || !permData.permissions) {
         throw new Error("Không thể tải danh sách quyền");
       }
 
-      setAllPermissions(permissionsResponse.permissions);
+      setAllPermissions(permData.permissions);
 
       // Lấy quyền của user (nếu single mode)
       if (!isBulk && user) {
         const userPermsResponse =
           await userPermissionService.getUserPermissions(user.id);
 
-        if (userPermsResponse && userPermsResponse.permissions) {
+        const userPermData = userPermsResponse?.data || userPermsResponse;
+        if (userPermData && userPermData.permissions) {
           const allUserPermissions = new Set(); // TẤT CẢ quyền user có
           const roleOnlyPermissions = new Set(); // Quyền CHỈ từ role (để hiển thị badge)
 
-          Object.values(userPermsResponse.permissions).forEach((perms) => {
+          Object.values(userPermData.permissions).forEach((perms) => {
             perms.forEach((p) => {
               allUserPermissions.add(p.id); // Thêm tất cả vào selected
               if (p.source === "role" && !p.hasBothSources) {
@@ -104,7 +106,7 @@ export function UserPermissionModal({
         setRolePermissions(new Set());
       }
 
-      const modules = Object.keys(permissionsResponse.permissions);
+      const modules = Object.keys(permData.permissions);
       setExpandedModules(new Set(modules.slice(0, 3)));
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);

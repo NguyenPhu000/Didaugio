@@ -6,12 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import { userPermissionService } from "@/apis/userPermissionService";
+import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import { UserPermissionModal } from "./user-permission-modal";
-import { Search, UserCog, Users, Settings } from "lucide-react";
+import { Search, UserCog, Users, Settings, Crown } from "lucide-react";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
 
 export function RoleUsersTab({ role }) {
+  const currentUser = useAuthStore((state) => state.user);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -28,11 +30,21 @@ export function RoleUsersTab({ role }) {
         search,
       });
 
+      let fetchedUsers = [];
       if (response?.success && response.data?.users) {
-        setUsers(response.data.users);
-      } else {
-        setUsers([]);
+        fetchedUsers = response.data.users;
       }
+
+      // Move current user to the top if they're in this role
+      if (currentUser) {
+        const selfIndex = fetchedUsers.findIndex((u) => u.id === currentUser.id);
+        if (selfIndex > 0) {
+          const [self] = fetchedUsers.splice(selfIndex, 1);
+          fetchedUsers.unshift(self);
+        }
+      }
+
+      setUsers(fetchedUsers);
     } catch (error) {
       const errorMsg =
         error.response?.data?.message ||
@@ -43,7 +55,7 @@ export function RoleUsersTab({ role }) {
     } finally {
       setLoading(false);
     }
-  }, [role.id, search]);
+  }, [role.id, search, currentUser]);
 
   useEffect(() => {
     fetchUsers();
@@ -52,6 +64,19 @@ export function RoleUsersTab({ role }) {
   const handleSearch = () => {
     fetchUsers();
   };
+
+  const canEditUser = (targetUser) => {
+    if (!currentUser) return false;
+    // Cannot edit self
+    if (targetUser.id === currentUser.id) return false;
+    // Cannot edit if target has no role
+    if (!targetUser.roleId) return false;
+    // Cannot edit same or higher role (lower roleId number = higher authority)
+    if (currentUser.roleId >= targetUser.roleId) return false;
+    return true;
+  };
+
+  const isSelf = (targetUser) => currentUser && targetUser.id === currentUser.id;
 
   const handleToggleUser = (userId) => {
     setSelectedUsers((prev) => {
@@ -66,7 +91,7 @@ export function RoleUsersTab({ role }) {
   };
 
   const handleSelectAll = () => {
-    setSelectedUsers(new Set(users.map((u) => u.id)));
+    setSelectedUsers(new Set(users.filter((u) => canEditUser(u)).map((u) => u.id)));
   };
 
   const handleDeselectAll = () => {
@@ -79,10 +104,15 @@ export function RoleUsersTab({ role }) {
   };
 
   const handleBulkManage = () => {
-    if (selectedUsers.size === 0) {
-      toast.error("Vui lòng chọn ít nhất 1 user");
+    const editableSelected = Array.from(selectedUsers).filter((id) => {
+      const u = users.find((user) => user.id === id);
+      return u && canEditUser(u);
+    });
+    if (editableSelected.length === 0) {
+      toast.error("Vui lòng chọn ít nhất 1 user có thể chỉnh sửa");
       return;
     }
+    setSelectedUsers(new Set(editableSelected));
     setBulkModalOpen(true);
   };
 
@@ -175,7 +205,7 @@ export function RoleUsersTab({ role }) {
           size="sm"
           variant="ghost"
           onClick={handleSelectAll}
-          disabled={selectedUsers.size === users.length}
+          disabled={selectedUsers.size === users.filter((u) => canEditUser(u)).length}
           className="text-black hover:bg-gray-100 border border-black rounded-none uppercase text-xs font-bold h-8"
         >
           CHỌN TẤT CẢ
@@ -199,7 +229,8 @@ export function RoleUsersTab({ role }) {
               <Checkbox
                 checked={selectedUsers.has(user.id)}
                 onCheckedChange={() => handleToggleUser(user.id)}
-                className="data-[state=checked]:bg-[#F3E600] data-[state=checked]:border-black data-[state=checked]:text-black rounded-none border-2"
+                disabled={!canEditUser(user)}
+                className="data-[state=checked]:bg-[#F3E600] data-[state=checked]:border-black data-[state=checked]:text-black rounded-none border-2 disabled:opacity-40"
               />
               <Avatar className="h-10 w-10 border-2 border-black rounded-none">
                 <AvatarImage
@@ -217,6 +248,15 @@ export function RoleUsersTab({ role }) {
                   <p className="font-bold text-black truncate uppercase text-sm tracking-tight">
                     {user.fullName || user.email}
                   </p>
+                  {isSelf(user) && (
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] bg-purple-500 text-white border border-purple-500 rounded-none uppercase font-mono flex items-center gap-1"
+                    >
+                      <Crown className="h-3 w-3" />
+                      BẠN
+                    </Badge>
+                  )}
                   {user.customPermissionCount > 0 && (
                     <Badge
                       variant="secondary"
@@ -246,7 +286,9 @@ export function RoleUsersTab({ role }) {
                 size="sm"
                 variant="outline"
                 onClick={() => handleManageUser(user)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
+                disabled={!canEditUser(user)}
+                title={!canEditUser(user) ? "Bạn không có quyền chỉnh sửa quyền của user này" : ""}
+                className="opacity-0 group-hover:opacity-100 transition-opacity rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Settings className="h-3 w-3 mr-2" />
                 QUẢN LÝ

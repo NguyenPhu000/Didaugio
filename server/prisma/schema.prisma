@@ -208,17 +208,18 @@ model ApiKeyManagement {
 }
 
 model AuditLog {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @map("user_id")
-  action    String
-  tableName String   @map("table_name")
-  recordId  Int      @map("record_id")
-  oldData   Json?    @map("old_data")
-  newData   Json?    @map("new_data")
-  ipAddress String?  @map("ip_address")
-  userAgent String?  @map("user_agent")
-  createdAt DateTime @default(now()) @map("created_at")
-  user      User     @relation(fields: [userId], references: [id])
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  action      String
+  tableName   String   @map("table_name")
+  recordId    Int      @map("record_id")
+  description String?
+  oldData     Json?    @map("old_data")
+  newData     Json?    @map("new_data")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([tableName, recordId])

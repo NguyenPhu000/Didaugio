@@ -9,8 +9,10 @@ import {
   Clock,
   Smartphone,
   AlertCircle,
+  Download,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { exportToCsv, fetchAllPages, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 import {
   Card,
   CardHeader,
@@ -144,6 +146,43 @@ const LoginHistoryPage = () => {
     }
   };
 
+  // Export CSV
+  const handleExportCsv = async () => {
+    try {
+      toast.loading("Đang xuất dữ liệu...", { id: "csv-export" });
+      const allData = await fetchAllPages(loginHistoryService.getAll, {
+        isActive: statusFilter === "all" ? undefined : statusFilter === "active",
+      });
+
+      const getStatusLabel = (s) => {
+        const status = s.status || "active";
+        if (status === "revoked" || !s.isActive) return "Đã vô hiệu";
+        if (status === "expired") return "Hết hạn";
+        return "Đang hoạt động";
+      };
+
+      exportToCsv({
+        columns: [
+          { key: "id", label: "ID" },
+          { key: (row) => row.user?.profile?.fullName || "N/A", label: "Người dùng" },
+          { key: (row) => row.user?.email || "", label: "Email" },
+          { key: "deviceName", label: "Thiết bị" },
+          { key: "ipAddress", label: "IP" },
+          { key: getStatusLabel, label: "Trạng thái" },
+          { key: (row) => formatCsvDate(row.createdAt), label: "Đăng nhập" },
+          { key: (row) => formatCsvDate(row.lastUsedAt), label: "Dùng gần nhất" },
+          { key: (row) => formatCsvDate(row.expiresAt), label: "Hết hạn" },
+        ],
+        data: allData,
+        filename: slugifyFilename("lich_su_dang_nhap"),
+      });
+
+      toast.success(`Đã xuất ${allData.length} bản ghi`, { id: "csv-export" });
+    } catch {
+      toast.error("Lỗi khi xuất dữ liệu", { id: "csv-export" });
+    }
+  };
+
   // Get status info (sử dụng status computed từ backend)
   const getStatusInfo = (session) => {
     // Backend đã compute status: active, revoked, expired
@@ -211,14 +250,24 @@ const LoginHistoryPage = () => {
               </div>
             </div>
           </div>
-          <Button
-            onClick={() => fetchSessions()}
-            disabled={loading}
-            variant="outline"
-            className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleExportCsv}
+              variant="outline"
+              className="h-12 rounded-none border border-black hover:bg-black hover:text-white px-4 font-mono text-xs uppercase font-bold"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              CSV
+            </Button>
+            <Button
+              onClick={() => fetchSessions()}
+              disabled={loading}
+              variant="outline"
+              className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
         </div>
 
         {/* Thống kê nhanh */}

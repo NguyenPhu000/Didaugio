@@ -22,7 +22,9 @@ import {
   UserCheck,
   UserX,
   Activity,
+  Download,
 } from "lucide-react";
+import { exportToCsv, fetchAllPages, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 import {
   Button,
   Input,
@@ -201,6 +203,43 @@ const UserManagePage = () => {
     }
   };
 
+  const handleExportCsv = async () => {
+    try {
+      toast.loading("Đang xuất dữ liệu...", { id: "csv-export" });
+      const allData = await fetchAllPages(async (params) => {
+        const res = await userService.getAll(params);
+        const users = res.data.users || res.data || [];
+        return {
+          success: true,
+          data: users.filter((u) => Number(u?.roleId) !== ROLES.GUEST),
+          pagination: res.data.pagination || { totalPages: 1 },
+        };
+      }, {
+        search: filters.search || undefined,
+        roleId: filters.roleId !== "all" ? filters.roleId : undefined,
+        status: filters.status !== "all" ? filters.status : undefined,
+      });
+
+      exportToCsv({
+        columns: [
+          { key: "id", label: "ID" },
+          { key: (row) => row.profile?.fullName || row.fullName || row.username || "", label: "Họ tên" },
+          { key: "email", label: "Email" },
+          { key: (row) => row.profile?.phone || "", label: "Điện thoại" },
+          { key: (row) => ROLE_NAMES[row.roleId] || `Role ${row.roleId}`, label: "Vai trò" },
+          { key: (row) => (row.status === "active" || row.isActive) ? "Hoạt động" : "Đã khóa", label: "Trạng thái" },
+          { key: (row) => formatCsvDate(row.createdAt), label: "Ngày tạo" },
+        ],
+        data: allData,
+        filename: slugifyFilename("danh_sach_nguoi_dung"),
+      });
+
+      toast.success(`Đã xuất ${allData.length} bản ghi`, { id: "csv-export" });
+    } catch {
+      toast.error("Lỗi khi xuất dữ liệu", { id: "csv-export" });
+    }
+  };
+
   const getRoleBadge = (roleId) => {
     const roles = {
       [ROLES.SUPER_ADMIN]: {
@@ -285,6 +324,14 @@ const UserManagePage = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button
+              onClick={handleExportCsv}
+              variant="outline"
+              className="h-12 rounded-none border border-black hover:bg-black hover:text-white px-4 font-mono text-xs uppercase font-bold"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              CSV
+            </Button>
             <Button
               onClick={fetchUsers}
               variant="outline"

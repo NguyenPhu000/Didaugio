@@ -6,6 +6,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -212,18 +213,19 @@ export function CustomDatePicker({
 
   return (
     <>
-      <Pressable
+      <TouchableOpacity
+        activeOpacity={0.7}
         onPress={() => setOpen(true)}
-        style={({ pressed }) => [st.row, pressed && st.rowPressed]}
+        style={st.row}
       >
         <Text style={st.rowLabel}>{label}</Text>
 
-        <Text style={[st.rowValue, !displayText && st.rowPlaceholder]}>
+        <Text style={[st.rowValue, !displayText && st.rowPlaceholder]} numberOfLines={1}>
           {displayText ?? placeholder}
         </Text>
 
         {value ? (
-          <Pressable
+          <TouchableOpacity
             hitSlop={8}
             onPress={(e) => {
               e.stopPropagation?.();
@@ -232,11 +234,11 @@ export function CustomDatePicker({
             style={st.rowClear}
           >
             <Ionicons name="close-circle" size={16} color={MUTED} />
-          </Pressable>
+          </TouchableOpacity>
         ) : null}
 
         <Ionicons name="chevron-forward" size={16} color="#C8C8CC" />
-      </Pressable>
+      </TouchableOpacity>
 
       <CalendarModal
         visible={open}

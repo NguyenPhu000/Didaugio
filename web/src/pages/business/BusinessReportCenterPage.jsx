@@ -46,6 +46,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatVND } from "@/components/business/dashboardWidgetHelpers";
 import { getDashboard } from "@/apis/businessApi";
+import { exportToCsv, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 
 // ─── Report Types ─────────────────────────────────────────────────────────────
 
@@ -289,10 +290,39 @@ const BusinessReportCenterPage = () => {
   const currentStats = mappedStats[reportType];
 
   const handleExport = async (format) => {
+    if (format !== "csv") {
+      toast.error("Chỉ hỗ trợ xuất CSV");
+      return;
+    }
+
     setIsExporting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsExporting(false);
-    console.log(`Exporting ${reportType} as ${format}`);
+    try {
+      const dataToExport = bookingsTableData;
+      if (!dataToExport || dataToExport.length === 0) {
+        toast.error("Không có dữ liệu để xuất");
+        return;
+      }
+
+      const reportLabel = REPORT_TYPES.find((r) => r.id === reportType)?.label || reportType;
+
+      exportToCsv({
+        columns: [
+          { key: "date", label: "Ngày" },
+          { key: "total", label: "Tổng đặt chỗ" },
+          { key: "confirmed", label: "Xác nhận" },
+          { key: "cancelled", label: "Hủy" },
+          { key: (row) => row.revenue || 0, label: "Doanh thu (VNĐ)" },
+        ],
+        data: dataToExport,
+        filename: slugifyFilename(`bao_cao_${reportType}`),
+      });
+
+      toast.success(`Đã xuất ${dataToExport.length} dòng báo cáo`);
+    } catch {
+      toast.error("Lỗi khi xuất dữ liệu");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const bookingsTableData = useMemo(() => {

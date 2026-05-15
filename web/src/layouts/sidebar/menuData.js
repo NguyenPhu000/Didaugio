@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/constants";
+import { PERMISSIONS } from "@/constants/permissions";
 
 const R = ROLES;
 
@@ -70,6 +71,7 @@ const menuData = {
           url: ADMIN_ROUTES.PLACES_PENDING,
           icon: ClipboardCheck,
           roles: [R.SUPER_ADMIN, R.ADMIN, R.STAFF],
+          permission: PERMISSIONS.PLACES.APPROVE,
         },
       ],
     },
@@ -78,12 +80,14 @@ const menuData = {
       icon: FolderTree,
       url: ADMIN_ROUTES.CATEGORIES,
       roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.CATEGORIES.VIEW,
     },
     {
       title: "Tags",
       icon: Tags,
       url: ADMIN_ROUTES.TAGS,
       roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.CATEGORIES.MANAGE_TAGS,
     },
     {
       title: "Quận / Huyện",
@@ -149,9 +153,10 @@ const menuData = {
       title: "Quản lý Business",
       icon: Briefcase,
       roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.BUSINESS.VIEW,
       items: [
         { title: "Danh sách", url: ADMIN_ROUTES.BUSINESS_LIST },
-        { title: "Chờ duyệt", url: ADMIN_ROUTES.BUSINESS_PENDING },
+        { title: "Chờ duyệt", url: ADMIN_ROUTES.BUSINESS_PENDING, permission: PERMISSIONS.BUSINESS.APPROVE },
       ],
     },
     {
@@ -171,6 +176,7 @@ const menuData = {
       icon: Star,
       url: ADMIN_ROUTES.REVIEWS_MODERATION,
       roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.REVIEWS.VIEW,
     },
   ],
   users: [
@@ -179,14 +185,16 @@ const menuData = {
       icon: Users,
       url: ADMIN_ROUTES.USERS,
       roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.USERS.VIEW,
     },
     {
       title: "Phân quyền",
       icon: Shield,
       roles: [R.SUPER_ADMIN],
+      permission: PERMISSIONS.ROLES.VIEW,
       items: [
         { title: "Roles", url: ADMIN_ROUTES.ROLES },
-        { title: "Permissions", url: ADMIN_ROUTES.PERMISSIONS },
+        { title: "Permissions", url: ADMIN_ROUTES.PERMISSIONS, permission: PERMISSIONS.ROLES.MANAGE_PERMISSIONS },
       ],
     },
   ],
@@ -204,24 +212,31 @@ const menuData = {
       title: "Hoạt động",
       icon: FileText,
       roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.AUDIT_LOG.VIEW,
       items: [
-        { title: "Lịch sử hệ thống", url: ADMIN_ROUTES.AUDIT_LOGS },
-        { title: "Lịch sử đăng nhập", url: ADMIN_ROUTES.LOGIN_HISTORY },
+        { title: "Lịch sử hệ thống", url: ADMIN_ROUTES.AUDIT_LOGS, permission: PERMISSIONS.AUDIT_LOG.VIEW },
+        { title: "Lịch sử đăng nhập", url: ADMIN_ROUTES.LOGIN_HISTORY, permission: PERMISSIONS.LOGIN_HISTORY.VIEW },
       ],
     },
   ],
 };
 
-export const filterMenuByRole = (menu, roleId) => {
+export const filterMenuByRole = (menu, { roleId, hasPermission }) => {
   const result = {};
   for (const [section, items] of Object.entries(menu)) {
     const filtered = items
-      .filter((item) => !item.roles || item.roles.includes(roleId))
+      .filter((item) => {
+        if (item.roles && !item.roles.includes(roleId)) return false;
+        if (item.permission && hasPermission && !hasPermission(item.permission)) return false;
+        return true;
+      })
       .map((item) => {
         if (!item.items) return item;
-        const filteredSubs = item.items.filter(
-          (sub) => !sub.roles || sub.roles.includes(roleId),
-        );
+        const filteredSubs = item.items.filter((sub) => {
+          if (sub.roles && !sub.roles.includes(roleId)) return false;
+          if (sub.permission && hasPermission && !hasPermission(sub.permission)) return false;
+          return true;
+        });
         return filteredSubs.length > 0
           ? { ...item, items: filteredSubs }
           : null;

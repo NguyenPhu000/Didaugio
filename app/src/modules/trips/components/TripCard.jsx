@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -28,12 +28,10 @@ export const TripCard = memo(function TripCard({ trip, onPress }) {
       : `${destinationCount} điểm đến`;
 
   return (
-    <Pressable
+    <TouchableOpacity
+      activeOpacity={0.8}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        pressed && styles.cardPressed,
-      ]}
+      style={styles.card}
     >
       {/* Thumbnail */}
       <View style={styles.thumbWrap}>
@@ -47,31 +45,32 @@ export const TripCard = memo(function TripCard({ trip, onPress }) {
               cachePolicy="memory-disk"
             />
             <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.12)"]}
+              colors={["transparent", "rgba(0,0,0,0.15)"]}
               style={StyleSheet.absoluteFill}
             />
           </>
         ) : (
           <View style={styles.thumbFallback}>
-            <MaterialIcons name="landscape" size={22} color="rgba(0,0,0,0.2)" />
+            <MaterialIcons name="landscape" size={28} color="rgba(0,0,0,0.2)" />
           </View>
         )}
-        {/* Status indicator */}
-        <View
-          style={[styles.statusDot, { backgroundColor: status.accent }]}
-        />
       </View>
 
       {/* Content */}
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={1}>
-          {trip.title || "Chuyến đi mới"}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title} numberOfLines={1}>
+            {trip.title || "Chuyến đi mới"}
+          </Text>
+          <View
+            style={[styles.statusDot, { backgroundColor: status.accent }]}
+          />
+        </View>
 
         <View style={styles.metaRow}>
           <MaterialIcons
             name="event"
-            size={12}
+            size={14}
             color={APPLE_THEME.textMuted}
           />
           <Text style={styles.metaText} numberOfLines={1}>
@@ -80,7 +79,7 @@ export const TripCard = memo(function TripCard({ trip, onPress }) {
           <View style={styles.metaDot} />
           <MaterialIcons
             name="schedule"
-            size={12}
+            size={14}
             color={APPLE_THEME.textMuted}
           />
           <Text style={styles.metaText}>{daysLabel}</Text>
@@ -88,9 +87,6 @@ export const TripCard = memo(function TripCard({ trip, onPress }) {
 
         <View style={styles.bottomRow}>
           <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-            <View
-              style={[styles.statusBadgeDot, { backgroundColor: status.text }]}
-            />
             <Text style={[styles.statusLabel, { color: status.text }]}>
               {status.label}
             </Text>
@@ -99,15 +95,15 @@ export const TripCard = memo(function TripCard({ trip, onPress }) {
         </View>
       </View>
 
-      {/* Arrow */}
+      {/* Subtle Arrow */}
       <View style={styles.arrowWrap}>
         <MaterialIcons
           name="chevron-right"
-          size={18}
-          color={APPLE_THEME.textMuted}
+          size={24}
+          color="rgba(0,0,0,0.2)"
         />
       </View>
-    </Pressable>
+    </TouchableOpacity>
   );
 });
 
@@ -117,23 +113,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
+    borderRadius: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 4,
     padding: 12,
-    paddingRight: 8,
-    gap: 14,
-  },
-  cardPressed: {
-    backgroundColor: "#FAFAFA",
-    transform: [{ scale: 0.985 }],
+    paddingRight: 12,
+    gap: 16,
   },
   thumbWrap: {
-    width: 76,
-    height: 76,
-    borderRadius: 16,
+    width: 90,
+    height: 90,
+    borderRadius: 18,
     overflow: "hidden",
-    backgroundColor: "#F5F5F7",
+    backgroundColor: "#F2F2F7",
     flexShrink: 0,
   },
   thumb: {
@@ -144,28 +139,30 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F0F0F2",
-  },
-  statusDot: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
+    backgroundColor: "#E5E5EA",
   },
   content: {
     flex: 1,
-    minWidth: 0,
-    gap: 5,
+    gap: 6,
+    justifyContent: "center",
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   title: {
     color: APPLE_THEME.text,
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
+    flex: 1,
+    paddingRight: 8,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   metaRow: {
     flexDirection: "row",
@@ -174,7 +171,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     color: APPLE_THEME.textMuted,
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: TOKENS.font.body,
     flexShrink: 1,
     letterSpacing: -0.1,
@@ -184,45 +181,32 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: 1.5,
     backgroundColor: "rgba(0,0,0,0.15)",
-    marginHorizontal: 2,
+    marginHorizontal: 4,
   },
   bottomRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginTop: 2,
+    gap: 10,
+    marginTop: 4,
   },
   statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 3.5,
-    borderRadius: 999,
-  },
-  statusBadgeDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   statusLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: TOKENS.font.semibold,
     letterSpacing: -0.1,
   },
   placesText: {
     color: APPLE_THEME.textMuted,
-    fontSize: 11,
+    fontSize: 13,
     fontFamily: TOKENS.font.body,
     letterSpacing: -0.1,
   },
   arrowWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(0,0,0,0.03)",
-    alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
+    alignItems: "center",
   },
 });

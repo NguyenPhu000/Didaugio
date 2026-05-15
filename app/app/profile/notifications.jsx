@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
+  TouchableOpacity,
   RefreshControl,
   StyleSheet,
   Text,
@@ -96,9 +96,9 @@ const resolveRoute = (item) => {
 function ScreenHeader({ unreadCount, onBack, onMarkAll }) {
   return (
     <View style={styles.screenHeader}>
-      <Pressable onPress={onBack} style={styles.headerBackBtn}>
+      <TouchableOpacity activeOpacity={0.7} onPress={onBack} style={styles.headerBackBtn}>
         <MaterialIcons name="arrow-back" size={24} color="#1D1D1F" />
-      </Pressable>
+      </TouchableOpacity>
 
       <View style={styles.headerCenter}>
         <Text style={styles.headerTitle}>Thông báo</Text>
@@ -110,9 +110,9 @@ function ScreenHeader({ unreadCount, onBack, onMarkAll }) {
       </View>
 
       {unreadCount > 0 ? (
-        <Pressable onPress={onMarkAll} style={styles.headerActionBtn}>
+        <TouchableOpacity activeOpacity={0.7} onPress={onMarkAll} style={styles.headerActionBtn}>
           <Text style={styles.headerActionText}>Đọc hết</Text>
-        </Pressable>
+        </TouchableOpacity>
       ) : (
         <View style={styles.headerPlaceholder} />
       )}
@@ -123,7 +123,8 @@ function ScreenHeader({ unreadCount, onBack, onMarkAll }) {
 function TabBar({ active, onChange, unreadCount }) {
   return (
     <View style={styles.tabBar}>
-      <Pressable
+      <TouchableOpacity
+        activeOpacity={0.7}
         onPress={() => onChange("unread")}
         style={[styles.tab, active === "unread" && styles.tabActive]}
       >
@@ -154,9 +155,10 @@ function TabBar({ active, onChange, unreadCount }) {
             </Text>
           </View>
         )}
-      </Pressable>
+      </TouchableOpacity>
 
-      <Pressable
+      <TouchableOpacity
+        activeOpacity={0.7}
         onPress={() => onChange("all")}
         style={[styles.tab, active === "all" && styles.tabActive]}
       >
@@ -168,12 +170,12 @@ function TabBar({ active, onChange, unreadCount }) {
         >
           Tất cả
         </Text>
-      </Pressable>
+      </TouchableOpacity>
     </View>
   );
 }
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 function NotificationCard({ item, onPress, index }) {
   const unread = !item.readAt;
@@ -182,14 +184,14 @@ function NotificationCard({ item, onPress, index }) {
   const relTime = formatRelativeTime(item.createdAt);
 
   return (
-    <AnimatedPressable
+    <AnimatedTouchable
       entering={FadeInDown.delay(index * 40).springify()}
       layout={Layout.springify()}
+      activeOpacity={0.7}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.card,
         unread && styles.cardUnread,
-        pressed && styles.cardPressed,
       ]}
     >
       {/* Icon */}
@@ -227,7 +229,7 @@ function NotificationCard({ item, onPress, index }) {
         color="#D1D1D6"
         style={styles.cardChevron}
       />
-    </AnimatedPressable>
+    </AnimatedTouchable>
   );
 }
 

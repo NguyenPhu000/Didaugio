@@ -1,78 +1,49 @@
+import { useMemo } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { ROLES } from "@/constants/constants";
 
 /**
  * PERMISSION HOOK
- * Hook to check user permissions using ROLES constants
+ * Hook to check user permissions using ROLES constants.
+ * Supports wildcard "*" for SUPER_ADMIN (from backend Set(["*"])).
  */
 
 export function usePermission() {
   const user = useAuthStore((state) => state.user);
+  const isLoading = useAuthStore((state) => state.isPermissionsLoading ?? false);
 
-  /**
-   * Check if user has a specific permission
-   * @param {string} permission - Permission name (e.g., "category.create")
-   * @returns {boolean}
-   */
+  const permissionSet = useMemo(() => {
+    if (!user?.permissions) return new Set();
+    return new Set(user.permissions);
+  }, [user?.permissions]);
+
+  const isWildcard = useMemo(
+    () => user?.roleId === ROLES.SUPER_ADMIN || permissionSet.has("*"),
+    [user?.roleId, permissionSet],
+  );
+
   const hasPermission = (permission) => {
     if (!user) return false;
-
-    if (user.roleId === ROLES.SUPER_ADMIN) return true;
-
-    if (user.permissions && Array.isArray(user.permissions)) {
-      return user.permissions.includes(permission);
-    }
-
-    return false;
+    if (isWildcard) return true;
+    return permissionSet.has(permission);
   };
 
-  /**
-   * Check if user has ANY of the given permissions
-   * @param {string[]} permissions - Array of permission names
-   * @returns {boolean}
-   */
   const hasAnyPermission = (permissions) => {
     if (!user) return false;
-    if (user.roleId === ROLES.SUPER_ADMIN) return true;
-
-    return permissions.some((permission) => hasPermission(permission));
+    if (isWildcard) return true;
+    return permissions.some((p) => permissionSet.has(p));
   };
 
-  /**
-   * Check if user has ALL of the given permissions
-   * @param {string[]} permissions - Array of permission names
-   * @returns {boolean}
-   */
   const hasAllPermissions = (permissions) => {
     if (!user) return false;
-    if (user.roleId === ROLES.SUPER_ADMIN) return true;
-
-    return permissions.every((permission) => hasPermission(permission));
+    if (isWildcard) return true;
+    return permissions.every((p) => permissionSet.has(p));
   };
 
-  /**
-   * Check if user is Super Admin
-   * @returns {boolean}
-   */
-  const isSuperAdmin = () => {
-    return user?.roleId === ROLES.SUPER_ADMIN;
-  };
-
-  /**
-   * Check if user is Admin (Admin or Super Admin)
-   * @returns {boolean}
-   */
-  const isAdmin = () => {
-    return user?.roleId === ROLES.SUPER_ADMIN || user?.roleId === ROLES.ADMIN;
-  };
-
-  /**
-   * Check if user is Business
-   * @returns {boolean}
-   */
-  const isBusiness = () => {
-    return user?.roleId === ROLES.BUSINESS;
-  };
+  const isSuperAdmin = () => user?.roleId === ROLES.SUPER_ADMIN;
+  const isAdmin = () => user?.roleId === ROLES.SUPER_ADMIN || user?.roleId === ROLES.ADMIN;
+  const isBusiness = () => user?.roleId === ROLES.BUSINESS;
+  const isStaff = () => user?.roleId === ROLES.STAFF;
 
   return {
     hasPermission,
@@ -81,6 +52,8 @@ export function usePermission() {
     isSuperAdmin,
     isAdmin,
     isBusiness,
+    isStaff,
+    isLoading,
     user,
   };
 }

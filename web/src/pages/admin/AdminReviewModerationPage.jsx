@@ -10,7 +10,9 @@ import {
   ShieldAlert,
   Star,
   Tag,
+  Download,
 } from "lucide-react";
+import { exportToCsv, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 import {
   getAdminReviewStats,
   getAdminReviews,
@@ -472,18 +474,54 @@ const AdminReviewModerationPage = () => {
     }
   };
 
+  const handleExportCsv = () => {
+    if (!reviews || reviews.length === 0) {
+      toast.error("Không có dữ liệu để xuất");
+      return;
+    }
+
+    exportToCsv({
+      columns: [
+        { key: "id", label: "ID" },
+        { key: (row) => row.user?.profile?.fullName || row.user?.email?.split("@")[0] || "Ẩn danh", label: "Tác giả" },
+        { key: (row) => row.user?.email || "", label: "Email" },
+        { key: "rating", label: "Đánh giá" },
+        { key: "status", label: "Trạng thái" },
+        { key: "comment", label: "Nội dung" },
+        { key: (row) => row.place?.name || "", label: "Địa điểm" },
+        { key: (row) => row.adminNote || "", label: "Ghi chú admin" },
+        { key: (row) => row._count?.replies ?? 0, label: "Số phản hồi" },
+        { key: (row) => formatCsvDate(row.createdAt), label: "Thời gian" },
+      ],
+      data: reviews,
+      filename: slugifyFilename("danh_gia_moderation"),
+    });
+
+    toast.success(`Đã xuất ${reviews.length} bản ghi`);
+  };
+
   return (
     <div className="min-h-screen space-y-6 p-6 lg:p-8">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">
-            Moderation đánh giá
-          </h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold text-foreground">
+              Moderation đánh giá
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            Giám sát toàn bộ review, xử lý report, ẩn/khôi phục review và phản hồi.
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Giám sát toàn bộ review, xử lý report, ẩn/khôi phục review và phản hồi.
-        </p>
+        <Button
+          onClick={handleExportCsv}
+          variant="outline"
+          className="h-10 rounded-none border border-black hover:bg-black hover:text-white px-4 font-mono text-xs uppercase font-bold shrink-0"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          CSV
+        </Button>
       </div>
 
       {stats && (

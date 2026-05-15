@@ -12,7 +12,7 @@ import { RolePermissionTab } from "./role-permission-tab";
 import { RoleUsersTab } from "./role-users-tab";
 import { Settings, Shield, Users } from "lucide-react";
 
-export function RoleManagementModal({ open, onOpenChange, role, onUpdated }) {
+export function RoleManagementModal({ open, onOpenChange, role, onUpdated, readOnly = false }) {
   const [activeTab, setActiveTab] = useState("permissions");
 
   useEffect(() => {
@@ -68,6 +68,7 @@ export function RoleManagementModal({ open, onOpenChange, role, onUpdated }) {
                   role={role}
                   onUpdated={onUpdated}
                   onClose={() => onOpenChange(false)}
+                  readOnly={readOnly}
                 />
               </ScrollArea>
             </TabsContent>
