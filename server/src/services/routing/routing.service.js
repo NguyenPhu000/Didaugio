@@ -4,6 +4,7 @@ import logger from "../../config/logger.js";
 import CircuitBreaker from "../../utils/circuitBreaker.js";
 import ServiceError from "../../utils/serviceError.js";
 import {
+  encodePolyline6,
   simplifyGeoJsonLineString,
   simplifyPolyline6,
 } from "./polylineSimplifier.js";
@@ -334,6 +335,7 @@ class RoutingService {
     const lat = Number(point?.lat);
     const lng = Number(point?.lng);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      logger.warn("[snap-to-road] non-finite coordinates", { point });
       return point;
     }
 
@@ -349,17 +351,49 @@ class RoutingService {
         signal: controller.signal,
       });
 
-      if (!res.ok) return point;
+      if (!res.ok) {
+        logger.warn("[snap-to-road] HTTP error", {
+          status: res.status,
+          lat,
+          lng,
+          url: `${url}?${params.toString()}`,
+        });
+        return point;
+      }
 
       const data = await res.json();
-      if (data?.code !== "Ok") return point;
+      if (data?.code !== "Ok") {
+        logger.warn("[snap-to-road] OSRM returned non-Ok code", {
+          code: data?.code,
+          message: data?.message,
+          lat,
+          lng,
+        });
+        return point;
+      }
 
       const nearest = data?.waypoints?.[0];
       const snappedLng = Number(nearest?.location?.[0]);
       const snappedLat = Number(nearest?.location?.[1]);
 
       if (!Number.isFinite(snappedLat) || !Number.isFinite(snappedLng)) {
+        logger.warn("[snap-to-road] invalid snapped coordinates", {
+          nearest,
+          lat,
+          lng,
+        });
         return point;
+      }
+
+      const distance = this._haversineMeters(lat, lng, snappedLat, snappedLng);
+      if (distance > 100) {
+        logger.info("[snap-to-road] large snap distance", {
+          originalLat: lat,
+          originalLng: lng,
+          snappedLat,
+          snappedLng,
+          distance: Math.round(distance),
+        });
       }
 
       return {
@@ -367,7 +401,12 @@ class RoutingService {
         lat: snappedLat,
         lng: snappedLng,
       };
-    } catch {
+    } catch (err) {
+      logger.warn("[snap-to-road] request failed", {
+        error: err?.message,
+        lat,
+        lng,
+      });
       this.metrics.osrmFailures += 1;
       return point;
     } finally {
@@ -589,7 +628,7 @@ class RoutingService {
           distance: totalDistance,
           duration: totalDuration,
           durationInTraffic: totalDuration,
-          geometry: points.map((p) => [p.lng, p.lat]),
+          geometry: encodePolyline6(points),
           summary: "Fallback estimate",
           provider: "fallback",
           score: this._calculateGoogleLikeScore({
@@ -694,7 +733,7 @@ class RoutingService {
 
   _buildCacheKey(prefix, points, mode, options) {
     const rounded = points
-      .map((p) => `${Number(p.lat).toFixed(4)},${Number(p.lng).toFixed(4)}`)
+      .map((p) => `${Number(p.lat).toFixed(6)},${Number(p.lng).toFixed(6)}`)
       .join(";");
     return `${prefix}:${mode}:${rounded}:${JSON.stringify(options || {})}`;
   }

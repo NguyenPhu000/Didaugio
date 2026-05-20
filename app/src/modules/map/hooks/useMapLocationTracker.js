@@ -105,7 +105,7 @@ export function useMapLocationTracker({ watchEnabled = false } = {}) {
 
         subscriber = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.Balanced,
+            accuracy: Location.Accuracy.High,
             distanceInterval: 12,
             timeInterval: 5000,
           },
@@ -136,7 +136,7 @@ export function useMapLocationTracker({ watchEnabled = false } = {}) {
       if (status !== "granted") return null;
 
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+        accuracy: Location.Accuracy.High,
       });
 
       const nextLocation = {
