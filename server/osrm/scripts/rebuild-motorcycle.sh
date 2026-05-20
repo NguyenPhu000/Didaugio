@@ -46,19 +46,19 @@ echo "  -> Cleaned"
 
 # --- Step 4: osrm-extract with motorcycle profile ---
 echo "[4/7] Running osrm-extract with motorcycle.lua profile..."
-docker compose run --rm osrm \
+MSYS_NO_PATHCONV=1 docker compose run --rm osrm \
   osrm-extract -p /profiles/motorcycle.lua /data/cantho.osm.pbf
 echo "  -> Extract done"
 
 # --- Step 5: osrm-partition ---
 echo "[5/7] Running osrm-partition..."
-docker compose run --rm osrm \
+MSYS_NO_PATHCONV=1 docker compose run --rm osrm \
   osrm-partition /data/cantho.osrm
 echo "  -> Partition done"
 
 # --- Step 6: osrm-customize ---
 echo "[6/7] Running osrm-customize..."
-docker compose run --rm osrm \
+MSYS_NO_PATHCONV=1 docker compose run --rm osrm \
   osrm-customize /data/cantho.osrm
 echo "  -> Customize done"
 
