@@ -268,7 +268,7 @@ function process_way(profile, way, result)
   result.name = way:get_value_by_key("name")
 
   -- Set road classification for guidance
-  set_classification(highway, result)
+  set_classification(highway, result, way)
 end
 
 -- Process turn --------------------------------------------------------
