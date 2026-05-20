@@ -223,7 +223,7 @@ function process_way(profile, way, result)
   local speed = profile.speeds[highway] or profile.default_speed
 
   -- Apply maxspeed if present
-  local maxspeed = limit.parse(way:get_value_by_key("maxspeed"))
+  local maxspeed = tonumber(way:get_value_by_key("maxspeed"))
   if maxspeed and maxspeed > 0 and maxspeed < speed then
     speed = maxspeed
   end
