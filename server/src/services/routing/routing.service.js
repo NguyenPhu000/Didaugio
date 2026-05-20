@@ -9,6 +9,7 @@ import {
   simplifyPolyline6,
 } from "./polylineSimplifier.js";
 import { applyTrafficToResponse } from "./pseudoTraffic.js";
+import { calculateTable, calculateSequentialLegs } from "./tableApi.js";
 
 const DEFAULT_TIMEOUT_MS = Number(process.env.ROUTING_TIMEOUT_MS || 4500);
 const DEFAULT_TTL_SEC = Number(process.env.ROUTE_CACHE_TTL_SEC || 300);
@@ -220,6 +221,59 @@ class RoutingService {
       totalDuration,
       legs,
     };
+  }
+
+  async calculateTable(payload = {}) {
+    const { waypoints = [], mode = "driving" } = payload;
+    if (!Array.isArray(waypoints) || waypoints.length < 2) {
+      throw new ServiceError(
+        "Cần tối thiểu 2 waypoint cho table calculation",
+        400,
+        "VALIDATION_ERROR",
+      );
+    }
+    this.metrics.totalRequests += 1;
+    try {
+      const result = await calculateTable(waypoints, mode);
+      if (CIRCUIT_BREAKER_ENABLED) this.circuitBreaker.recordSuccess();
+      return { code: "Ok", source: "osrm", ...result };
+    } catch (error) {
+      if (CIRCUIT_BREAKER_ENABLED) this.circuitBreaker.recordFailure();
+      this.metrics.osrmFailures += 1;
+      throw error;
+    }
+  }
+
+  async calculateLegsOptimized(payload = {}) {
+    const { waypoints = [], mode = "driving", options = {} } = payload;
+    if (!Array.isArray(waypoints) || waypoints.length < 2) {
+      throw new ServiceError(
+        "Cần tối thiểu 2 waypoint để tính legs",
+        400,
+        "VALIDATION_ERROR",
+      );
+    }
+    try {
+      const tableResult = await calculateSequentialLegs(waypoints, mode);
+      if (tableResult) {
+        return {
+          code: "Ok",
+          source: tableResult.source,
+          totalDistance: tableResult.totalDistance,
+          totalDuration: tableResult.totalDuration,
+          legs: tableResult.legs.map((leg) => ({
+            index: leg.index,
+            from: leg.from,
+            to: leg.to,
+            source: leg.source,
+            route: { distance: leg.distance, duration: leg.duration },
+          })),
+        };
+      }
+    } catch (error) {
+      logger.warn("[routing] Table API optimization failed", { error: error.message });
+    }
+    return this.calculateLegs(payload);
   }
 
   async getHealth() {

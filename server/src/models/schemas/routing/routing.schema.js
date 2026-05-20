@@ -37,6 +37,14 @@ export const routingLegsSchema = z.object({
   options: routeOptionsSchema,
 });
 
+export const routingTableSchema = z.object({
+  waypoints: z.array(z.object({
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+  })).min(2).max(50),
+  mode: z.enum(["driving", "walking", "cycling", "motorcycle"]).default("driving"),
+});
+
 const routeCandidateSchema = z.object({
   id: z.string(),
   distance: z.coerce.number().nonnegative(),
