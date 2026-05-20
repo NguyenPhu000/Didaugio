@@ -19,6 +19,7 @@ const routeOptionsSchema = z
     snapToRoad: z.boolean().optional(),
     simplifyGeometry: z.boolean().optional(),
     simplificationToleranceMeters: z.coerce.number().min(1).max(50).optional(),
+    weather: z.enum(["clear", "cloudy", "rain_light", "rain_heavy", "storm"]).optional(),
   })
   .optional();
 

@@ -8,6 +8,7 @@ import {
   simplifyGeoJsonLineString,
   simplifyPolyline6,
 } from "./polylineSimplifier.js";
+import { applyTrafficToResponse } from "./pseudoTraffic.js";
 
 const DEFAULT_TIMEOUT_MS = Number(process.env.ROUTING_TIMEOUT_MS || 4500);
 const DEFAULT_TTL_SEC = Number(process.env.ROUTE_CACHE_TTL_SEC || 300);
@@ -124,14 +125,15 @@ class RoutingService {
         "osrm",
         options,
       );
+      const withTraffic = applyTrafficToResponse(normalized, new Date(), options?.weather);
 
-      this.cache.set(cacheKey, normalized);
+      this.cache.set(cacheKey, withTraffic);
       if (CIRCUIT_BREAKER_ENABLED) {
         this.circuitBreaker.recordSuccess();
       }
       this.metrics.consecutiveFailures = 0;
       this.metrics.lastSuccessAt = new Date().toISOString();
-      return normalized;
+      return withTraffic;
     } catch (error) {
       if (CIRCUIT_BREAKER_ENABLED) {
         this.circuitBreaker.recordFailure();
