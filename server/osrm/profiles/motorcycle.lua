@@ -10,6 +10,7 @@ Sequence = require('lib/sequence')
 Handlers = require("lib/way_handlers")
 Relations = require("lib/relations")
 find_access_tag = require("lib/access").find_access_tag
+set_classification = require("lib/guidance").set_classification
 limit = require("lib/maxspeed").limit
 Utils = require("lib/utils")
 Measure = require("lib/measure")
@@ -100,7 +101,7 @@ function setup()
     },
 
     -- Speed table (km/h) tuned for Vietnamese road conditions
-    speeds = SpeedTable({
+    speeds = Sequence {
       highway = {
         motorway        = 60,
         motorway_link   = 30,
@@ -114,12 +115,12 @@ function setup()
         tertiary_link   = 15,
         unclassified    = 25,
         residential     = 20,
-        living_street   = 15,  -- hem, ngo
-        service         = 12,  -- hem nho
+        living_street   = 15,
+        service         = 12,
         track           = 10,
         path            = 8,
       },
-    }),
+    },
 
     -- Surface penalties: motorcycles sensitive to road surface
     surface_penalties = {
@@ -267,7 +268,7 @@ function process_way(profile, way, result)
   result.name = way:get_value_by_key("name")
 
   -- Set road classification for guidance
-  Handlers.set_classification(highway, result)
+  set_classification(highway, result)
 end
 
 -- Process turn --------------------------------------------------------
@@ -283,13 +284,9 @@ function process_turn(profile, turn)
   end
 end
 
--- Helper: build speed table from nested structure
-function SpeedTable(table)
-  local result = {}
-  for key, values in pairs(table) do
-    for subkey, speed in pairs(values) do
-      result[subkey] = speed
-    end
-  end
-  return result
-end
+return {
+  setup = setup,
+  process_node = process_node,
+  process_way = process_way,
+  process_turn = process_turn,
+}
