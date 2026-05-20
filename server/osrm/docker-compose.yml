@@ -6,5 +6,6 @@ services:
       - "5000:5000"
     volumes:
       - ./data:/data
+      - ./profiles:/profiles
     command: osrm-routed --algorithm mld --threads 4 /data/cantho.osrm
     restart: unless-stopped
