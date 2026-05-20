@@ -29,6 +29,8 @@ local speed_table = {
   residential     = 20,   -- khu dan cu
   living_street   = 15,   -- hem, ngo - uu tien cho xe may
   service         = 12,   -- hem nho, duong phu
+  track           = 10,
+  path            = 8,
 }
 
 -- Roads that motorcycles cannot use.
@@ -36,9 +38,7 @@ local excluded_highways = {
   pedestrian = true,
   footway    = true,
   cycleway   = true,
-  path       = true,
   steps      = true,
-  track      = true,
   bus_guideway = true,
   raceway    = true,
   proposed   = true,
@@ -62,18 +62,16 @@ local barrier_whitelist = {
   cattle_grid = true,
   border_control = true,
   toll_booth  = true,
-  sally_port  = true,
   entrance    = true,
-  yes         = true,  -- generic barrier, motorcycle can usually pass
+  exit        = true,
 }
 
 -- Barriers that block motorcycles.
 local barrier_blacklist = {
+  ['yes']   = true,
   ['wall']  = true,
   ['fence'] = true,
   ['spikes'] = true,
-  ['block'] = true,
-  ['bollard'] = true,
 }
 
 -- Surface penalty multipliers.
