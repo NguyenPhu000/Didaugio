@@ -104,10 +104,48 @@ export async function getUserPermissions(userId) {
   });
 
   if (!user) {
-    throw new ServiceError("User không tồn tại", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError("User khong ton tai", 404, ERROR_CODES.NOT_FOUND);
   }
 
-  // Quyền từ role
+  const isSuperAdmin = user.roleId === ROLES.SUPER_ADMIN;
+
+  // Super Admin: auto-grant ALL permissions in the system
+  if (isSuperAdmin) {
+    const allSystemPermissions = await prisma.permission.findMany({
+      orderBy: [{ module: "asc" }, { name: "asc" }],
+    });
+
+    const byModule = {};
+    allSystemPermissions.forEach((p) => {
+      if (!byModule[p.module]) {
+        byModule[p.module] = [];
+      }
+      byModule[p.module].push({
+        id: p.id,
+        name: p.name,
+        displayName: p.displayName,
+        module: p.module,
+        description: p.description,
+        source: "system",
+      });
+    });
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        roleId: user.roleId,
+        roleName: user.role.name,
+        roleDisplayName: user.role.displayName,
+      },
+      isSuperAdmin: true,
+      permissions: byModule,
+      totalPermissions: allSystemPermissions.length,
+      customPermissionCount: 0,
+    };
+  }
+
+  // Non-Super-Admin: role permissions + custom permissions
   const rolePermissions = user.role.rolePermissions.map((rp) => ({
     id: rp.permission.id,
     name: rp.permission.name,
@@ -117,7 +155,6 @@ export async function getUserPermissions(userId) {
     source: "role",
   }));
 
-  // Quyền custom của user
   const customPermissions = user.userPermissions.map((up) => ({
     id: up.permission.id,
     name: up.permission.name,
@@ -159,6 +196,7 @@ export async function getUserPermissions(userId) {
       roleName: user.role.name,
       roleDisplayName: user.role.displayName,
     },
+    isSuperAdmin: false,
     permissions: byModule,
     totalPermissions: allPermissions.length,
     customPermissionCount: customPermissions.length,

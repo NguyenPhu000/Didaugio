@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {

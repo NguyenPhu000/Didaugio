@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { BarChart3, DollarSign, TrendingUp, TrendingDown, Download } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import useBusinessStore from "@/stores/businessStore";
 import { BOOKING_STATUS } from "@/constants/constants";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";

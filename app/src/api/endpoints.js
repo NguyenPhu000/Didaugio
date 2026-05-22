@@ -28,6 +28,8 @@ export const ENDPOINTS = {
     savedCollections: "/profile/saved-collections",
     savedCollectionByName: (name) =>
       `/profile/saved-collections/${encodeURIComponent(name)}`,
+    savedTrips: "/profile/saved-trips",
+    savedTripById: (tripId) => `/profile/saved-trips/${tripId}`,
     trips: "/profile/trips",
     generateTrip: "/profile/trips/generate",
     createTrip: "/profile/trips",

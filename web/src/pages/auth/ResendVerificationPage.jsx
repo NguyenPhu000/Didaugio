@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Mail, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { authService } from "@/apis";
 import { useAuthStore } from "@/stores/authStore";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 
 const ResendVerificationPage = () => {
   const navigate = useNavigate();

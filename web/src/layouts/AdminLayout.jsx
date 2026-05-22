@@ -39,6 +39,10 @@ const AdminLayout = ({ children }) => {
   const [pendingPlacesCount, setPendingPlacesCount] = useState(0);
 
   useEffect(() => {
+    document.title = "Di Dau Gio? - Admin Panel";
+  }, []);
+
+  useEffect(() => {
     if (user?.roleId === ROLES.BUSINESS) return;
     let disposed = false;
 

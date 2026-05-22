@@ -1,6 +1,8 @@
 import express from "express";
 import profileController from "../../controllers/profile/profile.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
+import { validateBody } from "../../middlewares/validateSchema.js";
+import { notificationSettingsSchema } from "../../models/index.js";
 
 const router = express.Router();
 
@@ -13,6 +15,7 @@ router.put("/avatar", authenticate, profileController.updateAvatar);
 router.put(
   "/notifications",
   authenticate,
+  validateBody(notificationSettingsSchema),
   profileController.updateNotificationSettings,
 );
 
@@ -47,6 +50,14 @@ router.delete(
   "/saved-places/:placeId",
   authenticate,
   profileController.unsavePlace,
+);
+
+router.get("/saved-trips", authenticate, profileController.getSavedTrips);
+router.post("/saved-trips/:tripId", authenticate, profileController.saveTrip);
+router.delete(
+  "/saved-trips/:tripId",
+  authenticate,
+  profileController.unsaveTrip,
 );
 
 router.get("/trips", authenticate, profileController.getMyTrips);

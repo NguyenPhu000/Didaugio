@@ -23,11 +23,26 @@ export async function checkAvailability(tx, payload) {
   const { serviceId, bookingAt, quantity, excludeBookingId } = payload;
   const svc = await tx.businessService.findUnique({
     where: { id: serviceId },
-    select: { id: true, maxCapacity: true },
+    select: { id: true, maxCapacity: true, businessId: true },
   });
   if (!svc) {
     return { ok: false, used: 0, capacity: 0, reason: "NO_SERVICE" };
   }
+
+  // Check blocked dates
+  const bookingDate = new Date(bookingAt);
+  bookingDate.setUTCHours(0, 0, 0, 0);
+  const blocked = await tx.businessBlockedDate.findFirst({
+    where: {
+      businessId: svc.businessId,
+      date: bookingDate,
+      OR: [{ serviceId: null }, { serviceId }],
+    },
+  });
+  if (blocked) {
+    return { ok: false, used: 0, capacity: 0, reason: "BLOCKED_DATE" };
+  }
+
   const cap = svc.maxCapacity ?? 999_999;
   const start = startOfMinuteUtc(new Date(bookingAt));
   const end = endOfMinuteUtc(start);

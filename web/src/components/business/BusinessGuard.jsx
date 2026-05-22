@@ -137,6 +137,8 @@ const BusinessGuard = ({ children, allowWhenPendingOrRejected = false }) => {
     };
   }, [user?.roleId, fetchProfile]);
 
+  // Staff bypass business status checks — they just need to be linked to a business
+  if (user?.roleId === ROLES.STAFF) return children;
   if (user?.roleId !== ROLES.BUSINESS) return children;
 
   if (loading || initializing) {

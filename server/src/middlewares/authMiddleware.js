@@ -124,7 +124,11 @@ export const authenticateOptional = (req, res, next) => {
     });
   }
 };
-
+/**
+ * @deprecated Use hasPermission() from permissionMiddleware.js instead.
+ * This middleware only checks roleId directly, bypassing the permission system.
+ * Kept for backward compatibility only.
+ */
 export const authorize = (allowedRoles) => {
   return (req, res, next) => {
     if (!req.user) {

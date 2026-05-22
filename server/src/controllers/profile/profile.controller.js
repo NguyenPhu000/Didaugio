@@ -179,6 +179,57 @@ export const unsavePlace = async (req, res, next) => {
   }
 };
 
+export const getSavedTrips = async (req, res, next) => {
+  try {
+    const data = await appService.getMySavedTrips(getUserId(req));
+    res.json({
+      success: true,
+      data,
+      message: "Lấy danh sách chuyến đi đã lưu thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const saveTrip = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.tripId);
+    if (!tripId) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID chuyến đi không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    const data = await appService.saveTrip(getUserId(req), tripId);
+    res.status(201).json({ success: true, data, message: "Đã lưu chuyến đi" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const unsaveTrip = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.tripId);
+    if (!tripId) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID chuyến đi không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    await appService.unsaveTrip(getUserId(req), tripId);
+    res.json({ success: true, data: null, message: "Đã bỏ lưu chuyến đi" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getSavedCollections = async (req, res, next) => {
   try {
     const data = await appService.getMySavedCollections(getUserId(req));
@@ -567,6 +618,9 @@ export default {
   getSavedPlaces,
   savePlace,
   unsavePlace,
+  getSavedTrips,
+  saveTrip,
+  unsaveTrip,
   getSavedCollections,
   renameSavedCollection,
   deleteSavedCollection,

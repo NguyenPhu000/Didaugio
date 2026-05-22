@@ -11,7 +11,7 @@ import Monitor from "lucide-react/dist/esm/icons/monitor";
 import Calendar from "lucide-react/dist/esm/icons/calendar";
 import X from "lucide-react/dist/esm/icons/x";
 import Download from "lucide-react/dist/esm/icons/download";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import {
   Card,
   CardHeader,

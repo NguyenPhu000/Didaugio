@@ -18,6 +18,8 @@ import {
   Star,
   Store,
   TrendingUp,
+  Wallet,
+  Settings,
 } from "lucide-react";
 import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/constants";
@@ -116,12 +118,20 @@ const menuData = {
     {
       title: "Đặt chỗ",
       icon: CalendarCheck,
-      roles: [R.BUSINESS],
+      roles: [R.BUSINESS, R.STAFF],
+      permission: PERMISSIONS.BOOKINGS.VIEW,
       items: [
-        { title: "Tất cả đặt chỗ", url: BUSINESS_ROUTES.BOOKINGS },
-        { title: "Lịch khung giờ", url: BUSINESS_ROUTES.BOOKING_SCHEDULE },
-        { title: "Xử lý nhanh & auto-duyệt", url: BUSINESS_ROUTES.BOOKING_QUICK },
+        { title: "Tất cả đặt chỗ", url: BUSINESS_ROUTES.BOOKINGS, permission: PERMISSIONS.BOOKINGS.VIEW },
+        { title: "Lịch khung giờ", url: BUSINESS_ROUTES.BOOKING_SCHEDULE, roles: [R.BUSINESS] },
+        { title: "Xử lý nhanh & auto-duyệt", url: BUSINESS_ROUTES.BOOKING_QUICK, roles: [R.BUSINESS] },
       ],
+    },
+    {
+      title: "Nhân viên",
+      icon: Users,
+      url: BUSINESS_ROUTES.STAFF,
+      roles: [R.BUSINESS, R.STAFF],
+      permission: PERMISSIONS.STAFF.VIEW,
     },
     {
       title: "Khuyến mãi",
@@ -142,9 +152,21 @@ const menuData = {
       roles: [R.BUSINESS],
     },
     {
+      title: "Thu nhập & Rút tiền",
+      icon: TrendingUp,
+      url: BUSINESS_ROUTES.EARNINGS,
+      roles: [R.BUSINESS],
+    },
+    {
       title: "Đánh giá",
       icon: Star,
       url: BUSINESS_ROUTES.REVIEWS,
+      roles: [R.BUSINESS],
+    },
+    {
+      title: "Cài đặt",
+      icon: Settings,
+      url: BUSINESS_ROUTES.SETTINGS,
       roles: [R.BUSINESS],
     },
   ],
@@ -177,6 +199,13 @@ const menuData = {
       url: ADMIN_ROUTES.REVIEWS_MODERATION,
       roles: [R.SUPER_ADMIN, R.ADMIN],
       permission: PERMISSIONS.REVIEWS.VIEW,
+    },
+    {
+      title: "Quản lý rút tiền",
+      icon: Wallet,
+      url: ADMIN_ROUTES.PAYOUTS,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.PAYOUTS.VIEW,
     },
   ],
   users: [

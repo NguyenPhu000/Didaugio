@@ -1,13 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import NetInfo from "@react-native-community/netinfo";
 import { getMyTripsApi, createTripApi, deleteTripApi } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
+import { TRIP_OFFLINE_GC_MS } from "../../../constants/trip-offline-cache";
 
 const TRIPS_CACHE_KEY = "@trips_cache";
-const CACHE_VERSION = "v1";
-const CACHE_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+const CACHE_VERSION = "v2";
+const CACHE_EXPIRY_MS = TRIP_OFFLINE_GC_MS;
 
 const getCacheKey = (key) => `${CACHE_VERSION}:${key}`;
 
@@ -65,26 +66,29 @@ export const clearTripsCache = async () => {
 
 const _netState = { isConnected: true, isInternetReachable: true };
 const _netListeners = new Set();
+let _netSubscribed = false;
 
 function _notifyNetListeners() {
   _netListeners.forEach((cb) => cb(_netState));
 }
 
-useEffect(() => {
-  const unsubscribe = NetInfo.addEventListener((state) => {
+function _ensureNetSubscription() {
+  if (_netSubscribed) return;
+  _netSubscribed = true;
+  NetInfo.addEventListener((state) => {
     _netState.isConnected = state.isConnected ?? true;
     _netState.isInternetReachable = state.isInternetValidationEnabled
       ? state.isInternetReachable !== false
       : _netState.isConnected;
     _notifyNetListeners();
   });
-  return unsubscribe;
-}, []);
+}
 
 export function useNetworkStatus() {
   const [net, setNet] = useState({ ..._netState });
 
   useEffect(() => {
+    _ensureNetSubscription();
     _netListeners.add(setNet);
     return () => {
       _netListeners.delete(setNet);
@@ -102,22 +106,30 @@ export function useTripsCached(enabled = true) {
   const [isOffline, setIsOffline] = useState(false);
   const [cachedData, setCachedData] = useState(null);
 
-  // Listen to shared network state
   useEffect(() => {
-    _netListeners.add((state) => {
+    _ensureNetSubscription();
+
+    const handler = (state) => {
       const wasOffline = !isOnlineRef.current;
       isOnlineRef.current = state.isConnected;
 
       setIsOffline(!state.isConnected);
 
       if (wasOffline && state.isConnected) {
-        queryClient.invalidateQueries({ queryKey: ["trips", "cached"] });
+        queryClient.invalidateQueries({ queryKey: ["trips"] });
       }
-    });
+    };
+
+    _netListeners.add(handler);
+    handler(_netState);
+
+    return () => {
+      _netListeners.delete(handler);
+    };
   }, [queryClient]);
 
   const query = useQuery({
-    queryKey: ["trips", "cached"],
+    queryKey: QUERY_KEYS.trips.list(),
     queryFn: async () => {
       const response = await getMyTripsApi();
       const trips = response?.data || [];
@@ -126,9 +138,10 @@ export function useTripsCached(enabled = true) {
     },
     enabled: enabled && isOnlineRef.current,
     staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
+    gcTime: TRIP_OFFLINE_GC_MS,
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    refetchOnMount: "always",
   });
 
   // Load cached data when offline
@@ -150,8 +163,15 @@ export function useTripsCached(enabled = true) {
     }
   }, [query.data]);
 
+  const rawData = isOffline ? cachedData : query.data;
+  const safeData = Array.isArray(rawData)
+    ? rawData
+    : Array.isArray(rawData?.data)
+      ? rawData.data
+      : [];
+
   return {
-    data: isOffline ? cachedData || [] : query.data || [],
+    data: safeData,
     isLoading:
       query.isLoading || (isOffline && !cachedData && query.isFetching),
     isError: isOffline ? false : query.isError,
@@ -167,7 +187,7 @@ export function useTripDetailCached(tripId, enabled = true) {
   const storageKey = `${TRIPS_CACHE_KEY}_detail_${tripId}`;
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["trip", tripId],
+    queryKey: QUERY_KEYS.trips.detail(tripId),
     queryFn: async () => {
       const tripsResponse = await getMyTripsApi();
       const trips = tripsResponse?.data || [];
@@ -190,7 +210,7 @@ export function useTripDetailCached(tripId, enabled = true) {
     },
     enabled: enabled && !!tripId,
     staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
+    gcTime: TRIP_OFFLINE_GC_MS,
   });
 
   return { data, isLoading, isError, refetch };
@@ -220,7 +240,7 @@ export function useCreateTripCached() {
 
       try {
         const response = await createTripApi(tripData);
-        queryClient.invalidateQueries({ queryKey: ["trips", "cached"] });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
         return response;
       } catch (error) {
         await queuePending("CREATE_TRIP", tripData);
@@ -249,8 +269,7 @@ export function useDeleteTripCached() {
       };
 
       if (!isConnected) {
-        // Optimistically remove from cache
-        queryClient.setQueryData(["trips", "cached"], (old) =>
+        queryClient.setQueryData(QUERY_KEYS.trips.list(), (old) =>
           (old || []).filter(
             (t) => t.id !== tripId && String(t.id) !== String(tripId),
           ),
@@ -261,7 +280,7 @@ export function useDeleteTripCached() {
 
       try {
         const response = await deleteTripApi(tripId);
-        queryClient.invalidateQueries({ queryKey: ["trips", "cached"] });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
         return response;
       } catch (error) {
         await queuePending("DELETE_TRIP", tripId);

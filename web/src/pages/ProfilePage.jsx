@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import {
   User,
   Mail,
@@ -35,6 +35,7 @@ import {
   TabsList,
   TabsTrigger,
   Separator,
+  Checkbox,
 } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
 import { profileService } from "@/apis/profileService";
@@ -45,12 +46,56 @@ import { resolveMediaUrl } from "@/utils/mediaUrl";
 
 // const profileSchema = z.object({...}) // Removed
 
+const NOTIFICATION_GROUPS = [
+  {
+    title: "EMAIL",
+    key: "email",
+    toggles: [
+      ["bookingConfirmed", "Đặt chỗ đã xác nhận"],
+      ["bookingCancelled", "Đặt chỗ đã hủy"],
+      ["bookingPending", "Đặt chỗ chờ xác nhận"],
+      ["newReview", "Đánh giá mới"],
+      ["paymentReceived", "Thanh toán nhận được"],
+      ["systemAlerts", "Cảnh báo hệ thống"],
+    ],
+  },
+  {
+    title: "PUSH",
+    key: "push",
+    toggles: [
+      ["bookingConfirmed", "Đặt chỗ đã xác nhận"],
+      ["bookingCancelled", "Đặt chỗ đã hủy"],
+      ["newReview", "Đánh giá mới"],
+      ["systemAlerts", "Cảnh báo hệ thống"],
+    ],
+  },
+];
+
+const DEFAULT_NOTIFICATIONS = {
+  email: {
+    bookingConfirmed: true,
+    bookingCancelled: true,
+    bookingPending: true,
+    newReview: true,
+    paymentReceived: true,
+    systemAlerts: true,
+  },
+  push: {
+    bookingConfirmed: true,
+    bookingCancelled: true,
+    newReview: false,
+    systemAlerts: false,
+  },
+};
+
 const ProfilePage = () => {
   const { setUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [profile, setProfile] = useState(null);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [notifSettings, setNotifSettings] = useState(DEFAULT_NOTIFICATIONS);
+  const [notifSaving, setNotifSaving] = useState(false);
 
   const {
     register,
@@ -81,6 +126,14 @@ const ProfilePage = () => {
             address: response.data.profile?.address || "",
             bio: response.data.profile?.bio || "",
           });
+          // Load notification settings
+          const stored = response.data.profile?.notificationSettings;
+          if (stored && typeof stored === "object" && Object.keys(stored).length > 0) {
+            setNotifSettings({
+              email: { ...DEFAULT_NOTIFICATIONS.email, ...stored.email },
+              push: { ...DEFAULT_NOTIFICATIONS.push, ...stored.push },
+            });
+          }
         }
       } catch {
         toast.error("Khong the tai thong tin profile");
@@ -120,6 +173,24 @@ const ProfilePage = () => {
       toast.error(error.message || "Cap nhat that bai");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleNotifToggle = async (group, key, value) => {
+    const updated = {
+      ...notifSettings,
+      [group]: { ...notifSettings[group], [key]: value },
+    };
+    setNotifSettings(updated);
+    setNotifSaving(true);
+    try {
+      await profileService.updateNotificationSettings(updated);
+    } catch {
+      toast.error("Lưu cài đặt thông báo thất bại");
+      // Revert on error
+      setNotifSettings(notifSettings);
+    } finally {
+      setNotifSaving(false);
     }
   };
 
@@ -514,30 +585,55 @@ const ProfilePage = () => {
             </div>
           </TabsContent>
 
-          {/* Notifications Tab - T.I.M Style */}
+          {/* Notifications Tab */}
           <TabsContent value="notifications" className="space-y-6">
             <div className="bg-white border-2 border-black shadow-sm">
               <div className="bg-black text-white p-4 border-b-2 border-black">
-                <div className="flex items-center gap-3">
-                  <div className="w-1 h-8 bg-[#F3E600]"></div>
-                  <div>
-                    <h3 className="tim-meta text-white mb-1 flex items-center gap-2">
-                      <Bell className="h-4 w-4" />
-                      NOTIFICATION SETTINGS
-                    </h3>
-                    <p className="text-xs text-gray-400 uppercase font-mono">
-                      TÙY CHỈNH CÁCH BẠN NHẬN THÔNG BÁO
-                    </p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1 h-8 bg-[#F3E600]"></div>
+                    <div>
+                      <h3 className="tim-meta text-white mb-1 flex items-center gap-2">
+                        <Bell className="h-4 w-4" />
+                        CÀI ĐẶT THÔNG BÁO
+                      </h3>
+                      <p className="text-xs text-gray-400 uppercase font-mono">
+                        TÙY CHỈNH CÁCH BẠN NHẬN THÔNG BÁO
+                      </p>
+                    </div>
                   </div>
+                  {notifSaving && (
+                    <Loader2 className="h-4 w-4 text-[#F3E600] animate-spin" />
+                  )}
                 </div>
               </div>
-              <div className="p-6">
-                <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-gray-300">
-                  <Bell className="h-16 w-16 text-gray-300 mb-4" />
-                  <p className="font-mono text-xs text-gray-400 uppercase tracking-wider">
-                    CHỨC NĂNG ĐANG ĐƯỢC PHÁT TRIỂN...
-                  </p>
-                </div>
+              <div className="p-6 space-y-6">
+                {NOTIFICATION_GROUPS.map((group) => (
+                  <div key={group.key}>
+                    <h4 className="font-mono text-xs font-bold uppercase tracking-wider mb-3 text-gray-600">
+                      {group.title}
+                    </h4>
+                    <div className="space-y-2">
+                      {group.toggles.map(([key, label]) => (
+                        <div
+                          key={key}
+                          className="flex items-center justify-between border border-black px-3 py-2"
+                        >
+                          <span className="font-mono text-[11px] uppercase">
+                            {label}
+                          </span>
+                          <Checkbox
+                            checked={!!notifSettings[group.key]?.[key]}
+                            onCheckedChange={(c) =>
+                              handleNotifToggle(group.key, key, c === true)
+                            }
+                            className="rounded-none border-black data-[state=checked]:bg-black data-[state=checked]:text-white"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </TabsContent>

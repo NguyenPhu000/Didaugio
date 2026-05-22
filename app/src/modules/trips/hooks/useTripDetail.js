@@ -10,6 +10,7 @@ import {
   moveDestinationApi,
 } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
+import { TRIP_OFFLINE_GC_MS } from "../../../constants/trip-offline-cache";
 
 export function useTripDetail(id) {
   return useQuery({
@@ -18,6 +19,7 @@ export function useTripDetail(id) {
     enabled: !!id,
     select: (res) => res?.data || null,
     staleTime: 2 * 60 * 1000,
+    gcTime: TRIP_OFFLINE_GC_MS,
   });
 }
 
@@ -36,10 +38,12 @@ export function useAddDestination(tripId) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data) => addDestinationApi(tripId, data),
-    onSuccess: () =>
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.trips.detail(tripId),
-      }),
+      });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
+    },
   });
 }
 
@@ -90,6 +94,7 @@ export function useRemoveDestination(tripId) {
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.detail(tripId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
     },
   });
 }
@@ -123,6 +128,7 @@ export function useReorderDestinations(tripId) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.detail(tripId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
     },
   });
 }
@@ -161,6 +167,7 @@ export function useUpdateDestination(tripId) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.detail(tripId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
     },
   });
 }
@@ -195,6 +202,7 @@ export function useMoveDestination(tripId) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.detail(tripId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
     },
   });
 }

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { CheckCircle2, XCircle, Loader2, Mail } from "lucide-react";
 import { authService } from "@/apis";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 
 const VerifyEmailPublicPage = () => {
   const [searchParams] = useSearchParams();

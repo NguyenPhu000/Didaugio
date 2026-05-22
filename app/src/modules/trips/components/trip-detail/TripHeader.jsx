@@ -7,8 +7,11 @@ import s, { T } from "../../utils/tripDetailTokens";
 
 export const TripHeader = memo(function TripHeader({
   trip,
+  onEditTrip,
   onDeleteTrip,
   isDeleting,
+  isSaved,
+  onToggleSave,
 }) {
   const router = useRouter();
 
@@ -47,6 +50,30 @@ export const TripHeader = memo(function TripHeader({
       </View>
 
       <View style={s.headerActions}>
+        {onToggleSave ? (
+          <Pressable
+            onPress={onToggleSave}
+            style={({ pressed }) => [
+              s.headerActionBtn,
+              pressed && { backgroundColor: "rgba(0,0,0,0.08)" },
+            ]}
+          >
+            <MaterialIcons
+              name={isSaved ? "bookmark" : "bookmark-border"}
+              size={18}
+              color={isSaved ? "#FF9F0A" : T.ink}
+            />
+          </Pressable>
+        ) : null}
+        <Pressable
+          onPress={onEditTrip}
+          style={({ pressed }) => [
+            s.headerActionBtn,
+            pressed && { backgroundColor: "rgba(0,0,0,0.08)" },
+          ]}
+        >
+          <Text style={s.headerActionText}>Sửa</Text>
+        </Pressable>
         <Pressable
           onPress={onDeleteTrip}
           style={({ pressed }) => [

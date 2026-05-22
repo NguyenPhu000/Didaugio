@@ -9,6 +9,7 @@ Set = require('lib/set')
 Sequence = require('lib/sequence')
 Handlers = require("lib/way_handlers")
 Relations = require("lib/relations")
+Obstacles = require("lib/obstacles")
 find_access_tag = require("lib/access").find_access_tag
 set_classification = require("lib/guidance").set_classification
 limit = require("lib/maxspeed").limit
@@ -35,6 +36,7 @@ function setup()
     turn_penalty              = 7.5,
     speed_reduction           = 0.8,
     turn_bias                 = 1.075,
+    lane_markings_penalty     = 0.8,
 
     -- Vehicle size (motorcycle is small)
     vehicle_height = 1.5,
@@ -81,8 +83,26 @@ function setup()
       'customers',
     },
 
+    restricted_highway_whitelist = Set {
+      'motorway',
+      'motorway_link',
+      'trunk',
+      'trunk_link',
+      'primary',
+      'primary_link',
+      'secondary',
+      'secondary_link',
+      'tertiary',
+      'tertiary_link',
+      'residential',
+    },
+
     service_access_tag_blacklist = Set {
       'private',
+    },
+
+    service_tag_forbidden = Set {
+      'emergency_access',
     },
 
     -- Tags that indicate access for motorcycles specifically
@@ -94,7 +114,7 @@ function setup()
     },
 
     -- Tags for turn restrictions
-    turn_restrictions = Sequence {
+    restrictions = Sequence {
       'motorcycle',
       'motor_vehicle',
       'vehicle',
@@ -122,153 +142,214 @@ function setup()
       },
     },
 
-    -- Surface penalties: motorcycles sensitive to road surface
-    surface_penalties = {
-      asphalt    = 1.0,
-      concrete   = 1.0,
-      paved      = 1.0,
-      compacted  = 0.9,
-      fine_gravel = 0.8,
-      unpaved    = 0.7,
-      gravel     = 0.6,
-      cobblestone = 0.6,
-      sett       = 0.6,
-      dirt       = 0.4,
-      earth      = 0.4,
-      ground     = 0.4,
-      grass      = 0.3,
-      sand       = 0.3,
-      mud        = 0.2,
+    -- Service road penalties
+    service_penalties = {
+      alley          = 0.5,
+      parking        = 0.5,
+      parking_aisle  = 0.5,
+      driveway       = 0.5,
+      ["drive-through"] = 0.5,
+      ["drive-thru"]    = 0.5,
     },
 
-    -- Prefer living streets (hems) for motorcycle
-    living_street_penalty = 0.5,
-    service_penalty       = 0.8,
-
-    -- Ferry speed (critical for Mekong Delta / DBSCL)
-    ferry_speed = 15,
-
-    -- Penalty for highway classes
-    highway_penalty = {
-      motorway      = 0.5,
-      trunk         = 0.6,
-      primary       = 0.7,
-      secondary     = 0.8,
-      tertiary      = 0.9,
-      residential   = 1.0,
-      living_street = 1.2,  -- prefer: higher = more preferred
-      service       = 1.1,
+    -- Surface speeds (km/h) - motorcycles sensitive to road surface
+    surface_speeds = {
+      asphalt           = nil,  -- no limit
+      concrete          = nil,
+      ["concrete:plates"] = nil,
+      ["concrete:lanes"]  = nil,
+      paved             = nil,
+      cement            = 80,
+      compacted         = 80,
+      fine_gravel       = 80,
+      paving_stones     = 60,
+      metal             = 60,
+      bricks            = 60,
+      grass             = 40,
+      wood              = 40,
+      sett              = 40,
+      grass_paver       = 40,
+      gravel            = 40,
+      unpaved           = 40,
+      ground            = 40,
+      dirt              = 40,
+      pebblestone       = 40,
+      tartan            = 40,
+      cobblestone       = 30,
+      clay              = 30,
+      earth             = 20,
+      stone             = 20,
+      rocky             = 20,
+      sand              = 20,
+      mud               = 10,
     },
 
-    -- Ignore certain areas
-    ignore_areas = Set {
-      'parking_aisle',
+    tracktype_speeds = {
+      grade1 = 60,
+      grade2 = 40,
+      grade3 = 30,
+      grade4 = 25,
+      grade5 = 20,
     },
+
+    smoothness_speeds = {
+      intermediate    = 80,
+      bad             = 40,
+      very_bad        = 20,
+      horrible        = 10,
+      very_horrible   = 5,
+      impassable      = 0,
+    },
+
+    -- Route speeds (ferries)
+    route_speeds = {
+      ferry = 15,
+      shuttle_train = 10,
+    },
+
+    -- Bridge speeds
+    bridge_speeds = {
+      movable = 5,
+    },
+
+    -- Maxspeed tables
+    maxspeed_table_default = {
+      urban   = 50,
+      rural   = 90,
+      trunk   = 110,
+      motorway = 130,
+    },
+
+    maxspeed_table = {
+    },
+
+    -- Classes
+    classes = Sequence {
+      'toll',
+      'motorway',
+      'ferry',
+      'restricted',
+      'tunnel',
+    },
+
+    -- Excludable
+    excludable = Set {
+      'toll',
+      'motorway',
+      'ferry',
+    },
+
+    -- Avoid set
+    avoid = Set {
+      'area',
+      'reversible',
+      'impassable',
+      'steps',
+      'construction',
+      'proposed',
+    },
+
+    -- Construction whitelist
+    construction_whitelist = Set {
+      'no',
+      'minor',
+    },
+
+    -- Prefetch tags
+    prefetch = Set {
+      'highway',
+      'bridge',
+      'route',
+    },
+
+    -- Relation types
+    relation_types = Sequence {
+      "route",
+    },
+
+    -- Turn classification
+    highway_turn_classification = {},
+    access_turn_classification = {},
   }
 end
 
 -- Process node --------------------------------------------------------
 function process_node(profile, node, result)
   local barrier = node:get_value_by_key("barrier")
-  local traffic_lights = node:get_value_by_key("highway")
+  local highway = node:get_value_by_key("highway")
 
   -- Handle barriers
   if barrier and barrier ~= '' then
-    if profile.barrier_whitelist[barrier] then
-      result.barrier = false
+    local access = find_access_tag(node, profile.access_tags_hierarchy)
+    if access then
+      if profile.access_tag_blacklist[access] and
+         not profile.restricted_access_tag_list[access] then
+        result.barrier = true
+      end
     else
-      result.barrier = true
+      local barrier_whitelist = profile.barrier_whitelist
+      if not barrier_whitelist[barrier] then
+        result.barrier = true
+      end
     end
   end
 
   -- Handle traffic lights
-  if traffic_lights == 'traffic_signals' then
+  if highway == 'traffic_signals' then
     result.traffic_lights = true
   end
 end
 
 -- Process way ---------------------------------------------------------
-function process_way(profile, way, result)
-  local highway = way:get_value_by_key("highway")
+function process_way(profile, way, result, relations)
+  local data = {
+    highway = way:get_value_by_key('highway'),
+    bridge = way:get_value_by_key('bridge'),
+    route = way:get_value_by_key('route'),
+  }
 
-  -- Handle ferries (critical for Mekong Delta / DBSCL)
-  local route = way:get_value_by_key("route")
-  if route == 'ferry' then
-    result.forward_mode = mode.ferry
-    result.backward_mode = mode.ferry
-    result.forward_speed = profile.ferry_speed
-    result.backward_speed = profile.ferry_speed
-    result.name = way:get_value_by_key("name")
+  -- Early exit: must have highway or route tag
+  if (not data.highway or data.highway == '') and
+     (not data.route or data.route == '')
+  then
     return
   end
 
-  -- Must have a highway tag
-  if not highway or highway == '' then
-    return
-  end
+  -- Initialize speed to -1 so WayHandlers.speed knows to set it
+  result.forward_speed = -1
+  result.backward_speed = -1
 
-  -- Check access
-  local access = find_access_tag(way, profile.access_tags_hierarchy)
-  if access and profile.access_tag_blacklist[access] then
-    return
-  end
+  -- Build handler pipeline (same as car.lua, adapted for motorcycle)
+  local handlers = Sequence {
+    Handlers.default_mode,
+    Handlers.blocked_ways,
+    Handlers.avoid_ways,
+    Handlers.handle_height,
+    Handlers.handle_width,
+    Handlers.handle_length,
+    Handlers.handle_weight,
+    Handlers.access,
+    Handlers.oneway,
+    Handlers.destinations,
+    Handlers.ferries,
+    Handlers.movables,
+    Handlers.service,
+    Handlers.speed,
+    Handlers.maxspeed,
+    Handlers.surface,
+    Handlers.penalties,
+    Handlers.classes,
+    Handlers.turn_lanes,
+    Handlers.classification,
+    Handlers.roundabouts,
+    Handlers.startpoint,
+    Handlers.driving_side,
+    Handlers.names,
+    Handlers.weights,
+    Handlers.way_classification_for_turn,
+  }
 
-  -- Explicit motorcycle=no blocks access
-  local motorcycle_access = way:get_value_by_key("motorcycle")
-  if motorcycle_access == 'no' then
-    return
-  end
-
-  -- Determine speed from table
-  local speed = profile.speeds[highway] or profile.default_speed
-
-  -- Apply maxspeed if present
-  local maxspeed = tonumber(way:get_value_by_key("maxspeed"))
-  if maxspeed and maxspeed > 0 and maxspeed < speed then
-    speed = maxspeed
-  end
-
-  -- Apply surface penalty
-  local surface = way:get_value_by_key("surface")
-  if surface and profile.surface_penalties[surface] then
-    speed = speed * profile.surface_penalties[surface]
-  end
-
-  -- Apply living street / service penalty (prefer hems for motorcycle)
-  if highway == 'living_street' then
-    speed = speed * profile.living_street_penalty
-  elseif highway == 'service' then
-    speed = speed * profile.service_penalty
-  end
-
-  -- Clamp minimum speed
-  if speed < 5 then
-    speed = 5
-  end
-
-  -- Set speed and mode
-  result.forward_speed = speed
-  result.backward_speed = speed
-  result.forward_mode = profile.default_mode
-  result.backward_mode = profile.default_mode
-
-  -- Handle one-way streets
-  local oneway = way:get_value_by_key("oneway")
-  local junction = way:get_value_by_key("junction")
-
-  if oneway == 'yes' or oneway == '1' or junction == 'roundabout' then
-    result.backward_mode = mode.inaccessible
-    result.backward_speed = 0
-  elseif oneway == '-1' then
-    result.forward_mode = mode.inaccessible
-    result.forward_speed = 0
-  end
-
-  -- Set name for display
-  result.name = way:get_value_by_key("name")
-
-  -- Set road classification for guidance
-  set_classification(highway, result, way)
+  Handlers.run(profile, way, result, data, handlers, relations)
 end
 
 -- Process turn --------------------------------------------------------

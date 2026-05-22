@@ -14,7 +14,7 @@ export const ROLES = {
   GUEST: 6,
 };
 
-// Số nhỏ hơn = quyền cao hơn
+// Lower number = higher privilege
 export const ROLE_HIERARCHY = {
   [ROLES.SUPER_ADMIN]: {
     name: "super_admin",
@@ -26,11 +26,48 @@ export const ROLE_HIERARCHY = {
     level: 2,
     canManage: [ROLES.BUSINESS, ROLES.STAFF, ROLES.USER],
   },
-  [ROLES.BUSINESS]: { name: "business", level: 3, canManage: [] },
+  [ROLES.BUSINESS]: { name: "business", level: 3, canManage: [ROLES.STAFF] },
   [ROLES.STAFF]: { name: "staff", level: 4, canManage: [] },
   [ROLES.USER]: { name: "user", level: 5, canManage: [] },
   [ROLES.GUEST]: { name: "guest", level: 6, canManage: [] },
 };
+
+// Helper: name-based role comparison
+export function canManageRole(managerRoleName, targetRoleName) {
+  const managerEntry = Object.values(ROLE_HIERARCHY).find(
+    (r) => r.name === managerRoleName,
+  );
+  const targetEntry = Object.values(ROLE_HIERARCHY).find(
+    (r) => r.name === targetRoleName,
+  );
+  if (!managerEntry || !targetEntry) return false;
+  if (managerRoleName === "super_admin") return targetRoleName !== "super_admin";
+  if (managerRoleName === "admin") return targetEntry.level > managerEntry.level;
+  if (managerRoleName === "business") return managerEntry.canManage.includes(ROLES[targetRoleName.toUpperCase()]);
+  return false;
+}
+
+// Helper: user-object-based management check
+export function canManageUser(managerUser, targetUser) {
+  if (!managerUser?.role?.name || !targetUser?.role?.name) return false;
+  if (managerUser.id === targetUser.id) return false;
+  return canManageRole(managerUser.role.name, targetUser.role.name);
+}
+
+// Helper: get managed role names
+export function getManagedRoles(roleName) {
+  if (roleName === "super_admin") return ["admin", "business", "staff", "user"];
+  if (roleName === "admin") return ["business", "staff", "user"];
+  if (roleName === "business") return ["staff"];
+  return [];
+}
+
+// Helper: get managed role IDs
+export function getManagedRoleIds(roleName) {
+  const roles = getManagedRoles(roleName);
+  return roles.map((name) => ROLES[name.toUpperCase()]).filter(Boolean);
+}
+
 
 export const BOOKING_STATUS = {
   PENDING: "pending",

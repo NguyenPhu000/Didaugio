@@ -40,10 +40,24 @@ import {
   signBusinessContractSchema,
   getBusinessesQuerySchema,
 } from "../../models/index.js";
+import { ROLES } from "../../config/constants.js";
 
 const router = express.Router();
 
 router.use(authenticate);
+
+// Block GUEST from all business routes
+router.use((req, res, next) => {
+  if (req.user?.roleId === ROLES.GUEST) {
+    return res.status(403).json({
+      success: false,
+      data: null,
+      message: "Tai khoan Guest khong the truy cap chuc nang doanh nghiep",
+      errorCode: "GUEST_NOT_ALLOWED",
+    });
+  }
+  next();
+});
 
 // ========== Profile (Business Owner) ==========
 router.get("/profile", getProfile);

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { Lock, Eye, EyeOff, CheckCircle, XCircle } from "lucide-react";
 import {
   Button,

@@ -465,12 +465,32 @@ export const updateUserRole = async (userId, newRoleId, currentUser) => {
 
   // Check hierarchy
   const currentRole = ROLE_HIERARCHY[currentUser.roleId];
-  if (!currentRole.canManage.includes(validRoleId)) {
-    throw new ServiceError(
-      ERROR_MESSAGES.FORBIDDEN,
-      403,
-      ERROR_CODES.FORBIDDEN,
-    );
+  
+  // Super Admin bypass: Super Admin can do anything except demote another Super Admin
+  if (currentUser.roleId === ROLES.SUPER_ADMIN) {
+    if (targetUser.roleId === ROLES.SUPER_ADMIN && targetUser.id !== currentUser.id) {
+      throw new ServiceError(
+        "Không thể chỉnh sửa vai trò của Super Admin khác",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
+  } else {
+    // Normal hierarchy check for Admin and below
+    if (!currentRole.canManage.includes(targetUser.roleId)) {
+      throw new ServiceError(
+        "Bạn không có quyền chỉnh sửa người dùng này",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
+    if (!currentRole.canManage.includes(validRoleId)) {
+      throw new ServiceError(
+        "Bạn không có quyền gán vai trò này",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
   }
 
   const updatedUser = await prisma.user.update({

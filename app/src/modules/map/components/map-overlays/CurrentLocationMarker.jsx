@@ -1,26 +1,17 @@
-import { memo, useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { memo } from "react";
+import { Image, StyleSheet, View } from "react-native";
 import { Circle, Marker } from "react-native-maps";
 
-/**
- * REFACTORED CURRENT LOCATION MARKER
- * Designed to mimic Google Maps precisely while solving Android clipping issues.
- */
+const ACCURACY_RADIUS = 50;
+const AVATAR_SIZE = 32;
+const CONTAINER_SIZE = 70;
+const ARROW_OFFSET = 10;
+
 const CurrentLocationMarker = memo(function CurrentLocationMarker({
   location,
-  nickname,
+  avatarUri,
+  heading,
 }) {
-  const [trackChanges, setTrackChanges] = useState(true);
-
-  // Robust tracksViewChanges management
-  useEffect(() => {
-    setTrackChanges(true);
-    const timer = setTimeout(() => {
-      setTrackChanges(false);
-    }, 1000); // 1s is safer for all devices to complete layout/font rendering
-    return () => clearTimeout(timer);
-  }, [nickname]);
-
   if (
     !location ||
     !Number.isFinite(location.latitude) ||
@@ -29,62 +20,53 @@ const CurrentLocationMarker = memo(function CurrentLocationMarker({
     return null;
   }
 
-  const trimmedNickname =
-    typeof nickname === "string" && nickname.trim() ? nickname.trim() : "";
-  const label =
-    trimmedNickname.length > 18
-      ? `${trimmedNickname.slice(0, 15)}...`
-      : trimmedNickname;
+  const hasHeading = Number.isFinite(heading);
+  const halfContainer = CONTAINER_SIZE / 2;
 
   return (
     <>
       <Circle
         center={location}
-        radius={50}
+        radius={ACCURACY_RADIUS}
         strokeWidth={1}
         strokeColor="rgba(66, 133, 244, 0.25)"
         fillColor="rgba(66, 133, 244, 0.12)"
         zIndex={1199}
       />
-      <Marker
-        coordinate={location}
-        anchor={{ x: 0.5, y: 0.5 }}
-        tracksViewChanges={trackChanges}
-        zIndex={1200}
-      >
-        {/* 
-            BALANCED CONTAINER:
-            To keep the blue dot at the exact coordinate with anchor 0.5, 0.5,
-            we create a vertical stack where the top has the label and the bottom 
-            has an equal amount of empty space.
-        */}
-        <View style={styles.container}>
-          {/* TOP SECTION: Label */}
-          <View style={styles.labelContainer}>
-            {label ? (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText} numberOfLines={1}>
-                  {label}
-                </Text>
-              </View>
-            ) : null}
-          </View>
 
-          {/* CENTER SECTION: The Blue Dot (The actual GPS point) */}
-          <View style={styles.dotWrapper}>
-            {/* Outer soft glow */}
-            <View style={styles.glowLarge} />
-            {/* Inner pulsing-style halo */}
-            <View style={styles.glowSmall} />
-            {/* White border circle */}
-            <View style={styles.dotBorder}>
-              {/* Blue core */}
-              <View style={styles.dotCore} />
-            </View>
+      {/* Heading arrow — rotates around the avatar */}
+      {hasHeading ? (
+        <Marker
+          coordinate={location}
+          anchor={{ x: 0.5, y: 0.5 }}
+          rotation={heading}
+          tracksViewChanges={true}
+          zIndex={1202}
+        >
+          <View
+            style={[
+              styles.headingContainer,
+              { width: CONTAINER_SIZE, height: CONTAINER_SIZE },
+            ]}
+          >
+            <View
+              style={[
+                styles.headingArrow,
+                { top: halfContainer - ARROW_OFFSET - 12 },
+              ]}
+            />
           </View>
+        </Marker>
+      ) : null}
 
-          {/* BOTTOM SECTION: Empty spacer to balance the label height */}
-          <View style={styles.labelContainer} />
+      {/* Avatar — stays fixed, never rotates */}
+      <Marker coordinate={location} anchor={{ x: 0.5, y: 0.5 }} zIndex={1200}>
+        <View style={styles.avatar}>
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatarDot} />
+          )}
         </View>
       </Marker>
     </>
@@ -92,80 +74,44 @@ const CurrentLocationMarker = memo(function CurrentLocationMarker({
 });
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    justifyContent: "center",
-    // Large enough bounds to never clip
-    width: 160,
-    height: 120,
-  },
-  labelContainer: {
-    height: 35, // Fixed height for balance
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "flex-end",
-  },
-  badge: {
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(66, 133, 244, 0.3)",
-    // High-end shadow
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 4,
-    marginBottom: 4,
-  },
-  badgeText: {
-    color: "#1A73E8",
-    fontSize: 11,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-  },
-  dotWrapper: {
-    width: 50,
-    height: 50,
+  headingContainer: {
     alignItems: "center",
     justifyContent: "center",
   },
-  glowLarge: {
+  headingArrow: {
     position: "absolute",
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "rgba(66, 133, 244, 0.15)",
+    width: 0,
+    height: 0,
+    borderLeftWidth: 14,
+    borderRightWidth: 14,
+    borderBottomWidth: 24,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: "rgba(59, 130, 246, 0.7)",
   },
-  glowSmall: {
-    position: "absolute",
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(66, 133, 244, 0.3)",
-  },
-  dotBorder: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    // Sharp shadow for the dot itself
+  avatar: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    backgroundColor: "#93C5FD",
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-    elevation: 5,
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
   },
-  dotCore: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#1A73E8",
+  avatarImage: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+  },
+  avatarDot: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    backgroundColor: "#3B82F6",
   },
 });
 

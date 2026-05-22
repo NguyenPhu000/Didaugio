@@ -12,7 +12,21 @@ export const STATUS_THEME = {
     accent: "#F59E0B",
     icon: "edit-calendar",
   },
+  upcoming: {
+    label: "Sắp tới",
+    bg: "#E0E7FF",
+    text: "#3730A3",
+    accent: "#6366F1",
+    icon: "schedule",
+  },
   active: {
+    label: "Đang diễn ra",
+    bg: "#DBEAFE",
+    text: "#1D4ED8",
+    accent: "#2563EB",
+    icon: "flight-takeoff",
+  },
+  ongoing: {
     label: "Đang diễn ra",
     bg: "#DBEAFE",
     text: "#1D4ED8",
@@ -80,44 +94,84 @@ export function getDaysUntil(dateStr) {
   );
 }
 
-export function getTimelineLabel(trip) {
-  if (trip.status === "completed") return "Đã kết thúc";
-  if (trip.status === "cancelled") return "Không còn hiệu lực";
+/**
+ * Trạng thái hiển thị thực tế của chuyến đi (state machine).
+ *
+ * Ưu tiên trạng thái nguồn (status từ DB) trước khi suy luận theo ngày để
+ * tránh xung đột "Nháp" vs "Đang trong hành trình".
+ *
+ * Trả về một trong: "draft" | "upcoming" | "ongoing" | "completed" | "cancelled".
+ */
+export function getDisplayStatus(trip) {
+  if (!trip) return "draft";
+
+  const rawStatus = String(trip.status || "").toLowerCase();
+  if (rawStatus === "completed") return "completed";
+  if (rawStatus === "cancelled") return "cancelled";
+  if (rawStatus === "draft") return "draft";
 
   const daysUntil = getDaysUntil(trip.startDate);
-  if (daysUntil === null) return "Có thể bổ sung sau";
-  if (daysUntil < 0) return "Đang trong hành trình";
+  if (daysUntil === null) return "draft";
+  if (daysUntil < 0) {
+    const endDaysUntil = getDaysUntil(trip.endDate);
+    if (endDaysUntil !== null && endDaysUntil < 0) return "completed";
+    return "ongoing";
+  }
+  return "upcoming";
+}
+
+export function getTimelineLabel(trip) {
+  const displayStatus = getDisplayStatus(trip);
+  if (displayStatus === "completed") return "Đã kết thúc";
+  if (displayStatus === "cancelled") return "Không còn hiệu lực";
+  if (displayStatus === "draft") return "Bản nháp · cần lên lịch";
+
+  const daysUntil = getDaysUntil(trip.startDate);
+  if (displayStatus === "ongoing") return "Đang trong hành trình";
   if (daysUntil === 0) return "Bắt đầu hôm nay";
   if (daysUntil === 1) return "Bắt đầu ngày mai";
+  if (daysUntil !== null && daysUntil > 0) return `Còn ${daysUntil} ngày`;
 
-  return `Còn ${daysUntil} ngày`;
+  return "Có thể bổ sung sau";
 }
 
 export function getHeroTrip(trips) {
-  const candidates = trips
-    .filter(
-      (trip) => trip.status !== "completed" && trip.status !== "cancelled",
-    )
+  const STATUS_PRIORITY = {
+    ongoing: 0,
+    upcoming: 1,
+    draft: 2,
+    completed: 3,
+    cancelled: 4,
+  };
+
+  const candidates = (trips || [])
+    .map((trip) => ({ trip, status: getDisplayStatus(trip) }))
+    .filter(({ status }) => status !== "completed" && status !== "cancelled")
     .sort((a, b) => {
-      const aDate = a.startDate
-        ? new Date(a.startDate).getTime()
+      const aPriority = STATUS_PRIORITY[a.status] ?? 99;
+      const bPriority = STATUS_PRIORITY[b.status] ?? 99;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      const aDate = a.trip.startDate
+        ? new Date(a.trip.startDate).getTime()
         : Number.MAX_SAFE_INTEGER;
-      const bDate = b.startDate
-        ? new Date(b.startDate).getTime()
+      const bDate = b.trip.startDate
+        ? new Date(b.trip.startDate).getTime()
         : Number.MAX_SAFE_INTEGER;
       return aDate - bDate;
     });
 
-  return candidates[0] || trips[0] || null;
+  return candidates[0]?.trip || trips?.[0] || null;
 }
 
 export function buildSummary(trips) {
-  const activeCount = trips.filter(
-    (trip) => trip.status === "active" || trip.status === "draft",
-  ).length;
-  const completedCount = trips.filter(
-    (trip) => trip.status === "completed" || trip.status === "cancelled",
-  ).length;
+  const activeCount = trips.filter((trip) => {
+    const status = getDisplayStatus(trip);
+    return status === "draft" || status === "upcoming" || status === "ongoing";
+  }).length;
+  const completedCount = trips.filter((trip) => {
+    const status = getDisplayStatus(trip);
+    return status === "completed" || status === "cancelled";
+  }).length;
   const totalDestinations = trips.reduce(
     (sum, trip) => sum + (trip.destinations?.length || 0),
     0,

@@ -1,14 +1,14 @@
-import { memo, useState, useCallback, useRef, useMemo } from "react";
+import { memo, useState, useCallback, useMemo } from "react";
 import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from "react-native";
 import DraggableFlatList from "react-native-draggable-flatlist";
-import * as Haptics from "expo-haptics";
 import { MaterialIcons } from "@expo/vector-icons";
 import { TOKENS } from "../../../../constants/design-tokens";
-import { formatDate, buildDestinationBookings } from "../../utils/tripHelpers";
+import { buildDestinationBookings } from "../../utils/tripHelpers";
 import { useReorderDestinations, useUpdateDestination, useMoveDestination, useRemoveDestination } from "../../hooks/useTripDetail";
 import TimelineCard from "./TimelineCard";
 import TimelineConnector from "./TimelineConnector";
-import MoveDestinationMenu from "./MoveDestinationMenu";
+import MoveDestinationModal from "./MoveDestinationModal";
+import EditDestinationForm from "./EditDestinationForm";
 
 function ItineraryTab({ trip, bookings, onOpenBooking }) {
   const tripId = trip?.id;
@@ -17,7 +17,15 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
 
   const [selectedDay, setSelectedDay] = useState(1);
   const [movingDest, setMovingDest] = useState(null);
-  const moveSheetRef = useRef(null);
+  const [editingDest, setEditingDest] = useState(null);
+
+  const formatChipDate = useCallback((date) => {
+    if (!date) return null;
+    return new Date(date).toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+    });
+  }, []);
 
   const reorderMutation = useReorderDestinations(tripId);
   const updateMutation = useUpdateDestination(tripId);
@@ -60,62 +68,75 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
   // Remove handler
   const handleRemove = useCallback(
     (dest) => {
-      Alert.alert("Bo dia diem", `Bo "${dest.place?.name}" khoi lich trinh?`, [
-        { text: "Huy", style: "cancel" },
-        {
-          text: "Bo",
-          style: "destructive",
-          onPress: () => removeMutation.mutate(dest.id),
-        },
-      ]);
+      Alert.alert(
+        "Bỏ địa điểm",
+        `Bỏ "${dest.place?.name}" khỏi lịch trình?`,
+        [
+          { text: "Hủy", style: "cancel" },
+          {
+            text: "Bỏ",
+            style: "destructive",
+            onPress: () => removeMutation.mutate(dest.id),
+          },
+        ],
+      );
     },
     [removeMutation],
   );
 
-  // Long press handler
-  const handleLongPress = useCallback(
-    (dest) => {
-      Alert.alert(dest.place?.name || "Dia diem", "Chon hanh dong", [
-        { text: "Sua thong tin", onPress: () => {} },
-        {
-          text: "Chuyen ngay",
-          onPress: () => {
-            setMovingDest(dest);
-            moveSheetRef.current?.expand();
-          },
-        },
-        {
-          text: "Bo khoi lich trinh",
-          style: "destructive",
-          onPress: () => handleRemove(dest),
-        },
-        { text: "Huy", style: "cancel" },
-      ]);
-    },
-    [handleRemove],
-  );
+  const handleMoveRequest = useCallback((dest) => {
+    setMovingDest(dest);
+  }, []);
 
-  // Move handler
+  const handleMoveCancel = useCallback(() => {
+    setMovingDest(null);
+  }, []);
+
   const handleMove = useCallback(
-    ({ destId, newDayNumber, newOrder }) => {
+    ({ destId, newDayNumber, newOrder, startTime, endTime, note }) => {
       moveMutation.mutate(
         { destId, newDayNumber, newOrder },
         {
           onSuccess: () => {
-            moveSheetRef.current?.close();
+            if (startTime !== undefined || endTime !== undefined || note !== undefined) {
+              updateMutation.mutate({
+                destId,
+                data: { startTime, endTime, note },
+              });
+            }
             setMovingDest(null);
             setSelectedDay(newDayNumber);
           },
         },
       );
     },
-    [moveMutation],
+    [moveMutation, updateMutation],
   );
 
-  // Save edit handler
+  const handleMoveModalSave = useCallback(
+    ({ destId, data }) => {
+      updateMutation.mutate(
+        { destId, data },
+        { onSuccess: () => setMovingDest(null) },
+      );
+    },
+    [updateMutation],
+  );
+
+  const handleEditRequest = useCallback((dest) => {
+    setEditingDest(dest);
+  }, []);
+
+  const handleEditCancel = useCallback(() => {
+    setEditingDest(null);
+  }, []);
+
   const handleSave = useCallback(
     ({ destId, data }) => {
-      updateMutation.mutate({ destId, data });
+      updateMutation.mutate(
+        { destId, data },
+        { onSuccess: () => setEditingDest(null) },
+      );
     },
     [updateMutation],
   );
@@ -130,16 +151,15 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
           bookings={itemBookings}
           onOpenBooking={onOpenBooking}
           onRemove={() => handleRemove(item)}
-          onLongPress={handleLongPress}
-          onSave={handleSave}
-          isSaving={updateMutation.isPending}
+          onMoveRequest={handleMoveRequest}
+          onEditRequest={handleEditRequest}
           drag={drag}
           isActive={isActive}
           tripStatus={trip?.status}
         />
       );
     },
-    [destBookings, onOpenBooking, handleRemove, handleLongPress, handleSave, updateMutation.isPending, trip?.status],
+    [destBookings, onOpenBooking, handleRemove, handleMoveRequest, handleEditRequest, trip?.status],
   );
 
   // Render separator between items
@@ -160,6 +180,7 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
       {/* Day chips */}
       <ScrollView
         horizontal
+        style={styles.dayChipsScroll}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.dayChips}
       >
@@ -179,8 +200,9 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
                   styles.dayChipLabel,
                   isActive && styles.dayChipLabelActive,
                 ]}
+                numberOfLines={1}
               >
-                Ngay {dayNumber}
+                Ngày {dayNumber}
               </Text>
               {date ? (
                 <Text
@@ -188,8 +210,9 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
                     styles.dayChipDate,
                     isActive && styles.dayChipDateActive,
                   ]}
+                  numberOfLines={1}
                 >
-                  {formatDate(date)}
+                  {formatChipDate(date)}
                 </Text>
               ) : null}
               {dayDests.length > 0 ? (
@@ -231,22 +254,30 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
                 color="rgba(0,0,0,0.2)"
               />
             </View>
-            <Text style={styles.emptyTitle}>Chua co dia diem</Text>
+            <Text style={styles.emptyTitle}>Chưa có địa điểm</Text>
             <Text style={styles.emptyText}>
-              Them dia diem yeu thich vao ngay nay
+              Thêm địa điểm yêu thích vào ngày này
             </Text>
           </View>
         }
       />
 
-      {/* Move destination bottom sheet */}
-      <MoveDestinationMenu
-        ref={moveSheetRef}
+      <MoveDestinationModal
+        visible={!!movingDest}
+        dest={movingDest}
         trip={trip}
-        currentDayNumber={movingDest?.dayNumber}
-        destId={movingDest?.id}
         onMove={handleMove}
-        isLoading={moveMutation.isPending}
+        onSave={handleMoveModalSave}
+        onCancel={handleMoveCancel}
+        isLoading={moveMutation.isPending || updateMutation.isPending}
+      />
+
+      <EditDestinationForm
+        visible={!!editingDest}
+        dest={editingDest}
+        onSave={handleSave}
+        onCancel={handleEditCancel}
+        isLoading={updateMutation.isPending}
       />
     </View>
   );
@@ -258,17 +289,25 @@ const styles = StyleSheet.create({
   },
   dayChips: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 10,
     gap: 8,
+    alignItems: "center",
+  },
+  dayChipsScroll: {
+    flexGrow: 0,
+    height: 76,
+    maxHeight: 76,
   },
   dayChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 16,
     backgroundColor: "rgba(0,0,0,0.04)",
     alignItems: "center",
+    justifyContent: "center",
     gap: 2,
-    minWidth: 72,
+    height: 56,
+    minWidth: 64,
+    maxWidth: 88,
   },
   dayChipActive: {
     backgroundColor: "#1D1D1F",

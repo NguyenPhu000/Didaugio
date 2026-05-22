@@ -35,7 +35,7 @@ export default function RoleManagePage() {
   const [selectedRole, setSelectedRole] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
-  const { isSuperAdmin } = usePermission();
+  const { isSuperAdmin, user: currentUser } = usePermission();
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -230,12 +230,7 @@ export default function RoleManagePage() {
                         </span>
                       </div>
 
-                      {role.isSystem && !isSuperAdmin() ? (
-                        <div className="w-full bg-gray-50 border border-gray-300 text-gray-400 rounded-none h-9 text-xs font-bold uppercase tracking-wider flex items-center justify-center cursor-not-allowed">
-                          <ShieldOff className="w-3 h-3 mr-2" />
-                          Vai trò hệ thống
-                        </div>
-                      ) : role.id === ROLES.SUPER_ADMIN ? (
+                      {role.id === ROLES.SUPER_ADMIN ? (
                         <Button
                           onClick={() => handleManagePermissions(role, true)}
                           className="w-full bg-white border border-black text-black hover:bg-black hover:text-white rounded-none h-9 text-xs font-bold uppercase tracking-wider"
@@ -243,6 +238,11 @@ export default function RoleManagePage() {
                           <Eye className="w-3 h-3 mr-2" />
                           Xem quyền
                         </Button>
+                      ) : currentUser?.roleId >= role.id ? (
+                        <div className="w-full bg-gray-50 border border-gray-300 text-gray-400 rounded-none h-9 text-xs font-bold uppercase tracking-wider flex items-center justify-center cursor-not-allowed">
+                          <ShieldOff className="w-3 h-3 mr-2" />
+                          Không có quyền
+                        </div>
                       ) : (
                         <Button
                           onClick={() => handleManagePermissions(role)}

@@ -30,3 +30,12 @@ export const updateDestinationApi = (tripId, destId, data) =>
 
 export const moveDestinationApi = (tripId, destId, data) =>
   client.patch(ENDPOINTS.profile.moveDestination(tripId, destId), data);
+
+export const saveTripApi = (tripId) =>
+  client.post(ENDPOINTS.profile.savedTripById(tripId));
+
+export const unsaveTripApi = (tripId) =>
+  client.delete(ENDPOINTS.profile.savedTripById(tripId));
+
+export const getSavedTripsApi = () =>
+  client.get(ENDPOINTS.profile.savedTrips);

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import {
   ExternalLink,

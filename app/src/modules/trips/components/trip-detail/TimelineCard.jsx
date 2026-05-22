@@ -1,58 +1,70 @@
-import { memo, useState, useCallback } from "react";
+import { memo, useCallback } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { ScaleDecorator } from "react-native-draggable-flatlist";
 import { TOKENS } from "../../../../constants/design-tokens";
 import { TRIP_STATUS_META } from "../../utils/tripTheme";
 import { formatPrice } from "../../utils/tripHelpers";
 import { StatusBadge } from "./StatusBadge";
-import EditDestinationForm from "./EditDestinationForm";
 
 function TimelineCard({
   dest,
   bookings,
   onOpenBooking,
   onRemove,
-  onLongPress,
-  onSave,
-  isSaving,
+  onMoveRequest,
+  onEditRequest,
   drag,
   isActive,
   tripStatus,
 }) {
-  const [expanded, setExpanded] = useState(false);
   const statusMeta = TRIP_STATUS_META[tripStatus] || TRIP_STATUS_META.draft;
 
-  const handleLongPress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onLongPress?.(dest);
-  }, [dest, onLongPress]);
-
   const handleEditPress = useCallback(() => {
-    setExpanded((prev) => !prev);
-  }, []);
+    onEditRequest?.(dest);
+  }, [dest, onEditRequest]);
 
-  const handleSave = useCallback(
-    (payload) => {
-      onSave(payload);
-      setExpanded(false);
-    },
-    [onSave],
-  );
+  const handleMovePress = useCallback(() => {
+    onMoveRequest?.(dest);
+  }, [dest, onMoveRequest]);
 
-  const placeName = dest.place?.name || "Chua co ten";
+  const placeName = dest.place?.name || "Chưa có tên";
   const placeAddress = dest.place?.address || "";
   const thumbnail = dest.place?.thumbnail;
 
+  const hasStart = !!dest.startTime;
+  const hasEnd = !!dest.endTime;
+
+  const toMinutes = (value) => {
+    const [h, m] = String(value || "")
+      .split(":")
+      .map((part) => Number.parseInt(part, 10));
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    return h * 60 + m;
+  };
+
+  const startMin = toMinutes(dest.startTime);
+  const endMin = toMinutes(dest.endTime);
+  const crossesMidnight =
+    startMin !== null && endMin !== null && endMin <= startMin;
+
+  let timeLabel;
+  if (hasStart && hasEnd) {
+    timeLabel = `${dest.startTime} – ${dest.endTime}${
+      crossesMidnight ? " (qua hôm sau)" : ""
+    }`;
+  } else if (hasStart) {
+    timeLabel = `Bắt đầu ${dest.startTime}`;
+  } else if (hasEnd) {
+    timeLabel = `Kết thúc ${dest.endTime}`;
+  } else {
+    timeLabel = "Chưa xếp giờ";
+  }
+
   return (
     <ScaleDecorator>
-      <Pressable
-        onLongPress={handleLongPress}
-        style={[styles.card, isActive && styles.cardActive]}
-      >
-        {/* Timeline indicator + time */}
+      <View style={[styles.card, isActive && styles.cardActive]}>
         <View style={styles.header}>
           <View style={styles.timeIndicator}>
             <View
@@ -60,9 +72,11 @@ function TimelineCard({
             />
             <View style={styles.timeLine} />
           </View>
-          <Text style={styles.time}>
-            {dest.startTime || "??:??"}
-            {dest.endTime ? ` - ${dest.endTime}` : ""}
+          <Text
+            style={[styles.time, !hasStart && !hasEnd && styles.timeMuted]}
+            numberOfLines={1}
+          >
+            {timeLabel}
           </Text>
           <Pressable
             style={({ pressed }) => [
@@ -71,12 +85,12 @@ function TimelineCard({
             ]}
             onLongPress={drag}
             disabled={isActive}
+            accessibilityLabel="Kéo để sắp xếp"
           >
             <MaterialIcons name="drag-indicator" size={20} color="#C7C7CC" />
           </Pressable>
         </View>
 
-        {/* Content */}
         <View style={styles.content}>
           <View style={styles.body}>
             <View style={styles.thumbWrap}>
@@ -113,7 +127,7 @@ function TimelineCard({
                     size={12}
                     color="rgba(0,0,0,0.35)"
                   />
-                  <Text style={styles.meta}>{dest.durationMinutes} phut</Text>
+                  <Text style={styles.meta}>{dest.durationMinutes} phút</Text>
                 </View>
               ) : null}
               {dest.note ? (
@@ -124,7 +138,6 @@ function TimelineCard({
             </View>
           </View>
 
-          {/* Bookings */}
           {bookings?.length > 0 && (
             <View style={styles.bookings}>
               {bookings.slice(0, 2).map((b) => (
@@ -149,48 +162,48 @@ function TimelineCard({
               ))}
               {bookings.length > 2 && (
                 <Text style={styles.bookingMore}>
-                  +{bookings.length - 2} booking khac
+                  +{bookings.length - 2} booking khác
                 </Text>
               )}
             </View>
           )}
 
-          {/* Actions */}
           <View style={styles.actions}>
             <Pressable
-              onPress={onRemove}
+              onPress={handleMovePress}
               style={({ pressed }) => [
-                styles.actionBtn,
-                pressed && { backgroundColor: "rgba(255,59,48,0.08)" },
+                styles.pillOutline,
+                pressed && styles.pillOutlinePressed,
               ]}
             >
-              <Text style={styles.actionDanger}>Bo</Text>
+              <MaterialIcons name="swap-vert" size={14} color="#1D1D1F" />
+              <Text style={styles.pillOutlineText} numberOfLines={1}>
+                Chuyển ngày
+              </Text>
             </Pressable>
             <Pressable
               onPress={handleEditPress}
               style={({ pressed }) => [
-                styles.actionBtn,
-                styles.actionEditBtn,
-                pressed && { backgroundColor: "rgba(0,0,0,0.08)" },
+                styles.pillPrimary,
+                pressed && styles.pillPrimaryPressed,
               ]}
             >
-              <Text style={styles.actionPrimary}>
-                {expanded ? "Thu gon" : "Sua"}
-              </Text>
+              <MaterialIcons name="edit" size={14} color="#FFFFFF" />
+              <Text style={styles.pillPrimaryText}>Sửa</Text>
+            </Pressable>
+            <Pressable
+              onPress={onRemove}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.removeBtn,
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <MaterialIcons name="delete-outline" size={16} color="#FF3B30" />
             </Pressable>
           </View>
         </View>
-
-        {/* Inline edit form */}
-        {expanded && (
-          <EditDestinationForm
-            dest={dest}
-            onSave={handleSave}
-            onCancel={() => setExpanded(false)}
-            isLoading={isSaving}
-          />
-        )}
-      </Pressable>
+      </View>
     </ScaleDecorator>
   );
 }
@@ -241,6 +254,10 @@ const styles = StyleSheet.create({
     color: "#1D1D1F",
     flex: 1,
     letterSpacing: -0.2,
+  },
+  timeMuted: {
+    color: "rgba(0,0,0,0.4)",
+    fontFamily: TOKENS.font.body,
   },
   dragHandle: {
     padding: 4,
@@ -343,28 +360,56 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "flex-end",
     gap: 8,
+    marginTop: 4,
   },
-  actionBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 10,
+  pillOutline: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    height: 32,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: "#F2F2F7",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.12)",
   },
-  actionEditBtn: {
-    backgroundColor: "rgba(0,0,0,0.04)",
+  pillOutlinePressed: {
+    backgroundColor: "#E8E8EC",
   },
-  actionDanger: {
-    fontSize: 13,
-    color: "#FF3B30",
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.1,
-  },
-  actionPrimary: {
+  pillOutlineText: {
     fontSize: 13,
     color: "#1D1D1F",
     fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.1,
+  },
+  pillPrimary: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    height: 32,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: "#1D1D1F",
+  },
+  pillPrimaryPressed: {
+    backgroundColor: "#000000",
+  },
+  pillPrimaryText: {
+    fontSize: 13,
+    color: "#FFFFFF",
+    fontFamily: TOKENS.font.semibold,
+  },
+  removeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,59,48,0.08)",
   },
 });
 

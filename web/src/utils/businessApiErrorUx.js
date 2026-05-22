@@ -1,4 +1,4 @@
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { appNavigate } from "@/lib/appNavigation";
 

@@ -83,12 +83,12 @@ export const hasPermission = (requiredPermission) => {
         });
       }
 
-      if (user.roleId === ROLES.USER) {
+      if (user.roleId >= ROLES.USER) {
         return res.status(403).json({
           success: false,
           data: null,
-          message: "Bạn không có quyền truy cập trang quản trị",
-          errorCode: "FORBIDDEN_USER",
+          message: "Ban khong co quyen truy cap trang quan tri",
+          errorCode: "FORBIDDEN_ROLE",
         });
       }
 
@@ -101,7 +101,7 @@ export const hasPermission = (requiredPermission) => {
         return res.status(403).json({
           success: false,
           data: null,
-          message: `Vai trò hiện tại không được phép thực hiện quyền hệ thống: ${blockedBySystemRole.join(", ")}`,
+          message: `Vai tro hien tai khong duoc phep thuc hien quyen he thong: ${blockedBySystemRole.join(", ")}`,
           errorCode: "FORBIDDEN_SYSTEM_ROLE",
           blockedPermissions: blockedBySystemRole,
         });
@@ -170,12 +170,12 @@ export const requireAllPermissions = (requiredPermissions) => {
         });
       }
 
-      if (user.roleId === ROLES.USER) {
+      if (user.roleId >= ROLES.USER) {
         return res.status(403).json({
           success: false,
           data: null,
-          message: "Bạn không có quyền truy cập trang quản trị",
-          errorCode: "FORBIDDEN_USER",
+          message: "Ban khong co quyen truy cap trang quan tri",
+          errorCode: "FORBIDDEN_ROLE",
         });
       }
 
@@ -188,7 +188,7 @@ export const requireAllPermissions = (requiredPermissions) => {
         return res.status(403).json({
           success: false,
           data: null,
-          message: `Vai trò hiện tại không được phép thực hiện quyền hệ thống: ${blockedBySystemRole.join(", ")}`,
+          message: `Vai tro hien tai khong duoc phep thuc hien quyen he thong: ${blockedBySystemRole.join(", ")}`,
           errorCode: "FORBIDDEN_SYSTEM_ROLE",
           blockedPermissions: blockedBySystemRole,
         });

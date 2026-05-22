@@ -47,6 +47,7 @@ export const ADMIN_ROUTES = {
 
   ANALYTICS: "/admin/analytics",
   CMS: "/admin/cms",
+  PAYOUTS: "/admin/payouts",
 };
 
 export const BUSINESS_ROUTES = {
@@ -66,9 +67,12 @@ export const BUSINESS_ROUTES = {
   BOOKING_QUICK: "/business/bookings/quick",
   BOOKING_DETAIL: (id) => `/business/bookings/${id}`,
   VOUCHERS: "/business/vouchers",
+  STAFF: "/business/staff",
+  EARNINGS: "/business/earnings",
   REVENUE: "/business/revenue",
   REPORTS: "/business/reports",
   REVIEWS: "/business/reviews",
+  SETTINGS: "/business/settings",
 };
 
 export const PLACES_ALIAS = "/places";

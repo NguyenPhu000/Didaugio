@@ -11,10 +11,31 @@ export const checkBusinessOwnership =
 
       if (roleId <= ROLES.ADMIN) return next();
 
-      const business = await prisma.business.findUnique({
-        where: { ownerId: userId },
-        select: { id: true },
-      });
+      // Staff: look up business via user.businessId
+      let business;
+      if (roleId === ROLES.STAFF) {
+        const staffUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { businessId: true },
+        });
+        if (!staffUser?.businessId) {
+          return res.status(403).json({
+            success: false,
+            data: null,
+            message: "Bạn chưa được gán cho doanh nghiệp nào",
+            errorCode: "NO_BUSINESS_PROFILE",
+          });
+        }
+        business = await prisma.business.findUnique({
+          where: { id: staffUser.businessId },
+          select: { id: true },
+        });
+      } else {
+        business = await prisma.business.findUnique({
+          where: { ownerId: userId },
+          select: { id: true },
+        });
+      }
 
       if (!business) {
         return res.status(403).json({
@@ -84,10 +105,24 @@ export const loadBusiness = async (req, res, next) => {
       return next();
     }
 
-    const business = await prisma.business.findUnique({
-      where: { ownerId: userId },
-      select: { id: true, status: true, businessName: true },
-    });
+    let business;
+    if (roleId === ROLES.STAFF) {
+      const staffUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { businessId: true },
+      });
+      if (staffUser?.businessId) {
+        business = await prisma.business.findUnique({
+          where: { id: staffUser.businessId },
+          select: { id: true, status: true, businessName: true },
+        });
+      }
+    } else {
+      business = await prisma.business.findUnique({
+        where: { ownerId: userId },
+        select: { id: true, status: true, businessName: true },
+      });
+    }
 
     req.business = business;
     next();
@@ -109,10 +144,30 @@ export const checkBusinessOwnershipByBookingCode = async (req, res, next) => {
 
     if (roleId <= ROLES.ADMIN) return next();
 
-    const business = await prisma.business.findUnique({
-      where: { ownerId: userId },
-      select: { id: true },
-    });
+    let business;
+    if (roleId === ROLES.STAFF) {
+      const staffUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { businessId: true },
+      });
+      if (!staffUser?.businessId) {
+        return res.status(403).json({
+          success: false,
+          data: null,
+          message: "Bạn chưa được gán cho doanh nghiệp nào",
+          errorCode: "NO_BUSINESS_PROFILE",
+        });
+      }
+      business = await prisma.business.findUnique({
+        where: { id: staffUser.businessId },
+        select: { id: true },
+      });
+    } else {
+      business = await prisma.business.findUnique({
+        where: { ownerId: userId },
+        select: { id: true },
+      });
+    }
 
     if (!business) {
       return res.status(403).json({

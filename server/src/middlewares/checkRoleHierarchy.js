@@ -6,11 +6,27 @@ export const checkRoleHierarchy = async (req, res, next) => {
   try {
     const currentUserRoleId = req.user.roleId;
 
+    const targetUserId = req.params.id || req.params.userId || req.body.userId;
+
     if (currentUserRoleId === ROLES.SUPER_ADMIN) {
+      if (targetUserId) {
+        const targetUser = await prisma.user.findUnique({
+          where: { id: Number(targetUserId) },
+          select: { id: true, roleId: true },
+        });
+        if (targetUser && targetUser.roleId === ROLES.SUPER_ADMIN && targetUser.id !== req.user.id) {
+          return res.status(403).json({
+            success: false,
+            data: null,
+            message: "Không thể chỉnh sửa thông tin của Super Admin khác",
+            errorCode: ERROR_CODES.FORBIDDEN,
+          });
+        }
+      }
       return next();
     }
 
-    const targetUserId = req.params.id || req.params.userId || req.body.userId;
+
 
     if (!targetUserId && req.body.roleId) {
       const targetRoleId = Number(req.body.roleId);

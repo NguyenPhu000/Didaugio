@@ -16,6 +16,14 @@ import wardRoutes from "./district/ward.route.js";
 import boundaryRoutes from "./boundary/boundary.route.js";
 import settingsRoutes from "./settings/settings.route.js";
 import businessRoutes from "./business/business.route.js";
+import businessStaffRoutes from "./business/staff.route.js";
+import staffInvitationRoutes from "./business/staffInvitation.route.js";
+import staffInvitePublicRoutes from "./business/staffInvitePublic.route.js";
+import businessRoleRoutes from "./business/businessRole.route.js";
+import businessBlockedDateRoutes from "./business/blockedDate.route.js";
+import businessSettingsRoutes from "./business/businessSettings.route.js";
+import businessPayoutRoutes from "./business/payout.route.js";
+import adminPayoutRoutes from "./admin/payout.route.js";
 import businessOfferingRoutes from "./businessOffering/businessOffering.route.js";
 import bookingRoutes from "./booking/booking.route.js";
 import bookingPublicRoutes from "./booking/bookingPublic.route.js";
@@ -44,6 +52,7 @@ import {
 } from "../middlewares/rateLimitMiddleware.js";
 
 export const registerRateLimiters = (app) => {
+  app.use("/api/staff/invite/accept", authLimiter);
   app.use("/api/auth/login", authLimiter);
   app.use("/api/auth/register", authLimiter);
   app.use("/api/auth/google", authLimiter);
@@ -59,11 +68,15 @@ export const registerRateLimiters = (app) => {
   // Business routes have stricter limits due to sensitive operations
   app.use("/api/business", businessApiLimiter);
   app.use("/api/business/services", businessApiLimiter);
+  app.use("/api/business/staff", businessApiLimiter);
   app.use("/api/business/bookings", businessApiLimiter);
   app.use("/api", apiLimiter);
 };
 
 export const registerApiRoutes = (app) => {
+  // Public routes (no auth required)
+  app.use("/api/staff/invite", staffInvitePublicRoutes);
+
   app.use("/api/auth", authRoutes);
   app.use("/api/dashboard", dashboardRoutes);
   app.use("/api/profile", profileRoutes);
@@ -81,6 +94,13 @@ export const registerApiRoutes = (app) => {
   app.use("/api/boundaries", boundaryRoutes);
   app.use("/api/settings", settingsRoutes);
   app.use("/api/business/services", businessOfferingRoutes);
+  app.use("/api/business/staff", staffInvitationRoutes);
+  app.use("/api/business/staff", businessStaffRoutes);
+  app.use("/api/business/roles", businessRoleRoutes);
+  app.use("/api/business/blocked-dates", businessBlockedDateRoutes);
+  app.use("/api/business/settings", businessSettingsRoutes);
+  app.use("/api/business", businessPayoutRoutes);
+  app.use("/api/admin/payouts", adminPayoutRoutes);
   app.use("/api/business/bookings", bookingRoutes);
   app.use("/api/bookings", bookingPublicRoutes);
   app.use("/api/services", serviceBookingRoutes);

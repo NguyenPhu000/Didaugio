@@ -46,10 +46,15 @@ import RevenuePage from "@/pages/business/RevenuePage";
 import BusinessReportCenterPage from "@/pages/business/BusinessReportCenterPage";
 import ReviewListPage from "@/pages/business/ReviewListPage";
 import BusinessPlacePage from "@/pages/business/BusinessPlacePage";
+import StaffManagementPage from "@/pages/business/StaffManagementPage";
+import EarningsPage from "@/pages/business/EarningsPage";
+import BusinessSettingsPage from "@/pages/business/BusinessSettingsPage";
+import AdminPayoutManagementPage from "@/pages/admin/AdminPayoutManagementPage";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
 import VerifyEmailPublicPage from "@/pages/auth/VerifyEmailPublicPage";
 import ResendVerificationPage from "@/pages/auth/ResendVerificationPage";
+import StaffInvitePage from "@/pages/auth/StaffInvitePage";
 import RoleManagePage from "@/pages/RoleManagePage";
 import PermissionManagePage from "@/pages/PermissionManagePage";
 import AdminAnalyticsPage from "@/pages/admin/AdminAnalyticsPage";
@@ -65,16 +70,16 @@ const RootRedirect = () => {
   return <Navigate to={to} replace />;
 };
 
-/** Business thấy BusinessDashboard, Admin/Staff thấy DashboardPage */
+/** Business/Staff thấy BusinessDashboard, Admin thấy DashboardPage */
 const DashboardGate = () => {
   const { user } = useAuthStore();
   const roleId = resolveRoleId(user);
 
-  if (roleId === ROLES.BUSINESS) {
+  if (roleId === ROLES.BUSINESS || roleId === ROLES.STAFF) {
     return <Navigate to={BUSINESS_ROUTES.DASHBOARD} replace />;
   }
 
-  if (![ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF].includes(roleId)) {
+  if (![ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(roleId)) {
     return <Navigate to={AUTH_ROUTES.LOGIN} replace />;
   }
 
@@ -108,7 +113,7 @@ const ProtectedBusiness = ({
   allowWhenPendingOrRejected = false,
   skipBusinessGuard = false,
 }) => (
-  <ProtectedRoute roles={[ROLES.BUSINESS]}>
+  <ProtectedRoute roles={[ROLES.BUSINESS, ROLES.STAFF]}>
     <BusinessLayout>
       {skipBusinessGuard ? (
         children
@@ -152,6 +157,9 @@ const AppRoutes = () => {
           element={<Navigate to={AUTH_ROUTES[key]} replace />}
         />
       ))}
+
+      {/* Staff invite (public) */}
+      <Route path="/invite" element={<StaffInvitePage />} />
 
       {/* Redirect root to dashboard - Business -> business dashboard */}
       <Route path="/" element={<RootRedirect />} />
@@ -363,6 +371,16 @@ const AppRoutes = () => {
         }
       />
 
+      {/* Admin Payout Management */}
+      <Route
+        path={ADMIN_ROUTES.PAYOUTS}
+        element={
+          <ProtectedAdmin roles={adminRoles}>
+            <AdminPayoutManagementPage />
+          </ProtectedAdmin>
+        }
+      />
+
       {/* Admin Booking Operations */}
 
       {/* Admin Analytics */}
@@ -422,9 +440,12 @@ const AppRoutes = () => {
         { path: BUSINESS_ROUTES.REVENUE, element: <RevenuePage /> },
         { path: BUSINESS_ROUTES.REVIEWS, element: <ReviewListPage /> },
         { path: BUSINESS_ROUTES.VOUCHERS, element: <VoucherListPage /> },
+        { path: BUSINESS_ROUTES.STAFF, element: <StaffManagementPage /> },
+        { path: BUSINESS_ROUTES.EARNINGS, element: <EarningsPage /> },
         { path: BUSINESS_ROUTES.REPORTS, element: <BusinessReportCenterPage /> },
         { path: BUSINESS_ROUTES.SERVICES, element: <ServiceListPage /> },
         { path: BUSINESS_ROUTES.PLACES, element: <BusinessPlacePage /> },
+        { path: BUSINESS_ROUTES.SETTINGS, element: <BusinessSettingsPage /> },
       ].map(({ path, element }) => (
         <Route
           key={path}

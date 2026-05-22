@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { Label } from "@/components/ui/Label";
 import { cn } from "@/lib/utils";
 

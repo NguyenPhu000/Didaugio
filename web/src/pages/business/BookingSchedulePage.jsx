@@ -16,9 +16,11 @@ import {
   AlertCircle,
   CircleCheck,
   CircleX,
+  Lock,
 } from "lucide-react";
 import * as bookingApi from "@/apis/bookingService";
 import { getMyPlaces } from "@/apis/businessApi";
+import { blockedDateApi } from "@/apis/blockedDateApi";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BOOKING_STATUS } from "@/constants/constants";
 import { Button } from "@/components/ui/Button";
@@ -585,6 +587,7 @@ const BookingSchedulePage = () => {
   const [allBookings, setAllBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [places, setPlaces] = useState([]);
+  const [blockedDates, setBlockedDates] = useState([]);
   const [selectedPlaceId, setSelectedPlaceId] = useState("all");
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -611,13 +614,13 @@ const BookingSchedulePage = () => {
       const fromDate = toDateString(weekStart);
       const toDate = toDateString(new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000));
 
-      const res = await bookingApi.getAll({
-        fromDate,
-        toDate,
-        limit: 500,
-      });
+      const [bookingRes, blockedRes] = await Promise.all([
+        bookingApi.getAll({ fromDate, toDate, limit: 500 }),
+        blockedDateApi.getAll({ fromDate, toDate }).catch(() => ({ data: [] })),
+      ]);
 
-      setAllBookings(res.data || []);
+      setAllBookings(bookingRes.data || []);
+      setBlockedDates(blockedRes?.data || []);
     } catch (e) {
       toastApiErrorIfNeeded(e);
     } finally {
@@ -642,6 +645,14 @@ const BookingSchedulePage = () => {
       return isSameDay(bookingDate, date);
     });
   }, [filteredBookings]);
+
+  // Check if a date is blocked
+  const getBlockedForDay = useCallback((date) => {
+    return blockedDates.filter((bd) => {
+      const bdDate = new Date(bd.date);
+      return isSameDay(bdDate, date);
+    });
+  }, [blockedDates]);
 
   // Stats
   const stats = useMemo(() => ({
@@ -905,32 +916,45 @@ const BookingSchedulePage = () => {
               {weekDays.map((day) => {
                 const isToday = isSameDay(day, new Date());
                 const dayBookings = getBookingsForDay(day);
+                const dayBlocked = getBlockedForDay(day);
+                const isBlocked = dayBlocked.length > 0;
 
                 return (
                   <div
                     key={day.toISOString()}
                     className={cn(
-                      "flex-1 min-w-[120px] py-3 text-center border-r border-gray-100 last:border-r-0",
-                      isToday && "bg-primary/5"
+                      "flex-1 min-w-[120px] py-3 text-center border-r border-gray-100 last:border-r-0 relative",
+                      isToday && "bg-primary/5",
+                      isBlocked && "bg-red-50"
                     )}
                   >
+                    {isBlocked && (
+                      <div className="absolute inset-0 opacity-10 pointer-events-none"
+                        style={{ background: "repeating-linear-gradient(45deg, transparent, transparent 4px, #ef4444 4px, #ef4444 5px)" }}
+                      />
+                    )}
                     <p className={cn(
                       "text-[10px] uppercase tracking-wide",
-                      (day.getDay() === 0 || day.getDay() === 6) ? "text-red-500" : "text-gray-500"
+                      isBlocked ? "text-red-500" : (day.getDay() === 0 || day.getDay() === 6) ? "text-red-500" : "text-gray-500"
                     )}>
                       {day.toLocaleDateString("vi-VN", { weekday: "short" })}
                     </p>
                     <p className={cn(
                       "text-xl font-bold mt-0.5",
-                      isToday ? "text-primary" : "text-gray-900"
+                      isBlocked ? "text-red-500 line-through" : isToday ? "text-primary" : "text-gray-900"
                     )}>
                       {day.getDate()}
                     </p>
-                    {dayBookings.length > 0 && (
+                    {isBlocked ? (
+                      <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-red-100 text-[10px] font-medium text-red-700 rounded-full">
+                        <Lock className="h-2.5 w-2.5" />
+                        {dayBlocked[0].reason || "Chặn"}
+                      </span>
+                    ) : dayBookings.length > 0 ? (
                       <span className="inline-block mt-1 px-1.5 py-0.5 bg-gray-100 text-[10px] font-medium text-gray-600 rounded-full tabular-nums">
                         {dayBookings.length} đặt
                       </span>
-                    )}
+                    ) : null}
                   </div>
                 );
               })}
@@ -993,6 +1017,10 @@ const BookingSchedulePage = () => {
           <div className="flex items-center gap-2">
             <CircleX className="h-3 w-3 text-red-500" />
             <span>Đầy sức chứa</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Lock className="h-3 w-3 text-red-500" />
+            <span>Ngày chặn</span>
           </div>
         </div>
       </div>

@@ -179,4 +179,17 @@ export const PERMISSIONS = {
     VIEW: "login_history.view",
     REVOKE: "login_history.revoke",
   },
+  PAYOUTS: {
+    VIEW: "payouts.view",
+    APPROVE: "payouts.approve",
+  },
+  EARNINGS: {
+    VIEW: "earnings.view",
+  },
+  STAFF: {
+    VIEW: "staff.view",
+    CREATE: "staff.create",
+    UPDATE: "staff.update",
+    DELETE: "staff.delete",
+  },
 };

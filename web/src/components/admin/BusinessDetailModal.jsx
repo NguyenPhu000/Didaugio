@@ -34,7 +34,7 @@ import {
   RotateCcw,
   XCircle,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const PLACE_STATUS_LABEL = {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { PenLine, RotateCcw, CheckCircle2 } from "lucide-react";
 import {
   Dialog,

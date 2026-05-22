@@ -882,6 +882,49 @@ export const deleteMySavedCollection = async (userId, name) => {
   return { name: collectionName, updatedCount: result.count };
 };
 
+export const saveTrip = async (userId, tripId) => {
+  const trip = await prisma.trip.findUnique({ where: { id: tripId } });
+  if (!trip) {
+    const err = new Error("Không tìm thấy chuyến đi");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const saved = await prisma.savedTrip.upsert({
+    where: { userId_tripId: { userId, tripId } },
+    create: { userId, tripId },
+    update: {},
+  });
+
+  return saved;
+};
+
+export const unsaveTrip = async (userId, tripId) => {
+  await prisma.savedTrip.deleteMany({
+    where: { userId, tripId },
+  });
+  return { success: true };
+};
+
+export const getMySavedTrips = async (userId) => {
+  const saved = await prisma.savedTrip.findMany({
+    where: { userId },
+    include: {
+      trip: {
+        include: {
+          destinations: {
+            orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+            include: { place: { select: TRIP_PLACE_SELECT } },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return saved.map((s) => ({ ...s.trip, savedAt: s.createdAt }));
+};
+
 export const getMyTrips = async (userId, query = {}) => {
   const { page, limit, skip } = parsePagination(query);
 
@@ -1522,7 +1565,7 @@ export const createTrip = async (userId, data) => {
 };
 
 export const getTripDetail = async (id, userId) => {
-  return prisma.trip.findFirst({
+  const trip = await prisma.trip.findFirst({
     where: { id, userId },
     include: {
       destinations: {
@@ -1531,6 +1574,16 @@ export const getTripDetail = async (id, userId) => {
       },
     },
   });
+
+  if (!trip) return null;
+
+  const saved = userId
+    ? await prisma.savedTrip.findUnique({
+        where: { userId_tripId: { userId, tripId: id } },
+      })
+    : null;
+
+  return { ...trip, isSaved: !!saved };
 };
 
 export const updateTrip = async (id, userId, data) => {
@@ -1711,6 +1764,9 @@ export default {
   getMySavedCollections,
   renameMySavedCollection,
   deleteMySavedCollection,
+  saveTrip,
+  unsaveTrip,
+  getMySavedTrips,
   getMyTrips,
   generateAndSaveTrip,
   createTrip,

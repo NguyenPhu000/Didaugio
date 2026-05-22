@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import User from "lucide-react/dist/esm/icons/user";
 import Lock from "lucide-react/dist/esm/icons/lock";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Shield from "lucide-react/dist/esm/icons/shield";
 import Activity from "lucide-react/dist/esm/icons/activity";
+import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
 import {
   Button,
   Input,
@@ -25,19 +26,39 @@ import { resolvePostLoginRoute } from "@/utils/authRouting";
 import { AUTH_ROUTES } from "@/constants/routes";
 
 const HAS_GOOGLE_OAUTH = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const REMEMBER_KEY = "ddg_remember_login";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const { setAuth, logout } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
 
+  const savedLogin = (() => {
+    try {
+      const raw = localStorage.getItem(REMEMBER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      identifier: savedLogin?.identifier || "",
+    },
   });
+
+  const [rememberMe, setRememberMe] = useState(!!savedLogin?.identifier);
+
+  useEffect(() => {
+    document.title = "Đăng nhập - Đi Đâu Giờ?";
+  }, []);
 
   const handleGoogleSuccess = async (codeResponse) => {
     setIsLoading(true);
@@ -81,7 +102,13 @@ const LoginPage = () => {
           return;
         }
 
-        // Lưu user, accessToken và refreshToken
+        // Remember me
+        if (rememberMe) {
+          localStorage.setItem(REMEMBER_KEY, JSON.stringify({ identifier: data.identifier }));
+        } else {
+          localStorage.removeItem(REMEMBER_KEY);
+        }
+
         setAuth(
           response.data.user,
           response.data.accessToken,
@@ -137,7 +164,7 @@ const LoginPage = () => {
                   DIDAUGIO
                 </h2>
                 <p className="text-[#F3E600] text-xs font-mono uppercase tracking-wider">
-                  SYSTEM ACCESS
+                  QUẢN TRỊ HỆ THỐNG
                 </p>
               </div>
             </div>
@@ -203,7 +230,7 @@ const LoginPage = () => {
             <div>
               <h2 className="text-xl font-black uppercase">DIDAUGIO</h2>
               <p className="text-[#F3E600] text-xs font-mono uppercase">
-                SYSTEM
+                QUẢN TRỊ
               </p>
             </div>
           </div>
@@ -219,7 +246,7 @@ const LoginPage = () => {
                 </h1>
               </div>
               <p className="text-xs text-gray-500 uppercase font-mono ml-4">
-                ĐĂNG NHẬP VÀO HỆ THỐNG
+                TRUY CẬP HỆ THỐNG QUẢN LÝ
               </p>
             </div>
 
@@ -228,14 +255,14 @@ const LoginPage = () => {
               <div className="space-y-2">
                 <label htmlFor="login-identifier" className="tim-meta flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  EMAIL OR USERNAME
+                  EMAIL HOẶC TÊN ĐĂNG NHẬP
                 </label>
                 <div className="relative">
                   <Input
                     id="login-identifier"
                     type="text"
                     name="identifier"
-                    placeholder="YOUR@EMAIL.COM OR USERNAME"
+                    placeholder="email@cuaban.com hoặc username"
                     autoComplete="username"
                     spellCheck={false}
                     className="rounded-none border-2 border-black h-12 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0 pl-4"
@@ -253,7 +280,7 @@ const LoginPage = () => {
               <div className="space-y-2">
                 <label htmlFor="login-password" className="tim-meta flex items-center gap-2">
                   <Lock className="h-4 w-4" />
-                  PASSWORD
+                  MẬT KHẨU
                 </label>
                 <div className="relative">
                   <Input
@@ -273,8 +300,19 @@ const LoginPage = () => {
                 )}
               </div>
 
-              {/* Forgot Password Link */}
-              <div className="text-right">
+              {/* Remember Me & Forgot Password */}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded-none border-2 border-black accent-[#F3E600] cursor-pointer"
+                  />
+                  <span className="text-xs text-gray-600 uppercase font-mono">
+                    GHI NHỚ ĐĂNG NHẬP
+                  </span>
+                </label>
                 <Link
                   to="/auth/forgot-password"
                   className="text-xs text-gray-600 hover:text-black uppercase font-mono underline"
@@ -307,7 +345,7 @@ const LoginPage = () => {
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
                     <span className="bg-white px-4 text-gray-500 font-mono">
-                      OR
+                      HOẶC
                     </span>
                   </div>
                 </div>
@@ -326,16 +364,17 @@ const LoginPage = () => {
               </>
             )}
 
-            {/* Register Link */}
+            {/* Business Register Link */}
             <div className="text-center">
               <p className="text-xs text-gray-600 uppercase font-mono mb-2">
-                DON'T HAVE AN ACCOUNT?
+                DOANH NGHIỆP CHƯA CÓ TÀI KHOẢN?
               </p>
               <Link
                 to="/auth/register"
-                className="w-full rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-12 px-6 uppercase font-black text-sm transition-all flex items-center justify-center"
+                className="w-full rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-12 px-6 uppercase font-black text-sm transition-all flex items-center justify-center gap-2"
               >
-                CREATE NEW ACCOUNT
+                <BriefcaseBusiness className="h-4 w-4" />
+                ĐĂNG KÝ DOANH NGHIỆP
               </Link>
             </div>
           </div>
@@ -343,7 +382,7 @@ const LoginPage = () => {
           {/* Footer Note */}
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-400 uppercase font-mono">
-              PROTECTED BY ADVANCED SECURITY
+              HỆ THỐNG ĐƯỢC BẢO MẬT AN TOÀN
             </p>
           </div>
         </div>

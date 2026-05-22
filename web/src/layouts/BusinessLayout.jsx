@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BriefcaseBusiness, MapPin } from "lucide-react";
 import {
@@ -28,6 +29,10 @@ const businessMainMenu = [
  * Không render các nhóm menu admin để tránh business user lẫn vào admin surface.
  */
 const BusinessLayout = ({ children }) => {
+  useEffect(() => {
+    document.title = "Di Dau Gio? - Business Portal";
+  }, []);
+
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon" className="bg-sidebar border-r">

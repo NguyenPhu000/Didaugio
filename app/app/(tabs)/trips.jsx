@@ -1,15 +1,17 @@
 import { useCallback, useMemo, useState } from "react";
-import { View, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from "react-native";
-import { useRouter } from "expo-router";
+import { Alert, View, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTripsCached } from "../../src/modules/trips/hooks/useTripsOffline";
+import { useSaveTrip, useUnsaveTrip } from "../../src/modules/trips/hooks/useTrips";
 import { useAuthStore } from "../../src/stores/authStore";
 import { GuestGate } from "../../src/components/ui/GuestGate";
 import { OfflineBanner } from "../../src/components/ui/OfflineBanner";
 import { TAB_BAR_HEIGHT } from "./_layout";
 import { TripsDashboard } from "../../src/modules/trips/components/TripsDashboard";
 import { TripCard } from "../../src/modules/trips/components/TripCard";
+import { getDisplayStatus } from "../../src/modules/trips/utils/tripHelpers";
 import {
   LoadingState,
   EmptyTrips,
@@ -33,26 +35,60 @@ export default function TripsScreen() {
   const [isOffline, setIsOffline] = useState(false);
 
   const {
-    data: trips = [],
+    data: tripsRaw,
     isLoading,
     isError,
     refetch,
     isRefetching,
   } = useTripsCached(isLoggedIn);
 
+  const trips = useMemo(
+    () => (Array.isArray(tripsRaw) ? tripsRaw : []),
+    [tripsRaw],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isLoggedIn) {
+        refetch();
+      }
+    }, [isLoggedIn, refetch]),
+  );
+
   const filteredTrips = useMemo(
     () =>
       trips.filter((trip) => {
         if (activeFilter === "all") return true;
+        const displayStatus = getDisplayStatus(trip);
         if (activeFilter === "active") {
-          return trip.status === "active" || trip.status === "draft";
+          return (
+            displayStatus === "draft" ||
+            displayStatus === "upcoming" ||
+            displayStatus === "ongoing"
+          );
         }
         if (activeFilter === "done") {
-          return trip.status === "completed" || trip.status === "cancelled";
+          return displayStatus === "completed" || displayStatus === "cancelled";
         }
         return true;
       }),
     [activeFilter, trips],
+  );
+
+  const saveTripMutation = useSaveTrip();
+  const unsaveTripMutation = useUnsaveTrip();
+
+  const handleToggleSaveTrip = useCallback(
+    (tripId) => {
+      const trip = trips.find((t) => String(t.id) === String(tripId));
+      if (!trip) return;
+      if (trip.isSaved) {
+        unsaveTripMutation.mutate(tripId);
+      } else {
+        saveTripMutation.mutate(tripId);
+      }
+    },
+    [trips, saveTripMutation, unsaveTripMutation],
   );
 
   const handleCreate = useCallback(() => router.push("/trip/create"), [router]);
@@ -63,9 +99,14 @@ export default function TripsScreen() {
 
   const renderTripCard = useCallback(
     ({ item }) => (
-      <TripCard trip={item} onPress={() => handlePressTrip(item.id)} />
+      <TripCard
+        trip={item}
+        onPress={() => handlePressTrip(item.id)}
+        onSave={handleToggleSaveTrip}
+        isSaved={item.isSaved}
+      />
     ),
-    [handlePressTrip],
+    [handlePressTrip, handleToggleSaveTrip],
   );
 
   const keyExtractor = useCallback((item) => String(item.id), []);

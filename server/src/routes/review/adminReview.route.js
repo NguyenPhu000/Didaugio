@@ -1,7 +1,7 @@
 import express from "express";
-import { ROLES } from "../../config/constants.js";
 import * as controller from "../../controllers/review/adminReview.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
+import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
 import {
   validateBody,
@@ -18,27 +18,17 @@ import {
 
 const router = express.Router();
 
-const requireAdminRole = (req, res, next) => {
-  if (req.user?.roleId === ROLES.SUPER_ADMIN || req.user?.roleId === ROLES.ADMIN) {
-    return next();
-  }
-
-  return res.status(403).json({
-    success: false,
-    data: null,
-    message: "Bạn không có quyền moderation đánh giá",
-    errorCode: "FORBIDDEN",
-  });
-};
-
 router.use(authenticate);
-router.use(requireAdminRole);
 
-router.get("/", validateQuery(adminReviewQuerySchema), controller.getAll);
-router.get("/stats", controller.getStats);
+// Review moderation permission: reviews.moderate (new) or reviews.hide (backward compat)
+const moderationAccess = ["reviews.moderate", "reviews.hide"];
+
+router.get("/", hasPermission(moderationAccess), validateQuery(adminReviewQuerySchema), controller.getAll);
+router.get("/stats", hasPermission(moderationAccess), controller.getStats);
 
 router.patch(
   "/:id/moderation",
+  hasPermission(moderationAccess),
   validateParams(reviewIdParamSchema),
   validateBody(moderateReviewSchema),
   auditLog({
@@ -56,6 +46,7 @@ router.patch(
 
 router.patch(
   "/:id/replies/:replyId/moderation",
+  hasPermission(moderationAccess),
   validateParams(replyIdParamSchema),
   validateBody(adminModerateReplySchema),
   auditLog({
@@ -71,3 +62,4 @@ router.patch(
 );
 
 export default router;
+

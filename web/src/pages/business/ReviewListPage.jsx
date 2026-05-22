@@ -5,7 +5,7 @@ import {
   useMemo,
   useTransition,
 } from "react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
   Star,

@@ -48,7 +48,7 @@ const MapControls = () => {
       <div className="absolute top-3 right-3" style={{ zIndex: 10 }}>
         {expanded ? (
           <div className="grid grid-cols-3 gap-1 bg-white/95 backdrop-blur-sm border border-black/10 shadow-lg p-1.5 rounded-lg">
-            {BASEMAP_OPTIONS.map(({ key, label }) => {
+            {BASEMAP_OPTIONS.map(({ key, label, Icon }) => {
               const active = basemap === MAP_STYLES[key];
               return (
                 <button

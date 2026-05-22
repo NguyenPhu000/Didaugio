@@ -51,7 +51,10 @@ import {
   DEFAULT_MAP_STYLE,
 } from "./config/mapConfig";
 import { TOKENS } from "../../constants/design-tokens";
-import { FLOATING_TAB_CLEARANCE, TAB_BAR_HEIGHT } from "../../../app/(tabs)/_layout";
+import {
+  FLOATING_TAB_CLEARANCE,
+  TAB_BAR_HEIGHT,
+} from "../../../app/(tabs)/_layout";
 import { ALL_AREAS_KEY } from "./constants/filter.constants";
 import { ROUTE_BUILDER_LONG_PRESS_PICK_RADIUS_M } from "./constants/routeBuilder.constants";
 import { NAVIGATION_EVENT_DEDUP_MS } from "./constants/navigation.constants";
@@ -130,8 +133,6 @@ const GlassPanel = ({ style, children, intensity = 40 }) => (
     {children}
   </BlurView>
 );
-
-
 
 export default function MapScreen() {
   const { width: viewportWidth, height: viewportHeight } =
@@ -597,8 +598,10 @@ export default function MapScreen() {
 
       let nearestPlace = null;
       let minDistance = Number.POSITIVE_INFINITY;
-      const candidatePlaces = buildNearbySpatialKeys(latitude, longitude)
-        .flatMap((key) => visiblePlaceSpatialIndex.get(key) || []);
+      const candidatePlaces = buildNearbySpatialKeys(
+        latitude,
+        longitude,
+      ).flatMap((key) => visiblePlaceSpatialIndex.get(key) || []);
 
       candidatePlaces.forEach((place) => {
         const placeLat = Number(place?.latitude);
@@ -750,8 +753,8 @@ export default function MapScreen() {
 
           <CurrentLocationMarker
             location={currentLocation}
-            nickname={currentUserNickname}
             avatarUri={currentUserAvatarUri}
+            heading={currentLocation?.heading}
           />
 
           <RouteBuilderStopsMarkerLayer stops={routeBuilderDraftStops} />
@@ -982,13 +985,17 @@ export default function MapScreen() {
           style={{
             position: "absolute",
             right: 14,
-            bottom: activePlace && !routeBuilderMode
-              ? FLOATING_TAB_CLEARANCE + 108
-              : FLOATING_TAB_CLEARANCE + 12,
+            bottom:
+              activePlace && !routeBuilderMode
+                ? FLOATING_TAB_CLEARANCE + 108
+                : FLOATING_TAB_CLEARANCE + 12,
             zIndex: 55,
           }}
         >
-          <View style={{ alignItems: "flex-end", gap: 10 }} pointerEvents="auto">
+          <View
+            style={{ alignItems: "flex-end", gap: 10 }}
+            pointerEvents="auto"
+          >
             {/* Layer picker popover */}
             {layerModalVisible && (
               <GlassPanel
@@ -1049,9 +1056,7 @@ export default function MapScreen() {
                     name="satellite"
                     size={18}
                     color={
-                      mapStyle.key === "hybrid"
-                        ? "#FFFFFF"
-                        : MAP_UI_THEME.text
+                      mapStyle.key === "hybrid" ? "#FFFFFF" : MAP_UI_THEME.text
                     }
                   />
                 </Pressable>
@@ -1148,8 +1153,6 @@ export default function MapScreen() {
         onClose={handleCloseFilterPicker}
         onSelectOption={handleSelectFilterOption}
       />
-
-
     </View>
   );
 }

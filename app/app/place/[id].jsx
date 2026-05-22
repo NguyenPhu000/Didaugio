@@ -532,7 +532,12 @@ function DetailRow({ icon, label, value, onPress, highlight = false }) {
 
 function TripSelectorSheet({ placeId, placeName, onClose, t }) {
   const router = useRouter();
-  const { data: trips = [], isLoading } = useTrips();
+  const { data: tripsRaw, isLoading } = useTrips();
+  const trips = Array.isArray(tripsRaw)
+    ? tripsRaw
+    : Array.isArray(tripsRaw?.data)
+      ? tripsRaw.data
+      : [];
   const queryClient = useQueryClient();
   const [loadingTripId, setLoadingTripId] = useState(null);
 

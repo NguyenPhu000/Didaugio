@@ -1,0 +1,318 @@
+import prisma from "../../config/prismaClient.js";
+import ServiceError from "../../utils/serviceError.js";
+
+/**
+ * Get earnings summary for a business
+ */
+export const getEarningsSummary = async (businessId) => {
+  // Get total commission earned (from completed bookings)
+  const completedBookings = await prisma.booking.findMany({
+    where: {
+      businessId,
+      status: "completed",
+    },
+    select: {
+      finalPrice: true,
+      commissionAmount: true,
+      completedAt: true,
+    },
+  });
+
+  const totalRevenue = completedBookings.reduce(
+    (sum, b) => sum + b.finalPrice,
+    0,
+  );
+  const totalCommission = completedBookings.reduce(
+    (sum, b) => sum + b.commissionAmount,
+    0,
+  );
+  const netEarnings = totalRevenue - totalCommission;
+
+  // Get payout history
+  const payouts = await prisma.payout.findMany({
+    where: { businessId },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  const totalPaidOut = payouts
+    .filter((p) => p.status === "transferred")
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  const totalPending = payouts
+    .filter((p) => p.status === "pending" || p.status === "approved")
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  const availableBalance = netEarnings - totalPaidOut - totalPending;
+
+  // Monthly breakdown (last 6 months)
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+  const monthlyBookings = await prisma.booking.findMany({
+    where: {
+      businessId,
+      status: "completed",
+      completedAt: { gte: sixMonthsAgo },
+    },
+    select: {
+      finalPrice: true,
+      commissionAmount: true,
+      completedAt: true,
+    },
+  });
+
+  const monthlyData = {};
+  monthlyBookings.forEach((b) => {
+    const month = b.completedAt.toISOString().slice(0, 7); // YYYY-MM
+    if (!monthlyData[month]) {
+      monthlyData[month] = { revenue: 0, commission: 0, count: 0 };
+    }
+    monthlyData[month].revenue += b.finalPrice;
+    monthlyData[month].commission += b.commissionAmount;
+    monthlyData[month].count += 1;
+  });
+
+  const monthlyEarnings = Object.entries(monthlyData)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, data]) => ({
+      month,
+      revenue: data.revenue,
+      commission: data.commission,
+      net: data.revenue - data.commission,
+      bookings: data.count,
+    }));
+
+  return {
+    totalRevenue,
+    totalCommission,
+    netEarnings,
+    availableBalance: Math.max(0, availableBalance),
+    totalPaidOut,
+    totalPending,
+    completedBookings: completedBookings.length,
+    monthlyEarnings,
+    recentPayouts: payouts.slice(0, 10),
+  };
+};
+
+/**
+ * Business requests a payout
+ */
+export const requestPayout = async (businessId, data) => {
+  const { amount, bankName, bankAccount, bankOwner, note } = data;
+
+  if (!amount || amount <= 0) {
+    throw new ServiceError("Số tiền rút phải lớn hơn 0", 400, "INVALID_AMOUNT");
+  }
+
+  // Check available balance
+  const summary = await getEarningsSummary(businessId);
+  if (amount > summary.availableBalance) {
+    throw new ServiceError(
+      `Số dư khả dụng không đủ. Hiện tại: ${summary.availableBalance.toLocaleString("vi-VN")}đ`,
+      400,
+      "INSUFFICIENT_BALANCE",
+    );
+  }
+
+  // Check for existing pending payouts
+  const existingPending = await prisma.payout.findFirst({
+    where: {
+      businessId,
+      status: { in: ["pending", "approved"] },
+    },
+  });
+
+  if (existingPending) {
+    throw new ServiceError(
+      "Bạn đã có yêu cầu rút tiền đang chờ xử lý",
+      400,
+      "PENDING_PAYOUT_EXISTS",
+    );
+  }
+
+  const payout = await prisma.payout.create({
+    data: {
+      businessId,
+      amount,
+      bankName: bankName || null,
+      bankAccount: bankAccount || null,
+      bankOwner: bankOwner || null,
+      note: note || null,
+      status: "pending",
+    },
+  });
+
+  return payout;
+};
+
+/**
+ * Get payout history for a business
+ */
+export const getPayoutHistory = async (businessId, query = {}) => {
+  const page = parseInt(query.page) || 1;
+  const limit = parseInt(query.limit) || 20;
+  const { status } = query;
+  const skip = (page - 1) * limit;
+
+  const where = { businessId };
+  if (status) where.status = status;
+
+  const [payouts, total] = await Promise.all([
+    prisma.payout.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.payout.count({ where }),
+  ]);
+
+  return {
+    payouts,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  };
+};
+
+// ─── Admin Operations ───────────────────────────────────────────
+
+/**
+ * Admin: get all payout requests
+ */
+export const getAllPayouts = async (query = {}) => {
+  const page = parseInt(query.page) || 1;
+  const limit = parseInt(query.limit) || 20;
+  const { status, businessId } = query;
+  const skip = (page - 1) * limit;
+
+  const where = {};
+  if (status) where.status = status;
+  if (businessId) where.businessId = parseInt(businessId);
+
+  const [payouts, total] = await Promise.all([
+    prisma.payout.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      include: {
+        business: {
+          select: {
+            id: true,
+            businessName: true,
+            owner: {
+              select: { id: true, email: true },
+            },
+          },
+        },
+      },
+    }),
+    prisma.payout.count({ where }),
+  ]);
+
+  return {
+    payouts,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  };
+};
+
+/**
+ * Admin: approve a payout request
+ */
+export const approvePayout = async (payoutId, reviewerId) => {
+  const payout = await prisma.payout.findUnique({
+    where: { id: payoutId },
+  });
+
+  if (!payout) {
+    throw new ServiceError("Yêu cầu rút tiền không tồn tại", 404, "NOT_FOUND");
+  }
+
+  if (payout.status !== "pending") {
+    throw new ServiceError(
+      "Chỉ có thể duyệt yêu cầu đang chờ xử lý",
+      400,
+      "INVALID_STATUS",
+    );
+  }
+
+  return prisma.payout.update({
+    where: { id: payoutId },
+    data: {
+      status: "approved",
+      reviewedAt: new Date(),
+      reviewedBy: reviewerId,
+    },
+  });
+};
+
+/**
+ * Admin: mark payout as transferred (money sent)
+ */
+export const markTransferred = async (payoutId, reviewerId) => {
+  const payout = await prisma.payout.findUnique({
+    where: { id: payoutId },
+  });
+
+  if (!payout) {
+    throw new ServiceError("Yêu cầu rút tiền không tồn tại", 404, "NOT_FOUND");
+  }
+
+  if (payout.status !== "approved") {
+    throw new ServiceError(
+      "Chỉ có thể xác nhận chuyển khoản cho yêu cầu đã duyệt",
+      400,
+      "INVALID_STATUS",
+    );
+  }
+
+  return prisma.payout.update({
+    where: { id: payoutId },
+    data: {
+      status: "transferred",
+      transferredAt: new Date(),
+    },
+  });
+};
+
+/**
+ * Admin: reject a payout request
+ */
+export const rejectPayout = async (payoutId, reviewerId, rejectReason) => {
+  const payout = await prisma.payout.findUnique({
+    where: { id: payoutId },
+  });
+
+  if (!payout) {
+    throw new ServiceError("Yêu cầu rút tiền không tồn tại", 404, "NOT_FOUND");
+  }
+
+  if (payout.status !== "pending") {
+    throw new ServiceError(
+      "Chỉ có thể từ chối yêu cầu đang chờ xử lý",
+      400,
+      "INVALID_STATUS",
+    );
+  }
+
+  return prisma.payout.update({
+    where: { id: payoutId },
+    data: {
+      status: "rejected",
+      reviewedAt: new Date(),
+      reviewedBy: reviewerId,
+      rejectReason: rejectReason || null,
+    },
+  });
+};
+
+export default {
+  getEarningsSummary,
+  requestPayout,
+  getPayoutHistory,
+  getAllPayouts,
+  approvePayout,
+  markTransferred,
+  rejectPayout,
+};

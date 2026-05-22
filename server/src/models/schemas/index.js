@@ -43,3 +43,6 @@ export * from "./voucher/voucher.schema.js";
 export * from "./review/review.schema.js";
 export * from "./feedback/feedback.schema.js";
 export * from "./routing/routing.schema.js";
+export * from "./business/blockedDate.schema.js";
+export * from "./business/businessSettings.schema.js";
+export * from "./profile/notificationSettings.schema.js";

@@ -6,10 +6,17 @@ import {
   Text,
   View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTripDetail } from "../../src/modules/trips/hooks/useTripDetail";
-import { useDeleteTrip } from "../../src/modules/trips/hooks/useTrips";
+import {
+  useTripDetail,
+  useUpdateTrip,
+} from "../../src/modules/trips/hooks/useTripDetail";
+import {
+  useDeleteTrip,
+  useSaveTrip,
+  useUnsaveTrip,
+} from "../../src/modules/trips/hooks/useTrips";
 import { useMyBookings } from "../../src/modules/booking/hooks/useBooking";
 import {
   buildTripDays,
@@ -23,6 +30,7 @@ import { TripTabBar } from "../../src/modules/trips/components/trip-detail/TripT
 import ItineraryTab from "../../src/modules/trips/components/trip-detail/ItineraryTab";
 import { ServicesTab } from "../../src/modules/trips/components/trip-detail/ServicesTab";
 import { BudgetTab } from "../../src/modules/trips/components/trip-detail/BudgetTab";
+import EditTripModal from "../../src/modules/trips/components/trip-detail/EditTripModal";
 import s, { T } from "../../src/modules/trips/utils/tripDetailTokens";
 
 const BOOKINGS_FILTERS = { limit: 120 };
@@ -33,9 +41,20 @@ export default function TripDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState("itinerary");
+  const [isEditTripOpen, setIsEditTripOpen] = useState(false);
 
-  const { data: trip, isLoading, isError } = useTripDetail(tripId);
+  const { data: trip, isLoading, isError, refetch } = useTripDetail(tripId);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (tripId) refetch();
+    }, [tripId, refetch]),
+  );
+
+  const updateTripMutation = useUpdateTrip(tripId);
   const deleteTripMutation = useDeleteTrip();
+  const saveTripMutation = useSaveTrip();
+  const unsaveTripMutation = useUnsaveTrip();
   const { data: bookingsPayload, isLoading: isBookingsLoading } =
     useMyBookings(BOOKINGS_FILTERS);
 
@@ -91,6 +110,24 @@ export default function TripDetailScreen() {
     );
   }, [deleteTripMutation, router, trip?.id]);
 
+  const handleSaveTrip = useCallback(
+    (payload) => {
+      updateTripMutation.mutate(payload, {
+        onSuccess: () => setIsEditTripOpen(false),
+      });
+    },
+    [updateTripMutation],
+  );
+
+  const handleToggleSave = useCallback(() => {
+    if (!trip?.id) return;
+    if (trip.isSaved) {
+      unsaveTripMutation.mutate(Number(trip.id));
+    } else {
+      saveTripMutation.mutate(Number(trip.id));
+    }
+  }, [trip?.id, trip?.isSaved, saveTripMutation, unsaveTripMutation]);
+
   /* ─── Loading ─── */
   if (isLoading) {
     return (
@@ -117,8 +154,11 @@ export default function TripDetailScreen() {
     <View style={[s.screen, { paddingTop: insets.top }]}>
       <TripHeader
         trip={trip}
+        onEditTrip={() => setIsEditTripOpen(true)}
         onDeleteTrip={handleDeleteTrip}
         isDeleting={deleteTripMutation.isPending}
+        isSaved={trip.isSaved}
+        onToggleSave={handleToggleSave}
       />
 
       <TripTabBar activeTab={activeTab} onTabChange={setActiveTab} />
@@ -143,6 +183,14 @@ export default function TripDetailScreen() {
           onOpenBooking={handleOpenBooking}
         />
       )}
+
+      <EditTripModal
+        visible={isEditTripOpen}
+        trip={trip}
+        isSaving={updateTripMutation.isPending}
+        onCancel={() => setIsEditTripOpen(false)}
+        onSave={handleSaveTrip}
+      />
     </View>
   );
 }

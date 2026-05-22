@@ -11,7 +11,7 @@ import {
   AlertCircle,
   Download,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { exportToCsv, fetchAllPages, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 import {
   Card,

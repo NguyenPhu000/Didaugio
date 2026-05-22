@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -11,11 +11,13 @@ import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import {
   STATUS_THEME,
   getDateRangeLabel,
+  getDisplayStatus,
   getTimelineLabel,
 } from "../utils/tripHelpers";
 
-export const TripCard = memo(function TripCard({ trip, onPress }) {
-  const status = STATUS_THEME[trip.status] || STATUS_THEME.draft;
+export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved }) {
+  const displayStatus = getDisplayStatus(trip);
+  const status = STATUS_THEME[displayStatus] || STATUS_THEME.draft;
   const cover =
     trip.thumbnail || trip.destinations?.[0]?.place?.thumbnail || null;
   const destinationCount = trip.destinations?.length || 0;
@@ -54,6 +56,25 @@ export const TripCard = memo(function TripCard({ trip, onPress }) {
             <MaterialIcons name="landscape" size={28} color="rgba(0,0,0,0.2)" />
           </View>
         )}
+        {onSave ? (
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onSave(trip.id);
+            }}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.bookmarkBtn,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <MaterialIcons
+              name={isSaved ? "bookmark" : "bookmark-border"}
+              size={18}
+              color={isSaved ? "#FF9F0A" : "#FFFFFF"}
+            />
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Content */}
@@ -140,6 +161,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#E5E5EA",
+  },
+  bookmarkBtn: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.35)",
   },
   content: {
     flex: 1,

@@ -3,7 +3,7 @@ import { ROLES, BUSINESS_STATUS } from "../config/constants.js";
 
 /**
  * Gate business-owner operations by profile existence, status, and contract state.
- * Admin roles bypass this check.
+ * Admin roles bypass this check. Staff users resolved via businessId.
  */
 export const requireActiveBusiness = (options = {}) => {
   const { requireContractSigned = false } = options;
@@ -26,15 +26,40 @@ export const requireActiveBusiness = (options = {}) => {
         return next();
       }
 
-      const business = await prisma.business.findUnique({
-        where: { ownerId: userId },
-        select: {
-          id: true,
-          status: true,
-          contractSigned: true,
-          contractSignedAt: true,
-        },
-      });
+      let business;
+      if (roleId === ROLES.STAFF) {
+        const staffUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { businessId: true },
+        });
+        if (!staffUser?.businessId) {
+          return res.status(403).json({
+            success: false,
+            data: null,
+            message: "Bạn chưa được gán cho doanh nghiệp nào",
+            errorCode: "NO_BUSINESS_PROFILE",
+          });
+        }
+        business = await prisma.business.findUnique({
+          where: { id: staffUser.businessId },
+          select: {
+            id: true,
+            status: true,
+            contractSigned: true,
+            contractSignedAt: true,
+          },
+        });
+      } else {
+        business = await prisma.business.findUnique({
+          where: { ownerId: userId },
+          select: {
+            id: true,
+            status: true,
+            contractSigned: true,
+            contractSignedAt: true,
+          },
+        });
+      }
 
       if (!business) {
         return res.status(403).json({

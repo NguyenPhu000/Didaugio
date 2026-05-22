@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import EyeOff from "lucide-react/dist/esm/icons/eye-off";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
@@ -29,28 +29,28 @@ const registerSchema = z
   .object({
     fullName: z
       .string()
-      .min(2, "Ho ten phai co it nhat 2 ky tu")
-      .max(100, "Ho ten qua dai"),
+      .min(2, "Họ tên phải có ít nhất 2 ký tự")
+      .max(100, "Họ tên quá dài"),
     email: z
       .string()
-      .min(1, "Email khong duoc de trong")
-      .email("Email khong hop le"),
+      .min(1, "Email không được để trống")
+      .email("Email không hợp lệ"),
     username: z
       .string()
-      .min(3, "Username phai co it nhat 3 ky tu")
-      .max(30, "Username toi da 30 ky tu")
-      .regex(/^[a-zA-Z0-9_]+$/, "Username chi gom chu, so va dau gach duoi"),
+      .min(3, "Username phải có ít nhất 3 ký tự")
+      .max(30, "Username tối đa 30 ký tự")
+      .regex(/^[a-zA-Z0-9_]+$/, "Username chỉ gồm chữ, số và dấu gạch dưới"),
     password: z
       .string()
-      .min(6, "Mat khau phai co it nhat 6 ky tu")
+      .min(6, "Mật khẩu phải có ít nhất 6 ký tự")
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Mat khau phai co it nhat 1 chu hoa, 1 chu thuong va 1 so",
+        "Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số",
       ),
-    confirmPassword: z.string().min(1, "Xac nhan mat khau khong duoc de trong"),
+    confirmPassword: z.string().min(1, "Xác nhận mật khẩu không được để trống"),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Mat khau xac nhan khong khop",
+    message: "Mật khẩu xác nhận không khớp",
     path: ["confirmPassword"],
   });
 
@@ -59,6 +59,10 @@ const RegisterPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  useEffect(() => {
+    document.title = "Đăng ký doanh nghiệp - Đi Đâu Giờ?";
+  }, []);
 
   const {
     register,
@@ -88,7 +92,7 @@ const RegisterPage = () => {
         );
       }
     } catch (error) {
-      toast.error(error.message || "Dang ky that bai");
+      toast.error(error.message || "Đăng ký thất bại");
     } finally {
       setIsLoading(false);
     }
@@ -121,7 +125,7 @@ const RegisterPage = () => {
                   DIDAUGIO
                 </h2>
                 <p className="text-[#F3E600] text-xs font-mono uppercase tracking-wider">
-                  REGISTRATION
+                  ĐĂNG KÝ DOANH NGHIỆP
                 </p>
               </div>
             </div>
@@ -131,19 +135,19 @@ const RegisterPage = () => {
           <div className="space-y-8">
             <div>
               <h1 className="text-5xl font-black text-white uppercase leading-tight mb-4">
-                JOIN THE
+                ĐĂNG KÝ
                 <br />
-                SYSTEM
+                DOANH NGHIỆP
                 <br />
-                TODAY
+                NGAY
               </h1>
               <div className="w-24 h-1 bg-[#F3E600]"></div>
             </div>
 
             <p className="text-gray-400 font-mono text-sm uppercase leading-relaxed max-w-md">
-              TẠO TÀI KHOẢN MỚI ĐỂ TRẢI NGHIỆM
+              QUẢN LÝ DOANH NGHIỆP DU LỊCH
               <br />
-              HỆ THỐNG QUẢN LÝ THÔNG MINH
+              TRÊN NỀN TẢNG THÔNG MINH
             </p>
 
             {/* Benefits */}
@@ -153,7 +157,7 @@ const RegisterPage = () => {
                   <div className="w-2 h-2 bg-[#F3E600]"></div>
                 </div>
                 <p className="text-xs text-gray-400 uppercase font-mono">
-                  FULL ACCESS TO MANAGEMENT TOOLS
+                  QUẢN LÝ ĐẶT LỊCH & DOANH THU
                 </p>
               </div>
               <div className="flex items-start gap-3">
@@ -161,7 +165,7 @@ const RegisterPage = () => {
                   <div className="w-2 h-2 bg-[#F3E600]"></div>
                 </div>
                 <p className="text-xs text-gray-400 uppercase font-mono">
-                  SECURE & ENCRYPTED DATA
+                  TIẾP CẬN KHÁCH HÀNG TIỀM NĂNG
                 </p>
               </div>
               <div className="flex items-start gap-3">
@@ -169,7 +173,7 @@ const RegisterPage = () => {
                   <div className="w-2 h-2 bg-[#F3E600]"></div>
                 </div>
                 <p className="text-xs text-gray-400 uppercase font-mono">
-                  24/7 SYSTEM SUPPORT
+                  HỖ TRỢ 24/7 & BẢO MẬT
                 </p>
               </div>
             </div>
@@ -193,7 +197,7 @@ const RegisterPage = () => {
             <div>
               <h2 className="text-xl font-black uppercase">DIDAUGIO</h2>
               <p className="text-[#F3E600] text-xs font-mono uppercase">
-                SYSTEM
+                DOANH NGHIỆP
               </p>
             </div>
           </div>
@@ -205,11 +209,11 @@ const RegisterPage = () => {
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-1 h-8 bg-[#F3E600]"></div>
                 <h1 className="text-3xl font-black uppercase tracking-tight">
-                  SIGN UP
+                  ĐĂNG KÝ
                 </h1>
               </div>
               <p className="text-xs text-gray-500 uppercase font-mono ml-4">
-                TẠO TÀI KHOẢN MỚI
+                TẠO TÀI KHOẢN DOANH NGHIỆP
               </p>
             </div>
 
@@ -221,12 +225,12 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <User className="h-4 w-4" />
-                  FULL NAME
+                  HỌ VÀ TÊN
                 </Label>
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="NGUYEN VAN A"
+                  placeholder="Nguyễn Văn A"
                   className="rounded-none border-2 border-black h-11 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
                   {...register("fullName")}
                 />
@@ -267,12 +271,12 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <Mail className="h-4 w-4" />
-                  EMAIL ADDRESS
+                  ĐỊA CHỈ EMAIL
                 </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="YOUR@EMAIL.COM"
+                  placeholder="email@cuaban.com"
                   className="rounded-none border-2 border-black h-11 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
                   {...register("email")}
                 />
@@ -290,7 +294,7 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <Lock className="h-4 w-4" />
-                  PASSWORD
+                  MẬT KHẨU
                 </Label>
                 <div className="relative">
                   <Input
@@ -319,7 +323,7 @@ const RegisterPage = () => {
                   </p>
                 )}
                 <p className="text-[10px] text-gray-500 uppercase font-mono">
-                  MIN 6 CHARS, UPPERCASE, LOWERCASE & NUMBER
+                  TỐI THIỂU 6 KÝ TỰ, CHỮ HOA, CHỮ THƯỜNG & SỐ
                 </p>
               </div>
 
@@ -330,7 +334,7 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <Lock className="h-4 w-4" />
-                  CONFIRM PASSWORD
+                  XÁC NHẬN MẬT KHẨU
                 </Label>
                 <div className="relative">
                   <Input
@@ -367,11 +371,11 @@ const RegisterPage = () => {
                 className="w-full rounded-none border-2 border-black bg-[#F3E600] text-black hover:bg-black hover:text-[#F3E600] h-12 uppercase font-black text-sm transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none mt-6"
               >
                 {isLoading ? (
-                  "CREATING ACCOUNT..."
+                  "ĐANG TẠO TÀI KHOẢN..."
                 ) : (
                   <>
                     <UserPlus className="mr-2 h-4 w-4" />
-                    CREATE ACCOUNT
+                    TẠO TÀI KHOẢN
                   </>
                 )}
               </Button>
@@ -384,7 +388,7 @@ const RegisterPage = () => {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-white px-4 text-gray-500 font-mono">
-                  OR
+                  HOẶC
                 </span>
               </div>
             </div>
@@ -392,14 +396,14 @@ const RegisterPage = () => {
             {/* Login Link */}
             <div className="text-center">
               <p className="text-xs text-gray-600 uppercase font-mono mb-2">
-                ALREADY HAVE AN ACCOUNT?
+                ĐÃ CÓ TÀI KHOẢN?
               </p>
               <Link
                 to="/auth/login"
                 className="w-full rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-11 px-6 uppercase font-black text-sm transition-all flex items-center justify-center"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                BACK TO LOGIN
+                QUAY LẠI ĐĂNG NHẬP
               </Link>
             </div>
           </div>
@@ -407,7 +411,7 @@ const RegisterPage = () => {
           {/* Footer Note */}
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-400 uppercase font-mono">
-              BY REGISTERING, YOU AGREE TO OUR TERMS
+              BẰNG VIỆC ĐĂNG KÝ, BẠN ĐỒNG Ý VỚI ĐIỀU KHOẢN
             </p>
           </div>
         </div>

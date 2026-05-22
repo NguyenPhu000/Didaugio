@@ -28,11 +28,11 @@ export const isNonAdminRole = (roleId) =>
 export const resolvePostLoginRoute = (user) => {
   const roleId = resolveRoleId(user);
 
-  if (roleId === ROLES.BUSINESS) {
+  if (roleId === ROLES.BUSINESS || roleId === ROLES.STAFF) {
     return BUSINESS_ROUTES.DASHBOARD;
   }
 
-  if (ADMIN_DASHBOARD_ROLES.includes(roleId)) {
+  if ([ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(roleId)) {
     return ADMIN_ROUTES.DASHBOARD;
   }
 
