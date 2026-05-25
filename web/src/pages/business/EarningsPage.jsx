@@ -60,10 +60,8 @@ export default function EarningsPage() {
         api.get("/business/earnings"),
         api.get("/business/payouts"),
       ]);
-      const earningsData = earningsRes.data?.data;
-      const payoutsData = payoutsRes.data?.data;
-      if (earningsData) setSummary(earningsData);
-      if (payoutsData?.payouts) setPayouts(payoutsData.payouts);
+      if (earningsRes?.data) setSummary(earningsRes.data);
+      if (payoutsRes?.data?.payouts) setPayouts(payoutsRes.data.payouts);
     } catch (err) {
       console.error("Failed to load earnings:", err);
       toast.error("Không thể tải thông tin thu nhập");
@@ -92,7 +90,7 @@ export default function EarningsPage() {
       setForm({ amount: "", bankName: "", bankAccount: "", bankOwner: "", note: "" });
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Lỗi gửi yêu cầu rút tiền");
+      toast.error(err.message || "Lỗi gửi yêu cầu rút tiền");
     } finally {
       setSubmitting(false);
     }

@@ -1,13 +1,19 @@
 import prisma from "../../config/prismaClient.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
+import { toUseDateOnly } from "../../utils/bookingTimeSlot.js";
+
+const asPrismaDate = (value) => {
+  if (value == null) return undefined;
+  return toUseDateOnly(value);
+};
 
 export async function listForBusiness(businessId, filters = {}) {
   const where = { businessId };
   if (filters.fromDate || filters.toDate) {
     where.date = {};
-    if (filters.fromDate) where.date.gte = filters.fromDate;
-    if (filters.toDate) where.date.lte = filters.toDate;
+    if (filters.fromDate) where.date.gte = asPrismaDate(filters.fromDate);
+    if (filters.toDate) where.date.lte = asPrismaDate(filters.toDate);
   }
   if (filters.serviceId !== undefined) {
     where.serviceId = filters.serviceId;
@@ -23,11 +29,12 @@ export async function listForBusiness(businessId, filters = {}) {
 }
 
 export async function createForBusiness(businessId, userId, payload) {
+  const blockedDate = asPrismaDate(payload.date);
   const existing = await prisma.businessBlockedDate.findFirst({
     where: {
       businessId,
       serviceId: payload.serviceId ?? null,
-      date: payload.date,
+      date: blockedDate,
     },
   });
   if (existing) {
@@ -42,7 +49,7 @@ export async function createForBusiness(businessId, userId, payload) {
     data: {
       businessId,
       serviceId: payload.serviceId ?? null,
-      date: payload.date,
+      date: blockedDate,
       reason: payload.reason ?? null,
       createdBy: userId,
     },

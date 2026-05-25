@@ -52,8 +52,10 @@ const BusinessSettingsPage = () => {
         const response = await businessSettingsApi.getSettings();
         const data = response?.data || {};
         if (!disposed) setSettings((prev) => mergeRemote(prev, data));
-      } catch {
-        if (!disposed) toast.error("Không thể tải cài đặt doanh nghiệp");
+      } catch (err) {
+        if (!disposed) {
+          toast.error(err.message || "Không thể tải cài đặt doanh nghiệp");
+        }
       } finally {
         if (!disposed) setLoading(false);
       }
@@ -89,8 +91,8 @@ const BusinessSettingsPage = () => {
         setSettings((prev) => mergeRemote(prev, response.data));
       }
       toast.success("Cập nhật cài đặt thành công!");
-    } catch {
-      toast.error("Cập nhật cài đặt thất bại");
+    } catch (err) {
+      toast.error(err.message || "Cập nhật cài đặt thất bại");
     } finally {
       setSaving(false);
     }

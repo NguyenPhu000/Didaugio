@@ -61,11 +61,11 @@ export default function AdminPayoutManagementPage() {
       const params = { page, limit: 20 };
       if (statusFilter !== "all") params.status = statusFilter;
       const res = await api.get("/admin/payouts", { params });
-      const data = res.data?.data;
-      if (data) {
-        setPayouts(data.payouts || []);
-        setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 });
-      }
+      const data = res.data;
+      setPayouts(data?.payouts || []);
+      setPagination(
+        data?.pagination || { page: 1, totalPages: 1, total: 0 },
+      );
     } catch (err) {
       console.error("Failed to load payouts:", err);
       toast.error("Không thể tải danh sách rút tiền");
@@ -90,7 +90,7 @@ export default function AdminPayoutManagementPage() {
       toast.success(messages[action]);
       fetchPayouts(pagination.page);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Thao tác thất bại");
+      toast.error(err.message || "Thao tác thất bại");
     } finally {
       setActing(null);
     }

@@ -177,18 +177,19 @@ const ProfilePage = () => {
   };
 
   const handleNotifToggle = async (group, key, value) => {
+    const previous = notifSettings;
     const updated = {
-      ...notifSettings,
-      [group]: { ...notifSettings[group], [key]: value },
+      ...previous,
+      [group]: { ...previous[group], [key]: value },
     };
     setNotifSettings(updated);
     setNotifSaving(true);
     try {
       await profileService.updateNotificationSettings(updated);
-    } catch {
-      toast.error("Lưu cài đặt thông báo thất bại");
-      // Revert on error
-      setNotifSettings(notifSettings);
+      toast.success("Đã lưu cài đặt thông báo");
+    } catch (err) {
+      toast.error(err.message || "Lưu cài đặt thông báo thất bại");
+      setNotifSettings(previous);
     } finally {
       setNotifSaving(false);
     }

@@ -233,7 +233,7 @@ export default function StaffManagementPage() {
       setForm({ email: "", password: "", fullName: "", phone: "", roleId: "" });
       fetchStaff();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Lỗi tạo nhân viên");
+      toast.error(err.message || "Lỗi tạo nhân viên");
     } finally {
       setSubmitting(false);
     }
@@ -248,7 +248,7 @@ export default function StaffManagementPage() {
       setEditOpen(false);
       fetchStaff();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Lỗi cập nhật");
+      toast.error(err.message || "Lỗi cập nhật");
     } finally {
       setSubmitting(false);
     }
@@ -263,7 +263,7 @@ export default function StaffManagementPage() {
       setResetPwOpen(false);
       setNewPassword("");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Lỗi đặt lại mật khẩu");
+      toast.error(err.message || "Lỗi đặt lại mật khẩu");
     } finally {
       setSubmitting(false);
     }
@@ -281,7 +281,7 @@ export default function StaffManagementPage() {
       }
       fetchStaff();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Lỗi thay đổi trạng thái");
+      toast.error(err.message || "Lỗi thay đổi trạng thái");
     }
   };
 
@@ -314,7 +314,7 @@ export default function StaffManagementPage() {
       setInviteForm({ email: "", roleId: "" });
       fetchInvitations();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Lỗi tạo lời mời");
+      toast.error(err.message || "Lỗi tạo lời mời");
     } finally {
       setSubmitting(false);
     }
@@ -326,7 +326,7 @@ export default function StaffManagementPage() {
       toast.success("Đã thu hồi lời mời");
       fetchInvitations();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Lỗi thu hồi lời mời");
+      toast.error(err.message || "Lỗi thu hồi lời mời");
     }
   };
 
