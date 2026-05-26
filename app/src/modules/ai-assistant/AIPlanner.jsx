@@ -10,12 +10,13 @@ import {
   ActivityIndicator,
   StyleSheet,
   useWindowDimensions,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardStickyView } from "react-native-keyboard-controller";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAIPlanner } from "../ai/hooks/useAIPlanner";
 import { TOKENS } from "../../constants/design-tokens";
 import { PlacePreviewCard } from "../../components/composed/PlacePreviewCard";
@@ -147,7 +148,11 @@ export function AIPlanner() {
   }, [hasPlannerHistory, isLoading, reset]);
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+    >
       {/* ── Messages area ── */}
       <ScrollView
         ref={scrollRef}
@@ -325,21 +330,37 @@ export function AIPlanner() {
               onPress={handleConfirmSelection}
               disabled={!canConfirmSelection || isConfirming}
               style={({ pressed }) => [
-                styles.confirmBtn,
-                (!canConfirmSelection || isConfirming) &&
-                  styles.confirmBtnDisabled,
+                styles.confirmBtnContainer,
                 pressed &&
                   canConfirmSelection &&
                   !isConfirming &&
                   styles.confirmBtnPressed,
               ]}
             >
-              {isConfirming ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <MaterialIcons name="task-alt" size={18} color="#FFFFFF" />
-              )}
-              <Text style={styles.confirmBtnText}>Tạo trip từ lựa chọn</Text>
+              <LinearGradient
+                colors={
+                  !canConfirmSelection || isConfirming
+                    ? ["#E2E8F0", "#E2E8F0"]
+                    : ["#007BFF", "#0055CC"]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.confirmBtnGradient}
+              >
+                {isConfirming ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <MaterialIcons name="task-alt" size={18} color={!canConfirmSelection || isConfirming ? "#94A3B8" : "#FFFFFF"} />
+                )}
+                <Text
+                  style={[
+                    styles.confirmBtnText,
+                    (!canConfirmSelection || isConfirming) && styles.confirmBtnTextDisabled,
+                  ]}
+                >
+                  Tạo chuyến đi từ lựa chọn
+                </Text>
+              </LinearGradient>
             </Pressable>
           </View>
         ) : null}
@@ -369,57 +390,50 @@ export function AIPlanner() {
         ) : null}
       </ScrollView>
 
-      {/* ── Input bar — sticks to keyboard ── */}
-      <KeyboardStickyView
-        offset={{
-          closed: 0,
-          opened: Platform.OS === "ios" ? -insets.bottom : 0,
-        }}
+      {/* ── Input bar ── */}
+      <View
+        style={[
+          styles.composerOuter,
+          {
+            paddingBottom: keyboardVisible
+              ? 8
+              : Math.max(insets.bottom, 8) + TAB_BAR_HEIGHT,
+          },
+        ]}
       >
-        <View
-          style={[
-            styles.composerOuter,
-            {
-              paddingBottom: keyboardVisible
-                ? 4
-                : Math.max(insets.bottom, 8) + TAB_BAR_HEIGHT,
-            },
-          ]}
-        >
-          <View style={styles.composerCard}>
-            <TextInput
-              ref={inputRef}
-              placeholder="Mô tả kế hoạch bạn muốn..."
-              placeholderTextColor={TOKENS.color.neutral[400]}
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={500}
-              style={styles.input}
-              textAlignVertical="center"
-            />
-            <Pressable
-              onPress={() => handleSend()}
-              disabled={!canSend}
-              style={[
-                styles.sendBtn,
-                canSend ? styles.sendBtnActive : styles.sendBtnIdle,
-              ]}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <MaterialIcons
-                  name="arrow-upward"
-                  size={20}
-                  color={canSend ? "#FFFFFF" : TOKENS.color.neutral[400]}
-                />
-              )}
-            </Pressable>
-          </View>
+        <View style={styles.composerCard}>
+          <TextInput
+            ref={inputRef}
+            placeholder="Mô tả kế hoạch bạn muốn..."
+            placeholderTextColor={TOKENS.color.neutral[400]}
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            maxLength={500}
+            style={styles.input}
+            textAlignVertical="center"
+          />
+          <Pressable
+            onPress={() => handleSend()}
+            disabled={!canSend}
+            style={[
+              styles.sendBtn,
+              canSend ? styles.sendBtnActive : styles.sendBtnIdle,
+            ]}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <MaterialIcons
+                name="arrow-upward"
+                size={20}
+                color={canSend ? "#FFFFFF" : TOKENS.color.neutral[400]}
+              />
+            )}
+          </Pressable>
         </View>
-      </KeyboardStickyView>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -447,57 +461,65 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   avatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: "rgba(255,255,255,0.85)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(191,219,254,0.5)",
-    ...TOKENS.shadow.md,
-    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: "rgba(59, 130, 246, 0.15)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+    marginBottom: 18,
   },
   emptyTitle: {
-    fontSize: 26,
-    lineHeight: 32,
+    fontSize: 24,
+    lineHeight: 30,
     fontFamily: TOKENS.font.heading,
     color: TOKENS.color.neutral[900],
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   emptySubtitle: {
-    fontSize: 15,
-    lineHeight: 23,
+    fontSize: 14,
+    lineHeight: 21,
     fontFamily: TOKENS.font.body,
     color: TOKENS.color.neutral[600],
     textAlign: "center",
-    maxWidth: 300,
-    marginBottom: 28,
+    maxWidth: 290,
+    marginBottom: 24,
   },
   suggestionsGrid: {
     width: "100%",
-    gap: 10,
+    gap: 8,
   },
   suggestionChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 15,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.92)",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.75)",
     borderWidth: 1,
-    borderColor: "rgba(191,219,254,0.5)",
-    ...TOKENS.shadow.sm,
+    borderColor: "rgba(226, 232, 240, 0.8)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
   },
   suggestionChipPressed: {
     backgroundColor: "rgba(59,130,246,0.06)",
-    borderColor: "rgba(59,130,246,0.3)",
+    borderColor: "rgba(59,130,246,0.25)",
   },
   suggestionText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: TOKENS.font.medium,
     color: TOKENS.color.neutral[700],
   },
@@ -578,7 +600,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(191,219,254,0.45)",
     borderBottomLeftRadius: 6,
-    ...TOKENS.shadow.sm,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   bubbleText: {
     fontSize: 14,
@@ -596,12 +622,16 @@ const styles = StyleSheet.create({
   selectionPanel: {
     marginTop: 14,
     padding: 14,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.97)",
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.96)",
     borderWidth: 1,
-    borderColor: "rgba(191,219,254,0.55)",
-    ...TOKENS.shadow.sm,
-    gap: 10,
+    borderColor: "rgba(59, 130, 246, 0.12)",
+    shadowColor: TOKENS.color.travel.ocean,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 3,
+    gap: 12,
   },
   selectionHeader: {
     flexDirection: "row",
@@ -641,28 +671,35 @@ const styles = StyleSheet.create({
   placeListWrap: {
     gap: 10,
   },
-  confirmBtn: {
-    marginTop: 2,
-    height: 44,
+  confirmBtnContainer: {
+    marginTop: 4,
     borderRadius: 14,
-    backgroundColor: ACCENT,
+    overflow: "hidden",
+    shadowColor: TOKENS.color.travel.ocean,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  confirmBtnGradient: {
+    height: 46,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
     gap: 8,
-    ...TOKENS.shadow.accent,
-  },
-  confirmBtnDisabled: {
-    backgroundColor: TOKENS.color.neutral[300],
+    paddingHorizontal: 16,
   },
   confirmBtnPressed: {
-    transform: [{ scale: 0.99 }],
+    transform: [{ scale: 0.98 }],
     opacity: 0.96,
   },
   confirmBtnText: {
     color: "#FFFFFF",
     fontSize: 14,
     fontFamily: TOKENS.font.semibold,
+  },
+  confirmBtnTextDisabled: {
+    color: "#94A3B8",
   },
   /* ── Loading ── */
   loadingRow: {
@@ -678,7 +715,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(191,219,254,0.45)",
     borderBottomLeftRadius: 6,
-    ...TOKENS.shadow.sm,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   loadingText: {
     color: TOKENS.color.neutral[600],
@@ -717,34 +758,42 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 6,
     paddingVertical: 6,
-    borderRadius: 28,
+    borderRadius: 24,
     backgroundColor: "rgba(255,255,255,0.96)",
     borderWidth: 1,
-    borderColor: "rgba(191,219,254,0.5)",
-    ...TOKENS.shadow.lg,
+    borderColor: "rgba(226, 232, 240, 0.8)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   input: {
     flex: 1,
-    minHeight: 44,
-    maxHeight: 120,
-    paddingHorizontal: 18,
-    paddingTop: Platform.OS === "ios" ? 12 : 10,
-    paddingBottom: Platform.OS === "ios" ? 12 : 10,
-    fontSize: 15,
-    lineHeight: 21,
+    minHeight: 40,
+    maxHeight: 100,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === "ios" ? 10 : 8,
+    paddingBottom: Platform.OS === "ios" ? 10 : 8,
+    fontSize: 14,
+    lineHeight: 20,
     fontFamily: TOKENS.font.body,
     color: TOKENS.color.neutral[900],
   },
   sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
   },
   sendBtnActive: {
     backgroundColor: ACCENT,
-    ...TOKENS.shadow.accent,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   sendBtnIdle: {
     backgroundColor: TOKENS.color.neutral[200],

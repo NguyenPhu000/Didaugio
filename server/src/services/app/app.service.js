@@ -1087,8 +1087,10 @@ const buildTripDestinations = ({
   days,
   allowedPlaceIds,
   selectedPlaceIdSet,
+  allPlaces = [],
 }) => {
   const destinations = [];
+  const usedPlaceIds = new Set();
 
   const safeDays = Array.isArray(days) ? days : [];
   for (const day of safeDays) {
@@ -1099,10 +1101,29 @@ const buildTripDestinations = ({
 
     for (let index = 0; index < safeDestinations.length; index += 1) {
       const dest = safeDestinations[index];
-      const placeId = toInt(dest?.placeId);
-      if (!placeId || !allowedPlaceIds.has(placeId)) continue;
-      if (selectedPlaceIdSet?.size && !selectedPlaceIdSet.has(placeId))
-        continue;
+      let placeId = toInt(dest?.placeId);
+
+      if (!placeId || !allowedPlaceIds.has(placeId)) {
+        const placeDetailsList = Array.isArray(allPlaces) ? allPlaces : [];
+        const fallbackPlace = placeDetailsList.find(
+          (p) => !usedPlaceIds.has(p.id) && allowedPlaceIds.has(p.id)
+        );
+        if (fallbackPlace) {
+          placeId = fallbackPlace.id;
+        } else {
+          continue;
+        }
+      }
+
+      if (selectedPlaceIdSet?.size && !selectedPlaceIdSet.has(placeId)) {
+        if (!usedPlaceIds.has(placeId)) {
+          // Bỏ qua check selectedPlaceIdSet nếu đây là fallback để tránh rỗng lịch trình
+        } else {
+          continue;
+        }
+      }
+
+      usedPlaceIds.add(placeId);
 
       destinations.push({
         tripId,
@@ -1430,7 +1451,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
         groupSize: Math.max(toInt(groupSize, 1), 1),
         isAiGenerated: true,
         aiPrompt: JSON.stringify(preferences),
-        status: "draft",
+        status: "planned",
       },
     });
 
@@ -1439,6 +1460,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       days: itinerary.days,
       allowedPlaceIds: placeIdSet,
       selectedPlaceIdSet,
+      allPlaces: places,
     });
 
     if (allDestinations.length === 0 && effectiveSelectedPlaceIds.length > 0) {
@@ -1543,6 +1565,7 @@ export const createTrip = async (userId, data) => {
     totalDays,
     travelStyle,
     groupSize,
+    status,
   } = data;
   return prisma.trip.create({
     data: {
@@ -1554,7 +1577,7 @@ export const createTrip = async (userId, data) => {
       totalDays: toInt(totalDays, 1),
       travelStyle,
       groupSize: toInt(groupSize, 1),
-      status: "draft",
+      status: status || "draft",
     },
     include: {
       destinations: {

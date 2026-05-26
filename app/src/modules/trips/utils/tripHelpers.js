@@ -102,6 +102,13 @@ export function getDaysUntil(dateStr) {
  *
  * Trả về một trong: "draft" | "upcoming" | "ongoing" | "completed" | "cancelled".
  */
+export function getSafeDateTime(dateStr, fallback = Number.MAX_SAFE_INTEGER) {
+  if (!dateStr) return fallback;
+  const d = new Date(dateStr);
+  const t = d.getTime();
+  return Number.isNaN(t) ? fallback : t;
+}
+
 export function getDisplayStatus(trip) {
   if (!trip) return "draft";
 
@@ -111,7 +118,9 @@ export function getDisplayStatus(trip) {
   if (rawStatus === "draft") return "draft";
 
   const daysUntil = getDaysUntil(trip.startDate);
-  if (daysUntil === null) return "draft";
+  if (daysUntil === null) {
+    return rawStatus === "draft" ? "draft" : "upcoming";
+  }
   if (daysUntil < 0) {
     const endDaysUntil = getDaysUntil(trip.endDate);
     if (endDaysUntil !== null && endDaysUntil < 0) return "completed";
@@ -151,12 +160,8 @@ export function getHeroTrip(trips) {
       const aPriority = STATUS_PRIORITY[a.status] ?? 99;
       const bPriority = STATUS_PRIORITY[b.status] ?? 99;
       if (aPriority !== bPriority) return aPriority - bPriority;
-      const aDate = a.trip.startDate
-        ? new Date(a.trip.startDate).getTime()
-        : Number.MAX_SAFE_INTEGER;
-      const bDate = b.trip.startDate
-        ? new Date(b.trip.startDate).getTime()
-        : Number.MAX_SAFE_INTEGER;
+      const aDate = getSafeDateTime(a.trip.startDate, Number.MAX_SAFE_INTEGER);
+      const bDate = getSafeDateTime(b.trip.startDate, Number.MAX_SAFE_INTEGER);
       return aDate - bDate;
     });
 

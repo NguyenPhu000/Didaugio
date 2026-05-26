@@ -81,7 +81,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
         <Pressable style={styles.backdrop} onPress={onCancel} />
         <KeyboardAvoidingView
           style={styles.sheetWrap}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
           <View style={styles.sheet}>
             <View style={styles.handle} />
@@ -90,21 +90,6 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                 <MaterialIcons name="edit-calendar" size={18} color="#1D1D1F" />
                 <Text style={styles.title}>Chỉnh sửa chuyến đi</Text>
               </View>
-              <Pressable
-                onPress={handleSave}
-                disabled={!canSave}
-                style={({ pressed }) => [
-                  styles.headerSaveBtn,
-                  !canSave && styles.headerSaveBtnDisabled,
-                  pressed && canSave && { backgroundColor: "#000000" },
-                ]}
-              >
-                {isSaving ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.headerSaveText}>Lưu</Text>
-                )}
-              </Pressable>
             </View>
 
             <ScrollView
@@ -158,17 +143,49 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
               </View>
             </ScrollView>
 
-            <Pressable
-              onPress={onCancel}
-              disabled={isSaving}
-              hitSlop={8}
-              style={({ pressed }) => [
-                styles.cancelBtn,
-                pressed && { opacity: 0.6 },
-              ]}
-            >
-              <Text style={styles.cancelText}>Hủy</Text>
-            </Pressable>
+            <View style={styles.footerRow}>
+              <Pressable
+                onPress={onCancel}
+                disabled={isSaving}
+                style={({ pressed }) => [
+                  styles.btnCancel,
+                  pressed && { backgroundColor: "#E5E5EA" },
+                ]}
+              >
+                <MaterialIcons name="close" size={18} color="#FF3B30" />
+                <Text style={styles.btnCancelText}>Hủy</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={handleSave}
+                disabled={!canSave}
+                style={({ pressed }) => [
+                  styles.btnSave,
+                  !canSave && styles.btnSaveDisabled,
+                  pressed && canSave && { opacity: 0.85 },
+                ]}
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <MaterialIcons
+                      name="check-circle-outline"
+                      size={18}
+                      color={canSave ? "#FFFFFF" : "#8E8E93"}
+                    />
+                    <Text
+                      style={[
+                        styles.btnSaveText,
+                        !canSave && styles.btnSaveTextDisabled,
+                      ]}
+                    >
+                      Lưu
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -229,22 +246,6 @@ const styles = StyleSheet.create({
     color: "#1D1D1F",
     letterSpacing: -0.3,
   },
-  headerSaveBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: "#1D1D1F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerSaveBtnDisabled: {
-    opacity: 0.4,
-  },
-  headerSaveText: {
-    fontSize: 14,
-    color: "#FFFFFF",
-    fontFamily: TOKENS.font.semibold,
-  },
   content: {
     padding: 20,
     gap: 14,
@@ -285,16 +286,59 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: "rgba(0,0,0,0.08)",
   },
-  cancelBtn: {
+  footerRow: {
+    flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === "ios" ? 12 : 16,
+    gap: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.07)",
+    borderTopColor: "rgba(0,0,0,0.08)",
   },
-  cancelText: {
+  btnCancel: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "#F2F2F7",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
+  btnCancelText: {
     fontSize: 15,
-    color: "rgba(0,0,0,0.45)",
-    fontFamily: TOKENS.font.body,
+    color: "#FF3B30",
+    fontFamily: TOKENS.font.semibold,
+  },
+  btnSave: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "#007AFF",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 6,
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  btnSaveDisabled: {
+    backgroundColor: "#E5E5EA",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  btnSaveText: {
+    fontSize: 15,
+    color: "#FFFFFF",
+    fontFamily: TOKENS.font.semibold,
+  },
+  btnSaveTextDisabled: {
+    color: "#8E8E93",
   },
 });
 

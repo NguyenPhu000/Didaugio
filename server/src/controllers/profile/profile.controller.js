@@ -411,7 +411,12 @@ export const createTrip = async (req, res, next) => {
       totalDays,
       travelStyle,
       groupSize,
+      status,
     } = req.body;
+
+    const ALLOWED_INITIAL_STATUSES = ["planned"];
+    const finalStatus = ALLOWED_INITIAL_STATUSES.includes(status) ? status : "planned";
+
     const trip = await appService.createTrip(getUserId(req), {
       title,
       description,
@@ -420,6 +425,7 @@ export const createTrip = async (req, res, next) => {
       totalDays,
       travelStyle,
       groupSize,
+      status: finalStatus,
     });
     res
       .status(201)

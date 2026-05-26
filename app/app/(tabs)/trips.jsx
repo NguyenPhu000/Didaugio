@@ -11,7 +11,7 @@ import { OfflineBanner } from "../../src/components/ui/OfflineBanner";
 import { TAB_BAR_HEIGHT } from "./_layout";
 import { TripsDashboard } from "../../src/modules/trips/components/TripsDashboard";
 import { TripCard } from "../../src/modules/trips/components/TripCard";
-import { getDisplayStatus } from "../../src/modules/trips/utils/tripHelpers";
+import { getDisplayStatus, getSafeDateTime } from "../../src/modules/trips/utils/tripHelpers";
 import {
   LoadingState,
   EmptyTrips,
@@ -55,25 +55,33 @@ export default function TripsScreen() {
     }, [isLoggedIn, refetch]),
   );
 
-  const filteredTrips = useMemo(
-    () =>
-      trips.filter((trip) => {
-        if (activeFilter === "all") return true;
-        const displayStatus = getDisplayStatus(trip);
-        if (activeFilter === "active") {
-          return (
-            displayStatus === "draft" ||
-            displayStatus === "upcoming" ||
-            displayStatus === "ongoing"
-          );
-        }
-        if (activeFilter === "done") {
-          return displayStatus === "completed" || displayStatus === "cancelled";
-        }
-        return true;
-      }),
-    [activeFilter, trips],
-  );
+  const filteredTrips = useMemo(() => {
+    const list = trips.filter((trip) => {
+      if (activeFilter === "all") return true;
+      const displayStatus = getDisplayStatus(trip);
+      if (activeFilter === "active") {
+        return (
+          displayStatus === "draft" ||
+          displayStatus === "upcoming" ||
+          displayStatus === "ongoing"
+        );
+      }
+      if (activeFilter === "done") {
+        return displayStatus === "completed" || displayStatus === "cancelled";
+      }
+      return true;
+    });
+
+    if (activeFilter === "active") {
+      return [...list].sort((a, b) => {
+        const aDate = getSafeDateTime(a.startDate, Number.MAX_SAFE_INTEGER);
+        const bDate = getSafeDateTime(b.startDate, Number.MAX_SAFE_INTEGER);
+        return aDate - bDate;
+      });
+    }
+
+    return list;
+  }, [activeFilter, trips]);
 
   const saveTripMutation = useSaveTrip();
   const unsaveTripMutation = useUnsaveTrip();

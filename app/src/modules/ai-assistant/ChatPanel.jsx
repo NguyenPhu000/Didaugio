@@ -9,16 +9,18 @@ import {
   Platform,
   ActivityIndicator,
   StyleSheet,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardStickyView } from "react-native-keyboard-controller";
 import { MaterialIcons } from "@expo/vector-icons";
 import { AIBubble } from "../../components/ui/AIBubble";
 import { useAIAssistant } from "./hooks/useAIAssistant";
 import { useAIContextStore } from "../../stores/aiContextStore";
 import { TOKENS } from "../../constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "../../../app/(tabs)/_layout";
+import { useMyTrips } from "../ai/hooks/useAIPlanner";
+import { addDestinationApi } from "../trips/api/tripsApi";
 
 const QUICK_SUGGESTIONS = [
   { text: "Giới thiệu Bến Ninh Kiều", icon: "place" },
@@ -58,6 +60,65 @@ export function ChatPanel() {
   const conversationMemory = useAIContextStore((s) => s.conversationMemory);
   const clearConversation = useAIContextStore((s) => s.clearConversation);
   const { sendChatMessage } = useAIAssistant();
+
+  const { data: myTrips, refetch: refetchTrips } = useMyTrips({ limit: 10 });
+
+  const handleAddToTrip = useCallback(
+    async (place) => {
+      const placeId = Number(place?.id);
+      if (!placeId) return;
+
+      try {
+        await refetchTrips();
+      } catch (err) {
+        // Bỏ qua lỗi refetch
+      }
+
+      const activeTrips = myTrips || [];
+
+      if (activeTrips.length === 0) {
+        Alert.alert(
+          "Chưa có chuyến đi",
+          "Bạn cần tạo một chuyến đi trước để thêm địa điểm này vào lịch trình.",
+          [{ text: "Đóng", style: "cancel" }]
+        );
+        return;
+      }
+
+      if (activeTrips.length === 1) {
+        const trip = activeTrips[0];
+        try {
+          await addDestinationApi(trip.id, { placeId, dayNumber: 1 });
+          Alert.alert("Thành công", `Đã thêm ${place.name} vào chuyến đi "${trip.title}"`);
+        } catch (err) {
+          Alert.alert("Thất bại", err.message || "Không thể thêm vào chuyến đi");
+        }
+        return;
+      }
+
+      const buttons = activeTrips.slice(0, 2).map((trip) => ({
+        text: trip.title,
+        onPress: async () => {
+          try {
+            await addDestinationApi(trip.id, { placeId, dayNumber: 1 });
+            Alert.alert("Thành công", `Đã thêm ${place.name} vào chuyến đi "${trip.title}"`);
+          } catch (err) {
+            Alert.alert("Thất bại", err.message || "Không thể thêm vào chuyến đi");
+          }
+        },
+      }));
+
+      Alert.alert(
+        "Chọn chuyến đi",
+        `Bạn muốn thêm "${place.name}" vào chuyến đi nào?`,
+        [
+          ...buttons,
+          { text: "Hủy", style: "cancel" },
+        ]
+      );
+    },
+    [myTrips, refetchTrips]
+  );
 
   const handleSend = useCallback(
     async (text) => {
@@ -106,7 +167,11 @@ export function ChatPanel() {
   }, [clearConversation, hasMessages, isSending]);
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+    >
       {/* ── Messages area ── */}
       <ScrollView
         ref={scrollRef}
@@ -189,6 +254,7 @@ export function ChatPanel() {
                 role={msg.role}
                 content={msg.content}
                 places={msg.suggestedPlaces}
+                onAddToTrip={handleAddToTrip}
               />
             ))}
           </View>
@@ -215,57 +281,50 @@ export function ChatPanel() {
         ) : null}
       </ScrollView>
 
-      {/* ── Input bar — sticks to keyboard via KeyboardStickyView ── */}
-      <KeyboardStickyView
-        offset={{
-          closed: 0,
-          opened: Platform.OS === "ios" ? -insets.bottom : 0,
-        }}
+      {/* ── Input bar ── */}
+      <View
+        style={[
+          styles.composerOuter,
+          {
+            paddingBottom: keyboardVisible
+              ? 8
+              : Math.max(insets.bottom, 8) + TAB_BAR_HEIGHT,
+          },
+        ]}
       >
-        <View
-          style={[
-            styles.composerOuter,
-            {
-              paddingBottom: keyboardVisible
-                ? 4
-                : Math.max(insets.bottom, 8) + TAB_BAR_HEIGHT,
-            },
-          ]}
-        >
-          <View style={styles.composerCard}>
-            <TextInput
-              ref={inputRef}
-              placeholder="Hỏi em Nhi điều gì đó..."
-              placeholderTextColor={TOKENS.color.neutral[400]}
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={500}
-              style={styles.input}
-              textAlignVertical="center"
-            />
-            <Pressable
-              onPress={() => handleSend()}
-              disabled={!canSend}
-              style={[
-                styles.sendBtn,
-                canSend ? styles.sendBtnActive : styles.sendBtnIdle,
-              ]}
-            >
-              {isSending ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <MaterialIcons
-                  name="arrow-upward"
-                  size={20}
-                  color={canSend ? "#FFFFFF" : TOKENS.color.neutral[400]}
-                />
-              )}
-            </Pressable>
-          </View>
+        <View style={styles.composerCard}>
+          <TextInput
+            ref={inputRef}
+            placeholder="Hỏi em Nhi điều gì đó..."
+            placeholderTextColor={TOKENS.color.neutral[400]}
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            maxLength={500}
+            style={styles.input}
+            textAlignVertical="center"
+          />
+          <Pressable
+            onPress={() => handleSend()}
+            disabled={!canSend}
+            style={[
+              styles.sendBtn,
+              canSend ? styles.sendBtnActive : styles.sendBtnIdle,
+            ]}
+          >
+            {isSending ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <MaterialIcons
+                name="arrow-upward"
+                size={20}
+                color={canSend ? "#FFFFFF" : TOKENS.color.neutral[400]}
+              />
+            )}
+          </Pressable>
         </View>
-      </KeyboardStickyView>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -293,57 +352,65 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   avatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: "rgba(255,255,255,0.85)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(191,219,254,0.5)",
-    ...TOKENS.shadow.md,
-    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: "rgba(59, 130, 246, 0.15)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+    marginBottom: 18,
   },
   emptyTitle: {
-    fontSize: 26,
-    lineHeight: 32,
+    fontSize: 24,
+    lineHeight: 30,
     fontFamily: TOKENS.font.heading,
     color: TOKENS.color.neutral[900],
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   emptySubtitle: {
-    fontSize: 15,
-    lineHeight: 23,
+    fontSize: 14,
+    lineHeight: 21,
     fontFamily: TOKENS.font.body,
     color: TOKENS.color.neutral[600],
     textAlign: "center",
-    maxWidth: 300,
-    marginBottom: 28,
+    maxWidth: 290,
+    marginBottom: 24,
   },
   suggestionsGrid: {
     width: "100%",
-    gap: 10,
+    gap: 8,
   },
   suggestionChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 15,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.92)",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.75)",
     borderWidth: 1,
-    borderColor: "rgba(191,219,254,0.5)",
-    ...TOKENS.shadow.sm,
+    borderColor: "rgba(226, 232, 240, 0.8)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
   },
   suggestionChipPressed: {
     backgroundColor: "rgba(59,130,246,0.06)",
-    borderColor: "rgba(59,130,246,0.3)",
+    borderColor: "rgba(59,130,246,0.25)",
   },
   suggestionText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: TOKENS.font.medium,
     color: TOKENS.color.neutral[700],
   },
@@ -414,34 +481,42 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 6,
     paddingVertical: 6,
-    borderRadius: 28,
+    borderRadius: 24,
     backgroundColor: "rgba(255,255,255,0.96)",
     borderWidth: 1,
-    borderColor: "rgba(191,219,254,0.5)",
-    ...TOKENS.shadow.lg,
+    borderColor: "rgba(226, 232, 240, 0.8)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   input: {
     flex: 1,
-    minHeight: 44,
-    maxHeight: 120,
-    paddingHorizontal: 18,
-    paddingTop: Platform.OS === "ios" ? 12 : 10,
-    paddingBottom: Platform.OS === "ios" ? 12 : 10,
-    fontSize: 15,
-    lineHeight: 21,
+    minHeight: 40,
+    maxHeight: 100,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === "ios" ? 10 : 8,
+    paddingBottom: Platform.OS === "ios" ? 10 : 8,
+    fontSize: 14,
+    lineHeight: 20,
     fontFamily: TOKENS.font.body,
     color: TOKENS.color.neutral[900],
   },
   sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
   },
   sendBtnActive: {
     backgroundColor: ACCENT,
-    ...TOKENS.shadow.accent,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   sendBtnIdle: {
     backgroundColor: TOKENS.color.neutral[200],

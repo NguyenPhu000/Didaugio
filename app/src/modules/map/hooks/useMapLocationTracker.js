@@ -76,6 +76,13 @@ export function useMapLocationTracker({ watchEnabled = false } = {}) {
               ? headingData.trueHeading
               : headingData.magHeading;
           if (!Number.isFinite(raw)) return;
+
+          // Filter minor sensor fluctuations to prevent excessive re-renders (at least 2 degrees change)
+          const prev = headingRef.current;
+          if (prev !== null && Math.abs(raw - prev) < 2) {
+            return;
+          }
+
           headingRef.current = raw;
           setHeading(raw);
           if (currentLocationRef.current) {
@@ -83,10 +90,10 @@ export function useMapLocationTracker({ watchEnabled = false } = {}) {
             currentLocationRef.current = updated;
             currentLocationSharedValue.value = updated;
           }
-          setCurrentLocation((prev) => {
-            if (!prev) return prev;
-            if (prev.heading === raw) return prev;
-            return { ...prev, heading: raw };
+          setCurrentLocation((prevLoc) => {
+            if (!prevLoc) return prevLoc;
+            if (prevLoc.heading === raw) return prevLoc;
+            return { ...prevLoc, heading: raw };
           });
         });
       } catch {

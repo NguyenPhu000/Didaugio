@@ -138,7 +138,7 @@ export function useRouteBuilderController({
       lng: currentLocation.longitude,
       name: MAP_TEXT.common.currentLocationName,
     };
-  }, [currentLocation]);
+  }, [currentLocation?.latitude, currentLocation?.longitude]);
 
   const routeBuilderCanStartFromCurrentLocation = Boolean(
     routeOriginFromCurrentLocation,
@@ -268,7 +268,7 @@ export function useRouteBuilderController({
       routeBuilderActiveTarget.lat,
       routeBuilderActiveTarget.lng,
     );
-  }, [currentLocation, routeBuilderActiveTarget]);
+  }, [currentLocation?.latitude, currentLocation?.longitude, routeBuilderActiveTarget]);
 
   const routeBuilderDistanceToActiveTargetLabel = useMemo(
     () => formatRouteDistance(routeBuilderDistanceToActiveTarget),
@@ -424,7 +424,7 @@ export function useRouteBuilderController({
       lng: currentLocation.longitude,
       name: MAP_TEXT.common.currentLocationName,
     };
-  }, [currentLocation, routeBuilderEnabled, routeBuilderRecoveryMode]);
+  }, [currentLocation?.latitude, currentLocation?.longitude, routeBuilderEnabled, routeBuilderRecoveryMode]);
 
   const routeBuilderRecoveryDestination = useMemo(() => {
     if (

@@ -27,6 +27,11 @@ const PLACE_SUGGESTION_INTENTS = new Set([
 function extractAssistantReply(response) {
   // Prefer deeply nested payload first so raw axios responses don't return
   // top-level metadata messages like "Thành công".
+  const nestedReply = response?.data?.data?.reply;
+  if (typeof nestedReply === "string" && nestedReply.trim()) {
+    return nestedReply.trim();
+  }
+
   const nestedMessage = response?.data?.data?.message;
   if (typeof nestedMessage === "string" && nestedMessage.trim()) {
     return nestedMessage.trim();
@@ -113,13 +118,6 @@ export function useAIAssistant() {
       const { intent } = route(text);
       const payload = buildApiPayload(conversationMemory, text);
 
-      const placeSuggestionPromise = shouldFetchSuggestedPlaces(intent)
-        ? generateTripPreviewApi({
-            ...inferPlannerPreferences(text),
-            notes: text,
-          }).catch(() => null)
-        : Promise.resolve(null);
-
       addMessage({ role: "user", content: text });
 
       if (abortControllerRef.current) {
@@ -143,9 +141,8 @@ export function useAIAssistant() {
           extractAssistantReply(response) ||
           "Mình chưa nhận được nội dung phản hồi, bạn thử lại giúp mình nhé.";
 
-        const placeSuggestionResponse = await placeSuggestionPromise;
         const suggestedPlaces = normalizeSuggestedPlaces(
-          placeSuggestionResponse?.data?.suggestedPlaces,
+          response?.data?.data?.relatedPlaces,
         );
 
         addMessage({

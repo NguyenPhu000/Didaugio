@@ -408,7 +408,7 @@ export default function MapScreen() {
       lng: currentLocation.longitude,
       name: MAP_TEXT.common.currentLocationName,
     };
-  }, [currentLocation]);
+  }, [currentLocation?.latitude, currentLocation?.longitude]);
 
   const routeDestinationFromSelectedPlace = useMemo(() => {
     if (

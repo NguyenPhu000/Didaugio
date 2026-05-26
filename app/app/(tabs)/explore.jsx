@@ -116,17 +116,8 @@ export default function ExploreScreen() {
 
   const culinaryPlaces = useMemo(() => {
     const matched = allPlaces.filter((place) => {
-      const content = normalizeText(
-        [
-          place?.category?.name,
-          place?.name,
-          place?.shortDescription,
-          place?.description,
-        ]
-          .filter(Boolean)
-          .join(" "),
-      );
-
+      const textToCheck = `${place?.category?.name || ""} ${place?.name || ""} ${place?.shortDescription || ""}`;
+      const content = normalizeText(textToCheck);
       return FOOD_HINTS.some((keyword) => content.includes(keyword));
     });
 
@@ -185,17 +176,14 @@ export default function ExploreScreen() {
 
   /* — Section stagger entrance — */
   const sectionOpacity = useSharedValue(0);
-  const contentKey = useRef(0);
 
   useEffect(() => {
     if (!isLoading) {
-      contentKey.current += 1;
-      sectionOpacity.value = withTiming(0, { duration: 0 }, () => {
-        sectionOpacity.value = withDelay(
-          100,
-          withTiming(1, { duration: 320 }),
-        );
-      });
+      sectionOpacity.value = 0;
+      sectionOpacity.value = withDelay(
+        100,
+        withTiming(1, { duration: 320 }),
+      );
     }
   }, [selectedCategory, isLoading, sectionOpacity]);
 
@@ -289,7 +277,6 @@ export default function ExploreScreen() {
 
           {/* Crossfade wrapper for content sections */}
           <Animated.View
-            key={contentKey.current}
             style={sectionFadeStyle}
           >
             {/* Quick Actions */}

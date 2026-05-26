@@ -2,6 +2,8 @@
  * geminiService.js — Google Gemini integration for AI trip planning.
  * Uses @google/generative-ai SDK.
  */
+import crypto from "crypto";
+import prisma from "../../config/prismaClient.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
 import { ERROR_CODES } from "../../config/messages.js";
@@ -201,14 +203,11 @@ export function generateFallbackItinerary(preferences = {}, places = []) {
 function buildItineraryPrompt(preferences, places) {
   const { totalDays, travelStyle, groupSize, budget, notes } = preferences;
 
-  const placeList = places
-    .slice(0, 40)
-    .map(
-      (p) =>
-        `- ID:${p.id} | ${p.name} | Danh mục: ${p.category?.name || "?"} | ` +
-        `Địa chỉ: ${p.address || p.ward?.name || "?"} | Rating: ${p.ratingAvg || 0}`,
-    )
-    .join("\n");
+  const minifiedPlaces = places.slice(0, 45).map((p) => ({
+    i: p.id,
+    n: p.name,
+    c: p.category?.name || "Khác",
+  }));
 
   return `Bạn là trợ lý du lịch thông minh cho Cần Thơ, Việt Nam.
 Hãy tạo lịch trình du lịch Cần Thơ chi tiết dựa theo các thông tin sau:
@@ -220,36 +219,13 @@ Hãy tạo lịch trình du lịch Cần Thơ chi tiết dựa theo các thông 
 - Ngân sách ước tính: ${budget ? budget + " VNĐ/người" : "Không giới hạn"}
 ${notes ? `- Ghi chú: ${notes}` : ""}
 
-**Danh sách địa điểm có thể chọn:**
-${placeList}
+**Danh sách địa điểm DUY NHẤT được phép chọn (JSON rút gọn: i = ID, n = Tên, c = Danh mục):**
+${JSON.stringify(minifiedPlaces)}
 
-**Yêu cầu output JSON (KHÔNG bao gồm markdown code block, chỉ JSON thuần):**
-{
-  "title": "Tên lịch trình",
-  "description": "Mô tả ngắn về chuyến đi",
-  "totalDays": <số ngày>,
-  "estimatedCost": <tổng chi phí ước tính bằng VNĐ>,
-  "days": [
-    {
-      "dayNumber": 1,
-      "theme": "Chủ đề ngày 1",
-      "destinations": [
-        {
-          "placeId": <id từ danh sách>,
-          "order": 1,
-          "startTime": "08:00",
-          "endTime": "10:00",
-          "durationMinutes": 120,
-          "note": "Gợi ý trải nghiệm tại đây",
-          "transportToNext": "xe máy",
-          "estimatedCost": <chi phí VNĐ>
-        }
-      ]
-    }
-  ]
-}
-
-Chỉ dùng địa điểm có trong danh sách trên (dùng đúng ID). Trả về JSON hợp lệ, không giải thích thêm.`;
+**YÊU CẦU NGHIÊM NGẶT:**
+1. Bạn CHỈ ĐƯỢC CHỌN các địa điểm có trong danh sách trên. Tuyệt đối KHÔNG tự ý bịa tên hoặc dùng địa điểm ngoài danh sách này.
+2. Dùng đúng ID ("i") của địa điểm cho trường "placeId" của đầu ra.
+3. Trả về JSON hợp lệ, không giải thích thêm.`;
 }
 
 /**
@@ -261,6 +237,29 @@ Chỉ dùng địa điểm có trong danh sách trên (dùng đúng ID). Trả v
 export async function generateItinerary(preferences, places) {
   const jsonSchema = zodToJsonSchema(ItinerarySchema, { target: "openApi3" });
   const model = geminiStructuredModel(jsonSchema);
+
+  // Caching nâng cao
+  const placeIds = places.map((p) => p.id).sort((a, b) => a - b).join(",");
+  const filterHash = crypto
+    .createHash("sha256")
+    .update(JSON.stringify({ ...preferences, placeIds }))
+    .digest("hex");
+
+  try {
+    const cached = await prisma.cachedItinerary.findUnique({
+      where: { filterHash },
+    });
+    if (cached) {
+      return {
+        parsed: cached.itineraryData,
+        raw: JSON.stringify(cached.itineraryData),
+        tokensUsed: 0,
+        responseTimeMs: 0,
+      };
+    }
+  } catch (err) {
+    // Bỏ qua lỗi đọc cache và gọi trực tiếp Gemini
+  }
 
   const prompt = buildItineraryPrompt(preferences, places);
   const start = Date.now();
@@ -290,6 +289,17 @@ export async function generateItinerary(preferences, places) {
       502,
       ERROR_CODES.VALIDATION_ERROR,
     );
+  }
+
+  // Lưu cache (upsert tránh race khi nhiều request cùng filterHash)
+  try {
+    await prisma.cachedItinerary.upsert({
+      where: { filterHash },
+      create: { filterHash, itineraryData: parsed },
+      update: { itineraryData: parsed },
+    });
+  } catch {
+    // Bỏ qua lỗi ghi cache — vẫn trả kết quả Gemini cho client
   }
 
   return { parsed, raw: rawText, tokensUsed, responseTimeMs };

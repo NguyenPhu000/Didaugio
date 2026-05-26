@@ -40,6 +40,15 @@ export const API_BASE_URL = __DEV__
   : PROD_ENV_API_URL || DEV_ENV_API_URL;
 export const REQUEST_TIMEOUT = 15000;
 
+/** Gemini + routing có thể > 15s; override qua EXPO_PUBLIC_AI_REQUEST_TIMEOUT (ms) */
+const parsedAiTimeout = Number(
+  process.env.EXPO_PUBLIC_AI_REQUEST_TIMEOUT?.trim(),
+);
+export const AI_REQUEST_TIMEOUT =
+  Number.isFinite(parsedAiTimeout) && parsedAiTimeout > REQUEST_TIMEOUT
+    ? parsedAiTimeout
+    : 120000;
+
 const buildApiCandidates = () => {
   const runtimeHost = getRuntimeHost();
   const runtimeUrl =

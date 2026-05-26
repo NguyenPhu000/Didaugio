@@ -16,6 +16,7 @@ export function AIBubble({
   isTyping = false,
   style,
   places = [],
+  onAddToTrip,
 }) {
   const isUser = role === "user";
   const router = useRouter();
@@ -110,6 +111,8 @@ export function AIBubble({
                 compact={isCompactCard}
                 onClose={() => handleDismissPlaceCard(placeId)}
                 onViewDetail={handleOpenPlace}
+                showAddToTripAction={typeof onAddToTrip === "function"}
+                onAddToTrip={onAddToTrip}
               />
             );
           })}

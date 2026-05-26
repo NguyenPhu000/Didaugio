@@ -23,7 +23,7 @@ function normalizePlaceIds(ids, fallbackPlaces = []) {
 function buildTripSummaryMessage(trip) {
   const destCount = trip.destinations?.length || 0;
   return (
-    `✨ Lịch trình **${trip.title}** đã sẵn sàng!\n` +
+    `Lịch trình **${trip.title}** đã sẵn sàng!\n` +
     `${trip.description || ""}\n\n` +
     `• ${trip.totalDays} ngày | ${destCount} địa điểm` +
     (trip.estimatedCost
@@ -38,13 +38,28 @@ function buildPreviewMessage(payload, selectedCount) {
   const estimatedCost = payload?.itinerary?.estimatedCost;
 
   return (
-    `🧭 Em Nhi đã lên khung lịch trình ${totalDays} ngày và gợi ý ${suggestedCount} địa điểm.\n` +
+    `Em Nhi đã lên khung lịch trình ${totalDays} ngày và gợi ý ${suggestedCount} địa điểm.\n` +
     `Bạn chọn địa điểm phía dưới rồi bấm **Chốt & tạo chuyến đi**.` +
     (selectedCount > 0 ? `\n\nĐang chọn: ${selectedCount} địa điểm.` : "") +
     (estimatedCost
       ? `\nChi phí ước tính: ~${Number(estimatedCost).toLocaleString("vi-VN")} đ.`
       : "")
   );
+}
+
+function inferPlannerPreferences(text = "") {
+  const dayMatch = text.match(/(\d{1,2})\s*(ngày|day)/i);
+  const groupMatch = text.match(/(\d{1,2})\s*(người|person|people)/i);
+
+  const totalDays = Number(dayMatch?.[1]);
+  const groupSize = Number(groupMatch?.[1]);
+
+  return {
+    totalDays:
+      Number.isFinite(totalDays) && totalDays > 0 ? Math.min(totalDays, 14) : undefined,
+    groupSize:
+      Number.isFinite(groupSize) && groupSize > 0 ? Math.min(groupSize, 12) : undefined,
+  };
 }
 
 export function useAIPlanner() {
@@ -113,7 +128,7 @@ export function useAIPlanner() {
       const errorMsg = {
         id: Date.now().toString(),
         role: "assistant",
-        text: `❌ ${errorMessage}`,
+        text: errorMessage,
         createdAt: new Date(),
         isError: true,
       };
@@ -146,7 +161,7 @@ export function useAIPlanner() {
       const errorMsg = {
         id: Date.now().toString(),
         role: "assistant",
-        text: `❌ ${errorMessage}`,
+        text: errorMessage,
         createdAt: new Date(),
         isError: true,
       };
@@ -166,10 +181,11 @@ export function useAIPlanner() {
       };
       appendMessage(userMsg);
 
+      const inferred = inferPlannerPreferences(userText);
       const payload = {
-        totalDays: preferences.totalDays || 1,
+        totalDays: preferences.totalDays || inferred.totalDays || 1,
         travelStyle: preferences.travelStyle,
-        groupSize: preferences.groupSize || 1,
+        groupSize: preferences.groupSize || inferred.groupSize || 1,
         budget: preferences.budget,
         notes: userText,
       };

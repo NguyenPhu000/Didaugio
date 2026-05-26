@@ -1107,3 +1107,13 @@ enum BookingAction {
   auto_approve_failed
   auto_expire
 }
+
+model CachedItinerary {
+  id            Int      @id @default(autoincrement())
+  filterHash    String   @unique @map("filter_hash")
+  itineraryData Json     @map("itinerary_data")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("cached_itineraries")
+}

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -12,7 +13,7 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -33,8 +34,6 @@ import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../src/constants/
 import { HeroSection } from "../../src/modules/trips/components/create-trip/HeroSection";
 import { SavedPlacesGrid } from "../../src/modules/trips/components/create-trip/SavedPlacesGrid";
 import s, { T } from "../../src/modules/trips/utils/tripDetailTokens";
-
-const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 function calcTotalDays(start, end) {
   if (!start || !end) return null;
@@ -72,6 +71,7 @@ function DurationBadge({ days }) {
 
 export default function CreateTripScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const createMutation = useCreateTrip();
@@ -88,6 +88,7 @@ export default function CreateTripScreen() {
   const [destinationError, setDestinationError] = useState(null);
 
   const ctaScale = useSharedValue(1);
+  const hasSavedRef = useRef(false);
 
   useEffect(() => {
     const computed = calcTotalDays(startDate, endDate);
@@ -123,17 +124,58 @@ export default function CreateTripScreen() {
     setDestinationError(null);
   }, []);
 
+  const isFormDirty =
+    title.trim().length > 0 ||
+    description.trim().length > 0 ||
+    startDate !== null ||
+    endDate !== null ||
+    selectedSavedPlaceIds.length > 0;
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      if (hasSavedRef.current || !isFormDirty) {
+        return;
+      }
+
+      e.preventDefault();
+
+      Alert.alert(
+        "Hủy tạo chuyến đi",
+        "Bạn có chắc chắn muốn thoát? Các thông tin đã nhập sẽ không được lưu.",
+        [
+          {
+            text: "Tiếp tục chỉnh sửa",
+            style: "cancel",
+            onPress: () => {},
+          },
+          {
+            text: "Hủy bỏ",
+            style: "destructive",
+            onPress: () => {
+              hasSavedRef.current = true;
+              navigation.dispatch(e.data.action);
+            },
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, isFormDirty]);
+
   const handleCreate = useCallback(async () => {
     if (!canSubmit) return;
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setDestinationError(null);
+      hasSavedRef.current = true;
       const result = await createMutation.mutateAsync({
         title: title.trim(),
         description: description.trim() || undefined,
         startDate: startDate ? toYmdString(startDate) : undefined,
         endDate: endDate ? toYmdString(endDate) : undefined,
         totalDays: totalDays ?? 1,
+        status: "planned",
       });
       const newId = result?.data?.id;
       if (newId) {
@@ -163,6 +205,7 @@ export default function CreateTripScreen() {
         router.back();
       }
     } catch (error) {
+      hasSavedRef.current = false;
       setDestinationError(
         error?.message || "Có lỗi xảy ra, vui lòng thử lại.",
       );
@@ -335,36 +378,37 @@ export default function CreateTripScreen() {
 
       {/* ── Bottom Bar ── */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 10 }]}>
-        <AnimatedTouchable
-          activeOpacity={0.8}
-          onPress={handleCreate}
-          onPressIn={handleCtaPressIn}
-          onPressOut={handleCtaPressOut}
-          disabled={!canSubmit}
-          style={[
-            styles.createBtn,
-            !canSubmit && styles.createBtnDisabled,
-            ctaAnimatedStyle,
-          ]}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color="#FFF" />
-          ) : (
-            <View style={styles.createBtnContent}>
-              <MaterialIcons name="add-circle-outline" size={20} color="#FFF" />
-              <Text
-                style={[
-                  styles.createBtnText,
-                  !canSubmit && styles.createBtnTextDisabled,
-                ]}
-              >
-                {isAddingDestinations
-                  ? "Đang thêm địa điểm..."
-                  : "Tạo chuyến đi"}
-              </Text>
-            </View>
-          )}
-        </AnimatedTouchable>
+        <Animated.View style={[ctaAnimatedStyle, { flex: 1 }]}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleCreate}
+            onPressIn={handleCtaPressIn}
+            onPressOut={handleCtaPressOut}
+            disabled={!canSubmit}
+            style={[
+              styles.createBtn,
+              !canSubmit && styles.createBtnDisabled,
+            ]}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <View style={styles.createBtnContent}>
+                <MaterialIcons name="add-circle-outline" size={20} color="#FFF" />
+                <Text
+                  style={[
+                    styles.createBtnText,
+                    !canSubmit && styles.createBtnTextDisabled,
+                  ]}
+                >
+                  {isAddingDestinations
+                    ? "Đang thêm địa điểm..."
+                    : "Tạo chuyến đi"}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     </KeyboardAvoidingView>
   );
