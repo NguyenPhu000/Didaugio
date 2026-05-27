@@ -9,6 +9,7 @@
  */
 import { StyleSheet } from "react-native";
 import { TOKENS, BOOKING_APPLE_THEME } from "../../../constants/design-tokens";
+export { TOKENS } from "../../../constants/design-tokens";
 
 /* ── Color tokens ── */
 export const T = {
@@ -28,51 +29,11 @@ export const T = {
   neonGlow: "rgba(0,0,0,0.03)",
 };
 
-/* ── Booking status visual map ── */
-export const BOOKING_STATUS_META = {
-  pending: { label: "Chờ xác nhận", color: T.ink, bg: "#F5F5F7" },
-  confirmed: { label: "Đã xác nhận", color: T.onPrimary, bg: T.ink },
-  completed: { label: "Hoàn thành", color: T.ink, bg: "#EFEFEF" },
-  cancelled: { label: "Đã hủy", color: T.muted48, bg: "#F5F5F7" },
-  rejected: { label: "Bị từ chối", color: "#8A4B12", bg: "#FFF5EB" },
-  // "expired" tránh dùng từ "Hết hạn" trong context trip vì gây hiểu nhầm
-  // với cơ chế check-in theo bán kính. Dùng nhãn neutral hơn.
-  expired: { label: "Đã đóng phiếu", color: T.muted48, bg: "#F5F5F7" },
-  no_show: { label: "Không đến", color: T.muted48, bg: "#F5F5F7" },
-};
-
-/**
- * Trong context trip, ẩn các badge của booking nếu trạng thái không cần thiết
- * (ví dụ booking expired/cancelled khi user đã đến địa điểm rồi).
- *
- * Hiện tại logic radius-based check-in chưa có ở client (chưa có flag visited
- * trên destination). Khi có, truyền `destState` để ẩn badge khi cần.
- */
-export function shouldShowBookingBadge(status, destState) {
-  const normalized = String(status || "").toLowerCase();
-  if (!normalized) return false;
-
-  // Khi destination đã được đánh dấu visited/ongoing theo bán kính,
-  // ẩn các badge time-based để tránh xung đột nhận thức.
-  if (destState === "visited" || destState === "ongoing") {
-    if (normalized === "expired" || normalized === "no_show") {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-export function getBookingStatusMeta(status) {
-  const normalized = String(status || "").toLowerCase();
-  return (
-    BOOKING_STATUS_META[normalized] || {
-      label: normalized || "Không rõ",
-      color: T.ink,
-      bg: "#F5F5F7",
-    }
-  );
-}
+export {
+  BOOKING_STATUS_META,
+  shouldShowBookingBadge,
+  getBookingStatusMeta,
+} from "./tripTheme";
 
 /* ── Shared StyleSheet ── */
 const s = StyleSheet.create({

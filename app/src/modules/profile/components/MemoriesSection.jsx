@@ -131,12 +131,18 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: TOKENS.font.semibold,
     color: "#fff",
+    textShadowColor: "rgba(0, 0, 0, 0.55)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   memoryDate: {
     fontSize: 13,
     color: "#fff",
     fontFamily: TOKENS.font.medium,
     marginTop: 2,
+    textShadowColor: "rgba(0, 0, 0, 0.55)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   memoriesRightColumn: { flex: 1, justifyContent: "flex-start" },
 

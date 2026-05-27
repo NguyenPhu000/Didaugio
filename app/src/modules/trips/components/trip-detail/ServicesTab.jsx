@@ -22,7 +22,7 @@ export const ServicesTab = memo(function ServicesTab({
     );
   }
 
-  if (groupedBookings.length === 0) {
+  if (!groupedBookings || groupedBookings.length === 0) {
     return (
       <View style={s.centeredState}>
         <View style={styles.emptyIcon}>

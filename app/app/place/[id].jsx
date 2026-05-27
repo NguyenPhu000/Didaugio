@@ -10,16 +10,21 @@ import {
   StyleSheet,
   Text,
   View,
+  Platform,
+  Modal,
+  TextInput,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { MaterialIcons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import BottomSheet, {
   BottomSheetScrollView,
   BottomSheetTextInput,
   BottomSheetView,
+  BottomSheetFlatList,
 } from "@gorhom/bottom-sheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
@@ -38,7 +43,7 @@ import { useTrips } from "../../src/modules/trips/hooks/useTrips";
 import { addDestinationApi } from "../../src/modules/trips/api/tripsApi";
 import { QUERY_KEYS } from "../../src/constants/query-keys";
 import { GLASS_THEME, TOKENS } from "../../src/constants/design-tokens";
-import { resolveMediaUrl } from "../../src/lib/media-url";
+import { resolveMediaUrl, getCategoryPlaceholder } from "../../src/lib/media-url";
 import { useI18n } from "../../src/hooks/useI18n";
 import {
   formatPriceLine,
@@ -508,7 +513,7 @@ function DetailRow({ icon, label, value, onPress, highlight = false }) {
         <Text style={styles.detailLabel}>{label}</Text>
         <Text
           style={[styles.detailValue, highlight && styles.detailValueHighlight]}
-          numberOfLines={2}
+          numberOfLines={3}
         >
           {value}
         </Text>
@@ -530,7 +535,101 @@ function DetailRow({ icon, label, value, onPress, highlight = false }) {
   return content;
 }
 
-function TripSelectorSheet({ placeId, placeName, onClose, t }) {
+function parseTimeToDate(str) {
+  if (!str) return null;
+  const [h, m] = str.split(":").map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+function formatHHMM(date) {
+  const h = String(date.getHours()).padStart(2, "0");
+  const m = String(date.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+function TimeField({ label, value, onChange, placeholder, icon }) {
+  const [show, setShow] = useState(false);
+  const dateValue = parseTimeToDate(value) || new Date();
+
+  const handleChange = useCallback(
+    (_event, selectedDate) => {
+      if (Platform.OS === "android") {
+        setShow(false);
+      }
+      if (selectedDate) {
+        onChange(formatHHMM(selectedDate));
+      }
+    },
+    [onChange],
+  );
+
+  return (
+    <View style={styles.tripFormCol}>
+      <Text style={styles.tripFormLabel}>{label}</Text>
+      <Pressable
+        style={({ pressed }) => [
+          styles.tripFormInput,
+          { flexDirection: "row", alignItems: "center", gap: 6 },
+          pressed && { backgroundColor: "rgba(0,0,0,0.06)" },
+        ]}
+        onPress={() => setShow(true)}
+      >
+        <MaterialIcons
+          name={icon || "schedule"}
+          size={14}
+          color={PALETTE.textSoft}
+        />
+        <Text style={[{ color: PALETTE.text, fontFamily: TOKENS.font.body, fontSize: 14 }, !value && { color: "rgba(15, 23, 42, 0.38)" }]}>
+          {value || placeholder}
+        </Text>
+      </Pressable>
+
+      {Platform.OS === "ios" ? (
+        <Modal
+          visible={show}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShow(false)}
+        >
+          <Pressable style={styles.tripFormPickerOverlay} onPress={() => setShow(false)}>
+            <View style={styles.tripFormPickerSheet} onStartShouldSetResponder={() => true}>
+              <View style={styles.tripFormPickerHeader}>
+                <Text style={styles.tripFormPickerTitle}>{label}</Text>
+                <Pressable onPress={() => setShow(false)}>
+                  <Text style={styles.tripFormPickerDone}>Xong</Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={dateValue}
+                mode="time"
+                is24Hour
+                display="spinner"
+                onChange={handleChange}
+                locale="vi-VN"
+                themeVariant="light"
+              />
+            </View>
+          </Pressable>
+        </Modal>
+      ) : (
+        show && (
+          <DateTimePicker
+            value={dateValue}
+            mode="time"
+            is24Hour
+            display="default"
+            onChange={handleChange}
+          />
+        )
+      )}
+    </View>
+  );
+}
+
+function TripSelectorSheet({ placeId, placeName, onClose, onStepChange, t }) {
   const router = useRouter();
   const { data: tripsRaw, isLoading } = useTrips();
   const trips = Array.isArray(tripsRaw)
@@ -539,47 +638,93 @@ function TripSelectorSheet({ placeId, placeName, onClose, t }) {
       ? tripsRaw.data
       : [];
   const queryClient = useQueryClient();
-  const [loadingTripId, setLoadingTripId] = useState(null);
 
-  const handleSelect = useCallback(
-    async (tripId) => {
-      setLoadingTripId(tripId);
-      try {
-        const parsedPlaceId = parseInt(placeId, 10);
-        if (!Number.isFinite(parsedPlaceId) || parsedPlaceId <= 0) {
-          throw new Error(
-            t(
-              "Không xác định được địa điểm để thêm vào chuyến đi.",
-              "Could not resolve this place for the trip.",
-            ),
-          );
-        }
+  const [step, setStep] = useState(1); // 1: list trips, 2: config form
+  const [selectedTrip, setSelectedTrip] = useState(null);
 
-        await addDestinationApi(tripId, {
-          placeId: parsedPlaceId,
-          dayNumber: 1,
-          order: 0,
-        });
-        queryClient.invalidateQueries({
-          queryKey: QUERY_KEYS.trips.detail(tripId),
-        });
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.list() });
-        onClose();
-      } catch {
-        // error handled by toast interceptor
-      } finally {
-        setLoadingTripId(null);
+  // Form states
+  const [dayNumber, setDayNumber] = useState(1);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [note, setNote] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleSelectTrip = useCallback((trip) => {
+    setSelectedTrip(trip);
+    setDayNumber(1);
+    setStartTime("");
+    setEndTime("");
+    setNote("");
+    setErrorMsg("");
+    setStep(2);
+    onStepChange?.(2);
+  }, [onStepChange]);
+
+  const handleAdd = useCallback(async () => {
+    if (!selectedTrip || isSubmitting) return;
+    setIsSubmitting(true);
+    setErrorMsg("");
+
+    try {
+      const parsedPlaceId = parseInt(placeId, 10);
+      if (!Number.isFinite(parsedPlaceId) || parsedPlaceId <= 0) {
+        throw new Error(
+          t(
+            "Không xác định được địa điểm để thêm vào chuyến đi.",
+            "Could not resolve this place for the trip.",
+          ),
+        );
       }
-    },
-    [onClose, placeId, queryClient, t],
-  );
+
+      await addDestinationApi(selectedTrip.id, {
+        placeId: parsedPlaceId,
+        dayNumber: Number(dayNumber),
+        startTime: startTime || null,
+        endTime: endTime || null,
+        note: note || null,
+        order: 0,
+      });
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.trips.detail(selectedTrip.id),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.trips.list(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.trips.all ? QUERY_KEYS.trips.all() : ["trips"],
+        }),
+      ]);
+
+      onClose();
+    } catch (err) {
+      setErrorMsg(err?.message || t("Có lỗi xảy ra khi thêm địa điểm.", "Error adding place."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [selectedTrip, dayNumber, startTime, endTime, note, placeId, queryClient, onClose, isSubmitting, t]);
 
   return (
     <View style={styles.tripSheet}>
+      {/* Header */}
       <View style={styles.tripSheetHeader}>
         <View style={{ flex: 1 }}>
+          {step === 2 && (
+            <Pressable
+              onPress={() => setStep(1)}
+              hitSlop={8}
+              style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 }}
+            >
+              <MaterialIcons name="arrow-back" size={16} color={PALETTE.primary} />
+              <Text style={{ color: PALETTE.primary, fontSize: 13, fontFamily: TOKENS.font.semibold }}>
+                {t("Quay lại", "Back")}
+              </Text>
+            </Pressable>
+          )}
           <Text style={styles.tripSheetTitle}>
-            {t("Thêm vào chuyến đi", "Add to trip")}
+            {step === 1 ? t("Thêm vào chuyến đi", "Add to trip") : t("Lên lịch trình", "Schedule destination")}
           </Text>
           {placeName ? (
             <Text style={styles.tripSheetSubtitle}>{placeName}</Text>
@@ -589,96 +734,221 @@ function TripSelectorSheet({ placeId, placeName, onClose, t }) {
           <MaterialIcons
             name="close"
             size={20}
-            color={GLASS_THEME.textSecondary}
+            color={PALETTE.textMuted}
           />
         </Pressable>
       </View>
 
-      {isLoading ? (
-        <ActivityIndicator
-          size="small"
-          color={GLASS_THEME.neon}
-          style={{ marginTop: 20 }}
-        />
-      ) : trips.length === 0 ? (
-        <View style={styles.emptyTripState}>
-          <Text style={styles.emptyTripText}>
-            {t("Bạn chưa có chuyến đi nào", "You have no trips yet")}
-          </Text>
-          <Pressable
-            onPress={() => {
-              onClose();
-              router.push("/trip/create");
-            }}
-            style={styles.createTripButton}
-          >
-            <Text style={styles.createTripButtonText}>
-              {t("Tạo chuyến đi mới", "Create new trip")}
-            </Text>
-          </Pressable>
-        </View>
-      ) : (
-        <>
-          <FlatList
-            data={trips}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={({ item }) => {
-              const isAdding = loadingTripId === item.id;
-              return (
-                <Pressable
-                  onPress={() => handleSelect(item.id)}
-                  disabled={loadingTripId !== null}
-                  style={styles.tripItem}
-                >
-                  <View style={styles.tripItemIcon}>
-                    <MaterialIcons
-                      name="luggage"
-                      size={18}
-                      color={GLASS_THEME.neon}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.tripItemTitle}>{item.title}</Text>
-                    <Text style={styles.tripItemMeta}>
-                      {t(
-                        `${item.destinations?.length || 0} điểm đến`,
-                        `${item.destinations?.length || 0} destinations`,
-                      )}
-                    </Text>
-                  </View>
-                  {isAdding ? (
-                    <ActivityIndicator size="small" color={GLASS_THEME.neon} />
-                  ) : (
-                    <MaterialIcons
-                      name="add-circle-outline"
-                      size={22}
-                      color={GLASS_THEME.neon}
-                    />
-                  )}
-                </Pressable>
-              );
-            }}
-            style={{ maxHeight: 320 }}
-            showsVerticalScrollIndicator={false}
+      {/* Content */}
+      {step === 1 ? (
+        isLoading ? (
+          <ActivityIndicator
+            size="small"
+            color={PALETTE.primary}
+            style={{ marginTop: 20 }}
           />
-
-          <Pressable
-            onPress={() => {
-              onClose();
-              router.push("/trip/create");
-            }}
-            style={styles.tripSecondaryButton}
-          >
-            <MaterialIcons
-              name="add"
-              size={18}
-              color={GLASS_THEME.neonAccent}
-            />
-            <Text style={styles.tripSecondaryButtonText}>
-              {t("Tạo chuyến đi mới", "Create new trip")}
+        ) : trips.length === 0 ? (
+          <View style={styles.emptyTripState}>
+            <Text style={styles.emptyTripText}>
+              {t("Bạn chưa có chuyến đi nào", "You have no trips yet")}
             </Text>
-          </Pressable>
-        </>
+            <Pressable
+              onPress={() => {
+                onClose();
+                router.push("/trip/create");
+              }}
+              style={styles.createTripButton}
+            >
+              <Text style={styles.createTripButtonText}>
+                {t("Tạo chuyến đi mới", "Create new trip")}
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            <BottomSheetFlatList
+              data={trips}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={({ item }) => {
+                return (
+                  <Pressable
+                    onPress={() => handleSelectTrip(item)}
+                    style={styles.tripItem}
+                  >
+                    <View style={styles.tripItemIcon}>
+                      <MaterialIcons
+                        name="luggage"
+                        size={18}
+                        color={PALETTE.primary}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.tripItemTitle}>{item.title}</Text>
+                      <Text style={styles.tripItemMeta}>
+                        {t(
+                          `${item.destinations?.length || 0} điểm đến`,
+                          `${item.destinations?.length || 0} destinations`,
+                        )}
+                      </Text>
+                    </View>
+                    <MaterialIcons
+                      name="chevron-right"
+                      size={22}
+                      color={PALETTE.primary}
+                    />
+                  </Pressable>
+                );
+              }}
+              style={{ maxHeight: 320 }}
+              showsVerticalScrollIndicator={false}
+            />
+
+            <Pressable
+              onPress={() => {
+                onClose();
+                router.push("/trip/create");
+              }}
+              style={styles.tripSecondaryButton}
+            >
+              <MaterialIcons
+                name="add"
+                size={18}
+                color={PALETTE.primary}
+              />
+              <Text style={styles.tripSecondaryButtonText}>
+                {t("Tạo chuyến đi mới", "Create new trip")}
+              </Text>
+            </Pressable>
+          </>
+        )
+      ) : (
+        /* STEP 2: CONFIGURE FORM */
+        <View style={{ flexDirection: "column" }}>
+          {/* Xác nhận chuyến đi */}
+          <View style={{ backgroundColor: "rgba(37,99,235,0.05)", padding: 12, borderRadius: 14, borderWidth: 1, borderColor: "rgba(37,99,235,0.1)", marginBottom: 12 }}>
+            <Text style={{ color: PALETTE.text, fontSize: 14, fontFamily: TOKENS.font.semibold }}>
+              {t("Xác nhận thêm vào chuyến đi:", "Confirm add to trip:")}
+            </Text>
+            <Text style={{ color: PALETTE.primary, fontSize: 15, fontFamily: TOKENS.font.heading, marginTop: 4 }}>
+              {selectedTrip?.title}
+            </Text>
+          </View>
+
+          {/* Chọn ngày */}
+          <View style={{ marginBottom: 12 }}>
+            <Text style={styles.tripFormLabel}>{t("Chọn ngày hoạt động", "Select day")}</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tripFormDayChips}
+            >
+              {Array.from({ length: selectedTrip?.totalDays || 1 }).map((_, idx) => {
+                const dayVal = idx + 1;
+                const isActive = dayNumber === dayVal;
+                return (
+                  <Pressable
+                    key={dayVal}
+                    style={[styles.tripFormDayChip, isActive && styles.tripFormDayChipActive]}
+                    onPress={() => setDayNumber(dayVal)}
+                  >
+                    <Text style={[styles.tripFormDayChipText, isActive && styles.tripFormDayChipTextActive]}>
+                      {t(`Ngày ${dayVal}`, `Day ${dayVal}`)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {/* Chọn giờ */}
+          <View style={styles.tripFormRow}>
+            <TimeField
+              label={t("Bắt đầu", "Start time")}
+              value={startTime}
+              onChange={setStartTime}
+              placeholder="--:--"
+              icon="play-circle-outline"
+            />
+            <TimeField
+              label={t("Kết thúc", "End time")}
+              value={endTime}
+              onChange={setEndTime}
+              placeholder="--:--"
+              icon="stop-circle"
+            />
+          </View>
+
+          {/* Ghi chú */}
+          <View style={{ marginTop: 12, marginBottom: 12 }}>
+            <Text style={styles.tripFormLabel}>{t("Ghi chú hành trình", "Trip note")}</Text>
+            <TextInput
+              style={[styles.tripFormInput, styles.tripFormTextArea]}
+              value={note}
+              onChangeText={setNote}
+              placeholder={t("Thêm ghi chú cho chặng đi...", "Add note for this step...")}
+              placeholderTextColor="rgba(15, 23, 42, 0.38)"
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+
+          {/* Lỗi nếu có */}
+          {errorMsg ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+              <MaterialIcons name="error-outline" size={16} color={TOKENS.color.error} />
+              <Text style={{ color: TOKENS.color.error, fontSize: 13, fontFamily: TOKENS.font.body }}>
+                {errorMsg}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Nút bấm */}
+          <View style={{ flexDirection: "row", gap: 12, marginTop: 16, paddingBottom: 16 }}>
+            <Pressable
+              onPress={handleAdd}
+              disabled={isSubmitting}
+              style={({ pressed }) => [
+                {
+                  flex: 1.5,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: "#2563EB",
+                  alignItems: "center",
+                  justifyContent: "center",
+                },
+                isSubmitting && { opacity: 0.6 },
+                pressed && !isSubmitting && { opacity: 0.8 },
+              ]}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={{ color: "#FFFFFF", fontSize: 14, fontFamily: TOKENS.font.semibold }}>
+                  {t("Lưu", "Save")}
+                </Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              onPress={onClose}
+              disabled={isSubmitting}
+              style={{
+                flex: 1,
+                height: 48,
+                borderRadius: 24,
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                backgroundColor: "transparent",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: "#475569", fontSize: 14, fontFamily: TOKENS.font.body }}>
+                {t("Hủy", "Cancel")}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
       )}
     </View>
   );
@@ -1091,6 +1361,7 @@ export default function PlaceDetailScreen() {
   const createReviewMutation = useCreateReview(resolvedPlaceId);
   const [activeImage, setActiveImage] = useState(0);
   const [isSavedLocal, setIsSavedLocal] = useState(false);
+  const [tripSheetKey, setTripSheetKey] = useState(0);
 
   useEffect(() => {
     setIsSavedLocal(Boolean(place?.isSaved));
@@ -1190,6 +1461,7 @@ export default function PlaceDetailScreen() {
       );
       return;
     }
+    setTripSheetKey((prev) => prev + 1);
     bottomSheetRef.current?.expand();
   }, [accessToken, place?.id, router, t]);
 
@@ -1288,7 +1560,7 @@ export default function PlaceDetailScreen() {
   const images = place?.images || [];
   const fallbackImage = resolveMediaUrl(
     place?.thumbnailUrl || place?.thumbnail,
-  );
+  ) || getCategoryPlaceholder(place?.category?.name);
   const currentImage = resolveMediaUrl(
     images[activeImage]?.secureUrl ||
       images[activeImage]?.thumbnailUrl ||
@@ -1431,7 +1703,7 @@ export default function PlaceDetailScreen() {
             {addressLine ? (
               <View style={styles.heroMetaRow}>
                 <MaterialIcons name="home-work" size={14} color="#FFFFFF" />
-                <Text style={styles.heroMetaText} numberOfLines={1}>
+                <Text style={styles.heroMetaText} numberOfLines={2}>
                   {addressLine}
                 </Text>
               </View>
@@ -1781,17 +2053,26 @@ export default function PlaceDetailScreen() {
         index={-1}
         snapPoints={["55%", "80%"]}
         enablePanDownToClose
+        onChange={(index) => {
+          if (index === -1) {
+            setTripSheetKey((prev) => prev + 1);
+          }
+        }}
         backgroundStyle={styles.sheetBackground}
         handleIndicatorStyle={styles.sheetIndicator}
       >
-        <BottomSheetView style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
           <TripSelectorSheet
+            key={tripSheetKey}
             placeId={resolvedPlaceId}
             placeName={place?.name}
             t={t}
             onClose={() => bottomSheetRef.current?.close()}
+            onStepChange={(step) => {
+              if (step === 2) bottomSheetRef.current?.snapToIndex(1);
+            }}
           />
-        </BottomSheetView>
+        </View>
       </BottomSheet>
     </View>
   );
@@ -2732,13 +3013,13 @@ const styles = StyleSheet.create({
     fontFamily: TOKENS.font.semibold,
   },
   sheetBackground: {
-    backgroundColor: "#0D1117",
+    backgroundColor: PALETTE.surface,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderWidth: 1,
-    borderColor: GLASS_THEME.glassBorder,
+    borderColor: PALETTE.border,
   },
-  sheetIndicator: { backgroundColor: "rgba(255,255,255,0.3)", width: 36 },
+  sheetIndicator: { backgroundColor: "rgba(0, 0, 0, 0.18)", width: 36 },
   tripSheet: { flex: 1, paddingHorizontal: 20, paddingTop: 8 },
   tripSheetHeader: {
     flexDirection: "row",
@@ -2748,12 +3029,12 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   tripSheetTitle: {
-    color: "#FFFFFF",
+    color: PALETTE.text,
     fontSize: 18,
     fontFamily: TOKENS.font.heading,
   },
   tripSheetSubtitle: {
-    color: GLASS_THEME.textSecondary,
+    color: PALETTE.textMuted,
     fontSize: 13,
     marginTop: 4,
     fontFamily: TOKENS.font.body,
@@ -2764,22 +3045,22 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(0,0,0,0.05)",
   },
   emptyTripState: { alignItems: "center", paddingVertical: 28, gap: 12 },
   emptyTripText: {
-    color: GLASS_THEME.textSecondary,
+    color: PALETTE.textMuted,
     textAlign: "center",
     fontFamily: TOKENS.font.body,
   },
   createTripButton: {
-    backgroundColor: GLASS_THEME.neon,
+    backgroundColor: PALETTE.primary,
     borderRadius: 18,
     paddingHorizontal: 20,
     paddingVertical: 10,
   },
   createTripButtonText: {
-    color: "#03131A",
+    color: "#FFFFFF",
     fontSize: 13,
     fontFamily: TOKENS.font.heading,
   },
@@ -2789,9 +3070,9 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 14,
     borderRadius: 18,
-    backgroundColor: GLASS_THEME.glass,
+    backgroundColor: PALETTE.surfaceAlt,
     borderWidth: 1,
-    borderColor: GLASS_THEME.glassBorder,
+    borderColor: PALETTE.borderSoft,
     marginBottom: 10,
   },
   tripItemIcon: {
@@ -2800,15 +3081,15 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,240,255,0.08)",
+    backgroundColor: "rgba(37, 99, 235, 0.08)",
   },
   tripItemTitle: {
-    color: "#FFFFFF",
+    color: PALETTE.text,
     fontSize: 14,
     fontFamily: TOKENS.font.semibold,
   },
   tripItemMeta: {
-    color: GLASS_THEME.textSecondary,
+    color: PALETTE.textMuted,
     fontSize: 12,
     marginTop: 2,
     fontFamily: TOKENS.font.body,
@@ -2821,12 +3102,133 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: GLASS_THEME.glassBorderStrong,
+    borderColor: PALETTE.border,
     marginTop: 4,
   },
   tripSecondaryButtonText: {
-    color: GLASS_THEME.neonAccent,
+    color: PALETTE.primary,
     fontSize: 14,
     fontFamily: TOKENS.font.semibold,
+  },
+  tripFormLabel: {
+    color: PALETTE.text,
+    fontSize: 11,
+    fontFamily: TOKENS.font.semibold,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  tripFormInput: {
+    backgroundColor: PALETTE.surfaceAlt,
+    borderWidth: 1,
+    borderColor: PALETTE.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    color: PALETTE.text,
+    fontSize: 14,
+    fontFamily: TOKENS.font.body,
+  },
+  tripFormTextArea: {
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  tripFormRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  tripFormCol: {
+    flex: 1,
+    gap: 6,
+  },
+  tripFormDayChips: {
+    flexDirection: "row",
+    gap: 8,
+    paddingVertical: 4,
+  },
+  tripFormDayChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: PALETTE.surfaceAlt,
+    borderWidth: 1,
+    borderColor: PALETTE.border,
+  },
+  tripFormDayChipActive: {
+    backgroundColor: PALETTE.primary,
+    borderColor: PALETTE.primary,
+  },
+  tripFormDayChipText: {
+    fontSize: 13,
+    fontFamily: TOKENS.font.semibold,
+    color: PALETTE.textMuted,
+  },
+  tripFormDayChipTextActive: {
+    color: "#FFFFFF",
+  },
+  tripFormBtnRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 16,
+  },
+  tripFormBtnPrimary: {
+    flex: 1.5,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: PALETTE.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tripFormBtnSecondary: {
+    flex: 1,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: PALETTE.border,
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tripFormBtnPrimaryText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontFamily: TOKENS.font.semibold,
+  },
+  tripFormBtnSecondaryText: {
+    color: PALETTE.textMuted,
+    fontSize: 14,
+    fontFamily: TOKENS.font.body,
+  },
+  tripFormPickerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  tripFormPickerSheet: {
+    backgroundColor: PALETTE.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
+    borderWidth: 1,
+    borderColor: PALETTE.border,
+  },
+  tripFormPickerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: PALETTE.border,
+  },
+  tripFormPickerTitle: {
+    fontSize: 16,
+    fontFamily: TOKENS.font.semibold,
+    color: PALETTE.text,
+  },
+  tripFormPickerDone: {
+    fontSize: 15,
+    fontFamily: TOKENS.font.semibold,
+    color: PALETTE.primary,
   },
 });

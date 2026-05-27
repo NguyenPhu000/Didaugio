@@ -42,6 +42,7 @@ export default function TripDetailScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState("itinerary");
   const [isEditTripOpen, setIsEditTripOpen] = useState(false);
+  const [isAddPlaceOpen, setIsAddPlaceOpen] = useState(false);
 
   const { data: trip, isLoading, isError, refetch } = useTripDetail(tripId);
 
@@ -101,8 +102,11 @@ export default function TripDetailScreen() {
           text: "Xóa",
           style: "destructive",
           onPress: () => {
-            deleteTripMutation.mutate(Number(trip.id), {
+            deleteTripMutation.mutate(trip.id, {
               onSuccess: () => router.replace("/(tabs)/trips"),
+              onError: (error) => {
+                Alert.alert("Lỗi", error?.message || "Không thể xóa chuyến đi. Vui lòng thử lại.");
+              },
             });
           },
         },
@@ -114,6 +118,9 @@ export default function TripDetailScreen() {
     (payload) => {
       updateTripMutation.mutate(payload, {
         onSuccess: () => setIsEditTripOpen(false),
+        onError: (error) => {
+          Alert.alert("Lỗi", error?.message || "Không thể cập nhật chuyến đi. Vui lòng thử lại.");
+        },
       });
     },
     [updateTripMutation],
@@ -122,9 +129,17 @@ export default function TripDetailScreen() {
   const handleToggleSave = useCallback(() => {
     if (!trip?.id) return;
     if (trip.isSaved) {
-      unsaveTripMutation.mutate(Number(trip.id));
+      unsaveTripMutation.mutate(trip.id, {
+        onError: (error) => {
+          Alert.alert("Lỗi", error?.message || "Không thể bỏ lưu chuyến đi. Vui lòng thử lại.");
+        },
+      });
     } else {
-      saveTripMutation.mutate(Number(trip.id));
+      saveTripMutation.mutate(trip.id, {
+        onError: (error) => {
+          Alert.alert("Lỗi", error?.message || "Không thể lưu chuyến đi. Vui lòng thử lại.");
+        },
+      });
     }
   }, [trip?.id, trip?.isSaved, saveTripMutation, unsaveTripMutation]);
 
@@ -159,6 +174,7 @@ export default function TripDetailScreen() {
         isDeleting={deleteTripMutation.isPending}
         isSaved={trip.isSaved}
         onToggleSave={handleToggleSave}
+        onAddPlace={() => setIsAddPlaceOpen(true)}
       />
 
       <TripTabBar activeTab={activeTab} onTabChange={setActiveTab} />
@@ -168,6 +184,9 @@ export default function TripDetailScreen() {
           trip={trip}
           bookings={tripBookings}
           onOpenBooking={handleOpenBooking}
+          isAddPlaceOpen={isAddPlaceOpen}
+          onAddPlaceOpen={() => setIsAddPlaceOpen(true)}
+          onAddPlaceClose={() => setIsAddPlaceOpen(false)}
         />
       ) : activeTab === "services" ? (
         <ServicesTab

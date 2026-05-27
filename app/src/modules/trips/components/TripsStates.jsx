@@ -28,7 +28,7 @@ export function LoadingState() {
   );
 }
 
-export function EmptyTrips({ onCreate, activeFilter }) {
+export function EmptyTrips({ onCreate, activeFilter, onClearFilter }) {
   const isFiltered = activeFilter !== "all";
 
   return (
@@ -60,7 +60,7 @@ export function EmptyTrips({ onCreate, activeFilter }) {
 
         {!isFiltered ? (
           <Pressable
-            onPress={onCreate}
+            onPress={() => onCreate?.()}
             style={({ pressed }) => [
               styles.primaryButton,
               pressed && styles.primaryButtonPressed,
@@ -68,6 +68,19 @@ export function EmptyTrips({ onCreate, activeFilter }) {
           >
             <MaterialIcons name="add" size={18} color="#FFFFFF" />
             <Text style={styles.primaryButtonText}>Tạo chuyến đi mới</Text>
+          </Pressable>
+        ) : null}
+
+        {isFiltered && onClearFilter ? (
+          <Pressable
+            onPress={() => onClearFilter?.()}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.primaryButtonPressed,
+            ]}
+          >
+            <MaterialIcons name="filter-alt-off" size={18} color="#FFFFFF" />
+            <Text style={styles.primaryButtonText}>Xóa bộ lọc</Text>
           </Pressable>
         ) : null}
       </View>
@@ -91,7 +104,7 @@ export function ErrorState({ onRetry }) {
           Vui lòng kiểm tra lại kết nối mạng và thử lại để đồng bộ hành trình.
         </Text>
         <Pressable
-          onPress={onRetry}
+          onPress={() => onRetry?.()}
           style={({ pressed }) => [
             styles.errorButton,
             pressed && styles.errorButtonPressed,

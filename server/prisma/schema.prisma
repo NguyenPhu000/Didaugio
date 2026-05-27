@@ -1,7 +1,7 @@
 // =============================================================================
 // PRISMA SCHEMA - DU AN "DI DAU GIO?"
-// Tong so bang hien co (public schema): 41
-// Cap nhat theo DB hien tai: 13/04/2026
+// Tong so bang hien co (public schema): 42
+// Cap nhat theo DB hien tai: 26/05/2026
 // =============================================================================
 
 generator client {

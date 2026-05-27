@@ -104,8 +104,11 @@ export default function CreateTripScreen() {
   );
 
   const selectedSavedCount = selectedSavedPlaceIds.length;
+  const isDateRangeInvalid = startDate && endDate && endDate < startDate;
+
   const canSubmit =
     title.trim().length > 0 &&
+    !isDateRangeInvalid &&
     !createMutation.isPending &&
     !isAddingDestinations;
 
@@ -179,18 +182,23 @@ export default function CreateTripScreen() {
       });
       const newId = result?.data?.id;
       if (newId) {
+        let destinationsAdded = true;
         if (selectedSavedPlaceIds.length > 0) {
           setIsAddingDestinations(true);
-          await Promise.all(
-            selectedSavedPlaceIds.map((placeId, index) =>
-              addDestinationApi(newId, {
-                placeId,
-                dayNumber: 1,
-                order: index,
-                note: "Thêm từ địa điểm đã lưu",
-              }),
-            ),
-          );
+          try {
+            await Promise.all(
+              selectedSavedPlaceIds.map((placeId, index) =>
+                addDestinationApi(newId, {
+                  placeId,
+                  dayNumber: 1,
+                  order: index,
+                  note: "Thêm từ địa điểm đã lưu",
+                }),
+              ),
+            );
+          } catch (destError) {
+            destinationsAdded = false;
+          }
           await Promise.all([
             queryClient.invalidateQueries({
               queryKey: QUERY_KEYS.trips.all(),
@@ -200,7 +208,21 @@ export default function CreateTripScreen() {
             }),
           ]);
         }
-        router.replace(`/trip/${newId}`);
+
+        if (!destinationsAdded) {
+          Alert.alert(
+            "Tạo chuyến đi thành công",
+            "Chuyến đi đã được tạo, nhưng gặp lỗi khi thêm các địa điểm đã lưu. Bạn có thể bổ sung địa điểm sau trong trang chi tiết.",
+            [
+              {
+                text: "Đồng ý",
+                onPress: () => router.replace(`/trip/${newId}`),
+              },
+            ]
+          );
+        } else {
+          router.replace(`/trip/${newId}`);
+        }
       } else {
         router.back();
       }

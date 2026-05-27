@@ -49,7 +49,7 @@ const FOOD_HINTS = ["ẩm thực", "food", "restaurant", "ăn", "quán", "bánh"
   (item) => normalizeText(item),
 );
 
-const FLOATING_TAB_CLEARANCE = TAB_BAR_HEIGHT + 24;
+const FLOATING_TAB_CLEARANCE = TAB_BAR_HEIGHT + 84;
 
 export default function ExploreScreen() {
   const router = useRouter();

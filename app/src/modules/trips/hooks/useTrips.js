@@ -50,7 +50,11 @@ function setTripSavedFlag(qc, tripId, isSaved) {
   });
   qc.setQueriesData({ queryKey: QUERY_KEYS.trips.detail(tripId) }, (old) => {
     if (!old) return old;
-    return { ...old, isSaved };
+    return {
+      ...old,
+      isSaved,
+      data: old.data ? { ...old.data, isSaved } : undefined,
+    };
   });
 }
 

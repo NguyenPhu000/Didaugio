@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -90,6 +91,16 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                 <MaterialIcons name="edit-calendar" size={18} color="#1D1D1F" />
                 <Text style={styles.title}>Chỉnh sửa chuyến đi</Text>
               </View>
+              <Pressable
+                onPress={onCancel}
+                hitSlop={12}
+                style={({ pressed }) => [
+                  styles.closeBtn,
+                  pressed && { backgroundColor: "rgba(0,0,0,0.06)" },
+                ]}
+              >
+                <MaterialIcons name="close" size={20} color="rgba(0,0,0,0.45)" />
+              </Pressable>
             </View>
 
             <ScrollView
@@ -144,47 +155,18 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
             </ScrollView>
 
             <View style={styles.footerRow}>
-              <Pressable
-                onPress={onCancel}
-                disabled={isSaving}
-                style={({ pressed }) => [
-                  styles.btnCancel,
-                  pressed && { backgroundColor: "#E5E5EA" },
-                ]}
-              >
-                <MaterialIcons name="close" size={18} color="#FF3B30" />
-                <Text style={styles.btnCancelText}>Hủy</Text>
-              </Pressable>
-
-              <Pressable
+              <TouchableOpacity
                 onPress={handleSave}
                 disabled={!canSave}
-                style={({ pressed }) => [
-                  styles.btnSave,
-                  !canSave && styles.btnSaveDisabled,
-                  pressed && canSave && { opacity: 0.85 },
-                ]}
+                activeOpacity={0.8}
+                style={[styles.btnSave, !canSave && styles.btnSaveDisabled]}
               >
                 {isSaving ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <>
-                    <MaterialIcons
-                      name="check-circle-outline"
-                      size={18}
-                      color={canSave ? "#FFFFFF" : "#8E8E93"}
-                    />
-                    <Text
-                      style={[
-                        styles.btnSaveText,
-                        !canSave && styles.btnSaveTextDisabled,
-                      ]}
-                    >
-                      Lưu
-                    </Text>
-                  </>
+                  <Text style={styles.btnSaveText}>Lưu thay đổi</Text>
                 )}
-              </Pressable>
+              </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -287,58 +269,42 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.08)",
   },
   footerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: Platform.OS === "ios" ? 12 : 16,
-    gap: 12,
+    paddingBottom: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.08)",
-  },
-  btnCancel: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "#F2F2F7",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  btnCancelText: {
-    fontSize: 15,
-    color: "#FF3B30",
-    fontFamily: TOKENS.font.semibold,
+    borderTopColor: "rgba(0,0,0,0.07)",
+    backgroundColor: "#FFFFFF",
+    flexShrink: 0,
   },
   btnSave: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "#007AFF",
+    width: "100%",
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#1D1D1F",
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: 6,
-    shadowColor: "#007AFF",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
   },
   btnSaveDisabled: {
-    backgroundColor: "#E5E5EA",
-    shadowOpacity: 0,
-    elevation: 0,
+    opacity: 0.5,
+    backgroundColor: "#1D1D1F",
   },
   btnSaveText: {
-    fontSize: 15,
+    fontSize: 16,
     color: "#FFFFFF",
     fontFamily: TOKENS.font.semibold,
+    letterSpacing: -0.2,
+    textAlign: "center",
   },
   btnSaveTextDisabled: {
-    color: "#8E8E93",
+    color: "rgba(255,255,255,0.5)",
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

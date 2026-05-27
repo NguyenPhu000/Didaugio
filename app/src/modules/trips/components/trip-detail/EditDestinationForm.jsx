@@ -10,6 +10,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   ScrollView,
+  TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -56,6 +57,7 @@ function TimeField({ label, value, onChange, placeholder, icon }) {
           pressed && { backgroundColor: "#F0F0F2" },
         ]}
         onPress={() => setShow(true)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <MaterialIcons
           name={icon || "schedule"}
@@ -191,6 +193,8 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible }) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+            {/* THỜI GIAN CHI TIẾT */}
+            <Text style={s.sectionHeaderLabel}>Thời gian chi tiết</Text>
             <View style={s.row}>
               <TimeField
                 label="Bắt đầu"
@@ -220,48 +224,43 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible }) {
                 maxLength={4}
                 returnKeyType="done"
               />
+              <Text style={s.instructionText}>
+                * Dùng để ước lượng thời gian dừng chân của bạn tại địa điểm này.
+              </Text>
             </View>
 
-            <View style={s.fieldFull}>
-              <Text style={s.label}>Ghi chú</Text>
-              <TextInput
-                style={[s.inputEditable, s.noteInput]}
-                value={note}
-                onChangeText={setNote}
-                placeholder="Thêm ghi chú cho địa điểm này..."
-                placeholderTextColor="rgba(0,0,0,0.25)"
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
+            {/* GHI CHÚ HÀNH TRÌNH */}
+            <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)", paddingTop: 14, marginTop: 4 }}>
+              <Text style={s.sectionHeaderLabel}>Ghi chú hành trình</Text>
+              <View style={s.fieldFull}>
+                <TextInput
+                  style={[s.inputEditable, s.noteInput]}
+                  value={note}
+                  onChangeText={setNote}
+                  placeholder="Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây..."
+                  placeholderTextColor="rgba(0,0,0,0.25)"
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </View>
             </View>
           </ScrollView>
 
           {/* Nút Lưu pill — luôn cố định dưới cùng */}
           <View style={s.footer}>
-            <Pressable
+            <TouchableOpacity
               onPress={handleSave}
               disabled={isLoading}
-              style={({ pressed }) => [
-                s.savePill,
-                isLoading && s.saveBtnDisabled,
-                pressed && !isLoading && { backgroundColor: "#000000" },
-              ]}
+              activeOpacity={0.8}
+              style={[s.savePill, isLoading && s.saveBtnDisabled]}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text style={s.savePillText}>Lưu thay đổi</Text>
               )}
-            </Pressable>
-            <Pressable
-              onPress={onCancel}
-              disabled={isLoading}
-              hitSlop={8}
-              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
-            >
-              <Text style={s.footerCancelLink}>Hủy</Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
           </View>
         </KeyboardAvoidingView>
@@ -402,22 +401,17 @@ const s = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 20,
-    paddingTop: 12,
-    gap: 12,
+    paddingTop: 16,
+    paddingBottom: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(0,0,0,0.07)",
+    backgroundColor: "#FFFFFF",
     flexShrink: 0,
-  },
-  footerCancelLink: {
-    fontSize: 14,
-    color: "rgba(0,0,0,0.45)",
-    fontFamily: TOKENS.font.body,
-    textAlign: "center",
   },
   savePill: {
     width: "100%",
     height: 52,
-    borderRadius: 999,
+    borderRadius: 26,
     backgroundColor: "#1D1D1F",
     alignItems: "center",
     justifyContent: "center",
@@ -427,9 +421,11 @@ const s = StyleSheet.create({
     color: "#FFFFFF",
     fontFamily: TOKENS.font.semibold,
     letterSpacing: -0.2,
+    textAlign: "center",
   },
   saveBtnDisabled: {
     opacity: 0.5,
+    backgroundColor: "#1D1D1F",
   },
   pickerOverlay: {
     flex: 1,
@@ -460,6 +456,20 @@ const s = StyleSheet.create({
     fontSize: 16,
     color: "#1D1D1F",
     fontFamily: TOKENS.font.semibold,
+  },
+  sectionHeaderLabel: {
+    fontSize: 11,
+    color: "#1D1D1F",
+    fontFamily: TOKENS.font.semibold,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 6,
+  },
+  instructionText: {
+    fontSize: 11,
+    color: "rgba(0,0,0,0.4)",
+    fontFamily: TOKENS.font.body,
+    marginTop: 4,
   },
 });
 

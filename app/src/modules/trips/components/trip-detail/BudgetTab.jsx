@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View, StyleSheet } from "react-native";
+import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { TOKENS } from "../../../../constants/design-tokens";
 import { StatusBadge } from "./StatusBadge";
@@ -7,9 +8,9 @@ import { formatBookingDateTime, formatPrice } from "../../utils/tripHelpers";
 import s, { T } from "../../utils/tripDetailTokens";
 
 const BUDGET_ITEMS = [
-  { key: "confirmed", label: "Da xac nhan", icon: "check-circle" },
-  { key: "pending", label: "Cho xac nhan", icon: "schedule" },
-  { key: "cancelled", label: "Da huy", icon: "cancel" },
+  { key: "confirmed", label: "Đã xác nhận", icon: "check-circle" },
+  { key: "pending", label: "Chờ xác nhận", icon: "schedule" },
+  { key: "cancelled", label: "Đã hủy", icon: "cancel" },
 ];
 
 export const BudgetTab = memo(function BudgetTab({
@@ -18,18 +19,20 @@ export const BudgetTab = memo(function BudgetTab({
   isLoading,
   onOpenBooking,
 }) {
+  const router = useRouter();
+
   if (isLoading) {
     return (
       <View style={s.centeredState}>
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="small" color="#1D1D1F" />
         </View>
-        <Text style={s.centeredBody}>Dang tai ngan sach...</Text>
+        <Text style={s.centeredBody}>Đang tải ngân sách...</Text>
       </View>
     );
   }
 
-  if (bookings.length === 0) {
+  if (!bookings || bookings.length === 0) {
     return (
       <View style={s.centeredState}>
         <View style={styles.emptyIcon}>
@@ -39,13 +42,31 @@ export const BudgetTab = memo(function BudgetTab({
             color="rgba(0,0,0,0.2)"
           />
         </View>
-        <Text style={s.emptyTitle}>Chua co du lieu</Text>
+        <Text style={s.emptyTitle}>Chưa có dữ liệu</Text>
         <Text style={s.emptyBody}>
-          Tab ngan sach se tong hop chi phi khi co booking lien ket.
+          Tab ngân sách sẽ tổng hợp chi phí khi có booking liên kết.
         </Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.exploreBtn,
+            pressed && { opacity: 0.85 },
+          ]}
+          onPress={() => router.push("/(tabs)/explore")}
+        >
+          <MaterialIcons name="explore" size={16} color="#FFFFFF" />
+          <Text style={styles.exploreBtnText}>Khám phá dịch vụ</Text>
+        </Pressable>
       </View>
     );
   }
+
+  const {
+    totalAmount = 0,
+    totalCount = 0,
+    confirmedAmount = 0,
+    completedAmount = 0,
+    pendingAmount = 0,
+  } = summary || {};
 
   return (
     <ScrollView
@@ -54,15 +75,15 @@ export const BudgetTab = memo(function BudgetTab({
     >
       {/* Total card */}
       <View style={styles.totalCard}>
-        <Text style={styles.totalLabel}>Tong du kien</Text>
+        <Text style={styles.totalLabel}>Tổng dự kiến</Text>
         <Text style={styles.totalValue}>
-          {formatPrice(summary.totalAmount)}
+          {formatPrice(totalAmount)}
         </Text>
         <View style={styles.totalMeta}>
           <View style={styles.totalMetaItem}>
             <View style={styles.totalMetaDot} />
             <Text style={styles.totalMetaText}>
-              {summary.totalCount} booking
+              {totalCount} booking
             </Text>
           </View>
         </View>
@@ -77,9 +98,9 @@ export const BudgetTab = memo(function BudgetTab({
             color="#34C759"
           />
           <Text style={styles.breakdownValue}>
-            {formatPrice(summary.confirmedAmount + summary.completedAmount)}
+            {formatPrice(confirmedAmount + completedAmount)}
           </Text>
-          <Text style={styles.breakdownLabel}>Da xac nhan</Text>
+          <Text style={styles.breakdownLabel}>Đã xác nhận</Text>
         </View>
         <View style={styles.breakdownCard}>
           <MaterialIcons
@@ -88,15 +109,15 @@ export const BudgetTab = memo(function BudgetTab({
             color="#FF9F0A"
           />
           <Text style={styles.breakdownValue}>
-            {formatPrice(summary.pendingAmount)}
+            {formatPrice(pendingAmount)}
           </Text>
-          <Text style={styles.breakdownLabel}>Cho xac nhan</Text>
+          <Text style={styles.breakdownLabel}>Chờ xác nhận</Text>
         </View>
       </View>
 
       {/* Detail list */}
       <View style={styles.detailSection}>
-        <Text style={s.groupLabel}>Chi tiet booking</Text>
+        <Text style={s.groupLabel}>Chi tiết đặt dịch vụ</Text>
 
         {bookings.map((booking) => (
           <Pressable
@@ -109,7 +130,7 @@ export const BudgetTab = memo(function BudgetTab({
           >
             <View style={s.bookingRowInfo}>
               <Text style={styles.bookingName} numberOfLines={1}>
-                {booking?.service?.name || "Dich vu"}
+                {booking?.service?.name || "Dịch vụ"}
               </Text>
               <Text style={s.bookingRowMeta} numberOfLines={1}>
                 #{booking.bookingCode || booking.id} ·{" "}
@@ -254,5 +275,21 @@ const styles = StyleSheet.create({
     fontFamily: TOKENS.font.semibold,
     color: "#1D1D1F",
     letterSpacing: -0.2,
+  },
+  exploreBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#1D1D1F",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 9999,
+    marginTop: 12,
+  },
+  exploreBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontFamily: TOKENS.font.semibold,
+    letterSpacing: -0.15,
   },
 });

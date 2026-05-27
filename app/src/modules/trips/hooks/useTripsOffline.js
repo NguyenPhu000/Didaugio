@@ -132,9 +132,7 @@ export function useTripsCached(enabled = true) {
     queryKey: QUERY_KEYS.trips.list(),
     queryFn: async () => {
       const response = await getMyTripsApi();
-      const trips = response?.data || [];
-      await persistTripsToStorage(trips);
-      return trips;
+      return response?.data || [];
     },
     enabled: enabled && isOnlineRef.current,
     staleTime: 5 * 60 * 1000,
@@ -269,11 +267,12 @@ export function useDeleteTripCached() {
       };
 
       if (!isConnected) {
-        queryClient.setQueryData(QUERY_KEYS.trips.list(), (old) =>
-          (old || []).filter(
-            (t) => t.id !== tripId && String(t.id) !== String(tripId),
-          ),
+        const currentList = queryClient.getQueryData(QUERY_KEYS.trips.list()) || [];
+        const updatedTrips = currentList.filter(
+          (t) => t.id !== tripId && String(t.id) !== String(tripId),
         );
+        queryClient.setQueryData(QUERY_KEYS.trips.list(), updatedTrips);
+        await persistTripsToStorage(updatedTrips);
         await queuePending("DELETE_TRIP", tripId);
         return { success: true, pending: true };
       }
@@ -289,4 +288,64 @@ export function useDeleteTripCached() {
     },
     isOffline: !isConnected,
   };
+}
+
+export function useOfflineSync() {
+  const queryClient = useQueryClient();
+  const { isConnected } = useNetworkStatus();
+  const isSyncingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isConnected || isSyncingRef.current) return;
+
+    const flushQueue = async () => {
+      isSyncingRef.current = true;
+      try {
+        const pendingActionsKey = "@pending_trip_actions";
+        const raw = await AsyncStorage.getItem(pendingActionsKey);
+        if (!raw) {
+          isSyncingRef.current = false;
+          return;
+        }
+
+        const actions = JSON.parse(raw);
+        if (actions.length === 0) {
+          isSyncingRef.current = false;
+          return;
+        }
+
+        const remainingActions = [];
+
+        for (const action of actions) {
+          try {
+            if (action.type === "CREATE_TRIP") {
+              await createTripApi(action.data);
+            } else if (action.type === "DELETE_TRIP") {
+              const idToDelete = action.data?.id || action.data;
+              await deleteTripApi(idToDelete);
+            }
+          } catch (err) {
+            const isNetworkError = !err.response || err.message === "Network Error" || err.code === "ERR_NETWORK";
+            if (isNetworkError) {
+              remainingActions.push(action);
+            }
+          }
+        }
+
+        if (remainingActions.length > 0) {
+          await AsyncStorage.setItem(pendingActionsKey, JSON.stringify(remainingActions));
+        } else {
+          await AsyncStorage.removeItem(pendingActionsKey);
+        }
+
+        await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
+      } catch (error) {
+        console.warn("[OfflineSync] Sync error:", error);
+      } finally {
+        isSyncingRef.current = false;
+      }
+    };
+
+    flushQueue();
+  }, [isConnected, queryClient]);
 }

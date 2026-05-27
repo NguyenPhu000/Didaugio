@@ -3,7 +3,7 @@ import { View, Text } from "react-native";
 import {
   getBookingStatusMeta,
   shouldShowBookingBadge,
-} from "../../utils/tripDetailTokens";
+} from "../../utils/tripTheme";
 import s, { T } from "../../utils/tripDetailTokens";
 
 export const StatusBadge = memo(function StatusBadge({ status, destState }) {

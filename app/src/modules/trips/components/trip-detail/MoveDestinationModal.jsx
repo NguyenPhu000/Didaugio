@@ -10,6 +10,7 @@ import {
   Platform,
   TextInput,
   KeyboardAvoidingView,
+  TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -50,9 +51,10 @@ function TimeField({ label, value, onChange, placeholder, icon }) {
       <Pressable
         style={({ pressed }) => [
           s.timeInput,
-          pressed && { backgroundColor: "#E8E8EC" },
+          pressed ? { backgroundColor: "#E8E8EC" } : null,
         ]}
         onPress={() => setShow(true)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <MaterialIcons
           name={icon || "schedule"}
@@ -203,7 +205,7 @@ function MoveDestinationModal({
                 hitSlop={12}
                 style={({ pressed }) => [
                   s.closeBtn,
-                  pressed && { backgroundColor: "rgba(0,0,0,0.06)" },
+                  pressed ? { backgroundColor: "rgba(0,0,0,0.06)" } : null,
                 ]}
               >
                 <MaterialIcons name="close" size={20} color="rgba(0,0,0,0.45)" />
@@ -224,7 +226,7 @@ function MoveDestinationModal({
             keyboardShouldPersistTaps="handled"
           >
             <View style={s.section}>
-              <Text style={s.sectionLabel}>Chọn ngày</Text>
+              <Text style={s.sectionLabel}>Chọn ngày hoạt động</Text>
               <View style={s.dayGrid}>
                 {days.map((day) => {
                   const isSelected = selectedDay === day.dayNumber;
@@ -255,8 +257,8 @@ function MoveDestinationModal({
               </View>
             </View>
 
-            <View style={s.section}>
-              <Text style={s.sectionLabel}>Chỉnh giờ</Text>
+            <View style={[s.section, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)", paddingTop: 16 }]}>
+              <Text style={s.sectionLabel}>Thời gian chi tiết</Text>
               <View style={s.timeRow}>
                 <TimeField
                   label="Bắt đầu"
@@ -275,13 +277,13 @@ function MoveDestinationModal({
               </View>
             </View>
 
-            <View style={s.section}>
-              <Text style={s.sectionLabel}>Ghi chú</Text>
+            <View style={[s.section, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)", paddingTop: 16 }]}>
+              <Text style={s.sectionLabel}>Ghi chú hành trình</Text>
               <TextInput
                 style={[s.inputEditable, s.noteInput]}
                 value={note}
                 onChangeText={setNote}
-                placeholder="Thêm ghi chú cho địa điểm này..."
+                placeholder="Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây..."
                 placeholderTextColor="rgba(0,0,0,0.25)"
                 multiline
                 numberOfLines={3}
@@ -291,29 +293,18 @@ function MoveDestinationModal({
           </ScrollView>
 
           <View style={s.footer}>
-            <Pressable
+            <TouchableOpacity
               onPress={handleSave}
               disabled={isLoading}
-              style={({ pressed }) => [
-                s.savePill,
-                isLoading && s.savePillDisabled,
-                pressed && !isLoading && s.savePillPressed,
-              ]}
+              activeOpacity={0.8}
+              style={[s.savePill, isLoading ? s.savePillDisabled : null]}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text style={s.savePillText}>Lưu thay đổi</Text>
               )}
-            </Pressable>
-            <Pressable
-              onPress={onCancel}
-              disabled={isLoading}
-              hitSlop={8}
-              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
-            >
-              <Text style={s.cancelLink}>Hủy</Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -521,17 +512,12 @@ const s = StyleSheet.create({
     flexShrink: 0,
   },
   savePill: {
-    alignSelf: "stretch",
+    width: "100%",
     height: 52,
     borderRadius: 26,
     backgroundColor: "#1D1D1F",
     alignItems: "center",
     justifyContent: "center",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
   },
   savePillPressed: {
     backgroundColor: "#000000",
@@ -545,6 +531,7 @@ const s = StyleSheet.create({
     color: "#FFFFFF",
     fontFamily: TOKENS.font.semibold,
     letterSpacing: -0.2,
+    textAlign: "center",
   },
   cancelLink: {
     fontSize: 14,

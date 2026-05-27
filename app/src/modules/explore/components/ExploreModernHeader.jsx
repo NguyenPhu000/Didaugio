@@ -154,6 +154,7 @@ function ExploreModernHeaderInner({ user, onPressSearch, scrollY }) {
             <View style={styles.locationButton}>
               <MaterialIcons name="place" size={14} color="#FFF" />
               <Text style={styles.locationButtonText}>Cần Thơ</Text>
+              <MaterialIcons name="keyboard-arrow-down" size={14} color="#FFF" />
             </View>
           </View>
         </View>
@@ -289,9 +290,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: APPLE_THEME.primary,
     height: 42,
-    paddingHorizontal: 16,
+    paddingLeft: 12,
+    paddingRight: 10,
     borderRadius: 999,
-    gap: 4,
+    gap: 3,
     ...Platform.select({
       ios: {
         shadowColor: APPLE_THEME.primary,

@@ -79,20 +79,27 @@ export function formatRatingLabel(place) {
 
 export function formatPriceLine(place) {
   const from = place?.priceFrom ?? place?.price_from;
-  if (from != null && Number(from) > 0) {
+  if (from != null) {
     const n = Number(from);
-    let main;
-    if (n >= 1_000_000) {
-      main = `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}tr`;
-    } else if (n >= 1000) {
-      main = `${Math.round(n / 1000)}k`;
-    } else {
-      main = String(n);
+    if (n === 0) {
+      return { main: "Miễn phí", suffix: "" };
     }
-    return { main: `${main}đ`, suffix: "/lượt" };
+    if (n > 0) {
+      let main;
+      if (n >= 1_000_000) {
+        main = `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}tr`;
+      } else if (n >= 1000) {
+        main = `${Math.round(n / 1000)}k`;
+      } else {
+        main = `${n}đ`;
+      }
+      return { main, suffix: "/lượt" };
+    }
   }
+
   if (place?.priceRange) {
     const pr = String(place.priceRange).toUpperCase();
+    if (pr === "FREE") return { main: "Miễn phí", suffix: "" };
     if (pr === "BUDGET") return { main: "Giá rẻ", suffix: "" };
     if (pr === "MODERATE") return { main: "Bình dân", suffix: "" };
     if (pr === "EXPENSIVE") return { main: "Cao cấp", suffix: "" };

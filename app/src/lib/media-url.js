@@ -73,6 +73,29 @@ export function resolveMediaUrl(raw) {
   return escapeUrl(cleaned);
 }
 
+export function getCategoryPlaceholder(categoryName = "") {
+  const name = String(categoryName).toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (name.includes("an") || name.includes("uong") || name.includes("food") || name.includes("cafe") || name.includes("nha hang") || name.includes("quan")) {
+    return "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop";
+  }
+  if (name.includes("khach san") || name.includes("hotel") || name.includes("resort") || name.includes("homestay") || name.includes("luu tru")) {
+    return "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop";
+  }
+  if (name.includes("mua sam") || name.includes("shopping") || name.includes("cho") || name.includes("market") || name.includes("cua hang")) {
+    return "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&auto=format&fit=crop";
+  }
+  if (name.includes("chua") || name.includes("dinh") || name.includes("pagoda") || name.includes("van hoa") || name.includes("bao tang") || name.includes("museum") || name.includes("lich su")) {
+    return "https://images.unsplash.com/photo-1542051812871-757511640570?w=600&auto=format&fit=crop";
+  }
+  if (name.includes("giai tri") || name.includes("vui choi") || name.includes("attractions") || name.includes("thien nhien") || name.includes("sinh thai") || name.includes("nature") || name.includes("kdl")) {
+    return "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&auto=format&fit=crop";
+  }
+  return "https://images.unsplash.com/photo-1527668752968-14ce70a6a7ae?w=600&auto=format&fit=crop";
+}
+
 export function resolvePlaceImageUri(place) {
   const firstImage = place?.images?.[0];
   const raw =
@@ -84,5 +107,7 @@ export function resolvePlaceImageUri(place) {
     place?.thumbnail ||
     null;
 
-  return resolveMediaUrl(raw);
+  const resolved = resolveMediaUrl(raw);
+  if (resolved) return resolved;
+  return getCategoryPlaceholder(place?.category?.name);
 }

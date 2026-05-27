@@ -4,50 +4,9 @@ export const FILTERS = [
   { key: "done", label: "Hoàn thành" },
 ];
 
-export const STATUS_THEME = {
-  draft: {
-    label: "Nháp",
-    bg: "#FFF4D6",
-    text: "#B45309",
-    accent: "#F59E0B",
-    icon: "edit-calendar",
-  },
-  upcoming: {
-    label: "Sắp tới",
-    bg: "#E0E7FF",
-    text: "#3730A3",
-    accent: "#6366F1",
-    icon: "schedule",
-  },
-  active: {
-    label: "Đang diễn ra",
-    bg: "#DBEAFE",
-    text: "#1D4ED8",
-    accent: "#2563EB",
-    icon: "flight-takeoff",
-  },
-  ongoing: {
-    label: "Đang diễn ra",
-    bg: "#DBEAFE",
-    text: "#1D4ED8",
-    accent: "#2563EB",
-    icon: "flight-takeoff",
-  },
-  completed: {
-    label: "Đã hoàn thành",
-    bg: "#DCFCE7",
-    text: "#047857",
-    accent: "#10B981",
-    icon: "task-alt",
-  },
-  cancelled: {
-    label: "Đã hủy",
-    bg: "#FEE2E2",
-    text: "#B91C1C",
-    accent: "#EF4444",
-    icon: "event-busy",
-  },
-};
+import { TRIP_STATUS_META } from "./tripTheme";
+
+export const STATUS_THEME = TRIP_STATUS_META;
 
 export function formatDate(dateStr) {
   if (!dateStr) return null;
@@ -169,15 +128,16 @@ export function getHeroTrip(trips) {
 }
 
 export function buildSummary(trips) {
-  const activeCount = trips.filter((trip) => {
+  const safeTrips = trips || [];
+  const activeCount = safeTrips.filter((trip) => {
     const status = getDisplayStatus(trip);
     return status === "draft" || status === "upcoming" || status === "ongoing";
   }).length;
-  const completedCount = trips.filter((trip) => {
+  const completedCount = safeTrips.filter((trip) => {
     const status = getDisplayStatus(trip);
     return status === "completed" || status === "cancelled";
   }).length;
-  const totalDestinations = trips.reduce(
+  const totalDestinations = safeTrips.reduce(
     (sum, trip) => sum + (trip.destinations?.length || 0),
     0,
   );
@@ -186,7 +146,7 @@ export function buildSummary(trips) {
     {
       key: "trips",
       icon: "luggage",
-      value: String(trips.length),
+      value: String(safeTrips.length),
       label: "Chuyến đi",
       tone: "blue",
     },
@@ -432,19 +392,19 @@ export function buildTripDetailBookings({
 }) {
   if (!trip) return [];
 
-  const normalizedTripId = Number(trip?.id);
+  const tripIdStr = String(trip?.id);
   const tripStartYmd = tripDays[0]?.dateYmd || null;
 
   const tripPlaceIds = new Set(
     (trip.destinations || [])
-      .map((dest) => Number(dest?.place?.id))
-      .filter((placeId) => Number.isInteger(placeId) && placeId > 0),
+      .map((dest) => dest?.place?.id != null ? String(dest.place.id) : null)
+      .filter(Boolean),
   );
 
   return (bookings || [])
     .map((booking) => {
-      const placeId = Number(booking?.service?.place?.id);
-      const linkedTripId = Number(booking?.linkedTrip?.id);
+      const placeId = booking?.service?.place?.id != null ? String(booking.service.place.id) : null;
+      const linkedTripId = booking?.linkedTrip?.id != null ? String(booking.linkedTrip.id) : null;
       const linkedDayNumber = Number(booking?.linkedTrip?.dayNumber);
 
       const fallbackDayNumber = getDayNumberFromDate(
@@ -461,9 +421,9 @@ export function buildTripDetailBookings({
       const inTripDayRange =
         Number.isInteger(dayNumber) && dayNumber >= 1 && dayNumber <= dayCount;
       const inTripPlace =
-        Number.isInteger(placeId) && tripPlaceIds.has(placeId);
+        placeId != null && tripPlaceIds.has(placeId);
       const isLinkedToCurrentTrip =
-        Number.isInteger(linkedTripId) && linkedTripId === normalizedTripId;
+        linkedTripId != null && linkedTripId === tripIdStr;
 
       if (!isLinkedToCurrentTrip && !(inTripPlace && inTripDayRange)) {
         return null;
@@ -471,7 +431,7 @@ export function buildTripDetailBookings({
 
       return {
         ...booking,
-        _placeId: placeId,
+        _placeId: booking?.service?.place?.id,
         _dayNumber: inTripDayRange ? dayNumber : null,
       };
     })
@@ -563,8 +523,8 @@ export function buildDestinationBookings(tripBookings, destinations) {
 
   tripBookings.forEach((booking) => {
     const dayNumber = Number(booking?._dayNumber);
-    const placeId = Number(booking?._placeId);
-    if (!Number.isInteger(dayNumber) || !Number.isInteger(placeId)) return;
+    const placeId = booking?._placeId != null ? String(booking._placeId) : null;
+    if (!Number.isInteger(dayNumber) || !placeId) return;
 
     const key = `${dayNumber}-${placeId}`;
     if (!byDayPlace.has(key)) byDayPlace.set(key, []);
@@ -574,7 +534,7 @@ export function buildDestinationBookings(tripBookings, destinations) {
   const destinationMap = new Map();
   destinations.forEach((dest) => {
     const dayNumber = Number(dest?.dayNumber);
-    const placeId = Number(dest?.place?.id);
+    const placeId = dest?.place?.id != null ? String(dest.place.id) : null;
     const key = `${dayNumber}-${placeId}`;
     destinationMap.set(
       dest.id,

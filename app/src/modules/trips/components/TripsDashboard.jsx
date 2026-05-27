@@ -63,7 +63,7 @@ export function TripsDashboard({
         <View>
           <Text style={styles.headerTitle}>Hành trình</Text>
           <Text style={styles.headerSubtitle}>
-            {trips.length > 0
+            {(trips?.length ?? 0) > 0
               ? `${trips.length} chuyến đi của bạn`
               : "Khởi tạo kỷ niệm mới"}
           </Text>

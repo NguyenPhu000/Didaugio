@@ -431,7 +431,7 @@ function LoggedInProfileScreen({ insets, storedUser }) {
 /* ====================== STYLES (pixel-perfect with mockup) ====================== */
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#F8FAFC" },
-  scrollContent: { paddingBottom: TAB_BAR_HEIGHT + 60 },
+  scrollContent: { paddingBottom: TAB_BAR_HEIGHT + 84 },
 
   guestScroll: {
     flex: 1,
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
   },
 
   /* Section common */
-  section: { marginTop: 32, paddingHorizontal: 24 },
+  section: { marginTop: 24, paddingHorizontal: 24 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",

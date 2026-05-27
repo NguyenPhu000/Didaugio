@@ -25,8 +25,14 @@ import { OfflineToast } from "../src/components/composed/OfflineToast";
 import { AIFloatingButton } from "../src/components/composed/AIFloatingButton";
 import { useAuthStore } from "../src/stores/authStore";
 import { useUIStore } from "../src/stores/uiStore";
+import { useOfflineSync } from "../src/modules/trips/hooks/useTripsOffline";
 
 SplashScreen.preventAutoHideAsync();
+
+function OfflineSyncManager() {
+  useOfflineSync();
+  return null;
+}
 
 export default function RootLayout() {
   const router = useRouter();
@@ -94,6 +100,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <KeyboardProvider>
           <AppProvider>
+            <OfflineSyncManager />
             <View style={{ flex: 1 }}>
               <BottomSheetModalProvider>
                 <Stack screenOptions={{ headerShown: false }}>

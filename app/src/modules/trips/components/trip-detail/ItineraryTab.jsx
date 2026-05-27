@@ -9,8 +9,16 @@ import TimelineCard from "./TimelineCard";
 import TimelineConnector from "./TimelineConnector";
 import MoveDestinationModal from "./MoveDestinationModal";
 import EditDestinationForm from "./EditDestinationForm";
+import InlineAddPlaceModal from "./InlineAddPlaceModal";
 
-function ItineraryTab({ trip, bookings, onOpenBooking }) {
+function ItineraryTab({
+  trip,
+  bookings,
+  onOpenBooking,
+  isAddPlaceOpen,
+  onAddPlaceOpen,
+  onAddPlaceClose,
+}) {
   const tripId = trip?.id;
   const destinations = trip?.destinations || [];
   const totalDays = trip?.totalDays || 1;
@@ -60,7 +68,14 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
   const handleDragEnd = useCallback(
     ({ data }) => {
       const orderedIds = data.map((d) => d.id);
-      reorderMutation.mutate({ dayNumber: selectedDay, orderedIds });
+      reorderMutation.mutate(
+        { dayNumber: selectedDay, orderedIds },
+        {
+          onError: (error) => {
+            Alert.alert("Lỗi", error?.message || "Không thể sắp xếp lại các điểm đến. Vui lòng thử lại.");
+          },
+        }
+      );
     },
     [selectedDay, reorderMutation],
   );
@@ -76,7 +91,11 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
           {
             text: "Bỏ",
             style: "destructive",
-            onPress: () => removeMutation.mutate(dest.id),
+            onPress: () => removeMutation.mutate(dest.id, {
+              onError: (error) => {
+                Alert.alert("Lỗi", error?.message || "Không thể bỏ địa điểm này. Vui lòng thử lại.");
+              },
+            }),
           },
         ],
       );
@@ -102,10 +121,17 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
               updateMutation.mutate({
                 destId,
                 data: { startTime, endTime, note },
+              }, {
+                onError: (error) => {
+                  Alert.alert("Lỗi", error?.message || "Không thể cập nhật thông tin chặng đi. Vui lòng thử lại.");
+                },
               });
             }
             setMovingDest(null);
             setSelectedDay(newDayNumber);
+          },
+          onError: (error) => {
+            Alert.alert("Lỗi", error?.message || "Không thể dời địa điểm này. Vui lòng thử lại.");
           },
         },
       );
@@ -117,7 +143,12 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
     ({ destId, data }) => {
       updateMutation.mutate(
         { destId, data },
-        { onSuccess: () => setMovingDest(null) },
+        { 
+          onSuccess: () => setMovingDest(null),
+          onError: (error) => {
+            Alert.alert("Lỗi", error?.message || "Không thể cập nhật địa điểm. Vui lòng thử lại.");
+          },
+        },
       );
     },
     [updateMutation],
@@ -135,7 +166,12 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
     ({ destId, data }) => {
       updateMutation.mutate(
         { destId, data },
-        { onSuccess: () => setEditingDest(null) },
+        { 
+          onSuccess: () => setEditingDest(null),
+          onError: (error) => {
+            Alert.alert("Lỗi", error?.message || "Không thể lưu thay đổi. Vui lòng thử lại.");
+          },
+        },
       );
     },
     [updateMutation],
@@ -237,6 +273,24 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
         })}
       </ScrollView>
 
+      {/* Action Header */}
+      <View style={styles.actionHeader}>
+        <Text style={styles.destCountText}>
+          {dayDestinations.length} địa điểm
+        </Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.addInlineBtn,
+            pressed && { opacity: 0.8 },
+          ]}
+          onPress={() => onAddPlaceOpen?.()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          
+          <Text style={styles.addInlineBtnText}> <MaterialIcons name="add" size={16} color="#000000" /> Thêm địa điểm</Text>
+        </Pressable>
+      </View>
+
       {/* Draggable destination list */}
       <DraggableFlatList
         data={dayDestinations}
@@ -244,6 +298,9 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
         renderItem={renderItem}
         ItemSeparatorComponent={renderSeparator}
         onDragEnd={handleDragEnd}
+        style={{ flex: 1 }}
+        containerStyle={{ flex: 1 }}
+        activationDistance={15}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -258,6 +315,17 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
             <Text style={styles.emptyText}>
               Thêm địa điểm yêu thích vào ngày này
             </Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.addInlineEmptyBtn,
+                pressed && { opacity: 0.8 },
+              ]}
+              onPress={() => onAddPlaceOpen?.()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              
+              <Text style={styles.addInlineEmptyBtnText}> <MaterialIcons name="add" size={16} color="#000000" /> Thêm địa điểm</Text>
+            </Pressable>
           </View>
         }
       />
@@ -278,6 +346,14 @@ function ItineraryTab({ trip, bookings, onOpenBooking }) {
         onSave={handleSave}
         onCancel={handleEditCancel}
         isLoading={updateMutation.isPending}
+      />
+
+      <InlineAddPlaceModal
+        visible={isAddPlaceOpen}
+        tripId={tripId}
+        totalDays={totalDays}
+        defaultDay={selectedDay}
+        onClose={() => onAddPlaceClose?.()}
       />
     </View>
   );
@@ -381,6 +457,51 @@ const styles = StyleSheet.create({
     color: "rgba(0,0,0,0.4)",
     fontFamily: TOKENS.font.body,
     letterSpacing: -0.1,
+  },
+  actionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: "#F8FAFC",
+  },
+  destCountText: {
+    fontSize: 13,
+    fontFamily: TOKENS.font.semibold,
+    color: "rgba(0,0,0,0.45)",
+    letterSpacing: -0.1,
+  },
+  addInlineBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#1D1D1F",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 9999,
+  },
+  addInlineBtnText: {
+    color: "#000000",
+    fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
+    letterSpacing: -0.1,
+  },
+  addInlineEmptyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#1D1D1F",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 9999,
+    marginTop: 12,
+  },
+  addInlineEmptyBtnText: {
+    color: "#000000",
+    fontSize: 13,
+    fontFamily: TOKENS.font.semibold,
+    letterSpacing: -0.15,
   },
 });
 

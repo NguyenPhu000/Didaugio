@@ -52,8 +52,8 @@ export function UpcomingTripCard({ trip, onPress }) {
       </View>
 
       <View style={styles.cardContent}>
-        <Text style={styles.tripTitle}>{title}</Text>
-        <Text style={styles.tripSubtitle}>
+        <Text style={styles.tripTitle} numberOfLines={1}>{title}</Text>
+        <Text style={styles.tripSubtitle} numberOfLines={1}>
           {destination}{duration ? ` • ${duration}` : ""}
         </Text>
       </View>
@@ -119,12 +119,18 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontFamily: TOKENS.font.semibold,
     color: "#fff",
+    textShadowColor: "rgba(0, 0, 0, 0.55)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   tripSubtitle: {
     fontSize: 15,
     color: "#fff",
     fontFamily: TOKENS.font.medium,
     marginTop: 2,
+    textShadowColor: "rgba(0, 0, 0, 0.55)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   cardFooter: {
     position: "absolute",

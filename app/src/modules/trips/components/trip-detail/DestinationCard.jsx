@@ -76,7 +76,7 @@ export const DestinationCard = memo(function DestinationCard({
             color="rgba(0,0,0,0.35)"
           />
           <Text style={styles.distanceText}>
-            {distanceLabel} den diem tiep theo
+            {distanceLabel} đến điểm tiếp theo
           </Text>
         </View>
       ) : null}
@@ -104,7 +104,7 @@ export const DestinationCard = memo(function DestinationCard({
             </Pressable>
           ))}
 
-          {bookings.length > 2 ? (
+          {(bookings?.length ?? 0) > 2 ? (
             <Text style={s.moreText}>+{bookings.length - 2} booking khac</Text>
           ) : null}
         </View>

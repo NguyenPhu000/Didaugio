@@ -86,24 +86,31 @@ const formatCurrency = (value) => {
   return `${amount.toLocaleString("vi-VN")}đ`;
 };
 
+const formatDateVN = (dateStr) => {
+  if (!dateStr) return "--/--/----";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "--/--/----";
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 const formatDateTime = (booking) => {
   if (booking?.useDate || booking?.useTime) {
-    const date = booking?.useDate
-      ? new Date(booking.useDate).toLocaleDateString("vi-VN")
-      : "--/--/----";
+    const date = formatDateVN(booking?.useDate);
     return `${date} • ${booking?.useTime || "--:--"}`;
   }
 
   if (booking?.bookingAt) {
     const at = new Date(booking.bookingAt);
     if (!Number.isNaN(at.getTime())) {
-      return at.toLocaleString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const day = String(at.getDate()).padStart(2, "0");
+      const month = String(at.getMonth() + 1).padStart(2, "0");
+      const year = at.getFullYear();
+      const hour = String(at.getHours()).padStart(2, "0");
+      const minute = String(at.getMinutes()).padStart(2, "0");
+      return `${day}/${month}/${year} • ${hour}:${minute}`;
     }
   }
 
@@ -301,7 +308,7 @@ export default function BookingDetailScreen() {
         </Pressable>
         <Text style={styles.title}>Chi tiết booking</Text>
         <Pressable onPress={() => refetch()} style={styles.iconBtn}>
-          <MaterialIcons name="refresh" size={20} color={THEME.textSecondary} />
+          <MaterialIcons name="refresh" size={20} color={THEME.text} />
         </Pressable>
       </View>
 

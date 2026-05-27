@@ -29,7 +29,14 @@ export function AIFloatingButton() {
     transform: [{ scale: scale.value }],
   }));
 
-  if (HIDE_PATHS.has(pathname)) return null;
+  const shouldHide =
+    HIDE_PATHS.has(pathname) ||
+    pathname.startsWith("/place/") ||
+    pathname.startsWith("/booking/") ||
+    pathname.startsWith("/profile/booking/") ||
+    pathname.startsWith("/trip/");
+
+  if (shouldHide) return null;
 
   return (
     <Animated.View

@@ -1,5 +1,6 @@
 import { memo, useCallback } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
+import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ScaleDecorator } from "react-native-draggable-flatlist";
@@ -29,6 +30,15 @@ function TimelineCard({
     onMoveRequest?.(dest);
   }, [dest, onMoveRequest]);
 
+  const router = useRouter();
+
+  const handleViewPress = useCallback(() => {
+    const placeId = dest.placeId || dest.place?.id;
+    if (placeId) {
+      router.push(`/place/${placeId}`);
+    }
+  }, [dest, router]);
+
   const placeName = dest.place?.name || "Chưa có tên";
   const placeAddress = dest.place?.address || "";
   const thumbnail = dest.place?.thumbnail;
@@ -47,7 +57,7 @@ function TimelineCard({
   const startMin = toMinutes(dest.startTime);
   const endMin = toMinutes(dest.endTime);
   const crossesMidnight =
-    startMin !== null && endMin !== null && endMin <= startMin;
+    startMin !== null && endMin !== null && endMin < startMin;
 
   let timeLabel;
   if (hasStart && hasEnd) {
@@ -72,12 +82,18 @@ function TimelineCard({
             />
             <View style={styles.timeLine} />
           </View>
-          <Text
-            style={[styles.time, !hasStart && !hasEnd && styles.timeMuted]}
-            numberOfLines={1}
-          >
-            {timeLabel}
-          </Text>
+          {!hasStart && !hasEnd ? (
+            <View style={{ flex: 1, flexDirection: "row" }}>
+              <View style={styles.warningBadge}>
+                <MaterialIcons name="info-outline" size={12} color="#FF9500" />
+                <Text style={styles.warningBadgeText}>Chưa xếp giờ</Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.time} numberOfLines={1}>
+              {timeLabel}
+            </Text>
+          )}
           <Pressable
             style={({ pressed }) => [
               styles.dragHandle,
@@ -147,7 +163,7 @@ function TimelineCard({
                     styles.bookingRow,
                     pressed && { opacity: 0.7 },
                   ]}
-                  onPress={() => onOpenBooking?.(b)}
+                  onPress={() => onOpenBooking?.(b.id)}
                 >
                   <StatusBadge status={b.status} />
                   <Text style={styles.bookingName} numberOfLines={1}>
@@ -170,7 +186,19 @@ function TimelineCard({
 
           <View style={styles.actions}>
             <Pressable
+              onPress={handleViewPress}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={({ pressed }) => [
+                styles.pillOutline,
+                pressed && styles.pillOutlinePressed,
+              ]}
+            >
+              <MaterialIcons name="visibility" size={14} color="#1D1D1F" />
+              <Text style={styles.pillOutlineText}>Xem</Text>
+            </Pressable>
+            <Pressable
               onPress={handleMovePress}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               style={({ pressed }) => [
                 styles.pillOutline,
                 pressed && styles.pillOutlinePressed,
@@ -183,6 +211,7 @@ function TimelineCard({
             </Pressable>
             <Pressable
               onPress={handleEditPress}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               style={({ pressed }) => [
                 styles.pillPrimary,
                 pressed && styles.pillPrimaryPressed,
@@ -193,11 +222,12 @@ function TimelineCard({
             </Pressable>
             <Pressable
               onPress={onRemove}
-              hitSlop={8}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               style={({ pressed }) => [
                 styles.removeBtn,
                 pressed && { opacity: 0.6 },
               ]}
+              accessibilityLabel="Bỏ địa điểm khỏi lịch trình"
             >
               <MaterialIcons name="delete-outline" size={16} color="#FF3B30" />
             </Pressable>
@@ -369,16 +399,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 4,
     height: 32,
     paddingHorizontal: 12,
     borderRadius: 16,
-    backgroundColor: "#F2F2F7",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.12)",
   },
   pillOutlinePressed: {
-    backgroundColor: "#E8E8EC",
+    backgroundColor: "#F2F2F7",
   },
   pillOutlineText: {
     fontSize: 13,
@@ -393,10 +423,10 @@ const styles = StyleSheet.create({
     height: 32,
     paddingHorizontal: 14,
     borderRadius: 16,
-    backgroundColor: "#1D1D1F",
+    backgroundColor: "#007AFF",
   },
   pillPrimaryPressed: {
-    backgroundColor: "#000000",
+    backgroundColor: "#0056B3",
   },
   pillPrimaryText: {
     fontSize: 13,
@@ -410,6 +440,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,59,48,0.08)",
+  },
+  warningBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,149,0,0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  warningBadgeText: {
+    fontSize: 11,
+    fontFamily: TOKENS.font.semibold,
+    color: "#FF9500",
   },
 });
 
