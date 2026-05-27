@@ -236,11 +236,15 @@ export function formatPrice(amount) {
  * Format distance from meters into a human-readable string.
  * Returns meters for <1000m, kilometers for >=1000m.
  */
-export const formatDistance = (meters) => {
-  const m = parseFloat(meters);
-  if (isNaN(m)) return null;
-  if (m < 1000) return `${Math.round(m)}m`;
-  return `${(m / 1000).toFixed(1)}km`;
+export const formatDistance = (kilometers) => {
+  const km = parseFloat(kilometers);
+  if (isNaN(km) || km <= 0) return null;
+  
+  if (km < 1) {
+    return `${Math.round(km * 1000)}m`;
+  }
+  
+  return `${km.toFixed(1).replace('.0', '')}km`;
 };
 
 /**

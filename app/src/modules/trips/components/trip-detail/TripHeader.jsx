@@ -94,7 +94,7 @@ export const TripHeader = memo(function TripHeader({
       >
         <Pressable style={styles.backdrop} onPress={() => setIsMenuOpen(false)}>
           <View
-            style={[styles.popover, { top: insets.top + 48 }]}
+            style={[styles.popover, { top: insets.top + 10 }]}
             onStartShouldSetResponder={() => true}
           >
             {onToggleSave ? (

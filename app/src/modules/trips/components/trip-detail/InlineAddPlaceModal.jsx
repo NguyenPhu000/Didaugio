@@ -14,6 +14,7 @@ import {
   LayoutAnimation,
   UIManager,
   useWindowDimensions,
+  TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -134,11 +135,20 @@ function TimeField({ label, value, onChange, placeholder, icon }) {
   );
 }
 
+const TRANSPORT_OPTIONS = [
+  { label: "Đi bộ", value: "Đi bộ", icon: "directions-walk" },
+  { label: "Xe máy", value: "Xe máy", icon: "motorcycle" },
+  { label: "Xe hơi", value: "Xe hơi", icon: "directions-car" },
+  { label: "Xe buýt", value: "Xe buýt", icon: "directions-bus" },
+  { label: "Khác", value: null, icon: "swap-vert" },
+];
+
 function InlineAddPlaceModal({
   visible,
   tripId,
   totalDays,
   defaultDay,
+  destinations,
   onClose,
 }) {
   const insets = useSafeAreaInsets();
@@ -152,9 +162,15 @@ function InlineAddPlaceModal({
 
   // Form states
   const [dayNumber, setDayNumber] = useState(defaultDay || 1);
+  
+  const hasExistingDestinations = useMemo(() => {
+    const dests = destinations || [];
+    return dests.some((d) => d.dayNumber === dayNumber);
+  }, [destinations, dayNumber]);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [note, setNote] = useState("");
+  const [transportToNext, setTransportToNext] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -190,6 +206,7 @@ function InlineAddPlaceModal({
       setStartTime("");
       setEndTime("");
       setNote("");
+      setTransportToNext(null);
       setErrorMsg("");
     }
   }, [visible, defaultDay]);
@@ -217,6 +234,7 @@ function InlineAddPlaceModal({
         startTime: startTime || null,
         endTime: endTime || null,
         note: note || null,
+        transportToNext: transportToNext,
       });
 
       await Promise.all([
@@ -233,7 +251,7 @@ function InlineAddPlaceModal({
       setErrorMsg(err?.message || "Có lỗi xảy ra khi thêm địa điểm.");
       setIsSubmitting(false); // Reset submitting state on error
     }
-  }, [selectedPlace, dayNumber, startTime, endTime, note, tripId, queryClient, onClose]);
+  }, [selectedPlace, dayNumber, startTime, endTime, note, transportToNext, tripId, queryClient, onClose, isSubmitting]);
 
   const isSearchLoading = isLoading || isFetching || searchQuery !== debouncedQuery;
 
@@ -392,119 +410,147 @@ function InlineAddPlaceModal({
 
             {/* STEP 2: CONFIGURE FORM */}
             {step === 2 && selectedPlace && (
-              <ScrollView
-                style={[styles.scrollArea, { maxHeight: screenHeight * 0.55 }]}
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-              >
-                {/* Place Summary */}
-                <View style={styles.placeSummary}>
-                  <Text style={styles.summaryTitle} numberOfLines={1}>
-                    {selectedPlace.name}
-                  </Text>
-                  <Text style={styles.summaryAddress} numberOfLines={1}>
-                    {selectedPlace.address || "Cần Thơ"}
-                  </Text>
-                </View>
-
-                {/* Day selector */}
-                <View style={styles.fieldFull}>
-                  <Text style={styles.label}>Chọn ngày hoạt động</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.dayChips}
-                  >
-                    {Array.from({ length: totalDays || 1 }).map((_, idx) => {
-                      const dayVal = idx + 1;
-                      const isActive = dayNumber === dayVal;
-                      return (
-                        <Pressable
-                          key={dayVal}
-                          style={[styles.dayChip, isActive && styles.dayChipActive]}
-                          onPress={() => setDayNumber(dayVal)}
-                          accessibilityLabel={`Chọn ngày ${dayVal}`}
-                        >
-                          <Text style={[styles.dayChipText, isActive && styles.dayChipTextActive]}>
-                            Ngày {dayVal}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-
-                {/* Time range */}
-                <View style={styles.row}>
-                  <TimeField
-                    label="Bắt đầu"
-                    value={startTime}
-                    onChange={setStartTime}
-                    placeholder="--:--"
-                    icon="play-circle-outline"
-                  />
-                  <TimeField
-                    label="Kết thúc"
-                    value={endTime}
-                    onChange={setEndTime}
-                    placeholder="--:--"
-                    icon="stop-circle"
-                  />
-                </View>
-
-                {/* Note */}
-                <View style={styles.fieldFull}>
-                  <Text style={styles.label}>Ghi chú hành trình</Text>
-                  <TextInput
-                    style={[styles.inputEditable, styles.noteInput]}
-                    value={note}
-                    onChangeText={setNote}
-                    placeholder="Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây..."
-                    placeholderTextColor={T.muted48}
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                  />
-                </View>
-
-                {/* Error message */}
-                {errorMsg ? (
-                  <View style={styles.errorContainer}>
-                    <MaterialIcons name="error-outline" size={16} color={T.danger} />
-                    <Text style={styles.errorText}>{errorMsg}</Text>
+              <>
+                <ScrollView
+                  style={[styles.scrollArea, { maxHeight: screenHeight * 0.45 }]}
+                  contentContainerStyle={styles.scrollContent}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                  {/* Place Summary */}
+                  <View style={styles.placeSummary}>
+                    <Text style={styles.summaryTitle} numberOfLines={1}>
+                      {selectedPlace.name}
+                    </Text>
+                    <Text style={styles.summaryAddress} numberOfLines={1}>
+                      {selectedPlace.address || "Cần Thơ"}
+                    </Text>
                   </View>
-                ) : null}
+
+                  {/* Day selector */}
+                  <View style={styles.fieldFull}>
+                    <Text style={styles.label}>Chọn ngày</Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.dayChips}
+                    >
+                      {Array.from({ length: totalDays || 1 }).map((_, idx) => {
+                        const dayVal = idx + 1;
+                        const isActive = dayNumber === dayVal;
+                        return (
+                          <Pressable
+                            key={dayVal}
+                            style={[styles.dayChip, isActive && styles.dayChipActive]}
+                            onPress={() => setDayNumber(dayVal)}
+                            accessibilityLabel={`Chọn ngày ${dayVal}`}
+                          >
+                            <Text style={[styles.dayChipText, isActive && styles.dayChipTextActive]}>
+                              Ngày {dayVal}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+
+                  {/* Time range */}
+                  <View style={styles.row}>
+                    <TimeField
+                      label="Thời gian bắt đầu"
+                      value={startTime}
+                      onChange={setStartTime}
+                      placeholder="--:--"
+                      icon="play-circle-outline"
+                    />
+                    <TimeField
+                      label="Thời gian kết thúc"
+                      value={endTime}
+                      onChange={setEndTime}
+                      placeholder="--:--"
+                      icon="stop-circle"
+                    />
+                  </View>
+
+                  {/* Di chuyển đến điểm tiếp theo */}
+                  {hasExistingDestinations ? (
+                    <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)", paddingTop: 14, marginTop: 4 }}>
+                      <Text style={styles.sectionHeaderLabel}>Di chuyển đến địa điểm này</Text>
+                      
+                      <View style={styles.fieldFull}>
+                        <Text style={styles.label}>Phương tiện</Text>
+                        <View style={styles.transportRow}>
+                          {TRANSPORT_OPTIONS.map((opt) => {
+                            const isSelected = transportToNext === opt.value;
+                            return (
+                              <Pressable
+                                key={opt.label || "other"}
+                                onPress={() => setTransportToNext(opt.value)}
+                                style={[
+                                  styles.transportOption,
+                                  isSelected && styles.transportOptionActive
+                                ]}
+                              >
+                                <MaterialIcons
+                                  name={opt.icon}
+                                  size={16}
+                                  color={isSelected ? "#FFFFFF" : "rgba(0,0,0,0.6)"}
+                                />
+                                <Text style={[
+                                  styles.transportLabel,
+                                  isSelected && styles.transportLabelActive
+                                ]}>
+                                  {opt.label}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {/* Note */}
+                  <View style={styles.fieldFull}>
+                    <Text style={styles.label}>Ghi chú hành trình</Text>
+                    <TextInput
+                      style={[styles.inputEditable, styles.noteInput]}
+                      value={note}
+                      onChangeText={setNote}
+                      placeholder="Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây..."
+                      placeholderTextColor={T.muted48}
+                      multiline
+                      numberOfLines={3}
+                      textAlignVertical="top"
+                    />
+                  </View>
+
+                  {/* Error message */}
+                  {errorMsg ? (
+                    <View style={styles.errorContainer}>
+                      <MaterialIcons name="error-outline" size={16} color={T.danger} />
+                      <Text style={styles.errorText}>{errorMsg}</Text>
+                    </View>
+                  ) : null}
+                </ScrollView>
 
                 {/* Action Buttons */}
                 <View style={styles.footer}>
-                  <Pressable
+                  <TouchableOpacity
                     onPress={handleAdd}
                     disabled={isSubmitting}
+                    activeOpacity={0.8}
+                    style={[styles.savePill, isSubmitting && styles.saveBtnDisabled]}
                     accessibilityLabel="Thêm vào lịch trình chuyến đi"
-                    style={({ pressed }) => [
-                      styles.savePill,
-                      isSubmitting && styles.saveBtnDisabled,
-                      pressed && !isSubmitting && { backgroundColor: APPLE_THEME.primaryPressed },
-                    ]}
                   >
                     {isSubmitting ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text style={styles.savePillText}>Thêm vào lịch trình</Text>
+                      <Text style={styles.savePillText}>Tạo</Text>
                     )}
-                  </Pressable>
-                  <Pressable
-                    onPress={handleBackToSearch}
-                    disabled={isSubmitting}
-                    hitSlop={8}
-                    accessibilityLabel="Quay lại danh sách"
-                    style={styles.cancelLinkWrap}
-                  >
-                    <Text style={styles.footerCancelLink}>Quay lại</Text>
-                  </Pressable>
+                  </TouchableOpacity>
                 </View>
-              </ScrollView>
+              </>
             )}
           </View>
         </KeyboardAvoidingView>
@@ -777,6 +823,37 @@ const styles = StyleSheet.create({
   noteInput: {
     minHeight: 80,
   },
+  transportRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 4,
+  },
+  transportOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: T.parchment,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: APPLE_THEME.borderSoft,
+  },
+  transportOptionActive: {
+    backgroundColor: T.ink,
+    borderColor: T.ink,
+  },
+  transportLabel: {
+    fontSize: 13,
+    color: T.ink,
+    fontFamily: TOKENS.font.semibold,
+    opacity: 0.6,
+  },
+  transportLabelActive: {
+    color: T.canvas,
+    opacity: 1,
+  },
   errorContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -789,35 +866,32 @@ const styles = StyleSheet.create({
     color: T.danger,
   },
   footer: {
-    marginTop: 8,
-    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(0,0,0,0.07)",
+    backgroundColor: T.canvas,
     flexShrink: 0,
   },
   savePill: {
     width: "100%",
     height: 52,
-    borderRadius: 999,
-    backgroundColor: T.ink,
+    borderRadius: 26,
+    backgroundColor: "#1D1D1F",
     alignItems: "center",
     justifyContent: "center",
   },
   savePillText: {
     fontSize: 16,
-    color: T.canvas,
+    color: "#FFFFFF",
     fontFamily: TOKENS.font.semibold,
     letterSpacing: -0.2,
+    textAlign: "center",
   },
   saveBtnDisabled: {
     opacity: 0.5,
-  },
-  cancelLinkWrap: {
-    paddingVertical: 8,
-  },
-  footerCancelLink: {
-    fontSize: 14,
-    color: T.muted48,
-    fontFamily: TOKENS.font.body,
-    textAlign: "center",
+    backgroundColor: "#1D1D1F",
   },
   pickerOverlay: {
     flex: 1,

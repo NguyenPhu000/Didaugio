@@ -4,12 +4,23 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { TOKENS } from "../../../../constants/design-tokens";
 import { formatDistance } from "../../utils/tripHelpers";
 
+function getFriendlyTransportLabel(transport) {
+  if (!transport) return null;
+  const t = transport.toLowerCase();
+  if (t.includes("walk") || t.includes("đi bộ")) return "Đi bộ";
+  if (t.includes("bike") || t.includes("xe máy")) return "Xe máy";
+  if (t.includes("bus") || t.includes("buýt")) return "Xe buýt";
+  if (t.includes("car") || t.includes("xe hơi") || t === "xe") return "Xe hơi";
+  return transport;
+}
+
 function TimelineConnector({ distanceToNext, transportToNext }) {
   if (!distanceToNext && !transportToNext) return null;
 
   const distanceText = distanceToNext ? formatDistance(distanceToNext) : null;
   const transportIcon = getTransportIcon(transportToNext);
-  const parts = [distanceText, transportToNext].filter(Boolean);
+  const friendlyTransport = getFriendlyTransportLabel(transportToNext);
+  const parts = [distanceText, friendlyTransport].filter(Boolean);
   const label = parts.join(" · ");
 
   return (
@@ -38,10 +49,10 @@ function TimelineConnector({ distanceToNext, transportToNext }) {
 function getTransportIcon(transport) {
   if (!transport) return null;
   const t = transport.toLowerCase();
-  if (t.includes("walk") || t.includes("di bo")) return "directions-walk";
-  if (t.includes("car") || t.includes("xe")) return "directions-car";
-  if (t.includes("bike") || t.includes("xe may")) return "two-wheeler";
-  if (t.includes("bus")) return "directions-bus";
+  if (t.includes("walk") || t.includes("đi bộ")) return "directions-walk";
+  if (t.includes("bike") || t.includes("xe máy")) return "motorcycle";
+  if (t.includes("bus") || t.includes("buýt")) return "directions-bus";
+  if (t.includes("car") || t.includes("xe hơi") || t.includes("xe")) return "directions-car";
   return "swap-vert";
 }
 

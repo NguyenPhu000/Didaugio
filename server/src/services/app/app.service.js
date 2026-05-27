@@ -1626,6 +1626,18 @@ export const updateTrip = async (id, userId, data) => {
     groupSize,
     status,
   } = data;
+
+  if (totalDays !== undefined) {
+    const parsedTotalDays = toInt(totalDays, 1);
+    if (parsedTotalDays < trip.totalDays) {
+      await prisma.tripDestination.updateMany({
+        where: { tripId: id, dayNumber: { gt: parsedTotalDays } },
+        data: { dayNumber: parsedTotalDays },
+      });
+      await recalculateDistancesForDay(id, parsedTotalDays);
+    }
+  }
+
   return prisma.trip.update({
     where: { id },
     data: {
@@ -1661,10 +1673,77 @@ export const deleteTrip = async (id, userId) => {
   await prisma.trip.delete({ where: { id } });
 };
 
+const recalculateDistancesForDay = async (tripId, dayNumber) => {
+  try {
+    const destinations = await prisma.tripDestination.findMany({
+      where: { tripId, dayNumber: toInt(dayNumber, 1) },
+      orderBy: { order: "asc" },
+      include: { place: true },
+    });
+
+    if (destinations.length === 0) return;
+
+    for (let i = 0; i < destinations.length; i++) {
+      const currentDest = destinations[i];
+
+      if (i === destinations.length - 1) {
+        await prisma.tripDestination.update({
+          where: { id: currentDest.id },
+          data: {
+            distanceToNext: null,
+            transportToNext: null,
+          },
+        });
+        continue;
+      }
+
+      const nextDest = destinations[i + 1];
+      const fromPlace = currentDest.place;
+      const toPlace = nextDest.place;
+
+      if (!fromPlace || !toPlace) continue;
+
+      let distanceKm = null;
+      try {
+        const routeResult = await routingService.calculate({
+          origin: {
+            lat: Number(fromPlace.latitude),
+            lng: Number(fromPlace.longitude),
+            name: fromPlace.name,
+          },
+          destination: {
+            lat: Number(toPlace.latitude),
+            lng: Number(toPlace.longitude),
+            name: toPlace.name,
+          },
+          mode: "motorcycle",
+          options: { alternatives: 0, steps: false },
+        });
+
+        const route = routeResult?.routes?.[0];
+        if (route) {
+          distanceKm = toKm2(route.distance);
+        }
+      } catch (err) {
+        console.error("Lỗi tính toán khoảng cách tự động: ", err.message);
+      }
+
+      await prisma.tripDestination.update({
+        where: { id: currentDest.id },
+        data: {
+          distanceToNext: distanceKm,
+        },
+      });
+    }
+  } catch (error) {
+    console.error("Lỗi recalculateDistancesForDay: ", error.message);
+  }
+};
+
 export const addDestination = async (
   tripId,
   userId,
-  { placeId, dayNumber, order, note },
+  { placeId, dayNumber, order, note, transportToNext, distanceToNext },
 ) => {
   const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
   if (!trip) {
@@ -1672,15 +1751,47 @@ export const addDestination = async (
     err.statusCode = 404;
     throw err;
   }
-  return prisma.tripDestination.create({
+
+  let targetOrder = toInt(order);
+  if (targetOrder === null || targetOrder === undefined) {
+    const maxDest = await prisma.tripDestination.findFirst({
+      where: { tripId, dayNumber: toInt(dayNumber, 1) },
+      orderBy: { order: "desc" },
+      select: { order: true },
+    });
+    targetOrder = maxDest ? maxDest.order + 1 : 1;
+  }
+
+  if (transportToNext) {
+    const previousDest = await prisma.tripDestination.findFirst({
+      where: { tripId, dayNumber: toInt(dayNumber, 1) },
+      orderBy: { order: "desc" },
+    });
+    if (previousDest) {
+      await prisma.tripDestination.update({
+        where: { id: previousDest.id },
+        data: { transportToNext },
+      });
+    }
+  }
+
+  const created = await prisma.tripDestination.create({
     data: {
       tripId,
       placeId: toInt(placeId),
       dayNumber: toInt(dayNumber, 1),
-      order: toInt(order, 0),
+      order: targetOrder,
       note,
+      transportToNext: null,
+      distanceToNext: distanceToNext !== undefined && distanceToNext !== null ? Number(distanceToNext) : null,
       status: "planned",
     },
+  });
+
+  await recalculateDistancesForDay(tripId, dayNumber);
+
+  return prisma.tripDestination.findFirst({
+    where: { id: created.id },
     include: { place: { select: TRIP_PLACE_SELECT } },
   });
 };
@@ -1701,6 +1812,8 @@ export const removeDestination = async (tripId, destId, userId) => {
     throw err;
   }
   await prisma.tripDestination.delete({ where: { id: destId } });
+
+  await recalculateDistancesForDay(tripId, dest.dayNumber);
 };
 
 export const reorderDestinations = async (tripId, userId, { dayNumber, orderedIds }) => {
@@ -1718,6 +1831,9 @@ export const reorderDestinations = async (tripId, userId, { dayNumber, orderedId
       }),
     ),
   );
+
+  await recalculateDistancesForDay(tripId, dayNumber);
+
   return prisma.tripDestination.findMany({
     where: { tripId, dayNumber: toInt(dayNumber, 1) },
     orderBy: { order: "asc" },
@@ -1743,9 +1859,18 @@ export const updateDestination = async (tripId, destId, userId, data) => {
   if (data.endTime !== undefined) updateData.endTime = data.endTime;
   if (data.durationMinutes !== undefined) updateData.durationMinutes = toInt(data.durationMinutes);
   if (data.note !== undefined) updateData.note = data.note;
-  return prisma.tripDestination.update({
+  if (data.transportToNext !== undefined) updateData.transportToNext = data.transportToNext;
+  if (data.distanceToNext !== undefined) updateData.distanceToNext = data.distanceToNext !== null ? Number(data.distanceToNext) : null;
+  
+  await prisma.tripDestination.update({
     where: { id: destId },
     data: updateData,
+  });
+
+  await recalculateDistancesForDay(tripId, dest.dayNumber);
+
+  return prisma.tripDestination.findFirst({
+    where: { id: destId },
     include: { place: { select: TRIP_PLACE_SELECT } },
   });
 };
@@ -1763,12 +1888,21 @@ export const moveDestination = async (tripId, destId, userId, { newDayNumber, ne
     err.statusCode = 404;
     throw err;
   }
-  return prisma.tripDestination.update({
+  const oldDayNumber = dest.dayNumber;
+
+  await prisma.tripDestination.update({
     where: { id: destId },
     data: {
       dayNumber: toInt(newDayNumber),
       order: toInt(newOrder, 0),
     },
+  });
+
+  await recalculateDistancesForDay(tripId, oldDayNumber);
+  await recalculateDistancesForDay(tripId, newDayNumber);
+
+  return prisma.tripDestination.findFirst({
+    where: { id: destId },
     include: { place: { select: TRIP_PLACE_SELECT } },
   });
 };

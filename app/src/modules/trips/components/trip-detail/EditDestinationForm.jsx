@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { TOKENS } from "../../../../constants/design-tokens";
+import { formatDistance } from "../../utils/tripHelpers";
 
 function parseTimeToDate(str) {
   if (!str) return null;
@@ -110,7 +111,37 @@ function TimeField({ label, value, onChange, placeholder, icon }) {
   );
 }
 
-function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible }) {
+const TRANSPORT_OPTIONS = [
+  { label: "Đi bộ", value: "Đi bộ", icon: "directions-walk" },
+  { label: "Xe máy", value: "Xe máy", icon: "motorcycle" },
+  { label: "Xe hơi", value: "Xe hơi", icon: "directions-car" },
+  { label: "Xe buýt", value: "Xe buýt", icon: "directions-bus" },
+  { label: "Khác", value: null, icon: "swap-vert" },
+];
+
+function isTransportSelected(stored, optionVal) {
+  if (!stored && !optionVal) return true;
+  if (!stored || !optionVal) return false;
+  
+  const s = stored.toLowerCase();
+  const o = optionVal.toLowerCase();
+  
+  if (o.includes("đi bộ") || o.includes("walk")) {
+    return s.includes("đi bộ") || s.includes("walk");
+  }
+  if (o.includes("xe máy") || o.includes("bike")) {
+    return s.includes("xe máy") || s.includes("bike") || s.includes("motorcycle");
+  }
+  if (o.includes("xe buýt") || o.includes("bus") || o.includes("buýt")) {
+    return s.includes("xe buýt") || s.includes("bus") || s.includes("buýt");
+  }
+  if (o.includes("xe hơi") || o.includes("car")) {
+    return s.includes("xe hơi") || s.includes("car") || (s === "xe" && o === "xe hơi");
+  }
+  return s === o;
+}
+
+function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLast }) {
   const insets = useSafeAreaInsets();
   const [startTime, setStartTime] = useState(dest?.startTime || "");
   const [endTime, setEndTime] = useState(dest?.endTime || "");
@@ -118,6 +149,7 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible }) {
     dest?.durationMinutes ? String(dest.durationMinutes) : "",
   );
   const [note, setNote] = useState(dest?.note || "");
+  const [transportToNext, setTransportToNext] = useState(dest?.transportToNext || null);
 
   useEffect(() => {
     if (visible) {
@@ -127,11 +159,13 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible }) {
         dest?.durationMinutes ? String(dest.durationMinutes) : "",
       );
       setNote(dest?.note || "");
+      setTransportToNext(dest?.transportToNext || null);
     }
   }, [visible, dest?.id]);
 
   const handleSave = useCallback(() => {
     if (isLoading || !dest?.id) return;
+
     onSave({
       destId: dest.id,
       data: {
@@ -139,9 +173,10 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible }) {
         endTime: endTime || null,
         durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : null,
         note: note || null,
+        transportToNext: isLast ? null : transportToNext,
       },
     });
-  }, [dest?.id, startTime, endTime, durationMinutes, note, onSave, isLoading]);
+  }, [dest?.id, startTime, endTime, durationMinutes, note, transportToNext, onSave, isLoading, isLast]);
 
   if (!visible) return null;
 
@@ -229,6 +264,55 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible }) {
               </Text>
             </View>
 
+            {!isLast ? (
+              <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)", paddingTop: 14, marginTop: 4 }}>
+                <Text style={s.sectionHeaderLabel}>Di chuyển đến điểm tiếp theo</Text>
+                
+                <View style={s.fieldFull}>
+                  <Text style={s.label}>Phương tiện</Text>
+                  <View style={s.transportRow}>
+                    {TRANSPORT_OPTIONS.map((opt) => {
+                      const isSelected = isTransportSelected(transportToNext, opt.value);
+                      return (
+                        <Pressable
+                          key={opt.label || "other"}
+                          onPress={() => setTransportToNext(opt.value)}
+                          style={[
+                            s.transportOption,
+                            isSelected && s.transportOptionActive
+                          ]}
+                        >
+                          <MaterialIcons
+                            name={opt.icon}
+                            size={16}
+                            color={isSelected ? "#FFFFFF" : "rgba(0,0,0,0.6)"}
+                          />
+                          <Text style={[
+                            s.transportLabel,
+                            isSelected && s.transportLabelActive
+                          ]}>
+                            {opt.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {dest?.distanceToNext ? (
+                  <View style={[s.fieldFull, { marginTop: 10 }]}>
+                    <Text style={s.label}>Khoảng cách đến điểm tiếp theo</Text>
+                    <View style={s.readOnlyContainer}>
+                      <MaterialIcons name="navigation" size={14} color="rgba(0,0,0,0.4)" style={{ transform: [{ rotate: "45deg" }] }} />
+                      <Text style={s.readOnlyText}>
+                        {formatDistance(dest.distanceToNext)} (Hệ thống tự động tính toán)
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
             {/* GHI CHÚ HÀNH TRÌNH */}
             <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)", paddingTop: 14, marginTop: 4 }}>
               <Text style={s.sectionHeaderLabel}>Ghi chú hành trình</Text>
@@ -249,18 +333,21 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible }) {
 
           {/* Nút Lưu pill — luôn cố định dưới cùng */}
           <View style={s.footer}>
-            <TouchableOpacity
+            <Pressable
               onPress={handleSave}
               disabled={isLoading}
-              activeOpacity={0.8}
-              style={[s.savePill, isLoading && s.saveBtnDisabled]}
+              style={({ pressed }) => [
+                s.savePill,
+                isLoading && s.saveBtnDisabled,
+                pressed && !isLoading && { opacity: 0.8 }
+              ]}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={s.savePillText}>Lưu thay đổi</Text>
+                <Text style={s.savePillText}>Lưu</Text>
               )}
-            </TouchableOpacity>
+            </Pressable>
           </View>
           </View>
         </KeyboardAvoidingView>
@@ -456,6 +543,51 @@ const s = StyleSheet.create({
     fontSize: 16,
     color: "#1D1D1F",
     fontFamily: TOKENS.font.semibold,
+  },
+  transportRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 4,
+  },
+  transportOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F5F5F7",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
+  transportOptionActive: {
+    backgroundColor: "#1D1D1F",
+    borderColor: "#1D1D1F",
+  },
+  transportLabel: {
+    fontSize: 13,
+    color: "rgba(0,0,0,0.6)",
+    fontFamily: TOKENS.font.semibold,
+  },
+  transportLabelActive: {
+    color: "#FFFFFF",
+  },
+  readOnlyContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F5F5F7",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
+  readOnlyText: {
+    fontSize: 14,
+    color: "rgba(0,0,0,0.5)",
+    fontFamily: TOKENS.font.body,
   },
   sectionHeaderLabel: {
     fontSize: 11,

@@ -193,8 +193,10 @@ function TimelineCard({
                 pressed && styles.pillOutlinePressed,
               ]}
             >
-              <MaterialIcons name="visibility" size={14} color="#1D1D1F" />
-              <Text style={styles.pillOutlineText}>Xem</Text>
+              <Text style={styles.pillOutlineText}>
+                <MaterialIcons name="visibility" size={14} color="#1D1D1F" />{" "}
+                Xem
+              </Text>
             </Pressable>
             <Pressable
               onPress={handleMovePress}
@@ -204,8 +206,8 @@ function TimelineCard({
                 pressed && styles.pillOutlinePressed,
               ]}
             >
-              <MaterialIcons name="swap-vert" size={14} color="#1D1D1F" />
-              <Text style={styles.pillOutlineText} numberOfLines={1}>
+              <Text style={styles.pillOutlineText}>
+                <MaterialIcons name="swap-horiz" size={14} color="#1D1D1F" />{" "}
                 Chuyển ngày
               </Text>
             </Pressable>
@@ -217,8 +219,9 @@ function TimelineCard({
                 pressed && styles.pillPrimaryPressed,
               ]}
             >
-              <MaterialIcons name="edit" size={14} color="#FFFFFF" />
-              <Text style={styles.pillPrimaryText}>Sửa</Text>
+              <Text style={styles.pillPrimaryText}>
+                <MaterialIcons name="edit" size={14} color="#FFFFFF" /> Sửa
+              </Text>
             </Pressable>
             <Pressable
               onPress={onRemove}

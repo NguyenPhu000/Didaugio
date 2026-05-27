@@ -181,21 +181,30 @@ function ItineraryTab({
   const renderItem = useCallback(
     ({ item, drag, isActive }) => {
       const itemBookings = destBookings.get(item.id) || [];
+      const isLastItem = item.id === dayDestinations[dayDestinations.length - 1]?.id;
       return (
-        <TimelineCard
-          dest={item}
-          bookings={itemBookings}
-          onOpenBooking={onOpenBooking}
-          onRemove={() => handleRemove(item)}
-          onMoveRequest={handleMoveRequest}
-          onEditRequest={handleEditRequest}
-          drag={drag}
-          isActive={isActive}
-          tripStatus={trip?.status}
-        />
+        <View>
+          <TimelineCard
+            dest={item}
+            bookings={itemBookings}
+            onOpenBooking={onOpenBooking}
+            onRemove={() => handleRemove(item)}
+            onMoveRequest={handleMoveRequest}
+            onEditRequest={handleEditRequest}
+            drag={drag}
+            isActive={isActive}
+            tripStatus={trip?.status}
+          />
+          {!isLastItem && (
+            <TimelineConnector
+              distanceToNext={item.distanceToNext}
+              transportToNext={item.transportToNext}
+            />
+          )}
+        </View>
       );
     },
-    [destBookings, onOpenBooking, handleRemove, handleMoveRequest, handleEditRequest, trip?.status],
+    [destBookings, onOpenBooking, handleRemove, handleMoveRequest, handleEditRequest, trip?.status, dayDestinations],
   );
 
   // Render separator between items
@@ -209,11 +218,15 @@ function ItineraryTab({
     [],
   );
 
-  const destCount = dayDestinations.length;
+      const isLast = useMemo(() => {
+        if (!editingDest) return false;
+        const idx = dayDestinations.findIndex((d) => d.id === editingDest.id);
+        return idx === dayDestinations.length - 1;
+      }, [dayDestinations, editingDest]);
 
-  return (
-    <View style={styles.container}>
-      {/* Day chips */}
+      return (
+        <View style={styles.container}>
+          {/* Day chips */}
       <ScrollView
         horizontal
         style={styles.dayChipsScroll}
@@ -287,7 +300,7 @@ function ItineraryTab({
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           
-          <Text style={styles.addInlineBtnText}> <MaterialIcons name="add" size={16} color="#000000" /> Thêm địa điểm</Text>
+          <Text style={styles.addInlineBtnText}><MaterialIcons name="add" size={16} color="#FFFFFF" /> Thêm địa điểm</Text>
         </Pressable>
       </View>
 
@@ -296,7 +309,6 @@ function ItineraryTab({
         data={dayDestinations}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}
-        ItemSeparatorComponent={renderSeparator}
         onDragEnd={handleDragEnd}
         style={{ flex: 1 }}
         containerStyle={{ flex: 1 }}
@@ -324,7 +336,7 @@ function ItineraryTab({
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               
-              <Text style={styles.addInlineEmptyBtnText}> <MaterialIcons name="add" size={16} color="#000000" /> Thêm địa điểm</Text>
+              <Text style={styles.addInlineEmptyBtnText}><MaterialIcons name="add" size={16} color="#FFFFFF" /> Thêm địa điểm</Text>
             </Pressable>
           </View>
         }
@@ -343,6 +355,7 @@ function ItineraryTab({
       <EditDestinationForm
         visible={!!editingDest}
         dest={editingDest}
+        isLast={isLast}
         onSave={handleSave}
         onCancel={handleEditCancel}
         isLoading={updateMutation.isPending}
@@ -353,6 +366,7 @@ function ItineraryTab({
         tripId={tripId}
         totalDays={totalDays}
         defaultDay={selectedDay}
+        destinations={destinations}
         onClose={() => onAddPlaceClose?.()}
       />
     </View>
@@ -482,7 +496,7 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
   },
   addInlineBtnText: {
-    color: "#000000",
+    color: "#FFFFFF",
     fontSize: 12,
     fontFamily: TOKENS.font.semibold,
     letterSpacing: -0.1,
@@ -498,7 +512,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   addInlineEmptyBtnText: {
-    color: "#000000",
+    color: "#FFFFFF",
     fontSize: 13,
     fontFamily: TOKENS.font.semibold,
     letterSpacing: -0.15,

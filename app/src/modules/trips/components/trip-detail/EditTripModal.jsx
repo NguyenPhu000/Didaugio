@@ -164,7 +164,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                 {isSaving ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.btnSaveText}>Lưu thay đổi</Text>
+                  <Text style={styles.btnSaveText}>Lưu</Text>
                 )}
               </TouchableOpacity>
             </View>
