@@ -128,7 +128,7 @@ export function AIPlanner() {
 
     Alert.alert(
       "Xóa lịch sử Planner?",
-      "Toàn bộ hội thoại, bản nháp lịch trình và lựa chọn địa điểm sẽ bị xóa trên thiết bị này.",
+      "Toàn bộ hội thoại, kế hoạch lịch trình đề xuất và lựa chọn địa điểm sẽ bị xóa trên thiết bị này.",
       [
         { text: "Hủy", style: "cancel" },
         {

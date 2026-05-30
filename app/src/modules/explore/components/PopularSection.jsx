@@ -1,5 +1,5 @@
-import { memo, useCallback, useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { memo, useEffect } from "react";
+import { Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -40,12 +40,12 @@ function PopularSectionInner({ places, onPressPlace, title = "Phổ biến" }) {
   if (!places?.length) return null;
 
   return (
-    <Animated.View style={[styles.container, sectionAnimStyle]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
+    <Animated.View style={[sectionAnimStyle, { paddingHorizontal: TAB_SCREEN_PADDING }]} className="mt-7">
+      <View className="flex-row justify-between items-center mb-3.5">
+        <Text className="text-[#1D1D1F] text-[22px] leading-7 tracking-[-0.5px] font-bold" style={{ fontFamily: TOKENS.font.heading }}>{title}</Text>
       </View>
 
-      <View style={styles.list}>
+      <View className="gap-3">
         {places.map((item, index) => (
           <PopularCard
             key={item?.id != null ? String(item.id) : `popular-${index}`}
@@ -60,26 +60,3 @@ function PopularSectionInner({ places, onPressPlace, title = "Phổ biến" }) {
 }
 
 export const PopularSection = memo(PopularSectionInner);
-
-const styles = StyleSheet.create({
-  container: {
-    marginTop: 28,
-    paddingHorizontal: TAB_SCREEN_PADDING,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  title: {
-    color: APPLE_THEME.text,
-    fontSize: 22,
-    lineHeight: 28,
-    letterSpacing: -0.5,
-    fontFamily: TOKENS.font.heading,
-  },
-  list: {
-    gap: 12,
-  },
-});

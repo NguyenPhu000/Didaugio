@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Marker } from "react-native-maps";
 import { TOKENS } from "../../../../constants/design-tokens";
 
@@ -26,24 +26,14 @@ const RouteBuilderStopsMarkerLayer = memo(
           tracksViewChanges={false}
           zIndex={1400}
         >
-          <View
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: 12,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: "rgba(15,23,42,0.92)",
-              borderWidth: 2,
-              borderColor: "#FFFFFF",
-            }}
-          >
+          <View style={styles.stopMarker}>
             <Text
-              style={{
-                color: "#FFFFFF",
-                fontSize: 11,
-                fontFamily: TOKENS.font.semibold,
-              }}
+              style={[
+                styles.stopMarkerText,
+                {
+                  fontFamily: TOKENS.font.semibold,
+                },
+              ]}
             >
               {index + 1}
             </Text>
@@ -53,5 +43,23 @@ const RouteBuilderStopsMarkerLayer = memo(
     });
   },
 );
+
+const styles = StyleSheet.create({
+  stopMarker: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.9)",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  stopMarkerText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+});
 
 export default RouteBuilderStopsMarkerLayer;

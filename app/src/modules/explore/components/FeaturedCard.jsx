@@ -3,7 +3,6 @@ import {
   Dimensions,
   Platform,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -74,12 +73,19 @@ function FeaturedCardInner({ place, onPress, index = 0 }) {
     onPress?.();
   }, [onPress]);
 
+  const shadowStyle = {
+    textShadowColor: "rgba(0, 0, 0, 0.55)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  };
+
   return (
     <AnimatedPressable
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={[styles.card, animatedStyle]}
+      style={[animatedStyle, { width: CARD_W, height: CARD_H }]}
+      className="rounded-[32px] overflow-hidden bg-[#EDEDF2] shadow-lg elevation-10 relative"
     >
       {/* Image background */}
       {imageUri ? (
@@ -88,10 +94,10 @@ function FeaturedCardInner({ place, onPress, index = 0 }) {
           contentFit="cover"
           transition={280}
           cachePolicy="memory-disk"
-          style={StyleSheet.absoluteFillObject}
+          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
         />
       ) : (
-        <View style={styles.placeholder}>
+        <View className="absolute inset-0 bg-[#EDEDF2] items-center justify-center">
           <MaterialIcons
             name="travel-explore"
             size={44}
@@ -101,84 +107,98 @@ function FeaturedCardInner({ place, onPress, index = 0 }) {
       )}
 
       {/* Cinematic gradients */}
-      <View style={styles.gradientTop} pointerEvents="none" />
-      <View style={styles.gradientBottom} pointerEvents="none" />
+      <View className="absolute top-0 left-0 right-0 h-[35%] bg-black/[0.18]" pointerEvents="none" />
+      <View className="absolute bottom-0 left-0 right-0 h-[65%] bg-black/[0.55]" pointerEvents="none" />
 
       {/* Featured badge — dark glass pill */}
-      <View style={styles.featuredBadge}>
+      <View className="absolute top-3.5 left-3.5 z-[3] h-7 rounded-full overflow-hidden border-[0.5px] border-white/30">
         <BlurView
           intensity={70}
           tint="dark"
-          style={StyleSheet.absoluteFill}
+          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
         />
-        <View style={styles.badgeInner}>
+        <View className="flex-1 flex-row items-center gap-1 px-2.5">
           <MaterialIcons name="bolt" size={12} color="#FACC15" />
-          <Text style={styles.featuredBadgeText}>Nổi bật</Text>
+          <Text className="text-white text-[11px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
+            Nổi bật
+          </Text>
         </View>
       </View>
 
       {/* Rating badge — dark glass pill */}
       {hasRating ? (
-        <View style={[styles.ratingBadge]}>
+        <View className="absolute top-3.5 left-[94px] z-[3] h-7 rounded-full overflow-hidden border-[0.5px] border-white/30">
           <BlurView
             intensity={70}
             tint="dark"
-            style={StyleSheet.absoluteFill}
+            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
           />
-          <View style={styles.badgeInner}>
+          <View className="flex-1 flex-row items-center gap-1 px-2.5">
             <MaterialIcons name="star" size={12} color="#FBBF24" />
-            <Text style={styles.ratingBadgeText}>{rating.toFixed(1)}</Text>
+            <Text className="text-white text-[11px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
+              {rating.toFixed(1)}
+            </Text>
           </View>
         </View>
       ) : null}
 
       {/* Favourite button */}
-      <View style={styles.favoriteBtn}>
-        <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+      <View className="absolute top-3.5 right-3.5 z-[3] w-[34px] h-[34px] rounded-full items-center justify-center overflow-hidden border-[0.5px] border-white/35">
+        <BlurView
+          intensity={60}
+          tint="dark"
+          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+        />
         <MaterialIcons name="favorite-border" size={17} color="#FFFFFF" />
       </View>
 
       {/* Footer: frosted glass */}
-      <View style={styles.footerWrap}>
-        <BlurView intensity={85} tint="light" style={styles.footerBlur}>
+      <View className="absolute left-2.5 right-2.5 bottom-2.5 z-[3] rounded-[22px] overflow-hidden border-[0.5px] border-white/60">
+        <BlurView intensity={85} tint="light" style={{ paddingHorizontal: 14, paddingVertical: 12 }}>
           {/* Category pill */}
-          <View style={styles.categoryPill}>
-            <Text style={styles.categoryPillText} numberOfLines={1}>
+          <View className="self-start h-[22px] px-2.5 rounded-full justify-center bg-black/5 border-[0.5px] border-[#D2D2D7] mb-1.5">
+            <Text className="text-[#1D1D1F] text-[10px] font-semibold tracking-[0.3px]" style={{ fontFamily: TOKENS.font.semibold }} numberOfLines={1}>
               {categoryName}
             </Text>
           </View>
 
           {/* Name & location */}
-          <Text style={styles.placeName} numberOfLines={2}>
+          <Text className="text-[#1D1D1F] text-base leading-[21px] tracking-[-0.4px] font-bold mb-0.5" style={{ fontFamily: TOKENS.font.heading }} numberOfLines={2}>
             {place?.name}
           </Text>
 
           {location ? (
-            <View style={styles.locationRow}>
+            <View className="flex-row items-center gap-0.5 mb-2">
               <MaterialIcons
                 name="place"
                 size={12}
                 color={APPLE_THEME.textMuted}
               />
-              <Text style={styles.locationText} numberOfLines={1}>
+              <Text className="text-[#1D1D1F]/50 text-[11px] font-medium flex-1" style={{ fontFamily: TOKENS.font.medium }} numberOfLines={1}>
                 {location}
               </Text>
             </View>
           ) : null}
 
           {/* Bottom row */}
-          <View style={styles.footerBottomRow}>
-            <Text style={styles.ratingsCap}>{ratingCap}</Text>
-            <View style={styles.bottomRightRow}>
+          <View className="flex-row justify-between items-center">
+            <Text className="text-[#1D1D1F]/50 text-[10px] font-semibold tracking-[0.5px]" style={{ fontFamily: TOKENS.font.semibold }}>
+              {ratingCap}
+            </Text>
+            <View className="flex-row items-center gap-2">
               {priceLine ? (
-                <View style={styles.priceRow}>
-                  <Text style={styles.priceMain}>{priceLine.main}</Text>
+                <View className="flex-row items-baseline gap-0.5">
+                  <Text className="text-[#1D1D1F] text-[15px] font-bold" style={{ fontFamily: TOKENS.font.heading }}>
+                    {priceLine.main}
+                  </Text>
                   {priceLine.suffix ? (
-                    <Text style={styles.priceSuffix}>{priceLine.suffix}</Text>
+                    <Text className="text-[#1D1D1F]/50 text-[10px] font-medium" style={{ fontFamily: TOKENS.font.medium }}>
+                      {priceLine.suffix}
+                    </Text>
                   ) : null}
                 </View>
               ) : null}
-              <View style={styles.ctaCircle}>
+              <View className="w-[30px] h-[30px] rounded-full items-center justify-center bg-[#1D1D1F]">
                 <MaterialIcons
                   name="arrow-forward"
                   size={14}
@@ -195,184 +215,3 @@ function FeaturedCardInner({ place, onPress, index = 0 }) {
 
 export const FeaturedCard = memo(FeaturedCardInner);
 export { CARD_W as FEATURED_CARD_W, CARD_H as FEATURED_CARD_H };
-
-const styles = StyleSheet.create({
-  card: {
-    width: CARD_W,
-    height: CARD_H,
-    borderRadius: TOKENS.radius["3xl"],
-    overflow: "hidden",
-    backgroundColor: APPLE_THEME.surfaceMuted,
-    ...Platform.select({
-      ios: TOKENS.shadow.lg,
-      android: { elevation: 10 },
-    }),
-  },
-  placeholder: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: APPLE_THEME.surfaceMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  gradientTop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "35%",
-    backgroundColor: "rgba(0,0,0,0.18)",
-  },
-  gradientBottom: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: "65%",
-    backgroundColor: "rgba(0,0,0,0.55)",
-  },
-  favoriteBtn: {
-    position: "absolute",
-    top: 14,
-    right: 14,
-    zIndex: 3,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.35)",
-  },
-  featuredBadge: {
-    position: "absolute",
-    top: 14,
-    left: 14,
-    zIndex: 3,
-    height: 28,
-    borderRadius: 999,
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.3)",
-  },
-  ratingBadge: {
-    position: "absolute",
-    top: 14,
-    left: 94,
-    zIndex: 3,
-    height: 28,
-    borderRadius: 999,
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.3)",
-  },
-  badgeInner: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-  },
-  featuredBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  ratingBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  footerWrap: {
-    position: "absolute",
-    left: 10,
-    right: 10,
-    bottom: 10,
-    zIndex: 3,
-    borderRadius: 22,
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.6)",
-  },
-  footerBlur: {
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 12,
-  },
-  categoryPill: {
-    alignSelf: "flex-start",
-    height: 22,
-    paddingHorizontal: 9,
-    borderRadius: 999,
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.06)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APPLE_THEME.border,
-    marginBottom: 6,
-  },
-  categoryPillText: {
-    color: APPLE_THEME.primary,
-    fontSize: 10,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.3,
-  },
-  placeName: {
-    color: APPLE_THEME.text,
-    fontSize: 16,
-    lineHeight: 21,
-    letterSpacing: -0.4,
-    fontFamily: TOKENS.font.heading,
-    marginBottom: 3,
-  },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    marginBottom: 8,
-  },
-  locationText: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-    flex: 1,
-  },
-  footerBottomRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  ratingsCap: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 10,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.5,
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 2,
-  },
-  bottomRightRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  priceMain: {
-    color: APPLE_THEME.text,
-    fontSize: 15,
-    fontFamily: TOKENS.font.heading,
-  },
-  priceSuffix: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 10,
-    fontFamily: TOKENS.font.medium,
-  },
-  ctaCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_THEME.primary,
-  },
-});

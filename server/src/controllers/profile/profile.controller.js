@@ -502,12 +502,25 @@ export const addDestination = async (req, res, next) => {
       return res
         .status(400)
         .json({ success: false, data: null, message: "ID không hợp lệ" });
-    const { placeId, dayNumber = 1, order = 0, note } = req.body;
+    const {
+      placeId,
+      dayNumber = 1,
+      order = 0,
+      note,
+      startTime,
+      endTime,
+      transportToNext,
+      distanceToNext,
+    } = req.body;
     const dest = await appService.addDestination(tripId, getUserId(req), {
       placeId,
       dayNumber,
       order,
       note,
+      startTime,
+      endTime,
+      transportToNext,
+      distanceToNext,
     });
     res.status(201).json({
       success: true,

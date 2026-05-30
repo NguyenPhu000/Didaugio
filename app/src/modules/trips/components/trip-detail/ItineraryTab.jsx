@@ -1,9 +1,8 @@
-import { memo, useState, useCallback, useMemo } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from "react-native";
+import { memo, useState, useCallback, useMemo, useEffect } from "react";
+import { View, Text, Pressable, ScrollView, Alert } from "react-native";
 import DraggableFlatList from "react-native-draggable-flatlist";
 import { MaterialIcons } from "@expo/vector-icons";
-import { TOKENS } from "../../../../constants/design-tokens";
-import { buildDestinationBookings } from "../../utils/tripHelpers";
+import { buildDestinationBookings, buildDayList, parseTimeToDate } from "../../utils/tripHelpers";
 import { useReorderDestinations, useUpdateDestination, useMoveDestination, useRemoveDestination } from "../../hooks/useTripDetail";
 import TimelineCard from "./TimelineCard";
 import TimelineConnector from "./TimelineConnector";
@@ -21,11 +20,19 @@ function ItineraryTab({
 }) {
   const tripId = trip?.id;
   const destinations = trip?.destinations || [];
-  const totalDays = trip?.totalDays || 1;
+
+  // Nguồn duy nhất cho danh sách ngày (dùng chung với modal chuyển ngày / thêm địa điểm)
+  const days = useMemo(() => buildDayList(trip), [trip]);
+  const totalDays = days.length;
 
   const [selectedDay, setSelectedDay] = useState(1);
   const [movingDest, setMovingDest] = useState(null);
   const [editingDest, setEditingDest] = useState(null);
+
+  // Giữ ngày đang chọn luôn nằm trong khoảng hợp lệ khi tổng số ngày thay đổi
+  useEffect(() => {
+    if (selectedDay > totalDays) setSelectedDay(totalDays);
+  }, [selectedDay, totalDays]);
 
   const formatChipDate = useCallback((date) => {
     if (!date) return null;
@@ -39,18 +46,6 @@ function ItineraryTab({
   const updateMutation = useUpdateDestination(tripId);
   const moveMutation = useMoveDestination(tripId);
   const removeMutation = useRemoveDestination(tripId);
-
-  // Build day list
-  const days = useMemo(() => {
-    const result = [];
-    for (let i = 1; i <= totalDays; i++) {
-      const date = trip?.startDate
-        ? new Date(new Date(trip.startDate).getTime() + (i - 1) * 86400000)
-        : null;
-      result.push({ dayNumber: i, date });
-    }
-    return result;
-  }, [trip?.startDate, totalDays]);
 
   // Filter destinations for selected day
   const dayDestinations = useMemo(
@@ -164,17 +159,43 @@ function ItineraryTab({
 
   const handleSave = useCallback(
     ({ destId, data }) => {
+      const timeChanged = data.startTime !== undefined || data.endTime !== undefined;
+
       updateMutation.mutate(
         { destId, data },
-        { 
-          onSuccess: () => setEditingDest(null),
+        {
+          onSuccess: () => {
+            setEditingDest(null);
+
+            if (timeChanged && data.startTime) {
+              const dayDests = destinations.filter((d) => d.dayNumber === selectedDay);
+              const sorted = [...dayDests].sort((a, b) => {
+                const aTime = a.id === destId ? data.startTime : a.startTime;
+                const bTime = b.id === destId ? data.startTime : b.startTime;
+                const aDate = parseTimeToDate(aTime);
+                const bDate = parseTimeToDate(bTime);
+                if (aDate && bDate) return aDate - bDate;
+                if (aDate) return -1;
+                if (bDate) return 1;
+                return a.order - b.order;
+              });
+              const orderedIds = sorted.map((d) => d.id);
+              const orderChanged = orderedIds.some((id, i) => {
+                const dest = dayDests.find((d) => d.id === id);
+                return dest && dest.order !== i;
+              });
+              if (orderChanged) {
+                reorderMutation.mutate({ dayNumber: selectedDay, orderedIds });
+              }
+            }
+          },
           onError: (error) => {
             Alert.alert("Lỗi", error?.message || "Không thể lưu thay đổi. Vui lòng thử lại.");
           },
         },
       );
     },
-    [updateMutation],
+    [updateMutation, destinations, selectedDay, reorderMutation],
   );
 
   // Render item for DraggableFlatList
@@ -207,31 +228,20 @@ function ItineraryTab({
     [destBookings, onOpenBooking, handleRemove, handleMoveRequest, handleEditRequest, trip?.status, dayDestinations],
   );
 
-  // Render separator between items
-  const renderSeparator = useCallback(
-    ({ leadingItem }) => (
-      <TimelineConnector
-        distanceToNext={leadingItem.distanceToNext}
-        transportToNext={leadingItem.transportToNext}
-      />
-    ),
-    [],
-  );
+  const isLast = useMemo(() => {
+    if (!editingDest) return false;
+    const idx = dayDestinations.findIndex((d) => d.id === editingDest.id);
+    return idx === dayDestinations.length - 1;
+  }, [dayDestinations, editingDest]);
 
-      const isLast = useMemo(() => {
-        if (!editingDest) return false;
-        const idx = dayDestinations.findIndex((d) => d.id === editingDest.id);
-        return idx === dayDestinations.length - 1;
-      }, [dayDestinations, editingDest]);
-
-      return (
-        <View style={styles.container}>
-          {/* Day chips */}
+  return (
+    <View className="flex-1">
+      {/* Day chips */}
       <ScrollView
         horizontal
-        style={styles.dayChipsScroll}
+        className="flex-grow-0"
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.dayChips}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 8, gap: 8, alignItems: "center" }}
       >
         {days.map(({ dayNumber, date }) => {
           const isActive = selectedDay === dayNumber;
@@ -239,68 +249,67 @@ function ItineraryTab({
             (d) => d.dayNumber === dayNumber,
           );
           return (
-            <Pressable
-              key={dayNumber}
-              style={[styles.dayChip, isActive && styles.dayChipActive]}
-              onPress={() => setSelectedDay(dayNumber)}
-            >
-              <Text
-                style={[
-                  styles.dayChipLabel,
-                  isActive && styles.dayChipLabelActive,
+            <View key={dayNumber} style={{ overflow: "visible" }}>
+              <Pressable
+                style={({ pressed }) => [
+                  pressed && { opacity: 0.9 },
                 ]}
-                numberOfLines={1}
+                className={`px-3 rounded-2xl items-center justify-center gap-0.5 h-14 min-w-[64px] max-w-[88px] ${isActive ? "bg-[#E8E8ED] border-[1.5px] border-[#1D1D1F]" : "bg-black/[0.04]"}`}
+                onPress={() => setSelectedDay(dayNumber)}
               >
-                Ngày {dayNumber}
-              </Text>
-              {date ? (
                 <Text
-                  style={[
-                    styles.dayChipDate,
-                    isActive && styles.dayChipDateActive,
-                  ]}
+                  className={`text-[13px] font-semibold tracking-tight text-[#1D1D1F]`}
                   numberOfLines={1}
                 >
-                  {formatChipDate(date)}
+                  Ngày {dayNumber}
                 </Text>
-              ) : null}
+                {date ? (
+                  <Text
+                    className={`text-[10px] font-normal tracking-tight text-black/40`}
+                    numberOfLines={1}
+                  >
+                    {formatChipDate(date)}
+                  </Text>
+                ) : null}
+              </Pressable>
               {dayDests.length > 0 ? (
                 <View
-                  style={[
-                    styles.dayChipCount,
-                    isActive && styles.dayChipCountActive,
-                  ]}
+                  style={{
+                    position: "absolute",
+                    top: -7,
+                    alignSelf: "center",
+                    zIndex: 1,
+                  }}
+                  className={`min-w-[18px] h-[18px] rounded-full items-center justify-center px-1.25 ${isActive ? "bg-[#1D1D1F]" : "bg-black/[0.12]"}`}
                 >
                   <Text
-                    style={[
-                      styles.dayChipCountText,
-                      isActive && styles.dayChipCountTextActive,
-                    ]}
+                    className={`text-[10px] font-semibold ${isActive ? "text-white" : "text-[#1D1D1F]"}`}
                   >
                     {dayDests.length}
                   </Text>
                 </View>
               ) : null}
-            </Pressable>
+            </View>
           );
         })}
       </ScrollView>
 
       {/* Action Header */}
-      <View style={styles.actionHeader}>
-        <Text style={styles.destCountText}>
+      <View className="flex-row items-center justify-between px-5 py-2.5 bg-[#F8FAFC]">
+        <Text className="text-[13px] font-semibold text-black/[0.45] tracking-tight">
           {dayDestinations.length} địa điểm
         </Text>
         <Pressable
           style={({ pressed }) => [
-            styles.addInlineBtn,
             pressed && { opacity: 0.8 },
           ]}
           onPress={() => onAddPlaceOpen?.()}
+          className="flex-row items-center gap-1 bg-[#1D1D1F] px-3 py-2 rounded-full"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          
-          <Text style={styles.addInlineBtnText}><MaterialIcons name="add" size={16} color="#FFFFFF" /> Thêm địa điểm</Text>
+          <Text className="text-white text-[12px] font-semibold tracking-tight">
+            <MaterialIcons name="add" size={16} color="#FFFFFF" /> Thêm địa điểm
+          </Text>
         </Pressable>
       </View>
 
@@ -313,30 +322,31 @@ function ItineraryTab({
         style={{ flex: 1 }}
         containerStyle={{ flex: 1 }}
         activationDistance={15}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120, paddingTop: 4 }}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <View style={styles.emptyIcon}>
+          <View className="py-14 items-center gap-2">
+            <View className="w-14 h-14 rounded-[20px] bg-black/[0.04] items-center justify-center mb-2">
               <MaterialIcons
                 name="add-location"
                 size={28}
                 color="rgba(0,0,0,0.2)"
               />
             </View>
-            <Text style={styles.emptyTitle}>Chưa có địa điểm</Text>
-            <Text style={styles.emptyText}>
+            <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">Chưa có địa điểm</Text>
+            <Text className="text-[14px] text-black/40 font-normal tracking-tight">
               Thêm địa điểm yêu thích vào ngày này
             </Text>
             <Pressable
               style={({ pressed }) => [
-                styles.addInlineEmptyBtn,
                 pressed && { opacity: 0.8 },
               ]}
               onPress={() => onAddPlaceOpen?.()}
+              className="flex-row items-center gap-1 bg-[#1D1D1F] px-4 py-2.5 rounded-full mt-3"
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              
-              <Text style={styles.addInlineEmptyBtnText}><MaterialIcons name="add" size={16} color="#FFFFFF" /> Thêm địa điểm</Text>
+              <Text className="text-white text-[13px] font-semibold tracking-tight">
+                <MaterialIcons name="add" size={16} color="#FFFFFF" /> Thêm địa điểm
+              </Text>
             </Pressable>
           </View>
         }
@@ -372,151 +382,5 @@ function ItineraryTab({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  dayChips: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    gap: 8,
-    alignItems: "center",
-  },
-  dayChipsScroll: {
-    flexGrow: 0,
-    height: 76,
-    maxHeight: 76,
-  },
-  dayChip: {
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.04)",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-    height: 56,
-    minWidth: 64,
-    maxWidth: 88,
-  },
-  dayChipActive: {
-    backgroundColor: "#1D1D1F",
-  },
-  dayChipLabel: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-    letterSpacing: -0.2,
-  },
-  dayChipLabelActive: {
-    color: "#FFFFFF",
-  },
-  dayChipDate: {
-    fontSize: 10,
-    fontFamily: TOKENS.font.body,
-    color: "rgba(0,0,0,0.4)",
-    letterSpacing: -0.1,
-  },
-  dayChipDateActive: {
-    color: "rgba(255,255,255,0.6)",
-  },
-  dayChipCount: {
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: "rgba(0,0,0,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 5,
-    marginTop: 2,
-  },
-  dayChipCountActive: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-  },
-  dayChipCountText: {
-    fontSize: 10,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-  },
-  dayChipCountTextActive: {
-    color: "#FFFFFF",
-  },
-  list: {
-    paddingHorizontal: 20,
-    paddingBottom: 120,
-    paddingTop: 4,
-  },
-  empty: {
-    paddingVertical: 56,
-    alignItems: "center",
-    gap: 8,
-  },
-  emptyIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.04)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-    letterSpacing: -0.3,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: "rgba(0,0,0,0.4)",
-    fontFamily: TOKENS.font.body,
-    letterSpacing: -0.1,
-  },
-  actionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: "#F8FAFC",
-  },
-  destCountText: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    color: "rgba(0,0,0,0.45)",
-    letterSpacing: -0.1,
-  },
-  addInlineBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#1D1D1F",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 9999,
-  },
-  addInlineBtnText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.1,
-  },
-  addInlineEmptyBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#1D1D1F",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 9999,
-    marginTop: 12,
-  },
-  addInlineEmptyBtnText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.15,
-  },
-});
 
 export default memo(ItineraryTab);

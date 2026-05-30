@@ -14,11 +14,13 @@ export function useMapLocationTracker({ watchEnabled = false } = {}) {
   const currentLocationRef = useRef(null);
   const lastPublishedAtRef = useRef(0);
   const headingRef = useRef(null);
+  const headingAccuracyRef = useRef(null);
 
   const mergeHeading = useCallback((loc) => {
     if (!loc) return loc;
     const h = loc.heading ?? headingRef.current;
-    return { ...loc, heading: h };
+    const ha = loc.headingAccuracy ?? headingAccuracyRef.current;
+    return { ...loc, heading: h, headingAccuracy: ha };
   }, []);
 
   const publishLocation = useCallback(
@@ -79,21 +81,33 @@ export function useMapLocationTracker({ watchEnabled = false } = {}) {
 
           // Filter minor sensor fluctuations to prevent excessive re-renders (at least 2 degrees change)
           const prev = headingRef.current;
-          if (prev !== null && Math.abs(raw - prev) < 2) {
+          const prevAcc = headingAccuracyRef.current;
+          const rawAcc = headingData.accuracy;
+
+          if (prev !== null && Math.abs(raw - prev) < 2 && prevAcc === rawAcc) {
             return;
           }
 
           headingRef.current = raw;
+          headingAccuracyRef.current = rawAcc;
           setHeading(raw);
           if (currentLocationRef.current) {
-            const updated = { ...currentLocationRef.current, heading: raw };
+            const updated = { 
+              ...currentLocationRef.current, 
+              heading: raw, 
+              headingAccuracy: rawAcc 
+            };
             currentLocationRef.current = updated;
             currentLocationSharedValue.value = updated;
           }
           setCurrentLocation((prevLoc) => {
             if (!prevLoc) return prevLoc;
-            if (prevLoc.heading === raw) return prevLoc;
-            return { ...prevLoc, heading: raw };
+            if (prevLoc.heading === raw && prevLoc.headingAccuracy === rawAcc) return prevLoc;
+            return { 
+              ...prevLoc, 
+              heading: raw, 
+              headingAccuracy: rawAcc 
+            };
           });
         });
       } catch {

@@ -193,7 +193,7 @@ const MapView = memo(
         () => (Array.isArray(tileUrls) ? tileUrls : DEFAULT_MAP_STYLE.urls),
         [tileUrls],
       );
-      const mapStyleArray = useMemo(() => [styles.map, style], [style]);
+      const mapStyleArray = useMemo(() => ["flex-1", style], [style]);
       const preparedPlaces = useMemo(() => {
         if (!Array.isArray(places) || places.length === 0) return [];
 
@@ -258,7 +258,7 @@ const MapView = memo(
             >
               <View
                 style={[
-                  styles.clusterShell,
+                  styles.clusterRing,
                   {
                     width: ringSize,
                     height: ringSize,
@@ -287,12 +287,17 @@ const MapView = memo(
                 </View>
               </View>
 
-              <View style={styles.clusterLabelWrap}>
-                <Text style={[styles.clusterText, { color: colors.text }]}>
+              <View style={styles.clusterTextContainer}>
+                <Text
+                  style={[
+                    styles.clusterText,
+                    { color: colors.text },
+                  ]}
+                >
                   {pointLabel}
                 </Text>
                 {pointCount >= 100 ? (
-                  <Text style={styles.clusterCaption}>hotspots</Text>
+                  <Text style={styles.clusterHotspots}>hotspots</Text>
                 ) : null}
               </View>
             </View>
@@ -394,23 +399,21 @@ const MapView = memo(
 );
 
 MapView.displayName = "MapView";
-export default MapView;
 
 const styles = StyleSheet.create({
-  map: { flex: 1 },
   clusterHalo: {
     alignItems: "center",
     justifyContent: "center",
   },
-  clusterShell: {
+  clusterRing: {
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.92)",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
     elevation: 10,
   },
   clusterCore: {
@@ -420,30 +423,32 @@ const styles = StyleSheet.create({
   },
   clusterAccent: {
     position: "absolute",
-    top: 4,
-    left: 4,
+    top: 1,
+    left: 1,
     width: "62%",
     height: "38%",
-    borderRadius: 999,
+    borderRadius: 9999,
     opacity: 0.92,
     transform: [{ rotate: "-18deg" }],
   },
-  clusterLabelWrap: {
+  clusterTextContainer: {
     position: "absolute",
     alignItems: "center",
     justifyContent: "center",
   },
   clusterText: {
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "bold",
     letterSpacing: -0.2,
   },
-  clusterCaption: {
-    marginTop: 1,
+  clusterHotspots: {
+    marginTop: 2,
     fontSize: 8,
     fontWeight: "600",
     letterSpacing: 0.5,
     textTransform: "uppercase",
-    color: "rgba(15,23,42,0.58)",
+    color: "rgba(15, 23, 42, 0.6)",
   },
 });
+
+export default MapView;

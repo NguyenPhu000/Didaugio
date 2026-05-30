@@ -1,13 +1,21 @@
 import { memo, useCallback } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ScaleDecorator } from "react-native-draggable-flatlist";
-import { TOKENS } from "../../../../constants/design-tokens";
 import { TRIP_STATUS_META } from "../../utils/tripTheme";
-import { formatPrice } from "../../utils/tripHelpers";
+import { formatPrice, formatDestinationTimeLabel, formatDuration } from "../../utils/tripHelpers";
+import { T, ALPHA } from "../../utils/tripDetailTokens";
 import { StatusBadge } from "./StatusBadge";
+
+const ACTIVE_CARD_SHADOW = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.12,
+  shadowRadius: 16,
+  elevation: 8,
+};
 
 function TimelineCard({
   dest,
@@ -20,7 +28,7 @@ function TimelineCard({
   isActive,
   tripStatus,
 }) {
-  const statusMeta = TRIP_STATUS_META[tripStatus] || TRIP_STATUS_META.draft;
+  const statusMeta = TRIP_STATUS_META[tripStatus] || TRIP_STATUS_META.upcoming;
 
   const handleEditPress = useCallback(() => {
     onEditRequest?.(dest);
@@ -43,111 +51,86 @@ function TimelineCard({
   const placeAddress = dest.place?.address || "";
   const thumbnail = dest.place?.thumbnail;
 
-  const hasStart = !!dest.startTime;
-  const hasEnd = !!dest.endTime;
-
-  const toMinutes = (value) => {
-    const [h, m] = String(value || "")
-      .split(":")
-      .map((part) => Number.parseInt(part, 10));
-    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-    return h * 60 + m;
-  };
-
-  const startMin = toMinutes(dest.startTime);
-  const endMin = toMinutes(dest.endTime);
-  const crossesMidnight =
-    startMin !== null && endMin !== null && endMin < startMin;
-
-  let timeLabel;
-  if (hasStart && hasEnd) {
-    timeLabel = `${dest.startTime} – ${dest.endTime}${
-      crossesMidnight ? " (qua hôm sau)" : ""
-    }`;
-  } else if (hasStart) {
-    timeLabel = `Bắt đầu ${dest.startTime}`;
-  } else if (hasEnd) {
-    timeLabel = `Kết thúc ${dest.endTime}`;
-  } else {
-    timeLabel = "Chưa xếp giờ";
-  }
+  const hasTime = !!dest.startTime || !!dest.endTime;
+  const timeLabel = formatDestinationTimeLabel(dest);
 
   return (
     <ScaleDecorator>
-      <View style={[styles.card, isActive && styles.cardActive]}>
-        <View style={styles.header}>
-          <View style={styles.timeIndicator}>
+      <View
+        className="bg-white rounded-[20px] p-4 gap-2.5 border border-black/[0.05]"
+        style={isActive ? [{ opacity: 0.96, transform: [{ scale: 1.02 }] }, ACTIVE_CARD_SHADOW] : null}
+      >
+        <View className="flex-row items-center gap-2.5">
+          <View className="items-center gap-0.5">
             <View
-              style={[styles.dot, { backgroundColor: statusMeta.accent }]}
+              className="w-2.5 h-2.5 rounded-full border border-white/80"
+              style={{ backgroundColor: statusMeta.accent }}
             />
-            <View style={styles.timeLine} />
+            <View className="w-0.5 h-2 bg-black/[0.06] rounded-[1px]" />
           </View>
-          {!hasStart && !hasEnd ? (
-            <View style={{ flex: 1, flexDirection: "row" }}>
-              <View style={styles.warningBadge}>
-                <MaterialIcons name="info-outline" size={12} color="#FF9500" />
-                <Text style={styles.warningBadgeText}>Chưa xếp giờ</Text>
+          {!hasTime ? (
+            <View className="flex-1 flex-row">
+              <View
+                className="flex-row items-center gap-1 px-2 py-0.75 rounded-md"
+                style={{ backgroundColor: "rgba(255,159,10,0.10)" }}
+              >
+                <MaterialIcons name="info-outline" size={12} color={T.warning} />
+                <Text className="text-[11px] font-semibold" style={{ color: T.warning }}>
+                  {timeLabel}
+                </Text>
               </View>
             </View>
           ) : (
-            <Text style={styles.time} numberOfLines={1}>
+            <Text className="text-[14px] font-semibold text-[#1D1D1F] flex-1 tracking-tight" numberOfLines={1}>
               {timeLabel}
             </Text>
           )}
           <Pressable
             style={({ pressed }) => [
-              styles.dragHandle,
               pressed && { opacity: 0.5 },
             ]}
             onLongPress={drag}
             disabled={isActive}
+            className="p-1 rounded-lg"
             accessibilityLabel="Kéo để sắp xếp"
           >
             <MaterialIcons name="drag-indicator" size={20} color="#C7C7CC" />
           </Pressable>
         </View>
 
-        <View style={styles.content}>
-          <View style={styles.body}>
-            <View style={styles.thumbWrap}>
+        <View className="pl-5 gap-2.5">
+          <View className="flex-row gap-3">
+            <View className="w-[52px] h-[52px] rounded-[14px] overflow-hidden">
               {thumbnail ? (
                 <Image
                   source={{ uri: thumbnail }}
-                  style={styles.thumb}
+                  style={{ width: "100%", height: "100%" }}
                   contentFit="cover"
                   cachePolicy="memory-disk"
                 />
               ) : (
-                <View style={styles.thumbPlaceholder}>
-                  <MaterialIcons
-                    name="place"
-                    size={20}
-                    color="rgba(0,0,0,0.15)"
-                  />
+                <View className="flex-1 bg-[#F5F5F7] items-center justify-center">
+                  <MaterialIcons name="place" size={20} color={ALPHA.iconFaint} />
                 </View>
               )}
             </View>
-            <View style={styles.info}>
-              <Text style={styles.name} numberOfLines={1}>
+            <View className="flex-1 gap-0.75">
+              <Text className="text-[15px] font-semibold text-[#1D1D1F] tracking-tight" numberOfLines={1}>
                 {placeName}
               </Text>
               {placeAddress ? (
-                <Text style={styles.address} numberOfLines={1}>
+                <Text className="text-[12px] text-black/40 font-normal tracking-tight" numberOfLines={1}>
                   {placeAddress}
                 </Text>
               ) : null}
-              {dest.durationMinutes ? (
-                <View style={styles.metaRow}>
-                  <MaterialIcons
-                    name="schedule"
-                    size={12}
-                    color="rgba(0,0,0,0.35)"
-                  />
-                  <Text style={styles.meta}>{dest.durationMinutes} phút</Text>
+              {formatDuration(dest.durationMinutes) ? (
+                <View className="flex-row items-center gap-1 mt-0.25">
+                  <MaterialIcons name="schedule" size={12} color={ALPHA.iconStrong} />
+                  <Text className="text-[12px] text-black/40 font-normal tracking-tight">{formatDuration(dest.durationMinutes)}</Text>
                 </View>
               ) : null}
               {dest.note ? (
-                <Text style={styles.note} numberOfLines={2}>
+                <Text className="text-[12px] text-black/40 font-normal italic mt-0.5 tracking-tight" numberOfLines={2}>
                   {dest.note}
                 </Text>
               ) : null}
@@ -155,84 +138,82 @@ function TimelineCard({
           </View>
 
           {bookings?.length > 0 && (
-            <View style={styles.bookings}>
+            <View className="border-t border-black/[0.06] pt-2.5 gap-1.5">
               {bookings.slice(0, 2).map((b) => (
                 <Pressable
                   key={b.id}
                   style={({ pressed }) => [
-                    styles.bookingRow,
                     pressed && { opacity: 0.7 },
                   ]}
+                  className="flex-row items-center gap-2 bg-[#FAFAFA] rounded-xl px-3 py-2"
                   onPress={() => onOpenBooking?.(b.id)}
                 >
                   <StatusBadge status={b.status} />
-                  <Text style={styles.bookingName} numberOfLines={1}>
+                  <Text className="flex-1 text-[13px] text-[#1D1D1F] font-normal tracking-tight" numberOfLines={1}>
                     {b.serviceName || b.placeName}
                   </Text>
                   {b.totalAmount ? (
-                    <Text style={styles.bookingPrice}>
+                    <Text className="text-[13px] font-semibold text-[#1D1D1F] tracking-tight">
                       {formatPrice(b.totalAmount)}
                     </Text>
                   ) : null}
                 </Pressable>
               ))}
               {bookings.length > 2 && (
-                <Text style={styles.bookingMore}>
+                <Text className="text-[12px] text-black/40 font-normal pl-3 tracking-tight">
                   +{bookings.length - 2} booking khác
                 </Text>
               )}
             </View>
           )}
 
-          <View style={styles.actions}>
+          <View className="flex-row items-center gap-2 mt-1">
             <Pressable
               onPress={handleViewPress}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={({ pressed }) => [
-                styles.pillOutline,
-                pressed && styles.pillOutlinePressed,
-              ]}
+              style={({ pressed }) => [pressed && { backgroundColor: "#F2F2F7" }]}
+              className="w-9 h-9 rounded-full items-center justify-center bg-white border border-black/[0.12]"
+              accessibilityRole="button"
+              accessibilityLabel="Xem chi tiết địa điểm"
             >
-              <Text style={styles.pillOutlineText}>
-                <MaterialIcons name="visibility" size={14} color="#1D1D1F" />{" "}
-                Xem
-              </Text>
+              <MaterialIcons name="visibility" size={17} color={T.ink} />
             </Pressable>
             <Pressable
               onPress={handleMovePress}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={({ pressed }) => [
-                styles.pillOutline,
-                pressed && styles.pillOutlinePressed,
-              ]}
+              style={({ pressed }) => [pressed && { backgroundColor: "#F2F2F7" }]}
+              className="w-9 h-9 rounded-full items-center justify-center bg-white border border-black/[0.12]"
+              accessibilityRole="button"
+              accessibilityLabel="Chuyển sang ngày khác"
             >
-              <Text style={styles.pillOutlineText}>
-                <MaterialIcons name="swap-horiz" size={14} color="#1D1D1F" />{" "}
-                Chuyển ngày
-              </Text>
+              <MaterialIcons name="swap-horiz" size={17} color={T.ink} />
             </Pressable>
+
+            <View className="flex-1" />
+
             <Pressable
               onPress={handleEditPress}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={({ pressed }) => [
-                styles.pillPrimary,
-                pressed && styles.pillPrimaryPressed,
-              ]}
+              style={({ pressed }) => [pressed && { backgroundColor: T.inkPressed }]}
+              className="flex-row items-center justify-center gap-1 h-9 px-4 rounded-full bg-[#1D1D1F]"
+              accessibilityRole="button"
+              accessibilityLabel="Chỉnh sửa lịch trình điểm đến"
             >
-              <Text style={styles.pillPrimaryText}>
-                <MaterialIcons name="edit" size={14} color="#FFFFFF" /> Sửa
-              </Text>
+              <MaterialIcons name="edit" size={15} color={T.onPrimary} />
+              <Text className="text-[13px] text-white font-semibold">Sửa</Text>
             </Pressable>
             <Pressable
               onPress={onRemove}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="w-9 h-9 rounded-full items-center justify-center"
               style={({ pressed }) => [
-                styles.removeBtn,
+                { backgroundColor: "rgba(255,59,48,0.08)" },
                 pressed && { opacity: 0.6 },
               ]}
+              accessibilityRole="button"
               accessibilityLabel="Bỏ địa điểm khỏi lịch trình"
             >
-              <MaterialIcons name="delete-outline" size={16} color="#FF3B30" />
+              <MaterialIcons name="delete-outline" size={17} color={T.danger} />
             </Pressable>
           </View>
         </View>
@@ -240,224 +221,5 @@ function TimelineCard({
     </ScaleDecorator>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
-  },
-  cardActive: {
-    opacity: 0.92,
-    transform: [{ scale: 1.02 }],
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  timeIndicator: {
-    alignItems: "center",
-    gap: 2,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.8)",
-  },
-  timeLine: {
-    width: 2,
-    height: 8,
-    backgroundColor: "rgba(0,0,0,0.06)",
-    borderRadius: 1,
-  },
-  time: {
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-    flex: 1,
-    letterSpacing: -0.2,
-  },
-  timeMuted: {
-    color: "rgba(0,0,0,0.4)",
-    fontFamily: TOKENS.font.body,
-  },
-  dragHandle: {
-    padding: 4,
-    borderRadius: 8,
-  },
-  content: {
-    paddingLeft: 20,
-    gap: 10,
-  },
-  body: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  thumbWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    overflow: "hidden",
-  },
-  thumb: {
-    width: "100%",
-    height: "100%",
-  },
-  thumbPlaceholder: {
-    flex: 1,
-    backgroundColor: "#F5F5F7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  info: {
-    flex: 1,
-    gap: 3,
-  },
-  name: {
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-    letterSpacing: -0.3,
-  },
-  address: {
-    fontSize: 12,
-    color: "rgba(0,0,0,0.4)",
-    fontFamily: TOKENS.font.body,
-    letterSpacing: -0.1,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 1,
-  },
-  meta: {
-    fontSize: 12,
-    color: "rgba(0,0,0,0.4)",
-    fontFamily: TOKENS.font.body,
-    letterSpacing: -0.1,
-  },
-  note: {
-    fontSize: 12,
-    color: "rgba(0,0,0,0.4)",
-    fontFamily: TOKENS.font.body,
-    fontStyle: "italic",
-    marginTop: 2,
-    letterSpacing: -0.1,
-  },
-  bookings: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.06)",
-    paddingTop: 10,
-    gap: 6,
-  },
-  bookingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#FAFAFA",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  bookingName: {
-    flex: 1,
-    fontSize: 13,
-    color: "#1D1D1F",
-    fontFamily: TOKENS.font.body,
-    letterSpacing: -0.1,
-  },
-  bookingPrice: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-    letterSpacing: -0.1,
-  },
-  bookingMore: {
-    fontSize: 12,
-    color: "rgba(0,0,0,0.4)",
-    fontFamily: TOKENS.font.body,
-    paddingLeft: 12,
-    letterSpacing: -0.1,
-  },
-  actions: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 8,
-    marginTop: 4,
-  },
-  pillOutline: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.12)",
-  },
-  pillOutlinePressed: {
-    backgroundColor: "#F2F2F7",
-  },
-  pillOutlineText: {
-    fontSize: 13,
-    color: "#1D1D1F",
-    fontFamily: TOKENS.font.semibold,
-  },
-  pillPrimary: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    height: 32,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    backgroundColor: "#007AFF",
-  },
-  pillPrimaryPressed: {
-    backgroundColor: "#0056B3",
-  },
-  pillPrimaryText: {
-    fontSize: 13,
-    color: "#FFFFFF",
-    fontFamily: TOKENS.font.semibold,
-  },
-  removeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,59,48,0.08)",
-  },
-  warningBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(255,149,0,0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  warningBadgeText: {
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-    color: "#FF9500",
-  },
-});
 
 export default memo(TimelineCard);

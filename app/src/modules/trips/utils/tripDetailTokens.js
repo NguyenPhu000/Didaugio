@@ -14,14 +14,20 @@ export { TOKENS } from "../../../constants/design-tokens";
 /* ── Color tokens ── */
 export const T = {
   ink: BOOKING_APPLE_THEME.text,
+  inkPressed: BOOKING_APPLE_THEME.primaryPressed,
   canvas: BOOKING_APPLE_THEME.surface,
   parchment: BOOKING_APPLE_THEME.background,
   surfacePearl: BOOKING_APPLE_THEME.surfaceElevated,
+  /* Nền field / control phụ (input, chip nền) */
+  field: BOOKING_APPLE_THEME.background,
   hairline: BOOKING_APPLE_THEME.borderSoft,
   border: BOOKING_APPLE_THEME.border,
   primary: BOOKING_APPLE_THEME.primary,
   onPrimary: BOOKING_APPLE_THEME.white,
   muted48: BOOKING_APPLE_THEME.textMuted,
+  /* Trạng thái ngữ nghĩa */
+  success: BOOKING_APPLE_THEME.success,
+  warning: BOOKING_APPLE_THEME.warning,
   danger: BOOKING_APPLE_THEME.danger,
   timelineDot: BOOKING_APPLE_THEME.primary,
   timelineLine: "rgba(0,0,0,0.06)",
@@ -29,11 +35,153 @@ export const T = {
   neonGlow: "rgba(0,0,0,0.03)",
 };
 
+/* Mức làm mờ icon/đường nét trên nền sáng — tránh hard-code rgba rải rác */
+export const ALPHA = {
+  iconFaint: "rgba(0,0,0,0.15)",
+  iconMuted: "rgba(0,0,0,0.30)",
+  iconStrong: "rgba(0,0,0,0.40)",
+  placeholder: "rgba(0,0,0,0.30)",
+};
+
 export {
   BOOKING_STATUS_META,
   shouldShowBookingBadge,
   getBookingStatusMeta,
 } from "./tripTheme";
+
+/* ── Shared Tailwind Classes ── */
+export const STYLES = {
+  screen: "flex-1 bg-[#F5F5F7]",
+  centered: "items-center justify-center gap-4 px-10",
+
+  /* ── Header ── */
+  header:
+    "flex-row items-center px-5 py-3.5 gap-3.5 bg-white border-b border-black/[0.06]",
+  backBtn:
+    "w-[38px] h-[38px] rounded-full items-center justify-center bg-black/[0.04]",
+  backBtnText: "text-[22px] text-[#1D1D1F] -mt-0.5",
+  headerCenter: "flex-1 gap-0.5",
+  headerTitle: "text-[17px] font-semibold text-[#1D1D1F] tracking-tight",
+  headerMeta: "text-[12px] font-normal text-black/50 tracking-tight",
+  headerActions: "flex-row items-center gap-1.5",
+  headerActionBtn: "px-3 py-2 rounded-full",
+  headerActionText: "text-[14px] font-normal text-[#1D1D1F] tracking-tight",
+  headerActionDanger: "text-[14px] font-normal text-[#FF3B30] tracking-tight",
+  primaryBtn: "bg-[#1D1D1F] px-4.5 py-2.25 rounded-full",
+  primaryBtnText: "text-white text-[14px] font-semibold tracking-tight",
+
+  /* ── Tab bar — pill style ── */
+  tabBar: "flex-row px-5 py-2.5 bg-white gap-1.5",
+  tabItem: "flex-1 items-center py-2.5 rounded-xl",
+  tabItemActive: "bg-black/[0.05]",
+  tabLabel: "text-[14px] font-medium text-black/50 tracking-tight",
+  tabLabelActive: "text-[#1D1D1F] font-semibold",
+  tabIndicator:
+    "absolute bottom-0 left-5 right-5 h-[2px] bg-[#1D1D1F] rounded-[1px]",
+
+  /* ── Day chips ── */
+  dayChipsRow: "px-5 py-3 gap-2",
+  dayChip: "px-4.5 py-2.5 rounded-[14px] bg-black/[0.04]",
+  dayChipActive: "bg-[#1D1D1F]",
+  dayChipLabel: "text-[13px] font-semibold text-[#1D1D1F] tracking-tight",
+  dayChipLabelActive: "text-black",
+
+  /* ── Inline loading ── */
+  inlineLoading: "flex-row items-center gap-2 px-5 py-2",
+  inlineLoadingText: "text-[13px] font-normal text-black/50",
+
+  /* ── Empty states ── */
+  emptyState: "flex-1 items-center justify-center px-10 py-16 gap-2",
+  emptyTitle:
+    "text-[18px] font-semibold text-[#1D1D1F] tracking-tight text-center",
+  emptyBody:
+    "text-[14px] leading-5 font-normal text-black/50 text-center tracking-tight",
+  centeredState: "flex-1 items-center justify-center px-10 gap-2",
+  centeredBody: "text-[13px] font-normal text-black/50",
+  linkBtn: "px-5 py-2.5",
+  linkBtnText:
+    "text-[#1D1D1F] text-[17px] font-normal tracking-tight underline",
+
+  /* ── Tab content wrapper ── */
+  tabContent: "flex-1",
+
+  /* ── Destination list ── */
+  destList: "px-5 pb-[120px] gap-3",
+  destCard: "bg-white rounded-[20px] p-4 gap-3 border border-black/[0.05]",
+  destRow: "flex-row items-center gap-3",
+  destThumb: "w-12 h-12 rounded-xl overflow-hidden bg-[#F5F5F7]",
+  destThumbEmpty: "flex-1 bg-[#F5F5F7]",
+  destInfo: "flex-1 gap-0.5",
+  destName: "text-[15px] font-semibold text-[#1D1D1F] tracking-tight",
+  destAddress: "text-[12px] font-normal text-black/50 tracking-tight",
+  destNote: "text-[12px] font-normal text-black/50 tracking-tight",
+  destRemove: "px-2 py-1",
+  destRemoveText: "text-[13px] font-normal text-[#FF3B30] tracking-tight",
+  destDistance: "text-[12px] font-normal text-black/60 tracking-tight",
+
+  /* ── Booking rows ── */
+  destBookings: "border-t border-black/[0.06] pt-3 gap-2",
+  bookingRow:
+    "flex-row items-center justify-between gap-2.5 py-3 px-3.5 bg-black/[0.025] rounded-2xl border border-black/[0.04]",
+  pressed: "opacity-70",
+  bookingRowInfo: "flex-1 gap-0.75",
+  bookingRowName: "text-[14px] font-semibold text-[#1D1D1F] tracking-tight",
+  bookingRowPlace: "text-[12px] font-normal text-black/50 tracking-tight",
+  bookingRowMeta: "text-[12px] font-normal text-black/50 tracking-tight",
+  bookingRowRight: "items-end gap-1.5",
+  bookingRowPrice: "text-[14px] font-semibold text-[#1D1D1F] tracking-tight",
+  moreText: "text-[12px] font-normal text-black/50",
+
+  /* ── Status badge ── */
+  badge: "flex-row items-center gap-1.25 px-2.5 py-1 rounded-full",
+  badgeDot: "w-1.25 h-1.25 rounded-full",
+  badgeText: "text-[11px] font-semibold tracking-tight",
+
+  /* ── Services ── */
+  servicesList: "px-5 pt-4 pb-[120px] gap-5",
+  group: "gap-2.5",
+  groupLabel:
+    "text-[12px] font-semibold text-black/50 tracking-widest uppercase",
+
+  /* ── Timeline connector ── */
+  timelineConnector: "flex-row items-center pl-5 py-0.5 gap-2",
+  timelineLine: "w-0.5 h-7 bg-black/[0.06] ml-1.75 rounded-[1px]",
+  timelineDistanceText: "text-[12px] text-black/50 font-normal tracking-tight",
+
+  /* ── Budget ── */
+  budgetList: "px-5 pt-4 pb-[120px] gap-5",
+  summaryGrid: "flex-row flex-wrap gap-2.5",
+  summaryCard:
+    "w-[48%] rounded-[20px] bg-white p-4.5 gap-1.5 border border-black/[0.05]",
+  summaryCardPrimary: "bg-[#1D1D1F] border-[#1D1D1F]",
+  summaryLabel: "text-[12px] font-normal text-black/50 tracking-tight",
+  summaryLabelLight: "text-[12px] font-normal text-white/55 tracking-tight",
+  summaryValue: "text-[20px] font-semibold text-[#1D1D1F] tracking-tight",
+  summaryValueLight: "text-[30px] font-semibold text-white tracking-tighter",
+  budgetDetail: "gap-2.5",
+
+  /* ── Modal / form shared ── */
+  sheet: "bg-white rounded-t-[24px] w-full flex-col flex-shrink",
+  sheetHandle: "w-9 h-1 rounded-full bg-black/12 self-center mt-2.5 mb-1.5",
+  sheetHeader:
+    "flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]",
+  sheetTitle: "text-[16px] font-semibold text-[#1D1D1F] tracking-tight",
+  sheetCloseBtn: "w-8 h-8 rounded-full items-center justify-center",
+  sheetFooter:
+    "px-5 pt-4 pb-2 border-t border-black/[0.07] bg-white flex-shrink-0",
+  fieldLabel:
+    "text-[11px] text-black/40 font-semibold uppercase tracking-widest",
+  sectionLabel:
+    "text-[11px] text-[#1D1D1F] font-semibold uppercase tracking-widest mb-1.5",
+  field:
+    "bg-[#F5F5F7] rounded-xl px-3 py-3 text-[15px] color-[#1D1D1F] font-normal border border-black/[0.06]",
+  submitBtn:
+    "w-full h-[52px] rounded-full bg-[#1D1D1F] items-center justify-center",
+  submitBtnText:
+    "text-white text-[16px] font-semibold tracking-tight text-center",
+  chip: "flex-row items-center gap-1.5 bg-[#F5F5F7] rounded-xl px-3 py-2.5 border border-black/[0.06]",
+  chipActive: "bg-[#E8E8ED] border-[#1D1D1F]",
+};
 
 /* ── Shared StyleSheet ── */
 const s = StyleSheet.create({

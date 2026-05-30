@@ -10,102 +10,12 @@ import {
   Platform,
   TextInput,
   KeyboardAvoidingView,
-  TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { TOKENS } from "../../../../constants/design-tokens";
-import { formatDate, calcDayCount } from "../../utils/tripHelpers";
-
-function parseTimeToDate(str) {
-  if (!str) return null;
-  const [h, m] = str.split(":").map(Number);
-  if (isNaN(h) || isNaN(m)) return null;
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  return d;
-}
-
-function formatHHMM(date) {
-  const h = String(date.getHours()).padStart(2, "0");
-  const m = String(date.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
-}
-
-function TimeField({ label, value, onChange, placeholder, icon }) {
-  const [show, setShow] = useState(false);
-  const dateValue = parseTimeToDate(value) || new Date();
-
-  const handleChange = useCallback(
-    (_event, selectedDate) => {
-      if (Platform.OS === "android") setShow(false);
-      if (selectedDate) onChange(formatHHMM(selectedDate));
-    },
-    [onChange],
-  );
-
-  return (
-    <View style={s.timeField}>
-      <Text style={s.timeLabel}>{label}</Text>
-      <Pressable
-        style={({ pressed }) => [
-          s.timeInput,
-          pressed ? { backgroundColor: "#E8E8EC" } : null,
-        ]}
-        onPress={() => setShow(true)}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <MaterialIcons
-          name={icon || "schedule"}
-          size={14}
-          color="rgba(0,0,0,0.35)"
-        />
-        <Text style={[s.timeText, !value && s.timePlaceholder]}>
-          {value || placeholder}
-        </Text>
-      </Pressable>
-
-      {Platform.OS === "ios" ? (
-        <Modal
-          visible={show}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShow(false)}
-        >
-          <Pressable style={s.pickerOverlay} onPress={() => setShow(false)}>
-            <View style={s.pickerSheet} onStartShouldSetResponder={() => true}>
-              <View style={s.pickerHeader}>
-                <Text style={s.pickerTitle}>{label}</Text>
-                <Pressable onPress={() => setShow(false)}>
-                  <Text style={s.pickerDone}>Xong</Text>
-                </Pressable>
-              </View>
-              <DateTimePicker
-                value={dateValue}
-                mode="time"
-                is24Hour
-                display="spinner"
-                onChange={handleChange}
-                locale="vi-VN"
-              />
-            </View>
-          </Pressable>
-        </Modal>
-      ) : (
-        show && (
-          <DateTimePicker
-            value={dateValue}
-            mode="time"
-            is24Hour
-            display="default"
-            onChange={handleChange}
-          />
-        )
-      )}
-    </View>
-  );
-}
+import { formatDate, buildDayList } from "../../utils/tripHelpers";
+import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
+import TimeField from "./TimeField";
 
 function MoveDestinationModal({
   visible,
@@ -131,18 +41,7 @@ function MoveDestinationModal({
     }
   }, [visible, dest?.id]);
 
-  const days = useMemo(() => {
-    if (!trip) return [];
-    const total = calcDayCount(trip);
-    const result = [];
-    for (let i = 1; i <= total; i++) {
-      const date = trip.startDate
-        ? new Date(new Date(trip.startDate).getTime() + (i - 1) * 86400000)
-        : null;
-      result.push({ dayNumber: i, date });
-    }
-    return result;
-  }, [trip]);
+  const days = useMemo(() => (trip ? buildDayList(trip) : []), [trip]);
 
   const handleSave = useCallback(() => {
     if (!dest?.id || isLoading) return;
@@ -176,8 +75,6 @@ function MoveDestinationModal({
     }
   }, [dest, selectedDay, startTime, endTime, note, isLoading, onMove, onSave, onCancel]);
 
-  if (!visible) return null;
-
   return (
     <Modal
       visible={visible}
@@ -186,390 +83,135 @@ function MoveDestinationModal({
       onRequestClose={onCancel}
       statusBarTranslucent
     >
-      <View style={s.root}>
-        <Pressable style={s.backdrop} onPress={onCancel} />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={s.keyboardView}
-          pointerEvents="box-none"
-        >
-          <View style={[s.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-            <View style={s.handle} />
-            <View style={s.header}>
-              <View style={s.titleRow}>
-                <MaterialIcons name="edit-location-alt" size={20} color="#1D1D1F" />
-                <Text style={s.title}>Chỉnh sửa lịch trình</Text>
-              </View>
-              <Pressable
-                onPress={onCancel}
-                hitSlop={12}
-                style={({ pressed }) => [
-                  s.closeBtn,
-                  pressed ? { backgroundColor: "rgba(0,0,0,0.06)" } : null,
-                ]}
-              >
-                <MaterialIcons name="close" size={20} color="rgba(0,0,0,0.45)" />
-              </Pressable>
-            </View>
-
-          {dest?.place?.name ? (
-            <Text style={s.subtitle} numberOfLines={1}>
-              {dest.place.name}
-            </Text>
-          ) : null}
-
-          <ScrollView
-            style={s.content}
-            contentContainerStyle={s.contentInner}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            keyboardShouldPersistTaps="handled"
+      {visible && (
+        <View className="flex-1 justify-end">
+          <Pressable style={StyleSheet.absoluteFillObject} className="bg-black/45" onPress={onCancel} />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            className="flex-1 justify-end w-full"
+            pointerEvents="box-none"
           >
-            <View style={s.section}>
-              <Text style={s.sectionLabel}>Chọn ngày hoạt động</Text>
-              <View style={s.dayGrid}>
-                {days.map((day) => {
-                  const isSelected = selectedDay === day.dayNumber;
-                  return (
-                    <Pressable
-                      key={day.dayNumber}
-                      style={[s.dayChip, isSelected && s.dayChipSelected]}
-                      onPress={() => setSelectedDay(day.dayNumber)}
-                    >
-                      <Text
-                        style={[s.dayChipText, isSelected && s.dayChipTextSelected]}
-                      >
-                        Ngày {day.dayNumber}
-                      </Text>
-                      {day.date ? (
-                        <Text
-                          style={[
-                            s.dayChipDate,
-                            isSelected && s.dayChipDateSelected,
-                          ]}
-                        >
-                          {formatDate(day.date)}
-                        </Text>
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={[s.section, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)", paddingTop: 16 }]}>
-              <Text style={s.sectionLabel}>Thời gian chi tiết</Text>
-              <View style={s.timeRow}>
-                <TimeField
-                  label="Bắt đầu"
-                  value={startTime}
-                  onChange={setStartTime}
-                  placeholder="--:--"
-                  icon="play-circle-outline"
-                />
-                <TimeField
-                  label="Kết thúc"
-                  value={endTime}
-                  onChange={setEndTime}
-                  placeholder="--:--"
-                  icon="stop-circle"
-                />
-              </View>
-            </View>
-
-            <View style={[s.section, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)", paddingTop: 16 }]}>
-              <Text style={s.sectionLabel}>Ghi chú hành trình</Text>
-              <TextInput
-                style={[s.inputEditable, s.noteInput]}
-                value={note}
-                onChangeText={setNote}
-                placeholder="Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây..."
-                placeholderTextColor="rgba(0,0,0,0.25)"
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-            </View>
-          </ScrollView>
-
-          <View style={s.footer}>
-            <TouchableOpacity
-              onPress={handleSave}
-              disabled={isLoading}
-              activeOpacity={0.8}
-              style={[s.savePill, isLoading ? s.savePillDisabled : null]}
+            <View
+              className="bg-white rounded-t-[24px] max-h-[85%] w-full flex-col flex-shrink"
+              style={{ paddingBottom: Math.max(insets.bottom, 16) }}
             >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={s.savePillText}>Lưu thay đổi</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+              <View className="w-9 h-1 rounded-full bg-black/12 self-center mt-2.5 mb-1" />
+              <View className="flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]">
+                <View className="flex-row items-center gap-2 flex-1">
+                  <MaterialIcons name="edit-location-alt" size={20} color="#1D1D1F" />
+                  <Text className="text-[17px] font-semibold text-[#1D1D1F] tracking-tight">Chỉnh sửa lịch trình</Text>
+                </View>
+                <Pressable
+                  onPress={onCancel}
+                  hitSlop={12}
+                  style={({ pressed }) => [
+                    pressed && { backgroundColor: "rgba(0,0,0,0.06)" },
+                  ]}
+                  className="w-8 h-8 rounded-full items-center justify-center"
+                >
+                  <MaterialIcons name="close" size={20} color="rgba(0,0,0,0.45)" />
+                </Pressable>
+              </View>
+
+              {dest?.place?.name ? (
+                <Text className="text-[13px] text-black/[0.45] font-normal px-5 pt-2.5" numberOfLines={1}>
+                  {dest.place.name}
+                </Text>
+              ) : null}
+
+              <ScrollView
+                className="max-h-[280px] flex-shrink"
+                contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, gap: 20 }}
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View className="gap-2.5">
+                  <Text className={STYLES.fieldLabel}>Chọn ngày hoạt động</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {days.map((day) => {
+                      const isSelected = selectedDay === day.dayNumber;
+                      return (
+                        <Pressable
+                          key={day.dayNumber}
+                          className={`px-3.5 py-2.5 rounded-xl bg-[#F5F5F7] border-[1.5px] border-transparent items-center min-w-[80px] ${
+                            isSelected ? STYLES.chipActive : ""
+                          }`}
+                          onPress={() => setSelectedDay(day.dayNumber)}
+                        >
+                          <Text
+                            className={`text-[13px] font-semibold text-[#1D1D1F]`}
+                          >
+                            Ngày {day.dayNumber}
+                          </Text>
+                          {day.date ? (
+                            <Text
+                              className={`text-[11px] font-normal text-black/40 mt-0.5`}
+                            >
+                              {formatDate(day.date)}
+                            </Text>
+                          ) : null}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                <View className="gap-2.5 pt-4 border-t border-black/[0.08]">
+                  <Text className={STYLES.fieldLabel}>Thời gian chi tiết</Text>
+                  <View className="flex-row gap-3">
+                    <TimeField
+                      label="Bắt đầu"
+                      value={startTime}
+                      onChange={setStartTime}
+                      placeholder="--:--"
+                      icon="play-circle-outline"
+                    />
+                    <TimeField
+                      label="Kết thúc"
+                      value={endTime}
+                      onChange={setEndTime}
+                      placeholder="--:--"
+                      icon="stop-circle"
+                    />
+                  </View>
+                </View>
+
+                <View className="gap-2.5 pt-4 border-t border-black/[0.08]">
+                  <Text className={STYLES.fieldLabel}>Ghi chú hành trình</Text>
+                  <TextInput
+                    className={`${STYLES.field} min-h-[72px]`}
+                    value={note}
+                    onChangeText={setNote}
+                    placeholder="Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây..."
+                    placeholderTextColor={ALPHA.placeholder}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
+              </ScrollView>
+
+              <View className={`${STYLES.sheetFooter} gap-3`}>
+                <Pressable
+                  onPress={handleSave}
+                  disabled={isLoading}
+                  style={({ pressed }) => [pressed && { backgroundColor: T.inkPressed }]}
+                  className={`${STYLES.submitBtn} ${isLoading ? "opacity-50" : ""}`}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={T.onPrimary} />
+                  ) : (
+                    <Text className={STYLES.submitBtnText}>Lưu thay đổi</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
         </View>
-      </KeyboardAvoidingView>
-    </View>
-  </Modal>
+      )}
+    </Modal>
   );
 }
-
-const s = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  keyboardView: {
-    flex: 1,
-    justifyContent: "flex-end",
-    width: "100%",
-  },
-  sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: "85%",
-    width: "100%",
-    flexDirection: "column",
-    flexShrink: 1,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(0,0,0,0.12)",
-    alignSelf: "center",
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.07)",
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flex: 1,
-  },
-  title: {
-    fontSize: 17,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-    letterSpacing: -0.3,
-  },
-  headerSaveBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: "#1D1D1F",
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 64,
-  },
-  headerSaveBtnDisabled: {
-    opacity: 0.5,
-  },
-  headerSaveText: {
-    fontSize: 14,
-    color: "#FFFFFF",
-    fontFamily: TOKENS.font.semibold,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: "rgba(0,0,0,0.45)",
-    fontFamily: TOKENS.font.body,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-  },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  content: {
-    maxHeight: 280,
-    flexShrink: 1,
-  },
-  inputEditable: {
-    backgroundColor: "#F5F5F7",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: "#1D1D1F",
-    fontFamily: TOKENS.font.body,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
-  noteInput: {
-    minHeight: 72,
-  },
-  contentInner: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-    gap: 20,
-  },
-  section: {
-    gap: 10,
-  },
-  sectionLabel: {
-    fontSize: 11,
-    color: "rgba(0,0,0,0.4)",
-    fontFamily: TOKENS.font.semibold,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  dayGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  dayChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "#F5F5F7",
-    borderWidth: 1.5,
-    borderColor: "transparent",
-    alignItems: "center",
-    minWidth: 80,
-  },
-  dayChipSelected: {
-    backgroundColor: "#1D1D1F",
-    borderColor: "#1D1D1F",
-  },
-  dayChipText: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-  },
-  dayChipTextSelected: {
-    color: "#FFFFFF",
-  },
-  dayChipDate: {
-    fontSize: 11,
-    fontFamily: TOKENS.font.body,
-    color: "rgba(0,0,0,0.4)",
-    marginTop: 2,
-  },
-  dayChipDateSelected: {
-    color: "rgba(255,255,255,0.7)",
-  },
-  timeRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  timeField: {
-    flex: 1,
-    gap: 6,
-  },
-  timeLabel: {
-    fontSize: 11,
-    color: "rgba(0,0,0,0.4)",
-    fontFamily: TOKENS.font.semibold,
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-  },
-  timeInput: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#F5F5F7",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
-  timeText: {
-    fontSize: 15,
-    color: "#1D1D1F",
-    fontFamily: TOKENS.font.body,
-  },
-  timePlaceholder: {
-    color: "rgba(0,0,0,0.25)",
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-    gap: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.07)",
-    backgroundColor: "#FFFFFF",
-    flexShrink: 0,
-  },
-  savePill: {
-    width: "100%",
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: "#1D1D1F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  savePillPressed: {
-    backgroundColor: "#000000",
-  },
-  savePillDisabled: {
-    opacity: 0.5,
-    backgroundColor: "#1D1D1F",
-  },
-  savePillText: {
-    fontSize: 16,
-    color: "#FFFFFF",
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.2,
-    textAlign: "center",
-  },
-  cancelLink: {
-    fontSize: 14,
-    color: "rgba(0,0,0,0.45)",
-    fontFamily: TOKENS.font.body,
-    textAlign: "center",
-    paddingVertical: 4,
-  },
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "flex-end",
-  },
-  pickerSheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 34,
-  },
-  pickerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.06)",
-  },
-  pickerTitle: {
-    fontSize: 16,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-  },
-  pickerDone: {
-    fontSize: 16,
-    color: "#1D1D1F",
-    fontFamily: TOKENS.font.semibold,
-  },
-});
 
 export default memo(MoveDestinationModal);

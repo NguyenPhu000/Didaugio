@@ -47,6 +47,10 @@
         "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
+    "androidStatusBar": {
+      "translucent": true,
+      "backgroundColor": "#0077b8"
+    },
     "ios": {
       "bundleIdentifier": "vn.didaugio.app",
       "supportsTablet": false

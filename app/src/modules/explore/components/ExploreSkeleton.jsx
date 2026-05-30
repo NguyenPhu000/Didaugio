@@ -11,19 +11,19 @@ const POP_IMAGE_SIZE = 110;
 
 function ExploreSkeletonInner() {
   return (
-    <View style={styles.container}>
+    <View className="pt-2" style={{ paddingHorizontal: PAD }}>
       {/* Header skeleton — avatar + greeting */}
-      <View style={styles.headerRow}>
-        <View style={styles.headerLeft}>
-          <View style={styles.avatarRow}>
+      <View className="flex-row justify-between items-center">
+        <View className="flex-1">
+          <View className="flex-row items-center gap-3">
             <Skeleton width={48} height={48} borderRadius={24} />
-            <View style={styles.headerTextCol}>
+            <View className="gap-0.5">
               <Skeleton width="40%" height={13} borderRadius={6} />
               <Skeleton
                 width="55%"
                 height={16}
                 borderRadius={6}
-                style={styles.mt4}
+                className="mt-1"
               />
             </View>
           </View>
@@ -36,13 +36,13 @@ function ExploreSkeletonInner() {
         width="80%"
         height={26}
         borderRadius={8}
-        style={styles.mt20}
+        className="mt-5"
       />
       <Skeleton
         width="60%"
         height={14}
         borderRadius={6}
-        style={styles.mt8}
+        className="mt-2"
       />
 
       {/* Search bar skeleton */}
@@ -50,11 +50,11 @@ function ExploreSkeletonInner() {
         width="100%"
         height={54}
         borderRadius={999}
-        style={styles.mt22}
+        className="mt-[22px]"
       />
 
       {/* Category pills skeleton */}
-      <View style={styles.pillRow}>
+      <View className="flex-row gap-2.5 mt-2">
         <Skeleton width={80} height={42} borderRadius={999} />
         <Skeleton width={90} height={42} borderRadius={999} />
         <Skeleton width={75} height={42} borderRadius={999} />
@@ -62,42 +62,42 @@ function ExploreSkeletonInner() {
       </View>
 
       {/* Quick Actions skeleton — 2 rows of 4 */}
-      <View style={styles.quickActionsGrid}>
+      <View className="flex-row flex-wrap mt-5 mb-2.5 px-0 gap-y-5">
         {Array.from({ length: 8 }).map((_, i) => (
-          <View key={`qa-${i}`} style={styles.quickActionItem}>
+          <View key={`qa-${i}`} className="w-[25%] items-center">
             <Skeleton width={64} height={64} borderRadius={22} />
             <Skeleton
               width={48}
               height={11}
               borderRadius={6}
-              style={styles.mt8}
+              className="mt-2"
             />
           </View>
         ))}
       </View>
 
       {/* Featured section header skeleton */}
-      <View style={styles.sectionHeader}>
+      <View className="flex-row justify-between items-center mt-7 mb-3.5">
         <Skeleton width={140} height={22} borderRadius={8} />
         <Skeleton width={70} height={13} borderRadius={6} />
       </View>
 
       {/* Featured cards skeleton */}
-      <View style={styles.cardsRow}>
+      <View className="flex-row gap-3.5">
         <Skeleton width={CARD_W} height={400} borderRadius={32} />
         <Skeleton width={CARD_W} height={400} borderRadius={32} />
       </View>
 
       {/* Bento section header skeleton */}
-      <View style={styles.sectionHeader}>
+      <View className="flex-row justify-between items-center mt-7 mb-3.5">
         <Skeleton width={130} height={22} borderRadius={8} />
       </View>
 
       {/* Bento grid skeleton */}
-      <View style={styles.bentoShell}>
-        <View style={styles.bentoRow}>
+      <View className="rounded-[28px] p-2.5 bg-white">
+        <View className="flex-row gap-2 h-[280px]">
           <Skeleton width="55%" height={280} borderRadius={20} />
-          <View style={styles.bentoSideCol}>
+          <View className="flex-1 gap-2">
             <Skeleton width="100%" height={136} borderRadius={20} />
             <Skeleton width="100%" height={136} borderRadius={20} />
           </View>
@@ -105,33 +105,33 @@ function ExploreSkeletonInner() {
       </View>
 
       {/* Popular section header skeleton */}
-      <View style={styles.sectionHeader}>
+      <View className="flex-row justify-between items-center mt-7 mb-3.5">
         <Skeleton width={150} height={22} borderRadius={8} />
       </View>
 
       {/* Popular list skeleton — horizontal card style */}
       {Array.from({ length: 3 }).map((_, i) => (
-        <View key={`pop-${i}`} style={styles.popularCardRow}>
+        <View key={`pop-${i}`} className="flex-row gap-3.5 p-2.5 rounded-[28px] bg-white mb-3">
           <Skeleton
             width={POP_IMAGE_SIZE}
             height={POP_IMAGE_SIZE}
             borderRadius={22}
           />
-          <View style={styles.popularInfoCol}>
+          <View className="flex-1 gap-0.75 justify-center">
             <Skeleton width="35%" height={11} borderRadius={6} />
             <Skeleton
               width="85%"
               height={16}
               borderRadius={6}
-              style={styles.mt4}
+              className="mt-1"
             />
             <Skeleton
               width="55%"
               height={12}
               borderRadius={6}
-              style={styles.mt4}
+              className="mt-1"
             />
-            <View style={styles.popularBottomRow}>
+            <View className="flex-row items-center justify-between mt-1.25">
               <Skeleton width={60} height={15} borderRadius={6} />
               <Skeleton width={60} height={32} borderRadius={999} />
             </View>
@@ -143,99 +143,3 @@ function ExploreSkeletonInner() {
 }
 
 export const ExploreSkeleton = memo(ExploreSkeletonInner);
-
-const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: PAD,
-    paddingTop: 8,
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  avatarRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  headerTextCol: {
-    gap: 2,
-  },
-  mt4: {
-    marginTop: 4,
-  },
-  mt8: {
-    marginTop: 8,
-  },
-  mt20: {
-    marginTop: 20,
-  },
-  mt22: {
-    marginTop: 22,
-  },
-  pillRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 8,
-  },
-  quickActionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 20,
-    marginBottom: 10,
-    paddingHorizontal: 0,
-    rowGap: 20,
-  },
-  quickActionItem: {
-    width: "25%",
-    alignItems: "center",
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 28,
-    marginBottom: 14,
-  },
-  cardsRow: {
-    flexDirection: "row",
-    gap: 14,
-  },
-  bentoShell: {
-    borderRadius: 28,
-    padding: 10,
-    backgroundColor: "#FFFFFF",
-  },
-  bentoRow: {
-    flexDirection: "row",
-    gap: 8,
-    height: 280,
-  },
-  bentoSideCol: {
-    flex: 1,
-    gap: 8,
-  },
-  popularCardRow: {
-    flexDirection: "row",
-    gap: 14,
-    padding: 10,
-    borderRadius: 28,
-    backgroundColor: "#FFFFFF",
-    marginBottom: 12,
-  },
-  popularInfoCol: {
-    flex: 1,
-    gap: 3,
-    justifyContent: "center",
-  },
-  popularBottomRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 5,
-  },
-});

@@ -69,16 +69,18 @@ export function getSafeDateTime(dateStr, fallback = Number.MAX_SAFE_INTEGER) {
 }
 
 export function getDisplayStatus(trip) {
-  if (!trip) return "draft";
+  if (!trip) return "upcoming";
 
   const rawStatus = String(trip.status || "").toLowerCase();
   if (rawStatus === "completed") return "completed";
   if (rawStatus === "cancelled") return "cancelled";
-  if (rawStatus === "draft") return "draft";
+
+  // Map draft to upcoming status
+  if (rawStatus === "draft") return "upcoming";
 
   const daysUntil = getDaysUntil(trip.startDate);
   if (daysUntil === null) {
-    return rawStatus === "draft" ? "draft" : "upcoming";
+    return "upcoming";
   }
   if (daysUntil < 0) {
     const endDaysUntil = getDaysUntil(trip.endDate);
@@ -92,7 +94,6 @@ export function getTimelineLabel(trip) {
   const displayStatus = getDisplayStatus(trip);
   if (displayStatus === "completed") return "Đã kết thúc";
   if (displayStatus === "cancelled") return "Không còn hiệu lực";
-  if (displayStatus === "draft") return "Bản nháp · cần lên lịch";
 
   const daysUntil = getDaysUntil(trip.startDate);
   if (displayStatus === "ongoing") return "Đang trong hành trình";
@@ -107,9 +108,8 @@ export function getHeroTrip(trips) {
   const STATUS_PRIORITY = {
     ongoing: 0,
     upcoming: 1,
-    draft: 2,
-    completed: 3,
-    cancelled: 4,
+    completed: 2,
+    cancelled: 3,
   };
 
   const candidates = (trips || [])
@@ -131,7 +131,7 @@ export function buildSummary(trips) {
   const safeTrips = trips || [];
   const activeCount = safeTrips.filter((trip) => {
     const status = getDisplayStatus(trip);
-    return status === "draft" || status === "upcoming" || status === "ongoing";
+    return status === "upcoming" || status === "ongoing";
   }).length;
   const completedCount = safeTrips.filter((trip) => {
     const status = getDisplayStatus(trip);
@@ -547,4 +547,154 @@ export function buildDestinationBookings(tripBookings, destinations) {
   });
 
   return destinationMap;
+}
+
+// ─── Day list ───────────────────────────────────────────────────────────────
+
+const DAY_MS = 86400000;
+
+/**
+ * Dựng danh sách ngày của chuyến đi cho các bộ chọn (day chips, modal chuyển ngày).
+ * Mỗi phần tử: { dayNumber, date } — date là null nếu chuyến đi chưa có ngày bắt đầu.
+ */
+export function buildDayList(trip) {
+  const total = calcDayCount(trip);
+  const start = toValidDate(trip?.startDate);
+  return Array.from({ length: total }, (_, index) => ({
+    dayNumber: index + 1,
+    date: start ? new Date(start.getTime() + index * DAY_MS) : null,
+  }));
+}
+
+// ─── Time field helpers ───────────────────────────────────────────────────────
+
+/**
+ * Chuyển chuỗi "HH:MM" thành Date (chỉ phần giờ/phút), hoặc null nếu không hợp lệ.
+ */
+export function parseTimeToDate(str) {
+  if (!str) return null;
+  const [h, m] = String(str).split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+/**
+ * Tính thời gian lưu trú (phút) từ startTime và endTime.
+ * Trả về số phút hoặc null nếu thiếu dữ liệu.
+ */
+export function calcDurationMinutes(startTime, endTime) {
+  const start = parseTimeToDate(startTime);
+  const end = parseTimeToDate(endTime);
+  if (!start || !end) return null;
+  let diff = (end - start) / 60000;
+  if (diff < 0) diff += 24 * 60;
+  return Math.round(diff);
+}
+
+/**
+ * Format số phút thành chuỗi dễ đọc, chính xác tới từng phút.
+ * 45p → "45 phút", 90p → "1 giờ 30 phút", 120p → "2 giờ".
+ */
+export function formatDuration(minutes) {
+  if (!minutes || minutes <= 0) return null;
+  if (minutes < 60) return `${minutes} phút`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (m === 0) return `${h} giờ`;
+  return `${h} giờ ${m} phút`;
+}
+
+/**
+ * Định dạng Date thành chuỗi "HH:MM".
+ */
+export function formatHHMM(date) {
+  const h = String(date.getHours()).padStart(2, "0");
+  const m = String(date.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+/**
+ * Nhãn thời gian hiển thị cho một điểm đến (start/end/qua hôm sau/chưa xếp giờ).
+ */
+export function formatDestinationTimeLabel(dest) {
+  const hasStart = !!dest?.startTime;
+  const hasEnd = !!dest?.endTime;
+  const startMin = toTimeSortValue(dest?.startTime);
+  const endMin = toTimeSortValue(dest?.endTime);
+  const crossesMidnight =
+    hasStart &&
+    hasEnd &&
+    startMin !== Number.MAX_SAFE_INTEGER &&
+    endMin !== Number.MAX_SAFE_INTEGER &&
+    endMin < startMin;
+
+  if (hasStart && hasEnd) {
+    return `${dest.startTime} – ${dest.endTime}${crossesMidnight ? " (qua hôm sau)" : ""}`;
+  }
+  if (hasStart) return `Bắt đầu ${dest.startTime}`;
+  if (hasEnd) return `Kết thúc ${dest.endTime}`;
+  return "Chưa xếp giờ";
+}
+
+// ─── Transport helpers ────────────────────────────────────────────────────────
+
+export const TRANSPORT_OPTIONS = [
+  { label: "Đi bộ", value: "Đi bộ", icon: "directions-walk" },
+  { label: "Xe máy", value: "Xe máy", icon: "motorcycle" },
+  { label: "Xe hơi", value: "Xe hơi", icon: "directions-car" },
+  { label: "Xe buýt", value: "Xe buýt", icon: "directions-bus" },
+  { label: "Khác", value: null, icon: "swap-vert" },
+];
+
+/**
+ * Tên phương tiện thân thiện từ giá trị lưu trữ tự do.
+ */
+export function getTransportLabel(transport) {
+  if (!transport) return null;
+  const t = transport.toLowerCase();
+  if (t.includes("walk") || t.includes("đi bộ")) return "Đi bộ";
+  if (t.includes("bike") || t.includes("xe máy") || t.includes("motorcycle")) return "Xe máy";
+  if (t.includes("bus") || t.includes("buýt")) return "Xe buýt";
+  if (t.includes("car") || t.includes("xe hơi") || t === "xe") return "Xe hơi";
+  return transport;
+}
+
+/**
+ * Icon MaterialIcons tương ứng phương tiện.
+ */
+export function getTransportIcon(transport) {
+  if (!transport) return null;
+  const t = transport.toLowerCase();
+  if (t.includes("walk") || t.includes("đi bộ")) return "directions-walk";
+  if (t.includes("bike") || t.includes("xe máy") || t.includes("motorcycle")) return "motorcycle";
+  if (t.includes("bus") || t.includes("buýt")) return "directions-bus";
+  if (t.includes("car") || t.includes("xe hơi") || t.includes("xe")) return "directions-car";
+  return "swap-vert";
+}
+
+/**
+ * Kiểm tra một option phương tiện có khớp với giá trị đã lưu hay không.
+ */
+export function isTransportSelected(stored, optionVal) {
+  if (!stored && !optionVal) return true;
+  if (!stored || !optionVal) return false;
+
+  const s = stored.toLowerCase();
+  const o = optionVal.toLowerCase();
+
+  if (o.includes("đi bộ") || o.includes("walk")) {
+    return s.includes("đi bộ") || s.includes("walk");
+  }
+  if (o.includes("xe máy") || o.includes("bike")) {
+    return s.includes("xe máy") || s.includes("bike") || s.includes("motorcycle");
+  }
+  if (o.includes("xe buýt") || o.includes("bus") || o.includes("buýt")) {
+    return s.includes("xe buýt") || s.includes("bus") || s.includes("buýt");
+  }
+  if (o.includes("xe hơi") || o.includes("car")) {
+    return s.includes("xe hơi") || s.includes("car") || (s === "xe" && o === "xe hơi");
+  }
+  return s === o;
 }

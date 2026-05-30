@@ -1577,7 +1577,7 @@ export const createTrip = async (userId, data) => {
       totalDays: toInt(totalDays, 1),
       travelStyle,
       groupSize: toInt(groupSize, 1),
-      status: status || "draft",
+      status: status || "upcoming",
     },
     include: {
       destinations: {
@@ -1743,7 +1743,7 @@ const recalculateDistancesForDay = async (tripId, dayNumber) => {
 export const addDestination = async (
   tripId,
   userId,
-  { placeId, dayNumber, order, note, transportToNext, distanceToNext },
+  { placeId, dayNumber, order, note, startTime, endTime, transportToNext, distanceToNext },
 ) => {
   const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
   if (!trip) {
@@ -1782,6 +1782,8 @@ export const addDestination = async (
       dayNumber: toInt(dayNumber, 1),
       order: targetOrder,
       note,
+      startTime: startTime ?? null,
+      endTime: endTime ?? null,
       transportToNext: null,
       distanceToNext: distanceToNext !== undefined && distanceToNext !== null ? Number(distanceToNext) : null,
       status: "planned",

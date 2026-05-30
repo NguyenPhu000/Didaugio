@@ -4,22 +4,25 @@ import {
   getBookingStatusMeta,
   shouldShowBookingBadge,
 } from "../../utils/tripTheme";
-import s, { T } from "../../utils/tripDetailTokens";
-
 export const StatusBadge = memo(function StatusBadge({ status, destState }) {
   if (!shouldShowBookingBadge(status, destState)) return null;
 
   const meta = getBookingStatusMeta(status);
-  const isActive = status === "confirmed";
   return (
-    <View style={[s.badge, { backgroundColor: meta.bg }]}>
+    <View
+      className="flex-row items-center gap-[5px] px-[10px] py-[4px] rounded-full"
+      style={{ backgroundColor: meta.bg }}
+    >
       <View
-        style={[
-          s.badgeDot,
-          { backgroundColor: isActive ? T.onPrimary : meta.color },
-        ]}
+        className="w-[5px] h-[5px] rounded-full"
+        style={{ backgroundColor: meta.color }}
       />
-      <Text style={[s.badgeText, { color: meta.color }]}>{meta.label}</Text>
+      <Text
+        className="text-[11px] font-semibold tracking-[-0.08px]"
+        style={{ color: meta.color }}
+      >
+        {meta.label}
+      </Text>
     </View>
   );
 });

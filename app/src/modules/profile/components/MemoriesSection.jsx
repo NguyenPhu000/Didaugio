@@ -7,9 +7,9 @@ import { TOKENS } from "../../../constants/design-tokens";
 export function MemoriesSection({ completedTrips }) {
   if (!completedTrips || completedTrips.length === 0) {
     return (
-      <View style={[styles.memoriesContainer, { alignItems: "center", paddingVertical: 32 }]}>
+      <View className="mt-2 items-center py-8">
         <MaterialIcons name="photo-library" size={32} color="#CBD5E1" />
-        <Text style={{ marginTop: 12, fontSize: 14, color: "#64748B", fontFamily: TOKENS.font.medium }}>
+        <Text className="mt-3 text-sm text-[#64748B] font-medium">
           Bạn chưa có kỷ niệm nào
         </Text>
       </View>
@@ -41,45 +41,78 @@ export function MemoriesSection({ completedTrips }) {
       }
     : null;
 
+  const shadowStyle = {
+    textShadowColor: "rgba(0, 0, 0, 0.55)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  };
+
   return (
-    <View style={styles.memoriesContainer}>
-      <View style={styles.memoriesRow}>
+    <View className="mt-2">
+      <View className="flex-row gap-3">
         {/* Left Card */}
-        <View style={styles.memoryCardLeft}>
-          <Image source={{ uri: memory1.image }} style={styles.memoryImage} contentFit="cover" />
+        <View className="flex-1 h-[220px] rounded-[20px] overflow-hidden bg-white shadow-sm elevation-2 relative">
+          <Image
+            source={{ uri: memory1.image }}
+            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
+            contentFit="cover"
+          />
           <LinearGradient
             colors={["transparent", "rgba(15, 23, 42, 0.7)"]}
-            style={styles.memoryGradient}
+            className="absolute inset-0"
           />
-          <View style={styles.memoryTextContainer}>
-            <Text style={styles.memoryTitle} numberOfLines={2}>{memory1.title}</Text>
-            {memory1.date ? <Text style={styles.memoryDate}>{memory1.date}</Text> : null}
+          <View className="absolute bottom-3.5 left-4">
+            <Text
+              className="text-[17px] font-semibold text-white"
+              numberOfLines={2}
+              style={shadowStyle}
+            >
+              {memory1.title}
+            </Text>
+            {memory1.date ? (
+              <Text
+                className="text-[13px] text-white font-medium mt-0.5"
+                style={shadowStyle}
+              >
+                {memory1.date}
+              </Text>
+            ) : null}
           </View>
         </View>
 
         {/* Right column */}
         {memory2 ? (
-          <View style={styles.memoriesRightColumn}>
+          <View className="flex-1 justify-start">
             {/* Top Right Card */}
-            <View style={styles.memoryCardRightTop}>
-              <Image source={{ uri: memory2.image }} style={styles.memoryImage} contentFit="cover" />
+            <View className="h-[104px] rounded-[20px] overflow-hidden mb-3 bg-white shadow-sm elevation-2 relative">
+              <Image
+                source={{ uri: memory2.image }}
+                style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
+                contentFit="cover"
+              />
               <LinearGradient
                 colors={["transparent", "rgba(15, 23, 42, 0.7)"]}
-                style={styles.memoryGradient}
+                className="absolute inset-0"
               />
-              <View style={styles.memoryTextContainer}>
-                <Text style={styles.memoryTitle} numberOfLines={1}>{memory2.title}</Text>
+              <View className="absolute bottom-3.5 left-4">
+                <Text
+                  className="text-[17px] font-semibold text-white"
+                  numberOfLines={1}
+                  style={shadowStyle}
+                >
+                  {memory2.title}
+                </Text>
               </View>
             </View>
 
             {/* +N More */}
             {extraCount > 0 ? (
-              <Pressable style={styles.moreCard}>
+              <Pressable className="h-[104px] rounded-[20px] overflow-hidden">
                 <LinearGradient
                   colors={["#3478F6", "#1E40AF"]}
-                  style={styles.moreGradient}
+                  className="flex-1 items-center justify-center"
                 >
-                  <Text style={styles.moreText}>+{extraCount} Nữa</Text>
+                  <Text className="text-[17px] font-semibold text-white">+{extraCount} Nữa</Text>
                 </LinearGradient>
               </Pressable>
             ) : null}
@@ -89,76 +122,3 @@ export function MemoriesSection({ completedTrips }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  memoriesContainer: { marginTop: 8 },
-  memoriesRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  memoryCardLeft: {
-    flex: 1,
-    height: 220,
-    borderRadius: 20,
-    overflow: "hidden",
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  memoryCardRightTop: {
-    height: 104,
-    borderRadius: 20,
-    overflow: "hidden",
-    marginBottom: 12,
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  memoryImage: { ...StyleSheet.absoluteFillObject },
-  memoryGradient: { ...StyleSheet.absoluteFillObject },
-  memoryTextContainer: {
-    position: "absolute",
-    bottom: 14,
-    left: 16,
-  },
-  memoryTitle: {
-    fontSize: 17,
-    fontFamily: TOKENS.font.semibold,
-    color: "#fff",
-    textShadowColor: "rgba(0, 0, 0, 0.55)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
-  },
-  memoryDate: {
-    fontSize: 13,
-    color: "#fff",
-    fontFamily: TOKENS.font.medium,
-    marginTop: 2,
-    textShadowColor: "rgba(0, 0, 0, 0.55)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
-  },
-  memoriesRightColumn: { flex: 1, justifyContent: "flex-start" },
-
-  moreCard: {
-    height: 104,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  moreGradient: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  moreText: {
-    fontSize: 17,
-    fontFamily: TOKENS.font.semibold,
-    color: "#fff",
-  },
-});

@@ -10,13 +10,26 @@ const PERSIST_STORAGE_KEY = "didaugio-react-query-cache";
 
 const tripsRootKey = QUERY_KEYS.trips.all()[0];
 
-/** Strip heavy fields from trip objects before persisting to stay under Android's 2MB CursorWindow limit. */
+function slimPlace(place) {
+  if (!place || typeof place !== "object") return place;
+  const { thumbnail, images, ...rest } = place;
+  return rest;
+}
+
+/** Strip heavy base64 images from trip destinations to stay under Android's 2MB CursorWindow limit. */
 function slimTrip(trip) {
   if (!trip || typeof trip !== "object") return trip;
   const { destinations, bookings, ...rest } = trip;
+  const slimmedDestinations = Array.isArray(destinations)
+    ? destinations.map((d) => ({
+        ...d,
+        place: slimPlace(d.place),
+      }))
+    : [];
   return {
     ...rest,
-    destinationCount: destinations?.length ?? 0,
+    destinations: slimmedDestinations,
+    destinationCount: slimmedDestinations.length,
   };
 }
 
@@ -27,10 +40,9 @@ const basePersister = createAsyncStoragePersister({
 });
 
 export const asyncStoragePersister = {
-  ...basePersister,
-  persistClient: (client) => {
-    if (client && Array.isArray(client.queries)) {
-      const slimmedQueries = client.queries.map((q) => {
+  persistClient: async (persistedClient) => {
+    if (persistedClient && persistedClient.clientState && Array.isArray(persistedClient.clientState.queries)) {
+      const slimmedQueries = persistedClient.clientState.queries.map((q) => {
         const root = q.queryKey?.[0];
         if (root === tripsRootKey && q.state?.data) {
           const data = q.state.data;
@@ -39,6 +51,8 @@ export const asyncStoragePersister = {
             slimmedData = data.map(slimTrip);
           } else if (data?.data && typeof data.data === "object" && !Array.isArray(data.data)) {
             slimmedData = { ...data, data: slimTrip(data.data) };
+          } else if (data && typeof data === "object" && !Array.isArray(data)) {
+            slimmedData = slimTrip(data);
           }
           return {
             ...q,
@@ -50,12 +64,21 @@ export const asyncStoragePersister = {
         }
         return q;
       });
-      return basePersister.persistClient({
-        ...client,
-        queries: slimmedQueries,
+      return await basePersister.persistClient({
+        ...persistedClient,
+        clientState: {
+          ...persistedClient.clientState,
+          queries: slimmedQueries,
+        },
       });
     }
-    return basePersister.persistClient(client);
+    return await basePersister.persistClient(persistedClient);
+  },
+  restoreClient: async () => {
+    return await basePersister.restoreClient();
+  },
+  removeClient: async () => {
+    return await basePersister.removeClient();
   },
 };
 

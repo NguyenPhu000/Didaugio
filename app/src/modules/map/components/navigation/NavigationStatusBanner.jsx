@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { MaterialIcons } from "@expo/vector-icons";
 import { TOKENS } from "../../../../constants/design-tokens";
@@ -19,21 +19,20 @@ const NavigationStatusBanner = memo(function NavigationStatusBanner({
   return (
     <View
       pointerEvents="box-none"
-      style={{
-        position: "absolute",
-        left: 14,
-        right: 14,
-        bottom: bottomOffset,
-        zIndex: 72,
-      }}
+      style={[
+        styles.bannerOuter,
+        {
+          bottom: bottomOffset,
+        },
+      ]}
     >
       <BlurView
         tint="dark"
         intensity={28}
         style={{
-          borderRadius: 14,
           paddingHorizontal: 12,
           paddingVertical: 11,
+          borderRadius: 14,
           overflow: "hidden",
           borderWidth: 1,
           backgroundColor:
@@ -46,52 +45,39 @@ const NavigationStatusBanner = memo(function NavigationStatusBanner({
               : "rgba(15,23,42,0.08)",
         }}
       >
-        <View className="flex-row items-center justify-between gap-2">
-          <View className="flex-row items-center gap-2" style={{ flex: 1 }}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
             <MaterialIcons
               name={routeStatus.icon}
               size={16}
               color={routeStatus.type === "error" ? "#E11D48" : "#0EA5E9"}
             />
-            <Text
-              className="text-[12px] font-semibold"
-              style={{ color: "#0F172A" }}
-            >
+            <Text style={styles.headerTitle}>
               {routeStatus.title}
             </Text>
           </View>
 
           {routeEtaLabel || routeDistanceLabel ? (
-            <View
-              className="flex-row items-center"
-              style={{
-                gap: 6,
-                backgroundColor: "rgba(14,165,233,0.1)",
-                borderColor: "rgba(14,165,233,0.2)",
-                borderWidth: 1,
-                borderRadius: 999,
-                paddingHorizontal: 10,
-                height: 26,
-              }}
-            >
+            <View style={styles.badge}>
               {routeEtaLabel ? (
                 <Text
-                  className="text-[11px]"
-                  style={{
-                    color: "#0C4A6E",
-                    fontFamily: TOKENS.font.semibold,
-                  }}
+                  style={[
+                    styles.badgeEtaText,
+                    {
+                      fontFamily: TOKENS.font.semibold,
+                    },
+                  ]}
                 >
                   {routeEtaLabel}
                 </Text>
               ) : null}
               {routeEtaLabel && routeDistanceLabel ? (
-                <Text className="text-[11px]" style={{ color: "#64748B" }}>
+                <Text style={styles.badgeDot}>
                   •
                 </Text>
               ) : null}
               {routeDistanceLabel ? (
-                <Text className="text-[11px]" style={{ color: "#334155" }}>
+                <Text style={styles.badgeDistanceText}>
                   {routeDistanceLabel}
                 </Text>
               ) : null}
@@ -99,13 +85,13 @@ const NavigationStatusBanner = memo(function NavigationStatusBanner({
           ) : null}
         </View>
 
-        <Text className="text-[11px] mt-1" style={{ color: "#475569" }}>
+        <Text style={styles.messageText}>
           {routeStatus.message}
         </Text>
 
         {routeStatus.type !== "error" &&
         (routeEtaLabel || routeDistanceLabel) ? (
-          <Text className="text-[10px] mt-1" style={{ color: "#64748B" }}>
+          <Text style={styles.subInfoText}>
             {routeStatus.type === "fallback"
               ? MAP_TEXT.navigationStatusBanner.fallbackInfo
               : MAP_TEXT.navigationStatusBanner.optimizedInfo}
@@ -116,18 +102,14 @@ const NavigationStatusBanner = memo(function NavigationStatusBanner({
           <Pressable
             onPress={onRetry}
             disabled={isRouteFetching}
-            className="mt-2 h-[30px] rounded-full items-center justify-center"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.82)",
-              borderWidth: 1,
-              borderColor: "rgba(15,23,42,0.12)",
-              opacity: isRouteFetching ? 0.7 : 1,
-            }}
+            style={[
+              styles.retryBtn,
+              {
+                opacity: isRouteFetching ? 0.7 : 1,
+              },
+            ]}
           >
-            <Text
-              className="text-[11px] font-semibold"
-              style={{ color: "#0F172A" }}
-            >
+            <Text style={styles.retryBtnText}>
               {isRouteFetching
                 ? MAP_TEXT.navigationStatusBanner.retryingRoute
                 : MAP_TEXT.navigationStatusBanner.retryRoute}
@@ -137,6 +119,81 @@ const NavigationStatusBanner = memo(function NavigationStatusBanner({
       </BlurView>
     </View>
   );
+});
+
+const styles = StyleSheet.create({
+  bannerOuter: {
+    position: "absolute",
+    left: 14,
+    right: 14,
+    zIndex: 72,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "between",
+    gap: 8,
+  },
+  headerLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#0F172A",
+  },
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(14, 165, 233, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(14, 165, 233, 0.2)",
+    borderRadius: 13,
+    paddingHorizontal: 10,
+    height: 26,
+  },
+  badgeEtaText: {
+    fontSize: 11,
+    color: "#0C4A6E",
+    fontWeight: "600",
+  },
+  badgeDot: {
+    fontSize: 11,
+    color: "#64748B",
+  },
+  badgeDistanceText: {
+    fontSize: 11,
+    color: "#334155",
+  },
+  messageText: {
+    fontSize: 11,
+    marginTop: 4,
+    color: "#475569",
+  },
+  subInfoText: {
+    fontSize: 10,
+    marginTop: 4,
+    color: "#64748B",
+  },
+  retryBtn: {
+    marginTop: 8,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.1)",
+  },
+  retryBtnText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#0F172A",
+  },
 });
 
 export default NavigationStatusBanner;

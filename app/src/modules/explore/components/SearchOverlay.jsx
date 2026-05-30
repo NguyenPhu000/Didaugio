@@ -100,40 +100,40 @@ const SearchResultItem = memo(function SearchResultItem({
   }, [onPressPlace, placeId]);
 
   return (
-    <Pressable onPress={handlePress} style={styles.resultItem}>
-      <View style={styles.resultImageWrap}>
+    <Pressable onPress={handlePress} className="flex-row items-center gap-3.5 py-3 border-b border-[#F2F2F7]">
+      <View className="w-14 h-14 rounded-[14px] overflow-hidden bg-[#F2F2F7] items-center justify-center relative">
         {imageUri ? (
           <Image
             source={{ uri: imageUri }}
             contentFit="cover"
             cachePolicy="memory-disk"
-            style={StyleSheet.absoluteFillObject}
+            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
           />
         ) : (
           <MaterialIcons name="place" size={22} color="rgba(255,255,255,0.4)" />
         )}
       </View>
 
-      <View style={styles.resultInfo}>
-        <Text style={styles.resultName} numberOfLines={1}>
+      <View className="flex-1 gap-0.5">
+        <Text className="text-[#1D1D1F] text-sm font-semibold" numberOfLines={1}>
           {place?.name}
         </Text>
         {location ? (
-          <View style={styles.resultLocationRow}>
+          <View className="flex-row items-center gap-0.75">
             <MaterialIcons
               name="place"
               size={12}
               color={APPLE_THEME.focusBlue}
             />
-            <Text style={styles.resultLocation} numberOfLines={1}>
+            <Text className="text-[#54647A] text-[11px] font-medium" numberOfLines={1}>
               {location}
             </Text>
           </View>
         ) : null}
         {rating > 0 ? (
-          <View style={styles.resultRatingRow}>
+          <View className="flex-row items-center gap-0.75">
             <MaterialIcons name="star" size={12} color="#FBBF24" />
-            <Text style={styles.resultRating}>{rating.toFixed(1)}</Text>
+            <Text className="text-[#1D1D1F] text-[11px] font-semibold">{rating.toFixed(1)}</Text>
           </View>
         ) : null}
       </View>
@@ -147,7 +147,7 @@ const SearchResultItem = memo(function SearchResultItem({
   );
 });
 
-function SearchOverlayInner({ visible, onClose }) {
+export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [text, setText] = useState("");
@@ -254,10 +254,10 @@ function SearchOverlayInner({ visible, onClose }) {
       transparent={false}
       onRequestClose={handleClose}
     >
-      <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
+      <View className="flex-1 bg-white" style={{ paddingTop: insets.top + 8 }}>
         {/* Search header */}
-        <View style={styles.searchHeader}>
-          <View style={styles.searchInputWrap}>
+        <View className="flex-row items-center gap-3.5 px-5 pb-2.5">
+          <View className="flex-1 flex-row items-center gap-2.5 h-11 px-3.5 rounded-[14px] bg-[#FFFFFF] border border-[#F2F2F7]">
             <MaterialIcons
               name="search"
               size={20}
@@ -269,7 +269,7 @@ function SearchOverlayInner({ visible, onClose }) {
               onChangeText={setText}
               placeholder="Tìm địa điểm, quán ăn, điểm vui chơi..."
               placeholderTextColor={APPLE_THEME.textMuted}
-              style={styles.searchInput}
+              className="flex-1 text-[#1D1D1F] text-sm py-0 font-sans"
               returnKeyType="search"
               autoCorrect={false}
               autoCapitalize="none"
@@ -285,13 +285,13 @@ function SearchOverlayInner({ visible, onClose }) {
             ) : null}
           </View>
           <Pressable onPress={handleClose} hitSlop={10}>
-            <Text style={styles.cancelBtn}>Đóng</Text>
+            <Text className="text-[#007AFF] text-sm font-semibold">Đóng</Text>
           </Pressable>
         </View>
 
         {isActive ? (
-          <View style={styles.filterSummaryRow}>
-            <Text style={styles.filterSummaryText}>
+          <View className="flex-row items-center justify-between px-5 pb-2 gap-2">
+            <Text className="text-[#54647A] text-xs font-medium">
               {results.length} kết quả phù hợp
             </Text>
             <Pressable
@@ -304,40 +304,38 @@ function SearchOverlayInner({ visible, onClose }) {
                 setSelectedMinRating(null);
                 setSelectedSortBy("newest");
               }}
-              style={styles.clearFilterBtn}
+              className="flex-row items-center gap-1 px-2.5 h-7 rounded-full bg-black/[0.04] border border-[#F2F2F7]"
             >
               <MaterialIcons
                 name="refresh"
                 size={14}
                 color={APPLE_THEME.focusBlue}
               />
-              <Text style={styles.clearFilterText}>Đặt lại bộ lọc</Text>
+              <Text className="text-[#007AFF] text-[11px] font-semibold">Đặt lại bộ lọc</Text>
             </Pressable>
           </View>
         ) : null}
 
         {/* Category chips */}
         {categories.length > 0 ? (
-          <View style={styles.filterWrap}>
-            <Text style={styles.filterLabel}>Danh mục</Text>
+          <View className="shrink-0 mb-0.5">
+            <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">Danh mục</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipRow}
+              contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingVertical: 8, alignItems: "center" }}
               keyboardShouldPersistTaps="handled"
             >
               <Pressable
                 onPress={() => setSelectedCategory(null)}
-                style={[
-                  styles.chip,
-                  selectedCategory === null ? styles.chipActive : null,
-                ]}
+                className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
+                  selectedCategory === null ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                }`}
               >
                 <Text
-                  style={[
-                    styles.chipText,
-                    selectedCategory === null ? styles.chipTextActive : null,
-                  ]}
+                  className={`text-xs font-semibold ${
+                    selectedCategory === null ? "text-white" : "text-[#54647A]"
+                  }`}
                 >
                   Tất cả
                 </Text>
@@ -349,13 +347,14 @@ function SearchOverlayInner({ visible, onClose }) {
                   <Pressable
                     key={cat.id}
                     onPress={() => setSelectedCategory(active ? null : cat.id)}
-                    style={[styles.chip, active ? styles.chipActive : null]}
+                    className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
+                      active ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                    }`}
                   >
                     <Text
-                      style={[
-                        styles.chipText,
-                        active ? styles.chipTextActive : null,
-                      ]}
+                      className={`text-xs font-semibold ${
+                        active ? "text-white" : "text-[#54647A]"
+                      }`}
                     >
                       {cat.name}
                     </Text>
@@ -367,26 +366,24 @@ function SearchOverlayInner({ visible, onClose }) {
         ) : null}
 
         {districtOptions.length > 0 ? (
-          <View style={styles.filterWrap}>
-            <Text style={styles.filterLabel}>Khu vực</Text>
+          <View className="shrink-0 mb-0.5">
+            <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">Khu vực</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipRow}
+              contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingVertical: 8, alignItems: "center" }}
               keyboardShouldPersistTaps="handled"
             >
               <Pressable
                 onPress={() => setSelectedDistrict(null)}
-                style={[
-                  styles.chip,
-                  selectedDistrict === null ? styles.chipActive : null,
-                ]}
+                className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
+                  selectedDistrict === null ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                }`}
               >
                 <Text
-                  style={[
-                    styles.chipText,
-                    selectedDistrict === null ? styles.chipTextActive : null,
-                  ]}
+                  className={`text-xs font-semibold ${
+                    selectedDistrict === null ? "text-white" : "text-[#54647A]"
+                  }`}
                 >
                   Tất cả
                 </Text>
@@ -400,13 +397,14 @@ function SearchOverlayInner({ visible, onClose }) {
                   <Pressable
                     key={String(district.id)}
                     onPress={() => setSelectedDistrict(active ? null : id)}
-                    style={[styles.chip, active ? styles.chipActive : null]}
+                    className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
+                      active ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                    }`}
                   >
                     <Text
-                      style={[
-                        styles.chipText,
-                        active ? styles.chipTextActive : null,
-                      ]}
+                      className={`text-xs font-semibold ${
+                        active ? "text-white" : "text-[#54647A]"
+                      }`}
                     >
                       {district.name}
                     </Text>
@@ -417,12 +415,12 @@ function SearchOverlayInner({ visible, onClose }) {
           </View>
         ) : null}
 
-        <View style={styles.filterWrap}>
-          <Text style={styles.filterLabel}>Giá</Text>
+        <View className="shrink-0 mb-0.5">
+          <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">Giá</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}
+            contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingVertical: 8, alignItems: "center" }}
             keyboardShouldPersistTaps="handled"
           >
             {PRICE_FILTERS.map((item) => {
@@ -433,13 +431,14 @@ function SearchOverlayInner({ visible, onClose }) {
                   onPress={() =>
                     setSelectedPriceRange(active ? null : item.value)
                   }
-                  style={[styles.chip, active ? styles.chipActive : null]}
+                  className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
+                    active ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                  }`}
                 >
                   <Text
-                    style={[
-                      styles.chipText,
-                      active ? styles.chipTextActive : null,
-                    ]}
+                    className={`text-xs font-semibold ${
+                      active ? "text-white" : "text-[#54647A]"
+                    }`}
                   >
                     {item.label}
                   </Text>
@@ -449,12 +448,12 @@ function SearchOverlayInner({ visible, onClose }) {
           </ScrollView>
         </View>
 
-        <View style={styles.filterWrap}>
-          <Text style={styles.filterLabel}>Đánh giá & sắp xếp</Text>
+        <View className="shrink-0 mb-0.5">
+          <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">Đánh giá & sắp xếp</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}
+            contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingVertical: 8, alignItems: "center" }}
             keyboardShouldPersistTaps="handled"
           >
             {RATING_FILTERS.map((item) => {
@@ -465,13 +464,14 @@ function SearchOverlayInner({ visible, onClose }) {
                   onPress={() =>
                     setSelectedMinRating(active ? null : item.value)
                   }
-                  style={[styles.chip, active ? styles.chipActive : null]}
+                  className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
+                    active ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                  }`}
                 >
                   <Text
-                    style={[
-                      styles.chipText,
-                      active ? styles.chipTextActive : null,
-                    ]}
+                    className={`text-xs font-semibold ${
+                      active ? "text-white" : "text-[#54647A]"
+                    }`}
                   >
                     {item.label}
                   </Text>
@@ -484,13 +484,14 @@ function SearchOverlayInner({ visible, onClose }) {
                 <Pressable
                   key={item.value}
                   onPress={() => setSelectedSortBy(item.value)}
-                  style={[styles.chip, active ? styles.chipActive : null]}
+                  className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
+                    active ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                  }`}
                 >
                   <Text
-                    style={[
-                      styles.chipText,
-                      active ? styles.chipTextActive : null,
-                    ]}
+                    className={`text-xs font-semibold ${
+                      active ? "text-white" : "text-[#54647A]"
+                    }`}
                   >
                     {item.label}
                   </Text>
@@ -502,30 +503,30 @@ function SearchOverlayInner({ visible, onClose }) {
 
         {/* Results */}
         {isLoading ? (
-          <View style={styles.emptyState}>
+          <View className="flex-1 items-center justify-center gap-2.5 px-12">
             <ActivityIndicator color={APPLE_THEME.focusBlue} />
           </View>
         ) : !isActive ? (
-          <View style={styles.emptyState}>
+          <View className="flex-1 items-center justify-center gap-2.5 px-12">
             <MaterialIcons
               name="travel-explore"
               size={42}
               color={APPLE_THEME.textMuted}
             />
-            <Text style={styles.emptyTitle}>Tìm điểm đến tiếp theo</Text>
-            <Text style={styles.emptyCopy}>
+            <Text className="text-[#1D1D1F] text-[17px] font-bold text-center mt-1">Tìm điểm đến tiếp theo</Text>
+            <Text className="text-[#54647A] text-sm text-center leading-5">
               Nhập tên địa điểm hoặc chọn danh mục để khám phá.
             </Text>
           </View>
         ) : results.length === 0 ? (
-          <View style={styles.emptyState}>
+          <View className="flex-1 items-center justify-center gap-2.5 px-12">
             <MaterialIcons
               name="search-off"
               size={42}
               color={APPLE_THEME.textMuted}
             />
-            <Text style={styles.emptyTitle}>Không tìm thấy kết quả</Text>
-            <Text style={styles.emptyCopy}>
+            <Text className="text-[#1D1D1F] text-[17px] font-bold text-center mt-1">Không tìm thấy kết quả</Text>
+            <Text className="text-[#54647A] text-sm text-center leading-5">
               Thử từ khóa khác hoặc đổi bộ lọc.
             </Text>
           </View>
@@ -537,13 +538,13 @@ function SearchOverlayInner({ visible, onClose }) {
             estimatedItemSize={84}
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.5}
-            contentContainerStyle={styles.resultsList}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: 24 }}
             keyboardShouldPersistTaps="handled"
             ListFooterComponent={
               isFetchingNextPage ? (
                 <ActivityIndicator
                   color={APPLE_THEME.focusBlue}
-                  style={styles.footerLoader}
+                  className="py-5"
                 />
               ) : null
             }
@@ -552,194 +553,4 @@ function SearchOverlayInner({ visible, onClose }) {
       </View>
     </Modal>
   );
-}
-
-export const SearchOverlay = memo(SearchOverlayInner);
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: APPLE_THEME.background,
-  },
-  searchHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-  },
-  searchInputWrap: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    height: 46,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-  },
-  searchInput: {
-    flex: 1,
-    color: APPLE_THEME.text,
-    fontSize: 14,
-    fontFamily: TOKENS.font.body,
-    paddingVertical: 0,
-  },
-  cancelBtn: {
-    color: APPLE_THEME.focusBlue,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  filterSummaryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 8,
-    gap: 8,
-  },
-  filterSummaryText: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-  },
-  clearFilterBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    height: 28,
-    borderRadius: 999,
-    backgroundColor: "rgba(0,0,0,0.04)",
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-  },
-  clearFilterText: {
-    color: APPLE_THEME.focusBlue,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  filterWrap: {
-    flexShrink: 0,
-    marginBottom: 2,
-  },
-  filterLabel: {
-    paddingHorizontal: 20,
-    paddingTop: 6,
-    color: APPLE_THEME.textSecondary,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  chipRow: {
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    alignItems: "center",
-  },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.border,
-    alignSelf: "center",
-    justifyContent: "center",
-    height: 36,
-    ...Platform.select({
-      ios: CHIP_SHADOW,
-      android: { elevation: 0 },
-    }),
-  },
-  chipActive: {
-    backgroundColor: APPLE_THEME.primary,
-    borderColor: APPLE_THEME.primary,
-  },
-  chipText: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-  },
-  chipTextActive: {
-    color: APPLE_THEME.white,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    paddingHorizontal: 48,
-  },
-  emptyTitle: {
-    color: APPLE_THEME.text,
-    fontSize: 17,
-    fontFamily: TOKENS.font.heading,
-    textAlign: "center",
-    marginTop: 4,
-  },
-  emptyCopy: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 13,
-    fontFamily: TOKENS.font.body,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  resultsList: {
-    paddingHorizontal: 20,
-    paddingTop: 6,
-    paddingBottom: 24,
-  },
-  resultItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: APPLE_THEME.borderSoft,
-  },
-  resultImageWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    overflow: "hidden",
-    backgroundColor: APPLE_THEME.surfaceMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  resultInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  resultName: {
-    color: APPLE_THEME.text,
-    fontSize: 14,
-    fontFamily: TOKENS.font.heading,
-  },
-  resultLocationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  resultLocation: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-  },
-  resultRatingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  resultRating: {
-    color: APPLE_THEME.text,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  footerLoader: {
-    paddingVertical: 20,
-  },
 });

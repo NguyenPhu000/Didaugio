@@ -30,59 +30,51 @@ export const TRIP_THEME = {
 };
 
 export const TRIP_STATUS_META = {
-  draft: {
-    label: "Nháp",
-    bg: "#FFF4D6",
-    color: "#B45309",
-    text: "#B45309",
-    accent: "#F59E0B",
-    icon: "edit-calendar",
-  },
   upcoming: {
     label: "Sắp tới",
-    bg: "#E0E7FF",
-    color: "#3730A3",
-    text: "#3730A3",
-    accent: "#6366F1",
+    bg: "#E0F2FE",        // Xanh biển trời trong trẻo (Sky Blue)
+    color: "#0369A1",     // Chữ xanh đại dương đậm rực
+    text: "#0369A1",
+    accent: "#0EA5E9",
     icon: "schedule",
   },
   active: {
     label: "Đang diễn ra",
-    bg: "#DBEAFE",
-    color: "#1D4ED8",
-    text: "#1D4ED8",
+    bg: "#DBEAFE",        // Xanh dương hừng đông rực rỡ
+    color: "#1E40AF",     // Chữ xanh Royal đậm, cực kỳ hút mắt
+    text: "#1E40AF",
     accent: "#2563EB",
     icon: "flight-takeoff",
   },
   ongoing: {
     label: "Đang diễn ra",
-    bg: "#DBEAFE",
-    color: "#1D4ED8",
-    text: "#1D4ED8",
+    bg: "#DBEAFE",        // Đồng bộ với active
+    color: "#1E40AF",
+    text: "#1E40AF",
     accent: "#2563EB",
     icon: "flight-takeoff",
   },
   completed: {
     label: "Đã hoàn thành",
-    bg: "#DCFCE7",
-    color: "#047857",
-    text: "#047857",
-    accent: "#10B981",
+    bg: "#DCFCE7",        // Xanh lá cây miền nhiệt đới tươi mát
+    color: "#15803D",     // Chữ xanh lục sẫm rực rỡ
+    text: "#15803D",
+    accent: "#22C55E",
     icon: "task-alt",
   },
   cancelled: {
     label: "Đã hủy",
-    bg: "#FEE2E2",
-    color: "#B91C1C",
-    text: "#B91C1C",
+    bg: "#FEE2E2",        // Đỏ dâu tây nhạt
+    color: "#DC2626",     // Chữ đỏ rực rỡ, mang tính cảnh báo mạnh
+    text: "#DC2626",
     accent: "#EF4444",
     icon: "event-busy",
   },
 };
 
 export const BOOKING_STATUS_META = {
-  pending: { label: "Chờ xác nhận", color: "#1D1D1F", bg: "#F5F5F7" },
-  confirmed: { label: "Đã xác nhận", color: "#FFFFFF", bg: "#1D1D1F" },
+  pending: { label: "Chờ xác nhận", color: "#D97706", bg: "#FFF9E6" },
+  confirmed: { label: "Đã xác nhận", color: "#15803D", bg: "#DCFCE7" },
   completed: { label: "Hoàn thành", color: "#1D1D1F", bg: "#EFEFEF" },
   cancelled: { label: "Đã hủy", color: "rgba(0,0,0,0.48)", bg: "#F5F5F7" },
   rejected: { label: "Bị từ chối", color: "#8A4B12", bg: "#FFF5EB" },

@@ -8,7 +8,7 @@ import {
 const PROFILE_QUERY_KEY = ["my-profile"];
 
 const normalizeProfileSummary = (res) => {
-  const payload = res?.data || res;
+  const payload = res?.data?.data || res?.data || res;
   if (!payload) return null;
 
   const nestedProfile = payload?.profile || {};

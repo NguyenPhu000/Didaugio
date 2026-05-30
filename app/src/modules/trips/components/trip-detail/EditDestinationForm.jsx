@@ -10,144 +10,23 @@ import {
   Modal,
   KeyboardAvoidingView,
   ScrollView,
-  TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { TOKENS } from "../../../../constants/design-tokens";
-import { formatDistance } from "../../utils/tripHelpers";
-
-function parseTimeToDate(str) {
-  if (!str) return null;
-  const [h, m] = str.split(":").map(Number);
-  if (isNaN(h) || isNaN(m)) return null;
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  return d;
-}
-
-function formatHHMM(date) {
-  const h = String(date.getHours()).padStart(2, "0");
-  const m = String(date.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
-}
-
-function TimeField({ label, value, onChange, placeholder, icon }) {
-  const [show, setShow] = useState(false);
-  const dateValue = parseTimeToDate(value) || new Date();
-
-  const handleChange = useCallback(
-    (_event, selectedDate) => {
-      if (Platform.OS === "android") {
-        setShow(false);
-      }
-      if (selectedDate) {
-        onChange(formatHHMM(selectedDate));
-      }
-    },
-    [onChange],
-  );
-
-  return (
-    <View style={s.field}>
-      <Text style={s.label}>{label}</Text>
-      <Pressable
-        style={({ pressed }) => [
-          s.timeInput,
-          pressed && { backgroundColor: "#F0F0F2" },
-        ]}
-        onPress={() => setShow(true)}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <MaterialIcons
-          name={icon || "schedule"}
-          size={14}
-          color="rgba(0,0,0,0.3)"
-        />
-        <Text style={[s.inputText, !value && s.placeholder]}>
-          {value || placeholder}
-        </Text>
-      </Pressable>
-
-      {Platform.OS === "ios" ? (
-        <Modal
-          visible={show}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShow(false)}
-        >
-          <Pressable style={s.pickerOverlay} onPress={() => setShow(false)}>
-            <View style={s.pickerSheet} onStartShouldSetResponder={() => true}>
-              <View style={s.pickerHeader}>
-                <Text style={s.pickerTitle}>{label}</Text>
-                <Pressable onPress={() => setShow(false)}>
-                  <Text style={s.pickerDone}>Xong</Text>
-                </Pressable>
-              </View>
-              <DateTimePicker
-                value={dateValue}
-                mode="time"
-                is24Hour
-                display="spinner"
-                onChange={handleChange}
-                locale="vi-VN"
-              />
-            </View>
-          </Pressable>
-        </Modal>
-      ) : (
-        show && (
-          <DateTimePicker
-            value={dateValue}
-            mode="time"
-            is24Hour
-            display="default"
-            onChange={handleChange}
-          />
-        )
-      )}
-    </View>
-  );
-}
-
-const TRANSPORT_OPTIONS = [
-  { label: "Đi bộ", value: "Đi bộ", icon: "directions-walk" },
-  { label: "Xe máy", value: "Xe máy", icon: "motorcycle" },
-  { label: "Xe hơi", value: "Xe hơi", icon: "directions-car" },
-  { label: "Xe buýt", value: "Xe buýt", icon: "directions-bus" },
-  { label: "Khác", value: null, icon: "swap-vert" },
-];
-
-function isTransportSelected(stored, optionVal) {
-  if (!stored && !optionVal) return true;
-  if (!stored || !optionVal) return false;
-  
-  const s = stored.toLowerCase();
-  const o = optionVal.toLowerCase();
-  
-  if (o.includes("đi bộ") || o.includes("walk")) {
-    return s.includes("đi bộ") || s.includes("walk");
-  }
-  if (o.includes("xe máy") || o.includes("bike")) {
-    return s.includes("xe máy") || s.includes("bike") || s.includes("motorcycle");
-  }
-  if (o.includes("xe buýt") || o.includes("bus") || o.includes("buýt")) {
-    return s.includes("xe buýt") || s.includes("bus") || s.includes("buýt");
-  }
-  if (o.includes("xe hơi") || o.includes("car")) {
-    return s.includes("xe hơi") || s.includes("car") || (s === "xe" && o === "xe hơi");
-  }
-  return s === o;
-}
+import {
+  formatDistance,
+  calcDurationMinutes,
+  formatDuration,
+  TRANSPORT_OPTIONS,
+  isTransportSelected,
+} from "../../utils/tripHelpers";
+import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
+import TimeField from "./TimeField";
 
 function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLast }) {
   const insets = useSafeAreaInsets();
   const [startTime, setStartTime] = useState(dest?.startTime || "");
   const [endTime, setEndTime] = useState(dest?.endTime || "");
-  const [durationMinutes, setDurationMinutes] = useState(
-    dest?.durationMinutes ? String(dest.durationMinutes) : "",
-  );
   const [note, setNote] = useState(dest?.note || "");
   const [transportToNext, setTransportToNext] = useState(dest?.transportToNext || null);
 
@@ -155,13 +34,13 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
     if (visible) {
       setStartTime(dest?.startTime || "");
       setEndTime(dest?.endTime || "");
-      setDurationMinutes(
-        dest?.durationMinutes ? String(dest.durationMinutes) : "",
-      );
       setNote(dest?.note || "");
       setTransportToNext(dest?.transportToNext || null);
     }
   }, [visible, dest?.id]);
+
+  const calculatedDuration = calcDurationMinutes(startTime, endTime);
+  const durationLabel = formatDuration(calculatedDuration);
 
   const handleSave = useCallback(() => {
     if (isLoading || !dest?.id) return;
@@ -171,12 +50,12 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
       data: {
         startTime: startTime || null,
         endTime: endTime || null,
-        durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : null,
+        durationMinutes: calculatedDuration,
         note: note || null,
         transportToNext: isLast ? null : transportToNext,
       },
     });
-  }, [dest?.id, startTime, endTime, durationMinutes, note, transportToNext, onSave, isLoading, isLast]);
+  }, [dest?.id, startTime, endTime, calculatedDuration, note, transportToNext, onSave, isLoading, isLast]);
 
   if (!visible) return null;
 
@@ -188,421 +67,160 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
       onRequestClose={onCancel}
       statusBarTranslucent
     >
-      <View style={s.root}>
-        <Pressable style={s.backdrop} onPress={onCancel} />
+      <View className="flex-1 justify-end">
+        <Pressable style={StyleSheet.absoluteFillObject} className="bg-black/45" onPress={onCancel} />
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={s.keyboardView}
+          className="flex-1 justify-end w-full"
           pointerEvents="box-none"
         >
-          <View style={[s.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-            <View style={s.handle} />
-
-          {/* Header: tiêu đề + đóng */}
-          <View style={s.sheetHeader}>
-            <View style={s.sheetTitleRow}>
-              <MaterialIcons name="edit-location" size={18} color="#1D1D1F" />
-              <Text style={s.sheetTitle}>Chỉnh sửa địa điểm</Text>
-            </View>
-            <Pressable
-              onPress={onCancel}
-              hitSlop={12}
-              style={({ pressed }) => [
-                s.closeBtn,
-                pressed && { backgroundColor: "rgba(0,0,0,0.06)" },
-              ]}
-            >
-              <MaterialIcons name="close" size={18} color="rgba(0,0,0,0.45)" />
-            </Pressable>
-          </View>
-
-          {dest?.place?.name ? (
-            <Text style={s.placeName} numberOfLines={1}>
-              {dest.place.name}
-            </Text>
-          ) : null}
-
-          <ScrollView
-            style={s.scrollArea}
-            contentContainerStyle={s.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+          <View
+            className="bg-white rounded-t-[24px] max-h-[90%] w-full flex-col flex-shrink"
+            style={{ paddingBottom: Math.max(insets.bottom, 16) }}
           >
-            {/* THỜI GIAN CHI TIẾT */}
-            <Text style={s.sectionHeaderLabel}>Thời gian chi tiết</Text>
-            <View style={s.row}>
-              <TimeField
-                label="Bắt đầu"
-                value={startTime}
-                onChange={setStartTime}
-                placeholder="--:--"
-                icon="play-circle-outline"
-              />
-              <TimeField
-                label="Kết thúc"
-                value={endTime}
-                onChange={setEndTime}
-                placeholder="--:--"
-                icon="stop-circle"
-              />
-            </View>
+            <View className="w-9 h-1 rounded-full bg-black/12 self-center mt-2.5 mb-1" />
 
-            <View style={s.fieldFull}>
-              <Text style={s.label}>Thời gian lưu trú (phút)</Text>
-              <TextInput
-                style={s.inputEditable}
-                value={durationMinutes}
-                onChangeText={setDurationMinutes}
-                placeholder="Ví dụ: 60"
-                placeholderTextColor="rgba(0,0,0,0.25)"
-                keyboardType="number-pad"
-                maxLength={4}
-                returnKeyType="done"
-              />
-              <Text style={s.instructionText}>
-                * Dùng để ước lượng thời gian dừng chân của bạn tại địa điểm này.
-              </Text>
-            </View>
-
-            {!isLast ? (
-              <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)", paddingTop: 14, marginTop: 4 }}>
-                <Text style={s.sectionHeaderLabel}>Di chuyển đến điểm tiếp theo</Text>
-                
-                <View style={s.fieldFull}>
-                  <Text style={s.label}>Phương tiện</Text>
-                  <View style={s.transportRow}>
-                    {TRANSPORT_OPTIONS.map((opt) => {
-                      const isSelected = isTransportSelected(transportToNext, opt.value);
-                      return (
-                        <Pressable
-                          key={opt.label || "other"}
-                          onPress={() => setTransportToNext(opt.value)}
-                          style={[
-                            s.transportOption,
-                            isSelected && s.transportOptionActive
-                          ]}
-                        >
-                          <MaterialIcons
-                            name={opt.icon}
-                            size={16}
-                            color={isSelected ? "#FFFFFF" : "rgba(0,0,0,0.6)"}
-                          />
-                          <Text style={[
-                            s.transportLabel,
-                            isSelected && s.transportLabelActive
-                          ]}>
-                            {opt.label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-
-                {dest?.distanceToNext ? (
-                  <View style={[s.fieldFull, { marginTop: 10 }]}>
-                    <Text style={s.label}>Khoảng cách đến điểm tiếp theo</Text>
-                    <View style={s.readOnlyContainer}>
-                      <MaterialIcons name="navigation" size={14} color="rgba(0,0,0,0.4)" style={{ transform: [{ rotate: "45deg" }] }} />
-                      <Text style={s.readOnlyText}>
-                        {formatDistance(dest.distanceToNext)} (Hệ thống tự động tính toán)
-                      </Text>
-                    </View>
-                  </View>
-                ) : null}
+            {/* Header: tiêu đề + đóng */}
+            <View className="flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]">
+              <View className="flex-row items-center gap-2 flex-1 mr-2">
+                <MaterialIcons name="edit-location" size={18} color="#1D1D1F" />
+                <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">Chỉnh sửa địa điểm</Text>
               </View>
+              <Pressable
+                onPress={onCancel}
+                hitSlop={12}
+                style={({ pressed }) => [
+                  pressed && { backgroundColor: "rgba(0,0,0,0.06)" },
+                ]}
+                className="w-8 h-8 rounded-full items-center justify-center"
+              >
+                <MaterialIcons name="close" size={18} color="rgba(0,0,0,0.45)" />
+              </Pressable>
+            </View>
+
+            {dest?.place?.name ? (
+              <Text className="text-[13px] text-black/[0.45] font-normal px-5 pt-2 tracking-tight" numberOfLines={1}>
+                {dest.place.name}
+              </Text>
             ) : null}
 
-            {/* GHI CHÚ HÀNH TRÌNH */}
-            <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)", paddingTop: 14, marginTop: 4 }}>
-              <Text style={s.sectionHeaderLabel}>Ghi chú hành trình</Text>
-              <View style={s.fieldFull}>
-                <TextInput
-                  style={[s.inputEditable, s.noteInput]}
-                  value={note}
-                  onChangeText={setNote}
-                  placeholder="Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây..."
-                  placeholderTextColor="rgba(0,0,0,0.25)"
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
+            <ScrollView
+              className="max-h-[280px] flex-shrink"
+              contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, gap: 14 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {/* THỜI GIAN CHI TIẾT */}
+              <Text className={STYLES.sectionLabel}>Thời gian chi tiết</Text>
+              <View className="flex-row gap-3">
+                <TimeField
+                  label="Bắt đầu"
+                  value={startTime}
+                  onChange={setStartTime}
+                  placeholder="--:--"
+                  icon="play-circle-outline"
+                />
+                <TimeField
+                  label="Kết thúc"
+                  value={endTime}
+                  onChange={setEndTime}
+                  placeholder="--:--"
+                  icon="stop-circle"
                 />
               </View>
-            </View>
-          </ScrollView>
 
-          {/* Nút Lưu pill — luôn cố định dưới cùng */}
-          <View style={s.footer}>
-            <Pressable
-              onPress={handleSave}
-              disabled={isLoading}
-              style={({ pressed }) => [
-                s.savePill,
-                isLoading && s.saveBtnDisabled,
-                pressed && !isLoading && { opacity: 0.8 }
-              ]}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={s.savePillText}>Lưu</Text>
-              )}
-            </Pressable>
-          </View>
+              {durationLabel ? (
+                <View className="flex-row items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#F5F5F7]">
+                  <MaterialIcons name="schedule" size={16} color="#1D1D1F" />
+                  <Text className="text-[13px] font-medium text-[#1D1D1F] tracking-tight">
+                    Lưu trú {durationLabel}
+                  </Text>
+                </View>
+              ) : null}
+
+              {!isLast ? (
+                <View className="pt-4 mt-1 border-t border-black/[0.08]">
+                  <Text className={STYLES.sectionLabel}>Di chuyển đến điểm tiếp theo</Text>
+
+                  <View className="gap-1.5">
+                    <Text className={STYLES.fieldLabel}>Phương tiện</Text>
+                    <View className="flex-row gap-2 flex-wrap mt-1">
+                      {TRANSPORT_OPTIONS.map((opt) => {
+                        const isSelected = isTransportSelected(transportToNext, opt.value);
+                        return (
+                          <Pressable
+                            key={opt.label || "other"}
+                            onPress={() => setTransportToNext(opt.value)}
+                            className={`${STYLES.chip} ${isSelected ? STYLES.chipActive : ""}`}
+                          >
+                            <MaterialIcons
+                              name={opt.icon}
+                              size={16}
+                              color={isSelected ? T.onPrimary : "rgba(0,0,0,0.6)"}
+                            />
+                            <Text className={`text-[13px] font-semibold ${
+                              isSelected ? "text-white" : "text-black/60"
+                            }`}>
+                              {opt.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  {dest?.distanceToNext ? (
+                    <View className="gap-1.5 mt-2.5">
+                      <Text className={STYLES.fieldLabel}>Khoảng cách đến điểm tiếp theo</Text>
+                      <View className="flex-row items-center gap-1.5 bg-[#F5F5F7] rounded-xl px-3 py-3 border border-black/[0.06]">
+                        <MaterialIcons name="navigation" size={14} color={ALPHA.iconStrong} style={{ transform: [{ rotate: "45deg" }] }} />
+                        <Text className="text-[14px] text-black/50 font-normal">
+                          {formatDistance(dest.distanceToNext)} (Hệ thống tự động tính toán)
+                        </Text>
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {/* GHI CHÚ HÀNH TRÌNH */}
+              <View className="pt-4 mt-1 border-t border-black/[0.08]">
+                <Text className={STYLES.sectionLabel}>Ghi chú hành trình</Text>
+                <View className="gap-1.5">
+                  <TextInput
+                    className={`${STYLES.field} min-h-[72px]`}
+                    value={note}
+                    onChangeText={setNote}
+                    placeholder="Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây..."
+                    placeholderTextColor={ALPHA.placeholder}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* Nút Lưu pill — luôn cố định dưới cùng */}
+            <View className={STYLES.sheetFooter}>
+              <Pressable
+                onPress={handleSave}
+                disabled={isLoading}
+                style={({ pressed }) => [pressed && !isLoading && { opacity: 0.8 }]}
+                className={`${STYLES.submitBtn} ${isLoading ? "opacity-50" : ""}`}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={T.onPrimary} />
+                ) : (
+                  <Text className={STYLES.submitBtnText}>Lưu</Text>
+                )}
+              </Pressable>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </View>
     </Modal>
   );
 }
-
-const s = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  keyboardView: {
-    flex: 1,
-    justifyContent: "flex-end",
-    width: "100%",
-  },
-  sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: "90%",
-    width: "100%",
-    flexDirection: "column",
-    flexShrink: 1,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(0,0,0,0.12)",
-    alignSelf: "center",
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  sheetHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.07)",
-  },
-  sheetTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flex: 1,
-    marginRight: 8,
-  },
-  sheetTitle: {
-    fontSize: 16,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-    letterSpacing: -0.3,
-  },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  placeName: {
-    fontSize: 13,
-    color: "rgba(0,0,0,0.45)",
-    fontFamily: TOKENS.font.body,
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    letterSpacing: -0.1,
-  },
-  scrollArea: {
-    maxHeight: 280,
-    flexShrink: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 12,
-    gap: 14,
-  },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  field: {
-    flex: 1,
-    gap: 6,
-  },
-  fieldFull: {
-    gap: 6,
-  },
-  label: {
-    fontSize: 11,
-    color: "rgba(0,0,0,0.4)",
-    fontFamily: TOKENS.font.semibold,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  timeInput: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F5F5F7",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
-  inputText: {
-    fontSize: 15,
-    color: "#1D1D1F",
-    fontFamily: TOKENS.font.body,
-  },
-  placeholder: {
-    color: "rgba(0,0,0,0.25)",
-  },
-  inputEditable: {
-    backgroundColor: "#F5F5F7",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: "#1D1D1F",
-    fontFamily: TOKENS.font.body,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
-  noteInput: {
-    minHeight: 72,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.07)",
-    backgroundColor: "#FFFFFF",
-    flexShrink: 0,
-  },
-  savePill: {
-    width: "100%",
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: "#1D1D1F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  savePillText: {
-    fontSize: 16,
-    color: "#FFFFFF",
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.2,
-    textAlign: "center",
-  },
-  saveBtnDisabled: {
-    opacity: 0.5,
-    backgroundColor: "#1D1D1F",
-  },
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "flex-end",
-  },
-  pickerSheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 34,
-  },
-  pickerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.06)",
-  },
-  pickerTitle: {
-    fontSize: 16,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-  },
-  pickerDone: {
-    fontSize: 16,
-    color: "#1D1D1F",
-    fontFamily: TOKENS.font.semibold,
-  },
-  transportRow: {
-    flexDirection: "row",
-    gap: 8,
-    flexWrap: "wrap",
-    marginTop: 4,
-  },
-  transportOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F5F5F7",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
-  transportOptionActive: {
-    backgroundColor: "#1D1D1F",
-    borderColor: "#1D1D1F",
-  },
-  transportLabel: {
-    fontSize: 13,
-    color: "rgba(0,0,0,0.6)",
-    fontFamily: TOKENS.font.semibold,
-  },
-  transportLabelActive: {
-    color: "#FFFFFF",
-  },
-  readOnlyContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F5F5F7",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
-  readOnlyText: {
-    fontSize: 14,
-    color: "rgba(0,0,0,0.5)",
-    fontFamily: TOKENS.font.body,
-  },
-  sectionHeaderLabel: {
-    fontSize: 11,
-    color: "#1D1D1F",
-    fontFamily: TOKENS.font.semibold,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    marginBottom: 6,
-  },
-  instructionText: {
-    fontSize: 11,
-    color: "rgba(0,0,0,0.4)",
-    fontFamily: TOKENS.font.body,
-    marginTop: 4,
-  },
-});
 
 export default memo(EditDestinationForm);

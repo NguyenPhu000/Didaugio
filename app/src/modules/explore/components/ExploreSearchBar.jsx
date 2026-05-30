@@ -10,13 +10,13 @@ function ExploreSearchBarInner({ onPress }) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.container, pressed && styles.pressed]}
+      className="flex-row items-center gap-3 h-[54px] px-3.5 rounded-[18px] bg-white border border-black/[0.04] shadow-sm elevation-1 active:opacity-90"
     >
-      <View style={styles.iconWrap}>
+      <View className="w-[34px] h-[34px] rounded-full bg-[#FAFAFA] border border-black/[0.06] items-center justify-center">
         <MaterialIcons name="search" size={22} color={APPLE_THEME.text} />
       </View>
-      <Text style={styles.placeholder}>{"Tìm kiếm địa điểm, món ăn..."}</Text>
-      <View style={styles.filterBtn}>
+      <Text className="flex-1 text-[#54647A] text-[14px] font-medium">{"Tìm kiếm địa điểm, món ăn..."}</Text>
+      <View className="w-[34px] h-[34px] rounded-full bg-[#E5F1FF] items-center justify-center">
         <MaterialIcons
           name="filter-list"
           size={20}
@@ -28,50 +28,3 @@ function ExploreSearchBarInner({ onPress }) {
 }
 
 export const ExploreSearchBar = memo(ExploreSearchBarInner);
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    height: 54,
-    paddingHorizontal: 14,
-    borderRadius: TOKENS.radius["2xl"],
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-    ...Platform.select({
-      ios: {
-        ...TOKENS.shadow.sm,
-      },
-      android: { elevation: TOKENS.shadow.sm.elevation },
-    }),
-  },
-  pressed: {
-    opacity: 0.92,
-  },
-  iconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: APPLE_THEME.surfaceElevated,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  placeholder: {
-    flex: 1,
-    color: APPLE_THEME.textMuted,
-    fontSize: 14,
-    fontFamily: TOKENS.font.medium,
-  },
-  filterBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: APPLE_THEME.primaryTint,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});

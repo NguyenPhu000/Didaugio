@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -60,12 +60,16 @@ function FeaturedSectionInner({ places, onPressPlace, onPressViewAll }) {
   if (!places?.length) return null;
 
   return (
-    <Animated.View style={[styles.container, sectionAnimStyle]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{"Điểm đến nổi bật"}</Text>
+    <Animated.View style={[sectionAnimStyle]} className="mt-[26px]">
+      <View style={{ paddingHorizontal: TAB_SCREEN_PADDING }} className="flex-row justify-between items-center mb-3.5">
+        <Text className="text-[#1D1D1F] text-[22px] leading-7 tracking-[-0.5px] font-bold" style={{ fontFamily: TOKENS.font.heading }}>
+          Điểm đến nổi bật
+        </Text>
         {onPressViewAll ? (
           <Pressable onPress={onPressViewAll} hitSlop={8}>
-            <Text style={styles.viewAll}>{"Xem tất cả"}</Text>
+            <Text className="text-[#0071E3] text-[13px] font-semibold px-3.5 h-8 rounded-full bg-[#0071E3]/[0.08] overflow-hidden text-center" style={{ fontFamily: TOKENS.font.semibold, lineHeight: 32 }}>
+              Xem tất cả
+            </Text>
           </Pressable>
         ) : null}
       </View>
@@ -79,7 +83,7 @@ function FeaturedSectionInner({ places, onPressPlace, onPressViewAll }) {
         snapToInterval={ITEM_LENGTH}
         decelerationRate="fast"
         getItemLayout={getItemLayout}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={{ paddingHorizontal: Math.max(0, TAB_SCREEN_PADDING - 6) }}
         ItemSeparatorComponent={Separator}
         onMomentumScrollEnd={(event) => {
           const x = event?.nativeEvent?.contentOffset?.x || 0;
@@ -89,16 +93,15 @@ function FeaturedSectionInner({ places, onPressPlace, onPressViewAll }) {
       />
 
       {dotCount > 1 ? (
-        <View style={styles.progressWrap}>
+        <View style={{ paddingHorizontal: TAB_SCREEN_PADDING }} className="mt-3.5 flex-row items-center gap-1.5">
           {Array.from({ length: dotCount }).map((_, index) => {
             const active = index === activeIndex;
             return (
               <View
                 key={`dot-${index}`}
-                style={[
-                  styles.progressDot,
-                  active ? styles.progressDotActive : null,
-                ]}
+                className={`h-1 rounded-full ${
+                  active ? "w-7 bg-[#0071E3]" : "w-2 bg-black/10"
+                }`}
               />
             );
           })}
@@ -109,61 +112,7 @@ function FeaturedSectionInner({ places, onPressPlace, onPressViewAll }) {
 }
 
 function Separator() {
-  return <View style={styles.separator} />;
+  return <View className="w-3.5" />;
 }
 
 export const FeaturedSection = memo(FeaturedSectionInner);
-
-const styles = StyleSheet.create({
-  container: {
-    marginTop: 26,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: TAB_SCREEN_PADDING,
-    marginBottom: 14,
-  },
-  title: {
-    color: APPLE_THEME.text,
-    fontSize: 22,
-    lineHeight: 28,
-    letterSpacing: -0.5,
-    fontFamily: TOKENS.font.heading,
-  },
-  viewAll: {
-    color: APPLE_THEME.focusBlue,
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    paddingHorizontal: 14,
-    height: 32,
-    borderRadius: 999,
-    textAlignVertical: "center",
-    backgroundColor: "rgba(0,113,227,0.08)",
-    overflow: "hidden",
-  },
-  listContent: {
-    paddingHorizontal: Math.max(0, TAB_SCREEN_PADDING - 6),
-  },
-  separator: {
-    width: 14,
-  },
-  progressWrap: {
-    marginTop: 14,
-    paddingHorizontal: TAB_SCREEN_PADDING,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  progressDot: {
-    width: 8,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: "rgba(0,0,0,0.12)",
-  },
-  progressDotActive: {
-    width: 28,
-    backgroundColor: APPLE_THEME.focusBlue,
-  },
-});

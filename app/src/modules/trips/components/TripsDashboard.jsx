@@ -17,7 +17,7 @@ import {
 } from "../utils/tripHelpers";
 
 const STAT_ICONS = {
-  blue: { bg: "rgba(0,122,255,0.1)", color: "#007AFF" },
+  blue: { bg: "rgba(29,29,31,0.06)", color: "#1D1D1F" },
   amber: { bg: "rgba(255,159,10,0.1)", color: "#FF9F0A" },
   green: { bg: "rgba(52,199,89,0.1)", color: "#34C759" },
   teal: { bg: "rgba(20,184,166,0.1)", color: "#14B8A6" },
@@ -45,7 +45,6 @@ export function TripsDashboard({
   activeFilter,
   onSelectFilter,
   onOpenHero,
-  onCreate,
 }) {
   const heroTrip = useMemo(() => getHeroTrip(trips), [trips]);
   const summary = useMemo(() => buildSummary(trips), [trips]);
@@ -68,9 +67,6 @@ export function TripsDashboard({
               : "Khởi tạo kỷ niệm mới"}
           </Text>
         </View>
-        <TouchableOpacity activeOpacity={0.7} onPress={onCreate} style={styles.headerIconWrap}>
-          <MaterialIcons name="add" size={28} color="#1D1D1F" />
-        </TouchableOpacity>
       </View>
 
       {/* ── Hero Trip Card ── */}
@@ -168,7 +164,7 @@ export function TripsDashboard({
           />
           <View style={styles.heroEmptyIconWrap}>
             <LinearGradient
-              colors={["#007AFF", "#0056b3"]}
+              colors={["#1D1D1F", "#000000"]}
               style={StyleSheet.absoluteFill}
             />
             <MaterialIcons name="add-location-alt" size={28} color="#FFFFFF" />
@@ -180,7 +176,7 @@ export function TripsDashboard({
             </Text>
           </View>
           <View style={styles.heroEmptyArrow}>
-             <MaterialIcons name="arrow-forward" size={20} color="#007AFF" />
+             <MaterialIcons name="arrow-forward" size={20} color="#1D1D1F" />
           </View>
         </TouchableOpacity>
       )}
@@ -260,14 +256,6 @@ const styles = StyleSheet.create({
     fontFamily: TOKENS.font.body,
     marginTop: 4,
     letterSpacing: -0.2,
-  },
-  headerIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#F2F2F7",
-    alignItems: "center",
-    justifyContent: "center",
   },
 
   /* ── Hero Card ── */
@@ -418,7 +406,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "rgba(0,122,255,0.1)",
+    backgroundColor: "rgba(29,29,31,0.06)",
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 12,

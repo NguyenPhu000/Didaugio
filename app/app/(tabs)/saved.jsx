@@ -2,12 +2,9 @@ import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
-  Pressable,
   RefreshControl,
-  StyleSheet,
   View,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { GuestGate } from "../../src/components/ui/GuestGate";
@@ -28,7 +25,6 @@ import {
   EmptyState,
   ErrorState,
 } from "../../src/modules/saved/components/SavedStates";
-import { PlacePickerModal } from "../../src/modules/saved/components/PlacePickerModal";
 import {
   ALL_AREAS_KEY,
   ALL_COLLECTIONS_KEY,
@@ -41,7 +37,7 @@ import { TAB_BAR_HEIGHT } from "./_layout";
 const SEPARATOR_HEIGHT = 12;
 
 function ItemSeparator() {
-  return <View style={styles.separator} />;
+  return <View className="h-3" />;
 }
 
 export default function SavedScreen() {
@@ -67,7 +63,6 @@ export default function SavedScreen() {
   const [noteTarget, setNoteTarget] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [collectionDraft, setCollectionDraft] = useState("");
-  const [placePickerVisible, setPlacePickerVisible] = useState(false);
 
   const collectionOptions = useMemo(
     () => buildCollectionOptions({ savedData, savedCollections }),
@@ -98,25 +93,6 @@ export default function SavedScreen() {
     setNoteDraft(entry?.note || "");
     setCollectionDraft(entry?.collectionName || "");
   }, []);
-
-  const handleCreateNote = useCallback(() => {
-    if (savedData.length === 0) {
-      Alert.alert(
-        "Chưa có địa điểm đã lưu",
-        "Hãy lưu ít nhất một địa điểm trước khi tạo ghi chú.",
-      );
-      return;
-    }
-    setPlacePickerVisible(true);
-  }, [savedData.length]);
-
-  const handlePlacePicked = useCallback(
-    (entry) => {
-      setPlacePickerVisible(false);
-      handleOpenNoteEditor(entry);
-    },
-    [handleOpenNoteEditor],
-  );
 
   const handleCloseNoteEditor = useCallback(() => {
     if (saveMutation.isPending) return;
@@ -203,7 +179,10 @@ export default function SavedScreen() {
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <View
+      className="flex-1"
+      style={{ paddingTop: insets.top, backgroundColor: APPLE_THEME.background }}
+    >
       <OfflineBanner />
       <NoteEditorModal
         visible={!!noteTarget}
@@ -216,18 +195,12 @@ export default function SavedScreen() {
         onClose={handleCloseNoteEditor}
         onSubmit={handleSaveNote}
       />
-      <PlacePickerModal
-        visible={placePickerVisible}
-        savedData={savedData}
-        onClose={() => setPlacePickerVisible(false)}
-        onSelect={handlePlacePicked}
-      />
       <FlatList
         data={!isLoading && !isError ? filteredSavedData : []}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 24 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -264,56 +237,8 @@ export default function SavedScreen() {
             />
           )
         }
-        ListFooterComponent={<View style={styles.footerSpace} />}
+        ListFooterComponent={<View className="h-4" />}
       />
-
-      {isLoggedIn && !isLoading && !isError && (
-        <Pressable
-          onPress={handleCreateNote}
-          style={({ pressed }) => [
-            styles.fab,
-            pressed && styles.fabPressed,
-          ]}
-        >
-          <MaterialIcons name="edit-note" size={24} color="#FFFFFF" />
-        </Pressable>
-      )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: APPLE_THEME.background,
-  },
-  listContent: {
-    paddingBottom: TAB_BAR_HEIGHT + 24,
-  },
-  separator: {
-    height: SEPARATOR_HEIGHT,
-  },
-  footerSpace: {
-    height: 16,
-  },
-  fab: {
-    position: "absolute",
-    right: 20,
-    bottom: TAB_BAR_HEIGHT + 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#1D1D1F",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  fabPressed: {
-    transform: [{ scale: 0.92 }],
-    opacity: 0.85,
-  },
-});

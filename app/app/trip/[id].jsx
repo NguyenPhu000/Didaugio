@@ -177,7 +177,11 @@ export default function TripDetailScreen() {
         onAddPlace={() => setIsAddPlaceOpen(true)}
       />
 
-      <TripTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      <TripTabBar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        serviceCount={tripBookings.length}
+      />
 
       {activeTab === "itinerary" ? (
         <ItineraryTab

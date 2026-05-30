@@ -29,22 +29,20 @@ function SmallPlaceCardInner({ place, onPress }) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        pressed && styles.cardPressed,
-      ]}
+      style={{ width: CARD_W }}
+      className="rounded-[20px] bg-white shadow-md elevation-2 active:opacity-85 active:scale-[0.97]"
     >
-      <View style={styles.imageWrap}>
+      <View className="w-full h-[156px] rounded-t-[20px] rounded-b-[6px] overflow-hidden bg-[#F9FAFB] border border-black/[0.02] relative">
         {imageUri ? (
           <Image
             source={{ uri: imageUri }}
             contentFit="cover"
             transition={300}
             cachePolicy="memory-disk"
-            style={StyleSheet.absoluteFillObject}
+            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
           />
         ) : (
-          <View style={styles.placeholder}>
+          <View className="absolute inset-0 bg-[#F3F4F6] items-center justify-center">
             <MaterialCommunityIcons
               name="image-outline"
               size={32}
@@ -55,33 +53,33 @@ function SmallPlaceCardInner({ place, onPress }) {
         
         {/* Rating badge absolutely positioned */}
         {hasRating ? (
-          <View style={styles.ratingBadge}>
-            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
-            <View style={styles.ratingContent}>
+          <View className="absolute top-2.5 right-2.5 rounded-full overflow-hidden border border-white/20">
+            <BlurView intensity={80} tint="dark" style={{ position: 'absolute', top: 0, left: 0, bottom: 0, right: 0 }} />
+            <View className="flex-row items-center px-2 py-1.25 gap-1">
               <MaterialCommunityIcons name="star" size={12} color="#FBBF24" />
-              <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+              <Text className="text-white text-[11px] font-semibold">{rating.toFixed(1)}</Text>
             </View>
           </View>
         ) : null}
       </View>
 
-      <View style={styles.infoWrap}>
-        <Text style={styles.placeName} numberOfLines={1}>
+      <View className="pt-3 px-1 pb-3 gap-0.75">
+        <Text className="text-[#111827] text-base font-semibold leading-5 tracking-[-0.3px]" numberOfLines={1}>
           {place?.name}
         </Text>
         
-        <View style={styles.locationRow}>
+        <View className="flex-row items-center gap-1">
           <MaterialCommunityIcons
             name="map-marker"
             size={12}
             color="#9CA3AF"
           />
-          <Text style={styles.locationText} numberOfLines={1}>
+          <Text className="text-[#6B7280] text-xs font-medium flex-1" numberOfLines={1}>
             {location}
           </Text>
         </View>
 
-        <Text style={styles.ratingsCap} numberOfLines={1}>
+        <Text className="text-[#9CA3AF] text-[11px] font-medium mt-0.5 tracking-[-0.1px]" numberOfLines={1}>
           {ratingCap}
         </Text>
       </View>
@@ -91,94 +89,3 @@ function SmallPlaceCardInner({ place, onPress }) {
 
 export const SmallPlaceCard = memo(SmallPlaceCardInner);
 export { CARD_W as SMALL_CARD_W, CARD_H as SMALL_CARD_H };
-
-const styles = StyleSheet.create({
-  card: {
-    width: CARD_W,
-    borderRadius: 20,
-    backgroundColor: "#FFFFFF",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.05,
-        shadowRadius: 16,
-      },
-      android: { elevation: 3 },
-    }),
-  },
-  cardPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.97 }],
-  },
-  imageWrap: {
-    width: "100%",
-    height: 156,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderBottomLeftRadius: 6,
-    borderBottomRightRadius: 6,
-    overflow: "hidden",
-    backgroundColor: "#F9FAFB",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.02)",
-  },
-  placeholder: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ratingBadge: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    borderRadius: 999,
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  ratingContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    gap: 4,
-  },
-  ratingText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  infoWrap: {
-    paddingTop: 12,
-    paddingHorizontal: 4,
-    paddingBottom: 12,
-    gap: 3,
-  },
-  placeName: {
-    color: "#111827",
-    fontSize: 16,
-    fontFamily: TOKENS.font.semibold,
-    lineHeight: 20,
-    letterSpacing: -0.3,
-  },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  locationText: {
-    color: "#6B7280",
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-    flex: 1,
-  },
-  ratingsCap: {
-    color: "#9CA3AF",
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-    marginTop: 2,
-    letterSpacing: -0.1,
-  },
-});

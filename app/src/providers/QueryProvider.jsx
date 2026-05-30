@@ -1,8 +1,16 @@
-import { useState } from "react";
-import { QueryClient } from "@tanstack/react-query";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { tripPersistOptions } from "./queryPersist";
-import { TRIP_OFFLINE_GC_MS } from "../constants/trip-offline-cache";
+import { useEffect, useState } from "react";
+import {
+  IsRestoringProvider,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+import { persistQueryClient } from "@tanstack/react-query-persist-client";
+import { asyncStoragePersister, shouldPersistTripQuery } from "./queryPersist";
+import {
+  REACT_QUERY_PERSIST_BUSTER,
+  TRIP_OFFLINE_GC_MS,
+  TRIP_OFFLINE_MAX_AGE_MS,
+} from "../constants/trip-offline-cache";
 
 function createAppQueryClient() {
   const client = new QueryClient({
@@ -29,13 +37,31 @@ function createAppQueryClient() {
 
 export const QueryProvider = ({ children }) => {
   const [queryClient] = useState(createAppQueryClient);
+  const [isRestoring, setIsRestoring] = useState(true);
+
+  useEffect(() => {
+    const persistOptions = {
+      queryClient,
+      persister: asyncStoragePersister,
+      maxAge: TRIP_OFFLINE_MAX_AGE_MS,
+      buster: REACT_QUERY_PERSIST_BUSTER,
+      dehydrateOptions: {
+        shouldDehydrateQuery: shouldPersistTripQuery,
+      },
+    };
+
+    const [unsubscribe, restorePromise] = persistQueryClient(persistOptions);
+
+    restorePromise.finally(() => {
+      setIsRestoring(false);
+    });
+
+    return unsubscribe;
+  }, [queryClient]);
 
   return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={tripPersistOptions}
-    >
-      {children}
-    </PersistQueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <IsRestoringProvider value={isRestoring}>{children}</IsRestoringProvider>
+    </QueryClientProvider>
   );
 };

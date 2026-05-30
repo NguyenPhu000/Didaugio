@@ -1,16 +1,15 @@
 import { memo, useState } from "react";
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { formatDate, formatDistance } from "../../utils/tripHelpers";
-import s, { T, TOKENS } from "../../utils/tripDetailTokens";
+import s, { T, STYLES } from "../../utils/tripDetailTokens";
 
 export const TripHeader = memo(function TripHeader({
   trip,
   onEditTrip,
   onDeleteTrip,
-  isDeleting,
   isSaved,
   onToggleSave,
   onAddPlace,
@@ -31,58 +30,68 @@ export const TripHeader = memo(function TripHeader({
   const totalDistanceLabel = formatDistance(trip.totalDistance);
 
   return (
-    <View style={s.header}>
+    <View className={STYLES.header}>
       <Pressable
         onPress={() => router.back()}
         hitSlop={10}
         style={({ pressed }) => [
-          styles.navBtn,
-          pressed ? styles.navBtnPressed : null,
+          pressed && { backgroundColor: "rgba(0,0,0,0.08)" },
         ]}
+        className="w-9 h-9 rounded-xl items-center justify-center bg-black/[0.04] flex-shrink-0"
       >
         <MaterialIcons name="arrow-back-ios-new" size={16} color={T.ink} />
       </Pressable>
 
-      <View style={styles.center}>
-        <Text style={styles.title} numberOfLines={1}>
+      <View className="flex-1 min-w-0">
+        <Text
+          className="text-[17px] font-semibold text-[#1D1D1F] tracking-tight"
+          numberOfLines={1}
+        >
           {trip.title}
         </Text>
         {dateRange || totalDistanceLabel ? (
-          <View style={styles.metaRow}>
+          <View className="flex-row items-center gap-1.5 mt-0.25">
             {dateRange ? (
-              <View style={styles.metaChip}>
+              <View className="flex-row items-center gap-0.75 flex-shrink-0">
                 <MaterialIcons name="calendar-today" size={10} color={T.muted48} />
-                <Text style={styles.metaText} numberOfLines={1}>{dateRange}</Text>
+                <Text className="text-[11px] font-normal text-black/50" numberOfLines={1}>
+                  {dateRange}
+                </Text>
               </View>
             ) : null}
-            {dateRange && totalDistanceLabel ? <View style={styles.metaDot} /> : null}
+            {dateRange && totalDistanceLabel ? (
+              <View className="w-[3px] h-[3px] rounded-full bg-black/15 flex-shrink-0" />
+            ) : null}
             {totalDistanceLabel ? (
-              <View style={styles.metaChip}>
+              <View className="flex-row items-center gap-0.75 flex-shrink-0">
                 <MaterialIcons name="route" size={10} color={T.muted48} />
-                <Text style={styles.metaText} numberOfLines={1}>{totalDistanceLabel}</Text>
+                <Text className="text-[11px] font-normal text-black/50" numberOfLines={1}>
+                  {totalDistanceLabel}
+                </Text>
               </View>
             ) : null}
           </View>
         ) : null}
       </View>
 
-      <View style={styles.actions}>
+      <View className="flex-row items-center gap-1.5 flex-shrink-0 ml-2">
         <Pressable
           onPress={() => setIsMenuOpen(true)}
           hitSlop={10}
           style={({ pressed }) => [
-            styles.iconBtn,
-            pressed ? styles.navBtnPressed : null,
+            pressed && { backgroundColor: "rgba(0,0,0,0.08)" },
           ]}
+          className="w-9 h-9 rounded-xl items-center justify-center bg-black/[0.04] flex-shrink-0"
         >
           <MaterialIcons name="more-horiz" size={20} color={T.ink} />
         </Pressable>
         <Pressable
           onPress={() => (onAddPlace ? onAddPlace() : router.push("/explore"))}
-          style={({ pressed }) => [styles.addBtn, pressed ? { opacity: 0.85 } : null]}
+          style={({ pressed }) => [pressed ? { opacity: 0.85 } : null]}
+          className="flex-row items-center gap-1 bg-[#1D1D1F] px-3.5 py-2 rounded-lg flex-shrink-0"
         >
           <MaterialIcons name="add" size={18} color={T.onPrimary} />
-          <Text style={styles.addBtnText}>Thêm</Text>
+          <Text className="text-white text-[13px] font-semibold tracking-tight">Thêm</Text>
         </Pressable>
       </View>
 
@@ -92,24 +101,28 @@ export const TripHeader = memo(function TripHeader({
         animationType="fade"
         onRequestClose={() => setIsMenuOpen(false)}
       >
-        <Pressable style={styles.backdrop} onPress={() => setIsMenuOpen(false)}>
+        <Pressable className="flex-1 bg-transparent" onPress={() => setIsMenuOpen(false)}>
           <View
-            style={[styles.popover, { top: insets.top + 10 }]}
+            className="absolute right-4 w-[170px] bg-white rounded-2xl py-1 px-1 border-[0.5px] border-black/10 shadow-lg elevation-4"
+            style={{ top: insets.top + 10 }}
             onStartShouldSetResponder={() => true}
           >
             {onToggleSave ? (
               <Pressable
-                style={styles.rowPressable}
+                className="rounded-xl overflow-hidden"
                 onPress={() => {
                   setIsMenuOpen(false);
                   onToggleSave();
                 }}
               >
                 {({ pressed }) => (
-                  <View style={[styles.row, pressed && styles.rowPressed]}>
+                  <View
+                    className="flex-row items-center gap-2 py-2.25 px-2 rounded-xl"
+                    style={[pressed && { backgroundColor: "rgba(0,0,0,0.04)" }]}
+                  >
                     <View
+                      className="w-7 h-7 rounded-lg bg-black/[0.04] items-center justify-center flex-shrink-0"
                       style={[
-                        styles.rowIcon,
                         isSaved && { backgroundColor: "rgba(255,159,10,0.08)" },
                       ]}
                     >
@@ -120,7 +133,8 @@ export const TripHeader = memo(function TripHeader({
                       />
                     </View>
                     <Text
-                      style={[styles.rowText, isSaved && styles.rowTextActive]}
+                      className="flex-1 text-[14px] font-medium text-[#1D1D1F] tracking-tight min-w-0"
+                      style={[isSaved && { color: "#FF9F0A", fontWeight: "600" }]}
                       numberOfLines={1}
                     >
                       {isSaved ? "Bỏ lưu" : "Lưu chuyến đi"}
@@ -131,44 +145,48 @@ export const TripHeader = memo(function TripHeader({
             ) : null}
 
             <Pressable
-              style={styles.rowPressable}
+              className="rounded-xl overflow-hidden"
               onPress={() => {
                 setIsMenuOpen(false);
                 onEditTrip();
               }}
             >
               {({ pressed }) => (
-                <View style={[styles.row, pressed && styles.rowPressed]}>
-                  <View style={styles.rowIcon}>
+                <View
+                  className="flex-row items-center gap-2 py-2.25 px-2 rounded-xl"
+                  style={[pressed && { backgroundColor: "rgba(0,0,0,0.04)" }]}
+                >
+                  <View className="w-7 h-7 rounded-lg bg-black/[0.04] items-center justify-center flex-shrink-0">
                     <MaterialIcons name="edit" size={16} color={T.ink} />
                   </View>
-                  <Text style={styles.rowText} numberOfLines={1}>
+                  <Text className="flex-1 text-[14px] font-medium text-[#1D1D1F] tracking-tight min-w-0" numberOfLines={1}>
                     Sửa thông tin
                   </Text>
                 </View>
               )}
             </Pressable>
 
-            <View style={styles.separator} />
+            <View className="h-[0.5px] bg-black/[0.06] my-1 mx-2" />
 
             <Pressable
-              style={styles.rowPressable}
+              className="rounded-xl overflow-hidden"
               onPress={() => {
                 setIsMenuOpen(false);
                 onDeleteTrip();
               }}
             >
               {({ pressed }) => (
-                <View style={[styles.row, pressed && styles.rowPressed]}>
+                <View
+                  className="flex-row items-center gap-2 py-2.25 px-2 rounded-xl"
+                  style={[pressed && { backgroundColor: "rgba(0,0,0,0.04)" }]}
+                >
                   <View
-                    style={[
-                      styles.rowIcon,
-                      { backgroundColor: "rgba(255,59,48,0.06)" },
-                    ]}
+                    className="w-7 h-7 rounded-lg bg-black/[0.04] items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: "rgba(255,59,48,0.06)" }}
                   >
                     <MaterialIcons name="delete-outline" size={16} color={T.danger} />
                   </View>
-                  <Text style={[styles.rowText, styles.rowTextDanger]} numberOfLines={1}>
+                  <Text className="flex-1 text-[14px] text-[#FF3B30] font-semibold tracking-tight min-w-0" numberOfLines={1}>
                     Xóa chuyến đi
                   </Text>
                 </View>
@@ -179,155 +197,4 @@ export const TripHeader = memo(function TripHeader({
       </Modal>
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  navBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.04)",
-    flexShrink: 0,
-  },
-  navBtnPressed: {
-    backgroundColor: "rgba(0,0,0,0.08)",
-  },
-  center: {
-    flex: 1,
-    minWidth: 0,
-  },
-  title: {
-    fontSize: 17,
-    fontFamily: TOKENS.font.semibold,
-    color: T.ink,
-    letterSpacing: -0.374,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 1,
-  },
-  metaChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    flexShrink: 0,
-  },
-  metaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: "rgba(0,0,0,0.15)",
-    flexShrink: 0,
-  },
-  metaText: {
-    fontSize: 11,
-    fontFamily: TOKENS.font.body,
-    color: T.muted48,
-  },
-  actions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flexShrink: 0,
-    marginLeft: 8,
-  },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.04)",
-    flexShrink: 0,
-  },
-  addBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: T.ink,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    flexShrink: 0,
-  },
-  addBtnText: {
-    color: T.onPrimary,
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.15,
-  },
-  backdrop: {
-    flex: 1,
-    backgroundColor: "transparent",
-  },
-  popover: {
-    position: "absolute",
-    right: 16,
-    width: 170,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0,0,0,0.08)",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-      },
-      android: { elevation: 4 },
-    }),
-  },
-  rowPressable: {
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 9,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-  },
-  rowPressed: {
-    backgroundColor: "rgba(0,0,0,0.04)",
-  },
-  rowIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.04)",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  rowText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: TOKENS.font.medium,
-    color: "#1D1D1F",
-    letterSpacing: -0.15,
-    minWidth: 0,
-  },
-  rowTextActive: {
-    color: "#FF9F0A",
-    fontFamily: TOKENS.font.semibold,
-  },
-  rowTextDanger: {
-    color: T.danger,
-    fontFamily: TOKENS.font.semibold,
-  },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(0,0,0,0.06)",
-    marginVertical: 4,
-    marginHorizontal: 8,
-  },
 });

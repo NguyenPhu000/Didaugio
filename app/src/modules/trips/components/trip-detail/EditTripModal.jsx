@@ -14,7 +14,6 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { CustomDatePicker } from "../../../../components/ui/CustomDatePicker";
-import { TOKENS } from "../../../../constants/design-tokens";
 import { toYmdString, toValidDate } from "../../utils/tripHelpers";
 
 function calcTotalDays(start, end) {
@@ -78,72 +77,75 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
       onRequestClose={onCancel}
       statusBarTranslucent
     >
-      <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={onCancel} />
+      <View className="flex-1 justify-end">
+        <Pressable style={StyleSheet.absoluteFillObject} className="bg-black/40" onPress={onCancel} />
         <KeyboardAvoidingView
-          style={styles.sheetWrap}
+          className="w-full max-h-[85%]"
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          <View style={styles.sheet}>
-            <View style={styles.handle} />
-            <View style={styles.header}>
-              <View style={styles.titleRow}>
+          <View
+            className="bg-white rounded-t-[24px] flex-shrink"
+            style={{ paddingBottom: Platform.OS === "ios" ? 24 : 16 }}
+          >
+            <View className="w-9 h-1 rounded-full bg-black/12 self-center mt-2.5 mb-1.5" />
+            <View className="flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]">
+              <View className="flex-row items-center gap-2">
                 <MaterialIcons name="edit-calendar" size={18} color="#1D1D1F" />
-                <Text style={styles.title}>Chỉnh sửa chuyến đi</Text>
+                <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">Chỉnh sửa chuyến đi</Text>
               </View>
               <Pressable
                 onPress={onCancel}
                 hitSlop={12}
                 style={({ pressed }) => [
-                  styles.closeBtn,
                   pressed && { backgroundColor: "rgba(0,0,0,0.06)" },
                 ]}
+                className="w-8 h-8 rounded-full items-center justify-center"
               >
                 <MaterialIcons name="close" size={20} color="rgba(0,0,0,0.45)" />
               </Pressable>
             </View>
 
             <ScrollView
-              style={styles.scrollArea}
-              contentContainerStyle={styles.content}
+              className="flex-shrink"
+              contentContainerStyle={{ padding: 20, gap: 14 }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               bounces={false}
               nestedScrollEnabled
             >
-              <View style={styles.field}>
-                <Text style={styles.label}>Tên chuyến đi</Text>
+              <View className="gap-1.5">
+                <Text className="text-[11px] text-black/40 font-semibold uppercase tracking-widest">Tên chuyến đi</Text>
                 <TextInput
                   value={title}
                   onChangeText={setTitle}
                   placeholder="Nhập tên chuyến đi"
                   placeholderTextColor="rgba(0,0,0,0.3)"
-                  style={styles.input}
+                  className="bg-[#F5F5F7] rounded-xl px-3 py-3 text-[15px] color-[#1D1D1F] font-normal border border-black/[0.06]"
                   returnKeyType="next"
                 />
               </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>Mô tả</Text>
+              <View className="gap-1.5">
+                <Text className="text-[11px] text-black/40 font-semibold uppercase tracking-widest">Mô tả</Text>
                 <TextInput
                   value={description}
                   onChangeText={setDescription}
                   placeholder="Thêm mô tả ngắn..."
                   placeholderTextColor="rgba(0,0,0,0.3)"
-                  style={[styles.input, styles.textArea]}
+                  className="bg-[#F5F5F7] rounded-xl px-3 py-3 text-[15px] color-[#1D1D1F] font-normal border border-black/[0.06] min-h-[84px]"
                   multiline
                   textAlignVertical="top"
                 />
               </View>
 
-              <View style={styles.dateCard}>
+              <View className="rounded-2xl bg-[#F5F5F7] px-3 py-1 border border-black/[0.06]">
                 <CustomDatePicker
                   label="Ngày bắt đầu"
                   value={startDate}
                   onChange={handleStartDateChange}
                   placeholder="Chọn ngày"
                 />
-                <View style={styles.divider} />
+                <View className="h-[0.5px] bg-black/[0.08]" />
                 <CustomDatePicker
                   label="Ngày kết thúc"
                   value={endDate}
@@ -154,17 +156,19 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
               </View>
             </ScrollView>
 
-            <View style={styles.footerRow}>
+            <View className="px-5 pt-4 pb-2 border-t border-black/[0.07] bg-white flex-shrink-0">
               <TouchableOpacity
                 onPress={handleSave}
                 disabled={!canSave}
                 activeOpacity={0.8}
-                style={[styles.btnSave, !canSave && styles.btnSaveDisabled]}
+                className={`w-full h-[52px] rounded-full bg-[#1D1D1F] items-center justify-center ${
+                  !canSave ? "opacity-50" : ""
+                }`}
               >
                 {isSaving ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.btnSaveText}>Lưu</Text>
+                  <Text className="text-white text-[16px] font-semibold tracking-tight text-center">Lưu</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -174,138 +178,5 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "flex-end",
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
-  },
-  sheetWrap: {
-    width: "100%",
-    maxHeight: "85%",
-  },
-  sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: Platform.OS === "ios" ? 24 : 16,
-    flexShrink: 1,
-  },
-  scrollArea: {
-    flexGrow: 0,
-    flexShrink: 1,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(0,0,0,0.12)",
-    alignSelf: "center",
-    marginTop: 10,
-    marginBottom: 6,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.07)",
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  title: {
-    fontSize: 16,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-    letterSpacing: -0.3,
-  },
-  content: {
-    padding: 20,
-    gap: 14,
-  },
-  field: {
-    gap: 6,
-  },
-  label: {
-    fontSize: 11,
-    color: "rgba(0,0,0,0.4)",
-    fontFamily: TOKENS.font.semibold,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  input: {
-    backgroundColor: "#F5F5F7",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: "#1D1D1F",
-    fontFamily: TOKENS.font.body,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
-  textArea: {
-    minHeight: 84,
-  },
-  dateCard: {
-    borderRadius: 16,
-    backgroundColor: "#F5F5F7",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(0,0,0,0.08)",
-  },
-  footerRow: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.07)",
-    backgroundColor: "#FFFFFF",
-    flexShrink: 0,
-  },
-  btnSave: {
-    width: "100%",
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: "#1D1D1F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  btnSaveDisabled: {
-    opacity: 0.5,
-    backgroundColor: "#1D1D1F",
-  },
-  btnSaveText: {
-    fontSize: 16,
-    color: "#FFFFFF",
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.2,
-    textAlign: "center",
-  },
-  btnSaveTextDisabled: {
-    color: "rgba(255,255,255,0.5)",
-  },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
 
 export default memo(EditTripModal);

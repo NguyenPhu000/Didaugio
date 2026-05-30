@@ -41,109 +41,111 @@ export const SavedCard = memo(function SavedCard({
     <TouchableOpacity
       activeOpacity={0.85}
       onPress={onPress}
-      style={styles.card}
+      className="bg-white rounded-[24px] p-3.5 gap-3 shadow-sm elevation-2"
+      style={{ marginHorizontal: TAB_SCREEN_PADDING }}
     >
-      <View style={styles.cardMain}>
-        <View style={styles.thumbWrap}>
+      <View className="flex-row gap-3.5">
+        <View className="w-24 h-24 rounded-[18px] overflow-hidden bg-[#F2F2F7] relative">
           {imageUri ? (
             <>
               <Image
                 source={{ uri: imageUri }}
-                style={styles.thumb}
+                style={{ width: "100%", height: "100%" }}
                 contentFit="cover"
                 transition={200}
                 cachePolicy="memory-disk"
               />
               <LinearGradient
                 colors={["transparent", "rgba(0,0,0,0.15)"]}
-                style={StyleSheet.absoluteFill}
+                className="absolute inset-0"
               />
             </>
           ) : (
             <View
-              style={[styles.thumbFallback, { backgroundColor: `${accent}1A` }]}
+              className="flex-1 items-center justify-center"
+              style={{ backgroundColor: `${accent}1A` }}
             >
               <MaterialIcons name="place" size={28} color={accent} />
             </View>
           )}
           {hasRating ? (
-            <View style={styles.ratingPill}>
+            <View className="absolute left-2 top-2 flex-row items-center gap-0.5 px-2 py-1 rounded-full bg-white/95">
               <MaterialIcons name="star" size={11} color="#FF9F0A" />
-              <Text style={styles.ratingText}>{ratingValue.toFixed(1)}</Text>
+              <Text className="text-[#1D1D1F] text-[11px] font-semibold tracking-[-0.1px]">{ratingValue.toFixed(1)}</Text>
             </View>
           ) : null}
         </View>
 
-        <View style={styles.content}>
-          <View style={styles.titleRow}>
-            <Text style={styles.title} numberOfLines={1}>
+        <View className="flex-1 gap-1.5 justify-center">
+          <View className="flex-row items-center gap-2">
+            <Text className="flex-1 text-[#1D1D1F] text-[17px] font-semibold tracking-[-0.4px] leading-[22px]" numberOfLines={1}>
               {place?.name || "Địa điểm đã lưu"}
             </Text>
-            <View style={[styles.accentDot, { backgroundColor: accent }]} />
+            <View className="w-2 h-2 rounded-full" style={{ backgroundColor: accent }} />
           </View>
 
-          <View style={styles.metaRow}>
+          <View className="flex-row items-center gap-1.25">
             <MaterialIcons
               name="place"
               size={13}
               color={APPLE_THEME.textMuted}
             />
-            <Text style={styles.metaText} numberOfLines={1}>
+            <Text className="shrink text-[#54647A] text-[13px] tracking-[-0.1px] font-normal" numberOfLines={1}>
               {locationText}
             </Text>
           </View>
 
-          <View style={styles.metaRow}>
+          <View className="flex-row items-center gap-1.25">
             <MaterialIcons
               name="category"
               size={13}
               color={APPLE_THEME.textMuted}
             />
-            <Text style={styles.metaText} numberOfLines={1}>
+            <Text className="shrink text-[#54647A] text-[13px] tracking-[-0.1px] font-normal" numberOfLines={1}>
               {category}
             </Text>
-            <View style={styles.metaDot} />
-            <Text style={styles.metaText} numberOfLines={1}>
+            <View className="w-[3px] h-[3px] rounded-full bg-black/18 mx-1" />
+            <Text className="shrink text-[#54647A] text-[13px] tracking-[-0.1px] font-normal" numberOfLines={1}>
               {reviewLabel}
             </Text>
           </View>
 
           {priceLabel ? (
-            <View style={styles.priceBadge}>
+            <View className="self-start flex-row items-center gap-1 px-2.5 py-1 rounded-full bg-[#E7F0FF]">
               <MaterialIcons name="payments" size={12} color="#1D4ED8" />
-              <Text style={styles.priceText}>{priceLabel}</Text>
+              <Text className="text-[#1D4ED8] text-xs font-semibold tracking-[-0.1px]">{priceLabel}</Text>
             </View>
           ) : null}
         </View>
       </View>
 
       {collectionName || note ? (
-        <View style={styles.infoStack}>
+        <View className="gap-1.5">
           {collectionName ? (
-            <View style={styles.infoRow}>
-              <View style={styles.infoIconWrap}>
+            <View className="flex-row items-start gap-2 px-3 py-2.5 rounded-[14px] bg-[#F9F9FB]">
+              <View className="w-5.5 h-5.5 rounded-full items-center justify-center bg-white">
                 <MaterialIcons
                   name="collections-bookmark"
                   size={14}
                   color={APPLE_THEME.text}
                 />
               </View>
-              <Text style={styles.infoText} numberOfLines={1}>
+              <Text className="flex-1 text-[#1D1D1F] text-[13px] leading-[18px] tracking-[-0.1px] font-normal" numberOfLines={1}>
                 {collectionName}
               </Text>
             </View>
           ) : null}
 
           {note ? (
-            <View style={styles.infoRow}>
-              <View style={styles.infoIconWrap}>
+            <View className="flex-row items-start gap-2 px-3 py-2.5 rounded-[14px] bg-[#F9F9FB]">
+              <View className="w-5.5 h-5.5 rounded-full items-center justify-center bg-white">
                 <MaterialIcons
                   name="sticky-note-2"
                   size={14}
                   color={APPLE_THEME.text}
                 />
               </View>
-              <Text style={styles.infoText} numberOfLines={2}>
+              <Text className="flex-1 text-[#1D1D1F] text-[13px] leading-[18px] tracking-[-0.1px] font-normal" numberOfLines={2}>
                 {note}
               </Text>
             </View>
@@ -151,20 +153,16 @@ export const SavedCard = memo(function SavedCard({
         </View>
       ) : null}
 
-      <View style={styles.actionRow}>
+      <View className="flex-row gap-2 justify-end border-t border-black/[0.06] pt-2.5">
         <Pressable
           onPress={(event) => {
             event?.stopPropagation?.();
             onOpenNote?.(entry);
           }}
-          style={({ pressed }) => [
-            styles.actionBtn,
-            styles.actionPrimary,
-            pressed && styles.actionPressed,
-          ]}
+          className="flex-row items-center gap-1.5 px-3 py-[7px] rounded-xl bg-black/[0.04] active:bg-black/[0.08]"
         >
           <MaterialIcons name="edit-note" size={15} color={APPLE_THEME.text} />
-          <Text style={styles.actionPrimaryText}>
+          <Text className="text-[#1D1D1F] text-[13px] font-semibold tracking-[-0.1px]">
             {note ? "Sửa ghi chú" : "Thêm ghi chú"}
           </Text>
         </Pressable>
@@ -175,200 +173,14 @@ export const SavedCard = memo(function SavedCard({
             event?.stopPropagation?.();
             onUnsave?.(place?.id);
           }}
-          style={({ pressed }) => [
-            styles.actionBtn,
-            styles.actionDanger,
-            unsaveDisabled && styles.actionDisabled,
-            pressed && !unsaveDisabled && styles.actionPressedDanger,
-          ]}
+          className={`flex-row items-center gap-1.5 px-3 py-[7px] rounded-xl bg-[#FF3B30]/[0.08] active:bg-[#FF3B30]/[0.14] ${
+            unsaveDisabled ? "opacity-45" : ""
+          }`}
         >
           <MaterialIcons name="bookmark-remove" size={15} color="#FF3B30" />
-          <Text style={styles.actionDangerText}>Bỏ lưu</Text>
+          <Text className="text-[#FF3B30] text-[13px] font-semibold tracking-[-0.1px]">Bỏ lưu</Text>
         </Pressable>
       </View>
     </TouchableOpacity>
   );
-});
-
-const styles = StyleSheet.create({
-  card: {
-    marginHorizontal: TAB_SCREEN_PADDING,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 14,
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    elevation: 4,
-  },
-  cardMain: {
-    flexDirection: "row",
-    gap: 14,
-  },
-  thumbWrap: {
-    width: 96,
-    height: 96,
-    borderRadius: 18,
-    overflow: "hidden",
-    backgroundColor: "#F2F2F7",
-    position: "relative",
-  },
-  thumb: {
-    width: "100%",
-    height: "100%",
-  },
-  thumbFallback: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ratingPill: {
-    position: "absolute",
-    left: 8,
-    top: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.95)",
-  },
-  ratingText: {
-    color: APPLE_THEME.text,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.1,
-  },
-  content: {
-    flex: 1,
-    gap: 6,
-    justifyContent: "center",
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  title: {
-    flex: 1,
-    color: APPLE_THEME.text,
-    fontSize: 17,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.4,
-    lineHeight: 22,
-  },
-  accentDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  metaText: {
-    flexShrink: 1,
-    color: APPLE_THEME.textMuted,
-    fontSize: 13,
-    fontFamily: TOKENS.font.body,
-    letterSpacing: -0.1,
-  },
-  metaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: "rgba(0,0,0,0.18)",
-    marginHorizontal: 4,
-  },
-  priceBadge: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: "#E7F0FF",
-  },
-  priceText: {
-    color: "#1D4ED8",
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.1,
-  },
-  infoStack: {
-    gap: 6,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: "#F9F9FB",
-  },
-  infoIconWrap: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-  },
-  infoText: {
-    flex: 1,
-    color: APPLE_THEME.text,
-    fontSize: 13,
-    lineHeight: 18,
-    fontFamily: TOKENS.font.body,
-    letterSpacing: -0.1,
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 8,
-    justifyContent: "flex-end",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.06)",
-    paddingTop: 10,
-  },
-  actionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 12,
-  },
-  actionPrimary: {
-    backgroundColor: "rgba(0,0,0,0.04)",
-  },
-  actionPressed: {
-    backgroundColor: "rgba(0,0,0,0.08)",
-  },
-  actionDanger: {
-    backgroundColor: "rgba(255,59,48,0.08)",
-  },
-  actionPressedDanger: {
-    backgroundColor: "rgba(255,59,48,0.14)",
-  },
-  actionDisabled: {
-    opacity: 0.45,
-  },
-  actionPrimaryText: {
-    color: APPLE_THEME.text,
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.1,
-  },
-  actionDangerText: {
-    color: "#FF3B30",
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.1,
-  },
 });

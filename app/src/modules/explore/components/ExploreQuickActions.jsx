@@ -125,14 +125,15 @@ function QuickActionItem({ item, index, onPress }) {
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={[styles.itemContainer, animatedStyle]}
+      style={[animatedStyle]}
+      className="w-[25%] items-center gap-2.5"
     >
-      <View style={styles.iconShadow}>
+      <View className="shadow-sm elevation-1">
         <LinearGradient
           colors={item.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.iconCircle}
+          className="w-16 h-16 rounded-[22px] items-center justify-center border border-black/[0.04]"
         >
           <MaterialCommunityIcons
             name={item.icon}
@@ -141,7 +142,7 @@ function QuickActionItem({ item, index, onPress }) {
           />
         </LinearGradient>
       </View>
-      <Text style={styles.title} numberOfLines={1}>
+      <Text className="text-[#1D1D1F] text-[12.5px] font-semibold text-center tracking-[-0.1px]" numberOfLines={1}>
         {item.title}
       </Text>
     </AnimatedPressable>
@@ -177,7 +178,7 @@ function ExploreQuickActionsInner({
   );
 
   return (
-    <View style={styles.grid}>
+    <View className="flex-row flex-wrap px-4 gap-y-5 mt-5 mb-2.5 justify-start">
       {items.map((item, index) => (
         <QuickActionItem
           key={item.key}
@@ -191,47 +192,3 @@ function ExploreQuickActionsInner({
 }
 
 export const ExploreQuickActions = memo(ExploreQuickActionsInner);
-
-const styles = StyleSheet.create({
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 16,
-    rowGap: 20,
-    marginTop: 20,
-    marginBottom: 10,
-    justifyContent: "flex-start",
-  },
-  itemContainer: {
-    width: "25%",
-    alignItems: "center",
-    gap: 10,
-  },
-  iconShadow: {
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-      android: { elevation: 2 },
-    }),
-  },
-  iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0,0,0,0.04)",
-  },
-  title: {
-    color: APPLE_THEME.text,
-    fontSize: 12.5,
-    fontFamily: TOKENS.font.semibold,
-    textAlign: "center",
-    letterSpacing: -0.1,
-  },
-});

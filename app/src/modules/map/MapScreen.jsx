@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Keyboard,
@@ -9,8 +9,6 @@ import {
   TextInput,
   View,
   LayoutAnimation,
-  Platform,
-  UIManager,
   useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -65,14 +63,6 @@ import {
   formatRouteEta,
 } from "./utils/routeBuilderMapper";
 import { filterVisiblePlaces, getPlaceDistrictMeta } from "./utils/placeFilter";
-
-const isNewArchitectureEnabled = global?.nativeFabricUIManager != null;
-
-if (Platform.OS === "android" && !isNewArchitectureEnabled) {
-  if (UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-  }
-}
 
 const MAP_UI_THEME = {
   background: TOKENS.color.neutral[900],
@@ -323,16 +313,6 @@ export default function MapScreen() {
     [authUser],
   );
 
-  const mapBoundaryOverlays = useMemo(
-    () => (
-      <>
-        {districtGeo ? <DistrictLayer geojson={districtGeo} /> : null}
-        {wardGeo ? <WardLayer geojson={wardGeo} /> : null}
-      </>
-    ),
-    [districtGeo, wardGeo],
-  );
-
   const selectedPlaceId = selectedPlace?.id ?? null;
 
   const activePlace = useMemo(
@@ -393,6 +373,14 @@ export default function MapScreen() {
     retryRoute: refetchRouteBuilder,
     hasFinished: routeBuilderHasFinished,
   } = routeBuilder;
+
+  const routeBuilderNavigationMeta = useNavigationStateMachine({
+    routeBuilderMode,
+    routeBuilderHasFinished,
+    routeBuilderPendingArrival,
+    routeBuilderRecoveryMode,
+    routeBuilderActiveTargetName: routeBuilderActiveTarget?.name,
+  });
 
   const routeOriginFromCurrentLocation = useMemo(() => {
     if (
@@ -674,14 +662,6 @@ export default function MapScreen() {
     }
   }, [params, mapPlaces]);
 
-  const routeBuilderNavigationMeta = useNavigationStateMachine({
-    routeBuilderMode,
-    routeBuilderHasFinished,
-    routeBuilderPendingArrival,
-    routeBuilderRecoveryMode,
-    routeBuilderActiveTargetName: routeBuilderActiveTarget?.name,
-  });
-
   return (
     <View
       className="flex-1"
@@ -749,12 +729,14 @@ export default function MapScreen() {
           useNativeCleanStyle={mapStyle.useNativeCleanStyle === true}
           style={MAP_CANVAS_STYLE}
         >
-          {mapBoundaryOverlays}
+          {districtGeo ? <DistrictLayer geojson={districtGeo} /> : null}
+          {wardGeo ? <WardLayer geojson={wardGeo} /> : null}
 
           <CurrentLocationMarker
             location={currentLocation}
             avatarUri={currentUserAvatarUri}
             heading={currentLocation?.heading}
+            headingAccuracy={currentLocation?.headingAccuracy}
           />
 
           <RouteBuilderStopsMarkerLayer stops={routeBuilderDraftStops} />

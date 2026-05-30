@@ -1,11 +1,5 @@
 import { memo, useCallback, useEffect } from "react";
-import {
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
 import Animated, {
@@ -72,7 +66,10 @@ function BentoTile({ place, large = false, onPress, index = 0 }) {
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={[styles.tileBase, large ? styles.tileLarge : styles.tileSmall, animatedStyle]}
+      style={[animatedStyle]}
+      className={`overflow-hidden rounded-[20px] bg-[#EDEDF2] relative ${
+        large ? "flex-[1.2]" : "flex-1"
+      }`}
     >
       {imageUri ? (
         <Image
@@ -80,10 +77,10 @@ function BentoTile({ place, large = false, onPress, index = 0 }) {
           contentFit="cover"
           transition={220}
           cachePolicy="memory-disk"
-          style={StyleSheet.absoluteFillObject}
+          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
         />
       ) : (
-        <View style={styles.placeholder}>
+        <View className="absolute inset-0 items-center justify-center bg-[#EDEDF2]">
           <MaterialIcons
             name="restaurant"
             size={large ? 34 : 26}
@@ -95,31 +92,32 @@ function BentoTile({ place, large = false, onPress, index = 0 }) {
       {/* Cinematic overlay */}
       <View
         pointerEvents="none"
-        style={[
-          styles.overlayBase,
-          large ? styles.overlayLarge : styles.overlaySmall,
-        ]}
+        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+        className={large ? "bg-black/45" : "bg-black/30"}
       />
 
       {/* Content */}
-      <View style={styles.contentWrap}>
+      <View className="absolute left-2.5 right-2.5 bottom-2.5">
         {!large ? (
-          <View style={styles.pillMini}>
-            <Text style={styles.pillMiniText} numberOfLines={1}>
+          <View className="self-start px-2 h-5 rounded-full justify-center mb-1.5 bg-white/85">
+            <Text className="text-[#1D1D1F] text-[10px] font-semibold tracking-[0.2px]" style={{ fontFamily: TOKENS.font.semibold }} numberOfLines={1}>
               {category}
             </Text>
           </View>
         ) : null}
 
         <Text
-          style={[styles.title, large ? styles.titleLarge : styles.titleSmall]}
+          className={`text-white tracking-[-0.3px] font-bold ${
+            large ? "text-[26px] leading-[30px]" : "text-[17px] leading-[21px]"
+          }`}
+          style={{ fontFamily: TOKENS.font.heading }}
           numberOfLines={2}
         >
           {place?.name || "Trải nghiệm đặc sắc"}
         </Text>
 
         {large && location ? (
-          <Text style={styles.subtitle} numberOfLines={1}>
+          <Text className="mt-0.5 text-white/75 text-[11px] font-medium" style={{ fontFamily: TOKENS.font.medium }} numberOfLines={1}>
             {location}
           </Text>
         ) : null}
@@ -153,11 +151,11 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
   const [hero, topRight, bottomRight] = places;
 
   return (
-    <Animated.View style={[styles.container, sectionAnimStyle]}>
-      <Text style={styles.heading}>Ẩm thực nổi bật</Text>
+    <Animated.View style={[sectionAnimStyle, { paddingHorizontal: TAB_SCREEN_PADDING }]} className="mt-7">
+      <Text className="text-[#1D1D1F] text-[22px] leading-7 tracking-[-0.5px] font-bold mb-3.5" style={{ fontFamily: TOKENS.font.heading }}>Ẩm thực nổi bật</Text>
 
-      <View style={styles.glassShell}>
-        <View style={styles.grid}>
+      <View className="rounded-[28px] p-2.5 bg-white border-[0.5px] border-[#D2D2D7] shadow-sm elevation-2">
+        <View className="flex-row gap-2 h-[300px]">
           <BentoTile
             place={hero}
             large
@@ -165,7 +163,7 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
             onPress={() => onPressPlace(hero)}
           />
 
-          <View style={styles.sideColumn}>
+          <View className="flex-1 gap-2">
             <BentoTile
               place={topRight}
               index={1}
@@ -184,105 +182,3 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
 }
 
 export const ExperienceBentoSection = memo(ExperienceBentoSectionInner);
-
-const styles = StyleSheet.create({
-  container: {
-    marginTop: 28,
-    paddingHorizontal: TAB_SCREEN_PADDING,
-  },
-  heading: {
-    color: APPLE_THEME.text,
-    fontSize: 22,
-    lineHeight: 28,
-    letterSpacing: -0.5,
-    fontFamily: TOKENS.font.heading,
-    marginBottom: 14,
-  },
-  glassShell: {
-    borderRadius: 28,
-    padding: 10,
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APPLE_THEME.border,
-    ...Platform.select({
-      ios: TOKENS.shadow.sm,
-      android: { elevation: 2 },
-    }),
-  },
-  grid: {
-    flexDirection: "row",
-    gap: 8,
-    height: 300,
-  },
-  sideColumn: {
-    flex: 1,
-    gap: 8,
-  },
-  tileBase: {
-    overflow: "hidden",
-    borderRadius: 20,
-    backgroundColor: APPLE_THEME.surfaceMuted,
-    position: "relative",
-  },
-  tileLarge: {
-    flex: 1.2,
-  },
-  tileSmall: {
-    flex: 1,
-  },
-  placeholder: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_THEME.surfaceMuted,
-  },
-  overlayBase: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  overlayLarge: {
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  overlaySmall: {
-    backgroundColor: "rgba(0,0,0,0.30)",
-  },
-  contentWrap: {
-    position: "absolute",
-    left: 10,
-    right: 10,
-    bottom: 10,
-  },
-  pillMini: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    height: 20,
-    borderRadius: 999,
-    justifyContent: "center",
-    marginBottom: 5,
-    backgroundColor: "rgba(255,255,255,0.88)",
-  },
-  pillMiniText: {
-    color: APPLE_THEME.text,
-    fontSize: 10,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.2,
-  },
-  title: {
-    color: "#FFFFFF",
-    letterSpacing: -0.3,
-    fontFamily: TOKENS.font.heading,
-  },
-  titleLarge: {
-    fontSize: 26,
-    lineHeight: 30,
-  },
-  titleSmall: {
-    fontSize: 17,
-    lineHeight: 21,
-  },
-  subtitle: {
-    marginTop: 3,
-    color: "rgba(255,255,255,0.76)",
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-  },
-});

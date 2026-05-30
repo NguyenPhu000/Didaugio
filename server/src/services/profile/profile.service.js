@@ -66,6 +66,8 @@ export const updateProfile = async (userId, data) => {
     gender: validated.gender,
     address: validated.address,
     bio: validated.bio,
+    provinceCode: validated.provinceCode,
+    districtCode: validated.districtCode,
   };
 
   // Xử lý dateOfBirth nếu có

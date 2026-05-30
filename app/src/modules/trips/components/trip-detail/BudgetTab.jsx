@@ -1,17 +1,15 @@
-import { memo } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View, StyleSheet } from "react-native";
+import { memo, useMemo } from "react";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { TOKENS } from "../../../../constants/design-tokens";
 import { StatusBadge } from "./StatusBadge";
 import { formatBookingDateTime, formatPrice } from "../../utils/tripHelpers";
-import s, { T } from "../../utils/tripDetailTokens";
+import s, { T, STYLES } from "../../utils/tripDetailTokens";
 
-const BUDGET_ITEMS = [
-  { key: "confirmed", label: "Đã xác nhận", icon: "check-circle" },
-  { key: "pending", label: "Chờ xác nhận", icon: "schedule" },
-  { key: "cancelled", label: "Đã hủy", icon: "cancel" },
-];
+const formatVnd = (amount) => {
+  const value = Number(amount || 0);
+  return `${value.toLocaleString("vi-VN")} VND`;
+};
 
 export const BudgetTab = memo(function BudgetTab({
   bookings,
@@ -21,40 +19,59 @@ export const BudgetTab = memo(function BudgetTab({
 }) {
   const router = useRouter();
 
+  const upcomingReminders = useMemo(() => {
+    const now = new Date();
+    const fortyEightHoursMs = 48 * 60 * 60 * 1000;
+
+    return (bookings || [])
+      .filter((b) => b?.status === "confirmed" && b?.useDate)
+      .map((b) => {
+        const useDateStr = String(b.useDate).slice(0, 10);
+        const useTimeStr = b.useTime || "00:00";
+        const dateTimeObj = new Date(`${useDateStr}T${useTimeStr}:00`);
+        if (Number.isNaN(dateTimeObj.getTime())) return null;
+        
+        const diffMs = dateTimeObj.getTime() - now.getTime();
+        return { booking: b, dateTime: dateTimeObj, diffMs };
+      })
+      .filter((item) => item !== null && item.diffMs > 0 && item.diffMs <= fortyEightHoursMs)
+      .sort((a, b) => a.diffMs - b.diffMs);
+  }, [bookings]);
+
   if (isLoading) {
     return (
-      <View style={s.centeredState}>
-        <View style={styles.loadingWrap}>
+      <View className={STYLES.centeredState}>
+        <View className="w-12 h-12 rounded-full bg-black/[0.04] items-center justify-center">
           <ActivityIndicator size="small" color="#1D1D1F" />
         </View>
-        <Text style={s.centeredBody}>Đang tải ngân sách...</Text>
+        <Text className={STYLES.centeredBody}>Đang tải ngân sách...</Text>
       </View>
     );
   }
 
   if (!bookings || bookings.length === 0) {
     return (
-      <View style={s.centeredState}>
-        <View style={styles.emptyIcon}>
+      <View className={STYLES.centeredState}>
+        <View className="w-14 h-14 rounded-[20px] bg-black/[0.04] items-center justify-center mb-2">
           <MaterialIcons
             name="account-balance-wallet"
             size={28}
             color="rgba(0,0,0,0.2)"
           />
         </View>
-        <Text style={s.emptyTitle}>Chưa có dữ liệu</Text>
-        <Text style={s.emptyBody}>
+        <Text className={STYLES.emptyTitle}>Chưa có dữ liệu</Text>
+        <Text className={STYLES.emptyBody}>
           Tab ngân sách sẽ tổng hợp chi phí khi có booking liên kết.
         </Text>
         <Pressable
           style={({ pressed }) => [
-            styles.exploreBtn,
             pressed && { opacity: 0.85 },
           ]}
           onPress={() => router.push("/(tabs)/explore")}
+          className="flex-row items-center gap-1.5 bg-[#1D1D1F] px-4.5 py-2.5 rounded-full mt-3"
         >
           <MaterialIcons name="explore" size={16} color="#FFFFFF" />
-          <Text style={styles.exploreBtnText}>Khám phá dịch vụ</Text>
+          <Text className="text-white text-[13px] font-semibold tracking-tight">Khám phá dịch vụ</Text>
         </Pressable>
       </View>
     );
@@ -71,18 +88,18 @@ export const BudgetTab = memo(function BudgetTab({
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120, gap: 16 }}
     >
       {/* Total card */}
-      <View style={styles.totalCard}>
-        <Text style={styles.totalLabel}>Tổng dự kiến</Text>
-        <Text style={styles.totalValue}>
+      <View className="bg-[#1D1D1F] rounded-[24px] p-6 gap-2">
+        <Text className="text-[13px] font-normal text-white/50 tracking-tight">Tổng dự kiến</Text>
+        <Text className="text-[34px] font-semibold text-white tracking-tighter">
           {formatPrice(totalAmount)}
         </Text>
-        <View style={styles.totalMeta}>
-          <View style={styles.totalMetaItem}>
-            <View style={styles.totalMetaDot} />
-            <Text style={styles.totalMetaText}>
+        <View className="flex-row items-center gap-2 mt-1">
+          <View className="flex-row items-center gap-1.5">
+            <View className="w-1.5 h-1.5 rounded-full bg-[#34C759]" />
+            <Text className="text-[13px] font-normal text-white/55 tracking-tight">
               {totalCount} booking
             </Text>
           </View>
@@ -90,57 +107,105 @@ export const BudgetTab = memo(function BudgetTab({
       </View>
 
       {/* Breakdown */}
-      <View style={styles.breakdownRow}>
-        <View style={styles.breakdownCard}>
-          <MaterialIcons
-            name="check-circle"
-            size={18}
-            color="#34C759"
-          />
-          <Text style={styles.breakdownValue}>
-            {formatPrice(confirmedAmount + completedAmount)}
+      <View className="flex-row gap-2.5">
+        <View className="flex-1 bg-white rounded-[20px] py-4.5 px-3 items-center justify-center border border-black/[0.05] relative overflow-hidden min-h-[82px]">
+          {/* Icon in chìm ẩn phía sau */}
+          <View className="absolute inset-0 items-center justify-center opacity-[0.3]">
+            <MaterialIcons
+              name="check-circle"
+              size={56}
+              color="#34C759"
+            />
+          </View>
+          <Text className="text-[15px] font-bold text-[#1D1D1F] tracking-tight text-center z-10" numberOfLines={1}>
+            {formatVnd(confirmedAmount + completedAmount)}
           </Text>
-          <Text style={styles.breakdownLabel}>Đã xác nhận</Text>
+          <Text className="text-[12px] font-normal text-black/45 tracking-tight text-center mt-0.5 z-10">
+            Đã xác nhận
+          </Text>
         </View>
-        <View style={styles.breakdownCard}>
-          <MaterialIcons
-            name="schedule"
-            size={18}
-            color="#FF9F0A"
-          />
-          <Text style={styles.breakdownValue}>
-            {formatPrice(pendingAmount)}
+        <View className="flex-1 bg-white rounded-[20px] py-4.5 px-3 items-center justify-center border border-black/[0.05] relative overflow-hidden min-h-[82px]">
+          {/* Icon in chìm ẩn phía sau */}
+          <View className="absolute inset-0 items-center justify-center opacity-[0.2]">
+            <MaterialIcons
+              name="schedule"
+              size={56}
+              color="#FF9F0A"
+            />
+          </View>
+          <Text className="text-[15px] font-bold text-[#1D1D1F] tracking-tight text-center z-10" numberOfLines={1}>
+            {formatVnd(pendingAmount)}
           </Text>
-          <Text style={styles.breakdownLabel}>Chờ xác nhận</Text>
+          <Text className="text-[12px] font-normal text-black/45 tracking-tight text-center mt-0.5 z-10">
+            Chờ xác nhận
+          </Text>
         </View>
       </View>
 
+      {/* Reminder Banner */}
+      {upcomingReminders.length > 0 && (
+        <View className="gap-2.5 mt-1">
+          <Text className={STYLES.groupLabel}>Nhắc nhở lịch hẹn sắp tới</Text>
+          {upcomingReminders.map(({ booking, diffMs }) => {
+            const hoursLeft = Math.ceil(diffMs / (1000 * 60 * 60));
+            const timeLeftLabel =
+              hoursLeft > 24
+                ? `còn ${Math.ceil(hoursLeft / 24)} ngày`
+                : `còn ${hoursLeft} giờ`;
+
+            return (
+              <Pressable
+                key={`reminder-${booking.id}`}
+                onPress={() => onOpenBooking(booking.id)}
+                style={({ pressed }) => [pressed && { opacity: 0.85 }]}
+                className="flex-row items-start gap-3 p-4 bg-[#FFF9E6] border border-[#FFE0B2] rounded-[18px]"
+              >
+                <View className="w-9 h-9 rounded-full bg-[#FF9F0A]/10 items-center justify-center mt-0.5">
+                  <MaterialIcons name="notifications-active" size={18} color="#FF9F0A" />
+                </View>
+                <View className="flex-1 gap-1">
+                  <Text className="text-[14px] font-bold text-[#D97706] tracking-tight">
+                    Sắp đến giờ hẹn! ({timeLeftLabel})
+                  </Text>
+                  <Text className="text-[13px] text-black/75 font-medium leading-[18px]">
+                    Lịch đặt dịch vụ <Text className="font-bold text-[#1D1D1F]">{booking?.service?.name}</Text> tại <Text className="font-bold text-[#1D1D1F]">{booking?.service?.place?.name || "địa điểm"}</Text> của bạn sẽ diễn ra lúc <Text className="font-semibold text-[#1D1D1F]">{formatBookingDateTime(booking)}</Text>.
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+
       {/* Detail list */}
-      <View style={styles.detailSection}>
-        <Text style={s.groupLabel}>Chi tiết đặt dịch vụ</Text>
+      <View className="gap-2.5 mt-1">
+        <Text className={STYLES.groupLabel}>Chi tiết đặt dịch vụ</Text>
 
         {bookings.map((booking) => (
           <Pressable
             key={booking.id}
             onPress={() => onOpenBooking(booking.id)}
             style={({ pressed }) => [
-              styles.bookingCard,
               pressed && { opacity: 0.8 },
             ]}
+            className="flex-row items-center justify-between gap-2.5 py-3.5 px-4 bg-white rounded-[18px] border border-black/[0.05]"
           >
-            <View style={s.bookingRowInfo}>
-              <Text style={styles.bookingName} numberOfLines={1}>
+            <View className={STYLES.bookingRowInfo}>
+              <Text className="text-[15px] font-bold text-[#1D1D1F] tracking-tight" numberOfLines={1}>
+                {booking?.service?.place?.name || "Địa điểm chưa xác định"}
+              </Text>
+              <Text className="text-[13px] font-medium text-black/60 mt-0.5" numberOfLines={1}>
                 {booking?.service?.name || "Dịch vụ"}
               </Text>
-              <Text style={s.bookingRowMeta} numberOfLines={1}>
+              <Text className={`${STYLES.bookingRowMeta} mt-1`} numberOfLines={1}>
                 #{booking.bookingCode || booking.id} ·{" "}
                 {formatBookingDateTime(booking)}
               </Text>
             </View>
 
-            <View style={s.bookingRowRight}>
+            <View className={STYLES.bookingRowRight}>
               <StatusBadge status={booking?.status} />
-              <Text style={styles.bookingPrice}>
+              <Text className="text-[14px] font-semibold text-[#1D1D1F] tracking-tight">
                 {formatPrice(booking?.finalPrice)}
               </Text>
             </View>
@@ -149,147 +214,4 @@ export const BudgetTab = memo(function BudgetTab({
       </View>
     </ScrollView>
   );
-});
-
-const styles = StyleSheet.create({
-  loadingWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(0,0,0,0.04)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.04)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 120,
-    gap: 16,
-  },
-
-  /* Total card */
-  totalCard: {
-    backgroundColor: "#1D1D1F",
-    borderRadius: 24,
-    padding: 24,
-    gap: 8,
-  },
-  totalLabel: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.body,
-    color: "rgba(255,255,255,0.5)",
-    letterSpacing: -0.1,
-  },
-  totalValue: {
-    fontSize: 34,
-    fontFamily: TOKENS.font.heading,
-    color: "#FFFFFF",
-    letterSpacing: -0.8,
-  },
-  totalMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 4,
-  },
-  totalMetaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  totalMetaDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#34C759",
-  },
-  totalMetaText: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.body,
-    color: "rgba(255,255,255,0.55)",
-    letterSpacing: -0.1,
-  },
-
-  /* Breakdown */
-  breakdownRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  breakdownCard: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 18,
-    gap: 8,
-    alignItems: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
-  },
-  breakdownValue: {
-    fontSize: 20,
-    fontFamily: TOKENS.font.heading,
-    color: "#1D1D1F",
-    letterSpacing: -0.4,
-  },
-  breakdownLabel: {
-    fontSize: 12,
-    fontFamily: TOKENS.font.body,
-    color: "rgba(0,0,0,0.4)",
-    letterSpacing: -0.1,
-  },
-
-  /* Detail */
-  detailSection: {
-    gap: 10,
-    marginTop: 4,
-  },
-  bookingCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
-  },
-  bookingName: {
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-    letterSpacing: -0.2,
-  },
-  bookingPrice: {
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-    color: "#1D1D1F",
-    letterSpacing: -0.2,
-  },
-  exploreBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#1D1D1F",
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 9999,
-    marginTop: 12,
-  },
-  exploreBtnText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.15,
-  },
 });

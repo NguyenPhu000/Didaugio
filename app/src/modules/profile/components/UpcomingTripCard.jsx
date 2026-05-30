@@ -38,125 +38,78 @@ export function UpcomingTripCard({ trip, onPress }) {
     }
   }
 
+  const shadowStyle = {
+    textShadowColor: "rgba(0, 0, 0, 0.55)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  };
+
   return (
-    <Pressable onPress={onPress} style={styles.upcomingCard}>
-      <Image source={{ uri: coverImage }} style={styles.cardImage} contentFit="cover" />
+    <Pressable
+      onPress={onPress}
+      className="h-[220px] rounded-[20px] overflow-hidden bg-white shadow-md elevation-3 relative"
+    >
+      <Image
+        source={{ uri: coverImage }}
+        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
+        contentFit="cover"
+      />
       
       <LinearGradient
         colors={["transparent", "rgba(15, 23, 42, 0.75)"]}
-        style={styles.cardGradient}
+        className="absolute inset-0"
       />
 
-      <View style={styles.daysBadge}>
-        <Text style={styles.daysBadgeText}>{countdownText}</Text>
+      <View className="absolute top-4 right-4 bg-[#10B981] rounded-full px-3 py-1">
+        <Text className="text-white text-[13px] font-semibold">{countdownText}</Text>
       </View>
 
-      <View style={styles.cardContent}>
-        <Text style={styles.tripTitle} numberOfLines={1}>{title}</Text>
-        <Text style={styles.tripSubtitle} numberOfLines={1}>
+      <View className="absolute bottom-14 left-5">
+        <Text
+          className="text-[22px] font-semibold text-white"
+          numberOfLines={1}
+          style={shadowStyle}
+        >
+          {title}
+        </Text>
+        <Text
+          className="text-[15px] text-white font-medium mt-0.5"
+          numberOfLines={1}
+          style={shadowStyle}
+        >
           {destination}{duration ? ` • ${duration}` : ""}
         </Text>
       </View>
 
-      <View style={styles.cardFooter}>
+      <View className="absolute bottom-4 left-5 right-5 flex-row justify-between items-end">
         <MaterialIcons name="airplane-ticket" size={28} color="#fff" />
         
-        <View style={styles.avatarsWrapper}>
-          <View style={styles.avatarStack}>
-            <View style={[styles.miniAvatar, { zIndex: 3 }]}>
-              <Image source={{ uri: "https://i.pravatar.cc/32?img=1" }} style={styles.miniAvatarImg} />
+        <View className="flex-row items-center">
+          <View className="flex-row items-center">
+            <View className="w-7 h-7 rounded-full border-2 border-white z-[3]">
+              <Image
+                source={{ uri: "https://i.pravatar.cc/32?img=1" }}
+                style={{ width: "100%", height: "100%", borderRadius: 999 }}
+              />
             </View>
-            <View style={[styles.miniAvatar, { zIndex: 2, left: -12 }]}>
-              <Image source={{ uri: "https://i.pravatar.cc/32?img=2" }} style={styles.miniAvatarImg} />
+            <View className="w-7 h-7 rounded-full border-2 border-white z-[2] -ml-3">
+              <Image
+                source={{ uri: "https://i.pravatar.cc/32?img=2" }}
+                style={{ width: "100%", height: "100%", borderRadius: 999 }}
+              />
             </View>
-            <View style={[styles.miniAvatar, { zIndex: 1, left: -24 }]}>
-              <Image source={{ uri: "https://i.pravatar.cc/32?img=3" }} style={styles.miniAvatarImg} />
+            <View className="w-7 h-7 rounded-full border-2 border-white z-[1] -ml-3">
+              <Image
+                source={{ uri: "https://i.pravatar.cc/32?img=3" }}
+                style={{ width: "100%", height: "100%", borderRadius: 999 }}
+              />
             </View>
           </View>
-          <View style={styles.moreAvatarsPill}>
-            <Text style={styles.moreAvatarsText}>+2</Text>
+          <View className="bg-white rounded-full px-2 py-0.5 -ml-2">
+            <Text className="text-xs font-semibold text-[#0F172A]">+2</Text>
           </View>
         </View>
       </View>
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  upcomingCard: {
-    height: 220,
-    borderRadius: 20,
-    overflow: "hidden",
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  cardImage: { ...StyleSheet.absoluteFillObject },
-  cardGradient: { ...StyleSheet.absoluteFillObject },
-  daysBadge: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    backgroundColor: "#10B981",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  daysBadgeText: {
-    color: "#fff",
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-  },
-  cardContent: {
-    position: "absolute",
-    bottom: 56,
-    left: 20,
-  },
-  tripTitle: {
-    fontSize: 22,
-    fontFamily: TOKENS.font.semibold,
-    color: "#fff",
-    textShadowColor: "rgba(0, 0, 0, 0.55)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
-  },
-  tripSubtitle: {
-    fontSize: 15,
-    color: "#fff",
-    fontFamily: TOKENS.font.medium,
-    marginTop: 2,
-    textShadowColor: "rgba(0, 0, 0, 0.55)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
-  },
-  cardFooter: {
-    position: "absolute",
-    bottom: 16,
-    left: 20,
-    right: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-  },
-  avatarsWrapper: { flexDirection: "row", alignItems: "center" },
-  avatarStack: { flexDirection: "row", position: "relative", width: 68 },
-  miniAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 999,
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  miniAvatarImg: { width: "100%", height: "100%", borderRadius: 999 },
-  moreAvatarsPill: {
-    backgroundColor: "#fff",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginLeft: -8,
-  },
-  moreAvatarsText: { fontSize: 12, fontFamily: TOKENS.font.semibold, color: "#0F172A" },
-});

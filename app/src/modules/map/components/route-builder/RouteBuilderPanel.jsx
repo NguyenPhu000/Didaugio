@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import TurnCard from "../navigation/TurnCard";
 import { MAP_TEXT } from "../../constants/mapText.constants";
@@ -40,41 +40,23 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
   return (
     <View
       pointerEvents="box-none"
-      style={{
-        position: "absolute",
-        left: 14,
-        right: 14,
-        bottom: bottomOffset,
-        zIndex: 73,
-      }}
+      style={[
+        styles.panelOuter,
+        {
+          bottom: bottomOffset,
+        },
+      ]}
     >
-      <View
-        style={{
-          borderRadius: 16,
-          paddingHorizontal: 12,
-          paddingVertical: 10,
-          backgroundColor: "#FFFFFF",
-          borderWidth: 1,
-          borderColor: "#E2E8F0",
-          shadowColor: "#0F172A",
-          shadowOpacity: 0.1,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 5,
-        }}
-      >
-        <View className="flex-row items-center gap-2">
-          <View style={{ flex: 1 }}>
-            <View className="flex-row items-center gap-1.5">
+      <View style={styles.panelInner}>
+        <View style={styles.headerRow}>
+          <View style={styles.flex1}>
+            <View style={styles.titleRow}>
               <MaterialIcons name="alt-route" size={16} color="#0F172A" />
-              <Text
-                className="text-[13px] font-semibold"
-                style={{ color: "#0F172A" }}
-              >
+              <Text style={styles.titleText}>
                 {MAP_TEXT.routeBuilder.panelTitle}
               </Text>
             </View>
-            <Text className="text-[11px] mt-0.5" style={{ color: "#64748B" }}>
+            <Text style={styles.subtitleText}>
               {statusLabel ||
                 MAP_TEXT.routeBuilder.statusHint({
                   draftCount: draftStops.length,
@@ -84,19 +66,7 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
             </Text>
           </View>
 
-          <Pressable
-            onPress={onExit}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 17,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: "#FFFFFF",
-              borderWidth: 1,
-              borderColor: "#CBD5E1",
-            }}
-          >
+          <Pressable onPress={onExit} style={styles.closeBtn}>
             <MaterialIcons name="close" size={16} color="#334155" />
           </Pressable>
         </View>
@@ -105,12 +75,8 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              gap: 7,
-              paddingVertical: 7,
-              paddingRight: 6,
-            }}
-            style={{ marginTop: 4 }}
+            contentContainerStyle={styles.scrollContainer}
+            style={styles.scrollView}
           >
             {draftStops.map((stop, index) => (
               <TurnCard
@@ -122,58 +88,34 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
             ))}
           </ScrollView>
         ) : (
-          <View
-            className="flex-row items-center gap-2 mt-2"
-            style={{
-              borderRadius: 10,
-              paddingHorizontal: 10,
-              paddingVertical: 8,
-              backgroundColor: "#F8FAFC",
-              borderWidth: 1,
-              borderColor: "#E2E8F0",
-            }}
-          >
+          <View style={styles.emptyNotice}>
             <MaterialIcons name="touch-app" size={14} color="#64748B" />
-            <Text className="text-[11px]" style={{ color: "#64748B" }}>
+            <Text style={styles.emptyNoticeText}>
               {MAP_TEXT.routeBuilder.noStopNotice}
             </Text>
           </View>
         )}
 
-        <View className="flex-row items-center gap-2 mt-2">
+        <View style={styles.actionRow}>
           <Pressable
             onPress={onConfirmRoute}
             disabled={!canConfirm}
-            className="h-[34px] rounded-full items-center justify-center"
-            style={{
-              flex: 1,
-              backgroundColor: canConfirm ? "#0F172A" : "#94A3B8",
-            }}
+            style={[
+              styles.confirmBtn,
+              {
+                backgroundColor: canConfirm ? "#0F172A" : "#94A3B8",
+              },
+            ]}
           >
-            <Text
-              className="text-[11px] font-semibold"
-              style={{ color: "#FFFFFF" }}
-            >
+            <Text style={styles.confirmBtnText}>
               {hasConfirmedRoute && isDirty
                 ? MAP_TEXT.routeBuilder.updateRoute
                 : MAP_TEXT.routeBuilder.confirmRoute}
             </Text>
           </Pressable>
 
-          <Pressable
-            onPress={onClear}
-            className="h-[34px] rounded-full items-center justify-center"
-            style={{
-              width: 84,
-              backgroundColor: "#FFFFFF",
-              borderWidth: 1,
-              borderColor: "#CBD5E1",
-            }}
-          >
-            <Text
-              className="text-[11px] font-semibold"
-              style={{ color: "#334155" }}
-            >
+          <Pressable onPress={onClear} style={styles.clearBtn}>
+            <Text style={styles.clearBtnText}>
               {MAP_TEXT.routeBuilder.clearAll}
             </Text>
           </Pressable>
@@ -182,22 +124,9 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
         {enabled ? (
           <>
             {pendingArrival ? (
-              <View
-                className="mt-2 flex-row items-center gap-2"
-                style={{
-                  borderRadius: 10,
-                  paddingHorizontal: 10,
-                  paddingVertical: 8,
-                  backgroundColor: "#ECFDF5",
-                  borderWidth: 1,
-                  borderColor: "#BBF7D0",
-                }}
-              >
+              <View style={styles.arrivalNotice}>
                 <MaterialIcons name="check-circle" size={15} color="#059669" />
-                <Text
-                  className="text-[10.5px]"
-                  style={{ color: "#047857", flex: 1 }}
-                >
+                <Text style={styles.arrivalNoticeText}>
                   {MAP_TEXT.routeBuilder.pendingArrivalNotice(
                     pendingArrival.targetName,
                   )}
@@ -206,28 +135,12 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
             ) : null}
 
             {recoveryMode ? (
-              <View
-                className="mt-2 flex-row items-center justify-between gap-2"
-                style={{
-                  borderRadius: 10,
-                  paddingHorizontal: 10,
-                  paddingVertical: 8,
-                  backgroundColor: "#FEF2F2",
-                  borderWidth: 1,
-                  borderColor: "#FECACA",
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text
-                    className="text-[11px] font-semibold"
-                    style={{ color: "#B91C1C" }}
-                  >
+              <View style={styles.recoveryNotice}>
+                <View style={styles.flex1}>
+                  <Text style={styles.recoveryTitle}>
                     {MAP_TEXT.routeBuilder.recoveryTitle}
                   </Text>
-                  <Text
-                    className="text-[10px] mt-0.5"
-                    style={{ color: "#991B1B" }}
-                  >
+                  <Text style={styles.recoveryText}>
                     {MAP_TEXT.routeBuilder.recoveryMessage(
                       activeTargetName,
                       distanceToActiveTargetLabel,
@@ -242,24 +155,9 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
               </View>
             ) : null}
 
-            <View className="flex-row items-center gap-2 mt-2">
-              <View
-                style={{
-                  flex: 1,
-                  height: 32,
-                  borderRadius: 999,
-                  paddingHorizontal: 11,
-                  borderWidth: 1,
-                  borderColor: "#E2E8F0",
-                  backgroundColor: "#F8FAFC",
-                  justifyContent: "center",
-                }}
-              >
-                <Text
-                  className="text-[10.5px]"
-                  style={{ color: "#0F172A" }}
-                  numberOfLines={1}
-                >
+            <View style={styles.progressRow}>
+              <View style={styles.progressLabelWrap}>
+                <Text style={styles.progressLabelText} numberOfLines={1}>
                   {MAP_TEXT.routeBuilder.progressLabel(completedLegs, legCount)}
                 </Text>
               </View>
@@ -267,12 +165,13 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
               <Pressable
                 onPress={onConfirmArrived}
                 disabled={!hasPendingArrival}
-                className="h-[32px] w-[32px] rounded-full items-center justify-center"
-                style={{
-                  backgroundColor: hasPendingArrival ? "#0F172A" : "#FFFFFF",
-                  borderWidth: 1,
-                  borderColor: hasPendingArrival ? "#0F172A" : "#CBD5E1",
-                }}
+                style={[
+                  styles.progressActionBtn,
+                  {
+                    backgroundColor: hasPendingArrival ? "#0F172A" : "#FFFFFF",
+                    borderColor: hasPendingArrival ? "#0F172A" : "#CBD5E1",
+                  },
+                ]}
               >
                 <MaterialIcons
                   name="check"
@@ -281,26 +180,13 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
                 />
               </Pressable>
 
-              <Pressable
-                onPress={onResetProgress}
-                className="h-[32px] w-[32px] rounded-full items-center justify-center"
-                style={{
-                  backgroundColor: "#FFFFFF",
-                  borderWidth: 1,
-                  borderColor: "#CBD5E1",
-                }}
-              >
+              <Pressable onPress={onResetProgress} style={styles.progressSquareBtn}>
                 <MaterialIcons name="refresh" size={16} color="#334155" />
               </Pressable>
 
               <Pressable
                 onPress={onToggleCompletedView}
-                className="h-[32px] w-[32px] rounded-full items-center justify-center"
-                style={{
-                  backgroundColor: "#FFFFFF",
-                  borderWidth: 1,
-                  borderColor: "#CBD5E1",
-                }}
+                style={styles.progressSquareBtn}
               >
                 <MaterialIcons
                   name={
@@ -313,37 +199,17 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
             </View>
 
             {etaLabel || distanceLabel ? (
-              <View className="flex-row items-center gap-1.5 mt-2">
+              <View style={styles.etaRow}>
                 {etaLabel ? (
-                  <View
-                    style={{
-                      borderRadius: 999,
-                      height: 24,
-                      paddingHorizontal: 10,
-                      justifyContent: "center",
-                      backgroundColor: "#F8FAFC",
-                      borderWidth: 1,
-                      borderColor: "#E2E8F0",
-                    }}
-                  >
-                    <Text className="text-[10px]" style={{ color: "#0F172A" }}>
+                  <View style={styles.etaBadge}>
+                    <Text style={styles.etaBadgeText}>
                       {MAP_TEXT.routeBuilder.etaPrefix} {etaLabel}
                     </Text>
                   </View>
                 ) : null}
                 {distanceLabel ? (
-                  <View
-                    style={{
-                      borderRadius: 999,
-                      height: 24,
-                      paddingHorizontal: 10,
-                      justifyContent: "center",
-                      backgroundColor: "#F8FAFC",
-                      borderWidth: 1,
-                      borderColor: "#E2E8F0",
-                    }}
-                  >
-                    <Text className="text-[10px]" style={{ color: "#0F172A" }}>
+                  <View style={styles.etaBadge}>
+                    <Text style={styles.etaBadgeText}>
                       {distanceLabel}
                     </Text>
                   </View>
@@ -352,29 +218,14 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
             ) : null}
 
             {isRouteError ? (
-              <View
-                className="mt-2 flex-row items-center justify-between"
-                style={{
-                  borderRadius: 10,
-                  paddingHorizontal: 10,
-                  paddingVertical: 8,
-                  backgroundColor: "#FEF2F2",
-                  borderWidth: 1,
-                  borderColor: "#FECACA",
-                }}
-              >
-                <Text className="text-[11px]" style={{ color: "#B91C1C" }}>
+              <View style={styles.errorNotice}>
+                <Text style={styles.errorText}>
                   {MAP_TEXT.errors.routeBuild}
                 </Text>
                 <Pressable
                   onPress={onRetryRoute}
                   disabled={isRouteFetching}
-                  className="h-[26px] w-[26px] rounded-full items-center justify-center"
-                  style={{
-                    backgroundColor: "#FFFFFF",
-                    borderWidth: 1,
-                    borderColor: "#FCA5A5",
-                  }}
+                  style={styles.errorRetryBtn}
                 >
                   <MaterialIcons name="refresh" size={13} color="#B91C1C" />
                 </Pressable>
@@ -385,6 +236,241 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
       </View>
     </View>
   );
+});
+
+const styles = StyleSheet.create({
+  panelOuter: {
+    position: "absolute",
+    left: 14,
+    right: 14,
+    zIndex: 73,
+  },
+  panelInner: {
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  flex1: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  titleText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#0F172A",
+  },
+  subtitleText: {
+    fontSize: 11,
+    marginTop: 2,
+    color: "#64748B",
+  },
+  closeBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  scrollView: {
+    marginTop: 4,
+  },
+  scrollContainer: {
+    gap: 7,
+    paddingVertical: 7,
+    paddingRight: 6,
+  },
+  emptyNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  emptyNoticeText: {
+    fontSize: 11,
+    color: "#64748B",
+  },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  confirmBtn: {
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+  },
+  confirmBtnText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  clearBtn: {
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    width: 84,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  clearBtnText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#334155",
+  },
+  arrivalNotice: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: "#ECFDF5",
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+  },
+  arrivalNoticeText: {
+    fontSize: 10.5,
+    color: "#047857",
+    flex: 1,
+  },
+  recoveryNotice: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "between",
+    gap: 8,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+  },
+  recoveryTitle: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#B91C1C",
+  },
+  recoveryText: {
+    fontSize: 10,
+    marginTop: 2,
+    color: "#991B1B",
+  },
+  progressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  progressLabelWrap: {
+    flex: 1,
+    height: 32,
+    borderRadius: 16,
+    paddingHorizontal: 11,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F8FAFC",
+    justifyContent: "center",
+  },
+  progressLabelText: {
+    fontSize: 10.5,
+    color: "#0F172A",
+  },
+  progressActionBtn: {
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  progressSquareBtn: {
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  etaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+  },
+  etaBadge: {
+    borderRadius: 12,
+    height: 24,
+    paddingHorizontal: 10,
+    justifyContent: "center",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  etaBadgeText: {
+    fontSize: 10,
+    color: "#0F172A",
+  },
+  errorNotice: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "between",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+  },
+  errorText: {
+    fontSize: 11,
+    color: "#B91C1C",
+  },
+  errorRetryBtn: {
+    height: 26,
+    width: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
 });
 
 export default RouteBuilderPanel;

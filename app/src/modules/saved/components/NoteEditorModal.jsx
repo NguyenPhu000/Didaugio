@@ -34,14 +34,11 @@ export function NoteEditorModal({
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.backdrop}
+        className="flex-1 justify-center px-5 bg-black/50"
       >
-        <View style={styles.card}>
-          <View style={styles.iconWrap}>
-            <MaterialIcons name="edit-note" size={22} color="#007AFF" />
-          </View>
-          <Text style={styles.title}>Ghi chú cá nhân</Text>
-          <Text style={styles.subtitle} numberOfLines={2}>
+        <View className="rounded-[28px] p-6 gap-3 bg-white shadow-lg elevation-8">
+          <Text className="text-[#1D1D1F] text-[22px] font-bold tracking-[-0.4px]">Ghi chú cá nhân</Text>
+          <Text className="text-[#54647A] text-[14px] leading-5 tracking-[-0.1px]" numberOfLines={2}>
             {placeName || "Địa điểm đã lưu"}
           </Text>
 
@@ -52,7 +49,7 @@ export function NoteEditorModal({
             placeholderTextColor="rgba(29, 29, 31, 0.42)"
             multiline
             maxLength={500}
-            style={styles.noteInput}
+            className="min-h-[120px] rounded-[18px] px-3.5 py-3 text-[#1D1D1F] text-sm leading-5 bg-[#F5F5F7] border border-black/[0.06]"
             textAlignVertical="top"
           />
 
@@ -62,32 +59,25 @@ export function NoteEditorModal({
             placeholder="Tên bộ sưu tập riêng (VD: Đi với gia đình)"
             placeholderTextColor="rgba(29, 29, 31, 0.42)"
             maxLength={80}
-            style={styles.collectionInput}
+            className="rounded-[16px] px-3.5 py-3 text-[#1D1D1F] text-sm bg-[#F5F5F7] border border-black/[0.06]"
           />
 
-          <View style={styles.actions}>
+          <View className="flex-row gap-2.5 mt-1">
             <Pressable
               onPress={onClose}
               disabled={saving}
-              style={({ pressed }) => [
-                styles.actionBtn,
-                styles.cancelBtn,
-                pressed && styles.btnPressed,
-              ]}
+              className="flex-1 items-center justify-center rounded-full py-3 bg-[#F2F2F7] active:scale-[0.97]"
             >
-              <Text style={styles.cancelText}>Hủy</Text>
+              <Text className="text-[#1D1D1F] text-[15px] font-semibold tracking-[-0.2px]">Hủy</Text>
             </Pressable>
             <Pressable
               onPress={onSubmit}
               disabled={saving}
-              style={({ pressed }) => [
-                styles.actionBtn,
-                styles.submitBtn,
-                saving && styles.submitDisabled,
-                pressed && !saving && styles.btnPressed,
-              ]}
+              className={`flex-1 items-center justify-center rounded-full py-3 bg-[#1D1D1F] active:scale-[0.97] ${
+                saving ? "opacity-60" : ""
+              }`}
             >
-              <Text style={styles.submitText}>
+              <Text className="text-white text-[15px] font-semibold tracking-[-0.2px]">
                 {saving ? "Đang lưu..." : "Lưu ghi chú"}
               </Text>
             </Pressable>
@@ -97,104 +87,3 @@ export function NoteEditorModal({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  card: {
-    borderRadius: 28,
-    padding: 24,
-    gap: 12,
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 18,
-  },
-  iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,122,255,0.12)",
-  },
-  title: {
-    color: APPLE_THEME.text,
-    fontSize: 22,
-    fontFamily: TOKENS.font.heading,
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: TOKENS.font.body,
-    letterSpacing: -0.1,
-  },
-  noteInput: {
-    minHeight: 120,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: APPLE_THEME.text,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: TOKENS.font.body,
-    backgroundColor: "#F5F5F7",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
-  collectionInput: {
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: APPLE_THEME.text,
-    fontSize: 14,
-    fontFamily: TOKENS.font.body,
-    backgroundColor: "#F5F5F7",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
-  actions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 4,
-  },
-  actionBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: TOKENS.radius.full,
-    paddingVertical: 13,
-  },
-  cancelBtn: {
-    backgroundColor: "#F2F2F7",
-  },
-  submitBtn: {
-    backgroundColor: "#1D1D1F",
-  },
-  submitDisabled: {
-    opacity: 0.6,
-  },
-  btnPressed: {
-    transform: [{ scale: 0.97 }],
-  },
-  cancelText: {
-    color: APPLE_THEME.text,
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.2,
-  },
-  submitText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.2,
-  },
-});

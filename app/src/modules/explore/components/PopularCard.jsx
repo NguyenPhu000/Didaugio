@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
 import Animated, {
@@ -71,20 +71,21 @@ function PopularCardInner({ place, onPress, index = 0 }) {
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={[styles.card, animatedStyle]}
+      style={[animatedStyle]}
+      className="flex-row items-center gap-4 rounded-[28px] p-3 bg-white border-[0.5px] border-[#D2D2D7] shadow-sm elevation-2"
     >
       {/* Thumbnail */}
-      <View style={styles.imageWrap}>
+      <View className="w-[110px] h-[110px] rounded-[22px] overflow-hidden bg-[#EDEDF2]">
         {imageUri ? (
           <Image
             source={{ uri: imageUri }}
             contentFit="cover"
             transition={240}
             cachePolicy="memory-disk"
-            style={StyleSheet.absoluteFillObject}
+            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
           />
         ) : (
-          <View style={styles.placeholder}>
+          <View className="absolute inset-0 bg-[#EDEDF2] items-center justify-center">
             <MaterialIcons
               name="travel-explore"
               size={28}
@@ -93,53 +94,53 @@ function PopularCardInner({ place, onPress, index = 0 }) {
           </View>
         )}
         {/* Subtle gradient on thumbnail */}
-        <View style={styles.imageGradient} pointerEvents="none" />
+        <View className="absolute bottom-0 left-0 right-0 h-[30%] bg-black/5" pointerEvents="none" />
       </View>
 
       {/* Info column */}
-      <View style={styles.infoCol}>
+      <View className="flex-1 min-w-0 gap-0.5">
         {/* Rating */}
-        <View style={styles.ratingRow}>
+        <View className="flex-row items-center gap-1">
           <MaterialIcons
             name="star"
             size={13}
             color={hasRating ? "#F59E0B" : APPLE_THEME.textMuted}
           />
-          <Text style={styles.ratingText}>
+          <Text className="text-black/50 text-[11px] font-semibold tracking-[0.3px]" style={{ fontFamily: TOKENS.font.semibold }}>
             {hasRating ? `${rating.toFixed(1)} · ${ratingMeta}` : "Mới"}
           </Text>
         </View>
 
         {/* Place name */}
-        <Text style={styles.name} numberOfLines={2}>
+        <Text className="text-[#1D1D1F] text-base leading-[21px] tracking-[-0.4px] font-bold" style={{ fontFamily: TOKENS.font.heading }} numberOfLines={2}>
           {place?.name}
         </Text>
 
         {/* Location */}
-        <View style={styles.locationRow}>
+        <View className="flex-row items-center gap-0.5">
           <MaterialIcons name="place" size={12} color={APPLE_THEME.textMuted} />
-          <Text style={styles.location} numberOfLines={1}>
+          <Text className="text-[#1D1D1F]/50 text-xs font-medium flex-1" style={{ fontFamily: TOKENS.font.medium }} numberOfLines={1}>
             {location}
           </Text>
         </View>
 
         {/* Bottom: price + CTA */}
-        <View style={styles.bottomRow}>
-          <View style={styles.priceCol}>
+        <View className="mt-1.5 flex-row items-center justify-between gap-2.5">
+          <View className="flex-row items-baseline gap-0.5 shrink">
             {priceLine ? (
               <>
-                <Text style={styles.priceMain}>{priceLine.main}</Text>
+                <Text className="text-[#1D1D1F] text-[15px] leading-5 font-bold tracking-[-0.2px]" style={{ fontFamily: TOKENS.font.heading }}>{priceLine.main}</Text>
                 {priceLine.suffix ? (
-                  <Text style={styles.priceSuffix}>{priceLine.suffix}</Text>
+                  <Text className="text-[#1D1D1F]/50 text-[11px] font-medium" style={{ fontFamily: TOKENS.font.medium }}>{priceLine.suffix}</Text>
                 ) : null}
               </>
             ) : (
-              <Text style={styles.priceMain}>Liên hệ</Text>
+              <Text className="text-[#1D1D1F] text-[15px] leading-5 font-bold tracking-[-0.2px]" style={{ fontFamily: TOKENS.font.heading }}>Liên hệ</Text>
             )}
           </View>
 
-          <View style={styles.ctaBtn}>
-            <Text style={styles.ctaText}>Xem</Text>
+          <View className="flex-row items-center gap-1 h-9 rounded-full bg-[#1D1D1F] px-4 shadow-sm elevation-2">
+            <Text className="text-white text-xs font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>Xem</Text>
             <MaterialIcons
               name="arrow-forward"
               size={13}
@@ -153,118 +154,3 @@ function PopularCardInner({ place, onPress, index = 0 }) {
 }
 
 export const PopularCard = memo(PopularCardInner);
-
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    borderRadius: TOKENS.radius["2xl"],
-    padding: 12,
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APPLE_THEME.border,
-    ...Platform.select({
-      ios: TOKENS.shadow.sm,
-      android: { elevation: 2 },
-    }),
-  },
-  imageWrap: {
-    width: 110,
-    height: 110,
-    borderRadius: 22,
-    overflow: "hidden",
-    backgroundColor: APPLE_THEME.surfaceMuted,
-  },
-  placeholder: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: APPLE_THEME.surfaceMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  imageGradient: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: "30%",
-    backgroundColor: "rgba(0,0,0,0.06)",
-  },
-  infoCol: {
-    flex: 1,
-    minWidth: 0,
-    gap: 3,
-  },
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  ratingText: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.3,
-  },
-  name: {
-    color: APPLE_THEME.text,
-    fontSize: 16,
-    lineHeight: 21,
-    letterSpacing: -0.4,
-    fontFamily: TOKENS.font.heading,
-  },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  location: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-    flex: 1,
-  },
-  bottomRow: {
-    marginTop: 5,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  priceCol: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 3,
-    flexShrink: 1,
-  },
-  priceMain: {
-    color: APPLE_THEME.text,
-    fontSize: 15,
-    lineHeight: 20,
-    fontFamily: TOKENS.font.heading,
-    letterSpacing: -0.2,
-  },
-  priceSuffix: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-  },
-  ctaBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    height: 36,
-    borderRadius: 999,
-    backgroundColor: APPLE_THEME.primary,
-    paddingHorizontal: 16,
-    ...Platform.select({
-      ios: TOKENS.shadow.sm,
-      android: { elevation: 2 },
-    }),
-  },
-  ctaText: {
-    color: APPLE_THEME.white,
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-  },
-});

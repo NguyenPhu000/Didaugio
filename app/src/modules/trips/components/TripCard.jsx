@@ -17,7 +17,7 @@ import {
 
 export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved }) {
   const displayStatus = getDisplayStatus(trip);
-  const status = STATUS_THEME[displayStatus] || STATUS_THEME.draft;
+  const status = STATUS_THEME[displayStatus] || STATUS_THEME.upcoming;
   const cover =
     trip.thumbnail || trip.destinations?.[0]?.place?.thumbnail || null;
   const destinationCount = trip.destinations?.length || 0;

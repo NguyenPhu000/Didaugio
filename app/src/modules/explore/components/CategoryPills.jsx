@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import {
   FlatList,
   Platform,
@@ -34,12 +34,10 @@ const PillItem = memo(function PillItem({
   const scale = useSharedValue(1);
   const bgProgress = useSharedValue(isActive ? 1 : 0);
 
-  // Animate background on active change
-  if (isActive && bgProgress.value !== 1) {
-    bgProgress.value = withSpring(1, SPRING_CONFIG);
-  } else if (!isActive && bgProgress.value !== 0) {
-    bgProgress.value = withSpring(0, SPRING_CONFIG);
-  }
+  // Safe side-effect: Animate background on active change inside useEffect
+  useEffect(() => {
+    bgProgress.value = withSpring(isActive ? 1 : 0, SPRING_CONFIG);
+  }, [isActive, bgProgress]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -67,8 +65,8 @@ const PillItem = memo(function PillItem({
       onPressOut={handlePressOut}
       style={[
         styles.pill,
+        isActive && styles.pillActive,
         animatedStyle,
-        isActive ? styles.pillActiveShadow : null,
       ]}
     >
       <MaterialIcons
@@ -77,7 +75,10 @@ const PillItem = memo(function PillItem({
         color={isActive ? APPLE_THEME.white : APPLE_THEME.text}
       />
       <Text
-        style={[styles.pillText, isActive ? styles.pillTextActive : null]}
+        style={[
+          styles.pillText,
+          { color: isActive ? "#FFFFFF" : "#1D1D1F" },
+        ]}
         numberOfLines={1}
       >
         {label}
@@ -117,7 +118,7 @@ function CategoryPillsInner({
       keyExtractor={keyExtractor}
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.listContent}
+      contentContainerStyle={{ gap: 10, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 6 }}
       keyboardShouldPersistTaps="handled"
     />
   );
@@ -150,12 +151,6 @@ export const CategoryPills = memo(
 );
 
 const styles = StyleSheet.create({
-  listContent: {
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 6,
-  },
   pill: {
     flexDirection: "row",
     alignItems: "center",
@@ -163,26 +158,25 @@ const styles = StyleSheet.create({
     minHeight: 42,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    borderWidth: 1,
   },
-  pillActiveShadow: {
+  pillActive: {
     ...Platform.select({
       ios: {
-        shadowColor: APPLE_THEME.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 10,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 2,
       },
-      android: { elevation: 3 },
+      android: {
+        elevation: 1,
+      },
     }),
   },
   pillText: {
-    color: APPLE_THEME.text,
     fontSize: 14,
     fontFamily: TOKENS.font.semibold,
   },
-  pillTextActive: {
-    color: APPLE_THEME.white,
-  },
 });
+

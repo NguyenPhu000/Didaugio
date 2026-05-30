@@ -212,10 +212,8 @@ export default function ExploreScreen() {
 
   return (
     <View
-      style={[
-        styles.screen,
-        { paddingTop: insets.top, backgroundColor: APPLE_THEME.background },
-      ]}
+      className="flex-1"
+      style={{ paddingTop: insets.top, backgroundColor: APPLE_THEME.background }}
     >
       <StatusBar style="dark" />
 
@@ -224,10 +222,7 @@ export default function ExploreScreen() {
       ) : (
         <Animated.ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: FLOATING_TAB_CLEARANCE },
-          ]}
+          contentContainerStyle={{ paddingTop: 4, paddingBottom: FLOATING_TAB_CLEARANCE }}
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
@@ -260,15 +255,15 @@ export default function ExploreScreen() {
 
           {/* Inline filter indicator — only when a category is selected */}
           {selectedCategoryName ? (
-            <View style={styles.filterIndicator}>
-              <View style={styles.filterDot} />
-              <Text style={styles.filterText}>
+            <View className="flex-row items-center mx-5 mt-2.5 px-3.5 h-9 rounded-full bg-[#0071E3]/[0.06] border border-[#0071E3]/[0.12] gap-2">
+              <View className="w-1.5 h-1.5 rounded-full bg-[#0071E3]" />
+              <Text className="flex-1 text-[#0071E3] text-[13px] font-semibold">
                 {selectedCategoryName} · {allPlaces.length} kết quả
               </Text>
               <Pressable
                 onPress={() => handleSelectCategory(null)}
                 hitSlop={8}
-                style={styles.filterClear}
+                className="w-5.5 h-5.5 rounded-full items-center justify-center bg-black/[0.06]"
               >
                 <MaterialIcons name="close" size={14} color={APPLE_THEME.textMuted} />
               </Pressable>
@@ -319,20 +314,20 @@ export default function ExploreScreen() {
 
           {/* Empty state — animated */}
           {showEmpty ? (
-            <Animated.View style={[styles.emptyState, emptyAnimStyle]}>
-              <View style={styles.emptyIconWrap}>
+            <Animated.View style={emptyAnimStyle} className="items-center justify-center py-15 px-10 gap-3">
+              <View className="w-18 h-18 rounded-full bg-black/[0.04] items-center justify-center mb-1">
                 <MaterialIcons
                   name="explore-off"
                   size={40}
                   color={APPLE_THEME.textMuted}
                 />
               </View>
-              <Text style={styles.emptyTitle}>
+              <Text className="text-[#1D1D1F] text-[18px] font-semibold tracking-tight text-center">
                 {selectedCategory == null
                   ? "Chưa có địa điểm nào"
                   : "Không tìm thấy kết quả"}
               </Text>
-              <Text style={styles.emptyCopy}>
+              <Text className="text-black/48 text-[14px] text-center leading-[22px]">
                 {selectedCategory == null
                   ? "Hãy quay lại sau hoặc thử đổi danh mục khác."
                   : "Thử danh mục khác hoặc tìm kiếm theo tên."}
@@ -340,9 +335,9 @@ export default function ExploreScreen() {
               {selectedCategory != null ? (
                 <Pressable
                   onPress={() => handleSelectCategory(null)}
-                  style={styles.emptyAction}
+                  className="mt-1 h-9 px-5 rounded-full items-center justify-center bg-[#1D1D1F]"
                 >
-                  <Text style={styles.emptyActionText}>Xem tất cả</Text>
+                  <Text className="text-white text-[14px] font-semibold">Xem tất cả</Text>
                 </Pressable>
               ) : null}
             </Animated.View>
@@ -352,7 +347,7 @@ export default function ExploreScreen() {
           {isFetchingNextPage ? (
             <ActivityIndicator
               color={APPLE_THEME.focusBlue}
-              style={styles.loadMore}
+              className="py-5"
             />
           ) : null}
         </Animated.ScrollView>
@@ -362,94 +357,3 @@ export default function ExploreScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingTop: 4,
-  },
-  /* — Inline filter indicator — */
-  filterIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 20,
-    marginTop: 10,
-    paddingHorizontal: 14,
-    height: 36,
-    borderRadius: 999,
-    backgroundColor: "rgba(0,113,227,0.06)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0,113,227,0.12)",
-    gap: 8,
-  },
-  filterDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: APPLE_THEME.focusBlue,
-  },
-  filterText: {
-    flex: 1,
-    color: APPLE_THEME.focusBlue,
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-  },
-  filterClear: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.06)",
-  },
-  /* — Empty state — */
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
-    paddingHorizontal: 40,
-    gap: 12,
-  },
-  emptyIconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "rgba(0,0,0,0.04)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  emptyTitle: {
-    color: APPLE_THEME.text,
-    fontSize: 18,
-    fontFamily: TOKENS.font.heading,
-    textAlign: "center",
-    letterSpacing: -0.3,
-  },
-  emptyCopy: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 14,
-    fontFamily: TOKENS.font.body,
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  emptyAction: {
-    marginTop: 4,
-    height: 36,
-    paddingHorizontal: 20,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_THEME.primary,
-  },
-  emptyActionText: {
-    color: APPLE_THEME.white,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  loadMore: {
-    paddingVertical: 20,
-  },
-});

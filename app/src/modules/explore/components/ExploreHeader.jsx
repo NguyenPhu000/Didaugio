@@ -12,15 +12,15 @@ function ExploreHeaderInner({ user }) {
   const userName = getUserName(user);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.brandRow}>
-        <View style={styles.avatarWrap}>
+    <View className="flex-row justify-between items-center gap-3.5 px-[15px] py-3 rounded-[24px] bg-white border border-black/[0.04] shadow-sm elevation-1">
+      <View className="flex-row items-center gap-2.5 flex-1">
+        <View className="w-10 h-10 rounded-full items-center justify-center bg-[#E5F1FF]">
           <MaterialIcons name="person" size={20} color={APPLE_THEME.primary} />
         </View>
 
-        <View style={styles.brandTextCol}>
-          <Text style={styles.brandTopLabel}>Đi Đâu Giờ?</Text>
-          <Text style={styles.brandGreeting} numberOfLines={1}>
+        <View className="flex-1 min-w-0">
+          <Text className="text-[#54647A] text-[11px] leading-[13px] font-semibold tracking-[0.9px] uppercase">Đi Đâu Giờ?</Text>
+          <Text className="mt-0.5 text-[#1D1D1F] text-[17px] leading-[21px] font-bold tracking-[-0.2px]" numberOfLines={1}>
             {`Xin chào, ${userName}`}
           </Text>
         </View>
@@ -32,58 +32,3 @@ function ExploreHeaderInner({ user }) {
 }
 
 export const ExploreHeader = memo(ExploreHeaderInner);
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 14,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderRadius: TOKENS.radius["3xl"],
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-    ...Platform.select({
-      ios: {
-        ...TOKENS.shadow.sm,
-      },
-      android: { elevation: TOKENS.shadow.sm.elevation },
-    }),
-  },
-  brandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    flex: 1,
-  },
-  avatarWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_THEME.primaryTint,
-  },
-  brandTextCol: {
-    flex: 1,
-    minWidth: 0,
-  },
-  brandTopLabel: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 11,
-    lineHeight: 13,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.9,
-    textTransform: "uppercase",
-  },
-  brandGreeting: {
-    marginTop: 2,
-    color: APPLE_THEME.text,
-    fontSize: 17,
-    lineHeight: 21,
-    fontFamily: TOKENS.font.heading,
-    letterSpacing: -0.2,
-  },
-});

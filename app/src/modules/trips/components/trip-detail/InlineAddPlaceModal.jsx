@@ -18,130 +18,28 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useQueryClient } from "@tanstack/react-query";
-import { TOKENS, BOOKING_APPLE_THEME as APPLE_THEME } from "../../../../constants/design-tokens";
 import { useExplore } from "../../../explore/hooks/useExplore";
+import { useSavedPlaces } from "../../../saved/hooks/useSaved";
 import { addDestinationApi } from "../../api/tripsApi";
 import { QUERY_KEYS } from "../../../../constants/query-keys";
-import { resolvePlaceImageUri, getCategoryPlaceholder } from "../../../../lib/media-url";
+import {
+  resolvePlaceImageUri,
+  getCategoryPlaceholder,
+} from "../../../../lib/media-url";
 import { Image } from "expo-image";
+import { TRANSPORT_OPTIONS } from "../../utils/tripHelpers";
+import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
+import TimeField from "./TimeField";
 
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+const isNewArchitectureEnabled = global?.nativeFabricUIManager != null;
+if (
+  Platform.OS === "android" &&
+  !isNewArchitectureEnabled &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-const T = {
-  ink: APPLE_THEME.text,
-  canvas: APPLE_THEME.surface,
-  parchment: APPLE_THEME.background,
-  muted48: APPLE_THEME.textMuted,
-  primary: APPLE_THEME.primary,
-  onPrimary: APPLE_THEME.white,
-  danger: APPLE_THEME.danger,
-};
-
-function parseTimeToDate(str) {
-  if (!str) return null;
-  const [h, m] = str.split(":").map(Number);
-  if (isNaN(h) || isNaN(m)) return null;
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  return d;
-}
-
-function formatHHMM(date) {
-  const h = String(date.getHours()).padStart(2, "0");
-  const m = String(date.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
-}
-
-function TimeField({ label, value, onChange, placeholder, icon }) {
-  const [show, setShow] = useState(false);
-  const dateValue = useMemo(() => parseTimeToDate(value) || new Date(), [value]);
-
-  const handleChange = useCallback(
-    (_event, selectedDate) => {
-      if (Platform.OS === "android") {
-        setShow(false);
-      }
-      if (selectedDate) {
-        onChange(formatHHMM(selectedDate));
-      }
-    },
-    [onChange],
-  );
-
-  return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <Pressable
-        style={({ pressed }) => [
-          styles.timeInput,
-          pressed && { backgroundColor: APPLE_THEME.surfaceMuted },
-        ]}
-        onPress={() => setShow(true)}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        accessibilityLabel={`Chọn thời gian cho ${label}`}
-      >
-        <MaterialIcons
-          name={icon || "schedule"}
-          size={16}
-          color={T.muted48}
-        />
-        <Text style={[styles.inputText, !value && styles.placeholder]}>
-          {value || placeholder}
-        </Text>
-      </Pressable>
-
-      {Platform.OS === "ios" ? (
-        <Modal
-          visible={show}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShow(false)}
-        >
-          <Pressable style={styles.pickerOverlay} onPress={() => setShow(false)}>
-            <View style={styles.pickerSheet} onStartShouldSetResponder={() => true}>
-              <View style={styles.pickerHeader}>
-                <Text style={styles.pickerTitle}>{label}</Text>
-                <Pressable onPress={() => setShow(false)}>
-                  <Text style={styles.pickerDone}>Xong</Text>
-                </Pressable>
-              </View>
-              <DateTimePicker
-                value={dateValue}
-                mode="time"
-                is24Hour
-                display="spinner"
-                onChange={handleChange}
-                locale="vi-VN"
-              />
-            </View>
-          </Pressable>
-        </Modal>
-      ) : (
-        show && (
-          <DateTimePicker
-            value={dateValue}
-            mode="time"
-            is24Hour
-            display="default"
-            onChange={handleChange}
-          />
-        )
-      )}
-    </View>
-  );
-}
-
-const TRANSPORT_OPTIONS = [
-  { label: "Đi bộ", value: "Đi bộ", icon: "directions-walk" },
-  { label: "Xe máy", value: "Xe máy", icon: "motorcycle" },
-  { label: "Xe hơi", value: "Xe hơi", icon: "directions-car" },
-  { label: "Xe buýt", value: "Xe buýt", icon: "directions-bus" },
-  { label: "Khác", value: null, icon: "swap-vert" },
-];
 
 function InlineAddPlaceModal({
   visible,
@@ -162,7 +60,7 @@ function InlineAddPlaceModal({
 
   // Form states
   const [dayNumber, setDayNumber] = useState(defaultDay || 1);
-  
+
   const hasExistingDestinations = useMemo(() => {
     const dests = destinations || [];
     return dests.some((d) => d.dayNumber === dayNumber);
@@ -186,7 +84,11 @@ function InlineAddPlaceModal({
     return visible && debouncedQuery.trim().length > 0;
   }, [visible, debouncedQuery]);
 
-  const { data: exploreData, isLoading, isFetching } = useExplore({
+  const {
+    data: exploreData,
+    isLoading,
+    isFetching,
+  } = useExplore({
     search: debouncedQuery,
     enabled: searchEnabled,
   });
@@ -194,6 +96,43 @@ function InlineAddPlaceModal({
   const places = useMemo(() => {
     return exploreData?.pages.flatMap((page) => page?.data || []) ?? [];
   }, [exploreData]);
+
+  const { data: savedPlaces = [] } = useSavedPlaces(visible);
+
+  const normalizedSavedPlaces = useMemo(() => {
+    return (savedPlaces || []).map((item) => item?.place || item).filter((p) => p && p.id);
+  }, [savedPlaces]);
+
+  const mergedPlaces = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    
+    // 1. Lọc địa điểm đã lưu tại client
+    let filteredSaved = [];
+    if (query) {
+      filteredSaved = normalizedSavedPlaces.filter((p) =>
+        p.name?.toLowerCase().includes(query) ||
+        p.address?.toLowerCase().includes(query)
+      );
+    } else {
+      filteredSaved = normalizedSavedPlaces;
+    }
+
+    // Đánh dấu isSavedLocal để hiển thị icon bookmark
+    const markedSaved = filteredSaved.map((p) => ({ ...p, isSavedLocal: true }));
+
+    // 2. Nếu chưa nhập từ khóa, chỉ trả về các địa điểm đã lưu
+    if (!query) {
+      return markedSaved;
+    }
+
+    // 3. Nếu đã nhập từ khóa, gộp kết quả từ server
+    const savedIds = new Set(filteredSaved.map((p) => String(p.id)));
+    const filteredServer = places
+      .filter((p) => p && p.id && !savedIds.has(String(p.id)))
+      .map((p) => ({ ...p, isSavedLocal: false }));
+
+    return [...markedSaved, ...filteredServer];
+  }, [searchQuery, normalizedSavedPlaces, places]);
 
   // Reset state on open/close
   useEffect(() => {
@@ -251,19 +190,35 @@ function InlineAddPlaceModal({
       setErrorMsg(err?.message || "Có lỗi xảy ra khi thêm địa điểm.");
       setIsSubmitting(false); // Reset submitting state on error
     }
-  }, [selectedPlace, dayNumber, startTime, endTime, note, transportToNext, tripId, queryClient, onClose, isSubmitting]);
+  }, [
+    selectedPlace,
+    dayNumber,
+    startTime,
+    endTime,
+    note,
+    transportToNext,
+    tripId,
+    queryClient,
+    onClose,
+    isSubmitting,
+  ]);
 
-  const isSearchLoading = isLoading || isFetching || searchQuery !== debouncedQuery;
+  const isSearchLoading =
+    isLoading || isFetching || searchQuery !== debouncedQuery;
 
-  const getItemLayout = useCallback((data, index) => ({
-    length: 68,
-    offset: 68 * index,
-    index,
-  }), []);
+  const getItemLayout = useCallback(
+    (data, index) => ({
+      length: 68,
+      offset: 68 * index,
+      index,
+    }),
+    [],
+  );
 
-  const renderItemSeparator = useCallback(() => (
-    <View style={styles.placeItemSeparator} />
-  ), []);
+  const renderItemSeparator = useCallback(
+    () => <View className="h-[0.5px] bg-black/[0.06]" />,
+    [],
+  );
 
   if (!visible) return null;
 
@@ -275,60 +230,69 @@ function InlineAddPlaceModal({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <View style={styles.root}>
-        <Pressable style={styles.backdrop} onPress={onClose} />
+      <View className="flex-1 justify-end">
+        <Pressable style={StyleSheet.absoluteFillObject} className="bg-black/45" onPress={onClose} />
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.keyboardView}
+          behavior={Platform.OS === "ios" ? "padding" : "padding"}
+          className="flex-1 justify-end w-full"
           pointerEvents="box-none"
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
-          <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-            <View style={styles.handle} />
+          <View
+            className="bg-white rounded-t-[24px] max-h-[85%] w-full flex-col flex-shrink relative"
+            style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+          >
+            {/* View nền trắng mở rộng xuống đáy để che phủ khoảng trống khi đẩy modal lên */}
+            <View style={{ position: "absolute", bottom: -500, left: 0, right: 0, height: 500, backgroundColor: "#FFFFFF" }} />
+
+            <View className="w-9 h-1 rounded-full bg-black/12 self-center mt-2.5 mb-1" />
 
             {/* Header */}
-            <View style={styles.sheetHeader}>
-              <View style={styles.sheetTitleRow}>
+            <View className="flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]">
+              <View className="flex-row items-center gap-2 flex-1 marginRight-2">
                 {step === 2 && (
                   <Pressable
                     onPress={handleBackToSearch}
                     hitSlop={8}
-                    style={styles.backBtn}
+                    className="pr-1.5"
                     accessibilityLabel="Quay lại tìm kiếm"
                   >
-                    <MaterialIcons name="arrow-back" size={20} color={T.ink} />
+                    <MaterialIcons name="arrow-back" size={20} color="#1D1D1F" />
                   </Pressable>
                 )}
                 <MaterialIcons
                   name={step === 1 ? "search" : "edit-calendar"}
                   size={18}
-                  color={T.ink}
+                  color="#1D1D1F"
                 />
-                <Text style={styles.sheetTitle}>
-                  {step === 1 ? "Thêm địa điểm vào chuyến đi" : "Lên lịch trình"}
+                <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">
+                  {step === 1
+                    ? "Thêm địa điểm vào chuyến đi"
+                    : "Lên lịch trình"}
                 </Text>
               </View>
               <Pressable
                 onPress={onClose}
                 hitSlop={12}
-                style={styles.closeBtn}
+                className="w-8 h-8 rounded-full items-center justify-center"
                 accessibilityLabel="Đóng modal"
               >
-                <MaterialIcons name="close" size={18} color={T.muted48} />
+                <MaterialIcons name="close" size={18} color="rgba(0,0,0,0.4)" />
               </Pressable>
             </View>
 
             {/* STEP 1: SEARCH PLACE */}
             {step === 1 && (
-              <View style={styles.stepContainer}>
+              <View className="px-5 pt-4 gap-3 flex-shrink">
                 {/* Search Bar */}
-                <View style={styles.searchBarWrap}>
-                  <MaterialIcons name="search" size={20} color={T.muted48} />
+                <View className="flex-row items-center bg-[#F5F5F7] rounded-xl px-3 h-11 gap-2 border border-black/[0.06]">
+                  <MaterialIcons name="search" size={20} color="rgba(0,0,0,0.4)" />
                   <TextInput
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     placeholder="Tìm theo tên địa điểm..."
-                    placeholderTextColor={T.muted48}
-                    style={styles.searchInput}
+                    placeholderTextColor="rgba(0,0,0,0.4)"
+                    className="flex-1 text-[15px] font-normal text-[#1D1D1F]"
                     returnKeyType="search"
                     autoFocus
                   />
@@ -338,72 +302,114 @@ function InlineAddPlaceModal({
                       hitSlop={8}
                       accessibilityLabel="Xóa nội dung tìm kiếm"
                     >
-                      <MaterialIcons name="cancel" size={16} color={T.muted48} />
+                      <MaterialIcons
+                        name="cancel"
+                        size={16}
+                        color="rgba(0,0,0,0.4)"
+                      />
                     </Pressable>
                   )}
                 </View>
 
                 {/* Results list */}
-                {isSearchLoading ? (
-                  <View style={styles.centerLoading}>
-                    <ActivityIndicator size="small" color={T.ink} />
-                    <Text style={styles.loadingText}>Đang tìm kiếm...</Text>
+                {searchQuery.trim().length === 0 && mergedPlaces.length === 0 ? (
+                  <View className="py-14 items-center gap-2">
+                    <MaterialIcons name="search" size={32} color="rgba(0,0,0,0.4)" />
+                    <Text className="text-[15px] font-semibold text-[#1D1D1F]">Nhập từ khóa</Text>
+                    <Text className="text-[13px] font-normal text-black/50">
+                      Tìm kiếm địa điểm du lịch tại Cần Thơ
+                    </Text>
                   </View>
-                ) : searchQuery.trim().length === 0 ? (
-                  <View style={styles.emptyWrap}>
-                    <MaterialIcons name="search" size={32} color={T.muted48} />
-                    <Text style={styles.emptyTitle}>Nhập từ khóa</Text>
-                    <Text style={styles.emptyDesc}>Tìm kiếm địa điểm du lịch tại Cần Thơ</Text>
-                  </View>
-                ) : places.length === 0 ? (
-                  <View style={styles.emptyWrap}>
-                    <MaterialIcons name="search-off" size={32} color={T.muted48} />
-                    <Text style={styles.emptyTitle}>Không tìm thấy kết quả</Text>
-                    <Text style={styles.emptyDesc}>Vui lòng thử từ khóa khác</Text>
+                ) : mergedPlaces.length === 0 && !isSearchLoading ? (
+                  <View className="py-14 items-center gap-2">
+                    <MaterialIcons
+                      name="search-off"
+                      size={32}
+                      color="rgba(0,0,0,0.4)"
+                    />
+                    <Text className="text-[15px] font-semibold text-[#1D1D1F]">
+                      Không tìm thấy kết quả
+                    </Text>
+                    <Text className="text-[13px] font-normal text-black/50">
+                      Vui lòng thử từ khóa khác
+                    </Text>
                   </View>
                 ) : (
-                  <FlatList
-                    data={places}
-                    keyExtractor={(item) => String(item.id)}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    style={styles.list}
-                    initialNumToRender={10}
-                    maxToRenderPerBatch={10}
-                    getItemLayout={getItemLayout}
-                    ItemSeparatorComponent={renderItemSeparator}
-                    renderItem={({ item }) => {
-                      const imageUri = resolvePlaceImageUri(item) || getCategoryPlaceholder(item.category?.name || item.category);
-                      return (
-                        <Pressable
-                          style={styles.placeItem}
-                          onPress={() => handleSelectPlace(item)}
-                          accessibilityLabel={`Chọn địa điểm ${item.name}`}
-                        >
-                          {imageUri ? (
-                            <Image
-                              source={{ uri: imageUri }}
-                              style={styles.placeThumb}
-                              contentFit="cover"
-                            />
-                          ) : (
-                            <View style={styles.placeThumbFallback}>
-                              <MaterialIcons name="place" size={18} color={T.muted48} />
-                            </View>
-                          )}
-                          <View style={styles.placeInfo}>
-                            <Text style={styles.placeName} numberOfLines={1}>
-                              {item.name}
-                            </Text>
-                            <Text style={styles.placeAddress} numberOfLines={1}>
-                              {item.address || "Cần Thơ"}
+                  <View className="flex-shrink max-h-[340px]">
+                    {isSearchLoading && (
+                      <View className="flex-row items-center justify-center py-2 gap-2 bg-[#F5F5F7]/85 rounded-xl mb-2 border border-black/[0.04]">
+                        <ActivityIndicator size="small" color="#1D1D1F" />
+                        <Text className="text-[12px] text-black/50 font-normal">Đang tìm thêm trên hệ thống...</Text>
+                      </View>
+                    )}
+                    <FlatList
+                      data={mergedPlaces}
+                      keyExtractor={(item) => String(item.id)}
+                      showsVerticalScrollIndicator={false}
+                      keyboardShouldPersistTaps="handled"
+                      initialNumToRender={10}
+                      maxToRenderPerBatch={10}
+                      getItemLayout={getItemLayout}
+                      ItemSeparatorComponent={renderItemSeparator}
+                      ListHeaderComponent={
+                        normalizedSavedPlaces.length > 0 && searchQuery.trim() === "" ? (
+                          <View className="pb-2 pt-1">
+                            <Text className="text-[11px] font-bold text-black/35 uppercase tracking-wider">
+                              Địa điểm đã lưu của bạn
                             </Text>
                           </View>
-                          <MaterialIcons name="chevron-right" size={20} color={T.muted48} />
-                        </Pressable>
-                      );
-                    }}
-                  />
+                        ) : null
+                      }
+                      renderItem={({ item }) => {
+                        const imageUri =
+                          resolvePlaceImageUri(item) ||
+                          getCategoryPlaceholder(
+                            item.category?.name || item.category,
+                          );
+                        return (
+                          <Pressable
+                            className="flex-row items-center py-3 gap-3"
+                            onPress={() => handleSelectPlace(item)}
+                            accessibilityLabel={`Chọn địa điểm ${item.name}`}
+                          >
+                            {imageUri ? (
+                              <Image
+                                source={{ uri: imageUri }}
+                                style={{ width: 44, height: 44, borderRadius: 10 }}
+                                contentFit="cover"
+                              />
+                            ) : (
+                              <View className="w-11 h-11 rounded-lg bg-[#F5F5F7] items-center justify-center">
+                                <MaterialIcons
+                                  name="place"
+                                  size={18}
+                                  color="rgba(0,0,0,0.4)"
+                                />
+                              </View>
+                            )}
+                            <View className="flex-1 gap-0.5">
+                              <View className="flex-row items-center gap-1.5 flex-1">
+                                <Text className="text-[14px] font-semibold text-[#1D1D1F] flex-shrink" numberOfLines={1}>
+                                  {item.name}
+                                </Text>
+                                {item.isSavedLocal && (
+                                  <MaterialIcons name="bookmark" size={14} color="#FF9F0A" />
+                                )}
+                              </View>
+                              <Text className="text-[12px] font-normal text-black/50" numberOfLines={1}>
+                                {item.address || "Cần Thơ"}
+                              </Text>
+                            </View>
+                            <MaterialIcons
+                              name="chevron-right"
+                              size={20}
+                              color="rgba(0,0,0,0.4)"
+                            />
+                          </Pressable>
+                        );
+                      }}
+                    />
+                  </View>
                 )}
               </View>
             )}
@@ -412,28 +418,29 @@ function InlineAddPlaceModal({
             {step === 2 && selectedPlace && (
               <>
                 <ScrollView
-                  style={[styles.scrollArea, { maxHeight: screenHeight * 0.45 }]}
-                  contentContainerStyle={styles.scrollContent}
+                  style={{ maxHeight: screenHeight * 0.45 }}
+                  className="flex-shrink"
+                  contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16, gap: 16 }}
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
                 >
                   {/* Place Summary */}
-                  <View style={styles.placeSummary}>
-                    <Text style={styles.summaryTitle} numberOfLines={1}>
+                  <View className="gap-1 bg-[#F5F5F7] p-3.5 rounded-2xl border border-black/[0.06]">
+                    <Text className="text-[16px] font-semibold text-[#1D1D1F]" numberOfLines={1}>
                       {selectedPlace.name}
                     </Text>
-                    <Text style={styles.summaryAddress} numberOfLines={1}>
+                    <Text className="text-[12px] font-normal text-black/50" numberOfLines={1}>
                       {selectedPlace.address || "Cần Thơ"}
                     </Text>
                   </View>
 
                   {/* Day selector */}
-                  <View style={styles.fieldFull}>
-                    <Text style={styles.label}>Chọn ngày</Text>
+                  <View className="gap-1.5">
+                    <Text className={STYLES.fieldLabel}>Chọn ngày</Text>
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.dayChips}
+                      contentContainerStyle={{ flexDirection: "row", gap: 8, paddingVertical: 4 }}
                     >
                       {Array.from({ length: totalDays || 1 }).map((_, idx) => {
                         const dayVal = idx + 1;
@@ -441,11 +448,17 @@ function InlineAddPlaceModal({
                         return (
                           <Pressable
                             key={dayVal}
-                            style={[styles.dayChip, isActive && styles.dayChipActive]}
+                            className={`px-4 py-2.5 rounded-xl bg-[#F5F5F7] border-[1.5px] border-transparent ${
+                              isActive ? STYLES.chipActive : ""
+                            }`}
                             onPress={() => setDayNumber(dayVal)}
                             accessibilityLabel={`Chọn ngày ${dayVal}`}
                           >
-                            <Text style={[styles.dayChipText, isActive && styles.dayChipTextActive]}>
+                            <Text
+                              className={`text-[13px] font-semibold ${
+                                isActive ? "text-[#1D1D1F]" : "text-[#1D1D1F]"
+                              }`}
+                            >
                               Ngày {dayVal}
                             </Text>
                           </Pressable>
@@ -455,7 +468,7 @@ function InlineAddPlaceModal({
                   </View>
 
                   {/* Time range */}
-                  <View style={styles.row}>
+                  <View className="flex-row gap-3">
                     <TimeField
                       label="Thời gian bắt đầu"
                       value={startTime}
@@ -474,32 +487,32 @@ function InlineAddPlaceModal({
 
                   {/* Di chuyển đến điểm tiếp theo */}
                   {hasExistingDestinations ? (
-                    <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)", paddingTop: 14, marginTop: 4 }}>
-                      <Text style={styles.sectionHeaderLabel}>Di chuyển đến địa điểm này</Text>
-                      
-                      <View style={styles.fieldFull}>
-                        <Text style={styles.label}>Phương tiện</Text>
-                        <View style={styles.transportRow}>
+                    <View className="pt-4 mt-1 border-t border-black/[0.08]">
+                      <Text className={STYLES.sectionLabel}>
+                        Di chuyển đến địa điểm này
+                      </Text>
+
+                      <View className="gap-1.5">
+                        <Text className={STYLES.fieldLabel}>Phương tiện</Text>
+                        <View className="flex-row gap-2 flex-wrap mt-1">
                           {TRANSPORT_OPTIONS.map((opt) => {
                             const isSelected = transportToNext === opt.value;
                             return (
                               <Pressable
                                 key={opt.label || "other"}
                                 onPress={() => setTransportToNext(opt.value)}
-                                style={[
-                                  styles.transportOption,
-                                  isSelected && styles.transportOptionActive
-                                ]}
+                                className={`${STYLES.chip} ${isSelected ? STYLES.chipActive : ""}`}
                               >
                                 <MaterialIcons
                                   name={opt.icon}
                                   size={16}
-                                  color={isSelected ? "#FFFFFF" : "rgba(0,0,0,0.6)"}
+                                  color={isSelected ? T.onPrimary : "rgba(0,0,0,0.6)"}
                                 />
-                                <Text style={[
-                                  styles.transportLabel,
-                                  isSelected && styles.transportLabelActive
-                                ]}>
+                                <Text
+                                  className={`text-[13px] font-semibold ${
+                                    isSelected ? "text-white opacity-100" : "text-[#1D1D1F] opacity-60"
+                                  }`}
+                                >
                                   {opt.label}
                                 </Text>
                               </Pressable>
@@ -511,14 +524,14 @@ function InlineAddPlaceModal({
                   ) : null}
 
                   {/* Note */}
-                  <View style={styles.fieldFull}>
-                    <Text style={styles.label}>Ghi chú hành trình</Text>
+                  <View className="gap-1.5">
+                    <Text className={STYLES.fieldLabel}>Ghi chú hành trình</Text>
                     <TextInput
-                      style={[styles.inputEditable, styles.noteInput]}
+                      className={`${STYLES.field} min-h-[80px]`}
                       value={note}
                       onChangeText={setNote}
                       placeholder="Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây..."
-                      placeholderTextColor={T.muted48}
+                      placeholderTextColor={ALPHA.iconStrong}
                       multiline
                       numberOfLines={3}
                       textAlignVertical="top"
@@ -527,26 +540,26 @@ function InlineAddPlaceModal({
 
                   {/* Error message */}
                   {errorMsg ? (
-                    <View style={styles.errorContainer}>
+                    <View className="flex-row items-center gap-1.5 px-1">
                       <MaterialIcons name="error-outline" size={16} color={T.danger} />
-                      <Text style={styles.errorText}>{errorMsg}</Text>
+                      <Text className="text-[13px] font-normal" style={{ color: T.danger }}>{errorMsg}</Text>
                     </View>
                   ) : null}
                 </ScrollView>
 
                 {/* Action Buttons */}
-                <View style={styles.footer}>
+                <View className={STYLES.sheetFooter}>
                   <TouchableOpacity
                     onPress={handleAdd}
                     disabled={isSubmitting}
                     activeOpacity={0.8}
-                    style={[styles.savePill, isSubmitting && styles.saveBtnDisabled]}
+                    className={`${STYLES.submitBtn} ${isSubmitting ? "opacity-50" : ""}`}
                     accessibilityLabel="Thêm vào lịch trình chuyến đi"
                   >
                     {isSubmitting ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={T.onPrimary} />
                     ) : (
-                      <Text style={styles.savePillText}>Tạo</Text>
+                      <Text className={STYLES.submitBtnText}>Tạo</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -558,371 +571,5 @@ function InlineAddPlaceModal({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  keyboardView: {
-    flex: 1,
-    justifyContent: "flex-end",
-    width: "100%",
-  },
-  sheet: {
-    backgroundColor: T.canvas,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: "85%",
-    width: "100%",
-    flexDirection: "column",
-    flexShrink: 1,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: APPLE_THEME.borderSoft,
-    alignSelf: "center",
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  sheetHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: APPLE_THEME.borderSoft,
-  },
-  sheetTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flex: 1,
-    marginRight: 8,
-  },
-  sheetTitle: {
-    fontSize: 16,
-    fontFamily: TOKENS.font.semibold,
-    color: T.ink,
-    letterSpacing: -0.3,
-  },
-  backBtn: {
-    paddingRight: 6,
-  },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 12,
-    flexShrink: 1,
-  },
-  searchBarWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: T.parchment,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 46,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: TOKENS.font.body,
-    color: T.ink,
-  },
-  list: {
-    maxHeight: 340,
-  },
-  placeItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    gap: 12,
-  },
-  placeItemSeparator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: APPLE_THEME.borderSoft,
-  },
-  placeThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: T.parchment,
-  },
-  placeThumbFallback: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: T.parchment,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  placeInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  placeName: {
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-    color: T.ink,
-  },
-  placeAddress: {
-    fontSize: 12,
-    fontFamily: TOKENS.font.body,
-    color: T.muted48,
-  },
-  centerLoading: {
-    paddingVertical: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  loadingText: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.body,
-    color: T.muted48,
-  },
-  emptyWrap: {
-    paddingVertical: 60,
-    alignItems: "center",
-    gap: 8,
-  },
-  emptyTitle: {
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-    color: T.ink,
-  },
-  emptyDesc: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.body,
-    color: T.muted48,
-  },
-  scrollArea: {
-    flexShrink: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 16,
-    gap: 16,
-  },
-  placeSummary: {
-    gap: 4,
-    backgroundColor: T.parchment,
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-  },
-  summaryTitle: {
-    fontSize: 16,
-    fontFamily: TOKENS.font.semibold,
-    color: T.ink,
-  },
-  summaryAddress: {
-    fontSize: 12,
-    fontFamily: TOKENS.font.body,
-    color: T.muted48,
-  },
-  fieldFull: {
-    gap: 6,
-  },
-  label: {
-    fontSize: 11,
-    color: T.muted48,
-    fontFamily: TOKENS.font.semibold,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  dayChips: {
-    flexDirection: "row",
-    gap: 8,
-    paddingVertical: 4,
-  },
-  dayChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: T.parchment,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-  },
-  dayChipActive: {
-    backgroundColor: T.ink,
-    borderColor: T.ink,
-  },
-  dayChipText: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    color: T.ink,
-  },
-  dayChipTextActive: {
-    color: T.canvas,
-  },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  field: {
-    flex: 1,
-    gap: 6,
-  },
-  fieldLabel: {
-    fontSize: 11,
-    color: T.muted48,
-    fontFamily: TOKENS.font.semibold,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  timeInput: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: T.parchment,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-  },
-  inputText: {
-    fontSize: 15,
-    color: T.ink,
-    fontFamily: TOKENS.font.body,
-  },
-  placeholder: {
-    color: T.muted48,
-  },
-  inputEditable: {
-    backgroundColor: T.parchment,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: T.ink,
-    fontFamily: TOKENS.font.body,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-  },
-  noteInput: {
-    minHeight: 80,
-  },
-  transportRow: {
-    flexDirection: "row",
-    gap: 8,
-    flexWrap: "wrap",
-    marginTop: 4,
-  },
-  transportOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: T.parchment,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-  },
-  transportOptionActive: {
-    backgroundColor: T.ink,
-    borderColor: T.ink,
-  },
-  transportLabel: {
-    fontSize: 13,
-    color: T.ink,
-    fontFamily: TOKENS.font.semibold,
-    opacity: 0.6,
-  },
-  transportLabelActive: {
-    color: T.canvas,
-    opacity: 1,
-  },
-  errorContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 4,
-  },
-  errorText: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.body,
-    color: T.danger,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.07)",
-    backgroundColor: T.canvas,
-    flexShrink: 0,
-  },
-  savePill: {
-    width: "100%",
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: "#1D1D1F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  savePillText: {
-    fontSize: 16,
-    color: "#FFFFFF",
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.2,
-    textAlign: "center",
-  },
-  saveBtnDisabled: {
-    opacity: 0.5,
-    backgroundColor: "#1D1D1F",
-  },
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "flex-end",
-  },
-  pickerSheet: {
-    backgroundColor: T.canvas,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 34,
-  },
-  pickerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: APPLE_THEME.borderSoft,
-  },
-  pickerTitle: {
-    fontSize: 16,
-    fontFamily: TOKENS.font.semibold,
-    color: T.ink,
-  },
-  pickerDone: {
-    fontSize: 16,
-    color: T.ink,
-    fontFamily: TOKENS.font.semibold,
-  },
-});
 
 export default memo(InlineAddPlaceModal);
