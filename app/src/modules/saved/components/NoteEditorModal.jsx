@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,

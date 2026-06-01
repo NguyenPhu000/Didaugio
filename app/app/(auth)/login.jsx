@@ -5,7 +5,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -13,71 +12,15 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { Link, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather, FontAwesome, MaterialIcons } from "@expo/vector-icons";
+import { Feather, FontAwesome5 } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { useGoogleLogin } from "../../src/modules/auth/hooks/useGoogleLogin";
 import { useAuth } from "../../src/modules/auth/hooks/useAuth";
 import { useLogin } from "../../src/modules/auth/hooks/useLogin";
-
-function Field({
-  label,
-  icon,
-  value,
-  onChangeText,
-  placeholder,
-  keyboardType,
-  autoComplete,
-  autoCapitalize = "none",
-  secureTextEntry = false,
-  showToggle = false,
-  isVisible = false,
-  onToggleVisibility,
-  textContentType,
-  returnKeyType,
-  onSubmitEditing,
-  inputRef,
-}) {
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <View style={styles.fieldWrap}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={[styles.fieldBox, focused && styles.fieldBoxFocused]}>
-        <Feather
-          name={icon}
-          size={18}
-          color={focused ? "#0369A1" : "#94A3B8"}
-        />
-        <TextInput
-          ref={inputRef}
-          value={value}
-          onChangeText={onChangeText}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          keyboardType={keyboardType}
-          autoComplete={autoComplete}
-          autoCapitalize={autoCapitalize}
-          secureTextEntry={secureTextEntry}
-          placeholder={placeholder}
-          placeholderTextColor="#94A3B8"
-          style={styles.fieldInput}
-          textContentType={textContentType}
-          returnKeyType={returnKeyType}
-          onSubmitEditing={onSubmitEditing}
-        />
-        {showToggle ? (
-          <Pressable onPress={onToggleVisibility} hitSlop={10}>
-            <Feather
-              name={isVisible ? "eye-off" : "eye"}
-              size={18}
-              color={focused ? "#0369A1" : "#94A3B8"}
-            />
-          </Pressable>
-        ) : null}
-      </View>
-    </View>
-  );
-}
+import { cn } from "../../src/lib/cn";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -93,145 +36,248 @@ export default function LoginScreen() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  const [identifierFocused, setIdentifierFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+
   const passwordRef = useRef(null);
 
   const handleLogin = () => {
-    login(identifier, password);
+    if (!identifier.trim() || !password.trim()) return;
+    login(identifier.trim(), password);
   };
 
   return (
-    <View style={styles.screen}>
+    <View className="flex-1 bg-[#020617]">
       <StatusBar style="light" />
 
+      {/* Background Image */}
       <Image
         source={require("../../assets/sky.jpg")}
-        style={StyleSheet.absoluteFillObject}
+        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
         contentFit="cover"
+        transition={1000}
       />
-      <View style={styles.backdrop} />
 
-      <View style={[styles.topBar, { top: insets.top + 16 }]}>
-        <View style={styles.brandRow}>
-          <MaterialIcons name="travel-explore" size={22} color="#fff" />
-          <Text style={styles.brandText}>Đi Đâu Giờ</Text>
-        </View>
-      </View>
+      {/* Deep Blur for the entire background */}
+      <BlurView 
+        intensity={45} 
+        tint="dark" 
+        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }} 
+      />
+
+      {/* Dark gradient mask */}
+      <LinearGradient
+        colors={["rgba(2, 6, 23, 0.3)", "rgba(2, 6, 23, 0.75)"]}
+        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+      />
 
       <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <ScrollView
-          bounces={false}
+          bounces={true}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "center",
+            paddingTop: insets.top + 40,
+            paddingBottom: Math.max(insets.bottom + 20, 40)
+          }}
+          className="px-6"
           showsVerticalScrollIndicator={false}
         >
-          <View
-            style={[
-              styles.card,
-              { paddingBottom: Math.max(insets.bottom + 16, 28) },
-            ]}
+          {/* Brand header */}
+          <View className="items-center mb-8">
+            <View 
+              className="w-16 h-16 rounded-[18px] bg-white items-center justify-center mb-4 shadow-md elevation-2"
+              style={Platform.OS === "ios" ? {
+                shadowColor: "#000000",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.1,
+                shadowRadius: 12,
+              } : null}
+            >
+              <MaterialIcons name="travel-explore" size={32} color="#007AFF" />
+            </View>
+            <Text className="text-[28px] font-extrabold text-white tracking-[-0.5px]">Đi Đâu Giờ</Text>
+            <Text className="text-sm text-white/60 mt-1 font-medium">Khám phá Cần Thơ theo cách của bạn</Text>
+          </View>
+
+          {/* Glassmorphic Login Card */}
+          <View 
+            className="bg-white/95 rounded-[24px] p-6 w-full shadow-xl elevation-4"
+            style={Platform.OS === "ios" ? {
+              shadowColor: "#000000",
+              shadowOffset: { width: 0, height: 12 },
+              shadowOpacity: 0.15,
+              shadowRadius: 24,
+            } : null}
           >
-            <Text style={styles.title}>Đăng nhập</Text>
-            <Text style={styles.subtitle}>
-              Đăng nhập để lưu địa điểm, quản lý chuyến đi và đặt dịch vụ.
-            </Text>
+            <Text className="text-[30px] font-extrabold  text-[#000000] mb-1.5">Đăng nhập</Text>
+           
 
-            <Field
-              label="Email hoặc Username"
-              icon="user"
-              value={identifier}
-              onChangeText={setIdentifier}
-              autoComplete="username"
-              placeholder="you@example.com hoặc username"
-              textContentType="username"
-              returnKeyType="next"
-              onSubmitEditing={() => passwordRef.current?.focus()}
-            />
+            {/* iOS Settings Style Grouped Fields */}
+            <View className="rounded-[14px] bg-[#F2F2F7] overflow-hidden border border-[#E5E5EA] mb-4">
+              {/* Field 1: Email/Username */}
+              <View className={cn("flex-row items-center h-[54px] px-4 bg-transparent", identifierFocused && "bg-[#E5E5EA]")}>
+                <View className="w-8 items-start">
+                  <Feather
+                    name="user"
+                    size={20}
+                    color={identifierFocused ? "#007AFF" : "#8E8E93"}
+                  />
+                </View>
+                <TextInput
+                  value={identifier}
+                  onChangeText={setIdentifier}
+                  onFocus={() => setIdentifierFocused(true)}
+                  onBlur={() => setIdentifierFocused(false)}
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  placeholder="Email hoặc username"
+                  placeholderTextColor="#AEAEB2"
+                  className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
+                  textContentType="username"
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                />
+              </View>
 
-            <Field
-              label="Mật khẩu"
-              icon="lock"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoComplete="password"
-              placeholder="••••••••"
-              showToggle
-              isVisible={showPassword}
-              onToggleVisibility={() => setShowPassword((v) => !v)}
-              textContentType="password"
-              returnKeyType="go"
-              onSubmitEditing={handleLogin}
-              inputRef={passwordRef}
-            />
+              {/* Separator line */}
+              <View className="h-[1px] bg-[#E5E5EA] ml-12" />
 
+              {/* Field 2: Password */}
+              <View className={cn("flex-row items-center h-[54px] px-4 bg-transparent", passwordFocused && "bg-[#E5E5EA]")}>
+                <View className="w-8 items-start">
+                  <Feather
+                    name="lock"
+                    size={20}
+                    color={passwordFocused ? "#007AFF" : "#8E8E93"}
+                  />
+                </View>
+                <TextInput
+                  ref={passwordRef}
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
+                  secureTextEntry={!showPassword}
+                  autoComplete="password"
+                  autoCapitalize="none"
+                  placeholder="Mật khẩu"
+                  placeholderTextColor="#AEAEB2"
+                  className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
+                  textContentType="password"
+                  returnKeyType="go"
+                  onSubmitEditing={handleLogin}
+                />
+                <Pressable
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={12}
+                  className="p-1"
+                >
+                  <Feather
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={18}
+                    color="#8E8E93"
+                  />
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Error Messages */}
             {error ? (
-              <View style={styles.errorBox}>
-                <Feather name="alert-circle" size={16} color="#EF4444" />
-                <Text style={styles.errorText}>{error}</Text>
+              <View className="flex-row items-center bg-[#FFFAFA] border border-[#FFD6D6] rounded-xl px-3 py-2.5 gap-2 mb-4">
+                <Feather name="alert-circle" size={16} color="#FF3B30" />
+                <Text className="flex-1 text-[#FF3B30] text-[12.5px] font-semibold">{error}</Text>
               </View>
             ) : null}
 
             {googleError ? (
-              <View style={styles.errorBox}>
-                <Feather name="alert-circle" size={16} color="#EF4444" />
-                <Text style={styles.errorText}>{googleError}</Text>
+              <View className="flex-row items-center bg-[#FFFAFA] border border-[#FFD6D6] rounded-xl px-3 py-2.5 gap-2 mb-4">
+                <Feather name="alert-circle" size={16} color="#FF3B30" />
+                <Text className="flex-1 text-[#FF3B30] text-[12.5px] font-semibold">{googleError}</Text>
               </View>
             ) : null}
 
-            <Pressable
-              onPress={handleLogin}
-              disabled={isLoading}
-              style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+            {/* Main Action Button (Apple Royal Blue Gradient) */}
+            <View 
+              className="rounded-[14px] overflow-hidden mt-2 shadow-sm elevation-2"
+              style={Platform.OS === "ios" ? {
+                shadowColor: "#007AFF",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.25,
+                shadowRadius: 8,
+              } : null}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.primaryButtonText}>Đăng nhập</Text>
-              )}
-            </Pressable>
-
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>hoặc</Text>
-              <View style={styles.dividerLine} />
+              <Pressable
+                onPress={handleLogin}
+                disabled={isLoading}
+                style={({ pressed }) => pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }}
+              >
+                <LinearGradient
+                  colors={["#007AFF", "#0056B3"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  className="h-[52px] items-center justify-center"
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#ffffff" size="small" />
+                  ) : (
+                    <Text className="text-white text-base font-bold">Đăng nhập</Text>
+                  )}
+                </LinearGradient>
+              </Pressable>
             </View>
 
-            <View style={styles.socialRow}>
+            {/* Divider "hoặc" */}
+            <View className="flex-row items-center my-6">
+              <View className="flex-1 h-[1px] bg-[#E5E5EA]" />
+              <Text className="text-[11px] font-bold text-[#C7C7CC] px-3 tracking-[1px]">HOẶC TIẾP TỤC VỚI</Text>
+              <View className="flex-1 h-[1px] bg-[#E5E5EA]" />
+            </View>
+
+            {/* Social Logins */}
+            <View className="flex-row gap-2.5 mb-4 w-full">
               <Pressable
                 onPress={loginWithGoogle}
                 disabled={isGoogleLoading}
-                style={[
-                  styles.secondaryButton,
-                  isGoogleLoading && styles.buttonDisabled,
-                ]}
+                className="flex-1 flex-row items-center justify-center h-12 rounded-[14px] bg-white border border-[#E5E5EA] gap-1.5 shadow-sm elevation-1 active:opacity-90 active:scale-[0.98]"
+                style={Platform.OS === "ios" ? {
+                  shadowColor: "#000000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 3,
+                } : null}
               >
                 {isGoogleLoading ? (
-                  <ActivityIndicator color="#0F172A" size="small" />
+                  <ActivityIndicator color="#1C1C1E" size="small" />
                 ) : (
                   <>
-                    <Text style={styles.googleGlyph}>G</Text>
-                    <Text style={styles.secondaryButtonText}>Google</Text>
+                    <FontAwesome5 name="google" size={15} color="#EA4335" />
+                    <Text className="text-[#1C1C1E] text-[13px] font-semibold">Đăng nhập Google</Text>
                   </>
                 )}
               </Pressable>
 
               <Pressable
                 onPress={continueAsGuest}
-                style={styles.secondaryButton}
+                className="flex-1 flex-row items-center justify-center h-12 rounded-[14px] bg-[#007AFF]/10 gap-1.5 active:opacity-90 active:scale-[0.98]"
               >
-                <FontAwesome name="user-o" size={16} color="#334155" />
-                <Text style={styles.secondaryButtonText}>Khách</Text>
+                <Feather name="compass" size={16} color="#007AFF" />
+                <Text className="text-[#007AFF] text-[13px] font-semibold">Trải nghiệm khách</Text>
               </Pressable>
             </View>
 
-            <View style={styles.footerRow}>
-              <Text style={styles.footerText}>Chưa có tài khoản?</Text>
+            {/* Footer switcher */}
+            <View className="flex-row justify-center items-center mt-4 gap-1.5">
+              <Text className="text-[#8E8E93] text-sm font-medium">Chưa có tài khoản?</Text>
               <Link href="/(auth)/register" asChild>
-                <Pressable hitSlop={10}>
-                  <Text style={styles.footerLink}>Tạo tài khoản</Text>
+                <Pressable hitSlop={8} className="active:opacity-70">
+                  <Text className="text-[#007AFF] text-sm font-semibold">Tạo tài khoản mới</Text>
                 </Pressable>
               </Link>
             </View>
@@ -241,139 +287,3 @@ export default function LoginScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  screen: { flex: 1, backgroundColor: "#020617" },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(2, 6, 23, 0.35)",
-  },
-  topBar: {
-    position: "absolute",
-    zIndex: 10,
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  brandText: { color: "#fff", fontSize: 20, fontWeight: "800" },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.22)",
-  },
-  backButtonText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  scrollContent: { flexGrow: 1, justifyContent: "flex-end" },
-  card: {
-    marginTop: 150,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 36,
-    borderTopRightRadius: 36,
-    paddingTop: 28,
-    paddingHorizontal: 22,
-  },
-  title: { fontSize: 30, fontWeight: "800", color: "#0F172A" },
-  subtitle: {
-    marginTop: 6,
-    marginBottom: 18,
-    fontSize: 14,
-    lineHeight: 20,
-    color: "#64748B",
-  },
-  fieldWrap: { marginBottom: 14 },
-  fieldLabel: {
-    marginLeft: 4,
-    marginBottom: 6,
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#475569",
-  },
-  fieldBox: {
-    minHeight: 52,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#F8FAFC",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-  },
-  fieldBoxFocused: {
-    borderColor: "#0284C7",
-    backgroundColor: "#fff",
-  },
-  fieldInput: {
-    flex: 1,
-    fontSize: 15,
-    color: "#0F172A",
-    fontWeight: "500",
-    paddingVertical: 12,
-  },
-  errorBox: {
-    marginTop: 4,
-    marginBottom: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#FECACA",
-    backgroundColor: "#FEF2F2",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  errorText: { flex: 1, color: "#B91C1C", fontSize: 12.5, fontWeight: "600" },
-  primaryButton: {
-    marginTop: 6,
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: "#0369A1",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButtonText: { color: "#fff", fontSize: 16, fontWeight: "800" },
-  buttonDisabled: { opacity: 0.7 },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginTop: 18,
-    marginBottom: 14,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: "#E2E8F0" },
-  dividerText: { fontSize: 12, color: "#94A3B8", fontWeight: "700" },
-  socialRow: { flexDirection: "row", gap: 10 },
-  secondaryButton: {
-    flex: 1,
-    height: 50,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#fff",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  secondaryButtonText: { color: "#334155", fontSize: 14, fontWeight: "700" },
-  googleGlyph: { color: "#EA4335", fontSize: 18, fontWeight: "900" },
-  footerRow: {
-    marginTop: 20,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-  },
-  footerText: { color: "#64748B", fontSize: 14, fontWeight: "500" },
-  footerLink: { color: "#0369A1", fontSize: 14, fontWeight: "800" },
-});

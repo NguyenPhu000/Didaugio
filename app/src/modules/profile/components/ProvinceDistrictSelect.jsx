@@ -3,7 +3,7 @@ import { View, Text, Pressable } from "react-native";
 import { locationService } from "../../../apis/locationService";
 import { BottomSheetPicker } from "../../../components/ui/BottomSheetPicker";
 import { TOKENS } from "../../../constants/design-tokens";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 
 export function ProvinceDistrictSelect({
   provinceCode,
@@ -74,14 +74,14 @@ export function ProvinceDistrictSelect({
         className="flex-row items-center min-h-[52px] px-4 border-b border-[#F1F5F9] active:bg-[#F8FAFC]"
         onPress={() => provinceSheetRef.current?.present()}
       >
-        <MaterialIcons name="location-city" size={18} color="#64748B" style={{ marginRight: 10 }} />
+        <MaterialIconsRounded name="location-city" size={18} color="#64748B" style={{ marginRight: 10 }} />
         <Text
           style={{ fontFamily: TOKENS.font.body }}
           className={`text-[14.5px] flex-1 ${provinceCode ? "text-[#1E293B]" : "text-[#94A3B8]"}`}
         >
           {selectedProvinceLabel}
         </Text>
-        <MaterialIcons name="keyboard-arrow-right" size={20} color="#94A3B8" />
+        <MaterialIconsRounded name="keyboard-arrow-right" size={20} color="#94A3B8" />
       </Pressable>
 
       {/* Chọn Quận/Huyện */}
@@ -92,7 +92,7 @@ export function ProvinceDistrictSelect({
           districtSheetRef.current?.present();
         }}
       >
-        <MaterialIcons
+        <MaterialIconsRounded
           name="location-city"
           size={18}
           color={provinceCode ? "#64748B" : "#CBD5E1"}
@@ -106,7 +106,7 @@ export function ProvinceDistrictSelect({
         >
           {provinceCode ? selectedDistrictLabel : "Chọn Quận / Huyện / Phường / Xã"}
         </Text>
-        <MaterialIcons
+        <MaterialIconsRounded
           name="keyboard-arrow-right"
           size={20}
           color={provinceCode ? "#94A3B8" : "#E2E8F0"}

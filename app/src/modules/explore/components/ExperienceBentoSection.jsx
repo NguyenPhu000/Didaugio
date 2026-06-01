@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -81,7 +81,7 @@ function BentoTile({ place, large = false, onPress, index = 0 }) {
         />
       ) : (
         <View className="absolute inset-0 items-center justify-center bg-[#EDEDF2]">
-          <MaterialIcons
+          <MaterialIconsRounded
             name="restaurant"
             size={large ? 34 : 26}
             color="rgba(0,0,0,0.15)"

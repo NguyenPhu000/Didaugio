@@ -1,5 +1,4 @@
 import {
-  Alert,
   View,
   Text,
   ScrollView,
@@ -15,12 +14,13 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAIPlanner } from "../ai/hooks/useAIPlanner";
 import { TOKENS } from "../../constants/design-tokens";
 import { PlacePreviewCard } from "../../components/composed/PlacePreviewCard";
 import { TAB_BAR_HEIGHT } from "../../../app/(tabs)/_layout";
+import CustomAlertModal from "../../components/composed/CustomAlertModal";
 
 const QUICK_SUGGESTIONS = [
   { text: "Gợi ý quán ăn ngon ở Ninh Kiều", icon: "restaurant", color: "#F59E0B" },
@@ -40,6 +40,38 @@ export function AIPlanner() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
+
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: "",
+    message: "",
+    type: "error",
+    confirmText: "Đóng",
+    cancelText: "Hủy",
+    onConfirm: null,
+    onCancel: null,
+    isDestructive: false,
+  });
+
+  const showAlert = useCallback(({ title, message, type = "error", confirmText, cancelText, onConfirm, onCancel, isDestructive = false }) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onConfirm?.();
+      },
+      onCancel: onCancel ? () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onCancel?.();
+      } : null,
+      isDestructive,
+    });
+  }, []);
 
   useEffect(() => {
     const showEvent =
@@ -126,26 +158,24 @@ export function AIPlanner() {
   const handleClearPlannerHistory = useCallback(() => {
     if (!hasPlannerHistory || isLoading) return;
 
-    Alert.alert(
-      "Xóa lịch sử Planner?",
-      "Toàn bộ hội thoại, kế hoạch lịch trình đề xuất và lựa chọn địa điểm sẽ bị xóa trên thiết bị này.",
-      [
-        { text: "Hủy", style: "cancel" },
-        {
-          text: "Xóa",
-          style: "destructive",
-          onPress: () => {
-            reset();
-            setInputText("");
-            setTimeout(
-              () => scrollRef.current?.scrollTo({ y: 0, animated: true }),
-              60,
-            );
-          },
-        },
-      ],
-    );
-  }, [hasPlannerHistory, isLoading, reset]);
+    showAlert({
+      title: "Xóa lịch sử Planner?",
+      message: "Toàn bộ hội thoại, kế hoạch lịch trình đề xuất và lựa chọn địa điểm sẽ bị xóa trên thiết bị này.",
+      type: "confirm",
+      confirmText: "Xóa",
+      cancelText: "Hủy",
+      isDestructive: true,
+      onConfirm: () => {
+        reset();
+        setInputText("");
+        setTimeout(
+          () => scrollRef.current?.scrollTo({ y: 0, animated: true }),
+          60,
+        );
+      },
+      onCancel: () => {},
+    });
+  }, [hasPlannerHistory, isLoading, reset, showAlert]);
 
   return (
     <KeyboardAvoidingView
@@ -160,7 +190,7 @@ export function AIPlanner() {
       >
         <View className="flex-row items-center gap-3">
           <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center border border-blue-100 shadow-inner">
-            <MaterialIcons name="assistant" size={22} color="#3478F6" />
+            <MaterialIconsRounded name="assistant" size={22} color="#3478F6" />
           </View>
           <View>
             <Text
@@ -189,7 +219,7 @@ export function AIPlanner() {
               isLoading ? "opacity-40" : ""
             }`}
           >
-            <MaterialIcons name="delete-sweep" size={22} color="#64748B" />
+            <MaterialIconsRounded name="delete-sweep" size={22} color="#64748B" />
           </Pressable>
         )}
       </View>
@@ -219,7 +249,7 @@ export function AIPlanner() {
               colors={["#EFF6FF", "#DBEAFE"]}
               className="w-16 h-16 rounded-3xl items-center justify-center shadow-inner mb-5 rotate-3"
             >
-              <MaterialIcons name="auto-awesome" size={28} color="#3478F6" />
+              <MaterialIconsRounded name="auto-awesome" size={28} color="#3478F6" />
             </LinearGradient>
             <Text
               style={{ fontFamily: TOKENS.font.heading }}
@@ -245,7 +275,7 @@ export function AIPlanner() {
                     className="w-8 h-8 rounded-xl items-center justify-center"
                     style={{ backgroundColor: item.color + "15" }}
                   >
-                    <MaterialIcons name={item.icon} size={16} color={item.color} />
+                    <MaterialIconsRounded name={item.icon} size={16} color={item.color} />
                   </View>
                   <Text
                     style={{ fontFamily: TOKENS.font.medium }}
@@ -253,7 +283,7 @@ export function AIPlanner() {
                   >
                     {item.text}
                   </Text>
-                  <MaterialIcons name="chevron-right" size={16} color="#CBD5E1" />
+                  <MaterialIconsRounded name="chevron-right" size={16} color="#CBD5E1" />
                 </Pressable>
               ))}
             </View>
@@ -392,7 +422,7 @@ export function AIPlanner() {
                 {isConfirming ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <MaterialIcons
+                  <MaterialIconsRounded
                     name="auto-awesome-motion"
                     size={18}
                     color={
@@ -435,7 +465,7 @@ export function AIPlanner() {
 
         {error ? (
           <View className="flex-row items-center gap-2 self-center mt-2 px-4 py-2.5 rounded-xl bg-red-50 border border-red-150">
-            <MaterialIcons name="error-outline" size={14} color="#EF4444" />
+            <MaterialIconsRounded name="error-outline" size={14} color="#EF4444" />
             <Text
               style={{ fontFamily: TOKENS.font.medium }}
               className="flex-1 text-red-500 text-xs ml-1"
@@ -480,7 +510,7 @@ export function AIPlanner() {
             {isLoading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="arrow-upward"
                 size={18}
                 color={canSend ? "#FFFFFF" : "#CBD5E1"}
@@ -489,6 +519,18 @@ export function AIPlanner() {
           </Pressable>
         </View>
       </View>
+
+      <CustomAlertModal
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        isDestructive={alertConfig.isDestructive}
+      />
     </KeyboardAvoidingView>
   );
 }

@@ -7,7 +7,7 @@ import { QUERY_KEYS } from "../../../constants/query-keys";
 import { TRIP_OFFLINE_GC_MS } from "../../../constants/trip-offline-cache";
 
 const TRIPS_CACHE_KEY = "@trips_cache";
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const CACHE_EXPIRY_MS = TRIP_OFFLINE_GC_MS;
 
 const getCacheKey = (key) => `${CACHE_VERSION}:${key}`;

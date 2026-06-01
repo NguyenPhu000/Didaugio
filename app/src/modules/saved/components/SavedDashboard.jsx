@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -35,7 +35,7 @@ const StatPill = memo(function StatPill({ icon, value, label, tone }) {
   return (
     <View className="w-[48%] flex-row items-center gap-3 py-3.5 px-3.5 rounded-[20px] bg-white shadow-sm elevation-1">
       <View className="w-10 h-10 rounded-[12px] items-center justify-center" style={{ backgroundColor: theme.bg }}>
-        <MaterialIcons name={icon} size={20} color={theme.color} />
+        <MaterialIconsRounded name={icon} size={20} color={theme.color} />
       </View>
       <View className="flex-1">
         <Text className="text-[#1D1D1F] text-[22px] font-bold tracking-[-0.4px]">{value}</Text>
@@ -60,7 +60,7 @@ const FilterChip = memo(function FilterChip({
       }`}
     >
       {icon ? (
-        <MaterialIcons
+        <MaterialIconsRounded
           name={icon}
           size={14}
           color={active ? "#FFFFFF" : APPLE_THEME.textMuted}
@@ -160,7 +160,7 @@ export const SavedDashboard = memo(function SavedDashboard({
           </Text>
         </View>
         <View className="w-11 h-11 rounded-full bg-[#F2F2F7] items-center justify-center">
-          <MaterialIcons name="bookmark" size={20} color="#1D1D1F" />
+          <MaterialIconsRounded name="bookmark" size={20} color="#1D1D1F" />
         </View>
       </View>
 
@@ -197,7 +197,7 @@ export const SavedDashboard = memo(function SavedDashboard({
 
           <View className="absolute top-4 right-4 z-[2]">
             <View className="w-[38px] h-[38px] rounded-full items-center justify-center bg-white/20 border border-white/30">
-              <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" />
+              <MaterialIconsRounded name="arrow-forward" size={18} color="#FFFFFF" />
             </View>
           </View>
 
@@ -215,7 +215,7 @@ export const SavedDashboard = memo(function SavedDashboard({
 
             <View className="flex-row items-center gap-2 mt-1 flex-wrap">
               <View className="flex-row items-center gap-1 max-w-[60%]">
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="place"
                   size={14}
                   color="rgba(255,255,255,0.8)"
@@ -228,7 +228,7 @@ export const SavedDashboard = memo(function SavedDashboard({
                 <>
                   <View className="w-1 h-1 rounded-full bg-white/40" />
                   <View className="flex-row items-center gap-1 max-w-[60%]">
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name="category"
                       size={14}
                       color="rgba(255,255,255,0.8)"
@@ -245,7 +245,7 @@ export const SavedDashboard = memo(function SavedDashboard({
       ) : (
         <View className="flex-row items-center gap-3.5 px-[18px] py-[18px] rounded-[24px] bg-white mb-6 border border-black/[0.05]">
           <View className="w-[52px] h-[52px] rounded-[18px] items-center justify-center bg-[#007AFF]/10">
-            <MaterialIcons name="bookmark-border" size={26} color="#007AFF" />
+            <MaterialIconsRounded name="bookmark-border" size={26} color="#007AFF" />
           </View>
           <View className="flex-1">
             <Text className="text-[#1D1D1F] text-[16px] font-semibold tracking-[-0.3px] mb-0.5">Bắt đầu lưu địa điểm</Text>

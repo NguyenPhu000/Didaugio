@@ -11,7 +11,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../src/modules/auth/hooks/useAuth";
@@ -62,7 +62,7 @@ function SettingRow({
             },
           ]}
         >
-          <MaterialIcons
+          <MaterialIconsRounded
             name={icon}
             size={24}
             color={danger ? TOKENS.color.error : iconColor || ACCENT_BLUE}
@@ -87,7 +87,7 @@ function SettingRow({
         {rightElement ? (
           rightElement
         ) : isInteractive ? (
-          <MaterialIcons name="chevron-right" size={24} color="#64748B" />
+          <MaterialIconsRounded name="chevron-right" size={24} color="#64748B" />
         ) : null}
       </View>
     </Pressable>
@@ -118,7 +118,7 @@ function LogoutConfirmModal({ visible, onCancel, onConfirm }) {
       <Pressable style={styles.modalBackdrop} onPress={onCancel}>
         <View style={styles.modalCard}>
           <View style={styles.modalIconWrap}>
-            <MaterialIcons name="logout" size={28} color={TOKENS.color.error} />
+            <MaterialIconsRounded name="logout" size={28} color={TOKENS.color.error} />
           </View>
           <Text style={styles.modalTitle}>Đăng xuất khỏi tài khoản?</Text>
           <Text style={styles.modalCopy}>
@@ -193,7 +193,7 @@ function CustomToast({ message, visible, onHide }) {
           elevation: 5,
         }}
       >
-        <MaterialIcons name="info-outline" size={20} color="#F59E0B" style={{ marginRight: 6 }} />
+        <MaterialIconsRounded name="info-outline" size={20} color="#F59E0B" style={{ marginRight: 6 }} />
         <Text
           style={{ fontFamily: TOKENS.font.medium }}
           className="text-white text-[13.5px] flex-1 leading-5"
@@ -339,7 +339,7 @@ export default function SettingsScreen() {
       {/* Header hiện đại hơn - giống Profile */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <MaterialIcons name="arrow-back" size={26} color="#0F172A" />
+          <MaterialIconsRounded name="arrow-back" size={26} color="#0F172A" />
         </Pressable>
         <Text style={styles.headerTitle}>CÀI ĐẶT</Text>
         <View style={styles.headerPlaceholder} />
@@ -450,7 +450,7 @@ export default function SettingsScreen() {
               unreadCount > 0 ? (
                 <NotificationBadge count={unreadCount} />
               ) : (
-                <MaterialIcons name="chevron-right" size={24} color="#64748B" />
+                <MaterialIconsRounded name="chevron-right" size={24} color="#64748B" />
               )
             }
           />

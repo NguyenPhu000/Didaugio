@@ -16,7 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useHomeData } from "./hooks/useHomeData";
 import { useMapPlaces } from "./hooks/useMapPlaces";
 import { useBoundaryData } from "./hooks/useBoundaryData";
@@ -561,10 +561,14 @@ export default function MapScreen() {
     const currentIndex = ordered.findIndex((d) => d.id === activeNextDestination.id);
     if (currentIndex > 0) {
       const prevDest = ordered[currentIndex - 1];
-      return mapTransportToMode(prevDest.transportToNext);
+      // Nếu cùng ngày, lấy phương tiện chặng tiếp theo của điểm trước đó
+      if (prevDest.dayNumber === activeNextDestination.dayNumber) {
+        return mapTransportToMode(prevDest.transportToNext);
+      }
     }
 
-    // Nếu là địa điểm đầu tiên (đi từ vị trí hiện tại đến), dùng phương tiện mặc định hoặc phương tiện đi tiếp đầu tiên
+    // Nếu là địa điểm đầu tiên của chuyến đi hoặc điểm đầu tiên của ngày mới,
+    // sử dụng phương tiện đi tiếp của chính điểm đó, hoặc mặc định là xe máy
     return mapTransportToMode(activeNextDestination.transportToNext || "motorcycle");
   }, [activeTripDetail?.destinations, activeNextDestination, mapTransportToMode]);
 
@@ -681,9 +685,10 @@ export default function MapScreen() {
     }
   }, [isActiveTripMode, activeDistanceToTarget, activeNextDestination]);
 
-  // Reset nearbyTriggered khi đổi destination chặng tiếp theo
+  // Reset nearbyTriggered và arrivalHandled khi đổi destination chặng tiếp theo
   useEffect(() => {
     setNearbyTriggered(false);
+    arrivalHandledRef.current = null;
   }, [activeNextDestination?.id]);
 
   // Hysteresis logic cho nearby warning banner (khoảng cách <= 150m)
@@ -1086,13 +1091,12 @@ export default function MapScreen() {
   }, [params, mapPlaces, router]);
 
   const showFerryWarning = useMemo(() => {
-    if (isActiveTripMode) return activeTripAvoidFerry && Boolean(activeRouteSource === "fallback" && activeRouteFerryAvoidanceFailed);
+    if (isActiveTripMode) return activeTripAvoidFerry && Boolean(activeRouteFerryAvoidanceFailed);
     if (routeBuilderMode) return Boolean(routeBuilderEnabled && routeBuilder?.ferryAvoidanceFailed);
     return false;
   }, [
     activeTripAvoidFerry,
     isActiveTripMode,
-    activeRouteSource,
     activeRouteFerryAvoidanceFailed,
     routeBuilderMode,
     routeBuilderEnabled,
@@ -1144,7 +1148,7 @@ export default function MapScreen() {
             className="flex-1 items-center justify-center gap-3"
             style={{ backgroundColor: MAP_UI_THEME.background }}
           >
-            <MaterialIcons name="wifi-off" size={40} color="#FB7185" />
+            <MaterialIconsRounded name="wifi-off" size={40} color="#FB7185" />
             <Text className="text-[14px]" style={{ color: MAP_UI_THEME.text }}>
               {MAP_TEXT.errors.mapData}
             </Text>
@@ -1153,7 +1157,7 @@ export default function MapScreen() {
               className="flex-row items-center gap-2 px-5 py-2.5 rounded-xl"
               style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
             >
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="refresh"
                 size={18}
                 color={MAP_UI_THEME.text}
@@ -1316,7 +1320,7 @@ export default function MapScreen() {
             }}
           >
             <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <MaterialIcons name="pause-circle-filled" size={24} color="#FFD60A" />
+              <MaterialIconsRounded name="pause-circle-filled" size={24} color="#FFD60A" />
               <View style={{ flex: 1, gap: 1 }}>
                 <Text style={{ color: "#FFFFFF", fontSize: 14, fontFamily: TOKENS.font.semibold }}>
                   Hành trình đang tạm nghỉ
@@ -1438,7 +1442,7 @@ export default function MapScreen() {
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-              <MaterialIcons name="directions-boat" size={16} color="#B45309" />
+              <MaterialIconsRounded name="directions-boat" size={16} color="#B45309" />
               <Text
                 style={{
                   flex: 1,
@@ -1493,7 +1497,7 @@ export default function MapScreen() {
                     flexShrink: 0,
                   }}
                 >
-                  <MaterialIcons
+                  <MaterialIconsRounded
                     name="search"
                     size={20}
                     color={
@@ -1534,7 +1538,7 @@ export default function MapScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <MaterialIcons
+                        <MaterialIconsRounded
                           name="close"
                           size={18}
                           color={TOKENS.color.neutral[400]}
@@ -1595,7 +1599,7 @@ export default function MapScreen() {
                   overflow: "hidden",
                 }}
               >
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="person"
                   size={22}
                   color={TOKENS.color.neutral[600]}
@@ -1664,7 +1668,7 @@ export default function MapScreen() {
                       mapStyle.key === "osm" ? "#1D1D1F" : "transparent",
                   }}
                 >
-                  <MaterialIcons
+                  <MaterialIconsRounded
                     name="map"
                     size={18}
                     color={
@@ -1690,7 +1694,7 @@ export default function MapScreen() {
                       mapStyle.key === "hybrid" ? "#1D1D1F" : "transparent",
                   }}
                 >
-                  <MaterialIcons
+                  <MaterialIconsRounded
                     name="satellite"
                     size={18}
                     color={
@@ -1714,7 +1718,7 @@ export default function MapScreen() {
                   }}
                   intensity={52}
                 >
-                  <MaterialIcons
+                  <MaterialIconsRounded
                     name="my-location"
                     size={19}
                     color={MAP_UI_THEME.neon}
@@ -1740,7 +1744,7 @@ export default function MapScreen() {
                   }}
                   intensity={52}
                 >
-                  <MaterialIcons
+                  <MaterialIconsRounded
                     name={layerModalVisible ? "close" : "layers"}
                     size={19}
                     color={MAP_UI_THEME.text}

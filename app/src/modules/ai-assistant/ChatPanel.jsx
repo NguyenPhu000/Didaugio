@@ -1,5 +1,4 @@
 import {
-  Alert,
   View,
   Text,
   TextInput,
@@ -8,12 +7,11 @@ import {
   Keyboard,
   Platform,
   ActivityIndicator,
-  StyleSheet,
   KeyboardAvoidingView,
 } from "react-native";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { AIBubble } from "../../components/ui/AIBubble";
 import { useAIAssistant } from "./hooks/useAIAssistant";
 import { useAIContextStore } from "../../stores/aiContextStore";
@@ -21,6 +19,7 @@ import { TOKENS } from "../../constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "../../../app/(tabs)/_layout";
 import { useMyTrips } from "../ai/hooks/useAIPlanner";
 import { addDestinationApi } from "../trips/api/tripsApi";
+import CustomAlertModal from "../../components/composed/CustomAlertModal";
 
 const QUICK_SUGGESTIONS = [
   { text: "Giới thiệu Bến Ninh Kiều", icon: "place" },
@@ -39,6 +38,30 @@ export function ChatPanel() {
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const insets = useSafeAreaInsets();
+
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: "",
+    message: "",
+    type: "info",
+    buttons: null,
+  });
+
+  const showAlert = useCallback(({ title, message, type = "info", buttons }) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type,
+      buttons: buttons?.map((btn) => ({
+        ...btn,
+        onPress: () => {
+          setAlertConfig((prev) => ({ ...prev, visible: false }));
+          btn.onPress?.();
+        },
+      })),
+    });
+  }, []);
 
   useEffect(() => {
     const showEvent =
@@ -77,11 +100,12 @@ export function ChatPanel() {
       const activeTrips = myTrips || [];
 
       if (activeTrips.length === 0) {
-        Alert.alert(
-          "Chưa có chuyến đi",
-          "Bạn cần tạo một chuyến đi trước để thêm địa điểm này vào lịch trình.",
-          [{ text: "Đóng", style: "cancel" }]
-        );
+        showAlert({
+          title: "Chưa có chuyến đi",
+          message: "Bạn cần tạo một chuyến đi trước để thêm địa điểm này vào lịch trình.",
+          type: "warning",
+          buttons: [{ text: "Đóng", style: "cancel" }],
+        });
         return;
       }
 
@@ -89,9 +113,17 @@ export function ChatPanel() {
         const trip = activeTrips[0];
         try {
           await addDestinationApi(trip.id, { placeId, dayNumber: 1 });
-          Alert.alert("Thành công", `Đã thêm ${place.name} vào chuyến đi "${trip.title}"`);
+          showAlert({
+            title: "Thành công",
+            message: `Đã thêm ${place.name} vào chuyến đi "${trip.title}"`,
+            type: "success",
+          });
         } catch (err) {
-          Alert.alert("Thất bại", err.message || "Không thể thêm vào chuyến đi");
+          showAlert({
+            title: "Thất bại",
+            message: err.message || "Không thể thêm vào chuyến đi",
+            type: "error",
+          });
         }
         return;
       }
@@ -101,23 +133,32 @@ export function ChatPanel() {
         onPress: async () => {
           try {
             await addDestinationApi(trip.id, { placeId, dayNumber: 1 });
-            Alert.alert("Thành công", `Đã thêm ${place.name} vào chuyến đi "${trip.title}"`);
+            showAlert({
+              title: "Thành công",
+              message: `Đã thêm ${place.name} vào chuyến đi "${trip.title}"`,
+              type: "success",
+            });
           } catch (err) {
-            Alert.alert("Thất bại", err.message || "Không thể thêm vào chuyến đi");
+            showAlert({
+              title: "Thất bại",
+              message: err.message || "Không thể thêm vào chuyến đi",
+              type: "error",
+            });
           }
         },
       }));
 
-      Alert.alert(
-        "Chọn chuyến đi",
-        `Bạn muốn thêm "${place.name}" vào chuyến đi nào?`,
-        [
+      showAlert({
+        title: "Chọn chuyến đi",
+        message: `Bạn muốn thêm "${place.name}" vào chuyến đi nào?`,
+        type: "confirm",
+        buttons: [
           ...buttons,
           { text: "Hủy", style: "cancel" },
-        ]
-      );
+        ],
+      });
     },
-    [myTrips, refetchTrips]
+    [myTrips, refetchTrips, showAlert]
   );
 
   const handleSend = useCallback(
@@ -127,7 +168,7 @@ export function ChatPanel() {
       setInputText("");
       setError(null);
       setIsSending(true);
-
+ 
       try {
         await sendChatMessage(message);
       } catch (err) {
@@ -149,10 +190,11 @@ export function ChatPanel() {
   const handleClearConversation = useCallback(() => {
     if (!hasMessages || isSending) return;
 
-    Alert.alert(
-      "Xóa lịch sử chat?",
-      "Toàn bộ hội thoại với em Nhi sẽ bị xóa trên thiết bị này.",
-      [
+    showAlert({
+      title: "Xóa lịch sử chat?",
+      message: "Toàn bộ hội thoại với em Nhi sẽ bị xóa trên thiết bị này.",
+      type: "confirm",
+      buttons: [
         { text: "Hủy", style: "cancel" },
         {
           text: "Xóa",
@@ -163,23 +205,25 @@ export function ChatPanel() {
           },
         },
       ],
-    );
-  }, [clearConversation, hasMessages, isSending]);
+    });
+  }, [clearConversation, hasMessages, isSending, showAlert]);
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      className="flex-1"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       {/* ── Messages area ── */}
       <ScrollView
         ref={scrollRef}
-        style={styles.scrollArea}
-        contentContainerStyle={[
-          styles.scrollContent,
-          !hasMessages && styles.scrollContentEmpty,
-        ]}
+        className="flex-1"
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 8,
+          paddingBottom: 12,
+          ...(!hasMessages ? { flexGrow: 1, justifyContent: "center" } : {}),
+        }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
@@ -188,28 +232,26 @@ export function ChatPanel() {
         }
       >
         {hasMessages ? (
-          <View style={styles.historyActionRow}>
+          <View className="items-end mb-2">
             <Pressable
               onPress={handleClearConversation}
               disabled={isSending}
-              style={({ pressed }) => [
-                styles.historyClearBtn,
-                isSending && styles.historyClearBtnDisabled,
-                pressed && !isSending && styles.historyClearBtnPressed,
-              ]}
+              className={`h-[30px] rounded-full border px-3 flex-row items-center gap-[5px] ${
+                isSending
+                  ? "border-slate-300 bg-slate-100"
+                  : "border-red-500/45 bg-red-500/10"
+              }`}
+              style={({ pressed }) => pressed && !isSending ? { opacity: 0.94 } : undefined}
             >
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="delete-outline"
                 size={14}
-                color={
-                  isSending ? TOKENS.color.neutral[400] : TOKENS.color.error
-                }
+                color={isSending ? TOKENS.color.neutral[400] : TOKENS.color.error}
               />
               <Text
-                style={[
-                  styles.historyClearText,
-                  isSending && styles.historyClearTextDisabled,
-                ]}
+                className={`text-[11px] font-semibold tracking-[0.2px] ${
+                  isSending ? "text-slate-400" : "text-red-500"
+                }`}
               >
                 Xóa lịch sử
               </Text>
@@ -219,35 +261,53 @@ export function ChatPanel() {
 
         {!hasMessages ? (
           /* ── Empty state — ChatGPT style ── */
-          <View style={styles.emptyState}>
-            <View style={styles.avatarCircle}>
-              <MaterialIcons name="smart-toy" size={36} color={ACCENT} />
+          <View className="items-center px-6 pb-8">
+            <View
+              className="w-[76px] h-[76px] rounded-[38px] bg-white/85 items-center justify-center border-[1.5px] border-blue-500/15 mb-[18px]"
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 6,
+                elevation: 2,
+              }}
+            >
+              <MaterialIconsRounded name="smart-toy" size={36} color={ACCENT} />
             </View>
-            <Text style={styles.emptyTitle}>Chào, mình là em Nhi</Text>
-            <Text style={styles.emptySubtitle}>
+            <Text className="text-6xl leading-[30px] font-heading text-slate-900 text-center mb-2">
+              Chào, mình là em Nhi
+            </Text>
+            <Text className="text-sm leading-[21px] font-body text-slate-600 text-center max-w-[290px] mb-6">
               Mình có thể giúp bạn tìm địa điểm, gợi ý quán ăn, hoặc lên lịch
               trình du lịch Cần Thơ.
             </Text>
 
-            <View style={styles.suggestionsGrid}>
+            <View className="w-full gap-2">
               {QUICK_SUGGESTIONS.map((item) => (
                 <Pressable
                   key={item.text}
                   onPress={() => handleSend(item.text)}
+                  className="flex-row items-center gap-2.5 px-4 py-3 rounded-xl bg-white/75 border border-slate-200/80"
                   style={({ pressed }) => [
-                    styles.suggestionChip,
-                    pressed && styles.suggestionChipPressed,
+                    pressed && { backgroundColor: "rgba(59,130,246,0.06)", borderColor: "rgba(59,130,246,0.25)" },
+                    {
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.02,
+                      shadowRadius: 2,
+                      elevation: 1,
+                    },
                   ]}
                 >
-                  <MaterialIcons name={item.icon} size={16} color={ACCENT} />
-                  <Text style={styles.suggestionText}>{item.text}</Text>
+                  <MaterialIconsRounded name={item.icon} size={16} color={ACCENT} />
+                  <Text className="flex-1 text-[13px] font-medium text-slate-700">{item.text}</Text>
                 </Pressable>
               ))}
             </View>
           </View>
         ) : (
           /* ── Conversation ── */
-          <View style={styles.messagesWrap}>
+          <View className="gap-1">
             {conversationMemory.map((msg, i) => (
               <AIBubble
                 key={msg.id || `${msg.role || "assistant"}-${i}`}
@@ -263,19 +323,11 @@ export function ChatPanel() {
         {isSending ? <AIBubble role="assistant" isTyping /> : null}
 
         {error ? (
-          <View style={styles.errorBar}>
-            <MaterialIcons
-              name="error-outline"
-              size={14}
-              color={TOKENS.color.error}
-            />
-            <Text style={styles.errorText}>{error}</Text>
+          <View className="flex-row items-center gap-2 self-center mt-2 px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/25">
+            <MaterialIconsRounded name="error-outline" size={14} color={TOKENS.color.error} />
+            <Text className="flex-1 text-[13px] font-medium text-red-500">{error}</Text>
             <Pressable onPress={() => setError(null)}>
-              <MaterialIcons
-                name="close"
-                size={14}
-                color={TOKENS.color.error}
-              />
+              <MaterialIconsRounded name="close" size={14} color={TOKENS.color.error} />
             </Pressable>
           </View>
         ) : null}
@@ -283,16 +335,23 @@ export function ChatPanel() {
 
       {/* ── Input bar ── */}
       <View
-        style={[
-          styles.composerOuter,
-          {
-            paddingBottom: keyboardVisible
-              ? 8
-              : Math.max(insets.bottom, 8) + TAB_BAR_HEIGHT,
-          },
-        ]}
+        className="px-3 pt-2"
+        style={{
+          paddingBottom: keyboardVisible
+            ? 8
+            : Math.max(insets.bottom, 8) + TAB_BAR_HEIGHT,
+        }}
       >
-        <View style={styles.composerCard}>
+        <View
+          className="flex-row items-end gap-2 px-1.5 py-1.5 rounded-6xl bg-white/96 border border-slate-200/80"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.04,
+            shadowRadius: 6,
+            elevation: 2,
+          }}
+        >
           <TextInput
             ref={inputRef}
             placeholder="Hỏi em Nhi điều gì đó..."
@@ -301,21 +360,35 @@ export function ChatPanel() {
             onChangeText={setInputText}
             multiline
             maxLength={500}
-            style={styles.input}
+            className="flex-1 min-h-[40px] max-h-[100px] px-4 text-sm leading-5 font-body text-slate-900"
+            style={{
+              paddingTop: Platform.OS === "ios" ? 10 : 8,
+              paddingBottom: Platform.OS === "ios" ? 10 : 8,
+            }}
             textAlignVertical="center"
           />
           <Pressable
             onPress={() => handleSend()}
             disabled={!canSend}
-            style={[
-              styles.sendBtn,
-              canSend ? styles.sendBtnActive : styles.sendBtnIdle,
-            ]}
+            className={`w-[38px] h-[38px] rounded-[19px] items-center justify-center ${
+              canSend ? "bg-blue-500" : "bg-slate-200"
+            }`}
+            style={
+              canSend
+                ? {
+                    shadowColor: ACCENT,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 4,
+                    elevation: 2,
+                  }
+                : undefined
+            }
           >
             {isSending ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="arrow-upward"
                 size={20}
                 color={canSend ? "#FFFFFF" : TOKENS.color.neutral[400]}
@@ -324,201 +397,19 @@ export function ChatPanel() {
           </Pressable>
         </View>
       </View>
+
+      <CustomAlertModal
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        buttons={alertConfig.buttons}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+        isDestructive={alertConfig.isDestructive}
+      />
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  /* ── Scroll ── */
-  scrollArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  scrollContentEmpty: {
-    flexGrow: 1,
-    justifyContent: "center",
-  },
-  /* ── Empty state ── */
-  emptyState: {
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-  },
-  avatarCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: "rgba(255,255,255,0.85)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(59, 130, 246, 0.15)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-    marginBottom: 18,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    lineHeight: 30,
-    fontFamily: TOKENS.font.heading,
-    color: TOKENS.color.neutral[900],
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    lineHeight: 21,
-    fontFamily: TOKENS.font.body,
-    color: TOKENS.color.neutral[600],
-    textAlign: "center",
-    maxWidth: 290,
-    marginBottom: 24,
-  },
-  suggestionsGrid: {
-    width: "100%",
-    gap: 8,
-  },
-  suggestionChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.75)",
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.8)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  suggestionChipPressed: {
-    backgroundColor: "rgba(59,130,246,0.06)",
-    borderColor: "rgba(59,130,246,0.25)",
-  },
-  suggestionText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-    color: TOKENS.color.neutral[700],
-  },
-  /* ── Messages ── */
-  messagesWrap: {
-    gap: 4,
-  },
-  historyActionRow: {
-    alignItems: "flex-end",
-    marginBottom: 8,
-  },
-  historyClearBtn: {
-    height: 30,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: TOKENS.color.error + "45",
-    backgroundColor: TOKENS.color.error + "10",
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  historyClearBtnDisabled: {
-    borderColor: TOKENS.color.neutral[300],
-    backgroundColor: TOKENS.color.neutral[100],
-  },
-  historyClearBtnPressed: {
-    opacity: 0.94,
-  },
-  historyClearText: {
-    color: TOKENS.color.error,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.2,
-  },
-  historyClearTextDisabled: {
-    color: TOKENS.color.neutral[400],
-  },
-  /* ── Error ── */
-  errorBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    alignSelf: "center",
-    marginTop: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: TOKENS.color.error + "10",
-    borderWidth: 1,
-    borderColor: TOKENS.color.error + "25",
-  },
-  errorText: {
-    flex: 1,
-    color: TOKENS.color.error,
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-  },
-  /* ── Composer ── */
-  composerOuter: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    backgroundColor: "transparent",
-  },
-  composerCard: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-    borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.8)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  input: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === "ios" ? 10 : 8,
-    paddingBottom: Platform.OS === "ios" ? 10 : 8,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: TOKENS.font.body,
-    color: TOKENS.color.neutral[900],
-  },
-  sendBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sendBtnActive: {
-    backgroundColor: ACCENT,
-    shadowColor: ACCENT,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sendBtnIdle: {
-    backgroundColor: TOKENS.color.neutral[200],
-  },
-});

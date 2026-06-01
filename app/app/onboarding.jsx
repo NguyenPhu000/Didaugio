@@ -2,7 +2,7 @@ import { View, Text, Pressable, ScrollView } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   TRAVEL_STYLES,
   GROUP_TYPES,
@@ -108,7 +108,7 @@ export default function OnboardingScreen() {
                         : "transparent",
                     }}
                   >
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name={style.icon}
                       size={18}
                       color={
@@ -162,7 +162,7 @@ export default function OnboardingScreen() {
                         : "transparent",
                     }}
                   >
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name={group.icon}
                       size={24}
                       color={
@@ -183,7 +183,7 @@ export default function OnboardingScreen() {
                     </Text>
                     {isSelected && (
                       <View className="ml-auto">
-                        <MaterialIcons
+                        <MaterialIconsRounded
                           name="check-circle"
                           size={20}
                           color={TOKENS.color.primary[500]}
@@ -239,7 +239,7 @@ export default function OnboardingScreen() {
                         {level.label}
                       </Text>
                       {isSelected && (
-                        <MaterialIcons
+                        <MaterialIconsRounded
                           name="check-circle"
                           size={20}
                           color={TOKENS.color.primary[500]}

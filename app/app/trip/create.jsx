@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -50,7 +50,7 @@ function Section({ icon, label, delay = 0, children }) {
       style={styles.section}
     >
       <View style={styles.sectionHeader}>
-        <MaterialIcons name={icon} size={16} color={T.muted48} />
+        <MaterialIconsRounded name={icon} size={16} color={T.muted48} />
         <Text style={styles.sectionLabel}>{label}</Text>
       </View>
       {children}
@@ -63,7 +63,7 @@ function DurationBadge({ days }) {
   if (!days) return null;
   return (
     <Animated.View entering={FadeIn.duration(300)} style={styles.durationBadge}>
-      <MaterialIcons name="schedule" size={14} color={T.ink} />
+      <MaterialIconsRounded name="schedule" size={14} color={T.ink} />
       <Text style={styles.durationText}>{days}</Text>
     </Animated.View>
   );
@@ -282,7 +282,7 @@ export default function CreateTripScreen() {
           hitSlop={12}
           style={styles.backBtn}
         >
-          <MaterialIcons name="close" size={20} color={T.ink} />
+          <MaterialIconsRounded name="close" size={20} color={T.ink} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Chuyến đi mới</Text>
         <View style={{ width: 40 }} />
@@ -303,7 +303,7 @@ export default function CreateTripScreen() {
         <Section icon="description" label="Thông tin chuyến đi" delay={100}>
           <View style={styles.card}>
             <View style={styles.inputRow}>
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="flag"
                 size={20}
                 color={title ? T.ink : T.muted48}
@@ -320,7 +320,7 @@ export default function CreateTripScreen() {
             </View>
             <View style={styles.divider} />
             <View style={[styles.inputRow, styles.inputRowMulti]}>
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="edit"
                 size={20}
                 color={description ? T.ink : T.muted48}
@@ -361,7 +361,7 @@ export default function CreateTripScreen() {
 
             {startDate && endDate && endDate < startDate ? (
               <View style={styles.warningRow}>
-                <MaterialIcons name="error-outline" size={16} color={T.danger} />
+                <MaterialIconsRounded name="error-outline" size={16} color={T.danger} />
                 <Text style={styles.warningText}>
                   Ngày kết thúc phải sau ngày bắt đầu
                 </Text>
@@ -389,7 +389,7 @@ export default function CreateTripScreen() {
             entering={FadeIn.duration(300)}
             style={styles.errorCard}
           >
-            <MaterialIcons name="error-outline" size={18} color={T.danger} />
+            <MaterialIconsRounded name="error-outline" size={18} color={T.danger} />
             <Text style={styles.errorText}>
               {destinationError ||
                 createMutation.error?.message ||
@@ -417,7 +417,7 @@ export default function CreateTripScreen() {
               <ActivityIndicator size="small" color="#FFF" />
             ) : (
               <View style={styles.createBtnContent}>
-                <MaterialIcons name="add-circle-outline" size={20} color="#FFF" />
+                <MaterialIconsRounded name="add-circle-outline" size={20} color="#FFF" />
                 <Text
                   style={[
                     styles.createBtnText,

@@ -4,11 +4,10 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -17,6 +16,7 @@ import {
 } from "../../src/constants/design-tokens";
 import { useMyBookings } from "../../src/modules/booking/hooks/useBooking";
 import { NotificationBell } from "../../src/components/composed/NotificationBell";
+
 
 const STATUS_META = {
   pending: {
@@ -90,34 +90,34 @@ export default function MyBookingsScreen() {
   }, [bookings]);
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.iconBtn}>
-          <MaterialIcons name="arrow-back" size={22} color={THEME.text} />
+    <View className="flex-1 bg-[#F5F5F7]" style={{ paddingTop: insets.top }}>
+      <View className="flex-row items-center gap-[10px] px-4 py-[14px] border-b border-b-[#D2D2D7]">
+        <Pressable onPress={() => router.back()} className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]">
+          <MaterialIconsRounded name="arrow-back" size={22} color={THEME.text} />
         </Pressable>
 
-        <View style={styles.headerBody}>
-          <Text style={styles.title}>Booking của tôi</Text>
-          <Text style={styles.subtitle}>
+        <View className="flex-1">
+          <Text className="text-[19px] text-[#1D1D1F] font-semibold">Booking của tôi</Text>
+          <Text className="mt-0.5 text-[12px] text-[rgba(0,0,0,0.8)] font-sans">
             Theo dõi xác nhận, QR và liên kết trip
           </Text>
         </View>
 
-        <View style={styles.headerRight}>
+        <View className="flex-row items-center gap-2">
           <NotificationBell size={40} />
-          <Pressable onPress={refetch} style={styles.iconBtn}>
-            <MaterialIcons name="refresh" size={20} color={THEME.textSecondary} />
+          <Pressable onPress={refetch} className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]">
+            <MaterialIconsRounded name="refresh" size={20} color={THEME.textSecondary} />
           </Pressable>
         </View>
       </View>
 
       {isLoading ? (
-        <View style={styles.centerWrap}>
+        <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={THEME.primary} />
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 26, gap: 12 }}
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
@@ -128,38 +128,38 @@ export default function MyBookingsScreen() {
             />
           }
         >
-          <View style={styles.statsRow}>
-            <View style={styles.statsCard}>
-              <Text style={styles.statsLabel}>Tổng</Text>
-              <Text style={styles.statsValue}>{stats.total}</Text>
+          <View className="flex-row gap-2">
+            <View className="flex-1 rounded-[14px] border border-[#D2D2D7] bg-white px-[10px] py-[10px] gap-1">
+              <Text className="text-[rgba(0,0,0,0.48)] text-[11px] font-medium">Tổng</Text>
+              <Text className="text-[#1D1D1F] text-[17px] font-semibold">{stats.total}</Text>
             </View>
-            <View style={styles.statsCard}>
-              <Text style={styles.statsLabel}>Đã xác nhận</Text>
-              <Text style={styles.statsValue}>{stats.confirmed}</Text>
+            <View className="flex-1 rounded-[14px] border border-[#D2D2D7] bg-white px-[10px] py-[10px] gap-1">
+              <Text className="text-[rgba(0,0,0,0.48)] text-[11px] font-medium">Đã xác nhận</Text>
+              <Text className="text-[#1D1D1F] text-[17px] font-semibold">{stats.confirmed}</Text>
             </View>
-            <View style={styles.statsCard}>
-              <Text style={styles.statsLabel}>Đang chờ</Text>
-              <Text style={styles.statsValue}>{stats.pending}</Text>
+            <View className="flex-1 rounded-[14px] border border-[#D2D2D7] bg-white px-[10px] py-[10px] gap-1">
+              <Text className="text-[rgba(0,0,0,0.48)] text-[11px] font-medium">Đang chờ</Text>
+              <Text className="text-[#1D1D1F] text-[17px] font-semibold">{stats.pending}</Text>
             </View>
           </View>
 
           {bookings.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <MaterialIcons
+            <View className="mt-9 bg-white rounded-[20px] border border-[#D2D2D7] p-5 items-center">
+              <MaterialIconsRounded
                 name="confirmation-number"
                 size={30}
                 color={THEME.textMuted}
               />
-              <Text style={styles.emptyTitle}>Bạn chưa có booking nào</Text>
-              <Text style={styles.emptySubtitle}>
+              <Text className="mt-2 text-[17px] text-[#1D1D1F] font-semibold">Bạn chưa có booking nào</Text>
+              <Text className="mt-[6px] text-[13px] leading-5 text-[rgba(0,0,0,0.8)] text-center font-sans">
                 Sau khi đặt dịch vụ, booking sẽ xuất hiện tại đây để theo dõi
                 trạng thái và lấy QR.
               </Text>
               <Pressable
                 onPress={() => router.push("/(tabs)/map")}
-                style={styles.primaryBtn}
+                className="mt-4 bg-[#1D1D1F] rounded-full px-5 py-[11px]"
               >
-                <Text style={styles.primaryBtnText}>Khám phá địa điểm</Text>
+                <Text className="text-white text-[14px] font-semibold">Khám phá địa điểm</Text>
               </Pressable>
             </View>
           ) : (
@@ -173,84 +173,85 @@ export default function MyBookingsScreen() {
               return (
                 <Pressable
                   key={booking.id}
+                  className="bg-white rounded-[20px] border border-[#D2D2D7] p-[15px] gap-[6px]"
                   style={({ pressed }) => [
-                    styles.card,
-                    pressed && styles.cardPressed,
+                    pressed && { opacity: 0.92, backgroundColor: "#FAFAFC" },
                   ]}
                   onPress={() => router.push(`/profile/booking/${booking.id}`)}
                 >
-                  <View style={styles.cardTop}>
-                    <Text style={styles.bookingCode}>
+                  <View className="flex-row items-center justify-between gap-2">
+                    <Text className="text-[rgba(0,0,0,0.48)] text-[12px] font-medium">
                       {booking.bookingCode}
                     </Text>
                     <View
-                      style={[styles.badge, { backgroundColor: status.bg }]}
+                      className="rounded-full px-[10px] py-1 border border-[rgba(0,0,0,0.08)]"
+                      style={{ backgroundColor: status.bg }}
                     >
-                      <Text style={[styles.badgeText, { color: status.color }]}>
+                      <Text className="text-[11px] font-semibold" style={{ color: status.color }}>
                         {status.label}
                       </Text>
                     </View>
                   </View>
 
-                  <Text style={styles.serviceName}>
+                  <Text className="mt-0.5 text-[16px] text-[#1D1D1F] font-semibold">
                     {booking?.service?.name || "Dịch vụ"}
                   </Text>
-                  <Text style={styles.placeName}>
+                  <Text className="text-[13px] text-[rgba(0,0,0,0.8)] font-medium">
                     {booking?.service?.place?.name || "Địa điểm"}
                   </Text>
 
-                  <View style={styles.metaRow}>
-                    <View style={styles.metaItem}>
-                      <MaterialIcons
+                  <View className="mt-[6px] flex-row flex-wrap gap-[10px]">
+                    <View className="flex-row items-center gap-1">
+                      <MaterialIconsRounded
                         name="event"
                         size={14}
                         color={THEME.textMuted}
                       />
-                      <Text style={styles.metaText}>
+                      <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-sans">
                         {formatDate(booking?.useDate)}
                       </Text>
                     </View>
-                    <View style={styles.metaItem}>
-                      <MaterialIcons
+                    <View className="flex-row items-center gap-1">
+                      <MaterialIconsRounded
                         name="schedule"
                         size={14}
                         color={THEME.textMuted}
                       />
-                      <Text style={styles.metaText}>
+                      <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-sans">
                         {booking?.useTime || "--:--"}
                       </Text>
                     </View>
-                    <View style={styles.metaItem}>
-                      <MaterialIcons
+                    <View className="flex-row items-center gap-1">
+                      <MaterialIconsRounded
                         name="payments"
                         size={14}
                         color={THEME.textMuted}
                       />
-                      <Text style={styles.metaText}>
+                      <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-sans">
                         {formatCurrency(booking?.finalPrice)}
                       </Text>
                     </View>
                   </View>
 
                   {booking?.status === "confirmed" ? (
-                    <Text style={styles.qrReadyText}>
+                    <Text className="mt-[6px] text-[12px] text-[#34C759] font-medium">
                       QR đã sẵn sàng, chạm để xem
                     </Text>
                   ) : null}
 
                   {booking?.linkedTrip?.id ? (
-                    <Text style={styles.tripLinkedText}>
+                    <Text className="mt-1 text-[12px] text-[#0071E3] font-medium">
                       Đã liên kết trip:{" "}
                       {booking.linkedTrip.title || `#${booking.linkedTrip.id}`}{" "}
                       (ngày {booking.linkedTrip.dayNumber || 1})
                     </Text>
                   ) : null}
 
-                  <View style={styles.cardFooter}>
-                    <Text style={styles.cardActionText}>
+                  <View className="mt-2 pt-[10px] border-t border-t-[#D2D2D7] flex-row items-center justify-between">
+                    <Text className="text-[rgba(0,0,0,0.8)] text-[12px] font-medium">
                       Xem chi tiết booking
                     </Text>
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name="arrow-forward-ios"
                       size={14}
                       color={THEME.textSecondary}
@@ -265,205 +266,3 @@ export default function MyBookingsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: THEME.background,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.border,
-  },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: THEME.surface,
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  headerBody: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 19,
-    color: THEME.text,
-    fontFamily: TOKENS.font.semibold,
-  },
-  subtitle: {
-    marginTop: 2,
-    fontSize: 12,
-    color: THEME.textSecondary,
-    fontFamily: TOKENS.font.regular,
-  },
-  centerWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 26,
-    gap: 12,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  statsCard: {
-    flex: 1,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    backgroundColor: THEME.surface,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    gap: 4,
-  },
-  statsLabel: {
-    color: THEME.textMuted,
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-  },
-  statsValue: {
-    color: THEME.text,
-    fontSize: 17,
-    fontFamily: TOKENS.font.semibold,
-  },
-  emptyCard: {
-    marginTop: 36,
-    backgroundColor: THEME.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    padding: 20,
-    alignItems: "center",
-  },
-  emptyTitle: {
-    marginTop: 8,
-    fontSize: 17,
-    color: THEME.text,
-    fontFamily: TOKENS.font.semibold,
-  },
-  emptySubtitle: {
-    marginTop: 6,
-    fontSize: 13,
-    lineHeight: 20,
-    color: THEME.textSecondary,
-    textAlign: "center",
-    fontFamily: TOKENS.font.regular,
-  },
-  primaryBtn: {
-    marginTop: 16,
-    backgroundColor: THEME.primary,
-    borderRadius: 999,
-    paddingHorizontal: 20,
-    paddingVertical: 11,
-  },
-  primaryBtnText: {
-    color: THEME.white,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  card: {
-    backgroundColor: THEME.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    padding: 15,
-    gap: 6,
-  },
-  cardPressed: {
-    opacity: 0.92,
-    backgroundColor: THEME.surfaceElevated,
-  },
-  cardTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  bookingCode: {
-    color: THEME.textMuted,
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-  },
-  badge: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: THEME.borderSoft,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  serviceName: {
-    marginTop: 2,
-    fontSize: 16,
-    color: THEME.text,
-    fontFamily: TOKENS.font.semibold,
-  },
-  placeName: {
-    fontSize: 13,
-    color: THEME.textSecondary,
-    fontFamily: TOKENS.font.medium,
-  },
-  metaRow: {
-    marginTop: 6,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 12,
-    color: THEME.textMuted,
-    fontFamily: TOKENS.font.regular,
-  },
-  qrReadyText: {
-    marginTop: 6,
-    fontSize: 12,
-    color: THEME.success,
-    fontFamily: TOKENS.font.medium,
-  },
-  tripLinkedText: {
-    marginTop: 4,
-    fontSize: 12,
-    color: THEME.focusBlue,
-    fontFamily: TOKENS.font.medium,
-  },
-  cardFooter: {
-    marginTop: 8,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: THEME.border,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  cardActionText: {
-    color: THEME.textSecondary,
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-  },
-});

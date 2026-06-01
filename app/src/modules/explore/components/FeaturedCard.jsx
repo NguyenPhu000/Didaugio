@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -38,8 +38,6 @@ const SPRING_CONFIG = TOKENS.spring.press;
 
 function FeaturedCardInner({ place, onPress, index = 0 }) {
   const scale = useSharedValue(1);
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(30);
   const imageUri = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place);
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
@@ -48,16 +46,8 @@ function FeaturedCardInner({ place, onPress, index = 0 }) {
   const priceLine = formatPriceLine(place);
   const categoryName = place?.category?.name || "Đề xuất";
 
-  // Staggered entrance
-  useEffect(() => {
-    const delay = 200 + index * 100;
-    opacity.value = withDelay(delay, withSpring(1, TOKENS.spring.entrance));
-    translateY.value = withDelay(delay, withSpring(0, TOKENS.spring.entrance));
-  }, [index, opacity, translateY]);
-
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }, { translateY: translateY.value }],
-    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
   }));
 
   const handlePressIn = useCallback(() => {
@@ -98,7 +88,7 @@ function FeaturedCardInner({ place, onPress, index = 0 }) {
         />
       ) : (
         <View className="absolute inset-0 bg-[#EDEDF2] items-center justify-center">
-          <MaterialIcons
+          <MaterialIconsRounded
             name="travel-explore"
             size={44}
             color="rgba(255,255,255,0.25)"
@@ -118,7 +108,7 @@ function FeaturedCardInner({ place, onPress, index = 0 }) {
           style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
         />
         <View className="flex-1 flex-row items-center gap-1 px-2.5">
-          <MaterialIcons name="bolt" size={12} color="#FACC15" />
+          <MaterialIconsRounded name="bolt" size={12} color="#FACC15" />
           <Text className="text-white text-[11px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
             Nổi bật
           </Text>
@@ -134,7 +124,7 @@ function FeaturedCardInner({ place, onPress, index = 0 }) {
             style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
           />
           <View className="flex-1 flex-row items-center gap-1 px-2.5">
-            <MaterialIcons name="star" size={12} color="#FBBF24" />
+            <MaterialIconsRounded name="star" size={12} color="#FBBF24" />
             <Text className="text-white text-[11px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
               {rating.toFixed(1)}
             </Text>
@@ -149,7 +139,7 @@ function FeaturedCardInner({ place, onPress, index = 0 }) {
           tint="dark"
           style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
         />
-        <MaterialIcons name="favorite-border" size={17} color="#FFFFFF" />
+        <MaterialIconsRounded name="favorite-border" size={17} color="#FFFFFF" />
       </View>
 
       {/* Footer: frosted glass */}
@@ -169,7 +159,7 @@ function FeaturedCardInner({ place, onPress, index = 0 }) {
 
           {location ? (
             <View className="flex-row items-center gap-0.5 mb-2">
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="place"
                 size={12}
                 color={APPLE_THEME.textMuted}
@@ -199,7 +189,7 @@ function FeaturedCardInner({ place, onPress, index = 0 }) {
                 </View>
               ) : null}
               <View className="w-[30px] h-[30px] rounded-full items-center justify-center bg-[#1D1D1F]">
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="arrow-forward"
                   size={14}
                   color={APPLE_THEME.white}

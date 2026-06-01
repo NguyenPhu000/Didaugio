@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { FlashList } from "@shopify/flash-list";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
@@ -110,7 +110,7 @@ const SearchResultItem = memo(function SearchResultItem({
             style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
           />
         ) : (
-          <MaterialIcons name="place" size={22} color="rgba(255,255,255,0.4)" />
+          <MaterialIconsRounded name="place" size={22} color="rgba(255,255,255,0.4)" />
         )}
       </View>
 
@@ -120,7 +120,7 @@ const SearchResultItem = memo(function SearchResultItem({
         </Text>
         {location ? (
           <View className="flex-row items-center gap-0.75">
-            <MaterialIcons
+            <MaterialIconsRounded
               name="place"
               size={12}
               color={APPLE_THEME.focusBlue}
@@ -132,13 +132,13 @@ const SearchResultItem = memo(function SearchResultItem({
         ) : null}
         {rating > 0 ? (
           <View className="flex-row items-center gap-0.75">
-            <MaterialIcons name="star" size={12} color="#FBBF24" />
+            <MaterialIconsRounded name="star" size={12} color="#FBBF24" />
             <Text className="text-[#1D1D1F] text-[11px] font-semibold">{rating.toFixed(1)}</Text>
           </View>
         ) : null}
       </View>
 
-      <MaterialIcons
+      <MaterialIconsRounded
         name="chevron-right"
         size={20}
         color={APPLE_THEME.textMuted}
@@ -258,7 +258,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
         {/* Search header */}
         <View className="flex-row items-center gap-3.5 px-5 pb-2.5">
           <View className="flex-1 flex-row items-center gap-2.5 h-11 px-3.5 rounded-[14px] bg-[#FFFFFF] border border-[#F2F2F7]">
-            <MaterialIcons
+            <MaterialIconsRounded
               name="search"
               size={20}
               color={text ? APPLE_THEME.text : APPLE_THEME.textMuted}
@@ -276,7 +276,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
             />
             {text ? (
               <Pressable onPress={() => setText("")} hitSlop={10}>
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="close"
                   size={18}
                   color={APPLE_THEME.textMuted}
@@ -306,7 +306,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
               }}
               className="flex-row items-center gap-1 px-2.5 h-7 rounded-full bg-black/[0.04] border border-[#F2F2F7]"
             >
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="refresh"
                 size={14}
                 color={APPLE_THEME.focusBlue}
@@ -508,7 +508,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
           </View>
         ) : !isActive ? (
           <View className="flex-1 items-center justify-center gap-2.5 px-12">
-            <MaterialIcons
+            <MaterialIconsRounded
               name="travel-explore"
               size={42}
               color={APPLE_THEME.textMuted}
@@ -520,7 +520,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
           </View>
         ) : results.length === 0 ? (
           <View className="flex-1 items-center justify-center gap-2.5 px-12">
-            <MaterialIcons
+            <MaterialIconsRounded
               name="search-off"
               size={42}
               color={APPLE_THEME.textMuted}

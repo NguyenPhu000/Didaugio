@@ -18,13 +18,58 @@ export function formatDate(dateStr) {
   });
 }
 
+export function formatFriendlyDate(dateStr, includeYear = true) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
+  const year = d.getFullYear();
+  if (includeYear) {
+    return `${day} thg ${month}, ${year}`;
+  }
+  return `${day} thg ${month}`;
+}
+
 export function getDateRangeLabel(trip) {
   if (trip.startDate && trip.endDate) {
-    return `${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}`;
+    const start = new Date(trip.startDate);
+    const end = new Date(trip.endDate);
+    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+      const startDay = start.getDate();
+      const startMonth = start.getMonth() + 1;
+      const startYear = start.getFullYear();
+
+      const endDay = end.getDate();
+      const endMonth = end.getMonth() + 1;
+      const endYear = end.getFullYear();
+
+      const currentYear = new Date().getFullYear();
+      const showStartYear = startYear !== currentYear;
+      const showEndYear = endYear !== currentYear;
+
+      if (startYear === endYear) {
+        const showYear = startYear !== currentYear;
+        if (startMonth === endMonth) {
+          if (startDay === endDay) {
+            return `${startDay} thg ${startMonth}${showYear ? `, ${startYear}` : ""}`;
+          }
+          return `${startDay} - ${endDay} thg ${startMonth}${showYear ? `, ${startYear}` : ""}`;
+        }
+        return `${startDay} thg ${startMonth} - ${endDay} thg ${endMonth}${showYear ? `, ${startYear}` : ""}`;
+      }
+      return `${startDay} thg ${startMonth}, ${startYear} - ${endDay} thg ${endMonth}, ${endYear}`;
+    }
   }
 
   if (trip.startDate) {
-    return `Từ ${formatDate(trip.startDate)}`;
+    const start = new Date(trip.startDate);
+    if (!Number.isNaN(start.getTime())) {
+      const startYear = start.getFullYear();
+      const currentYear = new Date().getFullYear();
+      const showYear = startYear !== currentYear;
+      return `Từ ${start.getDate()} thg ${start.getMonth() + 1}${showYear ? `, ${startYear}` : ""}`;
+    }
   }
 
   return "Chưa chọn ngày";

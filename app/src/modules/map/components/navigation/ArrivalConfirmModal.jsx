@@ -15,32 +15,61 @@ const ArrivalConfirmModal = memo(function ArrivalConfirmModal({
       animationType="fade"
       onRequestClose={onDismiss}
     >
-      <View style={styles.overlay}>
+      <View
+        className="flex-1 items-center justify-center px-6"
+        style={{ backgroundColor: "rgba(2, 6, 23, 0.35)" }}
+      >
         <Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} />
 
-        <View style={styles.card}>
-          <Text style={styles.titleText}>
+        <View
+          className="w-full rounded-2xl border px-4 py-3.5"
+          style={{
+            maxWidth: 350,
+            backgroundColor: "#FFFFFF",
+            borderColor: "#E2E8F0",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.1,
+            shadowRadius: 10,
+            elevation: 5,
+          }}
+        >
+          <Text
+            className="text-[15px] font-semibold"
+            style={{ color: "#111111" }}
+          >
             {MAP_TEXT.arrivalModal.title}
           </Text>
-          <Text style={styles.bodyText}>
+          <Text
+            className="text-xs mt-1.5 leading-[18px]"
+            style={{ color: "#334155" }}
+          >
             {MAP_TEXT.arrivalModal.body(targetName)}
           </Text>
 
-          <View style={styles.buttonRow}>
+          <View className="flex-row items-center gap-2 mt-3">
             <Pressable
               onPress={onDismiss}
-              style={styles.cancelBtn}
+              className="flex-1 h-[38px] items-center justify-center rounded-[19px] border"
+              style={{ backgroundColor: "rgba(255, 255, 255, 0.7)", borderColor: "#E2E8F0" }}
             >
-              <Text style={styles.cancelBtnText}>
+              <Text
+                className="text-xs font-semibold"
+                style={{ color: "#475569" }}
+              >
                 {MAP_TEXT.arrivalModal.cancel}
               </Text>
             </Pressable>
 
             <Pressable
               onPress={onConfirm}
-              style={styles.confirmBtn}
+              className="flex-1 h-[38px] items-center justify-center rounded-[19px]"
+              style={{ backgroundColor: "#0A84FF" }}
             >
-              <Text style={styles.confirmBtnText}>
+              <Text
+                className="text-xs font-semibold"
+                style={{ color: "#FFFFFF" }}
+              >
                 {MAP_TEXT.arrivalModal.confirm}
               </Text>
             </Pressable>
@@ -49,76 +78,6 @@ const ArrivalConfirmModal = memo(function ArrivalConfirmModal({
       </View>
     </Modal>
   );
-});
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    backgroundColor: "rgba(2, 6, 23, 0.35)",
-  },
-  card: {
-    width: "100%",
-    borderRadius: 16,
-    maxWidth: 350,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  titleText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#111111",
-  },
-  bodyText: {
-    fontSize: 12,
-    marginTop: 6,
-    color: "#334155",
-    lineHeight: 18,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 12,
-  },
-  cancelBtn: {
-    flex: 1,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  cancelBtnText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#475569",
-  },
-  confirmBtn: {
-    flex: 1,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#0A84FF",
-  },
-  confirmBtnText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
 });
 
 export default ArrivalConfirmModal;

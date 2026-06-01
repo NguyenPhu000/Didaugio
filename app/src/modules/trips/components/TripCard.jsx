@@ -1,8 +1,9 @@
 import { memo, useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { LinearGradient } from "expo-linear-gradient";
+import { cn } from "../../../lib/cn";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -14,16 +15,19 @@ import {
   getDisplayStatus,
   getTimelineLabel,
 } from "../utils/tripHelpers";
-import { resolveMediaUrl } from "../../../lib/media-url";
+import { resolveMediaUrl, resolvePlaceImageUri } from "../../../lib/media-url";
 
-const fallbackCover = "https://images.unsplash.com/photo-1527668752968-14ce70a6a7ae?w=600&auto=format&fit=crop";
+const fallbackCover = "https://picsum.photos/id/408/600/400";
 
 export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved }) {
   const displayStatus = getDisplayStatus(trip);
   const status = STATUS_THEME[displayStatus] || STATUS_THEME.upcoming;
-  const cover = resolveMediaUrl(
-    trip.thumbnail || trip.destinations?.[0]?.place?.thumbnail || null,
-  );
+  const cover = trip.thumbnail
+    ? resolveMediaUrl(trip.thumbnail)
+    : (trip.destinations?.[0]?.place
+      ? resolvePlaceImageUri(trip.destinations[0].place)
+      : null);
+  const coverUri = cover || fallbackCover;
   const destinationCount = trip.destinations?.length || 0;
   const dateRange = getDateRangeLabel(trip);
   const daysLabel = `${trip.totalDays ?? 1} ngày`;
@@ -33,83 +37,85 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
       ? "Chưa có điểm đến"
       : `${destinationCount} điểm đến`;
 
-  const [imgSrc, setImgSrc] = useState(cover ? { uri: cover } : { uri: fallbackCover });
-
-  useEffect(() => {
-    setImgSrc(cover ? { uri: cover } : { uri: fallbackCover });
-  }, [cover]);
-
   return (
-    <View style={styles.cardWrap}>
+    <View className="relative" style={{ marginHorizontal: TAB_SCREEN_PADDING }}>
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={onPress}
-        style={styles.card}
+        className="flex-row items-center bg-white rounded-[24px] p-4 gap-4.5"
+        style={{
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.08,
+          shadowRadius: 16,
+          elevation: 4,
+        }}
       >
         {/* Thumbnail */}
-        <View style={styles.thumbWrap}>
+        <View className="w-[108px] h-[108px] rounded-[18px] overflow-hidden bg-gray-100 flex-shrink-0">
           <Image
-            source={imgSrc}
-            style={styles.thumb}
+            source={{ uri: coverUri }}
+            className="w-full h-full"
             contentFit="cover"
             transition={200}
             cachePolicy="memory-disk"
-            onError={() => setImgSrc({ uri: fallbackCover })}
           />
-          {cover && (
-            <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.15)"]}
-              style={StyleSheet.absoluteFill}
-            />
-          )}
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.15)"]}
+            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+          />
         </View>
 
         {/* Content */}
-        <View style={styles.content}>
-          <View style={styles.titleRow}>
-            <Text style={styles.title} numberOfLines={1}>
+        <View className="flex-1 gap-2 justify-center">
+          <View className="flex-row items-center justify-between">
+            <Text
+              className="text-[19px] font-bold tracking-tight flex-1 pr-2"
+              style={{ color: APPLE_THEME.text }}
+              numberOfLines={1}
+            >
               {trip.title || "Chuyến đi mới"}
             </Text>
             <View
-              style={[styles.statusDot, { backgroundColor: status.accent }]}
+              className="w-2.5 h-2.5 rounded-full"
+              style={{ backgroundColor: status.accent }}
             />
           </View>
 
-          <View style={styles.metaRow}>
-            <MaterialIcons
-              name="event"
-              size={14}
-              color={APPLE_THEME.textMuted}
-            />
-            <Text style={styles.metaText} numberOfLines={1}>
+          <View className="flex-row items-center gap-1">
+            <MaterialIconsRounded name="event" size={15} color={APPLE_THEME.textMuted} />
+            <Text
+              className="text-[14px] font-body flex-shrink tracking-tight"
+              style={{ color: APPLE_THEME.textMuted }}
+              numberOfLines={1}
+            >
               {dateRange}
             </Text>
-            <View style={styles.metaDot} />
-            <MaterialIcons
-              name="schedule"
-              size={14}
-              color={APPLE_THEME.textMuted}
-            />
-            <Text style={styles.metaText}>{daysLabel}</Text>
+            <View className="w-[3.5px] h-[3.5px] rounded-full bg-black/15 mx-1" />
+            <MaterialIconsRounded name="schedule" size={15} color={APPLE_THEME.textMuted} />
+            <Text className="text-[14px] font-body tracking-tight" style={{ color: APPLE_THEME.textMuted }}>
+              {daysLabel}
+            </Text>
           </View>
 
-          <View style={styles.bottomRow}>
-            <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-              <Text style={[styles.statusLabel, { color: status.text }]}>
+          <View className="flex-row items-center gap-2.5 mt-0.5">
+            <View
+              className="px-2.5 py-1 rounded-lg"
+              style={{ backgroundColor: status.bg }}
+            >
+              <Text className="text-[11.5px] font-semibold tracking-tight" style={{ color: status.text }}>
                 {status.label}
               </Text>
             </View>
-            <Text style={styles.placesText}>{placesLabel}</Text>
+            <Text className="text-[14px] font-body tracking-tight" style={{ color: APPLE_THEME.textMuted }}>
+              {placesLabel}
+            </Text>
           </View>
         </View>
 
         {/* Subtle Arrow */}
-        <View style={styles.arrowWrap}>
-          <MaterialIcons
-            name="chevron-right"
-            size={24}
-            color="rgba(0,0,0,0.2)"
-          />
+        <View className="justify-center items-center">
+          <MaterialIconsRounded name="chevron-right" size={24} color="rgba(0,0,0,0.2)" />
         </View>
       </TouchableOpacity>
 
@@ -118,9 +124,9 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
         <TouchableOpacity
           onPress={() => onSave(trip.id)}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          style={styles.bookmarkBtnAbsolute}
+          className="absolute top-6 left-[88px] w-[30px] h-[30px] rounded-[15px] items-center justify-center bg-black/35 z-10"
         >
-          <MaterialIcons
+          <MaterialIconsRounded
             name={isSaved ? "bookmark" : "bookmark-border"}
             size={18}
             color={isSaved ? "#FF9F0A" : "#FFFFFF"}
@@ -129,123 +135,4 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
       ) : null}
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  cardWrap: {
-    marginHorizontal: TAB_SCREEN_PADDING,
-    position: "relative",
-  },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    elevation: 4,
-    padding: 12,
-    paddingRight: 12,
-    gap: 16,
-  },
-  thumbWrap: {
-    width: 90,
-    height: 90,
-    borderRadius: 18,
-    overflow: "hidden",
-    backgroundColor: "#F2F2F7",
-    flexShrink: 0,
-  },
-  thumb: {
-    width: "100%",
-    height: "100%",
-  },
-  thumbFallback: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#E5E5EA",
-  },
-  bookmarkBtnAbsolute: {
-    position: "absolute",
-    top: 18,
-    left: 66,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.35)",
-    zIndex: 10,
-  },
-  content: {
-    flex: 1,
-    gap: 6,
-    justifyContent: "center",
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  title: {
-    color: APPLE_THEME.text,
-    fontSize: 18,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.4,
-    flex: 1,
-    paddingRight: 8,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  metaText: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 13,
-    fontFamily: TOKENS.font.body,
-    flexShrink: 1,
-    letterSpacing: -0.1,
-  },
-  metaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: "rgba(0,0,0,0.15)",
-    marginHorizontal: 4,
-  },
-  bottomRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  statusLabel: {
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.1,
-  },
-  placesText: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 13,
-    fontFamily: TOKENS.font.body,
-    letterSpacing: -0.1,
-  },
-  arrowWrap: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
 });

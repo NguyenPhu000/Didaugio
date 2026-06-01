@@ -1,9 +1,9 @@
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "./MaterialIconsRounded";
 import { useTheme } from "../../hooks/useTheme";
 import { TOKENS } from "../../constants/design-tokens";
 
 /**
- * Primitive Icon — MaterialIcons wrapper.
+ * Primitive Icon — MaterialIconsRounded wrapper.
  * Change this file only if switching icon library.
  */
 export function Icon({ name, size = 24, color, style }) {
@@ -13,7 +13,7 @@ export function Icon({ name, size = 24, color, style }) {
     : TOKENS.color.neutral[900];
 
   return (
-    <MaterialIcons
+    <MaterialIconsRounded
       name={name}
       size={size}
       color={color ?? defaultColor}

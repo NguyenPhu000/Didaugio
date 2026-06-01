@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -99,7 +99,7 @@ function ExploreModernHeaderInner({ user, onPressSearch, scrollY }) {
               {avatarUri ? (
                 <Image source={{ uri: avatarUri }} style={{ width: 44, height: 44, borderRadius: 22 }} />
               ) : (
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="person"
                   size={24}
                   color={APPLE_THEME.textSoft}
@@ -149,7 +149,7 @@ function ExploreModernHeaderInner({ user, onPressSearch, scrollY }) {
             }}
           >
             <View className="w-8 items-center justify-center">
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="search"
                 size={20}
                 color={APPLE_THEME.textMuted}
@@ -161,9 +161,9 @@ function ExploreModernHeaderInner({ user, onPressSearch, scrollY }) {
 
             {/* Location Button */}
             <View className="flex-row items-center bg-[#007AFF] h-[42px] pl-3 pr-2.5 rounded-full gap-0.75 shadow-sm elevation-1">
-              <MaterialIcons name="place" size={14} color="#FFF" />
+              <MaterialIconsRounded name="place" size={14} color="#FFF" />
               <Text className="text-white text-[13px] font-semibold">Cần Thơ</Text>
-              <MaterialIcons name="keyboard-arrow-down" size={14} color="#FFF" />
+              <MaterialIconsRounded name="keyboard-arrow-down" size={14} color="#FFF" />
             </View>
           </View>
         </View>

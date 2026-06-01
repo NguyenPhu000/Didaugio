@@ -1,7 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,11 +16,12 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { CustomDatePicker } from "../../../../components/ui/CustomDatePicker";
 import { compressImageToDataUrl } from "../../../../lib/image-compress";
 import { resolveMediaUrl } from "../../../../lib/media-url";
 import { toYmdString, toValidDate } from "../../utils/tripHelpers";
+import CustomAlertModal from "../../../../components/composed/CustomAlertModal";
 
 function calcTotalDays(start, end) {
   if (!start || !end) return 1;
@@ -39,6 +39,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
   const [pendingThumbnail, setPendingThumbnail] = useState(undefined);
   const [isProcessingThumbnail, setIsProcessingThumbnail] = useState(false);
   const [avoidFerry, setAvoidFerry] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: "", message: "", type: "error" });
 
   const wasVisible = useRef(false);
 
@@ -63,10 +64,12 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
-          "Chưa có quyền truy cập ảnh",
-          "Vui lòng cấp quyền truy cập thư viện ảnh để chọn ảnh bìa.",
-        );
+        setAlertConfig({
+          visible: true,
+          title: "Chưa có quyền truy cập ảnh",
+          message: "Vui lòng cấp quyền truy cập thư viện ảnh để chọn ảnh bìa.",
+          type: "warning",
+        });
         return;
       }
 
@@ -87,7 +90,12 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
       setThumbnailPreview(compressed.dataUrl);
       setPendingThumbnail(compressed.dataUrl);
     } catch (error) {
-      Alert.alert("Lỗi", error?.message || "Không thể xử lý ảnh. Vui lòng thử lại.");
+      setAlertConfig({
+        visible: true,
+        title: "Lỗi",
+        message: error?.message || "Không thể xử lý ảnh. Vui lòng thử lại.",
+        type: "error",
+      });
     } finally {
       setIsProcessingThumbnail(false);
     }
@@ -113,7 +121,12 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
     if (!trimmedTitle || isSaving) return;
 
     if (startDate && endDate && endDate < startDate) {
-      Alert.alert("Lỗi", "Ngày kết thúc không được nhỏ hơn ngày bắt đầu.");
+      setAlertConfig({
+        visible: true,
+        title: "Ngày không hợp lệ",
+        message: "Ngày kết thúc không được nhỏ hơn ngày bắt đầu.",
+        type: "error",
+      });
       return;
     }
 
@@ -158,7 +171,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
             <View className="w-9 h-1 rounded-full bg-black/12 self-center mt-2.5 mb-1.5" />
             <View className="flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]">
               <View className="flex-row items-center gap-2">
-                <MaterialIcons name="edit-calendar" size={18} color="#1D1D1F" />
+                <MaterialIconsRounded name="edit-calendar" size={18} color="#1D1D1F" />
                 <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">Chỉnh sửa chuyến đi</Text>
               </View>
               <Pressable
@@ -169,7 +182,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                 ]}
                 className="w-8 h-8 rounded-full items-center justify-center"
               >
-                <MaterialIcons name="close" size={20} color="rgba(0,0,0,0.45)" />
+                <MaterialIconsRounded name="close" size={20} color="rgba(0,0,0,0.45)" />
               </Pressable>
             </View>
 
@@ -197,7 +210,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                     />
                   ) : (
                     <View className="items-center gap-2">
-                      <MaterialIcons name="add-photo-alternate" size={32} color="rgba(0,0,0,0.3)" />
+                      <MaterialIconsRounded name="add-photo-alternate" size={32} color="rgba(0,0,0,0.3)" />
                       <Text className="text-[13px] text-black/40 font-medium">Chạm để chọn ảnh bìa</Text>
                     </View>
                   )}
@@ -211,7 +224,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                   {thumbnailPreview && !isProcessingThumbnail ? (
                     <View className="absolute top-2.5 right-2.5 flex-row gap-2">
                       <View className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-full bg-black/55">
-                        <MaterialIcons name="edit" size={13} color="#FFFFFF" />
+                        <MaterialIconsRounded name="edit" size={13} color="#FFFFFF" />
                         <Text className="text-white text-[11px] font-semibold">Đổi ảnh</Text>
                       </View>
                       <Pressable
@@ -219,7 +232,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                         hitSlop={8}
                         className="w-7 h-7 rounded-full bg-black/55 items-center justify-center"
                       >
-                        <MaterialIcons name="close" size={15} color="#FFFFFF" />
+                        <MaterialIconsRounded name="close" size={15} color="#FFFFFF" />
                       </Pressable>
                     </View>
                   ) : null}
@@ -272,7 +285,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
               <View className="rounded-2xl bg-[#F5F5F7] px-4 py-3.5 border border-black/[0.06] flex-row items-center justify-between">
                 <View className="flex-row items-center gap-3 flex-1">
                   <View className="w-9 h-9 rounded-xl bg-white items-center justify-center border border-black/[0.06]">
-                    <MaterialIcons name="directions-boat" size={18} color={avoidFerry ? "#FF9500" : "rgba(0,0,0,0.35)"} />
+                    <MaterialIconsRounded name="directions-boat" size={18} color={avoidFerry ? "#FF9500" : "rgba(0,0,0,0.35)"} />
                   </View>
                   <View className="flex-1 gap-0.5">
                     <Text className="text-[15px] font-semibold text-[#1D1D1F] tracking-tight">Tránh đi phà</Text>
@@ -308,6 +321,14 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
           </View>
         </KeyboardAvoidingView>
       </View>
+
+      <CustomAlertModal
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
     </Modal>
   );
 }

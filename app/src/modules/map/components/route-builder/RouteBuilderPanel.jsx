@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import TurnCard from "../navigation/TurnCard";
 import { MAP_TEXT } from "../../constants/mapText.constants";
 
@@ -51,7 +51,7 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
         <View style={styles.headerRow}>
           <View style={styles.flex1}>
             <View style={styles.titleRow}>
-              <MaterialIcons name="alt-route" size={16} color="#0F172A" />
+              <MaterialIconsRounded name="alt-route" size={16} color="#0F172A" />
               <Text style={styles.titleText}>
                 {MAP_TEXT.routeBuilder.panelTitle}
               </Text>
@@ -67,7 +67,7 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
           </View>
 
           <Pressable onPress={onExit} style={styles.closeBtn}>
-            <MaterialIcons name="close" size={16} color="#334155" />
+            <MaterialIconsRounded name="close" size={16} color="#334155" />
           </Pressable>
         </View>
 
@@ -89,7 +89,7 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
           </ScrollView>
         ) : (
           <View style={styles.emptyNotice}>
-            <MaterialIcons name="touch-app" size={14} color="#64748B" />
+            <MaterialIconsRounded name="touch-app" size={14} color="#64748B" />
             <Text style={styles.emptyNoticeText}>
               {MAP_TEXT.routeBuilder.noStopNotice}
             </Text>
@@ -125,7 +125,7 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
           <>
             {pendingArrival ? (
               <View style={styles.arrivalNotice}>
-                <MaterialIcons name="check-circle" size={15} color="#059669" />
+                <MaterialIconsRounded name="check-circle" size={15} color="#059669" />
                 <Text style={styles.arrivalNoticeText}>
                   {MAP_TEXT.routeBuilder.pendingArrivalNotice(
                     pendingArrival.targetName,
@@ -147,7 +147,7 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
                     )}
                   </Text>
                 </View>
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="subdirectory-arrow-left"
                   size={18}
                   color="#B91C1C"
@@ -173,7 +173,7 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
                   },
                 ]}
               >
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="check"
                   size={16}
                   color={hasPendingArrival ? "#FFFFFF" : "#94A3B8"}
@@ -181,14 +181,14 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
               </Pressable>
 
               <Pressable onPress={onResetProgress} style={styles.progressSquareBtn}>
-                <MaterialIcons name="refresh" size={16} color="#334155" />
+                <MaterialIconsRounded name="refresh" size={16} color="#334155" />
               </Pressable>
 
               <Pressable
                 onPress={onToggleCompletedView}
                 style={styles.progressSquareBtn}
               >
-                <MaterialIcons
+                <MaterialIconsRounded
                   name={
                     completedView === "dim" ? "visibility-off" : "visibility"
                   }
@@ -227,7 +227,7 @@ const RouteBuilderPanel = memo(function RouteBuilderPanel({
                   disabled={isRouteFetching}
                   style={styles.errorRetryBtn}
                 >
-                  <MaterialIcons name="refresh" size={13} color="#B91C1C" />
+                  <MaterialIconsRounded name="refresh" size={13} color="#B91C1C" />
                 </Pressable>
               </View>
             ) : null}

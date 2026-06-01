@@ -408,11 +408,19 @@ export const getMyTrips = async (userId, query = {}) => {
                 name: true,
                 slug: true,
                 thumbnail: true,
+                category: {
+                  select: { id: true, name: true },
+                },
                 district: {
                   select: { id: true, name: true, code: true },
                 },
                 ward: {
                   select: { id: true, name: true, wardType: true },
+                },
+                images: {
+                  take: 1,
+                  orderBy: [{ isCover: "desc" }, { order: "asc" }],
+                  select: { secureUrl: true, thumbnailUrl: true },
                 },
               },
             },

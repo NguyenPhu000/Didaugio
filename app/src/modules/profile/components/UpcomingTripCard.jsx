@@ -1,14 +1,17 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../constants/design-tokens";
 
+import { resolveMediaUrl, resolvePlaceImageUri } from "../../../lib/media-url";
+
 export function UpcomingTripCard({ trip, onPress }) {
-  const coverImage =
-    trip?.thumbnail ||
-    trip?.destinations?.[0]?.place?.thumbnail ||
-    "https://images.unsplash.com/photo-1537996194471-e657df975ab4";
+  const coverImage = trip?.thumbnail
+    ? resolveMediaUrl(trip.thumbnail)
+    : (trip?.destinations?.[0]?.place
+      ? resolvePlaceImageUri(trip.destinations[0].place)
+      : "https://picsum.photos/id/408/600/400");
     
   const title = trip?.title || "Hành trình mới";
   const destination = trip?.destinations?.[0]?.place?.address || trip?.destinations?.[0]?.place?.name || "Chưa xác định";
@@ -99,7 +102,7 @@ export function UpcomingTripCard({ trip, onPress }) {
       </View>
 
       <View className="absolute bottom-4 left-5 right-5 flex-row justify-between items-end">
-        <MaterialIcons name="airplane-ticket" size={28} color="#fff" />
+        <MaterialIconsRounded name="airplane-ticket" size={28} color="#fff" />
 
         {duration ? (
           <View className="bg-white/20 rounded-full px-3 py-1 border border-white/30">

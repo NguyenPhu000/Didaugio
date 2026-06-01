@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { StatusBadge } from "./StatusBadge";
 import { formatBookingDateTime, formatPrice } from "../../utils/tripHelpers";
 import s, { STYLES } from "../../utils/tripDetailTokens";
@@ -25,7 +25,7 @@ export const ServicesTab = memo(function ServicesTab({
     return (
       <View className={STYLES.centeredState}>
         <View className="w-14 h-14 rounded-[20px] bg-black/[0.04] items-center justify-center mb-2">
-          <MaterialIcons name="receipt-long" size={28} color="rgba(0,0,0,0.2)" />
+          <MaterialIconsRounded name="receipt-long" size={28} color="rgba(0,0,0,0.2)" />
         </View>
         <Text className={STYLES.emptyTitle}>Chưa có booking</Text>
         <Text className={STYLES.emptyBody}>

@@ -16,31 +16,10 @@ import { PopularCard } from "./PopularCard";
 
 
 function PopularSectionInner({ places, onPressPlace, title = "Phổ biến" }) {
-  const sectionOpacity = useSharedValue(0);
-  const sectionY = useSharedValue(20);
-
-  // Section entrance animation
-  useEffect(() => {
-    sectionOpacity.value = withDelay(
-      200,
-      withTiming(1, { duration: 400 }),
-    );
-    sectionY.value = withDelay(
-      200,
-      withSpring(0, TOKENS.spring.entrance),
-    );
-  }, [sectionOpacity, sectionY]);
-
-  const sectionAnimStyle = useAnimatedStyle(() => ({
-    opacity: sectionOpacity.value,
-    transform: [{ translateY: sectionY.value }],
-  }));
-
-
   if (!places?.length) return null;
 
   return (
-    <Animated.View style={[sectionAnimStyle, { paddingHorizontal: TAB_SCREEN_PADDING }]} className="mt-7">
+    <View style={{ paddingHorizontal: TAB_SCREEN_PADDING }} className="mt-7">
       <View className="flex-row justify-between items-center mb-3.5">
         <Text className="text-[#1D1D1F] text-[22px] leading-7 tracking-[-0.5px] font-bold" style={{ fontFamily: TOKENS.font.heading }}>{title}</Text>
       </View>
@@ -55,7 +34,7 @@ function PopularSectionInner({ places, onPressPlace, title = "Phổ biến" }) {
           />
         ))}
       </View>
-    </Animated.View>
+    </View>
   );
 }
 

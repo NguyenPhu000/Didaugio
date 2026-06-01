@@ -12,7 +12,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { formatDate, buildDayList } from "../../utils/tripHelpers";
 import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
 import TimeField from "./TimeField";
@@ -98,7 +98,7 @@ function MoveDestinationModal({
               <View className="w-9 h-1 rounded-full bg-black/12 self-center mt-2.5 mb-1" />
               <View className="flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]">
                 <View className="flex-row items-center gap-2 flex-1">
-                  <MaterialIcons name="edit-location-alt" size={20} color="#1D1D1F" />
+                  <MaterialIconsRounded name="edit-location-alt" size={20} color="#1D1D1F" />
                   <Text className="text-[17px] font-semibold text-[#1D1D1F] tracking-tight">Chỉnh sửa lịch trình</Text>
                 </View>
                 <Pressable
@@ -109,7 +109,7 @@ function MoveDestinationModal({
                   ]}
                   className="w-8 h-8 rounded-full items-center justify-center"
                 >
-                  <MaterialIcons name="close" size={20} color="rgba(0,0,0,0.45)" />
+                  <MaterialIconsRounded name="close" size={20} color="rgba(0,0,0,0.45)" />
                 </Pressable>
               </View>
 

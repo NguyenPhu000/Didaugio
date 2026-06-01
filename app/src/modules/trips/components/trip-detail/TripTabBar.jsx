@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Pressable, Text, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
 
 const TABS = [
@@ -28,7 +28,7 @@ export const TripTabBar = memo(function TripTabBar({
             style={({ pressed }) => [pressed && { opacity: 0.7 }]}
             className={`${STYLES.tabItem} flex-row justify-center gap-1.5 ${isActive ? STYLES.tabItemActive : ""}`}
           >
-            <MaterialIcons
+            <MaterialIconsRounded
               name={tab.icon}
               size={16}
               color={isActive ? T.ink : ALPHA.iconStrong}

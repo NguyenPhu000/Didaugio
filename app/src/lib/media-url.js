@@ -17,9 +17,25 @@ const MEDIA_ORIGINS = API_BASE_CANDIDATES.map((base) =>
   });
 
 function maybeBase64Image(value) {
+  // Strip ALL whitespace (including \n from multi-line base64 strings)
   const compact = value.replace(/\s/g, "");
-  if (compact.length <= 120) return null;
-  if (!/^[A-Za-z0-9+/=]+$/.test(compact)) return null;
+  // Must be long enough to represent an image (minimum ~200 bytes)
+  if (compact.length <= 200) return null;
+  // Must only contain valid Base64 characters
+  if (!/^[A-Za-z0-9+/]+=*$/.test(compact)) return null;
+
+  // Detect MIME type from Base64 prefix (first 8 chars encode the magic bytes)
+  // JPEG starts with /9j/ in Base64 (FF D8 FF)
+  // PNG starts with iVBOR in Base64 (89 50 4E 47)
+  // GIF starts with R0lGOD in Base64 (47 49 46)
+  // WEBP starts with UklGR in Base64 (52 49 46 46)
+  const head = compact.slice(0, 12);
+  if (head.startsWith("/9j/")) return `data:image/jpeg;base64,${compact}`;
+  if (head.startsWith("iVBOR")) return `data:image/png;base64,${compact}`;
+  if (head.startsWith("R0lGOD")) return `data:image/gif;base64,${compact}`;
+  if (head.startsWith("UklGR")) return `data:image/webp;base64,${compact}`;
+
+  // Valid Base64 but unknown type — assume JPEG (most common in this project)
   return `data:image/jpeg;base64,${compact}`;
 }
 
@@ -45,14 +61,28 @@ export function resolveMediaUrl(raw) {
   const cleaned = raw.trim().replace(/\\/g, "/");
   if (!cleaned) return null;
 
+  // Already a data URI
   if (cleaned.startsWith("data:")) return cleaned;
+
+  // Remote URL — rewrite localhost to actual server origin, but never touch cloudinary/picsum
   if (/^https?:\/\//i.test(cleaned)) {
+    const isExternal =
+      cleaned.includes("cloudinary.com") ||
+      cleaned.includes("picsum.photos") ||
+      cleaned.includes("unsplash.com") ||
+      cleaned.includes("googleapis.com") ||
+      cleaned.includes("googleusercontent.com");
+
+    if (isExternal) return escapeUrl(cleaned);
+
     const origin = MEDIA_ORIGINS[0] || PROD_ORIGIN;
     return escapeUrl(rewriteLocalhostToOrigin(cleaned, origin));
   }
+
   if (cleaned.startsWith("file:")) return cleaned;
   if (cleaned.startsWith("//")) return escapeUrl(`https:${cleaned}`);
 
+  // Try to interpret as raw Base64
   const base64 = maybeBase64Image(cleaned);
   if (base64) return base64;
 
@@ -74,26 +104,26 @@ export function resolveMediaUrl(raw) {
 }
 
 export function getCategoryPlaceholder(categoryName = "") {
-  const name = String(categoryName).toLowerCase()
+  const name = String(categoryName || "").toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
   if (name.includes("an") || name.includes("uong") || name.includes("food") || name.includes("cafe") || name.includes("nha hang") || name.includes("quan")) {
-    return "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop";
+    return "https://picsum.photos/id/292/600/400";
   }
   if (name.includes("khach san") || name.includes("hotel") || name.includes("resort") || name.includes("homestay") || name.includes("luu tru")) {
-    return "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop";
+    return "https://picsum.photos/id/838/600/400";
   }
   if (name.includes("mua sam") || name.includes("shopping") || name.includes("cho") || name.includes("market") || name.includes("cua hang")) {
-    return "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&auto=format&fit=crop";
+    return "https://picsum.photos/id/102/600/400";
   }
   if (name.includes("chua") || name.includes("dinh") || name.includes("pagoda") || name.includes("van hoa") || name.includes("bao tang") || name.includes("museum") || name.includes("lich su")) {
-    return "https://images.unsplash.com/photo-1542051812871-757511640570?w=600&auto=format&fit=crop";
+    return "https://picsum.photos/id/1040/600/400";
   }
   if (name.includes("giai tri") || name.includes("vui choi") || name.includes("attractions") || name.includes("thien nhien") || name.includes("sinh thai") || name.includes("nature") || name.includes("kdl")) {
-    return "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&auto=format&fit=crop";
+    return "https://picsum.photos/id/10/600/400";
   }
-  return "https://images.unsplash.com/photo-1527668752968-14ce70a6a7ae?w=600&auto=format&fit=crop";
+  return "https://picsum.photos/id/408/600/400";
 }
 
 export function resolvePlaceImageUri(place) {

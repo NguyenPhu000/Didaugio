@@ -1,6 +1,6 @@
 import "../global.css";
 import { useEffect } from "react";
-import { View } from "react-native";
+import { View, Alert } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -8,6 +8,13 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
+
+// Tat strict mode canh bao doc/ghi shared value truc tiep trong render cycle vi mot so thu vien ben thu ba (nhu bottom-sheet, draggable-flatlist) chua cap nhat tuong thich.
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false,
+});
 import {
   useFonts,
   BeVietnamPro_400Regular,
@@ -27,6 +34,8 @@ import { AIFloatingButton } from "../src/components/composed/AIFloatingButton";
 import { useAuthStore } from "../src/stores/authStore";
 import { useUIStore } from "../src/stores/uiStore";
 import { useOfflineSync } from "../src/modules/trips/hooks/useTripsOffline";
+import { useAlertStore } from "../src/stores/alertStore";
+import { GlobalAlert } from "../src/components/composed/GlobalAlert";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -59,6 +68,90 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    const originalAlert = Alert.alert;
+
+    Alert.alert = (title, message, buttons, options) => {
+      let type = "info";
+      const combinedText = `${title || ""} ${message || ""}`.toLowerCase();
+
+      if (
+        combinedText.includes("lỗi") ||
+        combinedText.includes("thất bại") ||
+        combinedText.includes("không thể") ||
+        combinedText.includes("error") ||
+        combinedText.includes("failed") ||
+        combinedText.includes("thiếu") ||
+        combinedText.includes("bắt buộc") ||
+        combinedText.includes("chưa nhập")
+      ) {
+        type = "error";
+      } else if (
+        combinedText.includes("thành công") ||
+        combinedText.includes("đã lưu") ||
+        combinedText.includes("đã xóa") ||
+        combinedText.includes("success") ||
+        combinedText.includes("saved") ||
+        combinedText.includes("hoàn tất")
+      ) {
+        type = "success";
+      } else if (
+        combinedText.includes("cảnh báo") ||
+        combinedText.includes("warning") ||
+        combinedText.includes("chú ý") ||
+        combinedText.includes("lưu ý")
+      ) {
+        type = "warning";
+      } else if (
+        combinedText.includes("chắc chắn") ||
+        combinedText.includes("xác nhận") ||
+        combinedText.includes("bạn có muốn") ||
+        combinedText.includes("bạn có chắc") ||
+        combinedText.includes("chắc chắn muốn") ||
+        (buttons && buttons.length > 1)
+      ) {
+        type = "confirm";
+      }
+
+      let mappedButtons = [];
+      if (buttons && buttons.length > 0) {
+        mappedButtons = buttons.map((btn) => ({
+          text: btn.text,
+          onPress: () => {
+            useAlertStore.getState().hideAlert();
+            btn.onPress?.();
+          },
+          style:
+            btn.style === "cancel"
+              ? "cancel"
+              : btn.style === "destructive"
+              ? "destructive"
+              : "default",
+        }));
+      } else {
+        mappedButtons = [
+          {
+            text: "Đóng",
+            onPress: () => useAlertStore.getState().hideAlert(),
+            style: "default",
+          },
+        ];
+      }
+
+      useAlertStore.getState().showAlert({
+        title,
+        message,
+        type,
+        buttons: mappedButtons,
+        options,
+      });
+    };
+
+    return () => {
+      Alert.alert = originalAlert;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -133,8 +226,9 @@ export default function RootLayout() {
                     options={{ animation: "fade" }}
                   />
                 </Stack>
-                <AIFloatingButton />
+                {segments[0] !== "(auth)" && <AIFloatingButton />}
                 <OfflineToast />
+                <GlobalAlert />
               </BottomSheetModalProvider>
             </View>
           </AppProvider>

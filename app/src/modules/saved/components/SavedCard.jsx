@@ -2,7 +2,7 @@ import { memo } from "react";
 import { Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   CATEGORY_COLORS,
@@ -65,12 +65,12 @@ export const SavedCard = memo(function SavedCard({
               className="flex-1 items-center justify-center"
               style={{ backgroundColor: `${accent}1A` }}
             >
-              <MaterialIcons name="place" size={28} color={accent} />
+              <MaterialIconsRounded name="place" size={28} color={accent} />
             </View>
           )}
           {hasRating ? (
             <View className="absolute left-2 top-2 flex-row items-center gap-0.5 px-2 py-1 rounded-full bg-white/95">
-              <MaterialIcons name="star" size={11} color="#FF9F0A" />
+              <MaterialIconsRounded name="star" size={11} color="#FF9F0A" />
               <Text className="text-[#1D1D1F] text-[11px] font-semibold tracking-[-0.1px]">{ratingValue.toFixed(1)}</Text>
             </View>
           ) : null}
@@ -85,7 +85,7 @@ export const SavedCard = memo(function SavedCard({
           </View>
 
           <View className="flex-row items-center gap-1.25">
-            <MaterialIcons
+            <MaterialIconsRounded
               name="place"
               size={13}
               color={APPLE_THEME.textMuted}
@@ -96,7 +96,7 @@ export const SavedCard = memo(function SavedCard({
           </View>
 
           <View className="flex-row items-center gap-1.25">
-            <MaterialIcons
+            <MaterialIconsRounded
               name="category"
               size={13}
               color={APPLE_THEME.textMuted}
@@ -112,7 +112,7 @@ export const SavedCard = memo(function SavedCard({
 
           {priceLabel ? (
             <View className="self-start flex-row items-center gap-1 px-2.5 py-1 rounded-full bg-[#E7F0FF]">
-              <MaterialIcons name="payments" size={12} color="#1D4ED8" />
+              <MaterialIconsRounded name="payments" size={12} color="#1D4ED8" />
               <Text className="text-[#1D4ED8] text-xs font-semibold tracking-[-0.1px]">{priceLabel}</Text>
             </View>
           ) : null}
@@ -124,7 +124,7 @@ export const SavedCard = memo(function SavedCard({
           {collectionName ? (
             <View className="flex-row items-start gap-2 px-3 py-2.5 rounded-[14px] bg-[#F9F9FB]">
               <View className="w-5.5 h-5.5 rounded-full items-center justify-center bg-white">
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="collections-bookmark"
                   size={14}
                   color={APPLE_THEME.text}
@@ -139,7 +139,7 @@ export const SavedCard = memo(function SavedCard({
           {note ? (
             <View className="flex-row items-start gap-2 px-3 py-2.5 rounded-[14px] bg-[#F9F9FB]">
               <View className="w-5.5 h-5.5 rounded-full items-center justify-center bg-white">
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="sticky-note-2"
                   size={14}
                   color={APPLE_THEME.text}
@@ -161,7 +161,7 @@ export const SavedCard = memo(function SavedCard({
           }}
           className="flex-row items-center gap-1.5 px-3 py-[7px] rounded-xl bg-black/[0.04] active:bg-black/[0.08]"
         >
-          <MaterialIcons name="edit-note" size={15} color={APPLE_THEME.text} />
+          <MaterialIconsRounded name="edit-note" size={15} color={APPLE_THEME.text} />
           <Text className="text-[#1D1D1F] text-[13px] font-semibold tracking-[-0.1px]">
             {note ? "Sửa ghi chú" : "Thêm ghi chú"}
           </Text>
@@ -177,7 +177,7 @@ export const SavedCard = memo(function SavedCard({
             unsaveDisabled ? "opacity-45" : ""
           }`}
         >
-          <MaterialIcons name="bookmark-remove" size={15} color="#FF3B30" />
+          <MaterialIconsRounded name="bookmark-remove" size={15} color="#FF3B30" />
           <Text className="text-[#FF3B30] text-[13px] font-semibold tracking-[-0.1px]">Bỏ lưu</Text>
         </Pressable>
       </View>

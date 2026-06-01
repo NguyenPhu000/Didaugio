@@ -1,18 +1,16 @@
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect } from "react";
 import {
   FlatList,
   Platform,
   Pressable,
-  StyleSheet,
   Text,
-  View,
+  StyleSheet,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import {
@@ -34,7 +32,6 @@ const PillItem = memo(function PillItem({
   const scale = useSharedValue(1);
   const bgProgress = useSharedValue(isActive ? 1 : 0);
 
-  // Safe side-effect: Animate background on active change inside useEffect
   useEffect(() => {
     bgProgress.value = withSpring(isActive ? 1 : 0, SPRING_CONFIG);
   }, [isActive, bgProgress]);
@@ -63,22 +60,28 @@ const PillItem = memo(function PillItem({
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      className="flex-row items-center gap-2 min-h-[42px] px-4 py-2.5 rounded-full border"
       style={[
-        styles.pill,
-        isActive && styles.pillActive,
         animatedStyle,
+        isActive ? Platform.select({
+          ios: {
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.15,
+            shadowRadius: 2,
+          },
+          android: { elevation: 1 },
+        }) : null,
       ]}
     >
-      <MaterialIcons
+      <MaterialIconsRounded
         name={icon}
         size={17}
         color={isActive ? APPLE_THEME.white : APPLE_THEME.text}
       />
       <Text
-        style={[
-          styles.pillText,
-          { color: isActive ? "#FFFFFF" : "#1D1D1F" },
-        ]}
+        className="text-sm font-semibold"
+        style={{ color: isActive ? "#FFFFFF" : "#1D1D1F" }}
         numberOfLines={1}
       >
         {label}
@@ -149,34 +152,4 @@ export const CategoryPills = memo(
   CategoryPillsInner,
   areCategoryPillsPropsEqual,
 );
-
-const styles = StyleSheet.create({
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    minHeight: 42,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  pillActive: {
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.15,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
-  pillText: {
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-});
 

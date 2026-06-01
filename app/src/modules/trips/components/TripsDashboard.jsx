@@ -1,8 +1,9 @@
 import { memo, useMemo, useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { LinearGradient } from "expo-linear-gradient";
+import { cn } from "../../../lib/cn";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -15,6 +16,7 @@ import {
   getDateRangeLabel,
   getTimelineLabel,
 } from "../utils/tripHelpers";
+import { resolveMediaUrl, resolvePlaceImageUri } from "../../../lib/media-url";
 
 const STAT_ICONS = {
   blue: { bg: "rgba(29,29,31,0.06)", color: "#1D1D1F" },
@@ -27,13 +29,32 @@ const STAT_ICONS = {
 const StatPill = memo(function StatPill({ icon, value, label, tone }) {
   const theme = STAT_ICONS[tone] || STAT_ICONS.blue;
   return (
-    <View style={styles.statPill}>
-      <View style={[styles.statIconWrap, { backgroundColor: theme.bg }]}>
-        <MaterialIcons name={icon} size={20} color={theme.color} />
+    <View
+      className="w-[48%] flex-row items-center gap-3 py-4 px-4 rounded-[20px] bg-white"
+      style={{
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 2,
+      }}
+    >
+      <View
+        className="w-10 h-10 rounded-xl items-center justify-center"
+        style={{ backgroundColor: theme.bg }}
+      >
+        <MaterialIconsRounded name={icon} size={20} color={theme.color} />
       </View>
-      <View style={styles.statContent}>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statLabel}>{label}</Text>
+      <View className="flex-1">
+        <Text
+          className="text-[22px] font-heading tracking-tight"
+          style={{ color: APPLE_THEME.text }}
+        >
+          {value}
+        </Text>
+        <Text className="text-xs font-medium mt-0.5" style={{ color: APPLE_THEME.textMuted }}>
+          {label}
+        </Text>
       </View>
     </View>
   );
@@ -51,10 +72,12 @@ export function TripsDashboard({
   const summary = useMemo(() => buildSummary(trips), [trips]);
 
   const heroCover = heroTrip
-    ? heroTrip.thumbnail || heroTrip.destinations?.[0]?.place?.thumbnail
+    ? (heroTrip.thumbnail
+      ? resolveMediaUrl(heroTrip.thumbnail)
+      : resolvePlaceImageUri(heroTrip.destinations?.[0]?.place))
     : null;
 
-  const fallbackCover = "https://images.unsplash.com/photo-1527668752968-14ce70a6a7ae?w=600&auto=format&fit=crop";
+  const fallbackCover = "https://picsum.photos/id/408/600/400";
   const [imgSrc, setImgSrc] = useState(heroCover ? { uri: heroCover } : { uri: fallbackCover });
 
   useEffect(() => {
@@ -64,12 +87,17 @@ export function TripsDashboard({
   const timelineLabel = heroTrip ? getTimelineLabel(heroTrip) : null;
 
   return (
-    <View style={styles.dashboardWrap}>
+    <View style={{ paddingHorizontal: TAB_SCREEN_PADDING }} className="pt-2 pb-6">
       {/* ── Header ── */}
-      <View style={styles.header}>
+      <View className="flex-row items-center justify-between mt-4 mb-6">
         <View>
-          <Text style={styles.headerTitle}>Hành trình</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text
+            className="text-[34px] font-heading tracking-tight"
+            style={{ color: APPLE_THEME.text }}
+          >
+            Hành trình
+          </Text>
+          <Text className="text-[15px] font-body mt-1 tracking-tight" style={{ color: APPLE_THEME.textMuted }}>
             {(trips?.length ?? 0) > 0
               ? `${trips.length} chuyến đi của bạn`
               : "Khởi tạo kỷ niệm mới"}
@@ -82,12 +110,19 @@ export function TripsDashboard({
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={() => onOpenHero(heroTrip.id)}
-          style={styles.heroCard}
+          className="h-[280px] rounded-3xl overflow-hidden mb-6 bg-[#1C1C1E] relative"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.15,
+            shadowRadius: 16,
+            elevation: 8,
+          }}
         >
           {heroCover ? (
             <Image
               source={imgSrc}
-              style={StyleSheet.absoluteFill}
+              style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
               contentFit="cover"
               transition={300}
               cachePolicy="memory-disk"
@@ -96,7 +131,7 @@ export function TripsDashboard({
           ) : (
             <LinearGradient
               colors={["#2C2C2E", "#1C1C1E", "#000000"]}
-              style={StyleSheet.absoluteFill}
+              style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
             />
           )}
           <LinearGradient
@@ -107,54 +142,52 @@ export function TripsDashboard({
               "rgba(0,0,0,0.9)",
             ]}
             locations={[0, 0.4, 0.7, 1]}
-            style={StyleSheet.absoluteFill}
+            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
           />
 
           {/* Top-right arrow */}
-          <View style={styles.heroTopRow}>
-            <View style={styles.heroArrow}>
-              <MaterialIcons
-                name="arrow-forward"
-                size={18}
-                color="#FFFFFF"
-              />
+          <View className="absolute top-4 right-4 z-[2]">
+            <View
+              className="w-[38px] h-[38px] rounded-[19px] items-center justify-center overflow-hidden bg-white/20 border border-white/30"
+            >
+              <MaterialIconsRounded name="arrow-forward" size={18} color="#FFFFFF" />
             </View>
           </View>
 
           {/* Bottom content */}
-          <View style={styles.heroContent}>
-            <View style={styles.heroBadgeWrap}>
-              <View style={styles.heroBadge}>
-                <View style={styles.heroDot} />
-                <Text style={styles.heroBadgeText}>
+          <View className="absolute bottom-0 left-0 right-0 p-6 gap-2.5">
+            <View className="self-start rounded-full overflow-hidden mb-1">
+              <View className="flex-row items-center px-3 py-1.5 gap-1.5 bg-white/25">
+                <View
+                  className="w-1.5 h-1.5 rounded-full bg-green-500"
+                  style={{
+                    shadowColor: "#34C759",
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: 0.8,
+                    shadowRadius: 4,
+                  }}
+                />
+                <Text className="text-white text-xs font-bold uppercase tracking-[0.5px]">
                   {timelineLabel || "Sắp tới"}
                 </Text>
               </View>
             </View>
-            
-            <Text style={styles.heroTitle} numberOfLines={2}>
+
+            <Text className="text-white text-[28px] font-heading leading-[34px] tracking-tight" numberOfLines={2}>
               {heroTrip.title || "Chuyến đi mới"}
             </Text>
-            
-            <View style={styles.heroMeta}>
-              <View style={styles.heroMetaItem}>
-                <MaterialIcons
-                  name="event"
-                  size={14}
-                  color="rgba(255,255,255,0.8)"
-                />
-                <Text style={styles.heroMetaText}>
+
+            <View className="flex-row items-center gap-2 mt-1">
+              <View className="flex-row items-center gap-1">
+                <MaterialIconsRounded name="event" size={14} color="rgba(255,255,255,0.8)" />
+                <Text className="text-white/90 text-sm font-medium tracking-tight">
                   {getDateRangeLabel(heroTrip)}
                 </Text>
               </View>
-              <View style={styles.heroMetaDivider} />
-              <View style={styles.heroMetaItem}>
-                <MaterialIcons
-                  name="place"
-                  size={14}
-                  color="rgba(255,255,255,0.8)"
-                />
-                <Text style={styles.heroMetaText}>
+              <View className="w-1 h-1 rounded-full bg-white/40 mx-1" />
+              <View className="flex-row items-center gap-1">
+                <MaterialIconsRounded name="place" size={14} color="rgba(255,255,255,0.8)" />
+                <Text className="text-white/90 text-sm font-medium tracking-tight">
                   {heroTrip.destinations?.length || 0} điểm đến
                 </Text>
               </View>
@@ -165,33 +198,42 @@ export function TripsDashboard({
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={onCreate}
-          style={styles.heroEmpty}
+          className="h-[120px] rounded-[24px] overflow-hidden flex-row items-center px-5 mb-6 border border-black/5"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.05,
+            shadowRadius: 8,
+            elevation: 2,
+          }}
         >
           <LinearGradient
             colors={["#F8F9FA", "#F1F3F5"]}
-            style={StyleSheet.absoluteFill}
+            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
           />
-          <View style={styles.heroEmptyIconWrap}>
+          <View className="w-14 h-14 rounded-[20px] overflow-hidden items-center justify-center mr-4">
             <LinearGradient
               colors={["#1D1D1F", "#000000"]}
-              style={StyleSheet.absoluteFill}
+              style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
             />
-            <MaterialIcons name="add-location-alt" size={28} color="#FFFFFF" />
+            <MaterialIconsRounded name="add-location-alt" size={28} color="#FFFFFF" />
           </View>
-          <View style={styles.heroEmptyTextWrap}>
-            <Text style={styles.heroEmptyTitle}>Tạo chuyến đi đầu tiên</Text>
-            <Text style={styles.heroEmptyCopy}>
+          <View className="flex-1">
+            <Text className="text-[17px] font-semibold tracking-tight mb-1" style={{ color: APPLE_THEME.text }}>
+              Tạo chuyến đi đầu tiên
+            </Text>
+            <Text className="text-sm font-body tracking-tight" style={{ color: APPLE_THEME.textMuted }}>
               Bắt đầu hành trình khám phá thế giới của bạn
             </Text>
           </View>
-          <View style={styles.heroEmptyArrow}>
-             <MaterialIcons name="arrow-forward" size={20} color="#1D1D1F" />
+          <View className="w-8 h-8 rounded-[16px] bg-black/[0.06] items-center justify-center ml-3">
+            <MaterialIconsRounded name="arrow-forward" size={20} color="#1D1D1F" />
           </View>
         </TouchableOpacity>
       )}
 
       {/* ── Stats Strip (Grid) ── */}
-      <View style={styles.statsGrid}>
+      <View className="flex-row flex-wrap justify-between gap-y-3 mb-7">
         {summary.map((item) => (
           <StatPill
             key={item.key}
@@ -204,11 +246,11 @@ export function TripsDashboard({
       </View>
 
       {/* ── Section Header + Filters ── */}
-      <View style={styles.sectionRow}>
-        <Text style={styles.sectionTitle}>
+      <View className="flex-row items-center justify-between mb-4">
+        <Text className="text-xl font-semibold tracking-tight" style={{ color: APPLE_THEME.text }}>
           {filteredCount > 0 ? `Danh sách (${filteredCount})` : "Danh sách"}
         </Text>
-        <View style={styles.filterGroup}>
+        <View className="flex-row gap-2">
           {FILTERS.map((filter) => {
             const active = activeFilter === filter.key;
             return (
@@ -216,16 +258,17 @@ export function TripsDashboard({
                 key={filter.key}
                 activeOpacity={0.7}
                 onPress={() => onSelectFilter(filter.key)}
-                style={[
-                  styles.filterChip,
-                  active && styles.filterChipActive,
-                ]}
+                className={cn(
+                  "rounded-full px-4 py-2",
+                  active ? "bg-[#1D1D1F]" : "bg-gray-100",
+                )}
               >
                 <Text
-                  style={[
-                    styles.filterChipText,
-                    active && styles.filterChipTextActive,
-                  ]}
+                  className={cn(
+                    "text-[13px] font-semibold tracking-tight",
+                    active ? "text-white" : "",
+                  )}
+                  style={!active ? { color: APPLE_THEME.textMuted } : undefined}
                 >
                   {filter.label}
                 </Text>
@@ -237,269 +280,3 @@ export function TripsDashboard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  dashboardWrap: {
-    paddingHorizontal: TAB_SCREEN_PADDING,
-    paddingTop: 8,
-    paddingBottom: 24,
-  },
-
-  /* ── Header ── */
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  headerTitle: {
-    color: APPLE_THEME.text,
-    fontSize: 34,
-    fontFamily: TOKENS.font.heading,
-    letterSpacing: -1,
-  },
-  headerSubtitle: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 15,
-    fontFamily: TOKENS.font.body,
-    marginTop: 4,
-    letterSpacing: -0.2,
-  },
-
-  /* ── Hero Card ── */
-  heroCard: {
-    height: 280,
-    borderRadius: 28,
-    overflow: "hidden",
-    marginBottom: 24,
-    backgroundColor: "#1C1C1E",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-    position: "relative",
-  },
-  heroTopRow: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    zIndex: 2,
-  },
-  heroArrow: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.3)",
-  },
-  heroContent: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 24,
-    gap: 10,
-  },
-  heroBadgeWrap: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    overflow: "hidden",
-    marginBottom: 4,
-  },
-  heroBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 6,
-    backgroundColor: "rgba(255,255,255,0.25)",
-  },
-  heroDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#34C759",
-    shadowColor: "#34C759",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-  },
-  heroBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontFamily: TOKENS.font.bold,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 28,
-    fontFamily: TOKENS.font.heading,
-    lineHeight: 34,
-    letterSpacing: -0.5,
-  },
-  heroMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 4,
-  },
-  heroMetaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  heroMetaText: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 14,
-    fontFamily: TOKENS.font.medium,
-    letterSpacing: -0.1,
-  },
-  heroMetaDivider: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.4)",
-    marginHorizontal: 4,
-  },
-
-  /* ── Hero Empty ── */
-  heroEmpty: {
-    height: 120,
-    borderRadius: 24,
-    overflow: "hidden",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  heroEmptyIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
-  },
-  heroEmptyTextWrap: {
-    flex: 1,
-  },
-  heroEmptyTitle: {
-    color: APPLE_THEME.text,
-    fontSize: 17,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.3,
-    marginBottom: 4,
-  },
-  heroEmptyCopy: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 14,
-    fontFamily: TOKENS.font.body,
-    letterSpacing: -0.1,
-  },
-  heroEmptyArrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(29,29,31,0.06)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 12,
-  },
-
-  /* ── Stats Strip (Grid) ── */
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    rowGap: 12,
-    marginBottom: 28,
-  },
-  statPill: {
-    width: "48%",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  statContent: {
-    flex: 1,
-  },
-  statValue: {
-    color: APPLE_THEME.text,
-    fontSize: 22,
-    fontFamily: TOKENS.font.heading,
-    letterSpacing: -0.4,
-  },
-  statLabel: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-    marginTop: 2,
-  },
-
-  /* ── Section + Filters ── */
-  sectionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    color: APPLE_THEME.text,
-    fontSize: 20,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.4,
-  },
-  filterGroup: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  filterChip: {
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: "#F2F2F7",
-  },
-  filterChipActive: {
-    backgroundColor: "#1D1D1F",
-  },
-  filterChipText: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.1,
-  },
-  filterChipTextActive: {
-    color: "#FFFFFF",
-  },
-});

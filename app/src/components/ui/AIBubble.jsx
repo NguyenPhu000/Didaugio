@@ -3,10 +3,10 @@ import {
   View,
   Text,
   ActivityIndicator,
-  StyleSheet,
   useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { cn } from "../../lib/cn";
 import { TOKENS } from "../../constants/design-tokens";
 import { PlacePreviewCard } from "../composed/PlacePreviewCard";
 
@@ -69,30 +69,40 @@ export function AIBubble({
 
   return (
     <View
-      style={[
-        styles.wrap,
-        isUser ? styles.wrapUser : styles.wrapAssistant,
-        !isUser && hasSuggestionCards && styles.wrapAssistantWithCards,
-      ]}
+      className={cn(
+        "max-w-[86%] mb-2",
+        isUser ? "self-end" : "self-start",
+        !isUser && hasSuggestionCards && "w-full max-w-full",
+      )}
     >
       <View
-        style={[
-          styles.bubble,
-          isUser ? styles.bubbleUser : styles.bubbleAssistant,
-          style,
-        ]}
+        className={cn(
+          "rounded-6 px-4 py-3",
+          isUser
+            ? "rounded-br-sm bg-primary-600"
+            : "rounded-bl-sm bg-white/98 border border-slate-200",
+        )}
+        style={
+          !isUser
+            ? {
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 2,
+                elevation: 1,
+              }
+            : style
+        }
       >
         {isTyping ? (
-          <View style={styles.typingRow}>
+          <View className="flex-row items-center gap-2 py-1">
             <ActivityIndicator size="small" color={TOKENS.color.primary[600]} />
-            <Text style={styles.typingText}>em Nhi đang trả lời...</Text>
+            <Text className="text-slate-500 text-[13px]">em Nhi đang trả lời...</Text>
           </View>
         ) : (
           <Text
-            style={[
-              styles.bubbleText,
-              { color: isUser ? "#FFFFFF" : TOKENS.color.neutral[900] },
-            ]}
+            className="text-sm leading-[22px]"
+            style={{ color: isUser ? "#FFFFFF" : TOKENS.color.neutral[900] }}
           >
             {content}
           </Text>
@@ -100,7 +110,7 @@ export function AIBubble({
       </View>
 
       {hasSuggestionCards ? (
-        <View style={styles.suggestionList}>
+        <View className="mt-2 gap-2.5">
           {visibleSuggestedPlaces.map((place, index) => {
             const placeId = Number(place?.id);
 
@@ -121,54 +131,3 @@ export function AIBubble({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    maxWidth: "86%",
-    marginBottom: 8,
-  },
-  wrapUser: {
-    alignSelf: "flex-end",
-  },
-  wrapAssistant: {
-    alignSelf: "flex-start",
-  },
-  wrapAssistantWithCards: {
-    width: "100%",
-    maxWidth: "100%",
-  },
-  bubble: {
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  bubbleUser: {
-    borderBottomRightRadius: 8,
-    backgroundColor: TOKENS.color.primary[600],
-  },
-  bubbleAssistant: {
-    borderBottomLeftRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.98)",
-    borderWidth: 1,
-    borderColor: TOKENS.color.border.light,
-    ...TOKENS.shadow.sm,
-  },
-  bubbleText: {
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  typingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 4,
-  },
-  typingText: {
-    color: TOKENS.color.neutral[500],
-    fontSize: 13,
-  },
-  suggestionList: {
-    marginTop: 8,
-    gap: 10,
-  },
-});

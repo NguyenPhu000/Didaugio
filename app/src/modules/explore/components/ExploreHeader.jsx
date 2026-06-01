@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -15,7 +15,7 @@ function ExploreHeaderInner({ user }) {
     <View className="flex-row justify-between items-center gap-3.5 px-[15px] py-3 rounded-[24px] bg-white border border-black/[0.04] shadow-sm elevation-1">
       <View className="flex-row items-center gap-2.5 flex-1">
         <View className="w-10 h-10 rounded-full items-center justify-center bg-[#E5F1FF]">
-          <MaterialIcons name="person" size={20} color={APPLE_THEME.primary} />
+          <MaterialIconsRounded name="person" size={20} color={APPLE_THEME.primary} />
         </View>
 
         <View className="flex-1 min-w-0">

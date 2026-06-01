@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { View, Text } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   formatDistance,
   getTransportIcon,
@@ -26,7 +26,7 @@ function TimelineConnector({ distanceToNext, transportToNext }) {
       {label ? (
         <View className="flex-row items-center gap-1 bg-black/[0.03] px-2.5 py-1 rounded-[8px]">
           {transportIcon ? (
-            <MaterialIcons name={transportIcon} size={12} color={ALPHA.iconMuted} />
+            <MaterialIconsRounded name={transportIcon} size={12} color={ALPHA.iconMuted} />
           ) : null}
           <Text className="text-[11px] text-black/40 font-sans tracking-tight">{label}</Text>
         </View>

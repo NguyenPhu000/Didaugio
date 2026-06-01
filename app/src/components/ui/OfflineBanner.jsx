@@ -1,10 +1,8 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
+import { View, Text } from "react-native";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import NetInfo from "@react-native-community/netinfo";
-import { useEffect, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { TOKENS } from "../../constants/design-tokens";
 
 export function OfflineBanner({ onNetworkChange } = {}) {
   const [isConnected, setIsConnected] = useState(true);
@@ -25,26 +23,12 @@ export function OfflineBanner({ onNetworkChange } = {}) {
   if (isConnected) return null;
 
   return (
-    <View style={[styles.banner, { paddingTop: insets.top + 4 }]}>
-      <MaterialIcons name="wifi-off" size={16} color="#FFFFFF" />
-      <Text style={styles.text}>Bạn đang offline — Hiển thị dữ liệu đã lưu</Text>
+    <View
+      className="bg-amber-500 flex-row items-center justify-center gap-2 py-2 px-4"
+      style={{ paddingTop: insets.top + 4 }}
+    >
+      <MaterialIconsRounded name="wifi-off" size={16} color="#FFFFFF" />
+      <Text className="text-white font-medium text-[13px]">Bạn đang offline — Hiển thị dữ liệu đã lưu</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  banner: {
-    backgroundColor: "#F59E0B",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  text: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-  },
-});

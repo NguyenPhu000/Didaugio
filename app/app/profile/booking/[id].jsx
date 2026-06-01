@@ -6,12 +6,12 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
 import { Image } from "expo-image";
-import { MaterialIcons, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -30,6 +30,7 @@ import {
   useTrips,
 } from "../../../src/modules/trips/hooks/useTrips";
 import { useOffline } from "../../../src/hooks/useOffline";
+
 
 const QR_CACHE_KEY = "@booking_qr_cache";
 const QR_CACHE_VERSION = "v1";
@@ -268,7 +269,8 @@ export default function BookingDetailScreen() {
   if (isLoading) {
     return (
       <View
-        style={[styles.screen, styles.centerWrap, { paddingTop: insets.top }]}
+        className="flex-1 bg-[#F5F5F7] items-center justify-center"
+        style={{ paddingTop: insets.top }}
       >
         <ActivityIndicator size="large" color={THEME.primary} />
       </View>
@@ -277,17 +279,17 @@ export default function BookingDetailScreen() {
 
   if (!booking) {
     return (
-      <View style={[styles.screen, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.iconBtn}>
-            <MaterialIcons name="arrow-back" size={22} color={THEME.text} />
+      <View className="flex-1 bg-[#F5F5F7]" style={{ paddingTop: insets.top }}>
+        <View className="flex-row items-center justify-between px-4 py-[14px] border-b border-b-[#D2D2D7]">
+          <Pressable onPress={() => router.back()} className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]">
+            <MaterialIconsRounded name="arrow-back" size={22} color={THEME.text} />
           </Pressable>
-          <Text style={styles.title}>Chi tiết booking</Text>
-          <View style={styles.iconBtn} />
+          <Text className="text-[19px] text-[#1D1D1F] font-semibold">Chi tiết booking</Text>
+          <View className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]" />
         </View>
 
-        <View style={styles.centerWrap}>
-          <Text style={styles.emptyText}>Không tìm thấy booking.</Text>
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-medium">Không tìm thấy booking.</Text>
         </View>
       </View>
     );
@@ -301,19 +303,19 @@ export default function BookingDetailScreen() {
   const placeId = booking?.service?.place?.id;
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.iconBtn}>
-          <MaterialIcons name="arrow-back" size={22} color={THEME.text} />
+    <View className="flex-1 bg-[#F5F5F7]" style={{ paddingTop: insets.top }}>
+      <View className="flex-row items-center justify-between px-4 py-[14px] border-b border-b-[#D2D2D7]">
+        <Pressable onPress={() => router.back()} className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]">
+          <MaterialIconsRounded name="arrow-back" size={22} color={THEME.text} />
         </Pressable>
-        <Text style={styles.title}>Chi tiết booking</Text>
-        <Pressable onPress={() => refetch()} style={styles.iconBtn}>
-          <MaterialIcons name="refresh" size={20} color={THEME.text} />
+        <Text className="text-[19px] text-[#1D1D1F] font-semibold">Chi tiết booking</Text>
+        <Pressable onPress={() => refetch()} className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]">
+          <MaterialIconsRounded name="refresh" size={20} color={THEME.text} />
         </Pressable>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 26, gap: 12 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -327,92 +329,102 @@ export default function BookingDetailScreen() {
           />
         }
       >
-        <View style={styles.card}>
-          <View style={styles.cardTopRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Mã booking</Text>
-              <Text style={styles.valueBold}>{booking.bookingCode}</Text>
+        <View className="bg-white rounded-[20px] border border-[#D2D2D7] p-[15px]">
+          <View className="flex-row items-center justify-between gap-2">
+            <View className="flex-1">
+              <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium">Mã booking</Text>
+              <Text className="text-[15px] text-[#1D1D1F] font-semibold">{booking.bookingCode}</Text>
             </View>
 
             <View
-              style={[styles.statusBadge, { backgroundColor: statusMeta.bg }]}
+              className="rounded-full px-[10px] py-[5px] border border-[rgba(0,0,0,0.08)]"
+              style={{ backgroundColor: statusMeta.bg }}
             >
-              <Text
-                style={[styles.statusBadgeText, { color: statusMeta.color }]}
-              >
+              <Text className="text-[11px] font-semibold" style={{ color: statusMeta.color }}>
                 {statusMeta.label}
               </Text>
             </View>
           </View>
 
-          <Text style={[styles.label, styles.mt12]}>Dịch vụ</Text>
-          <Text style={styles.value}>{booking?.service?.name || "--"}</Text>
+          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">Dịch vụ</Text>
+          <Text className="text-[14px] text-[#1D1D1F] font-sans">{booking?.service?.name || "--"}</Text>
 
-          <Text style={[styles.label, styles.mt12]}>Địa điểm</Text>
-          <Text style={styles.value}>
+          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">Địa điểm</Text>
+          <Text className="text-[14px] text-[#1D1D1F] font-sans">
             {booking?.service?.place?.name || "--"}
           </Text>
 
-          <Text style={[styles.label, styles.mt12]}>Thời gian sử dụng</Text>
-          <Text style={styles.value}>{formatDateTime(booking)}</Text>
+          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">Thời gian sử dụng</Text>
+          <Text className="text-[14px] text-[#1D1D1F] font-sans">{formatDateTime(booking)}</Text>
 
-          <Text style={[styles.label, styles.mt12]}>Tổng thanh toán</Text>
-          <Text style={styles.valueBold}>
+          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">Tổng thanh toán</Text>
+          <Text className="text-[15px] text-[#1D1D1F] font-semibold">
             {formatCurrency(booking?.finalPrice)}
           </Text>
         </View>
 
         {/* QR Check-in Card */}
         {canShowQr ? (
-          <View style={[styles.card, styles.qrCard]}>
-            <View style={styles.qrHeaderRow}>
+          <View
+            className="bg-white rounded-[20px] border border-[#D2D2D7] p-[18px]"
+            style={Platform.select({
+              ios: {
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.08,
+                shadowRadius: 16,
+              },
+              android: { elevation: 4 },
+            })}
+          >
+            <View className="flex-row items-center gap-2">
               <Ionicons name="qr-code" size={18} color={THEME.primary} />
-              <Text style={styles.qrTitle}>Mã QR check-in</Text>
+              <Text className="text-[16px] text-[#1D1D1F] font-semibold">Mã QR check-in</Text>
             </View>
-            <Text style={styles.qrHint}>
+            <Text className="mt-[6px] text-[13px] leading-5 text-[rgba(0,0,0,0.8)] font-sans">
               Đưa mã này cho phía doanh nghiệp quét khi bạn đến sử dụng dịch vụ.
             </Text>
 
             {qrLoading && !activeQrCode ? (
-              <View style={styles.qrLoadingContainer}>
+              <View className="mt-5 h-[200px] rounded-2xl bg-[#EDEDF2] items-center justify-center gap-[10px]">
                 <ActivityIndicator size="small" color={THEME.primary} />
-                <Text style={styles.qrLoadingText}>Đang tải mã QR...</Text>
+                <Text className="text-[13px] text-[rgba(0,0,0,0.48)] font-medium">Đang tải mã QR...</Text>
               </View>
             ) : activeQrCode ? (
-              <View style={styles.qrImageWrapper}>
+              <View className="mt-4 items-center relative">
                 <Image
                   source={{ uri: activeQrCode }}
-                  style={styles.qrImage}
+                  className="w-[220px] h-[220px] rounded-2xl bg-white border border-[#D2D2D7]"
                   contentFit="contain"
                 />
                 {/* Offline indicator */}
                 {isOffline && (
-                  <View style={styles.qrOfflineTag}>
+                  <View className="absolute top-2 right-2 flex-row items-center gap-1 bg-black/60 rounded-full px-2 py-1">
                     <Ionicons name="cloud-offline" size={12} color="#fff" />
-                    <Text style={styles.qrOfflineTagText}>Offline</Text>
+                    <Text className="text-white text-[10px] font-semibold">Offline</Text>
                   </View>
                 )}
               </View>
             ) : (
-              <View style={styles.qrErrorContainer}>
+              <View className="mt-4 h-40 rounded-2xl bg-[#EDEDF2] items-center justify-center gap-2">
                 <Ionicons
                   name="alert-circle-outline"
                   size={20}
                   color={THEME.danger}
                 />
-                <Text style={styles.qrErrorText}>
+                <Text className="text-[#FF3B30] text-[13px] font-medium text-center px-4">
                   {qrError?.message || "Chưa tải được mã QR."}
                 </Text>
-                <Pressable style={styles.qrRetryBtn} onPress={() => refetchQr()}>
-                  <Text style={styles.qrRetryBtnText}>Thử lại</Text>
+                <Pressable className="mt-1 bg-[#1D1D1F] rounded-full px-4 py-2" onPress={() => refetchQr()}>
+                  <Text className="text-white text-[12px] font-semibold">Thử lại</Text>
                 </Pressable>
               </View>
             )}
 
             {/* Booking code below QR */}
             {activeQrCode && (
-              <View style={styles.qrCodeLabel}>
-                <Text style={styles.qrCodeLabelText}>
+              <View className="mt-3 self-center bg-[#EDEDF2] rounded-full px-[14px] py-[6px]">
+                <Text className="text-[13px] text-[#1D1D1F] font-semibold tracking-[1.5px]">
                   {booking.bookingCode}
                 </Text>
               </View>
@@ -420,8 +432,11 @@ export default function BookingDetailScreen() {
 
             {/* Expired overlay for terminal statuses */}
             {isTerminal && (
-              <View style={styles.qrOverlay}>
-                <View style={styles.qrOverlayBadge}>
+              <View
+                className="rounded-[20px] bg-white/82 items-center justify-center"
+                style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+              >
+                <View className="items-center gap-[6px] bg-black/70 rounded-2xl px-5 py-[14px]">
                   <Ionicons
                     name={
                       booking.status === "completed"
@@ -431,7 +446,7 @@ export default function BookingDetailScreen() {
                     size={28}
                     color="#fff"
                   />
-                  <Text style={styles.qrOverlayText}>
+                  <Text className="text-white text-[14px] font-semibold">
                     {booking.status === "completed"
                       ? "Đã sử dụng"
                       : statusMeta.label}
@@ -441,20 +456,31 @@ export default function BookingDetailScreen() {
             )}
           </View>
         ) : (
-          <View style={[styles.card, styles.qrCard]}>
-            <View style={styles.qrHeaderRow}>
+          <View
+            className="bg-white rounded-[20px] border border-[#D2D2D7] p-[18px]"
+            style={Platform.select({
+              ios: {
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.08,
+                shadowRadius: 16,
+              },
+              android: { elevation: 4 },
+            })}
+          >
+            <View className="flex-row items-center gap-2">
               <Ionicons name="qr-code" size={18} color={THEME.textMuted} />
-              <Text style={[styles.qrTitle, { color: THEME.textMuted }]}>
+              <Text className="text-[16px] font-semibold" style={{ color: THEME.textMuted }}>
                 Mã QR check-in
               </Text>
             </View>
-            <View style={styles.qrPlaceholder}>
+            <View className="mt-4 h-[120px] rounded-2xl bg-[#EDEDF2] items-center justify-center gap-2">
               <Ionicons
                 name="time-outline"
                 size={32}
                 color={THEME.textMuted}
               />
-              <Text style={styles.qrPlaceholderText}>
+              <Text className="text-[13px] text-[rgba(0,0,0,0.48)] font-sans text-center px-5">
                 {isTerminal
                   ? "QR không khả dụng cho booking này."
                   : "QR sẽ xuất hiện khi booking được xác nhận."}
@@ -463,25 +489,25 @@ export default function BookingDetailScreen() {
           </View>
         )}
 
-        <View style={styles.card}>
-          <Text style={styles.qrTitle}>Liên kết Trip</Text>
+        <View className="bg-white rounded-[20px] border border-[#D2D2D7] p-[15px]">
+          <Text className="text-[16px] text-[#1D1D1F] font-semibold">Liên kết Trip</Text>
           {booking?.linkedTrip ? (
-            <View style={{ marginTop: 8, gap: 6 }}>
-              <Text style={styles.valueBold}>
+            <View className="mt-2 gap-[6px]">
+              <Text className="text-[15px] text-[#1D1D1F] font-semibold">
                 {booking.linkedTrip.title || `Trip #${booking.linkedTrip.id}`}
               </Text>
-              <Text style={styles.qrHint}>
+              <Text className="mt-[6px] text-[13px] leading-5 text-[rgba(0,0,0,0.8)] font-sans">
                 Đang ở ngày {booking.linkedTrip.dayNumber || 1} của trip.
               </Text>
               <Pressable
-                style={[styles.outlineBtn, { marginTop: 6 }]}
+                className="mt-[6px] flex-1 border border-[#D2D2D7] rounded-full py-3 items-center bg-[#EDEDF2]"
                 onPress={() => router.push(`/trip/${booking.linkedTrip.id}`)}
               >
-                <Text style={styles.outlineBtnText}>Mở trip đã liên kết</Text>
+                <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-semibold">Mở trip đã liên kết</Text>
               </Pressable>
             </View>
           ) : (
-            <Text style={[styles.qrHint, { marginTop: 6 }]}>
+            <Text className="mt-[6px] text-[13px] leading-5 text-[rgba(0,0,0,0.8)] font-sans">
               Booking này chưa liên kết trip. Bạn có thể chọn trip có sẵn hoặc
               tạo trip mới để thêm địa điểm vào đúng ngày booking.
             </Text>
@@ -512,22 +538,15 @@ export default function BookingDetailScreen() {
                     }}
                   >
                     <Text
-                      style={{
-                        color: THEME.text,
-                        fontSize: 12,
-                        fontFamily: TOKENS.font.semibold,
-                      }}
+                      className="text-[12px] font-semibold"
+                      style={{ color: THEME.text }}
                       numberOfLines={1}
                     >
                       {trip.title || `Trip #${trip.id}`}
                     </Text>
                     <Text
-                      style={{
-                        marginTop: 2,
-                        color: THEME.textMuted,
-                        fontSize: 11,
-                        fontFamily: TOKENS.font.regular,
-                      }}
+                      className="mt-0.5 text-[11px] font-sans"
+                      style={{ color: THEME.textMuted }}
                     >
                       {trip.totalDays || 1} ngày
                     </Text>
@@ -537,24 +556,24 @@ export default function BookingDetailScreen() {
             </ScrollView>
           ) : null}
 
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+          <View className="flex-row gap-[10px] mt-3">
             <Pressable
-              style={styles.outlineBtn}
+              className="flex-1 border border-[#D2D2D7] rounded-full py-3 items-center bg-[#EDEDF2]"
               onPress={() => handleLinkBookingToTrip(selectedTripId)}
               disabled={linkBookingToTripMutation.isPending || !selectedTripId}
             >
-              <Text style={styles.outlineBtnText}>Liên kết trip đã chọn</Text>
+              <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-semibold">Liên kết trip đã chọn</Text>
             </Pressable>
 
             <Pressable
-              style={styles.primaryBtn}
+              className="flex-1 bg-[#1D1D1F] rounded-full py-3 items-center"
               onPress={handleCreateTripAndLink}
               disabled={
                 createTripMutation.isPending ||
                 linkBookingToTripMutation.isPending
               }
             >
-              <Text style={styles.primaryBtnText}>
+              <Text className="text-white text-[14px] font-semibold">
                 {createTripMutation.isPending ||
                 linkBookingToTripMutation.isPending
                   ? "Đang xử lý..."
@@ -564,23 +583,23 @@ export default function BookingDetailScreen() {
           </View>
         </View>
 
-        <View style={styles.actionRow}>
+        <View className="flex-row gap-[10px]">
           {placeId ? (
             <Pressable
-              style={styles.outlineBtn}
+              className="flex-1 border border-[#D2D2D7] rounded-full py-3 items-center bg-[#EDEDF2]"
               onPress={() => router.push(`/place/${placeId}`)}
             >
-              <Text style={styles.outlineBtnText}>Xem địa điểm</Text>
+              <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-semibold">Xem địa điểm</Text>
             </Pressable>
           ) : null}
 
           {placeId ? (
             <Pressable
-              style={styles.primaryBtn}
+              className="flex-1 bg-[#1D1D1F] rounded-full py-3 items-center"
               onPress={handleSavePlace}
               disabled={savePlaceMutation.isPending}
             >
-              <Text style={styles.primaryBtnText}>
+              <Text className="text-white text-[14px] font-semibold">
                 {savePlaceMutation.isPending ? "Đang lưu..." : "Lưu địa điểm"}
               </Text>
             </Pressable>
@@ -590,273 +609,3 @@ export default function BookingDetailScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: THEME.background,
-  },
-  centerWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyText: {
-    color: THEME.textSecondary,
-    fontSize: 14,
-    fontFamily: TOKENS.font.medium,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.border,
-  },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: THEME.surface,
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  title: {
-    fontSize: 19,
-    color: THEME.text,
-    fontFamily: TOKENS.font.semibold,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 26,
-    gap: 12,
-  },
-  card: {
-    backgroundColor: THEME.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    padding: 15,
-  },
-  cardTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  statusBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: THEME.borderSoft,
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  label: {
-    fontSize: 12,
-    color: THEME.textMuted,
-    fontFamily: TOKENS.font.medium,
-  },
-  value: {
-    fontSize: 14,
-    color: THEME.text,
-    fontFamily: TOKENS.font.regular,
-  },
-  valueBold: {
-    fontSize: 15,
-    color: THEME.text,
-    fontFamily: TOKENS.font.semibold,
-  },
-  mt12: {
-    marginTop: 12,
-  },
-  qrCard: {
-    padding: 18,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-      },
-      android: { elevation: 4 },
-    }),
-  },
-  qrHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  qrTitle: {
-    fontSize: 16,
-    color: THEME.text,
-    fontFamily: TOKENS.font.semibold,
-  },
-  qrHint: {
-    marginTop: 6,
-    fontSize: 13,
-    lineHeight: 20,
-    color: THEME.textSecondary,
-    fontFamily: TOKENS.font.regular,
-  },
-  qrLoadingContainer: {
-    marginTop: 20,
-    height: 200,
-    borderRadius: 16,
-    backgroundColor: THEME.surfaceMuted,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  qrLoadingText: {
-    fontSize: 13,
-    color: THEME.textMuted,
-    fontFamily: TOKENS.font.medium,
-  },
-  qrImageWrapper: {
-    marginTop: 16,
-    alignItems: "center",
-    position: "relative",
-  },
-  qrImage: {
-    width: 220,
-    height: 220,
-    borderRadius: 16,
-    backgroundColor: THEME.white,
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  qrOfflineTag: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  qrOfflineTagText: {
-    color: "#fff",
-    fontSize: 10,
-    fontFamily: TOKENS.font.semibold,
-  },
-  qrCodeLabel: {
-    marginTop: 12,
-    alignSelf: "center",
-    backgroundColor: THEME.surfaceMuted,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  qrCodeLabelText: {
-    fontSize: 13,
-    color: THEME.text,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 1.5,
-  },
-  qrOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.82)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  qrOverlayBadge: {
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  qrOverlayText: {
-    color: "#fff",
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  qrErrorContainer: {
-    marginTop: 16,
-    height: 160,
-    borderRadius: 16,
-    backgroundColor: THEME.surfaceMuted,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  qrErrorText: {
-    color: THEME.danger,
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-    textAlign: "center",
-    paddingHorizontal: 16,
-  },
-  qrRetryBtn: {
-    marginTop: 4,
-    backgroundColor: THEME.primary,
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  qrRetryBtnText: {
-    color: THEME.white,
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-  },
-  qrPlaceholder: {
-    marginTop: 16,
-    height: 120,
-    borderRadius: 16,
-    backgroundColor: THEME.surfaceMuted,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  qrPlaceholderText: {
-    fontSize: 13,
-    color: THEME.textMuted,
-    fontFamily: TOKENS.font.regular,
-    textAlign: "center",
-    paddingHorizontal: 20,
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  primaryBtn: {
-    flex: 1,
-    backgroundColor: THEME.primary,
-    borderRadius: 999,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  primaryBtnText: {
-    color: THEME.white,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  outlineBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    borderRadius: 999,
-    paddingVertical: 12,
-    alignItems: "center",
-    backgroundColor: THEME.surfaceMuted,
-  },
-  outlineBtnText: {
-    color: THEME.textSecondary,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-});

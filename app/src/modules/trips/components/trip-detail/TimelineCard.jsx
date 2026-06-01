@@ -2,12 +2,14 @@ import { memo, useCallback } from "react";
 import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { ScaleDecorator } from "react-native-draggable-flatlist";
 import { TRIP_STATUS_META } from "../../utils/tripTheme";
 import { formatPrice, formatDestinationTimeLabel, formatDuration } from "../../utils/tripHelpers";
 import { T, ALPHA } from "../../utils/tripDetailTokens";
 import { StatusBadge } from "./StatusBadge";
+
+import { resolvePlaceImageUri } from "../../../../lib/media-url";
 
 const ACTIVE_CARD_SHADOW = {
   shadowColor: "#000",
@@ -50,7 +52,7 @@ function TimelineCard({
 
   const placeName = dest.place?.name || "Chưa có tên";
   const placeAddress = dest.place?.address || "";
-  const thumbnail = dest.place?.thumbnail;
+  const thumbnail = resolvePlaceImageUri(dest.place);
 
   const hasTime = !!dest.startTime || !!dest.endTime;
   const timeLabel = formatDestinationTimeLabel(dest);
@@ -75,7 +77,7 @@ function TimelineCard({
                 className="flex-row items-center gap-1 px-2 py-0.75 rounded-md"
                 style={{ backgroundColor: "rgba(255,159,10,0.10)" }}
               >
-                <MaterialIcons name="info-outline" size={12} color={T.warning} />
+                <MaterialIconsRounded name="info-outline" size={12} color={T.warning} />
                 <Text className="text-[11px] font-semibold" style={{ color: T.warning }}>
                   {timeLabel}
                 </Text>
@@ -95,7 +97,7 @@ function TimelineCard({
             className="p-1 rounded-lg"
             accessibilityLabel="Kéo để sắp xếp"
           >
-            <MaterialIcons name="drag-indicator" size={20} color="#C7C7CC" />
+            <MaterialIconsRounded name="drag-indicator" size={20} color="#C7C7CC" />
           </Pressable>
         </View>
 
@@ -111,7 +113,7 @@ function TimelineCard({
                 />
               ) : (
                 <View className="flex-1 bg-[#F5F5F7] items-center justify-center">
-                  <MaterialIcons name="place" size={20} color={ALPHA.iconFaint} />
+                  <MaterialIconsRounded name="place" size={20} color={ALPHA.iconFaint} />
                 </View>
               )}
             </View>
@@ -122,7 +124,7 @@ function TimelineCard({
                 </Text>
                 {isVisited ? (
                   <View className="flex-row items-center gap-1 px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(52,199,89,0.12)" }}>
-                    <MaterialIcons name="check-circle" size={13} color={T.success} />
+                    <MaterialIconsRounded name="check-circle" size={13} color={T.success} />
                     <Text className="text-[11px] font-semibold" style={{ color: T.success }}>Đã đến</Text>
                   </View>
                 ) : null}
@@ -134,7 +136,7 @@ function TimelineCard({
               ) : null}
               {formatDuration(dest.durationMinutes) ? (
                 <View className="flex-row items-center gap-1 mt-0.25">
-                  <MaterialIcons name="schedule" size={12} color={ALPHA.iconStrong} />
+                  <MaterialIconsRounded name="schedule" size={12} color={ALPHA.iconStrong} />
                   <Text className="text-[12px] text-black/40 font-normal tracking-tight">{formatDuration(dest.durationMinutes)}</Text>
                 </View>
               ) : null}
@@ -185,7 +187,7 @@ function TimelineCard({
               accessibilityRole="button"
               accessibilityLabel="Xem chi tiết địa điểm"
             >
-              <MaterialIcons name="visibility" size={17} color={T.ink} />
+              <MaterialIconsRounded name="visibility" size={17} color={T.ink} />
             </Pressable>
             <Pressable
               onPress={handleMovePress}
@@ -195,7 +197,7 @@ function TimelineCard({
               accessibilityRole="button"
               accessibilityLabel="Chuyển sang ngày khác"
             >
-              <MaterialIcons name="swap-horiz" size={17} color={T.ink} />
+              <MaterialIconsRounded name="swap-horiz" size={17} color={T.ink} />
             </Pressable>
 
             <View className="flex-1" />
@@ -208,7 +210,7 @@ function TimelineCard({
               accessibilityRole="button"
               accessibilityLabel="Chỉnh sửa lịch trình điểm đến"
             >
-              <MaterialIcons name="edit" size={15} color={T.onPrimary} />
+              <MaterialIconsRounded name="edit" size={15} color={T.onPrimary} />
               <Text className="text-[13px] text-white font-semibold">Sửa</Text>
             </Pressable>
             <Pressable
@@ -222,7 +224,7 @@ function TimelineCard({
               accessibilityRole="button"
               accessibilityLabel="Bỏ địa điểm khỏi lịch trình"
             >
-              <MaterialIcons name="delete-outline" size={17} color={T.danger} />
+              <MaterialIconsRounded name="delete-outline" size={17} color={T.danger} />
             </Pressable>
           </View>
         </View>

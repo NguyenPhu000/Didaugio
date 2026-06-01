@@ -2,11 +2,10 @@ import {
   Pressable,
   View,
   Text,
-  StyleSheet,
   useWindowDimensions,
 } from "react-native";
 import { Image } from "expo-image";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "../../lib/cn";
@@ -20,24 +19,6 @@ const IMAGE_OVERLAY_COLOR = "rgba(2,6,23,0.34)";
 const CARD_BORDER = "rgba(217,232,247,0.95)";
 const IMAGE_HEIGHT_DEFAULT = 204;
 const IMAGE_HEIGHT_COMPACT = 178;
-const ARROW_BUTTON_STYLE = {
-  position: "absolute",
-  right: 12,
-  bottom: 12,
-  width: 34,
-  height: 34,
-  borderRadius: 17,
-  alignItems: "center",
-  justifyContent: "center",
-  backgroundColor: "rgba(255,255,255,0.95)",
-  borderWidth: 1,
-  borderColor: "#BFDBFE",
-  shadowColor: TOKENS.color.primary[600],
-  shadowOffset: { width: 0, height: 5 },
-  shadowOpacity: 0.16,
-  shadowRadius: 10,
-  elevation: 4,
-};
 
 function getImageSource(place) {
   return resolvePlaceImageUri(place);
@@ -125,7 +106,7 @@ export function PlaceCard({ place, onSave, isSaved, style }) {
         style,
       ]}
     >
-      <View style={[styles.imageWrap, { height: imageHeight }]}>
+      <View className="relative" style={{ height: imageHeight }}>
         {thumbnailUri ? (
           <Image
             source={{ uri: thumbnailUri }}
@@ -133,17 +114,14 @@ export function PlaceCard({ place, onSave, isSaved, style }) {
             contentFit="cover"
             transition={220}
             cachePolicy="memory-disk"
-            style={styles.image}
+            className="w-full h-full"
           />
         ) : (
           <View
-            style={{
-              ...styles.imageFallback,
-              height: imageHeight,
-              backgroundColor: `${placeholderColor}22`,
-            }}
+            className="w-full items-center justify-center"
+            style={{ height: imageHeight, backgroundColor: `${placeholderColor}22` }}
           >
-            <MaterialIcons name="place" size={36} color={placeholderColor} />
+            <MaterialIconsRounded name="place" size={36} color={placeholderColor} />
           </View>
         )}
 
@@ -159,7 +137,7 @@ export function PlaceCard({ place, onSave, isSaved, style }) {
             className="absolute top-3 right-3 w-10 h-10 rounded-full items-center justify-center border border-white/60"
             style={{ backgroundColor: "rgba(255,255,255,0.24)" }}
           >
-            <MaterialIcons
+            <MaterialIconsRounded
               name={isSaved ? "bookmark" : "bookmark-border"}
               size={22}
               color="#fff"
@@ -168,14 +146,23 @@ export function PlaceCard({ place, onSave, isSaved, style }) {
         ) : null}
 
         {category ? (
-          <View style={styles.categoryBadge}>
-            <Text numberOfLines={1} style={styles.categoryBadgeText}>
+          <View className="absolute left-3 right-[54px] bottom-3 h-[26px] rounded-full px-2.5 items-center justify-center bg-ink/72 border border-white/16">
+            <Text numberOfLines={1} className="text-slate-50 font-semibold text-[11px] tracking-[0.2px]">
               {category}
             </Text>
           </View>
         ) : null}
-        <View style={ARROW_BUTTON_STYLE}>
-          <MaterialIcons
+        <View
+          className="absolute right-3 bottom-3 w-[34px] h-[34px] rounded-[17px] items-center justify-center bg-white/95 border border-blue-200"
+          style={{
+            shadowColor: TOKENS.color.primary[600],
+            shadowOffset: { width: 0, height: 5 },
+            shadowOpacity: 0.16,
+            shadowRadius: 10,
+            elevation: 4,
+          }}
+        >
+          <MaterialIconsRounded
             name="arrow-forward"
             size={18}
             color={TOKENS.color.primary[600]}
@@ -183,40 +170,57 @@ export function PlaceCard({ place, onSave, isSaved, style }) {
         </View>
       </View>
 
-      <View style={[styles.body, compact && styles.bodyCompact]}>
+      <View className={cn("px-3.5 pt-[13px] pb-3.5 gap-2", compact && "px-3 pt-[11px] pb-3 gap-1.5")}>
         <Text
-          style={[styles.title, compact && styles.titleCompact]}
+          className={cn(
+            "text-ink font-heading tracking-tight text-[17px] leading-[22px]",
+            compact && "text-base leading-5",
+          )}
           numberOfLines={1}
         >
           {place?.name}
         </Text>
 
-        <View style={styles.locationRow}>
-          <MaterialIcons
+        <View className="flex-row items-center gap-1">
+          <MaterialIconsRounded
             name="place"
             size={compact ? 12 : 13}
             color={TOKENS.color.primary[600]}
           />
           <Text
             numberOfLines={1}
-            style={[styles.locationText, compact && styles.locationTextCompact]}
+            className={cn(
+              "flex-1 text-slate-600 font-medium text-xs",
+              compact && "text-[11px]",
+            )}
           >
             {locationText}
           </Text>
         </View>
 
-        <View style={[styles.metaRow, compact && styles.metaRowCompact]}>
+        <View
+          className={cn(
+            "flex-row items-center gap-2 pt-2 border-t border-slate-200",
+            compact && "gap-1.5 pt-1.5",
+          )}
+        >
           {hasRating ? (
             <View
-              style={[styles.ratingPill, compact && styles.ratingPillCompact]}
+              className={cn(
+                "flex-row items-center gap-[3px] bg-amber-50 border border-amber-300 rounded-full px-2 h-6",
+                compact && "h-[22px] px-[7px]",
+              )}
             >
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="star"
                 size={compact ? 12 : 13}
                 color="#F59E0B"
               />
               <Text
-                style={[styles.ratingText, compact && styles.ratingTextCompact]}
+                className={cn(
+                  "text-amber-800 font-semibold text-[11px]",
+                  compact && "text-[10px]",
+                )}
               >
                 {ratingValue.toFixed(1)}
               </Text>
@@ -225,22 +229,31 @@ export function PlaceCard({ place, onSave, isSaved, style }) {
 
           <Text
             numberOfLines={1}
-            style={[styles.reviewText, compact && styles.reviewTextCompact]}
+            className={cn(
+              "flex-1 text-slate-500 font-medium text-[11px]",
+              compact && "text-[10px]",
+            )}
           >
             {reviewLabel}
           </Text>
 
           {priceLabel ? (
             <View
-              style={[styles.pricePill, compact && styles.pricePillCompact]}
+              className={cn(
+                "flex-row items-center gap-[3px] bg-blue-50 border border-blue-200 rounded-full px-2 h-6 max-w-[114px]",
+                compact && "h-[22px] max-w-[100px] px-[7px]",
+              )}
             >
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="payments"
                 size={compact ? 11 : 12}
                 color={TOKENS.color.primary[600]}
               />
               <Text
-                style={[styles.priceText, compact && styles.priceTextCompact]}
+                className={cn(
+                  "text-blue-700 font-semibold text-[11px]",
+                  compact && "text-[10px]",
+                )}
               >
                 {priceLabel}
               </Text>
@@ -249,14 +262,17 @@ export function PlaceCard({ place, onSave, isSaved, style }) {
         </View>
 
         {viewCount > 0 ? (
-          <View style={styles.viewsRow}>
-            <MaterialIcons
+          <View className="flex-row items-center gap-1">
+            <MaterialIconsRounded
               name="visibility"
               size={compact ? 12 : 13}
               color={TOKENS.color.neutral[400]}
             />
             <Text
-              style={[styles.viewsText, compact && styles.viewsTextCompact]}
+              className={cn(
+                "text-slate-400 font-medium text-[11px]",
+                compact && "text-[10px]",
+              )}
             >
               {viewCount.toLocaleString()} lượt xem
             </Text>
@@ -267,156 +283,3 @@ export function PlaceCard({ place, onSave, isSaved, style }) {
   );
 }
 
-const styles = StyleSheet.create({
-  imageWrap: {
-    position: "relative",
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  imageFallback: {
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  categoryBadge: {
-    position: "absolute",
-    left: 12,
-    right: 54,
-    bottom: 12,
-    height: 26,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(15,23,42,0.72)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.16)",
-  },
-  categoryBadgeText: {
-    color: "#F8FAFC",
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.2,
-  },
-  body: {
-    paddingHorizontal: 14,
-    paddingTop: 13,
-    paddingBottom: 14,
-    gap: 8,
-  },
-  bodyCompact: {
-    paddingHorizontal: 12,
-    paddingTop: 11,
-    paddingBottom: 12,
-    gap: 6,
-  },
-  title: {
-    color: "#0F172A",
-    fontSize: 17,
-    lineHeight: 22,
-    fontFamily: TOKENS.font.heading,
-    letterSpacing: -0.2,
-  },
-  titleCompact: {
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  locationText: {
-    flex: 1,
-    color: "#475569",
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-  },
-  locationTextCompact: {
-    fontSize: 11,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
-  },
-  metaRowCompact: {
-    gap: 6,
-    paddingTop: 6,
-  },
-  ratingPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "#FFF7E6",
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    height: 24,
-  },
-  ratingPillCompact: {
-    height: 22,
-    paddingHorizontal: 7,
-  },
-  ratingText: {
-    color: "#92400E",
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  ratingTextCompact: {
-    fontSize: 10,
-  },
-  reviewText: {
-    flex: 1,
-    color: "#64748B",
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-  },
-  reviewTextCompact: {
-    fontSize: 10,
-  },
-  pricePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "#EFF6FF",
-    borderWidth: 1,
-    borderColor: "#BFDBFE",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    height: 24,
-    maxWidth: 114,
-  },
-  pricePillCompact: {
-    height: 22,
-    maxWidth: 100,
-    paddingHorizontal: 7,
-  },
-  priceText: {
-    color: "#1D4ED8",
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  priceTextCompact: {
-    fontSize: 10,
-  },
-  viewsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  viewsText: {
-    color: "#94A3B8",
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-  },
-  viewsTextCompact: {
-    fontSize: 10,
-  },
-});

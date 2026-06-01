@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { StatusBadge } from "./StatusBadge";
 import { formatBookingDateTime, formatPrice } from "../../utils/tripHelpers";
 import s, { T, STYLES } from "../../utils/tripDetailTokens";
@@ -48,7 +48,7 @@ export const BudgetTab = memo(function BudgetTab({
     return (
       <View className={STYLES.centeredState}>
         <View className="w-14 h-14 rounded-[20px] bg-black/[0.04] items-center justify-center mb-2">
-          <MaterialIcons
+          <MaterialIconsRounded
             name="account-balance-wallet"
             size={28}
             color="rgba(0,0,0,0.2)"
@@ -65,7 +65,7 @@ export const BudgetTab = memo(function BudgetTab({
           onPress={() => router.push("/(tabs)/explore")}
           className="flex-row items-center gap-1.5 bg-[#1D1D1F] px-4.5 py-2.5 rounded-full mt-3"
         >
-          <MaterialIcons name="explore" size={16} color="#FFFFFF" />
+          <MaterialIconsRounded name="explore" size={16} color="#FFFFFF" />
           <Text className="text-white text-[13px] font-semibold tracking-tight">Khám phá dịch vụ</Text>
         </Pressable>
       </View>
@@ -106,7 +106,7 @@ export const BudgetTab = memo(function BudgetTab({
         <View className="flex-1 bg-white rounded-[20px] py-4.5 px-3 items-center justify-center border border-black/[0.05] relative overflow-hidden min-h-[82px]">
           {/* Icon in chìm ẩn phía sau */}
           <View className="absolute inset-0 items-center justify-center opacity-[0.3]">
-            <MaterialIcons
+            <MaterialIconsRounded
               name="check-circle"
               size={56}
               color="#34C759"
@@ -122,7 +122,7 @@ export const BudgetTab = memo(function BudgetTab({
         <View className="flex-1 bg-white rounded-[20px] py-4.5 px-3 items-center justify-center border border-black/[0.05] relative overflow-hidden min-h-[82px]">
           {/* Icon in chìm ẩn phía sau */}
           <View className="absolute inset-0 items-center justify-center opacity-[0.2]">
-            <MaterialIcons
+            <MaterialIconsRounded
               name="schedule"
               size={56}
               color="#FF9F0A"
@@ -156,7 +156,7 @@ export const BudgetTab = memo(function BudgetTab({
                 className="flex-row items-start gap-3 p-4 bg-[#FFF9E6] border border-[#FFE0B2] rounded-[18px]"
               >
                 <View className="w-9 h-9 rounded-full bg-[#FF9F0A]/10 items-center justify-center mt-0.5">
-                  <MaterialIcons name="notifications-active" size={18} color="#FF9F0A" />
+                  <MaterialIconsRounded name="notifications-active" size={18} color="#FF9F0A" />
                 </View>
                 <View className="flex-1 gap-1">
                   <Text className="text-[14px] font-bold text-[#D97706] tracking-tight">

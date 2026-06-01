@@ -17,7 +17,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import * as Haptics from "expo-haptics";
 
 import {
@@ -174,22 +174,7 @@ export default function ExploreScreen() {
 
   const showEmpty = allPlaces.length === 0 && !isLoading;
 
-  /* — Section stagger entrance — */
-  const sectionOpacity = useSharedValue(0);
-
-  useEffect(() => {
-    if (!isLoading) {
-      sectionOpacity.value = 0;
-      sectionOpacity.value = withDelay(
-        100,
-        withTiming(1, { duration: 320 }),
-      );
-    }
-  }, [selectedCategory, isLoading, sectionOpacity]);
-
-  const sectionFadeStyle = useAnimatedStyle(() => ({
-    opacity: sectionOpacity.value,
-  }));
+  // Removed laggy section transition animation for instant rendering performance
 
   /* — Empty state icon animation — */
   const emptyScale = useSharedValue(0.85);
@@ -265,15 +250,13 @@ export default function ExploreScreen() {
                 hitSlop={8}
                 className="w-5.5 h-5.5 rounded-full items-center justify-center bg-black/[0.06]"
               >
-                <MaterialIcons name="close" size={14} color={APPLE_THEME.textMuted} />
+                <MaterialIconsRounded name="close" size={14} color={APPLE_THEME.textMuted} />
               </Pressable>
             </View>
           ) : null}
 
-          {/* Crossfade wrapper for content sections */}
-          <Animated.View
-            style={sectionFadeStyle}
-          >
+          {/* Wrapper for content sections */}
+          <View>
             {/* Quick Actions */}
             <ExploreQuickActions
               categories={categories}
@@ -310,13 +293,13 @@ export default function ExploreScreen() {
                 }
               />
             ) : null}
-          </Animated.View>
+          </View>
 
           {/* Empty state — animated */}
           {showEmpty ? (
             <Animated.View style={emptyAnimStyle} className="items-center justify-center py-15 px-10 gap-3">
               <View className="w-18 h-18 rounded-full bg-black/[0.04] items-center justify-center mb-1">
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="explore-off"
                   size={40}
                   color={APPLE_THEME.textMuted}

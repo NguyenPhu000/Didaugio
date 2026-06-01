@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useAuthStore } from "../../src/stores/authStore";
 import {
   usePlaceServices,
@@ -215,7 +215,7 @@ const StepIndicator = ({ currentStep }) => (
               }}
             >
               {isDone ? (
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="check"
                   size={16}
                   color={BOOKING_THEME.neon}
@@ -327,7 +327,7 @@ const ServiceCard = ({ service, isSelected, onSelect }) => (
           }}
         >
           {isSelected ? (
-            <MaterialIcons name="check" size={13} color={BOOKING_THEME.white} />
+            <MaterialIconsRounded name="check" size={13} color={BOOKING_THEME.white} />
           ) : null}
         </View>
       </View>
@@ -538,7 +538,7 @@ export default function BookingScreen() {
             borderColor: BOOKING_THEME.glassBorderStrong,
           }}
         >
-          <MaterialIcons
+          <MaterialIconsRounded
             name="lock-outline"
             size={44}
             color={BOOKING_THEME.neon}
@@ -727,7 +727,7 @@ export default function BookingScreen() {
             elevation: 16,
           }}
         >
-          <MaterialIcons
+          <MaterialIconsRounded
             name="check-circle"
             size={52}
             color={BOOKING_THEME.neon}
@@ -875,7 +875,7 @@ export default function BookingScreen() {
             borderColor: BOOKING_THEME.glassBorder,
           }}
         >
-          <MaterialIcons
+          <MaterialIconsRounded
             name="arrow-back"
             size={20}
             color={BOOKING_THEME.text}
@@ -945,7 +945,7 @@ export default function BookingScreen() {
                   borderColor: BOOKING_THEME.glassBorder,
                 }}
               >
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="room-service"
                   size={48}
                   color={BOOKING_THEME.textMuted}
@@ -1083,7 +1083,7 @@ export default function BookingScreen() {
                       borderColor: BOOKING_THEME.glassBorder,
                     }}
                   >
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name="remove"
                       size={16}
                       color={BOOKING_THEME.text}
@@ -1113,7 +1113,7 @@ export default function BookingScreen() {
                       borderColor: BOOKING_THEME.glassBorder,
                     }}
                   >
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name="add"
                       size={16}
                       color={BOOKING_THEME.text}
@@ -1170,7 +1170,7 @@ export default function BookingScreen() {
                         opacity: canMovePrevMonth ? 1 : 0.35,
                       }}
                     >
-                      <MaterialIcons
+                      <MaterialIconsRounded
                         name="chevron-left"
                         size={18}
                         color={BOOKING_THEME.text}
@@ -1203,7 +1203,7 @@ export default function BookingScreen() {
                         justifyContent: "center",
                       }}
                     >
-                      <MaterialIcons
+                      <MaterialIconsRounded
                         name="chevron-right"
                         size={18}
                         color={BOOKING_THEME.text}
@@ -1680,7 +1680,7 @@ export default function BookingScreen() {
                 gap: 12,
               }}
             >
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="fact-check"
                 size={40}
                 color={BOOKING_THEME.neon}
@@ -1990,7 +1990,7 @@ export default function BookingScreen() {
             {isSubmittingBooking ? (
               <ActivityIndicator size="small" color={BOOKING_THEME.white} />
             ) : (
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="check-circle"
                 size={18}
                 color={

@@ -1,14 +1,14 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { MaterialIcons } from "@expo/vector-icons";
-import { TOKENS } from "../../../constants/design-tokens";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { resolveMediaUrl, resolvePlaceImageUri } from "../../../lib/media-url";
 
 export function MemoriesSection({ completedTrips }) {
   if (!completedTrips || completedTrips.length === 0) {
     return (
       <View className="mt-2 items-center py-8">
-        <MaterialIcons name="photo-library" size={32} color="#CBD5E1" />
+        <MaterialIconsRounded name="photo-library" size={32} color="#CBD5E1" />
         <Text className="mt-3 text-sm text-[#64748B] font-medium">
           Bạn chưa có kỷ niệm nào
         </Text>
@@ -20,24 +20,32 @@ export function MemoriesSection({ completedTrips }) {
   const mem2 = completedTrips[1];
   const extraCount = Math.max(0, completedTrips.length - 2);
 
+  const coverImage1 = mem1?.thumbnail
+    ? resolveMediaUrl(mem1.thumbnail)
+    : (mem1?.destinations?.[0]?.place
+      ? resolvePlaceImageUri(mem1.destinations[0].place)
+      : "https://picsum.photos/id/408/600/400");
+
   const memory1 = {
     title: mem1?.title || "Hành trình",
     date: mem1?.endDate
       ? new Date(mem1.endDate).toLocaleDateString("vi-VN", { month: "long", year: "numeric" }).toUpperCase()
       : "",
-    image:
-      mem1?.thumbnail ||
-      mem1?.destinations?.[0]?.place?.thumbnail ||
-      "https://images.unsplash.com/photo-1527668752968-14ce70a6a7ae",
+    image: coverImage1,
   };
+
+  const coverImage2 = mem2
+    ? (mem2?.thumbnail
+      ? resolveMediaUrl(mem2.thumbnail)
+      : (mem2?.destinations?.[0]?.place
+        ? resolvePlaceImageUri(mem2.destinations[0].place)
+        : "https://picsum.photos/id/1040/600/400"))
+    : null;
 
   const memory2 = mem2
     ? {
         title: mem2?.title || "Hành trình",
-        image:
-          mem2?.thumbnail ||
-          mem2?.destinations?.[0]?.place?.thumbnail ||
-          "https://images.unsplash.com/photo-1542051812871-757511640570",
+        image: coverImage2,
       }
     : null;
 

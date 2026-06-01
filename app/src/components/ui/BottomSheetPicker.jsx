@@ -1,22 +1,15 @@
 import React, { forwardRef, useCallback, useMemo, useState } from "react";
-import { StyleSheet, Text, View, Pressable, TextInput, ScrollView, ActivityIndicator } from "react-native";
+import { Text, View, Pressable, TextInput, ScrollView, ActivityIndicator } from "react-native";
 import {
   BottomSheetModal,
   BottomSheetBackdrop,
   BottomSheetFlatList,
 } from "@gorhom/bottom-sheet";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { cn } from "../../lib/cn";
 import { TOKENS } from "../../constants/design-tokens";
 
 const ACCENT_BLUE = "#3478F6";
-const APPLE_COLORS = {
-  background: "#FFFFFF",
-  text: "#1E293B",
-  mutedText: "#64748B",
-  border: "#F1F5F9",
-  accent: "#3478F6",
-  searchBg: "#F1F5F9",
-};
 
 // Các tỉnh thành phổ biến để hiển thị chọn nhanh
 const POPULAR_PROVINCES = [
@@ -98,26 +91,26 @@ export const BottomSheetPicker = forwardRef(
 
         return (
           <Pressable
-            style={[
-              styles.itemRow,
-              isSelected && styles.itemRowSelected,
-            ]}
+            className={cn(
+              "flex-row items-center justify-between py-[18px] px-3 border-b border-slate-100",
+              isSelected && "bg-blue-500/[0.02]",
+            )}
             onPress={() => {
               onSelect(item.value);
               ref.current?.dismiss();
             }}
           >
             <Text
-              style={[
-                styles.itemText,
-                isSelected && styles.itemTextSelected,
-              ]}
+              className={cn(
+                "flex-1 text-[15px] leading-[22px] tracking-[0.15px] text-slate-800 font-body pr-2.5",
+                isSelected && "text-blue-500 font-medium",
+              )}
             >
               {item.label}
             </Text>
 
             {isSelected && (
-              <MaterialIcons name="check" size={20} color={ACCENT_BLUE} />
+              <MaterialIconsRounded name="check" size={20} color={ACCENT_BLUE} />
             )}
           </Pressable>
         );
@@ -131,45 +124,45 @@ export const BottomSheetPicker = forwardRef(
         index={0}
         snapPoints={snapPoints}
         backdropComponent={renderBackdrop}
-        handleIndicatorStyle={styles.handleIndicator}
-        backgroundStyle={styles.bottomSheetBackground}
+        handleIndicatorStyle={{ backgroundColor: "#CBD5E1", width: 36, height: 4, borderRadius: 99 }}
+        backgroundStyle={{ backgroundColor: "#FFFFFF", borderRadius: 24 }}
         onDismiss={handleDismiss}
         onChange={handleSheetChange}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
+        <View className="flex-row items-center justify-between px-5 pt-2 pb-3 border-b border-slate-100">
+          <Text className="font-semibold text-base text-slate-800">{title}</Text>
           <Pressable
             onPress={() => ref.current?.dismiss()}
-            style={styles.closeBtn}
+            className="w-7 h-7 rounded-[14px] bg-slate-100 items-center justify-center"
           >
-            <MaterialIcons name="close" size={18} color={APPLE_COLORS.mutedText} />
+            <MaterialIconsRounded name="close" size={18} color="#64748B" />
           </Pressable>
         </View>
 
         {/* Search Bar */}
         {showSearch && (
-          <View style={styles.searchContainer}>
-            <View style={styles.searchBar}>
-              <MaterialIcons
+          <View className="px-4 py-2">
+            <View className="flex-row items-center bg-slate-100 rounded-xl px-3 h-10">
+              <MaterialIconsRounded
                 name="search"
                 size={20}
-                color={APPLE_COLORS.mutedText}
-                style={styles.searchIcon}
+                color="#64748B"
+                style={{ marginRight: 6 }}
               />
               <TextInput
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 placeholder={`Tìm kiếm ${String(title || "").toLowerCase()}...`}
                 placeholderTextColor="#94A3B8"
-                style={styles.searchInput}
+                className="flex-1 text-sm text-slate-800 font-body py-0"
                 clearButtonMode="while-editing"
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               {searchQuery.length > 0 && (
-                <Pressable onPress={() => setSearchQuery("")} style={styles.clearBtn}>
-                  <MaterialIcons name="cancel" size={18} color="#94A3B8" />
+                <Pressable onPress={() => setSearchQuery("")} className="p-0.5">
+                  <MaterialIconsRounded name="cancel" size={18} color="#94A3B8" />
                 </Pressable>
               )}
             </View>
@@ -178,31 +171,31 @@ export const BottomSheetPicker = forwardRef(
 
         {/* Chips Chọn Nhanh Tỉnh Thành */}
         {!searchQuery && popularChips.length > 0 && !isLoading && (
-          <View style={styles.popularContainer}>
+          <View className="px-4 pb-2">
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipsScroll}
+              contentContainerStyle={{ paddingRight: 16 }}
             >
               {popularChips.map((chip) => {
                 const isChipSelected = chip.value === selectedValue;
                 return (
                   <Pressable
                     key={chip.value}
-                    style={[
-                      styles.chipItem,
-                      isChipSelected && styles.chipItemSelected,
-                    ]}
+                    className={cn(
+                      "px-3 py-1.5 bg-slate-100 rounded-full mr-1.5 border border-slate-200",
+                      isChipSelected && "bg-blue-500/[0.08] border-blue-500/20",
+                    )}
                     onPress={() => {
                       onSelect(chip.value);
                       ref.current?.dismiss();
                     }}
                   >
                     <Text
-                      style={[
-                        styles.chipText,
-                        isChipSelected && styles.chipTextSelected,
-                      ]}
+                      className={cn(
+                        "text-[12.5px] font-medium text-slate-600",
+                        isChipSelected && "text-blue-500 font-semibold",
+                      )}
                     >
                       {chip.label}
                     </Text>
@@ -215,21 +208,21 @@ export const BottomSheetPicker = forwardRef(
 
         {/* List Content */}
         {isLoading ? (
-          <View style={styles.loadingContainer}>
+          <View className="py-[60px] items-center justify-center gap-2.5">
             <ActivityIndicator size="small" color={ACCENT_BLUE} />
-            <Text style={styles.loadingText}>Đang tải danh sách...</Text>
+            <Text className="text-[13.5px] font-medium text-slate-500">Đang tải danh sách...</Text>
           </View>
         ) : filteredData.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <MaterialIcons name="search-off" size={40} color="#CBD5E1" />
-            <Text style={styles.emptyText}>Không tìm thấy kết quả phù hợp</Text>
+          <View className="py-10 items-center justify-center gap-2">
+            <MaterialIconsRounded name="search-off" size={40} color="#CBD5E1" />
+            <Text className="text-[13px] font-medium text-slate-500">Không tìm thấy kết quả phù hợp</Text>
           </View>
         ) : (
           <BottomSheetFlatList
             data={filteredData}
             keyExtractor={(item, index) => `${item.value}-${index}`}
             renderItem={renderItem}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 32 }}
             showsVerticalScrollIndicator={false}
           />
         )}
@@ -237,145 +230,3 @@ export const BottomSheetPicker = forwardRef(
     );
   }
 );
-
-const styles = StyleSheet.create({
-  bottomSheetBackground: {
-    backgroundColor: APPLE_COLORS.background,
-    borderRadius: 24,
-  },
-  handleIndicator: {
-    backgroundColor: "#CBD5E1",
-    width: 36,
-    height: 4,
-    borderRadius: 99,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: APPLE_COLORS.border,
-  },
-  title: {
-    fontFamily: TOKENS.font.semibold,
-    fontSize: 16,
-    color: APPLE_COLORS.text,
-  },
-  closeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#F1F5F9",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  searchContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: APPLE_COLORS.searchBg,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 40,
-  },
-  searchIcon: {
-    marginRight: 6,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: APPLE_COLORS.text,
-    fontFamily: TOKENS.font.body,
-    paddingVertical: 0,
-  },
-  clearBtn: {
-    padding: 2,
-  },
-  popularContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  chipsScroll: {
-    paddingRight: 16,
-  },
-  chipItem: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: "#F1F5F9",
-    borderRadius: 99,
-    marginRight: 6,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  chipItemSelected: {
-    backgroundColor: "rgba(52, 120, 246, 0.08)",
-    borderColor: "rgba(52, 120, 246, 0.2)",
-  },
-  chipText: {
-    fontSize: 12.5,
-    fontFamily: TOKENS.font.medium,
-    color: "#475569",
-  },
-  chipTextSelected: {
-    color: ACCENT_BLUE,
-    fontFamily: TOKENS.font.semibold,
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 32,
-  },
-  itemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 18,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
-  itemRowSelected: {
-    backgroundColor: "rgba(52, 120, 246, 0.02)",
-  },
-  itemText: {
-    fontFamily: TOKENS.font.body,
-    fontSize: 15,
-    lineHeight: 22,
-    letterSpacing: 0.15,
-    color: APPLE_COLORS.text,
-    flex: 1,
-    paddingRight: 10,
-  },
-  itemTextSelected: {
-    color: ACCENT_BLUE,
-    fontFamily: TOKENS.font.medium,
-  },
-  loadingContainer: {
-    paddingVertical: 60,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  loadingText: {
-    fontSize: 13.5,
-    fontFamily: TOKENS.font.medium,
-    color: APPLE_COLORS.mutedText,
-  },
-  emptyContainer: {
-    paddingVertical: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  emptyText: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-    color: APPLE_COLORS.mutedText,
-  },
-});

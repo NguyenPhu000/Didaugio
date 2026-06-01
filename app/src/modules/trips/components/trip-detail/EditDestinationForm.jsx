@@ -10,10 +10,9 @@ import {
   Modal,
   KeyboardAvoidingView,
   ScrollView,
-  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   formatDistance,
   calcDurationMinutes,
@@ -24,6 +23,7 @@ import {
 } from "../../utils/tripHelpers";
 import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
 import TimeField from "./TimeField";
+import CustomAlertModal from "../../../../components/composed/CustomAlertModal";
 
 function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLast }) {
   const insets = useSafeAreaInsets();
@@ -31,6 +31,7 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
   const [endTime, setEndTime] = useState(dest?.endTime || "");
   const [note, setNote] = useState(dest?.note || "");
   const [transportToNext, setTransportToNext] = useState(dest?.transportToNext || null);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: "", message: "" });
 
   useEffect(() => {
     if (visible) {
@@ -48,7 +49,11 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
     if (isLoading || !dest?.id) return;
 
     if (startTime && endTime && toTimeSortValue(endTime) < toTimeSortValue(startTime)) {
-      Alert.alert("Lỗi", "Thời gian kết thúc không được nhỏ hơn thời gian bắt đầu.");
+      setAlertConfig({
+        visible: true,
+        title: "Thời gian không hợp lệ",
+        message: "Thời gian kết thúc không được nhỏ hơn thời gian bắt đầu.",
+      });
       return;
     }
 
@@ -94,7 +99,7 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
             {/* Header: tiêu đề + đóng */}
             <View className="flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]">
               <View className="flex-row items-center gap-2 flex-1 mr-2">
-                <MaterialIcons name="edit-location" size={18} color="#1D1D1F" />
+                <MaterialIconsRounded name="edit-location" size={18} color="#1D1D1F" />
                 <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">Chỉnh sửa địa điểm</Text>
               </View>
               <Pressable
@@ -105,7 +110,7 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
                 ]}
                 className="w-8 h-8 rounded-full items-center justify-center"
               >
-                <MaterialIcons name="close" size={18} color="rgba(0,0,0,0.45)" />
+                <MaterialIconsRounded name="close" size={18} color="rgba(0,0,0,0.45)" />
               </Pressable>
             </View>
 
@@ -142,7 +147,7 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
 
               {durationLabel ? (
                 <View className="flex-row items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#F5F5F7]">
-                  <MaterialIcons name="schedule" size={16} color="#1D1D1F" />
+                  <MaterialIconsRounded name="schedule" size={16} color="#1D1D1F" />
                   <Text className="text-[13px] font-medium text-[#1D1D1F] tracking-tight">
                     Lưu trú {durationLabel}
                   </Text>
@@ -164,7 +169,7 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
                             onPress={() => setTransportToNext(opt.value)}
                             className={`${STYLES.chip} ${isSelected ? STYLES.chipActive : ""}`}
                           >
-                            <MaterialIcons
+                            <MaterialIconsRounded
                               name={opt.icon}
                               size={16}
                               color={isSelected ? "#1D1D1F" : "rgba(0,0,0,0.6)"}
@@ -184,7 +189,7 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
                     <View className="gap-1.5 mt-2.5">
                       <Text className={STYLES.fieldLabel}>Khoảng cách đến điểm tiếp theo</Text>
                       <View className="flex-row items-center gap-1.5 bg-[#F5F5F7] rounded-xl px-3 py-3 border border-black/[0.06]">
-                        <MaterialIcons name="navigation" size={14} color={ALPHA.iconStrong} style={{ transform: [{ rotate: "45deg" }] }} />
+                        <MaterialIconsRounded name="navigation" size={14} color={ALPHA.iconStrong} style={{ transform: [{ rotate: "45deg" }] }} />
                         <Text className="text-[14px] text-black/50 font-normal">
                           {formatDistance(dest.distanceToNext)} (Hệ thống tự động tính toán)
                         </Text>
@@ -230,6 +235,14 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
           </View>
         </KeyboardAvoidingView>
       </View>
+
+      <CustomAlertModal
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type="error"
+        onConfirm={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
     </Modal>
   );
 }

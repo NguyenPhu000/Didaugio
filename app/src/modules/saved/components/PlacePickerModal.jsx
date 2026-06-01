@@ -9,7 +9,7 @@ import {
   BottomSheetBackdrop,
   BottomSheetFlatList,
 } from "@gorhom/bottom-sheet";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
 } from "../../../constants/design-tokens";
@@ -23,7 +23,7 @@ const PlaceRow = memo(function PlaceRow({ entry, onSelect }) {
       className="flex-row items-center gap-3 py-3 active:opacity-60"
     >
       <View className="w-9 h-9 rounded-xl items-center justify-center bg-[#007AFF]/10">
-        <MaterialIcons name="place" size={18} color="#007AFF" />
+        <MaterialIconsRounded name="place" size={18} color="#007AFF" />
       </View>
       <View className="flex-1">
         <Text className="text-[#1D1D1F] text-[15px] font-semibold tracking-[-0.2px]" numberOfLines={1}>
@@ -33,7 +33,7 @@ const PlaceRow = memo(function PlaceRow({ entry, onSelect }) {
           {getLocationText(place)}
         </Text>
       </View>
-      <MaterialIcons name="chevron-right" size={20} color={APPLE_THEME.textMuted} />
+      <MaterialIconsRounded name="chevron-right" size={20} color={APPLE_THEME.textMuted} />
     </Pressable>
   );
 });
@@ -97,13 +97,13 @@ export const PlacePickerModal = memo(
         <View className="flex-row items-center justify-between px-5 pb-3.5 pt-2">
           <Text className="text-[#1D1D1F] text-[18px] font-semibold tracking-[-0.3px]">Chọn địa điểm</Text>
           <Pressable onPress={() => bottomSheetModalRef.current?.dismiss()} hitSlop={8}>
-            <MaterialIcons name="close" size={22} color={APPLE_THEME.textMuted} />
+            <MaterialIconsRounded name="close" size={22} color={APPLE_THEME.textMuted} />
           </Pressable>
         </View>
 
         {places.length === 0 ? (
           <View className="items-center gap-2.5 py-8 px-8">
-            <MaterialIcons name="bookmark-border" size={32} color={APPLE_THEME.textMuted} />
+            <MaterialIconsRounded name="bookmark-border" size={32} color={APPLE_THEME.textMuted} />
             <Text className="text-[#54647A] text-sm text-center leading-5">
               Bạn chưa lưu địa điểm nào. Hãy lưu địa điểm trước khi tạo ghi chú.
             </Text>

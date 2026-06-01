@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -27,8 +27,6 @@ const SPRING_CONFIG = TOKENS.spring.press;
 
 function PopularCardInner({ place, onPress, index = 0 }) {
   const scale = useSharedValue(1);
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(18);
   const imageUri = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place) || "Cần Thơ";
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
@@ -36,21 +34,8 @@ function PopularCardInner({ place, onPress, index = 0 }) {
   const ratingMeta = formatRatingLabel(place);
   const priceLine = formatPriceLine(place);
 
-  useEffect(() => {
-    const delay = 100 + index * 70;
-    opacity.value = withDelay(
-      delay,
-      withTiming(1, { duration: 320 }),
-    );
-    translateY.value = withDelay(
-      delay,
-      withSpring(0, TOKENS.spring.entrance),
-    );
-  }, [index, opacity, translateY]);
-
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }, { translateY: translateY.value }],
-    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
   }));
 
   const handlePressIn = useCallback(() => {
@@ -86,7 +71,7 @@ function PopularCardInner({ place, onPress, index = 0 }) {
           />
         ) : (
           <View className="absolute inset-0 bg-[#EDEDF2] items-center justify-center">
-            <MaterialIcons
+            <MaterialIconsRounded
               name="travel-explore"
               size={28}
               color="rgba(0,0,0,0.15)"
@@ -101,7 +86,7 @@ function PopularCardInner({ place, onPress, index = 0 }) {
       <View className="flex-1 min-w-0 gap-0.5">
         {/* Rating */}
         <View className="flex-row items-center gap-1">
-          <MaterialIcons
+          <MaterialIconsRounded
             name="star"
             size={13}
             color={hasRating ? "#F59E0B" : APPLE_THEME.textMuted}
@@ -118,7 +103,7 @@ function PopularCardInner({ place, onPress, index = 0 }) {
 
         {/* Location */}
         <View className="flex-row items-center gap-0.5">
-          <MaterialIcons name="place" size={12} color={APPLE_THEME.textMuted} />
+          <MaterialIconsRounded name="place" size={12} color={APPLE_THEME.textMuted} />
           <Text className="text-[#1D1D1F]/50 text-xs font-medium flex-1" style={{ fontFamily: TOKENS.font.medium }} numberOfLines={1}>
             {location}
           </Text>
@@ -141,7 +126,7 @@ function PopularCardInner({ place, onPress, index = 0 }) {
 
           <View className="flex-row items-center gap-1 h-9 rounded-full bg-[#1D1D1F] px-4 shadow-sm elevation-2">
             <Text className="text-white text-xs font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>Xem</Text>
-            <MaterialIcons
+            <MaterialIconsRounded
               name="arrow-forward"
               size={13}
               color={APPLE_THEME.white}

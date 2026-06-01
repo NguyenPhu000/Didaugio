@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, Platform } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../constants/design-tokens";
 
 const AnimatedLoadingCard = () => {

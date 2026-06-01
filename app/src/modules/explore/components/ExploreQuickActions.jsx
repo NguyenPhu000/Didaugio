@@ -128,12 +128,12 @@ function QuickActionItem({ item, index, onPress }) {
       style={[animatedStyle]}
       className="w-[25%] items-center gap-2.5"
     >
-      <View className="shadow-sm elevation-1">
+      <View className="shadow-sm elevation-1 rounded-[20px] overflow-hidden">
         <LinearGradient
           colors={item.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          className="w-16 h-16 rounded-[22px] items-center justify-center border border-black/[0.04]"
+          className="w-16 h-16 rounded-[20px] items-center justify-center border border-black/[0.04]"
         >
           <MaterialCommunityIcons
             name={item.icon}

@@ -15,7 +15,7 @@ import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../../src/stores/authStore";
@@ -438,7 +438,7 @@ export default function EditProfileScreen() {
                 {isProcessingAvatar ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <MaterialIcons name="photo-camera" size={16} color="#FFFFFF" />
+                  <MaterialIconsRounded name="photo-camera" size={16} color="#FFFFFF" />
                 )}
               </View>
             </Pressable>
@@ -515,7 +515,7 @@ export default function EditProfileScreen() {
                   className="flex-row items-center min-h-[52px] px-4 active:bg-[#F8FAFC]"
                   onPress={() => genderSheetRef.current?.present()}
                 >
-                  <MaterialIcons
+                  <MaterialIconsRounded
                     name={
                       gender === "male"
                         ? "male"
@@ -537,7 +537,7 @@ export default function EditProfileScreen() {
                       ? GENDER_OPTIONS.find((o) => o.value === gender)?.label
                       : "Chọn giới tính"}
                   </Text>
-                  <MaterialIcons
+                  <MaterialIconsRounded
                     name="chevron-right"
                     size={20}
                     color={gender ? "#94A3B8" : "#E2E8F0"}

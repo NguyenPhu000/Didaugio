@@ -10,7 +10,7 @@ import {
   Animated,
 } from "react-native";
 import { Image } from "expo-image";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useProfile } from "../../src/modules/profile/hooks/useProfile";
@@ -152,7 +152,7 @@ function CustomToast({ message, visible, onHide }) {
           elevation: 5,
         }}
       >
-        <MaterialIcons name="info-outline" size={20} color="#F59E0B" style={{ marginRight: 6 }} />
+        <MaterialIconsRounded name="info-outline" size={20} color="#F59E0B" style={{ marginRight: 6 }} />
         <Text
           style={{ fontFamily: TOKENS.font.medium }}
           className="text-white text-[13.5px] flex-1 leading-5"
@@ -170,7 +170,7 @@ function ProfileHeader({ onSettingsPress }) {
   return (
     <View className="flex-row items-center justify-between px-5 py-[14px]">
       <Pressable onPress={() => router.back()} className="p-1">
-        <MaterialIcons name="arrow-back" size={26} color="#0F172A" />
+        <MaterialIconsRounded name="arrow-back" size={26} color="#0F172A" />
       </Pressable>
       <Text
         style={{ fontFamily: TOKENS.font.semibold }}
@@ -181,7 +181,7 @@ function ProfileHeader({ onSettingsPress }) {
       <View className="flex-row items-center gap-[10px]">
         <NotificationBell size={42} />
         <Pressable onPress={onSettingsPress} className="p-1">
-          <MaterialIcons name="settings" size={26} color="#64748B" />
+          <MaterialIconsRounded name="settings" size={26} color="#64748B" />
         </Pressable>
       </View>
     </View>
@@ -273,14 +273,14 @@ function SettingsSection({ onSoonFeature }) {
             className="flex-row items-center py-4 px-5 gap-4"
             onPress={item.onPress || (() => router.push(item.route))}
           >
-            <MaterialIcons name={item.icon} size={24} color="#64748B" />
+            <MaterialIconsRounded name={item.icon} size={24} color="#64748B" />
             <Text
               style={{ fontFamily: TOKENS.font.medium }}
               className="flex-grow text-base text-[#0F172A]"
             >
               {item.label}
             </Text>
-            <MaterialIcons name="chevron-right" size={24} color="#64748B" />
+            <MaterialIconsRounded name="chevron-right" size={24} color="#64748B" />
           </Pressable>
         ))}
       </View>
@@ -323,7 +323,7 @@ export default function ProfileScreen() {
           <View className="items-center justify-center mb-7">
             <View className="absolute w-[120px] h-[120px] rounded-full bg-[#3478F6]/[0.08]" />
             <View className="w-[88px] h-[88px] rounded-[26px] items-center justify-center bg-[#EAF2FF]">
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="person-outline"
                 size={40}
                 color={ACCENT_BLUE}
@@ -366,7 +366,7 @@ export default function ProfileScreen() {
             ]}
             className="flex-row items-center justify-center gap-2 w-full py-4 rounded-full bg-[#3478F6] mb-3"
           >
-            <MaterialIcons name="login" size={18} color="#fff" />
+            <MaterialIconsRounded name="login" size={18} color="#fff" />
             <Text
               style={{ fontFamily: TOKENS.font.semibold }}
               className="text-[15px] text-white tracking-[0.2px]"
@@ -393,7 +393,7 @@ export default function ProfileScreen() {
             ]}
             className="flex-row items-center justify-center gap-2 w-full py-4 rounded-full bg-[#0F172A] mb-3"
           >
-            <MaterialIcons name="person-add-alt-1" size={18} color="#fff" />
+            <MaterialIconsRounded name="person-add-alt-1" size={18} color="#fff" />
             <Text
               style={{ fontFamily: TOKENS.font.semibold }}
               className="text-[15px] text-white tracking-[0.2px]"
@@ -557,7 +557,7 @@ function LoggedInProfileScreen({ insets, storedUser }) {
             </Text>
           ) : null}
           <View className="flex-row items-center gap-1.5 self-center mt-1.5">
-            <MaterialIcons name="location-on" size={16} color={ACCENT_BLUE} />
+            <MaterialIconsRounded name="location-on" size={16} color={ACCENT_BLUE} />
             <Text
               style={{ fontFamily: TOKENS.font.semibold }}
               className="text-[13px] text-[#3478F6] text-center px-6"
@@ -650,7 +650,7 @@ function LoggedInProfileScreen({ insets, storedUser }) {
                 className="items-center justify-center bg-white border border-[#E2E8F0] rounded-2xl"
                 style={{ height: 120 }}
               >
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="travel-explore"
                   size={28}
                   color="#CBD5E1"

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Pressable, Text, View } from "react-native";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import Animated, {
   useAnimatedStyle,
@@ -64,9 +64,9 @@ export function NotificationBell({
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      className="relative items-center justify-center"
       style={[
         animatedStyle,
-        styles.container,
         {
           width: size,
           height: size,
@@ -76,16 +76,19 @@ export function NotificationBell({
     >
       {/* Background circle */}
       <View
-        style={[
-          styles.bgCircle,
-          {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-          },
-        ]}
+        className="bg-white items-center justify-center"
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 10,
+          elevation: 5,
+        }}
       >
-        <MaterialIcons
+        <MaterialIconsRounded
           name={showCount ? "notifications" : "notifications-none"}
           size={iconSize}
           color={color || "#1D1D1F"}
@@ -95,23 +98,24 @@ export function NotificationBell({
       {/* Unread badge */}
       {showBadge && showCount && (
         <View
-          style={[
-            styles.badge,
-            {
-              minWidth: badgeSize,
-              height: badgeSize,
-              borderRadius: badgeSize / 2,
-              top: -(badgeSize * 0.18),
-              right: -(badgeSize * 0.18),
-              backgroundColor: tintColor,
-            },
-          ]}
+          className="absolute items-center justify-center px-[3px]"
+          style={{
+            minWidth: badgeSize,
+            height: badgeSize,
+            borderRadius: badgeSize / 2,
+            top: -(badgeSize * 0.18),
+            right: -(badgeSize * 0.18),
+            backgroundColor: tintColor,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.18,
+            shadowRadius: 4,
+            elevation: 4,
+          }}
         >
           <Text
-            style={[
-              styles.badgeText,
-              { fontSize },
-            ]}
+            className="text-white font-semibold"
+            style={{ fontSize, lineHeight: undefined, includeFontPadding: false }}
             numberOfLines={1}
           >
             {formatCompactCount(unreadCount)}
@@ -122,39 +126,3 @@ export function NotificationBell({
   );
 }
 
-/* ─────────────────── Inline styles ─────────────────── */
-const styles = StyleSheet.create({
-  container: {
-    position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bgCircle: {
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  badge: {
-    position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  badgeText: {
-    color: "#FFFFFF",
-    fontFamily: "Afacad-SemiBold",
-    fontWeight: "600",
-    lineHeight: undefined,
-    includeFontPadding: false,
-  },
-});

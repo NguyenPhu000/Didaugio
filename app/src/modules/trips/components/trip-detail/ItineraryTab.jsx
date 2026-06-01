@@ -1,8 +1,8 @@
 import { memo, useState, useCallback, useMemo, useEffect } from "react";
-import { View, Text, Pressable, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { useFocusEffect } from "expo-router";
 import DraggableFlatList from "react-native-draggable-flatlist";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { buildDestinationBookings, buildDayList, parseTimeToDate } from "../../utils/tripHelpers";
 import { useReorderDestinations, useUpdateDestination, useMoveDestination, useRemoveDestination } from "../../hooks/useTripDetail";
 import { getActiveTripId, getVisitedDestinations } from "../../hooks/useActiveTrip";
@@ -11,6 +11,7 @@ import TimelineConnector from "./TimelineConnector";
 import MoveDestinationModal from "./MoveDestinationModal";
 import EditDestinationForm from "./EditDestinationForm";
 import InlineAddPlaceModal from "./InlineAddPlaceModal";
+import CustomAlertModal from "../../../../components/composed/CustomAlertModal";
 
 function ItineraryTab({
   trip,
@@ -27,6 +28,39 @@ function ItineraryTab({
 }) {
   const tripId = trip?.id;
   const destinations = trip?.destinations || [];
+
+  // Custom alert state
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: "",
+    message: "",
+    type: "error",
+    confirmText: "Đóng",
+    cancelText: "Hủy",
+    onConfirm: null,
+    onCancel: null,
+    isDestructive: false,
+  });
+
+  const showAlert = useCallback(({ title, message, type = "error", confirmText, cancelText, onConfirm, onCancel, isDestructive = false }) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onConfirm?.();
+      },
+      onCancel: onCancel ? () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onCancel?.();
+      } : null,
+      isDestructive,
+    });
+  }, []);
 
   // Trạng thái điểm danh đọc từ AsyncStorage (chỉ khi đây là chuyến đang chạy).
   const [visitedIds, setVisitedIds] = useState([]);
@@ -93,35 +127,41 @@ function ItineraryTab({
         { dayNumber: selectedDay, orderedIds },
         {
           onError: (error) => {
-            Alert.alert("Lỗi", error?.message || "Không thể sắp xếp lại các điểm đến. Vui lòng thử lại.");
+            showAlert({
+              title: "Lỗi",
+              message: error?.message || "Không thể sắp xếp lại các điểm đến. Vui lòng thử lại."
+            });
           },
         }
       );
     },
-    [selectedDay, reorderMutation],
+    [selectedDay, reorderMutation, showAlert],
   );
 
   // Remove handler
   const handleRemove = useCallback(
     (dest) => {
-      Alert.alert(
-        "Bỏ địa điểm",
-        `Bỏ "${dest.place?.name}" khỏi lịch trình?`,
-        [
-          { text: "Hủy", style: "cancel" },
-          {
-            text: "Bỏ",
-            style: "destructive",
-            onPress: () => removeMutation.mutate(dest.id, {
-              onError: (error) => {
-                Alert.alert("Lỗi", error?.message || "Không thể bỏ địa điểm này. Vui lòng thử lại.");
-              },
-            }),
-          },
-        ],
-      );
+      showAlert({
+        title: "Bỏ địa điểm",
+        message: `Bỏ "${dest.place?.name}" khỏi lịch trình?`,
+        type: "confirm",
+        confirmText: "Bỏ",
+        cancelText: "Hủy",
+        isDestructive: true,
+        onConfirm: () => {
+          removeMutation.mutate(dest.id, {
+            onError: (error) => {
+              showAlert({
+                title: "Lỗi",
+                message: error?.message || "Không thể bỏ địa điểm này. Vui lòng thử lại."
+              });
+            },
+          });
+        },
+        onCancel: () => {},
+      });
     },
-    [removeMutation],
+    [removeMutation, showAlert],
   );
 
   const handleMoveRequest = useCallback((dest) => {
@@ -145,10 +185,13 @@ function ItineraryTab({
         setMovingDest(null);
         setSelectedDay(newDayNumber);
       } catch (error) {
-        Alert.alert("Lỗi", error?.message || "Không thể dời địa điểm này. Vui lòng thử lại.");
+        showAlert({
+          title: "Lỗi",
+          message: error?.message || "Không thể dời địa điểm này. Vui lòng thử lại."
+        });
       }
     },
-    [moveMutation, updateMutation],
+    [moveMutation, updateMutation, showAlert],
   );
 
   const handleMoveModalSave = useCallback(
@@ -158,12 +201,15 @@ function ItineraryTab({
         { 
           onSuccess: () => setMovingDest(null),
           onError: (error) => {
-            Alert.alert("Lỗi", error?.message || "Không thể cập nhật địa điểm. Vui lòng thử lại.");
+            showAlert({
+              title: "Lỗi",
+              message: error?.message || "Không thể cập nhật địa điểm. Vui lòng thử lại."
+            });
           },
         },
       );
     },
-    [updateMutation],
+    [updateMutation, showAlert],
   );
 
   const handleEditRequest = useCallback((dest) => {
@@ -207,12 +253,15 @@ function ItineraryTab({
             }
           },
           onError: (error) => {
-            Alert.alert("Lỗi", error?.message || "Không thể lưu thay đổi. Vui lòng thử lại.");
+            showAlert({
+              title: "Lỗi",
+              message: error?.message || "Không thể lưu thay đổi. Vui lòng thử lại."
+            });
           },
         },
       );
     },
-    [updateMutation, destinations, selectedDay, reorderMutation],
+    [updateMutation, destinations, selectedDay, reorderMutation, showAlert],
   );
 
   // Render item for DraggableFlatList
@@ -348,7 +397,7 @@ function ItineraryTab({
                 {/* Icon Container */}
                 <View className="relative w-10 h-10 items-center justify-center">
                   <View className="w-10 h-10 rounded-[12px] bg-[#007BFF] items-center justify-center">
-                    <MaterialIcons name="navigation" size={18} color="#FFFFFF" />
+                    <MaterialIconsRounded name="navigation" size={18} color="#FFFFFF" />
                   </View>
                   {/* Pulse dot chỉ hiển thị khi chuyến đi đang chạy và hoạt động (không pause) */}
                   {isCurrentActiveTrip && !isPaused && (
@@ -387,7 +436,7 @@ function ItineraryTab({
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Text className="text-white text-[12px] font-semibold tracking-tight">
-            <MaterialIcons name="add" size={16} color="#FFFFFF" /> Thêm địa điểm
+            <MaterialIconsRounded name="add" size={16} color="#FFFFFF" /> Thêm địa điểm
           </Text>
         </Pressable>
       </View>
@@ -405,7 +454,7 @@ function ItineraryTab({
         ListEmptyComponent={
           <View className="py-14 items-center gap-2">
             <View className="w-14 h-14 rounded-[20px] bg-black/[0.04] items-center justify-center mb-2">
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="add-location"
                 size={28}
                 color="rgba(0,0,0,0.2)"
@@ -424,7 +473,7 @@ function ItineraryTab({
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Text className="text-white text-[13px] font-semibold tracking-tight">
-                <MaterialIcons name="add" size={16} color="#FFFFFF" /> Thêm địa điểm
+                <MaterialIconsRounded name="add" size={16} color="#FFFFFF" /> Thêm địa điểm
               </Text>
             </Pressable>
           </View>
@@ -457,6 +506,18 @@ function ItineraryTab({
         defaultDay={selectedDay}
         destinations={destinations}
         onClose={() => onAddPlaceClose?.()}
+      />
+
+      <CustomAlertModal
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        isDestructive={alertConfig.isDestructive}
       />
     </View>
   );

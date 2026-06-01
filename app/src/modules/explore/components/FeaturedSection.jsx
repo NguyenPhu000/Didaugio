@@ -27,27 +27,7 @@ const keyExtractor = (item, index) =>
 
 function FeaturedSectionInner({ places, onPressPlace, onPressViewAll }) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const sectionOpacity = useSharedValue(0);
-  const sectionY = useSharedValue(20);
-
   const dotCount = useMemo(() => Math.min(places?.length || 0, 4), [places]);
-
-  // Section entrance animation
-  useEffect(() => {
-    sectionOpacity.value = withDelay(
-      100,
-      withTiming(1, { duration: 400 }),
-    );
-    sectionY.value = withDelay(
-      100,
-      withSpring(0, TOKENS.spring.entrance),
-    );
-  }, [sectionOpacity, sectionY]);
-
-  const sectionAnimStyle = useAnimatedStyle(() => ({
-    opacity: sectionOpacity.value,
-    transform: [{ translateY: sectionY.value }],
-  }));
 
   const renderItem = useCallback(
     ({ item, index }) => {
@@ -60,7 +40,7 @@ function FeaturedSectionInner({ places, onPressPlace, onPressViewAll }) {
   if (!places?.length) return null;
 
   return (
-    <Animated.View style={[sectionAnimStyle]} className="mt-[26px]">
+    <View className="mt-[26px]">
       <View style={{ paddingHorizontal: TAB_SCREEN_PADDING }} className="flex-row justify-between items-center mb-3.5">
         <Text className="text-[#1D1D1F] text-[22px] leading-7 tracking-[-0.5px] font-bold" style={{ fontFamily: TOKENS.font.heading }}>
           Điểm đến nổi bật
@@ -107,7 +87,7 @@ function FeaturedSectionInner({ places, onPressPlace, onPressViewAll }) {
           })}
         </View>
       ) : null}
-    </Animated.View>
+    </View>
   );
 }
 

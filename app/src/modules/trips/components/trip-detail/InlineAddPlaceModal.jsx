@@ -17,7 +17,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useQueryClient } from "@tanstack/react-query";
 import { useExplore } from "../../../explore/hooks/useExplore";
 import { useSavedPlaces } from "../../../saved/hooks/useSaved";
@@ -258,10 +258,10 @@ function InlineAddPlaceModal({
                     className="pr-1.5"
                     accessibilityLabel="Quay lại tìm kiếm"
                   >
-                    <MaterialIcons name="arrow-back" size={20} color="#1D1D1F" />
+                    <MaterialIconsRounded name="arrow-back" size={20} color="#1D1D1F" />
                   </Pressable>
                 )}
-                <MaterialIcons
+                <MaterialIconsRounded
                   name={step === 1 ? "search" : "edit-calendar"}
                   size={18}
                   color="#1D1D1F"
@@ -278,7 +278,7 @@ function InlineAddPlaceModal({
                 className="w-8 h-8 rounded-full items-center justify-center"
                 accessibilityLabel="Đóng modal"
               >
-                <MaterialIcons name="close" size={18} color="rgba(0,0,0,0.4)" />
+                <MaterialIconsRounded name="close" size={18} color="rgba(0,0,0,0.4)" />
               </Pressable>
             </View>
 
@@ -287,7 +287,7 @@ function InlineAddPlaceModal({
               <View className="px-5 pt-4 gap-3 flex-shrink">
                 {/* Search Bar */}
                 <View className="flex-row items-center bg-[#F5F5F7] rounded-xl px-3 h-11 gap-2 border border-black/[0.06]">
-                  <MaterialIcons name="search" size={20} color="rgba(0,0,0,0.4)" />
+                  <MaterialIconsRounded name="search" size={20} color="rgba(0,0,0,0.4)" />
                   <TextInput
                     value={searchQuery}
                     onChangeText={setSearchQuery}
@@ -303,7 +303,7 @@ function InlineAddPlaceModal({
                       hitSlop={8}
                       accessibilityLabel="Xóa nội dung tìm kiếm"
                     >
-                      <MaterialIcons
+                      <MaterialIconsRounded
                         name="cancel"
                         size={16}
                         color="rgba(0,0,0,0.4)"
@@ -315,7 +315,7 @@ function InlineAddPlaceModal({
                 {/* Results list */}
                 {searchQuery.trim().length === 0 && mergedPlaces.length === 0 ? (
                   <View className="py-14 items-center gap-2">
-                    <MaterialIcons name="search" size={32} color="rgba(0,0,0,0.4)" />
+                    <MaterialIconsRounded name="search" size={32} color="rgba(0,0,0,0.4)" />
                     <Text className="text-[15px] font-semibold text-[#1D1D1F]">Nhập từ khóa</Text>
                     <Text className="text-[13px] font-normal text-black/50">
                       Tìm kiếm địa điểm du lịch tại Cần Thơ
@@ -323,7 +323,7 @@ function InlineAddPlaceModal({
                   </View>
                 ) : mergedPlaces.length === 0 && !isSearchLoading ? (
                   <View className="py-14 items-center gap-2">
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name="search-off"
                       size={32}
                       color="rgba(0,0,0,0.4)"
@@ -381,7 +381,7 @@ function InlineAddPlaceModal({
                               />
                             ) : (
                               <View className="w-11 h-11 rounded-lg bg-[#F5F5F7] items-center justify-center">
-                                <MaterialIcons
+                                <MaterialIconsRounded
                                   name="place"
                                   size={18}
                                   color="rgba(0,0,0,0.4)"
@@ -394,14 +394,14 @@ function InlineAddPlaceModal({
                                   {item.name}
                                 </Text>
                                 {item.isSavedLocal && (
-                                  <MaterialIcons name="bookmark" size={14} color="#FF9F0A" />
+                                  <MaterialIconsRounded name="bookmark" size={14} color="#FF9F0A" />
                                 )}
                               </View>
                               <Text className="text-[12px] font-normal text-black/50" numberOfLines={1}>
                                 {item.address || "Cần Thơ"}
                               </Text>
                             </View>
-                            <MaterialIcons
+                            <MaterialIconsRounded
                               name="chevron-right"
                               size={20}
                               color="rgba(0,0,0,0.4)"
@@ -504,7 +504,7 @@ function InlineAddPlaceModal({
                                 onPress={() => setTransportToNext(opt.value)}
                                 className={`${STYLES.chip} ${isSelected ? STYLES.chipActive : ""}`}
                               >
-                                <MaterialIcons
+                                <MaterialIconsRounded
                                   name={opt.icon}
                                   size={16}
                                   color={isSelected ? "#1D1D1F" : "rgba(0,0,0,0.6)"}
@@ -542,7 +542,7 @@ function InlineAddPlaceModal({
                   {/* Error message */}
                   {errorMsg ? (
                     <View className="flex-row items-center gap-1.5 px-1">
-                      <MaterialIcons name="error-outline" size={16} color={T.danger} />
+                      <MaterialIconsRounded name="error-outline" size={16} color={T.danger} />
                       <Text className="text-[13px] font-normal" style={{ color: T.danger }}>{errorMsg}</Text>
                     </View>
                   ) : null}

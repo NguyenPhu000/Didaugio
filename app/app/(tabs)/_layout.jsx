@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { Tabs, usePathname, useRouter } from "expo-router";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -113,7 +113,7 @@ function FloatingBottomTabBar() {
                       ],
                     ]}
                   >
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name={tab.icon}
                       size={22}
                       color={active ? "#FFFFFF" : TAB_IDLE_ICON}

@@ -3,9 +3,8 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
-import NetInfo from "@react-native-community/netinfo";
+import { View, Text, TouchableOpacity } from "react-native";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRetryQueueStore, getQueueStatus } from "./RetryQueue";
 
 export const RetryQueueBanner = () => {
@@ -33,9 +32,9 @@ export const RetryQueueBanner = () => {
   // Show offline banner
   if (!status.isOnline) {
     return (
-      <View style={styles.offlineBanner}>
-        <MaterialIcons name="wifi-off" size={18} color="#FFFFFF" />
-        <Text style={styles.offlineText}>
+      <View className="bg-slate-500 flex-row items-center justify-center py-2.5 px-4 gap-2">
+        <MaterialIconsRounded name="wifi-off" size={18} color="#FFFFFF" />
+        <Text className="text-white text-[13px] font-medium">
           Đang offline - Thao tác sẽ được đồng bộ khi có mạng
         </Text>
       </View>
@@ -45,25 +44,25 @@ export const RetryQueueBanner = () => {
   // Show pending actions indicator
   if (status.pendingCount > 0 || status.isProcessing) {
     return (
-      <View style={styles.pendingBanner}>
+      <View className="bg-blue-500">
         <TouchableOpacity
-          style={styles.pendingContent}
+          className="flex-row items-center justify-between py-2.5 px-4"
           onPress={() => setIsExpanded(!isExpanded)}
           activeOpacity={0.8}
         >
-          <View style={styles.pendingLeft}>
+          <View className="flex-row items-center gap-2">
             {status.isProcessing ? (
-              <MaterialIcons name="sync" size={18} color="#FFFFFF" />
+              <MaterialIconsRounded name="sync" size={18} color="#FFFFFF" />
             ) : (
-              <MaterialIcons name="cloud-upload" size={18} color="#FFFFFF" />
+              <MaterialIconsRounded name="cloud-upload" size={18} color="#FFFFFF" />
             )}
-            <Text style={styles.pendingText}>
+            <Text className="text-white text-[13px] font-medium">
               {status.isProcessing
                 ? "Đang đồng bộ..."
                 : `${status.pendingCount} thao tác đang chờ đồng bộ`}
             </Text>
           </View>
-          <MaterialIcons
+          <MaterialIconsRounded
             name={isExpanded ? "expand-less" : "expand-more"}
             size={20}
             color="#FFFFFF"
@@ -71,43 +70,37 @@ export const RetryQueueBanner = () => {
         </TouchableOpacity>
 
         {isExpanded && status.totalCount > 0 && (
-          <View style={styles.expandedContent}>
+          <View className="bg-blue-600 px-4 pb-3 gap-1.5">
             {status.pendingCount > 0 && (
-              <View style={styles.statusRow}>
-                <MaterialIcons name="schedule" size={14} color="#FFFFFF" />
-                <Text style={styles.statusText}>
-                  {status.pendingCount} đang chờ
-                </Text>
+              <View className="flex-row items-center gap-1.5">
+                <MaterialIconsRounded name="schedule" size={14} color="#FFFFFF" />
+                <Text className="text-white text-xs">{status.pendingCount} đang chờ</Text>
               </View>
             )}
             {status.processingCount > 0 && (
-              <View style={styles.statusRow}>
-                <MaterialIcons name="sync" size={14} color="#FFFFFF" />
-                <Text style={styles.statusText}>
-                  {status.processingCount} đang xử lý
-                </Text>
+              <View className="flex-row items-center gap-1.5">
+                <MaterialIconsRounded name="sync" size={14} color="#FFFFFF" />
+                <Text className="text-white text-xs">{status.processingCount} đang xử lý</Text>
               </View>
             )}
             {status.failedCount > 0 && (
-              <View style={styles.statusRow}>
-                <MaterialIcons name="error-outline" size={14} color="#FFB74D" />
-                <Text style={[styles.statusText, { color: "#FFB74D" }]}>
-                  {status.failedCount} thất bại
-                </Text>
+              <View className="flex-row items-center gap-1.5">
+                <MaterialIconsRounded name="error-outline" size={14} color="#FFB74D" />
+                <Text className="text-amber-400 text-xs">{status.failedCount} thất bại</Text>
               </View>
             )}
             {status.lastSyncTime && (
-              <Text style={styles.lastSync}>
+              <Text className="text-white/70 text-[11px] mt-1">
                 Đồng bộ lần cuối: {new Date(status.lastSyncTime).toLocaleString("vi-VN")}
               </Text>
             )}
             {!status.isProcessing && status.pendingCount > 0 && (
               <TouchableOpacity
-                style={styles.retryButton}
+                className="flex-row items-center justify-center gap-1.5 bg-white/20 py-2 px-4 rounded-lg mt-2"
                 onPress={() => processQueue()}
               >
-                <MaterialIcons name="refresh" size={14} color="#FFFFFF" />
-                <Text style={styles.retryText}>Đồng bộ ngay</Text>
+                <MaterialIconsRounded name="refresh" size={14} color="#FFFFFF" />
+                <Text className="text-white text-[13px] font-semibold">Đồng bộ ngay</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -118,78 +111,5 @@ export const RetryQueueBanner = () => {
 
   return null;
 };
-
-const styles = StyleSheet.create({
-  offlineBanner: {
-    backgroundColor: "#6B7280",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  offlineText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  pendingBanner: {
-    backgroundColor: "#3B82F6",
-  },
-  pendingContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  pendingLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  pendingText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  expandedContent: {
-    backgroundColor: "#2563EB",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 6,
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  statusText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-  },
-  lastSync: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 11,
-    marginTop: 4,
-  },
-  retryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  retryText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-});
 
 export default RetryQueueBanner;

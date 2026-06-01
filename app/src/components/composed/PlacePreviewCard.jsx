@@ -1,13 +1,9 @@
 import { memo } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
-import { MaterialIcons } from "@expo/vector-icons";
-import { TOKENS } from "../../constants/design-tokens";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { cn } from "../../lib/cn";
 import { resolvePlaceImageUri } from "../../lib/media-url";
-
-const STITCH_PRIMARY = "#0F172A";
-const STITCH_TEXT = "#0B1220";
-const STITCH_MUTED = "#64748B";
 
 const PRICE_RANGE_LABELS = {
   FREE: "Miễn phí",
@@ -107,34 +103,48 @@ export const PlacePreviewCard = memo(
 
     return (
       <View
-        style={[
-          styles.card,
-          compact && styles.cardCompact,
-          selected && styles.cardSelected,
-        ]}
+        className={cn(
+          "flex-row items-center gap-[11px] p-[10px] rounded-[20px] border",
+          "bg-white border-ink/6",
+          compact && "rounded-2xl p-2 gap-[9px]",
+          selected && "border-primary-400/30 bg-primary-50",
+        )}
+        style={{
+          shadowColor: "#0F172A",
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.06,
+          shadowRadius: 20,
+          elevation: 8,
+        }}
       >
         <View
-          style={[styles.thumbnailWrap, compact && styles.thumbnailWrapCompact]}
+          className={cn(
+            "w-20 h-20 rounded-[14px] overflow-hidden bg-slate-200",
+            compact && "w-[68px] h-[68px] rounded-xl",
+          )}
         >
           {previewImg ? (
             <Image
               source={{ uri: previewImg }}
-              style={styles.thumbnail}
+              style={{ width: "100%", height: "100%" }}
               contentFit="cover"
               transition={160}
             />
           ) : (
-            <View style={styles.thumbnailFallback}>
-              <MaterialIcons name="place" size={22} color="#94A3B8" />
+            <View className="flex-1 items-center justify-center">
+              <MaterialIconsRounded name="place" size={22} color="#94A3B8" />
             </View>
           )}
         </View>
 
-        <View style={[styles.content, compact && styles.contentCompact]}>
-          <View style={styles.headerRow}>
+        <View className={cn("flex-1 min-w-0 gap-1", compact && "gap-[3px]")}>
+          <View className="flex-row items-center gap-1.5">
             <Text
               numberOfLines={1}
-              style={[styles.title, compact && styles.titleCompact]}
+              className={cn(
+                "flex-1 text-ink font-heading tracking-tight text-[15px] leading-[19px]",
+                compact && "text-sm leading-[18px]",
+              )}
             >
               {place?.name || "Địa điểm"}
             </Text>
@@ -142,106 +152,102 @@ export const PlacePreviewCard = memo(
               <Pressable
                 onPress={onClose}
                 hitSlop={8}
-                style={styles.closeButton}
+                className="w-[22px] h-[22px] rounded-full items-center justify-center bg-slate-100"
               >
-                <MaterialIcons name="close" size={14} color="#94A3B8" />
+                <MaterialIconsRounded name="close" size={14} color="#94A3B8" />
               </Pressable>
             ) : null}
           </View>
 
-          <View style={styles.locationRow}>
-            <MaterialIcons
-              name="place"
-              size={12}
-              color={STITCH_MUTED}
-            />
+          <View className="flex-row items-center gap-[3px]">
+            <MaterialIconsRounded name="place" size={12} color="#64748B" />
             <Text
               numberOfLines={1}
-              style={[
-                styles.locationText,
-                compact && styles.locationTextCompact,
-              ]}
+              className={cn(
+                "flex-shrink text-slate-500 font-medium text-[11px]",
+                compact && "text-[10px]",
+              )}
             >
               {locationLabel}
             </Text>
             {hasTravelInfo || travelLoading ? (
               <>
-                <Text style={styles.dotSep}>·</Text>
-                <MaterialIcons
-                  name="directions-car"
-                  size={11}
-                  color="#0A84FF"
-                />
-                <Text numberOfLines={1} style={styles.travelText}>
+                <Text className="text-slate-300 font-medium text-[10px] mx-[1px]">·</Text>
+                <MaterialIconsRounded name="directions-car" size={11} color="#0A84FF" />
+                <Text numberOfLines={1} className="flex-shrink text-blue-500 font-semibold text-[11px]">
                   {travelLabel}
                 </Text>
               </>
             ) : null}
           </View>
 
-          <View style={styles.metaRow}>
+          <View className="flex-row items-center gap-1">
             {rating > 0 ? (
               <>
-                <MaterialIcons
-                  name="star"
-                  size={12}
-                  color="#F59E0B"
-                />
-                <Text style={styles.metaText}>{rating.toFixed(1)}</Text>
-                <Text style={styles.dotSep}>·</Text>
+                <MaterialIconsRounded name="star" size={12} color="#F59E0B" />
+                <Text className="text-slate-500 font-medium text-[11px]">{rating.toFixed(1)}</Text>
+                <Text className="text-slate-300 font-medium text-[10px] mx-[1px]">·</Text>
               </>
             ) : null}
-            <Text numberOfLines={1} style={styles.metaText}>
+            <Text numberOfLines={1} className="text-slate-500 font-medium text-[11px]">
               {reviewLabel}
             </Text>
             {priceLabel ? (
               <>
-                <Text style={styles.dotSep}>·</Text>
-                <Text numberOfLines={1} style={styles.metaText}>
+                <Text className="text-slate-300 font-medium text-[10px] mx-[1px]">·</Text>
+                <Text numberOfLines={1} className="text-slate-500 font-medium text-[11px]">
                   {priceLabel}
                 </Text>
               </>
             ) : null}
           </View>
 
-          <View style={styles.actionsRow}>
+          <View className="flex-row items-center gap-1.5 mt-0.5">
             {canShowRouteAction ? (
               <Pressable
                 onPress={() => onStartRoute(place)}
-                style={[styles.actionBtn, styles.routeBtn]}
+                className="flex-row items-center gap-1 rounded-full px-2.5 h-7 bg-blue-500"
+                style={{
+                  shadowColor: "#0A84FF",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
               >
-                <MaterialIcons name="directions" size={14} color="#FFFFFF" />
-                <Text style={styles.routeBtnText}>{routeActionLabel}</Text>
+                <MaterialIconsRounded name="directions" size={14} color="#FFFFFF" />
+                <Text className="text-white font-semibold text-[11px]">{routeActionLabel}</Text>
               </Pressable>
             ) : null}
             {canShowDetailAction ? (
               <Pressable
                 onPress={() => onViewDetail(place)}
-                style={[styles.actionBtn, styles.detailBtn]}
+                className="flex-row items-center gap-1 rounded-full px-2.5 h-7 bg-ink"
               >
-                <MaterialIcons name="arrow-forward" size={13} color="#FFFFFF" />
-                <Text style={styles.detailBtnText}>{detailLabel}</Text>
+                <MaterialIconsRounded name="arrow-forward" size={13} color="#FFFFFF" />
+                <Text className="text-white font-semibold text-[11px]">{detailLabel}</Text>
               </Pressable>
             ) : null}
             {canShowSelectionAction ? (
               <Pressable
                 onPress={() => onToggleSelection(place)}
-                style={[
-                  styles.actionBtn,
-                  styles.selectionBtn,
-                  selected && styles.selectionBtnActive,
-                ]}
+                className={cn(
+                  "flex-row items-center gap-1 rounded-full px-2.5 h-7 border",
+                  selected
+                    ? "bg-ink border-ink"
+                    : "bg-white border-ink/14",
+                )}
               >
-                <MaterialIcons
+                <MaterialIconsRounded
                   name={selected ? "check-circle" : "radio-button-unchecked"}
                   size={13}
-                  color={selected ? "#FFFFFF" : STITCH_PRIMARY}
+                  color={selected ? "#FFFFFF" : "#0F172A"}
                 />
                 <Text
-                  style={[
-                    styles.selectionBtnText,
-                    selected && styles.selectionBtnTextActive,
-                  ]}
+                  className={cn(
+                    "font-semibold text-[11px]",
+                    selected ? "text-white" : "text-ink",
+                  )}
                 >
                   {selectionLabel}
                 </Text>
@@ -250,14 +256,14 @@ export const PlacePreviewCard = memo(
             {canShowAddToTripAction ? (
               <Pressable
                 onPress={() => onAddToTrip(place)}
-                style={[styles.actionBtn, styles.addTripBtn]}
+                className="flex-row items-center gap-1 rounded-full px-2.5 h-7 border border-ink/12 bg-slate-50"
               >
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="playlist-add-check-circle"
                   size={13}
-                  color={STITCH_PRIMARY}
+                  color="#0F172A"
                 />
-                <Text style={styles.addTripBtnText}>{addToTripLabel}</Text>
+                <Text className="text-ink font-semibold text-[11px]">{addToTripLabel}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -267,181 +273,3 @@ export const PlacePreviewCard = memo(
   },
 );
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "rgba(255,255,255,0.97)",
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.06)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 11,
-    padding: 10,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  cardCompact: {
-    borderRadius: 16,
-    padding: 8,
-    gap: 9,
-  },
-  cardSelected: {
-    borderColor: "rgba(14,165,233,0.3)",
-    backgroundColor: "rgba(240,249,255,0.97)",
-  },
-  thumbnailWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 14,
-    overflow: "hidden",
-    backgroundColor: "#E2E8F0",
-  },
-  thumbnailWrapCompact: {
-    width: 68,
-    height: 68,
-    borderRadius: 12,
-  },
-  thumbnail: {
-    width: "100%",
-    height: "100%",
-  },
-  thumbnailFallback: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  content: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  contentCompact: {
-    gap: 3,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  title: {
-    flex: 1,
-    color: STITCH_TEXT,
-    fontSize: 15,
-    lineHeight: 19,
-    fontFamily: TOKENS.font.heading,
-    letterSpacing: -0.2,
-  },
-  titleCompact: {
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  closeButton: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F1F5F9",
-  },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  locationText: {
-    color: STITCH_MUTED,
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-    flexShrink: 1,
-  },
-  locationTextCompact: {
-    fontSize: 10,
-  },
-  dotSep: {
-    color: "#CBD5E1",
-    fontSize: 10,
-    fontFamily: TOKENS.font.medium,
-    marginHorizontal: 1,
-  },
-  travelText: {
-    color: "#0A84FF",
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-    flexShrink: 1,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  metaText: {
-    color: STITCH_MUTED,
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-  },
-  actionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 2,
-  },
-  actionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    height: 28,
-  },
-  routeBtn: {
-    backgroundColor: "#0A84FF",
-    shadowColor: "#0A84FF",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  routeBtnText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  detailBtn: {
-    backgroundColor: "#0F172A",
-  },
-  detailBtnText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  selectionBtn: {
-    borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.14)",
-    backgroundColor: "#FFFFFF",
-  },
-  selectionBtnActive: {
-    borderColor: STITCH_PRIMARY,
-    backgroundColor: STITCH_PRIMARY,
-  },
-  selectionBtnText: {
-    color: STITCH_PRIMARY,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  selectionBtnTextActive: {
-    color: "#FFFFFF",
-  },
-  addTripBtn: {
-    borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.12)",
-    backgroundColor: "#F8FAFC",
-  },
-  addTripBtnText: {
-    color: STITCH_PRIMARY,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-});

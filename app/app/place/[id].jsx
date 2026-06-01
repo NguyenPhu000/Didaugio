@@ -18,7 +18,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import BottomSheet, {
   BottomSheetScrollView,
@@ -281,7 +281,7 @@ function getAmenityCards(place, t) {
 
 const StarRow = ({ rating, size = 16 }) =>
   [1, 2, 3, 4, 5].map((value) => (
-    <MaterialIcons
+    <MaterialIconsRounded
       key={value}
       name={value <= Math.round(rating) ? "star" : "star-border"}
       size={size}
@@ -331,7 +331,7 @@ function ReviewCard({ review, t }) {
             <Text style={styles.reviewAuthor}>{author}</Text>
             {review?.isVerifiedPurchase ? (
               <View style={styles.verifiedReviewBadge}>
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="verified"
                   size={12}
                   color={PALETTE.success}
@@ -378,7 +378,7 @@ function ReviewCard({ review, t }) {
           {visibleReplies.map((reply) => (
             <View key={reply.id} style={styles.reviewReplyCard}>
               <View style={styles.reviewReplyHeader}>
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="storefront"
                   size={15}
                   color={PALETTE.primaryDark}
@@ -456,7 +456,7 @@ function SectionCard({ title, actionLabel, onActionPress, children }) {
 function StatPill({ icon, label }) {
   return (
     <View style={styles.statPill}>
-      <MaterialIcons name={icon} size={15} color={PALETTE.textMuted} />
+      <MaterialIconsRounded name={icon} size={15} color={PALETTE.textMuted} />
       <Text style={styles.statPillText} numberOfLines={1}>
         {label}
       </Text>
@@ -468,7 +468,7 @@ function FactCard({ icon, label, value }) {
   return (
     <View style={styles.factCard}>
       <View style={styles.factIconWrap}>
-        <MaterialIcons name={icon} size={18} color={PALETTE.primaryDark} />
+        <MaterialIconsRounded name={icon} size={18} color={PALETTE.primaryDark} />
       </View>
       <View style={styles.factContent}>
         <Text style={styles.factLabel}>{label}</Text>
@@ -476,7 +476,7 @@ function FactCard({ icon, label, value }) {
           {value}
         </Text>
       </View>
-      <MaterialIcons name="chevron-right" size={18} color={PALETTE.textSoft} />
+      <MaterialIconsRounded name="chevron-right" size={18} color={PALETTE.textSoft} />
     </View>
   );
 }
@@ -485,7 +485,7 @@ function AmenityCard({ icon, label, tag, onPress }) {
   return (
     <Pressable onPress={onPress} style={styles.amenityCard}>
       <View style={styles.amenityIconWrap}>
-        <MaterialIcons name={icon} size={22} color={PALETTE.primaryDark} />
+        <MaterialIconsRounded name={icon} size={22} color={PALETTE.primaryDark} />
       </View>
       <Text style={styles.amenityLabel} numberOfLines={1}>
         {label}
@@ -503,7 +503,7 @@ function DetailRow({ icon, label, value, onPress, highlight = false }) {
   const content = (
     <View style={styles.detailRow}>
       <View style={styles.detailIconWrap}>
-        <MaterialIcons
+        <MaterialIconsRounded
           name={icon}
           size={17}
           color={highlight ? PALETTE.primaryDark : PALETTE.textMuted}
@@ -519,7 +519,7 @@ function DetailRow({ icon, label, value, onPress, highlight = false }) {
         </Text>
       </View>
       {onPress ? (
-        <MaterialIcons name="open-in-new" size={17} color={PALETTE.textSoft} />
+        <MaterialIconsRounded name="open-in-new" size={17} color={PALETTE.textSoft} />
       ) : null}
     </View>
   );
@@ -577,7 +577,7 @@ function TimeField({ label, value, onChange, placeholder, icon }) {
         ]}
         onPress={() => setShow(true)}
       >
-        <MaterialIcons
+        <MaterialIconsRounded
           name={icon || "schedule"}
           size={14}
           color={PALETTE.textSoft}
@@ -717,7 +717,7 @@ function TripSelectorSheet({ placeId, placeName, onClose, onStepChange, t }) {
               hitSlop={8}
               style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 }}
             >
-              <MaterialIcons name="arrow-back" size={16} color={PALETTE.primary} />
+              <MaterialIconsRounded name="arrow-back" size={16} color={PALETTE.primary} />
               <Text style={{ color: PALETTE.primary, fontSize: 13, fontFamily: TOKENS.font.semibold }}>
                 {t("Quay lại", "Back")}
               </Text>
@@ -731,7 +731,7 @@ function TripSelectorSheet({ placeId, placeName, onClose, onStepChange, t }) {
           ) : null}
         </View>
         <Pressable onPress={onClose} hitSlop={8} style={styles.tripSheetClose}>
-          <MaterialIcons
+          <MaterialIconsRounded
             name="close"
             size={20}
             color={PALETTE.textMuted}
@@ -776,7 +776,7 @@ function TripSelectorSheet({ placeId, placeName, onClose, onStepChange, t }) {
                     style={styles.tripItem}
                   >
                     <View style={styles.tripItemIcon}>
-                      <MaterialIcons
+                      <MaterialIconsRounded
                         name="luggage"
                         size={18}
                         color={PALETTE.primary}
@@ -791,7 +791,7 @@ function TripSelectorSheet({ placeId, placeName, onClose, onStepChange, t }) {
                         )}
                       </Text>
                     </View>
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name="chevron-right"
                       size={22}
                       color={PALETTE.primary}
@@ -810,7 +810,7 @@ function TripSelectorSheet({ placeId, placeName, onClose, onStepChange, t }) {
               }}
               style={styles.tripSecondaryButton}
             >
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="add"
                 size={18}
                 color={PALETTE.primary}
@@ -895,7 +895,7 @@ function TripSelectorSheet({ placeId, placeName, onClose, onStepChange, t }) {
           {/* Lỗi nếu có */}
           {errorMsg ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
-              <MaterialIcons name="error-outline" size={16} color={TOKENS.color.error} />
+              <MaterialIconsRounded name="error-outline" size={16} color={TOKENS.color.error} />
               <Text style={{ color: TOKENS.color.error, fontSize: 13, fontFamily: TOKENS.font.body }}>
                 {errorMsg}
               </Text>
@@ -1083,14 +1083,14 @@ function ReviewComposerSheetContent({
           ) : null}
         </View>
         <Pressable onPress={onClose} style={styles.reviewModalClose}>
-          <MaterialIcons name="close" size={20} color={PALETTE.textMuted} />
+          <MaterialIconsRounded name="close" size={20} color={PALETTE.textMuted} />
         </Pressable>
       </View>
 
       <View style={styles.reviewRatingPicker}>
         {[1, 2, 3, 4, 5].map((value) => (
           <Pressable key={value} onPress={() => setRating(value)} hitSlop={8}>
-            <MaterialIcons
+            <MaterialIconsRounded
               name={value <= rating ? "star" : "star-border"}
               size={34}
               color="#FBBF24"
@@ -1146,7 +1146,7 @@ function ReviewComposerSheetContent({
               onPress={() => handleRemoveImage(index)}
               style={styles.reviewPickRemove}
             >
-              <MaterialIcons name="close" size={14} color="#FFFFFF" />
+              <MaterialIconsRounded name="close" size={14} color="#FFFFFF" />
             </Pressable>
           </View>
         ))}
@@ -1160,7 +1160,7 @@ function ReviewComposerSheetContent({
               <ActivityIndicator size="small" color={PALETTE.primary} />
             ) : (
               <>
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="add-photo-alternate"
                   size={24}
                   color={PALETTE.primaryDark}
@@ -1225,7 +1225,7 @@ function AllReviewsSheetContent({ reviews, totalCount, onClose, t }) {
           </Text>
         </View>
         <Pressable onPress={onClose} style={styles.reviewModalClose}>
-          <MaterialIcons name="close" size={20} color={PALETTE.textMuted} />
+          <MaterialIconsRounded name="close" size={20} color={PALETTE.textMuted} />
         </Pressable>
       </View>
 
@@ -1264,7 +1264,7 @@ function AllReviewsSheetContent({ reviews, totalCount, onClose, t }) {
                 ratingFilter === rating && styles.reviewFilterChipActive,
               ]}
             >
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="star"
                 size={14}
                 color={ratingFilter === rating ? "#FFFFFF" : PALETTE.accent}
@@ -1286,7 +1286,7 @@ function AllReviewsSheetContent({ reviews, totalCount, onClose, t }) {
               photosOnly && styles.reviewFilterChipActive,
             ]}
           >
-            <MaterialIcons
+            <MaterialIconsRounded
               name="photo-library"
               size={14}
               color={photosOnly ? "#FFFFFF" : PALETTE.primaryDark}
@@ -1548,7 +1548,7 @@ export default function PlaceDetailScreen() {
     return (
       <View style={styles.errorState}>
         <View style={styles.errorIconWrap}>
-          <MaterialIcons name="error-outline" size={40} color="#EF4444" />
+          <MaterialIconsRounded name="error-outline" size={40} color="#EF4444" />
         </View>
         <Text style={styles.errorTitle}>
           {error?.message || t("Không tìm thấy địa điểm", "Place not found")}
@@ -1663,7 +1663,7 @@ export default function PlaceDetailScreen() {
                 />
               ) : (
                 <View style={[styles.heroFallback, { width: SCREEN_WIDTH }]}>
-                  <MaterialIcons
+                  <MaterialIconsRounded
                     name="travel-explore"
                     size={54}
                     color="#FFFFFF"
@@ -1678,7 +1678,7 @@ export default function PlaceDetailScreen() {
 
           <View style={[styles.heroTopBar, { top: insets.top + 10 }]}>
             <Pressable onPress={() => router.back()} style={styles.iconButton}>
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="arrow-back-ios-new"
                 size={18}
                 color={PALETTE.text}
@@ -1687,10 +1687,10 @@ export default function PlaceDetailScreen() {
 
             <View style={styles.heroActions}>
               <Pressable onPress={handleNavigate} style={styles.iconButton}>
-                <MaterialIcons name="near-me" size={20} color={PALETTE.text} />
+                <MaterialIconsRounded name="near-me" size={20} color={PALETTE.text} />
               </Pressable>
               <Pressable onPress={handleAddToTrip} style={styles.iconButton}>
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="playlist-add"
                   size={20}
                   color={PALETTE.text}
@@ -1702,7 +1702,7 @@ export default function PlaceDetailScreen() {
           <View style={styles.heroContent}>
             {addressLine ? (
               <View style={styles.heroMetaRow}>
-                <MaterialIcons name="home-work" size={14} color="#FFFFFF" />
+                <MaterialIconsRounded name="home-work" size={14} color="#FFFFFF" />
                 <Text style={styles.heroMetaText} numberOfLines={2}>
                   {addressLine}
                 </Text>
@@ -1720,7 +1720,7 @@ export default function PlaceDetailScreen() {
               <Text style={styles.heroReviewText}>
                 {formatReviewCount(reviewCount, t)}
               </Text>
-              <MaterialIcons name="chevron-right" size={16} color="#FFFFFF" />
+              <MaterialIconsRounded name="chevron-right" size={16} color="#FFFFFF" />
             </Pressable>
           </View>
 
@@ -1739,7 +1739,7 @@ export default function PlaceDetailScreen() {
           ) : null}
 
           <Pressable onPress={handleSaveToggle} style={styles.favoriteFab}>
-            <MaterialIcons
+            <MaterialIconsRounded
               name={isSavedLocal ? "star" : "star-border"}
               size={28}
               color={isSavedLocal ? "#1D1D1F" : "#6B7280"}
@@ -1750,7 +1750,7 @@ export default function PlaceDetailScreen() {
         <View style={styles.contentWrap}>
           <View style={styles.introCard}>
             <View style={styles.locationBadgeRow}>
-              <MaterialIcons
+              <MaterialIconsRounded
                 name={categoryIcon}
                 size={16}
                 color={PALETTE.textMuted}
@@ -1815,7 +1815,7 @@ export default function PlaceDetailScreen() {
 
           <View style={styles.quickActionRow}>
             <Pressable onPress={handleNavigate} style={styles.secondaryAction}>
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="directions"
                 size={18}
                 color={PALETTE.primaryDark}
@@ -1826,7 +1826,7 @@ export default function PlaceDetailScreen() {
             </Pressable>
 
             <Pressable onPress={handleAddToTrip} style={styles.secondaryAction}>
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="playlist-add"
                 size={18}
                 color={PALETTE.primaryDark}
@@ -1967,7 +1967,7 @@ export default function PlaceDetailScreen() {
                         `See all ${totalReviews} reviews`,
                       )}
                     </Text>
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name="keyboard-arrow-up"
                       size={18}
                       color={PALETTE.primaryDark}
@@ -1989,7 +1989,7 @@ export default function PlaceDetailScreen() {
         ]}
       >
         <Pressable onPress={handleSaveToggle} style={styles.bottomIconButton}>
-          <MaterialIcons
+          <MaterialIconsRounded
             name={isSavedLocal ? "bookmark" : "bookmark-border"}
             size={24}
             color={isSavedLocal ? "#1D1D1F" : PALETTE.textMuted}
@@ -2000,7 +2000,7 @@ export default function PlaceDetailScreen() {
           onPress={handleNavigate}
           style={styles.bottomSecondaryButton}
         >
-          <MaterialIcons name="map" size={19} color={PALETTE.primaryDark} />
+          <MaterialIconsRounded name="map" size={19} color={PALETTE.primaryDark} />
           <Text style={styles.bottomSecondaryText}>{t("Bản đồ", "Map")}</Text>
         </Pressable>
 

@@ -2,7 +2,7 @@ import { memo, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { formatDate, formatDistance } from "../../utils/tripHelpers";
 import s, { T, STYLES } from "../../utils/tripDetailTokens";
 
@@ -39,7 +39,7 @@ export const TripHeader = memo(function TripHeader({
         ]}
         className="w-9 h-9 rounded-xl items-center justify-center bg-black/[0.04] flex-shrink-0"
       >
-        <MaterialIcons name="arrow-back-ios-new" size={16} color={T.ink} />
+        <MaterialIconsRounded name="arrow-back-ios-new" size={16} color={T.ink} />
       </Pressable>
 
       <View className="flex-1 min-w-0">
@@ -53,7 +53,7 @@ export const TripHeader = memo(function TripHeader({
           <View className="flex-row items-center gap-1.5 mt-0.25">
             {dateRange ? (
               <View className="flex-row items-center gap-0.75 flex-shrink-0">
-                <MaterialIcons name="calendar-today" size={10} color={T.muted48} />
+                <MaterialIconsRounded name="calendar-today" size={10} color={T.muted48} />
                 <Text className="text-[11px] font-normal text-black/50" numberOfLines={1}>
                   {dateRange}
                 </Text>
@@ -64,7 +64,7 @@ export const TripHeader = memo(function TripHeader({
             ) : null}
             {totalDistanceLabel ? (
               <View className="flex-row items-center gap-0.75 flex-shrink-0">
-                <MaterialIcons name="route" size={10} color={T.muted48} />
+                <MaterialIconsRounded name="route" size={10} color={T.muted48} />
                 <Text className="text-[11px] font-normal text-black/50" numberOfLines={1}>
                   {totalDistanceLabel}
                 </Text>
@@ -83,14 +83,14 @@ export const TripHeader = memo(function TripHeader({
           ]}
           className="w-9 h-9 rounded-xl items-center justify-center bg-black/[0.04] flex-shrink-0"
         >
-          <MaterialIcons name="more-horiz" size={20} color={T.ink} />
+          <MaterialIconsRounded name="more-horiz" size={20} color={T.ink} />
         </Pressable>
         <Pressable
           onPress={() => (onAddPlace ? onAddPlace() : router.push("/explore"))}
           style={({ pressed }) => [pressed ? { opacity: 0.85 } : null]}
           className="flex-row items-center gap-1 bg-[#1D1D1F] px-3.5 py-2 rounded-lg flex-shrink-0"
         >
-          <MaterialIcons name="add" size={18} color={T.onPrimary} />
+          <MaterialIconsRounded name="add" size={18} color={T.onPrimary} />
           <Text className="text-white text-[13px] font-semibold tracking-tight">Thêm</Text>
         </Pressable>
       </View>
@@ -126,7 +126,7 @@ export const TripHeader = memo(function TripHeader({
                         isSaved && { backgroundColor: "rgba(255,159,10,0.08)" },
                       ]}
                     >
-                      <MaterialIcons
+                      <MaterialIconsRounded
                         name={isSaved ? "bookmark" : "bookmark-border"}
                         size={16}
                         color={isSaved ? "#FF9F0A" : T.ink}
@@ -157,7 +157,7 @@ export const TripHeader = memo(function TripHeader({
                   style={[pressed && { backgroundColor: "rgba(0,0,0,0.04)" }]}
                 >
                   <View className="w-7 h-7 rounded-lg bg-black/[0.04] items-center justify-center flex-shrink-0">
-                    <MaterialIcons name="edit" size={16} color={T.ink} />
+                    <MaterialIconsRounded name="edit" size={16} color={T.ink} />
                   </View>
                   <Text className="flex-1 text-[14px] font-medium text-[#1D1D1F] tracking-tight min-w-0" numberOfLines={1}>
                     Sửa thông tin
@@ -184,7 +184,7 @@ export const TripHeader = memo(function TripHeader({
                     className="w-7 h-7 rounded-lg bg-black/[0.04] items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: "rgba(255,59,48,0.06)" }}
                   >
-                    <MaterialIcons name="delete-outline" size={16} color={T.danger} />
+                    <MaterialIconsRounded name="delete-outline" size={16} color={T.danger} />
                   </View>
                   <Text className="flex-1 text-[14px] text-[#FF3B30] font-semibold tracking-tight min-w-0" numberOfLines={1}>
                     Xóa chuyến đi

@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useFeedback } from "../src/modules/feedback/hooks/useFeedback";
 import { cn } from "../src/lib/cn";
@@ -31,7 +31,7 @@ const TypeChip = ({ option, active, onPress }) => (
       active ? "bg-primary border-primary" : "bg-white border-gray-200",
     )}
   >
-    <MaterialIcons
+    <MaterialIconsRounded
       name={option.icon}
       size={15}
       color={active ? "#fff" : "#6b7280"}
@@ -109,7 +109,7 @@ export default function FeedbackScreen() {
           onPress={() => router.back()}
           className="w-9 h-9 items-center justify-center rounded-xl bg-surface active:bg-gray-100"
         >
-          <MaterialIcons name="arrow-back" size={22} color="#111618" />
+          <MaterialIconsRounded name="arrow-back" size={22} color="#111618" />
         </Pressable>
         <View className="flex-1">
           <Text
@@ -145,7 +145,7 @@ export default function FeedbackScreen() {
               className="w-12 h-12 rounded-2xl items-center justify-center"
               style={{ backgroundColor: "#0077b8" }}
             >
-              <MaterialIcons name="feedback" size={26} color="#fff" />
+              <MaterialIconsRounded name="feedback" size={26} color="#fff" />
             </View>
             <View className="flex-1">
               <Text className="text-[14px] font-bold text-ink">
@@ -260,11 +260,11 @@ export default function FeedbackScreen() {
               ].map((item, idx, arr) => (
                 <View key={item.label}>
                   <Pressable className="flex-row items-center px-4 py-3.5 gap-3 active:bg-gray-50">
-                    <MaterialIcons name={item.icon} size={18} color="#0077b8" />
+                    <MaterialIconsRounded name={item.icon} size={18} color="#0077b8" />
                     <Text className="flex-1 text-[13px] font-medium text-ink">
                       {item.label}
                     </Text>
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name="chevron-right"
                       size={18}
                       color="#9ca3af"
@@ -314,7 +314,7 @@ export default function FeedbackScreen() {
             {isLoading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="send"
                 size={18}
                 color={canSubmit ? "#fff" : "#9ca3af"}

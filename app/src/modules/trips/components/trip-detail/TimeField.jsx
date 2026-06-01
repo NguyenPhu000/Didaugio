@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import { Modal, Platform, Pressable, Text, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { parseTimeToDate, formatHHMM } from "../../utils/tripHelpers";
 import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
@@ -32,7 +32,7 @@ function TimeField({ label, value, onChange, placeholder = "--:--", icon = "sche
         accessibilityRole="button"
         accessibilityLabel={`Chọn thời gian cho ${label}`}
       >
-        <MaterialIcons name={icon} size={15} color={ALPHA.iconStrong} />
+        <MaterialIconsRounded name={icon} size={15} color={ALPHA.iconStrong} />
         <Text className={`text-[15px] text-[#1D1D1F] font-normal ${!value ? "text-black/30" : ""}`}>
           {value || placeholder}
         </Text>

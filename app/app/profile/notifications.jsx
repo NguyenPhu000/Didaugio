@@ -4,11 +4,10 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
@@ -23,6 +22,7 @@ import {
 } from "../../src/modules/notifications/hooks/useNotifications";
 import { TOKENS } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "../(tabs)/_layout";
+import { cn } from "../../src/lib/cn";
 
 /* ─── Helpers ─────────────────────────────────────── */
 function formatTime(value) {
@@ -95,26 +95,26 @@ const resolveRoute = (item) => {
 /* ─── Sub-components ─────────────────────────────────── */
 function ScreenHeader({ unreadCount, onBack, onMarkAll }) {
   return (
-    <View style={styles.screenHeader}>
-      <TouchableOpacity activeOpacity={0.7} onPress={onBack} style={styles.headerBackBtn}>
-        <MaterialIcons name="arrow-back" size={24} color="#1D1D1F" />
+    <View className="flex-row items-center px-4 py-[14px] bg-[#F5F5F7]">
+      <TouchableOpacity activeOpacity={0.7} onPress={onBack} className="w-9 h-9 rounded-full bg-white items-center justify-center" style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
+        <MaterialIconsRounded name="arrow-back" size={24} color="#1D1D1F" />
       </TouchableOpacity>
 
-      <View style={styles.headerCenter}>
-        <Text style={styles.headerTitle}>Thông báo</Text>
+      <View className="flex-1 items-center">
+        <Text className="text-[18px] font-bold text-[#1D1D1F] tracking-[-0.3px]">Thông báo</Text>
         {unreadCount > 0 && (
-          <Text style={styles.headerSubtitle}>
+          <Text className="text-[11px] text-[#8E8E93] font-medium mt-[1px]">
             {unreadCount} chưa đọc
           </Text>
         )}
       </View>
 
       {unreadCount > 0 ? (
-        <TouchableOpacity activeOpacity={0.7} onPress={onMarkAll} style={styles.headerActionBtn}>
-          <Text style={styles.headerActionText}>Đọc hết</Text>
+        <TouchableOpacity activeOpacity={0.7} onPress={onMarkAll} className="px-3 py-[7px] rounded-[14px] bg-[#0071E3] min-w-[36px] items-center">
+          <Text className="text-[13px] font-semibold text-white tracking-[-0.1px]">Đọc hết</Text>
         </TouchableOpacity>
       ) : (
-        <View style={styles.headerPlaceholder} />
+        <View className="w-[70px]" />
       )}
     </View>
   );
@@ -122,35 +122,31 @@ function ScreenHeader({ unreadCount, onBack, onMarkAll }) {
 
 function TabBar({ active, onChange, unreadCount }) {
   return (
-    <View style={styles.tabBar}>
+    <View className="flex-row px-4 pb-3 gap-2 bg-[#F5F5F7]">
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={() => onChange("unread")}
-        style={[styles.tab, active === "unread" && styles.tabActive]}
+        className={cn(
+          "flex-row items-center px-4 py-2 rounded-[20px] gap-[6px]",
+          active === "unread" ? "bg-[#1D1D1F]" : ""
+        )}
       >
         <Text
-          style={[
-            styles.tabText,
-            active === "unread" ? styles.tabTextActive : styles.tabTextInactive,
-          ]}
+          className={cn(
+            "text-[14px] font-semibold tracking-[-0.2px]",
+            active === "unread" ? "text-white" : "text-[#8E8E93]"
+          )}
         >
           Chưa đọc
         </Text>
         {unreadCount > 0 && (
           <View
-            style={[
-              styles.tabBadge,
-              active === "unread" ? styles.tabBadgeActive : styles.tabBadgeInactive,
-            ]}
+            className={cn(
+              "min-w-5 h-5 rounded-full items-center justify-center px-1",
+              active === "unread" ? "bg-white/22" : "bg-[#FF3B30]"
+            )}
           >
-            <Text
-              style={[
-                styles.tabBadgeText,
-                active === "unread"
-                  ? styles.tabBadgeTextActive
-                  : styles.tabBadgeTextInactive,
-              ]}
-            >
+            <Text className="text-[10px] font-bold text-white">
               {unreadCount}
             </Text>
           </View>
@@ -160,13 +156,16 @@ function TabBar({ active, onChange, unreadCount }) {
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={() => onChange("all")}
-        style={[styles.tab, active === "all" && styles.tabActive]}
+        className={cn(
+          "flex-row items-center px-4 py-2 rounded-[20px] gap-[6px]",
+          active === "all" ? "bg-[#1D1D1F]" : ""
+        )}
       >
         <Text
-          style={[
-            styles.tabText,
-            active === "all" ? styles.tabTextActive : styles.tabTextInactive,
-          ]}
+          className={cn(
+            "text-[14px] font-semibold tracking-[-0.2px]",
+            active === "all" ? "text-white" : "text-[#8E8E93]"
+          )}
         >
           Tất cả
         </Text>
@@ -189,14 +188,15 @@ function NotificationCard({ item, onPress, index }) {
       layout={Layout.springify()}
       activeOpacity={0.7}
       onPress={onPress}
-      style={[
-        styles.card,
-        unread && styles.cardUnread,
-      ]}
+      className={cn(
+        "flex-row items-center bg-white rounded-[14px] p-[14px] gap-[13px] mb-2",
+        unread && "bg-[#F8F8FF]"
+      )}
+      style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 }}
     >
       {/* Icon */}
-      <View style={[styles.cardIconWrap, { backgroundColor: iconCfg.bg }]}>
-        <MaterialIcons
+      <View className="w-11 h-11 rounded-xl items-center justify-center shrink-0" style={{ backgroundColor: iconCfg.bg }}>
+        <MaterialIconsRounded
           name={iconCfg.name}
           size={22}
           color={iconCfg.color}
@@ -204,30 +204,33 @@ function NotificationCard({ item, onPress, index }) {
       </View>
 
       {/* Content */}
-      <View style={styles.cardContent}>
-        <View style={styles.cardTopRow}>
+      <View className="flex-1 gap-[3px]">
+        <View className="flex-row items-start justify-between gap-2">
           <Text
-            style={[styles.cardTitle, unread && styles.cardTitleUnread]}
+            className={cn(
+              "flex-1 text-[15px] font-semibold leading-5 tracking-[-0.2px]",
+              unread ? "text-[#1D1D1F] font-bold" : "text-[#3D3D3F]"
+            )}
             numberOfLines={2}
           >
             {item.title || "Thông báo"}
           </Text>
-          {unread && <View style={styles.cardDot} />}
+          {unread && <View className="w-2 h-2 rounded-full bg-[#0071E3] mt-[5px] shrink-0" />}
         </View>
 
-        <Text style={styles.cardBody} numberOfLines={2}>
+        <Text className="text-[13px] font-sans text-[#8E8E93] leading-[18px] tracking-[-0.1px]" numberOfLines={2}>
           {item.body || item.message || ""}
         </Text>
 
-        <Text style={styles.cardTime}>{relTime}</Text>
+        <Text className="text-[11px] font-medium text-[#C7C7CC] mt-0.5 tracking-[-0.05px]">{relTime}</Text>
       </View>
 
       {/* Chevron */}
-      <MaterialIcons
+      <MaterialIconsRounded
         name="chevron-right"
         size={20}
         color="#D1D1D6"
-        style={styles.cardChevron}
+        style={{ marginLeft: 2 }}
       />
     </AnimatedTouchable>
   );
@@ -235,20 +238,20 @@ function NotificationCard({ item, onPress, index }) {
 
 function EmptyState({ tab }) {
   return (
-    <Animated.View entering={FadeIn.duration(300)} style={styles.emptyWrap}>
-      <View style={styles.emptyIconWrap}>
-        <MaterialIcons
+    <Animated.View entering={FadeIn.duration(300)} className="flex-1 items-center justify-center px-10 pb-20">
+      <View className="w-20 h-20 rounded-full bg-white items-center justify-center mb-5" style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+        <MaterialIconsRounded
           name={tab === "unread" ? "notifications-none" : "notifications-off"}
           size={40}
           color="#D1D1D6"
         />
       </View>
-      <Text style={styles.emptyTitle}>
+      <Text className="text-[20px] font-bold text-[#1D1D1F] text-center mb-2 tracking-[-0.4px]">
         {tab === "unread"
           ? "Không có thông báo mới"
           : "Chưa có thông báo nào"}
       </Text>
-      <Text style={styles.emptySubtitle}>
+      <Text className="text-[14px] font-sans text-[#8E8E93] text-center leading-[21px] tracking-[-0.1px]">
         {tab === "unread"
           ? "Tất cả thông báo đã được đọc."
           : "Thông báo từ booking, địa điểm và hệ thống sẽ xuất hiện ở đây."}
@@ -259,7 +262,7 @@ function EmptyState({ tab }) {
 
 function LoadingState() {
   return (
-    <View style={styles.loadingWrap}>
+    <View className="flex-1 items-center justify-center">
       <ActivityIndicator size="large" color="#0071E3" />
     </View>
   );
@@ -349,7 +352,7 @@ export default function NotificationsScreen() {
   const keyExtractor = useCallback((item) => String(item.id), []);
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <View className="flex-1 bg-[#F5F5F7]" style={{ paddingTop: insets.top }}>
       <ScreenHeader
         unreadCount={unreadCount}
         onBack={() => router.back()}
@@ -371,17 +374,18 @@ export default function NotificationsScreen() {
           data={items}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: TAB_BAR_HEIGHT + 24 },
-          ]}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 12,
+            paddingBottom: TAB_BAR_HEIGHT + 24,
+          }}
           showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={() => <View style={{ height: 0 }} />}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={
             isLoadingMore ? (
-              <View style={styles.footerLoader}>
+              <View className="py-5 items-center">
                 <ActivityIndicator size="small" color="#0071E3" />
               </View>
             ) : null
@@ -398,259 +402,3 @@ export default function NotificationsScreen() {
     </View>
   );
 }
-
-/* ─── Styles ────────────────────────────────────────── */
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#F5F5F7",
-  },
-
-  /* ── Header ── */
-  screenHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: "#F5F5F7",
-  },
-  headerBackBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: TOKENS.font.heading,
-    color: "#1D1D1F",
-    letterSpacing: -0.3,
-  },
-  headerSubtitle: {
-    fontSize: 11,
-    color: "#8E8E93",
-    fontFamily: TOKENS.font.medium,
-    marginTop: 1,
-  },
-  headerActionBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 14,
-    backgroundColor: "#0071E3",
-    minWidth: 36,
-    alignItems: "center",
-  },
-  headerActionText: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    color: "#FFFFFF",
-    letterSpacing: -0.1,
-  },
-  headerPlaceholder: {
-    width: 70,
-  },
-
-  /* ── Tab Bar ── */
-  tabBar: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 8,
-    backgroundColor: "#F5F5F7",
-  },
-  tab: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
-  },
-  tabActive: {
-    backgroundColor: "#1D1D1F",
-  },
-  tabText: {
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.2,
-  },
-  tabTextActive: {
-    color: "#FFFFFF",
-  },
-  tabTextInactive: {
-    color: "#8E8E93",
-  },
-  tabBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-  },
-  tabBadgeActive: {
-    backgroundColor: "rgba(255,255,255,0.22)",
-  },
-  tabBadgeInactive: {
-    backgroundColor: "#FF3B30",
-  },
-  tabBadgeText: {
-    fontSize: 10,
-    fontFamily: TOKENS.font.bold,
-  },
-  tabBadgeTextActive: {
-    color: "#FFFFFF",
-  },
-  tabBadgeTextInactive: {
-    color: "#FFFFFF",
-  },
-
-  /* ── List ── */
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-  },
-  separator: {
-    height: 0,
-  },
-  footerLoader: {
-    paddingVertical: 20,
-    alignItems: "center",
-  },
-
-  /* ── Card ── */
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 14,
-    gap: 13,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-    marginBottom: 8,
-  },
-  cardUnread: {
-    backgroundColor: "#F8F8FF",
-  },
-  cardPressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.99 }],
-  },
-  cardIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    shrink: 0,
-  },
-  cardContent: {
-    flex: 1,
-    gap: 3,
-  },
-  cardTopRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  cardTitle: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-    color: "#3D3D3F",
-    lineHeight: 20,
-    letterSpacing: -0.2,
-  },
-  cardTitleUnread: {
-    color: "#1D1D1F",
-    fontWeight: "600",
-  },
-  cardDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#0071E3",
-    marginTop: 5,
-    shrink: 0,
-  },
-  cardBody: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.body,
-    color: "#8E8E93",
-    lineHeight: 18,
-    letterSpacing: -0.1,
-  },
-  cardTime: {
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-    color: "#C7C7CC",
-    marginTop: 2,
-    letterSpacing: -0.05,
-  },
-  cardChevron: {
-    marginLeft: 2,
-    shrink: 0,
-  },
-
-  /* ── Empty ── */
-  emptyWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 40,
-    paddingBottom: 80,
-  },
-  emptyIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontFamily: TOKENS.font.heading,
-    color: "#1D1D1F",
-    textAlign: "center",
-    marginBottom: 8,
-    letterSpacing: -0.4,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    fontFamily: TOKENS.font.body,
-    color: "#8E8E93",
-    textAlign: "center",
-    lineHeight: 21,
-    letterSpacing: -0.1,
-  },
-
-  /* ── Loading ── */
-  loadingWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});

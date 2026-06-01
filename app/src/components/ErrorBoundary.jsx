@@ -3,8 +3,8 @@
  * Must be a class component (React requirement for error boundaries).
  */
 import { Component } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Pressable, Text, View } from "react-native";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 
 const PRIMARY = "#0077b8";
 
@@ -31,63 +31,25 @@ export class ErrorBoundary extends Component {
     if (!this.state.hasError) return this.props.children;
 
     return (
-      <View style={styles.container}>
-        <MaterialIcons name="error-outline" size={64} color="#ef4444" />
-        <Text style={styles.title}>Có lỗi xảy ra</Text>
-        <Text style={styles.message}>
+      <View className="flex-1 items-center justify-center p-8 bg-[#f5f7f8] gap-3">
+        <MaterialIconsRounded name="error-outline" size={64} color="#ef4444" />
+        <Text className="text-xl font-bold text-[#111618]" style={{ fontFamily: "BeVietnamPro_700Bold" }}>
+          Có lỗi xảy ra
+        </Text>
+        <Text className="text-sm text-[#737373] text-center leading-[22px]" style={{ fontFamily: "BeVietnamPro_400Regular" }}>
           {this.state.error?.message || "Lỗi không xác định. Vui lòng thử lại."}
         </Text>
         <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] },
-          ]}
+          className="flex-row items-center gap-2 bg-[#0077b8] px-6 py-3 rounded-6xl mt-2"
+          style={({ pressed }) => pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }}
           onPress={this.handleReset}
         >
-          <MaterialIcons name="refresh" size={20} color="#fff" />
-          <Text style={styles.buttonText}>Thử lại</Text>
+          <MaterialIconsRounded name="refresh" size={20} color="#fff" />
+          <Text className="text-white font-semibold text-[15px]" style={{ fontFamily: "BeVietnamPro_600SemiBold" }}>
+            Thử lại
+          </Text>
         </Pressable>
       </View>
     );
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 32,
-    backgroundColor: "#f5f7f8",
-    gap: 12,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#111618",
-    fontFamily: "BeVietnamPro_700Bold",
-  },
-  message: {
-    fontSize: 14,
-    color: "#737373",
-    textAlign: "center",
-    lineHeight: 22,
-    fontFamily: "BeVietnamPro_400Regular",
-  },
-  button: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: PRIMARY,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-    marginTop: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 15,
-    fontFamily: "BeVietnamPro_600SemiBold",
-  },
-});

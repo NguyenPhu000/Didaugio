@@ -1,9 +1,8 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../../stores/authStore";
-import { TOKENS } from "../../constants/design-tokens";
 
 const TAB_BAR_HEIGHT = 80;
 const ACCENT = "#3478F6";
@@ -36,178 +35,75 @@ export const GuestGate = ({
 
   return (
     <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[
-        styles.container,
-        {
-          paddingTop: insets.top + 24,
-          paddingBottom: TAB_BAR_HEIGHT + 32,
-        },
-      ]}
+      className="flex-1 bg-slate-50"
+      contentContainerStyle={{
+        flexGrow: 1,
+        alignItems: "center",
+        paddingHorizontal: 28,
+        justifyContent: "center",
+        paddingTop: insets.top + 24,
+        paddingBottom: TAB_BAR_HEIGHT + 32,
+      }}
       showsVerticalScrollIndicator={false}
       bounces={false}
     >
       {/* Icon block */}
-      <View style={styles.iconOuter}>
-        <View style={styles.iconRing} />
-        <View style={styles.iconWrap}>
-          <MaterialIcons name={icon} size={40} color={ACCENT} />
+      <View className="items-center justify-center mb-7">
+        <View className="absolute w-[120px] h-[120px] rounded-full bg-blue-500/8" />
+        <View className="w-[88px] h-[88px] rounded-[26px] items-center justify-center bg-blue-100">
+          <MaterialIconsRounded name={icon} size={40} color={ACCENT} />
         </View>
       </View>
 
       {/* Text */}
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.description}>{description}</Text>
+      <Text className="text-2xl font-heading text-ink text-center mb-2.5">{title}</Text>
+      <Text className="text-[15px] font-body text-slate-500 text-center leading-[23px] max-w-[320px]">{description}</Text>
 
       {/* Divider */}
-      <View style={styles.divider} />
+      <View className="w-12 h-[3px] rounded-full bg-slate-200 my-7" />
 
       {/* Nút đăng nhập — nền xanh */}
       <Pressable
         onPress={handleLogin}
+        className="flex-row items-center justify-center gap-2 w-full py-4 rounded-full mb-3"
         style={({ pressed }) => [
-          styles.loginBtn,
-          pressed && styles.pressedScale,
+          { backgroundColor: ACCENT },
+          pressed && { opacity: 0.88, transform: [{ scale: 0.975 }] },
+          {
+            shadowColor: ACCENT,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.35,
+            shadowRadius: 10,
+            elevation: 6,
+          },
         ]}
       >
-        <MaterialIcons name="login" size={18} color="#fff" />
-        <Text style={styles.loginText}>Đăng nhập</Text>
+        <MaterialIconsRounded name="login" size={18} color="#fff" />
+        <Text className="text-[15px] font-semibold text-white tracking-[0.2px]">Đăng nhập</Text>
       </Pressable>
 
       {/* Nút đăng ký — nền đen */}
       <Pressable
         onPress={handleRegister}
+        className="flex-row items-center justify-center gap-2 w-full py-4 rounded-full"
         style={({ pressed }) => [
-          styles.registerBtn,
-          pressed && styles.pressedScale,
+          { backgroundColor: BLACK },
+          pressed && { opacity: 0.88, transform: [{ scale: 0.975 }] },
+          {
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.22,
+            shadowRadius: 10,
+            elevation: 6,
+          },
         ]}
       >
-        <MaterialIcons name="person-add-alt-1" size={18} color="#fff" />
-        <Text style={styles.registerText}>Đăng ký tài khoản mới</Text>
+        <MaterialIconsRounded name="person-add-alt-1" size={18} color="#fff" />
+        <Text className="text-[15px] font-semibold text-white tracking-[0.2px]">Đăng ký tài khoản mới</Text>
       </Pressable>
 
       {/* Hint */}
-      <Text style={styles.hint}>Miễn phí · Không cần thẻ tín dụng</Text>
+      <Text className="mt-[18px] text-xs font-body text-slate-400 text-center">Miễn phí · Không cần thẻ tín dụng</Text>
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-  container: {
-    flexGrow: 1,
-    alignItems: "center",
-    paddingHorizontal: 28,
-    justifyContent: "center",
-  },
-
-  /* Icon */
-  iconOuter: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 28,
-  },
-  iconRing: {
-    position: "absolute",
-    width: 120,
-    height: 120,
-    borderRadius: 999,
-    backgroundColor: "rgba(52,120,246,0.08)",
-  },
-  iconWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#EAF2FF",
-  },
-
-  /* Text */
-  title: {
-    fontSize: 24,
-    fontFamily: TOKENS.font.heading,
-    color: "#0F172A",
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  description: {
-    fontSize: 15,
-    fontFamily: TOKENS.font.regular,
-    color: "#64748B",
-    textAlign: "center",
-    lineHeight: 23,
-    maxWidth: 320,
-  },
-
-  divider: {
-    width: 48,
-    height: 3,
-    borderRadius: 999,
-    backgroundColor: "#E2E8F0",
-    marginVertical: 28,
-  },
-
-  /* Nút đăng nhập */
-  loginBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    width: "100%",
-    paddingVertical: 16,
-    borderRadius: 999,
-    backgroundColor: ACCENT,
-    marginBottom: 12,
-    shadowColor: ACCENT,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  loginText: {
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-    color: "#FFFFFF",
-    letterSpacing: 0.2,
-  },
-
-  /* Nút đăng ký */
-  registerBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    width: "100%",
-    paddingVertical: 16,
-    borderRadius: 999,
-    backgroundColor: BLACK,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  registerText: {
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-    color: "#FFFFFF",
-    letterSpacing: 0.2,
-  },
-
-  pressedScale: {
-    opacity: 0.88,
-    transform: [{ scale: 0.975 }],
-  },
-
-  hint: {
-    marginTop: 18,
-    fontSize: 12,
-    fontFamily: TOKENS.font.regular,
-    color: "#94A3B8",
-    textAlign: "center",
-  },
-});
