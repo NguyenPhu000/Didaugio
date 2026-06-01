@@ -1,5 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
+  Animated,
   Alert,
   Linking,
   Modal,
@@ -16,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../src/modules/auth/hooks/useAuth";
 import { useAuthStore } from "../../src/stores/authStore";
 import { useUIStore } from "../../src/stores/uiStore";
-import { useProfile } from "../../src/modules/profile/hooks/useProfile";
+import { useProfile, useUpdateNotificationSettings } from "../../src/modules/profile/hooks/useProfile";
 import { useNotifications } from "../../src/modules/notifications/hooks/useNotifications";
 import { TOKENS } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "../(tabs)/_layout";
@@ -138,6 +139,72 @@ function LogoutConfirmModal({ visible, onCancel, onConfirm }) {
   );
 }
 
+function CustomToast({ message, visible, onHide }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+
+      const timer = setTimeout(() => {
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }).start(() => onHide());
+      }, 2500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [visible, opacity, onHide]);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        bottom: 50,
+        left: 24,
+        right: 24,
+        opacity,
+        zIndex: 9999,
+        transform: [
+          {
+            translateY: opacity.interpolate({
+              inputRange: [0, 1],
+              outputRange: [15, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      <View
+        className="flex-row items-center gap-3 rounded-2xl border px-4 py-3 bg-slate-900 border-slate-800"
+        style={{
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.12,
+          shadowRadius: 10,
+          elevation: 5,
+        }}
+      >
+        <MaterialIcons name="info-outline" size={20} color="#F59E0B" style={{ marginRight: 6 }} />
+        <Text
+          style={{ fontFamily: TOKENS.font.medium }}
+          className="text-white text-[13.5px] flex-1 leading-5"
+        >
+          {message}
+        </Text>
+      </View>
+    </Animated.View>
+  );
+}
+
 /* ====================== MAIN SCREEN ====================== */
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -160,17 +227,26 @@ export default function SettingsScreen() {
   const unreadCount = notifData?.unreadCount ?? 0;
 
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  const updateNotifSettingsMutation = useUpdateNotificationSettings();
 
   // Derived states
   const darkModeEnabled = themePreference === "dark";
-  const pushEnabled = profileSettings?.pushEnabled ?? true;
+  const pushEnabled = isLoggedIn && profile
+    ? (profile?.notificationSettings?.push?.bookingConfirmed ?? true)
+    : (profileSettings?.pushEnabled ?? true);
   const syncEnabled = profileSettings?.syncEnabled ?? true;
   const hapticEnabled = profileSettings?.hapticEnabled ?? true; // Mới: haptic feedback
   const email = profile?.email || storedUser?.email || "Chưa cập nhật";
 
+  const isPushPending = updateNotifSettingsMutation.isPending;
+
   // Handlers
   const handleSoonFeature = useCallback((title) => {
-    Alert.alert("Sắp ra mắt", `${title} sẽ có trong bản cập nhật tới.`);
+    setToastMessage(`${title} sẽ có trong bản cập nhật tới!`);
+    setToastVisible(true);
   }, []);
 
   const handleToggleTheme = useCallback(
@@ -179,8 +255,39 @@ export default function SettingsScreen() {
   );
 
   const handleTogglePush = useCallback(
-    (enabled) => updateProfileSettings?.({ pushEnabled: enabled }),
-    [updateProfileSettings]
+    async (enabled) => {
+      // Lưu ở local store trước
+      updateProfileSettings?.({ pushEnabled: enabled });
+
+      if (isLoggedIn) {
+        try {
+          const currentSettings = profile?.notificationSettings || {};
+          const payload = {
+            ...currentSettings,
+            push: {
+              bookingConfirmed: enabled,
+              bookingCancelled: enabled,
+              newReview: enabled,
+              systemAlerts: enabled,
+            },
+            email: {
+              bookingConfirmed: enabled,
+              bookingCancelled: enabled,
+              newReview: enabled,
+              systemAlerts: enabled,
+            }
+          };
+          await updateNotifSettingsMutation.mutateAsync(payload);
+        } catch (error) {
+          console.error("Lỗi đồng bộ cài đặt thông báo:", error);
+          // Revert local store if failed
+          updateProfileSettings?.({ pushEnabled: !enabled });
+          setToastMessage("Không thể đồng bộ cài đặt thông báo với máy chủ!");
+          setToastVisible(true);
+        }
+      }
+    },
+    [isLoggedIn, profile, updateProfileSettings, updateNotifSettingsMutation]
   );
 
   const handleToggleSync = useCallback(
@@ -356,10 +463,12 @@ export default function SettingsScreen() {
             iconColor="#0071E3"
             title="Thông báo đẩy"
             subtitle={pushEnabled ? "Bật" : "Tắt"}
+            disabled={isPushPending}
             rightElement={
               <Switch
                 value={pushEnabled}
                 onValueChange={handleTogglePush}
+                disabled={isPushPending}
                 trackColor={{ false: "#CBD5E1", true: ACCENT_BLUE + "88" }}
                 thumbColor="#FFFFFF"
               />
@@ -440,7 +549,7 @@ export default function SettingsScreen() {
             icon="feedback"
             title="Gửi phản hồi"
             subtitle="Đóng góp ý kiến cho chúng tôi"
-            onPress={() => handleSoonFeature("Send Feedback")}
+            onPress={() => router.push("/feedback")}
           />
           <View style={styles.divider} />
 
@@ -495,6 +604,12 @@ export default function SettingsScreen() {
         visible={logoutModalVisible}
         onCancel={() => setLogoutModalVisible(false)}
         onConfirm={handleConfirmLogout}
+      />
+
+      <CustomToast
+        message={toastMessage}
+        visible={toastVisible}
+        onHide={() => setToastVisible(false)}
       />
     </View>
   );

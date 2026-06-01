@@ -1,5 +1,5 @@
-import { memo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Pressable } from "react-native";
+import { memo, useState, useEffect } from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -14,123 +14,129 @@ import {
   getDisplayStatus,
   getTimelineLabel,
 } from "../utils/tripHelpers";
+import { resolveMediaUrl } from "../../../lib/media-url";
+
+const fallbackCover = "https://images.unsplash.com/photo-1527668752968-14ce70a6a7ae?w=600&auto=format&fit=crop";
 
 export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved }) {
   const displayStatus = getDisplayStatus(trip);
   const status = STATUS_THEME[displayStatus] || STATUS_THEME.upcoming;
-  const cover =
-    trip.thumbnail || trip.destinations?.[0]?.place?.thumbnail || null;
+  const cover = resolveMediaUrl(
+    trip.thumbnail || trip.destinations?.[0]?.place?.thumbnail || null,
+  );
   const destinationCount = trip.destinations?.length || 0;
   const dateRange = getDateRangeLabel(trip);
-  const daysLabel = `${trip.totalDays || 1} ngày`;
+  const daysLabel = `${trip.totalDays ?? 1} ngày`;
   const timeline = getTimelineLabel(trip);
   const placesLabel =
     destinationCount === 0
       ? "Chưa có điểm đến"
       : `${destinationCount} điểm đến`;
 
+  const [imgSrc, setImgSrc] = useState(cover ? { uri: cover } : { uri: fallbackCover });
+
+  useEffect(() => {
+    setImgSrc(cover ? { uri: cover } : { uri: fallbackCover });
+  }, [cover]);
+
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
-      onPress={onPress}
-      style={styles.card}
-    >
-      {/* Thumbnail */}
-      <View style={styles.thumbWrap}>
-        {cover ? (
-          <>
-            <Image
-              source={{ uri: cover }}
-              style={styles.thumb}
-              contentFit="cover"
-              transition={200}
-              cachePolicy="memory-disk"
-            />
+    <View style={styles.cardWrap}>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={onPress}
+        style={styles.card}
+      >
+        {/* Thumbnail */}
+        <View style={styles.thumbWrap}>
+          <Image
+            source={imgSrc}
+            style={styles.thumb}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+            onError={() => setImgSrc({ uri: fallbackCover })}
+          />
+          {cover && (
             <LinearGradient
               colors={["transparent", "rgba(0,0,0,0.15)"]}
               style={StyleSheet.absoluteFill}
             />
-          </>
-        ) : (
-          <View style={styles.thumbFallback}>
-            <MaterialIcons name="landscape" size={28} color="rgba(0,0,0,0.2)" />
-          </View>
-        )}
-        {onSave ? (
-          <Pressable
-            onPress={(e) => {
-              e.stopPropagation?.();
-              onSave(trip.id);
-            }}
-            hitSlop={8}
-            style={({ pressed }) => [
-              styles.bookmarkBtn,
-              pressed && { opacity: 0.7 },
-            ]}
-          >
-            <MaterialIcons
-              name={isSaved ? "bookmark" : "bookmark-border"}
-              size={18}
-              color={isSaved ? "#FF9F0A" : "#FFFFFF"}
-            />
-          </Pressable>
-        ) : null}
-      </View>
-
-      {/* Content */}
-      <View style={styles.content}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={1}>
-            {trip.title || "Chuyến đi mới"}
-          </Text>
-          <View
-            style={[styles.statusDot, { backgroundColor: status.accent }]}
-          />
+          )}
         </View>
 
-        <View style={styles.metaRow}>
-          <MaterialIcons
-            name="event"
-            size={14}
-            color={APPLE_THEME.textMuted}
-          />
-          <Text style={styles.metaText} numberOfLines={1}>
-            {dateRange}
-          </Text>
-          <View style={styles.metaDot} />
-          <MaterialIcons
-            name="schedule"
-            size={14}
-            color={APPLE_THEME.textMuted}
-          />
-          <Text style={styles.metaText}>{daysLabel}</Text>
-        </View>
-
-        <View style={styles.bottomRow}>
-          <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-            <Text style={[styles.statusLabel, { color: status.text }]}>
-              {status.label}
+        {/* Content */}
+        <View style={styles.content}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title} numberOfLines={1}>
+              {trip.title || "Chuyến đi mới"}
             </Text>
+            <View
+              style={[styles.statusDot, { backgroundColor: status.accent }]}
+            />
           </View>
-          <Text style={styles.placesText}>{placesLabel}</Text>
-        </View>
-      </View>
 
-      {/* Subtle Arrow */}
-      <View style={styles.arrowWrap}>
-        <MaterialIcons
-          name="chevron-right"
-          size={24}
-          color="rgba(0,0,0,0.2)"
-        />
-      </View>
-    </TouchableOpacity>
+          <View style={styles.metaRow}>
+            <MaterialIcons
+              name="event"
+              size={14}
+              color={APPLE_THEME.textMuted}
+            />
+            <Text style={styles.metaText} numberOfLines={1}>
+              {dateRange}
+            </Text>
+            <View style={styles.metaDot} />
+            <MaterialIcons
+              name="schedule"
+              size={14}
+              color={APPLE_THEME.textMuted}
+            />
+            <Text style={styles.metaText}>{daysLabel}</Text>
+          </View>
+
+          <View style={styles.bottomRow}>
+            <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+              <Text style={[styles.statusLabel, { color: status.text }]}>
+                {status.label}
+              </Text>
+            </View>
+            <Text style={styles.placesText}>{placesLabel}</Text>
+          </View>
+        </View>
+
+        {/* Subtle Arrow */}
+        <View style={styles.arrowWrap}>
+          <MaterialIcons
+            name="chevron-right"
+            size={24}
+            color="rgba(0,0,0,0.2)"
+          />
+        </View>
+      </TouchableOpacity>
+
+      {/* Sibling absolute Bookmark button to fix stopPropagation on Android/iOS */}
+      {onSave ? (
+        <TouchableOpacity
+          onPress={() => onSave(trip.id)}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={styles.bookmarkBtnAbsolute}
+        >
+          <MaterialIcons
+            name={isSaved ? "bookmark" : "bookmark-border"}
+            size={18}
+            color={isSaved ? "#FF9F0A" : "#FFFFFF"}
+          />
+        </TouchableOpacity>
+      ) : null}
+    </View>
   );
 });
 
 const styles = StyleSheet.create({
-  card: {
+  cardWrap: {
     marginHorizontal: TAB_SCREEN_PADDING,
+    position: "relative",
+  },
+  card: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
@@ -162,16 +168,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#E5E5EA",
   },
-  bookmarkBtn: {
+  bookmarkBtnAbsolute: {
     position: "absolute",
-    top: 6,
-    right: 6,
+    top: 18,
+    left: 66,
     width: 30,
     height: 30,
     borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.35)",
+    zIndex: 10,
   },
   content: {
     flex: 1,

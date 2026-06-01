@@ -187,7 +187,8 @@ function InlineAddPlaceModal({
 
       onClose();
     } catch (err) {
-      setErrorMsg(err?.message || "Có lỗi xảy ra khi thêm địa điểm.");
+      const serverMessage = err?.response?.data?.message;
+      setErrorMsg(serverMessage || err?.message || "Có lỗi xảy ra khi thêm địa điểm.");
       setIsSubmitting(false); // Reset submitting state on error
     }
   }, [
@@ -448,15 +449,15 @@ function InlineAddPlaceModal({
                         return (
                           <Pressable
                             key={dayVal}
-                            className={`px-4 py-2.5 rounded-xl bg-[#F5F5F7] border-[1.5px] border-transparent ${
-                              isActive ? STYLES.chipActive : ""
+                            className={`px-4 py-2.5 rounded-xl border-[1.5px] border-transparent ${
+                              isActive ? "bg-[#1D1D1F]" : "bg-[#F5F5F7]"
                             }`}
                             onPress={() => setDayNumber(dayVal)}
                             accessibilityLabel={`Chọn ngày ${dayVal}`}
                           >
                             <Text
                               className={`text-[13px] font-semibold ${
-                                isActive ? "text-[#1D1D1F]" : "text-[#1D1D1F]"
+                                isActive ? "text-white" : "text-[#1D1D1F]"
                               }`}
                             >
                               Ngày {dayVal}
@@ -506,11 +507,11 @@ function InlineAddPlaceModal({
                                 <MaterialIcons
                                   name={opt.icon}
                                   size={16}
-                                  color={isSelected ? T.onPrimary : "rgba(0,0,0,0.6)"}
+                                  color={isSelected ? "#1D1D1F" : "rgba(0,0,0,0.6)"}
                                 />
                                 <Text
                                   className={`text-[13px] font-semibold ${
-                                    isSelected ? "text-white opacity-100" : "text-[#1D1D1F] opacity-60"
+                                    isSelected ? "text-[#1D1D1F] opacity-100" : "text-[#1D1D1F] opacity-60"
                                   }`}
                                 >
                                   {opt.label}

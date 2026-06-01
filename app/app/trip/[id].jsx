@@ -23,7 +23,14 @@ import {
   buildTripDetailBookings,
   groupBookingsByDay,
   computeBudgetSummary,
+  canStartTrip,
 } from "../../src/modules/trips/utils/tripHelpers";
+import {
+  setActiveTripId,
+  resetVisitedDestinations,
+  useActiveTrip,
+} from "../../src/modules/trips/hooks/useActiveTrip";
+import { sendLocalNotification } from "../../src/lib/local-notifications";
 
 import { TripHeader } from "../../src/modules/trips/components/trip-detail/TripHeader";
 import { TripTabBar } from "../../src/modules/trips/components/trip-detail/TripTabBar";
@@ -33,7 +40,7 @@ import { BudgetTab } from "../../src/modules/trips/components/trip-detail/Budget
 import EditTripModal from "../../src/modules/trips/components/trip-detail/EditTripModal";
 import s, { T } from "../../src/modules/trips/utils/tripDetailTokens";
 
-const BOOKINGS_FILTERS = { limit: 120 };
+const BOOKINGS_FILTERS = { limit: 500 };
 
 export default function TripDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -43,6 +50,9 @@ export default function TripDetailScreen() {
   const [activeTab, setActiveTab] = useState("itinerary");
   const [isEditTripOpen, setIsEditTripOpen] = useState(false);
   const [isAddPlaceOpen, setIsAddPlaceOpen] = useState(false);
+
+  const activeTripState = useActiveTrip();
+  const isCurrentActiveTrip = activeTripState.isActive && String(activeTripState.activeTripId) === String(tripId);
 
   const { data: trip, isLoading, isError, refetch } = useTripDetail(tripId);
 
@@ -126,6 +136,46 @@ export default function TripDetailScreen() {
     [updateTripMutation],
   );
 
+  const handleResumeTrip = useCallback(() => {
+    if (!trip?.id) return;
+    router.push({ pathname: "/(tabs)/map", params: { resumeNav: "true" } });
+  }, [trip?.id, router]);
+
+  const handleStartTrip = useCallback(() => {
+    if (!trip?.id || updateTripMutation.isPending) return;
+
+    Alert.alert(
+      "Bắt đầu hành trình?",
+      "Ứng dụng sẽ theo dõi vị trí của bạn và dẫn đường đến các điểm đến trong chuyến đi.",
+      [
+        { text: "Để sau", style: "cancel" },
+        {
+          text: "Bắt đầu",
+          onPress: () => {
+            updateTripMutation.mutate(
+              { status: "in-progress" },
+              {
+                onSuccess: async () => {
+                  await setActiveTripId(trip.id);
+                  await resetVisitedDestinations(trip.id);
+                  await sendLocalNotification({
+                    title: "Hành trình bắt đầu!",
+                    body: `Chúc bạn có chuyến đi "${trip.title || "của mình"}" thật tuyệt vời. Hãy để chúng tôi dẫn đường nhé!`,
+                    data: { tripId: trip.id },
+                  });
+                  router.push({ pathname: "/(tabs)/map", params: { startNav: "true" } });
+                },
+                onError: (error) => {
+                  Alert.alert("Lỗi", error?.message || "Không thể bắt đầu hành trình. Vui lòng thử lại.");
+                },
+              },
+            );
+          },
+        },
+      ],
+    );
+  }, [trip?.id, trip?.title, updateTripMutation, router]);
+
   const handleToggleSave = useCallback(() => {
     if (!trip?.id) return;
     if (trip.isSaved) {
@@ -191,6 +241,11 @@ export default function TripDetailScreen() {
           isAddPlaceOpen={isAddPlaceOpen}
           onAddPlaceOpen={() => setIsAddPlaceOpen(true)}
           onAddPlaceClose={() => setIsAddPlaceOpen(false)}
+          canStartTrip={isCurrentActiveTrip || canStartTrip(trip)}
+          onStartTrip={isCurrentActiveTrip ? handleResumeTrip : handleStartTrip}
+          isStartingTrip={updateTripMutation.isPending}
+          isCurrentActiveTrip={isCurrentActiveTrip}
+          isPaused={activeTripState.isPaused}
         />
       ) : activeTab === "services" ? (
         <ServicesTab

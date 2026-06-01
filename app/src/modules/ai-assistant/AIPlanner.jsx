@@ -8,10 +8,10 @@ import {
   Platform,
   Keyboard,
   ActivityIndicator,
-  StyleSheet,
   useWindowDimensions,
-  KeyboardAvoidingView,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,14 +23,14 @@ import { PlacePreviewCard } from "../../components/composed/PlacePreviewCard";
 import { TAB_BAR_HEIGHT } from "../../../app/(tabs)/_layout";
 
 const QUICK_SUGGESTIONS = [
-  { text: "Gợi ý quán ăn ngon ở Ninh Kiều", icon: "restaurant" },
-  { text: "Top 5 điểm chụp ảnh đẹp", icon: "photo-camera" },
-  { text: "Kế hoạch buổi tối Cần Thơ", icon: "nightlife" },
-  { text: "Đi chơi gia đình 1 ngày", icon: "family-restroom" },
-  { text: "Cà phê view đẹp gần trung tâm", icon: "local-cafe" },
+  { text: "Gợi ý quán ăn ngon ở Ninh Kiều", icon: "restaurant", color: "#F59E0B" },
+  { text: "Top 5 điểm chụp ảnh đẹp", icon: "photo-camera", color: "#EC4899" },
+  { text: "Kế hoạch buổi tối Cần Thơ", icon: "nightlife", color: "#8B5CF6" },
+  { text: "Đi chơi gia đình 1 ngày", icon: "family-restroom", color: "#10B981" },
+  { text: "Cà phê view đẹp gần trung tâm", icon: "local-cafe", color: "#3B82F6" },
 ];
 
-const ACCENT = TOKENS.color.travel.ocean;
+const ACCENT = "#3478F6";
 
 export function AIPlanner() {
   const [inputText, setInputText] = useState("");
@@ -149,18 +149,62 @@ export function AIPlanner() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      className="flex-1 bg-slate-50"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
     >
+      {/* Premium Header */}
+      <View
+        className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-slate-100 shadow-sm"
+        style={{ paddingTop: Math.max(insets.top, 8) }}
+      >
+        <View className="flex-row items-center gap-3">
+          <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center border border-blue-100 shadow-inner">
+            <MaterialIcons name="assistant" size={22} color="#3478F6" />
+          </View>
+          <View>
+            <Text
+              style={{ fontFamily: TOKENS.font.semibold }}
+              className="text-[15.5px] text-slate-800 leading-tight"
+            >
+              Trợ lý du lịch Nhi
+            </Text>
+            <View className="flex-row items-center gap-1 mt-1">
+              <View className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <Text
+                style={{ fontFamily: TOKENS.font.medium }}
+                className="text-[10px] text-slate-400"
+              >
+                Sẵn sàng trợ giúp
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {hasPlannerHistory && (
+          <Pressable
+            onPress={handleClearPlannerHistory}
+            disabled={isLoading}
+            className={`w-9 h-9 rounded-full items-center justify-center active:bg-slate-100 ${
+              isLoading ? "opacity-40" : ""
+            }`}
+          >
+            <MaterialIcons name="delete-sweep" size={22} color="#64748B" />
+          </Pressable>
+        )}
+      </View>
+
       {/* ── Messages area ── */}
       <ScrollView
         ref={scrollRef}
-        style={styles.scrollArea}
-        contentContainerStyle={[
-          styles.scrollContent,
-          !hasMessages && styles.scrollContentEmpty,
-        ]}
+        className="flex-1"
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: 24,
+          flexGrow: !hasMessages ? 1 : undefined,
+          justifyContent: !hasMessages ? "center" : undefined,
+        }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
@@ -168,99 +212,88 @@ export function AIPlanner() {
           scrollRef.current?.scrollToEnd({ animated: false })
         }
       >
-        {hasPlannerHistory ? (
-          <View style={styles.historyActionRow}>
-            <Pressable
-              onPress={handleClearPlannerHistory}
-              disabled={isLoading}
-              style={({ pressed }) => [
-                styles.historyClearBtn,
-                isLoading && styles.historyClearBtnDisabled,
-                pressed && !isLoading && styles.historyClearBtnPressed,
-              ]}
-            >
-              <MaterialIcons
-                name="delete-outline"
-                size={14}
-                color={
-                  isLoading ? TOKENS.color.neutral[400] : TOKENS.color.error
-                }
-              />
-              <Text
-                style={[
-                  styles.historyClearText,
-                  isLoading && styles.historyClearTextDisabled,
-                ]}
-              >
-                Xóa lịch sử Planner
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-
         {!hasMessages ? (
           /* ── Empty state ── */
-          <View style={styles.emptyState}>
-            <View style={styles.avatarCircle}>
-              <MaterialIcons name="event-note" size={36} color={ACCENT} />
-            </View>
-            <Text style={styles.emptyTitle}>Lên kế hoạch cùng AI</Text>
-            <Text style={styles.emptySubtitle}>
-              Mô tả điều bạn muốn — AI sẽ sắp xếp thành lịch trình hoàn chỉnh,
-              phù hợp với phong cách của bạn.
+          <View className="items-center px-6 py-8">
+            <LinearGradient
+              colors={["#EFF6FF", "#DBEAFE"]}
+              className="w-16 h-16 rounded-3xl items-center justify-center shadow-inner mb-5 rotate-3"
+            >
+              <MaterialIcons name="auto-awesome" size={28} color="#3478F6" />
+            </LinearGradient>
+            <Text
+              style={{ fontFamily: TOKENS.font.heading }}
+              className="text-2xl text-slate-900 text-center mb-2"
+            >
+              Lên kế hoạch du lịch
+            </Text>
+            <Text
+              style={{ fontFamily: TOKENS.font.body }}
+              className="text-[13.5px] leading-5 text-slate-505 text-slate-500 text-center max-w-[280px] mb-8"
+            >
+              Mình có thể giúp bạn tìm địa điểm ăn uống, vui chơi và sắp xếp lịch trình Cần Thơ tự động!
             </Text>
 
-            <View style={styles.suggestionsGrid}>
+            <View className="w-full gap-2.5">
               {QUICK_SUGGESTIONS.map((item) => (
                 <Pressable
                   key={item.text}
                   onPress={() => handleSend(item.text)}
-                  style={({ pressed }) => [
-                    styles.suggestionChip,
-                    pressed && styles.suggestionChipPressed,
-                  ]}
+                  className="flex-row items-center gap-3.5 px-4 py-4 rounded-2xl bg-white border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] active:bg-slate-50"
                 >
-                  <MaterialIcons name={item.icon} size={16} color={ACCENT} />
-                  <Text style={styles.suggestionText}>{item.text}</Text>
+                  <View
+                    className="w-8 h-8 rounded-xl items-center justify-center"
+                    style={{ backgroundColor: item.color + "15" }}
+                  >
+                    <MaterialIcons name={item.icon} size={16} color={item.color} />
+                  </View>
+                  <Text
+                    style={{ fontFamily: TOKENS.font.medium }}
+                    className="flex-1 text-[13.5px] text-slate-700"
+                  >
+                    {item.text}
+                  </Text>
+                  <MaterialIcons name="chevron-right" size={16} color="#CBD5E1" />
                 </Pressable>
               ))}
             </View>
           </View>
         ) : (
           /* ── Conversation ── */
-          <View style={styles.messagesWrap}>
+          <View className="gap-4">
             {messages.map((message, index) => {
               const isUser = message.role === "user";
               return (
                 <View
                   key={message.id ?? index}
-                  style={[
-                    styles.messageBlock,
-                    isUser
-                      ? styles.messageBlockUser
-                      : styles.messageBlockAssistant,
-                  ]}
+                  className={`gap-1.5 ${isUser ? "items-end" : "items-start"}`}
                 >
                   {!isUser ? (
-                    <View style={styles.assistantTag}>
-                      <View style={styles.assistantTagDot} />
-                      <Text style={styles.assistantTagText}>AI Planner</Text>
+                    <View className="flex-row items-center gap-1.5 ml-1">
+                      <View className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      <Text
+                        style={{ fontFamily: TOKENS.font.semibold }}
+                        className="text-slate-400 text-[10px] tracking-wider uppercase"
+                      >
+                        Nhi (AI)
+                      </Text>
                     </View>
                   ) : null}
 
                   <View
-                    style={[
-                      styles.bubble,
-                      isUser ? styles.bubbleUser : styles.bubbleAssistant,
-                    ]}
+                    className={`max-w-[85%] px-4 py-3.5 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] ${
+                      isUser
+                        ? "bg-[#3478F6] rounded-tr-none"
+                        : "bg-white border border-slate-100 rounded-tl-none"
+                    }`}
                   >
                     <Text
-                      style={[
-                        styles.bubbleText,
-                        isUser
-                          ? styles.bubbleTextUser
-                          : styles.bubbleTextAssistant,
-                      ]}
+                      style={{
+                        fontFamily: isUser ? TOKENS.font.medium : TOKENS.font.body,
+                      }}
+                      className={`text-[14.5px] leading-[22px] ${
+                        isUser ? "text-white" : "text-slate-800"
+                      }`}
                     >
                       {message.text ?? message.content}
                     </Text>
@@ -272,35 +305,50 @@ export function AIPlanner() {
         )}
 
         {draftPlan?.suggestedPlaces?.length ? (
-          <View style={styles.selectionPanel}>
-            <View style={styles.selectionHeader}>
-              <View>
-                <Text style={styles.selectionTitle}>
-                  Chọn địa điểm trước khi chốt
+          <View className="mt-4 p-4 rounded-3xl bg-white border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.03)] gap-4">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1">
+                <Text
+                  style={{ fontFamily: TOKENS.font.semibold }}
+                  className="text-[14.5px] text-slate-900"
+                >
+                  Chọn địa điểm bạn muốn
                 </Text>
-                <Text style={styles.selectionSubtitle}>
-                  {selectedPlaceIds.length}/{draftPlan.suggestedPlaces.length}{" "}
-                  địa điểm đã chọn
+                <Text
+                  style={{ fontFamily: TOKENS.font.body }}
+                  className="mt-0.5 text-xs text-slate-400"
+                >
+                  Đang chọn {selectedPlaceIds.length}/{draftPlan.suggestedPlaces.length} địa điểm
                 </Text>
               </View>
 
-              <View style={styles.selectionActionsRow}>
+              <View className="flex-row items-center gap-1.5">
                 <Pressable
                   onPress={selectAllPlaces}
-                  style={styles.selectionActionBtn}
+                  className="px-3 py-1.5 rounded-full border border-slate-100 bg-slate-50 active:bg-slate-100"
                 >
-                  <Text style={styles.selectionActionText}>Chọn tất cả</Text>
+                  <Text
+                    style={{ fontFamily: TOKENS.font.semibold }}
+                    className="text-[11px] text-blue-600"
+                  >
+                    Chọn hết
+                  </Text>
                 </Pressable>
                 <Pressable
                   onPress={clearSelectedPlaces}
-                  style={styles.selectionActionBtn}
+                  className="px-3 py-1.5 rounded-full border border-slate-100 bg-slate-50 active:bg-slate-100"
                 >
-                  <Text style={styles.selectionActionText}>Bỏ chọn</Text>
+                  <Text
+                    style={{ fontFamily: TOKENS.font.semibold }}
+                    className="text-[11px] text-slate-500"
+                  >
+                    Bỏ chọn
+                  </Text>
                 </Pressable>
               </View>
             </View>
 
-            <View style={styles.placeListWrap}>
+            <View className="gap-3">
               {draftPlan.suggestedPlaces.map((place, index) => {
                 const placeId = Number(place?.id);
                 const isSelected = selectedPlaceIds.includes(placeId);
@@ -314,9 +362,9 @@ export function AIPlanner() {
                     showCloseButton={false}
                     showSelectionAction
                     showAddToTripAction
-                    selectedLabel="Bỏ chọn"
-                    unselectedLabel="Chọn"
-                    addToTripLabel={isSelected ? "Đã thêm" : "Add vào trip"}
+                    selectedLabel="Đã chọn"
+                    unselectedLabel="Chọn địa điểm"
+                    addToTripLabel={isSelected ? "Đã thêm" : "Thêm chuyến đi"}
                     detailLabel="Chi tiết"
                     onViewDetail={handleOpenPlace}
                     onToggleSelection={handleTogglePlace}
@@ -329,36 +377,40 @@ export function AIPlanner() {
             <Pressable
               onPress={handleConfirmSelection}
               disabled={!canConfirmSelection || isConfirming}
-              style={({ pressed }) => [
-                styles.confirmBtnContainer,
-                pressed &&
-                  canConfirmSelection &&
-                  !isConfirming &&
-                  styles.confirmBtnPressed,
-              ]}
+              className="mt-1 rounded-2xl overflow-hidden active:opacity-95"
             >
               <LinearGradient
                 colors={
                   !canConfirmSelection || isConfirming
                     ? ["#E2E8F0", "#E2E8F0"]
-                    : ["#007BFF", "#0055CC"]
+                    : ["#3478F6", "#1E3A8A"]
                 }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={styles.confirmBtnGradient}
+                className="h-[52px] flex-row items-center justify-center gap-2 px-4"
               >
                 {isConfirming ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <MaterialIcons name="task-alt" size={18} color={!canConfirmSelection || isConfirming ? "#94A3B8" : "#FFFFFF"} />
+                  <MaterialIcons
+                    name="auto-awesome-motion"
+                    size={18}
+                    color={
+                      !canConfirmSelection || isConfirming
+                        ? "#94A3B8"
+                        : "#FFFFFF"
+                    }
+                  />
                 )}
                 <Text
-                  style={[
-                    styles.confirmBtnText,
-                    (!canConfirmSelection || isConfirming) && styles.confirmBtnTextDisabled,
-                  ]}
+                  style={{ fontFamily: TOKENS.font.semibold }}
+                  className={`text-[14.5px] ${
+                    !canConfirmSelection || isConfirming
+                      ? "text-slate-400"
+                      : "text-white"
+                  }`}
                 >
-                  Tạo chuyến đi từ lựa chọn
+                  Tạo lịch trình từ lựa chọn
                 </Text>
               </LinearGradient>
             </Pressable>
@@ -366,9 +418,12 @@ export function AIPlanner() {
         ) : null}
 
         {isLoading ? (
-          <View style={styles.loadingRow}>
+          <View className="flex-row items-center gap-2.5 self-start px-4 py-3 mt-2 rounded-2xl bg-white border border-slate-100 shadow-sm rounded-tl-none">
             <ActivityIndicator size="small" color={ACCENT} />
-            <Text style={styles.loadingText}>
+            <Text
+              style={{ fontFamily: TOKENS.font.medium }}
+              className="text-slate-600 text-[13.5px]"
+            >
               {isConfirming
                 ? "Đang tạo chuyến đi..."
                 : isPreviewLoading
@@ -379,55 +434,56 @@ export function AIPlanner() {
         ) : null}
 
         {error ? (
-          <View style={styles.errorBar}>
-            <MaterialIcons
-              name="error-outline"
-              size={14}
-              color={TOKENS.color.error}
-            />
-            <Text style={styles.errorText}>{error}</Text>
+          <View className="flex-row items-center gap-2 self-center mt-2 px-4 py-2.5 rounded-xl bg-red-50 border border-red-150">
+            <MaterialIcons name="error-outline" size={14} color="#EF4444" />
+            <Text
+              style={{ fontFamily: TOKENS.font.medium }}
+              className="flex-1 text-red-500 text-xs ml-1"
+            >
+              {error}
+            </Text>
           </View>
         ) : null}
       </ScrollView>
 
       {/* ── Input bar ── */}
       <View
-        style={[
-          styles.composerOuter,
-          {
-            paddingBottom: keyboardVisible
-              ? 8
-              : Math.max(insets.bottom, 8) + TAB_BAR_HEIGHT,
-          },
-        ]}
+        className="px-4 pt-2 bg-transparent"
+        style={{
+          paddingBottom: keyboardVisible
+            ? 8
+            : Math.max(insets.bottom, 8) + TAB_BAR_HEIGHT,
+        }}
       >
-        <View style={styles.composerCard}>
+        <View className="flex-row items-end gap-2.5 px-3 py-2.5 rounded-[26px] bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
           <TextInput
             ref={inputRef}
             placeholder="Mô tả kế hoạch bạn muốn..."
-            placeholderTextColor={TOKENS.color.neutral[400]}
+            placeholderTextColor="#94A3B8"
             value={inputText}
             onChangeText={setInputText}
             multiline
             maxLength={500}
-            style={styles.input}
-            textAlignVertical="center"
+            className="flex-1 min-h-[38px] max-h-[100px] px-2 py-1 text-[14.5px] text-slate-800"
+            style={{
+              fontFamily: TOKENS.font.body,
+              textAlignVertical: "center",
+            }}
           />
           <Pressable
             onPress={() => handleSend()}
             disabled={!canSend}
-            style={[
-              styles.sendBtn,
-              canSend ? styles.sendBtnActive : styles.sendBtnIdle,
-            ]}
+            className={`w-[36px] h-[36px] rounded-full items-center justify-center ${
+              canSend ? "bg-[#3478F6] active:opacity-80 active:scale-95" : "bg-slate-50"
+            }`}
           >
             {isLoading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <MaterialIcons
                 name="arrow-upward"
-                size={20}
-                color={canSend ? "#FFFFFF" : TOKENS.color.neutral[400]}
+                size={18}
+                color={canSend ? "#FFFFFF" : "#CBD5E1"}
               />
             )}
           </Pressable>
@@ -436,366 +492,3 @@ export function AIPlanner() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  /* ── Scroll ── */
-  scrollArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  scrollContentEmpty: {
-    flexGrow: 1,
-    justifyContent: "center",
-  },
-  /* ── Empty state ── */
-  emptyState: {
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-  },
-  avatarCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: "rgba(255,255,255,0.85)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(59, 130, 246, 0.15)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-    marginBottom: 18,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    lineHeight: 30,
-    fontFamily: TOKENS.font.heading,
-    color: TOKENS.color.neutral[900],
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    lineHeight: 21,
-    fontFamily: TOKENS.font.body,
-    color: TOKENS.color.neutral[600],
-    textAlign: "center",
-    maxWidth: 290,
-    marginBottom: 24,
-  },
-  suggestionsGrid: {
-    width: "100%",
-    gap: 8,
-  },
-  suggestionChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.75)",
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.8)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  suggestionChipPressed: {
-    backgroundColor: "rgba(59,130,246,0.06)",
-    borderColor: "rgba(59,130,246,0.25)",
-  },
-  suggestionText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-    color: TOKENS.color.neutral[700],
-  },
-  /* ── Messages ── */
-  messagesWrap: {
-    gap: 16,
-  },
-  historyActionRow: {
-    alignItems: "flex-end",
-    marginBottom: 8,
-  },
-  historyClearBtn: {
-    height: 30,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: TOKENS.color.error + "45",
-    backgroundColor: TOKENS.color.error + "10",
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  historyClearBtnDisabled: {
-    borderColor: TOKENS.color.neutral[300],
-    backgroundColor: TOKENS.color.neutral[100],
-  },
-  historyClearBtnPressed: {
-    opacity: 0.94,
-  },
-  historyClearText: {
-    color: TOKENS.color.error,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.2,
-  },
-  historyClearTextDisabled: {
-    color: TOKENS.color.neutral[400],
-  },
-  messageBlock: {
-    gap: 6,
-  },
-  messageBlockUser: {
-    alignItems: "flex-end",
-  },
-  messageBlockAssistant: {
-    alignItems: "flex-start",
-  },
-  assistantTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginLeft: 4,
-  },
-  assistantTagDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: ACCENT,
-  },
-  assistantTagText: {
-    color: TOKENS.color.neutral[500],
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.3,
-  },
-  bubble: {
-    maxWidth: "84%",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-  },
-  bubbleUser: {
-    backgroundColor: ACCENT,
-    borderBottomRightRadius: 6,
-  },
-  bubbleAssistant: {
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderWidth: 1,
-    borderColor: "rgba(191,219,254,0.45)",
-    borderBottomLeftRadius: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  bubbleText: {
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  bubbleTextUser: {
-    color: "#FFFFFF",
-    fontFamily: TOKENS.font.medium,
-  },
-  bubbleTextAssistant: {
-    color: TOKENS.color.neutral[800],
-    fontFamily: TOKENS.font.body,
-  },
-  /* ── Selection panel ── */
-  selectionPanel: {
-    marginTop: 14,
-    padding: 14,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderWidth: 1,
-    borderColor: "rgba(59, 130, 246, 0.12)",
-    shadowColor: TOKENS.color.travel.ocean,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
-    elevation: 3,
-    gap: 12,
-  },
-  selectionHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  selectionTitle: {
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-    color: TOKENS.color.neutral[900],
-  },
-  selectionSubtitle: {
-    marginTop: 2,
-    fontSize: 12,
-    fontFamily: TOKENS.font.body,
-    color: TOKENS.color.neutral[500],
-  },
-  selectionActionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  selectionActionBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.28)",
-    backgroundColor: "rgba(248,250,252,0.92)",
-  },
-  selectionActionText: {
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-    color: TOKENS.color.neutral[600],
-  },
-  placeListWrap: {
-    gap: 10,
-  },
-  confirmBtnContainer: {
-    marginTop: 4,
-    borderRadius: 14,
-    overflow: "hidden",
-    shadowColor: TOKENS.color.travel.ocean,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  confirmBtnGradient: {
-    height: 46,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-  },
-  confirmBtnPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.96,
-  },
-  confirmBtnText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  confirmBtnTextDisabled: {
-    color: "#94A3B8",
-  },
-  /* ── Loading ── */
-  loadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    alignSelf: "flex-start",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginTop: 8,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderWidth: 1,
-    borderColor: "rgba(191,219,254,0.45)",
-    borderBottomLeftRadius: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  loadingText: {
-    color: TOKENS.color.neutral[600],
-    fontSize: 14,
-    fontFamily: TOKENS.font.medium,
-  },
-  /* ── Error ── */
-  errorBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    alignSelf: "center",
-    marginTop: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: TOKENS.color.error + "10",
-    borderWidth: 1,
-    borderColor: TOKENS.color.error + "25",
-  },
-  errorText: {
-    flex: 1,
-    color: TOKENS.color.error,
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-  },
-  /* ── Composer ── */
-  composerOuter: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    backgroundColor: "transparent",
-  },
-  composerCard: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-    borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.8)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  input: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === "ios" ? 10 : 8,
-    paddingBottom: Platform.OS === "ios" ? 10 : 8,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: TOKENS.font.body,
-    color: TOKENS.color.neutral[900],
-  },
-  sendBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sendBtnActive: {
-    backgroundColor: ACCENT,
-    shadowColor: ACCENT,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sendBtnIdle: {
-    backgroundColor: TOKENS.color.neutral[200],
-  },
-});

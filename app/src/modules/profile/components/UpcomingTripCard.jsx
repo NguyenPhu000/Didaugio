@@ -10,7 +10,7 @@ export function UpcomingTripCard({ trip, onPress }) {
     trip?.destinations?.[0]?.place?.thumbnail ||
     "https://images.unsplash.com/photo-1537996194471-e657df975ab4";
     
-  const title = trip?.name || "Hành trình mới";
+  const title = trip?.title || "Hành trình mới";
   const destination = trip?.destinations?.[0]?.place?.address || trip?.destinations?.[0]?.place?.name || "Chưa xác định";
 
   let duration = "";
@@ -24,17 +24,34 @@ export function UpcomingTripCard({ trip, onPress }) {
   }
 
   let countdownText = "ĐANG DIỄN RA";
-  if (trip?.startDate) {
-    const startObj = new Date(trip.startDate);
-    if (!Number.isNaN(startObj.getTime())) {
-      startObj.setHours(0, 0, 0, 0);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const diff = Math.round((startObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      if (diff > 1) countdownText = `CÒN ${diff} NGÀY`;
-      else if (diff === 1) countdownText = "NGÀY MAI";
-      else if (diff === 0) countdownText = "HÔM NAY";
+  if (trip?.status === "cancelled") {
+    countdownText = "ĐÃ HỦY";
+  } else if (trip?.status === "completed") {
+    countdownText = "ĐÃ KẾT THÚC";
+  } else {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (trip?.endDate) {
+      const endObj = new Date(trip.endDate);
+      if (!Number.isNaN(endObj.getTime())) {
+        endObj.setHours(0, 0, 0, 0);
+        if (endObj < today) {
+          countdownText = "ĐÃ KẾT THÚC";
+        }
+      }
+    }
+    
+    if (countdownText !== "ĐÃ KẾT THÚC" && trip?.startDate) {
+      const startObj = new Date(trip.startDate);
+      if (!Number.isNaN(startObj.getTime())) {
+        startObj.setHours(0, 0, 0, 0);
+        const diff = Math.round((startObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        if (diff > 1) countdownText = `CÒN ${diff} NGÀY`;
+        else if (diff === 1) countdownText = "NGÀY MAI";
+        else if (diff === 0) countdownText = "HÔM NAY";
+        else if (diff < 0) countdownText = "ĐANG DIỄN RA";
+      }
     }
   }
 
@@ -83,32 +100,12 @@ export function UpcomingTripCard({ trip, onPress }) {
 
       <View className="absolute bottom-4 left-5 right-5 flex-row justify-between items-end">
         <MaterialIcons name="airplane-ticket" size={28} color="#fff" />
-        
-        <View className="flex-row items-center">
-          <View className="flex-row items-center">
-            <View className="w-7 h-7 rounded-full border-2 border-white z-[3]">
-              <Image
-                source={{ uri: "https://i.pravatar.cc/32?img=1" }}
-                style={{ width: "100%", height: "100%", borderRadius: 999 }}
-              />
-            </View>
-            <View className="w-7 h-7 rounded-full border-2 border-white z-[2] -ml-3">
-              <Image
-                source={{ uri: "https://i.pravatar.cc/32?img=2" }}
-                style={{ width: "100%", height: "100%", borderRadius: 999 }}
-              />
-            </View>
-            <View className="w-7 h-7 rounded-full border-2 border-white z-[1] -ml-3">
-              <Image
-                source={{ uri: "https://i.pravatar.cc/32?img=3" }}
-                style={{ width: "100%", height: "100%", borderRadius: 999 }}
-              />
-            </View>
+
+        {duration ? (
+          <View className="bg-white/20 rounded-full px-3 py-1 border border-white/30">
+            <Text className="text-xs font-semibold text-white">{duration}</Text>
           </View>
-          <View className="bg-white rounded-full px-2 py-0.5 -ml-2">
-            <Text className="text-xs font-semibold text-[#0F172A]">+2</Text>
-          </View>
-        </View>
+        ) : null}
       </View>
     </Pressable>
   );

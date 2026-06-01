@@ -88,6 +88,7 @@ export const mapRoutingResponse = (response) => {
     firstRoute,
     coordinates,
     isFallback: routeData?.source === "fallback",
+    ferryAvoidanceFailed: routeData?.ferryAvoidanceFailed ?? false,
     distanceM: firstRoute?.distance ?? null,
     durationS: firstRoute?.duration ?? null,
   };

@@ -34,6 +34,8 @@ export function useRouteBuilderController({
   onSelectPlace,
   onLocationResolved,
 }) {
+  const travelMode = "motorcycle";
+  const avoidFerry = false;
   const routeBuilderLegTrackingRef = useRef(createLegTrackingState());
   const telemetrySessionIdRef = useRef(
     `route-builder-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
@@ -70,6 +72,8 @@ export function useRouteBuilderController({
         sessionId: telemetrySessionIdRef.current,
         meta: {
           platform: "mobile",
+          travelMode,
+          avoidFerry,
         },
         events: [
           {
@@ -90,7 +94,7 @@ export function useRouteBuilderController({
         // Telemetry is best-effort and must never interrupt navigation UX.
       });
     },
-    [currentLocation],
+    [currentLocation, travelMode, avoidFerry],
   );
 
   const syncBuilderStops = useCallback(
@@ -208,9 +212,13 @@ export function useRouteBuilderController({
     isError: isRouteBuilderError,
     isFetching: isRouteBuilderFetching,
     refetch: refetchRouteBuilder,
+    ferryAvoidanceFailed,
   } = useRoutingLegs({
     waypoints: routeBuilderWaypoints,
-    mode: "motorcycle",
+    mode: travelMode,
+    options: {
+      exclude: avoidFerry ? "ferry" : undefined,
+    },
     enabled: routeBuilderEnabled,
   });
 
@@ -451,7 +459,10 @@ export function useRouteBuilderController({
   } = useMapRouting({
     origin: routeBuilderRecoveryOrigin,
     destination: routeBuilderRecoveryDestination,
-    mode: "motorcycle",
+    mode: travelMode,
+    options: {
+      exclude: avoidFerry ? "ferry" : undefined,
+    },
     enabled: Boolean(
       routeBuilderRecoveryOrigin && routeBuilderRecoveryDestination,
     ),
@@ -549,7 +560,8 @@ export function useRouteBuilderController({
     emitNavigationTelemetry("navigation_started", {
       stopCount: routeBuilderDraftStops.length,
       waypointCount: confirmedWaypointCount,
-      mode: "motorcycle",
+      mode: travelMode,
+      avoidFerry,
     });
     emitNavigationTelemetry("route_confirmed", {
       stopCount: routeBuilderDraftStops.length,
@@ -679,5 +691,6 @@ export function useRouteBuilderController({
     dismissArrivalAlert: handleDismissRouteBuilderArrivalAlert,
     resetProgress: handleResetRouteBuilderProgress,
     toggleCompletedView: handleToggleCompletedLegView,
+    ferryAvoidanceFailed,
   };
 }

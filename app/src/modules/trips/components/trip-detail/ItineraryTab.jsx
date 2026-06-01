@@ -1,9 +1,11 @@
 import { memo, useState, useCallback, useMemo, useEffect } from "react";
-import { View, Text, Pressable, ScrollView, Alert } from "react-native";
+import { View, Text, Pressable, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { useFocusEffect } from "expo-router";
 import DraggableFlatList from "react-native-draggable-flatlist";
 import { MaterialIcons } from "@expo/vector-icons";
 import { buildDestinationBookings, buildDayList, parseTimeToDate } from "../../utils/tripHelpers";
 import { useReorderDestinations, useUpdateDestination, useMoveDestination, useRemoveDestination } from "../../hooks/useTripDetail";
+import { getActiveTripId, getVisitedDestinations } from "../../hooks/useActiveTrip";
 import TimelineCard from "./TimelineCard";
 import TimelineConnector from "./TimelineConnector";
 import MoveDestinationModal from "./MoveDestinationModal";
@@ -17,9 +19,33 @@ function ItineraryTab({
   isAddPlaceOpen,
   onAddPlaceOpen,
   onAddPlaceClose,
+  canStartTrip = false,
+  onStartTrip,
+  isStartingTrip = false,
+  isCurrentActiveTrip = false,
+  isPaused = false,
 }) {
   const tripId = trip?.id;
   const destinations = trip?.destinations || [];
+
+  // Trạng thái điểm danh đọc từ AsyncStorage (chỉ khi đây là chuyến đang chạy).
+  const [visitedIds, setVisitedIds] = useState([]);
+
+  const loadVisited = useCallback(async () => {
+    if (!tripId) return;
+    const activeId = await getActiveTripId();
+    if (String(activeId) === String(tripId)) {
+      setVisitedIds(await getVisitedDestinations(tripId));
+    } else {
+      setVisitedIds([]);
+    }
+  }, [tripId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadVisited();
+    }, [loadVisited]),
+  );
 
   // Nguồn duy nhất cho danh sách ngày (dùng chung với modal chuyển ngày / thêm địa điểm)
   const days = useMemo(() => buildDayList(trip), [trip]);
@@ -107,29 +133,20 @@ function ItineraryTab({
   }, []);
 
   const handleMove = useCallback(
-    ({ destId, newDayNumber, newOrder, startTime, endTime, note }) => {
-      moveMutation.mutate(
-        { destId, newDayNumber, newOrder },
-        {
-          onSuccess: () => {
-            if (startTime !== undefined || endTime !== undefined || note !== undefined) {
-              updateMutation.mutate({
-                destId,
-                data: { startTime, endTime, note },
-              }, {
-                onError: (error) => {
-                  Alert.alert("Lỗi", error?.message || "Không thể cập nhật thông tin chặng đi. Vui lòng thử lại.");
-                },
-              });
-            }
-            setMovingDest(null);
-            setSelectedDay(newDayNumber);
-          },
-          onError: (error) => {
-            Alert.alert("Lỗi", error?.message || "Không thể dời địa điểm này. Vui lòng thử lại.");
-          },
-        },
-      );
+    async ({ destId, newDayNumber, newOrder, startTime, endTime, note }) => {
+      try {
+        await moveMutation.mutateAsync({ destId, newDayNumber, newOrder });
+        if (startTime !== undefined || endTime !== undefined || note !== undefined) {
+          await updateMutation.mutateAsync({
+            destId,
+            data: { startTime, endTime, note },
+          });
+        }
+        setMovingDest(null);
+        setSelectedDay(newDayNumber);
+      } catch (error) {
+        Alert.alert("Lỗi", error?.message || "Không thể dời địa điểm này. Vui lòng thử lại.");
+      }
     },
     [moveMutation, updateMutation],
   );
@@ -215,6 +232,7 @@ function ItineraryTab({
             drag={drag}
             isActive={isActive}
             tripStatus={trip?.status}
+            isVisited={visitedIds.includes(item.id)}
           />
           {!isLastItem && (
             <TimelineConnector
@@ -225,7 +243,7 @@ function ItineraryTab({
         </View>
       );
     },
-    [destBookings, onOpenBooking, handleRemove, handleMoveRequest, handleEditRequest, trip?.status, dayDestinations],
+    [destBookings, onOpenBooking, handleRemove, handleMoveRequest, handleEditRequest, trip?.status, dayDestinations, visitedIds],
   );
 
   const isLast = useMemo(() => {
@@ -233,6 +251,18 @@ function ItineraryTab({
     const idx = dayDestinations.findIndex((d) => d.id === editingDest.id);
     return idx === dayDestinations.length - 1;
   }, [dayDestinations, editingDest]);
+
+  const startTripTitle = isCurrentActiveTrip
+    ? isPaused
+      ? "Tiếp tục hành trình"
+      : "Xem bản đồ hành trình"
+    : "Bắt đầu hành trình";
+
+  const startTripSubtitle = isCurrentActiveTrip
+    ? isPaused
+      ? "Khôi phục chỉ đường và theo dõi vị trí"
+      : "Xem bản đồ dẫn đường thời gian thực"
+    : "";
 
   return (
     <View className="flex-1">
@@ -254,18 +284,18 @@ function ItineraryTab({
                 style={({ pressed }) => [
                   pressed && { opacity: 0.9 },
                 ]}
-                className={`px-3 rounded-2xl items-center justify-center gap-0.5 h-14 min-w-[64px] max-w-[88px] ${isActive ? "bg-[#E8E8ED] border-[1.5px] border-[#1D1D1F]" : "bg-black/[0.04]"}`}
+                className={`px-3 rounded-2xl items-center justify-center gap-0.5 h-14 min-w-[64px] max-w-[88px] ${isActive ? "bg-[#1D1D1F]" : "bg-black/[0.04]"}`}
                 onPress={() => setSelectedDay(dayNumber)}
               >
                 <Text
-                  className={`text-[13px] font-semibold tracking-tight text-[#1D1D1F]`}
+                  className={`text-[13px] font-semibold tracking-tight ${isActive ? "text-white" : "text-[#1D1D1F]"}`}
                   numberOfLines={1}
                 >
                   Ngày {dayNumber}
                 </Text>
                 {date ? (
                   <Text
-                    className={`text-[10px] font-normal tracking-tight text-black/40`}
+                    className={`text-[10px] font-normal tracking-tight ${isActive ? "text-white" : "text-[#1D1D1F]/50"}`}
                     numberOfLines={1}
                   >
                     {formatChipDate(date)}
@@ -293,6 +323,55 @@ function ItineraryTab({
           );
         })}
       </ScrollView>
+
+      {/* Bắt đầu hành trình — chỉ hiển thị khi chuyến đi diễn ra hôm nay */}
+      {canStartTrip ? (
+        <View className="relative px-5 pt-1.5 pb-3">
+          {/* Ambient glow layer */}
+          <View className="absolute top-1 left-10 right-10 h-12 rounded-[24px] bg-[#007BFF]/10" />
+          <Pressable
+            onPress={() => onStartTrip?.()}
+            disabled={isStartingTrip}
+            style={({ pressed }) => [
+              { shadowColor: "#007BFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.16, shadowRadius: 20, elevation: 8 },
+              pressed && { transform: [{ scale: 0.98 }], opacity: 0.95 },
+            ]}
+            className="h-[68px] rounded-[24px] bg-[#1D1D1F] border border-white/[0.08] overflow-hidden justify-center"
+          >
+            {isStartingTrip ? (
+              <View className="flex-row items-center justify-center gap-2.5">
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text className="text-[14px] font-medium text-white/60 tracking-tight">Đang khởi động…</Text>
+              </View>
+            ) : (
+              <View className="flex-row items-center justify-center px-6 gap-3.5">
+                {/* Icon Container */}
+                <View className="relative w-10 h-10 items-center justify-center">
+                  <View className="w-10 h-10 rounded-[12px] bg-[#007BFF] items-center justify-center">
+                    <MaterialIcons name="navigation" size={18} color="#FFFFFF" />
+                  </View>
+                  {/* Pulse dot chỉ hiển thị khi chuyến đi đang chạy và hoạt động (không pause) */}
+                  {isCurrentActiveTrip && !isPaused && (
+                    <View className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#34C759] border-2 border-[#1D1D1F]" />
+                  )}
+                </View>
+
+                {/* Text Block - Căn lề trái cho text nhưng cả khối được căn giữa của nút */}
+                <View className="flex-col justify-center items-start">
+                  <Text className="text-[16px] font-semibold text-white tracking-[-0.3px]">
+                    {startTripTitle}
+                  </Text>
+                  {startTripSubtitle ? (
+                    <Text className="text-[11px] font-normal text-white/50 tracking-tight mt-0.5">
+                      {startTripSubtitle}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+            )}
+          </Pressable>
+        </View>
+      ) : null}
 
       {/* Action Header */}
       <View className="flex-row items-center justify-between px-5 py-2.5 bg-[#F8FAFC]">

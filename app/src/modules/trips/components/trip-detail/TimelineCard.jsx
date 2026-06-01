@@ -27,6 +27,7 @@ function TimelineCard({
   drag,
   isActive,
   tripStatus,
+  isVisited = false,
 }) {
   const statusMeta = TRIP_STATUS_META[tripStatus] || TRIP_STATUS_META.upcoming;
 
@@ -115,9 +116,17 @@ function TimelineCard({
               )}
             </View>
             <View className="flex-1 gap-0.75">
-              <Text className="text-[15px] font-semibold text-[#1D1D1F] tracking-tight" numberOfLines={1}>
-                {placeName}
-              </Text>
+              <View className="flex-row items-center gap-1.5">
+                <Text className="flex-1 text-[15px] font-semibold text-[#1D1D1F] tracking-tight" numberOfLines={1}>
+                  {placeName}
+                </Text>
+                {isVisited ? (
+                  <View className="flex-row items-center gap-1 px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(52,199,89,0.12)" }}>
+                    <MaterialIcons name="check-circle" size={13} color={T.success} />
+                    <Text className="text-[11px] font-semibold" style={{ color: T.success }}>Đã đến</Text>
+                  </View>
+                ) : null}
+              </View>
               {placeAddress ? (
                 <Text className="text-[12px] text-black/40 font-normal tracking-tight" numberOfLines={1}>
                   {placeAddress}

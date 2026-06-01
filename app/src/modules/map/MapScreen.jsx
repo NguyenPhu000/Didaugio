@@ -11,6 +11,8 @@ import {
   LayoutAnimation,
   useWindowDimensions,
 } from "react-native";
+import * as Location from "expo-location";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
@@ -21,10 +23,30 @@ import { useBoundaryData } from "./hooks/useBoundaryData";
 import { useFilterState } from "./hooks/useFilterState";
 import { useNavigationStateMachine } from "./hooks/useNavigationStateMachine";
 import { useRouteBuilderController } from "./hooks/useRouteBuilderController";
+import { useMapLocationTracker } from "./hooks/useMapLocationTracker";
 import MapView from "./components/MapView";
+import RoutePolyline from "./components/RoutePolyline";
 import RouteBuilderPanel from "./components/route-builder/RouteBuilderPanel";
 import ArrivalConfirmModal from "./components/navigation/ArrivalConfirmModal";
+import ActiveTripNavBanner from "./components/navigation/ActiveTripNavBanner";
 import NavigationStatusBanner from "./components/navigation/NavigationStatusBanner";
+import NearbyWarningBanner from "./components/navigation/NearbyWarningBanner";
+import StartNavigationModal from "./components/navigation/StartNavigationModal";
+import TripCompleteModal from "./components/navigation/TripCompleteModal";
+import DepartureReminderBanner from "./components/navigation/DepartureReminderBanner";
+import {
+  buildManeuverLabel,
+  getManeuverIcon,
+  pickUpcomingStep,
+} from "./utils/maneuver";
+import {
+  useActiveTrip,
+  ARRIVAL_RADIUS_M,
+} from "../trips/hooks/useActiveTrip";
+import { buildTripDays } from "../trips/utils/tripHelpers";
+import { useDepartureAlerts } from "../trips/hooks/useDepartureAlerts";
+import { useUpdateTrip } from "../trips/hooks/useTripDetail";
+import { sendLocalNotification } from "../../lib/local-notifications";
 import FilterGroupBar from "./components/filters/FilterGroupBar";
 import FilterPickerModal from "./components/filters/FilterPickerModal";
 import CurrentLocationMarker from "./components/map-overlays/CurrentLocationMarker";
@@ -124,6 +146,16 @@ const GlassPanel = ({ style, children, intensity = 40 }) => (
   </BlurView>
 );
 
+function buildLocalDateTime(ymd, hhmm) {
+  if (!ymd || !hhmm) return null;
+  const [year, month, day] = String(ymd).split("-").map(Number);
+  const [hours, minutes] = String(hhmm).split(":").map(Number);
+  if ([year, month, day, hours, minutes].some((n) => Number.isNaN(n))) {
+    return null;
+  }
+  return new Date(year, month - 1, day, hours, minutes, 0, 0);
+}
+
 export default function MapScreen() {
   const { width: viewportWidth, height: viewportHeight } =
     useWindowDimensions();
@@ -144,6 +176,13 @@ export default function MapScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [selectedPlace, setSelectedPlace] = useState(null);
+
+  // States cho Active Trip Mode
+  const [nearbyTriggered, setNearbyTriggered] = useState(false);
+  const [startNavConfirmVisible, setStartNavConfirmVisible] = useState(false);
+  const [tripCompleteVisible, setTripCompleteVisible] = useState(false);
+  const [completeIsTripEnd, setCompleteIsTripEnd] = useState(false);
+  const [completeDayNumber, setCompleteDayNumber] = useState(1);
 
   const {
     data: mapPlaces,
@@ -258,6 +297,37 @@ export default function MapScreen() {
     }
   }, [allPlaces, selectedPlace]);
 
+  // ─── MapTransportToMode helper ─────────────────────────────────────────────
+  // Chuyển đổi phương tiện tiếng Việt sang OSRM mode.
+  const mapTransportToMode = useCallback((transport) => {
+    if (!transport) return "motorcycle";
+    const t = String(transport).toLowerCase().trim();
+    if (t.includes("đi bộ") || t.includes("walking")) return "walking";
+    if (t.includes("xe hơi") || t.includes("ô tô") || t.includes("car")) return "driving";
+    if (t.includes("xe đạp") || t.includes("cycling") || t.includes("bike")) return "cycling";
+    if (t.includes("xe buýt") || t.includes("bus")) return "driving";
+    return "motorcycle";
+  }, []);
+
+  // ─── Active Trip Ferry Avoidance (per-trip from AsyncStorage) ──────────────
+  const [activeTripAvoidFerry, setActiveTripAvoidFerry] = useState(false);
+
+  useEffect(() => {
+    if (!isActiveTripMode || !activeTrip?.activeTripId) {
+      setActiveTripAvoidFerry(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const key = `trip_avoidFerry_${activeTrip.activeTripId}`;
+        const val = await AsyncStorage.getItem(key);
+        if (!cancelled) setActiveTripAvoidFerry(val === "true");
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [isActiveTripMode, activeTrip?.activeTripId]);
+
   const visiblePlaces = useMemo(
     () =>
       filterVisiblePlaces({
@@ -312,7 +382,6 @@ export default function MapScreen() {
       ),
     [authUser],
   );
-
   const selectedPlaceId = selectedPlace?.id ?? null;
 
   const activePlace = useMemo(
@@ -382,6 +451,334 @@ export default function MapScreen() {
     routeBuilderActiveTargetName: routeBuilderActiveTarget?.name,
   });
 
+  // ─── Active Trip Mode ───────────────────────────────────────────────────────
+  const activeTrip = useActiveTrip();
+  const {
+    isActive: isActiveTripMode,
+    activeTrip: activeTripDetail,
+    targetPoint: activeTargetPoint,
+    nextDestination: activeNextDestination,
+    isLastDestination: isActiveLastDestination,
+    visitedIds: activeVisitedIds,
+    markArrived: markActiveArrived,
+    exitActiveTrip,
+  } = activeTrip;
+
+  const updateActiveTripMutation = useUpdateTrip(activeTrip.activeTripId);
+
+  // Tần suất và khoảng cách GPS động dựa trên nearbyTriggered
+  const gpsIntervals = useMemo(() => {
+    if (nearbyTriggered) {
+      return { timeInterval: 3000, distanceInterval: 5 }; // Boost frequency when NEARBY
+    }
+    return { timeInterval: 10000, distanceInterval: 15 }; // Default cruising frequency
+  }, [nearbyTriggered]);
+
+  // GPS thời gian thực riêng cho active trip (route builder dùng tracker khác). Dừng định vị khi paused.
+  const {
+    currentLocation: activeTripLocation,
+    locateNow: locateActiveTripNow,
+  } = useMapLocationTracker({
+    watchEnabled: isActiveTripMode && !activeTrip.isPaused,
+    timeInterval: gpsIntervals.timeInterval,
+    distanceInterval: gpsIntervals.distanceInterval,
+  });
+
+  const [activeArrivalVisible, setActiveArrivalVisible] = useState(false);
+  const followCameraRef = useRef(false);
+  const arrivalHandledRef = useRef(null);
+
+  // Xin quyền vị trí (foreground + background) khi vào Active Trip Mode.
+  useEffect(() => {
+    if (!isActiveTripMode) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const fg = await Location.requestForegroundPermissionsAsync();
+        if (cancelled || fg.status !== "granted") return;
+        await Location.requestBackgroundPermissionsAsync();
+      } catch {
+        // Bỏ qua lỗi xin quyền — chế độ foreground vẫn hoạt động.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isActiveTripMode]);
+
+  // Bật auto-follow + bay camera về vị trí hiện tại khi vào chế độ.
+  useEffect(() => {
+    if (!isActiveTripMode || activeTrip.isPaused) {
+      followCameraRef.current = false;
+      return;
+    }
+    followCameraRef.current = true;
+    void locateActiveTripNow();
+  }, [isActiveTripMode, activeTrip.isPaused, locateActiveTripNow]);
+
+  // Auto-follow camera theo GPS khi đang dẫn đường.
+  useEffect(() => {
+    if (!isActiveTripMode || activeTrip.isPaused || !followCameraRef.current || !activeTripLocation) {
+      return;
+    }
+    mapRef.current?.flyTo(
+      [activeTripLocation.longitude, activeTripLocation.latitude],
+      16,
+    );
+  }, [
+    isActiveTripMode,
+    activeTrip.isPaused,
+    activeTripLocation?.latitude,
+    activeTripLocation?.longitude,
+  ]);
+
+  const activeRouteOrigin = useMemo(() => {
+    if (!isActiveTripMode || activeTrip.isPaused || !activeTripLocation) return null;
+    return {
+      lat: activeTripLocation.latitude,
+      lng: activeTripLocation.longitude,
+      name: MAP_TEXT.common.currentLocationName,
+    };
+  }, [
+    isActiveTripMode,
+    activeTrip.isPaused,
+    activeTripLocation?.latitude,
+    activeTripLocation?.longitude,
+  ]);
+
+  // Mode cho active trip: lấy từ transportToNext của chặng hiện tại.
+  // Phương tiện của chặng hiện tại được lưu ở địa điểm xuất phát (địa điểm liền trước của đích đến tiếp theo).
+  const activeTravelMode = useMemo(() => {
+    if (!activeTripDetail?.destinations?.length || !activeNextDestination) {
+      return "motorcycle";
+    }
+
+    const ordered = [...activeTripDetail.destinations].sort((a, b) => {
+      if (a.dayNumber !== b.dayNumber) return a.dayNumber - b.dayNumber;
+      return a.order - b.order;
+    });
+
+    const currentIndex = ordered.findIndex((d) => d.id === activeNextDestination.id);
+    if (currentIndex > 0) {
+      const prevDest = ordered[currentIndex - 1];
+      return mapTransportToMode(prevDest.transportToNext);
+    }
+
+    // Nếu là địa điểm đầu tiên (đi từ vị trí hiện tại đến), dùng phương tiện mặc định hoặc phương tiện đi tiếp đầu tiên
+    return mapTransportToMode(activeNextDestination.transportToNext || "motorcycle");
+  }, [activeTripDetail?.destinations, activeNextDestination, mapTransportToMode]);
+
+  const {
+    coordinates: activeRouteCoordinates,
+    firstRoute: activeFirstRoute,
+    source: activeRouteSource,
+    distanceM: activeRouteDistanceM,
+    durationS: activeRouteDurationS,
+    isFetching: isActiveRouteFetching,
+    ferryAvoidanceFailed: activeRouteFerryAvoidanceFailed,
+  } = useMapRouting({
+    origin: activeRouteOrigin,
+    destination: activeTargetPoint,
+    mode: activeTravelMode,
+    options: {
+      exclude: activeTripAvoidFerry ? "ferry" : undefined,
+    },
+    enabled: Boolean(activeRouteOrigin && activeTargetPoint),
+  });
+
+  const activeDistanceToTarget = useMemo(() => {
+    if (!activeTripLocation || !activeTargetPoint) return null;
+    return distanceMeters(
+      activeTripLocation.latitude,
+      activeTripLocation.longitude,
+      activeTargetPoint.lat,
+      activeTargetPoint.lng,
+    );
+  }, [activeTripLocation, activeTargetPoint]);
+
+  const activeUpcomingStep = useMemo(() => {
+    const steps = activeFirstRoute?.legs?.[0]?.steps;
+    return pickUpcomingStep(steps, activeTripLocation, distanceMeters);
+  }, [activeFirstRoute, activeTripLocation]);
+
+  const activeInstruction = useMemo(
+    () => (activeUpcomingStep ? buildManeuverLabel(activeUpcomingStep) : null),
+    [activeUpcomingStep],
+  );
+  const activeInstructionIcon = useMemo(
+    () =>
+      activeUpcomingStep ? getManeuverIcon(activeUpcomingStep) : "navigation",
+    [activeUpcomingStep],
+  );
+  const activeRouteEtaLabel = useMemo(
+    () => formatRouteEta(activeRouteDurationS),
+    [activeRouteDurationS],
+  );
+  const activeRouteDistanceLabel = useMemo(
+    () => formatRouteDistance(activeRouteDistanceM),
+    [activeRouteDistanceM],
+  );
+
+  // Nhắc nhở di chuyển thông minh trước 10 phút.
+  useDepartureAlerts({
+    activeTrip: activeTripDetail,
+    visitedIds: activeVisitedIds,
+    nextDestination: activeNextDestination,
+    enabled: isActiveTripMode,
+  });
+
+  const dayDateMap = useMemo(() => {
+    const map = new Map();
+    if (!activeTripDetail) return map;
+    for (const day of buildTripDays(activeTripDetail)) {
+      map.set(day.dayNumber, day.dateYmd);
+    }
+    return map;
+  }, [activeTripDetail]);
+
+  const currentDestination = useMemo(() => {
+    if (!activeTripDetail?.destinations?.length) return null;
+    const visited = activeTripDetail.destinations
+      .filter((d) => activeVisitedIds.includes(d.id) && d.endTime)
+      .sort((a, b) => {
+        if (a.dayNumber !== b.dayNumber) return a.dayNumber - b.dayNumber;
+        return a.order - b.order;
+      });
+    return visited.length ? visited[visited.length - 1] : null;
+  }, [activeTripDetail, activeVisitedIds]);
+
+  const departureReminder = useMemo(() => {
+    if (!isActiveTripMode || activeTrip.isPaused || !currentDestination || !activeNextDestination) return null;
+    const ymd = dayDateMap.get(currentDestination.dayNumber);
+    const endAt = buildLocalDateTime(ymd, currentDestination.endTime);
+    if (!endAt) return null;
+
+    const now = new Date();
+    const timeDiffMs = endAt.getTime() - now.getTime();
+    const minutesLeft = timeDiffMs / (60 * 1000);
+
+    if (minutesLeft <= 10 && minutesLeft >= -15) {
+      return {
+        nextName: activeNextDestination.place?.name || "địa điểm tiếp theo",
+        minutesLeft: Math.max(0, Math.ceil(minutesLeft)),
+      };
+    }
+    return null;
+  }, [isActiveTripMode, activeTrip.isPaused, currentDestination, activeNextDestination, dayDateMap]);
+
+  // Phát hiện đến nơi (< 50m) → mở popup điểm danh.
+  useEffect(() => {
+    if (!isActiveTripMode || !activeNextDestination) {
+      setActiveArrivalVisible(false);
+      return;
+    }
+    if (
+      Number.isFinite(activeDistanceToTarget) &&
+      activeDistanceToTarget <= ARRIVAL_RADIUS_M &&
+      arrivalHandledRef.current !== activeNextDestination.id
+    ) {
+      setActiveArrivalVisible(true);
+    }
+  }, [isActiveTripMode, activeDistanceToTarget, activeNextDestination]);
+
+  // Reset nearbyTriggered khi đổi destination chặng tiếp theo
+  useEffect(() => {
+    setNearbyTriggered(false);
+  }, [activeNextDestination?.id]);
+
+  // Hysteresis logic cho nearby warning banner (khoảng cách <= 150m)
+  useEffect(() => {
+    if (!isActiveTripMode || activeTrip.isPaused || !activeDistanceToTarget || activeDistanceToTarget <= ARRIVAL_RADIUS_M) {
+      setNearbyTriggered(false);
+      return;
+    }
+    if (activeDistanceToTarget <= 150) {
+      setNearbyTriggered(true);
+    } else if (activeDistanceToTarget > 200) {
+      setNearbyTriggered(false);
+    }
+  }, [activeDistanceToTarget, isActiveTripMode, activeTrip.isPaused]);
+
+  const handleExitActiveTrip = useCallback(async () => {
+    followCameraRef.current = false;
+    setActiveArrivalVisible(false);
+    await exitActiveTrip();
+  }, [exitActiveTrip]);
+
+  const handleDismissActiveArrival = useCallback(() => {
+    // Tạm ẩn popup cho điểm hiện tại, tránh bật lại liên tục khi vẫn ở gần.
+    if (activeNextDestination) {
+      arrivalHandledRef.current = activeNextDestination.id;
+    }
+    setActiveArrivalVisible(false);
+  }, [activeNextDestination]);
+
+  const handlePrimaryTripComplete = useCallback(async () => {
+    setTripCompleteVisible(false);
+    if (completeIsTripEnd) {
+      await handleExitActiveTrip();
+    } else {
+      await activeTrip.pauseActiveTrip();
+    }
+  }, [handleExitActiveTrip, completeIsTripEnd, activeTrip]);
+
+  const handleConfirmActiveArrival = useCallback(async () => {
+    const arrivedDest = activeNextDestination;
+    if (!arrivedDest) return;
+
+    arrivalHandledRef.current = arrivedDest.id;
+    setActiveArrivalVisible(false);
+    await markActiveArrived(arrivedDest.id);
+
+    const updatedVisitedIds = [...activeVisitedIds, arrivedDest.id];
+
+    if (isActiveLastDestination) {
+      const finishedTripId = activeTrip.activeTripId;
+      await sendLocalNotification({
+        title: "Hoàn thành hành trình!",
+        body: `Chúc mừng bạn đã hoàn thành chuyến đi "${activeTripDetail?.title || "của mình"}". Hẹn gặp lại ở những hành trình tiếp theo!`,
+        data: { tripId: finishedTripId },
+      });
+      if (finishedTripId) {
+        updateActiveTripMutation.mutate({ status: "completed" });
+      }
+      setCompleteIsTripEnd(true);
+      setCompleteDayNumber(arrivedDest.dayNumber);
+      setTripCompleteVisible(true);
+    } else {
+      const currentDay = arrivedDest.dayNumber;
+      const destinationsInDay = (activeTripDetail?.destinations || []).filter(
+        (d) => d.dayNumber === currentDay
+      );
+      const isDayFinished = destinationsInDay.every((d) =>
+        updatedVisitedIds.includes(d.id)
+      );
+
+      if (isDayFinished) {
+        await sendLocalNotification({
+          title: `Hoàn thành Ngày ${currentDay}!`,
+          body: `Tất cả các địa điểm của ngày hôm nay đã được khám phá. Hãy nghỉ ngơi lấy sức nhé!`,
+        });
+        setCompleteIsTripEnd(false);
+        setCompleteDayNumber(currentDay);
+        setTripCompleteVisible(true);
+      } else {
+        await sendLocalNotification({
+          title: "Đã điểm danh!",
+          body: `Bạn đã đến ${arrivedDest.place?.name || "địa điểm"}. Tiếp tục đến điểm kế tiếp nhé!`,
+        });
+      }
+    }
+  }, [
+    activeNextDestination,
+    markActiveArrived,
+    activeVisitedIds,
+    isActiveLastDestination,
+    activeTrip.activeTripId,
+    activeTripDetail,
+    updateActiveTripMutation,
+  ]);
+
   const routeOriginFromCurrentLocation = useMemo(() => {
     if (
       !currentLocation ||
@@ -414,7 +811,7 @@ export default function MapScreen() {
     };
   }, [activePlace]);
 
-  const shouldSuppressSingleRoute = routeBuilderEnabled;
+  const shouldSuppressSingleRoute = routeBuilderEnabled || isActiveTripMode;
 
   const routeOrigin = shouldSuppressSingleRoute
     ? null
@@ -432,6 +829,7 @@ export default function MapScreen() {
     durationS: routeDurationS,
     isError: isRouteError,
     isFallback: isRouteFallback,
+    ferryAvoidanceFailed: routeFerryAvoidanceFailed,
     isFetching: isRouteFetching,
     error: routeError,
     refetch: refetchRoute,
@@ -497,10 +895,16 @@ export default function MapScreen() {
   ]);
 
   const handleLocate = useCallback(async () => {
+    if (isActiveTripMode) {
+      followCameraRef.current = true;
+      const location = await locateActiveTripNow();
+      focusMapForLocation(location ?? null);
+      return location;
+    }
     const location = await locateNow();
     focusMapForLocation(location ?? null);
     return location;
-  }, [focusMapForLocation, locateNow]);
+  }, [focusMapForLocation, locateNow, isActiveTripMode, locateActiveTripNow]);
 
   const handleSelectPlace = useCallback((place) => {
     setSelectedPlace(place);
@@ -547,6 +951,7 @@ export default function MapScreen() {
         distance: routeDistanceM ?? null,
         duration: routeDurationS ?? null,
         vehicleType: "motorcycle",
+        avoidFerry: false,
         timestamp: new Date().toISOString(),
       });
 
@@ -622,6 +1027,24 @@ export default function MapScreen() {
   );
 
   useEffect(() => {
+    const startNav = Array.isArray(params.startNav)
+      ? params.startNav[0]
+      : params.startNav;
+
+    if (startNav === "true") {
+      setStartNavConfirmVisible(true);
+      router.setParams({ startNav: undefined });
+    }
+
+    const resumeNav = Array.isArray(params.resumeNav)
+      ? params.resumeNav[0]
+      : params.resumeNav;
+
+    if (resumeNav === "true") {
+      activeTrip.resumeActiveTrip();
+      router.setParams({ resumeNav: undefined });
+    }
+
     const focusLat = Array.isArray(params.focusLat)
       ? params.focusLat[0]
       : params.focusLat;
@@ -660,7 +1083,34 @@ export default function MapScreen() {
     if (matchedPlace) {
       setSelectedPlace(matchedPlace);
     }
-  }, [params, mapPlaces]);
+  }, [params, mapPlaces, router]);
+
+  const showFerryWarning = useMemo(() => {
+    if (isActiveTripMode) return activeTripAvoidFerry && Boolean(activeRouteSource === "fallback" && activeRouteFerryAvoidanceFailed);
+    if (routeBuilderMode) return Boolean(routeBuilderEnabled && routeBuilder?.ferryAvoidanceFailed);
+    return false;
+  }, [
+    activeTripAvoidFerry,
+    isActiveTripMode,
+    activeRouteSource,
+    activeRouteFerryAvoidanceFailed,
+    routeBuilderMode,
+    routeBuilderEnabled,
+    routeBuilder?.ferryAvoidanceFailed,
+  ]);
+
+  const warningTargetName = useMemo(() => {
+    if (isActiveTripMode) return activeTargetPoint?.name;
+    if (routeBuilderMode) return routeBuilder?.activeTarget?.name;
+    return activePlace?.name;
+  }, [isActiveTripMode, activeTargetPoint, routeBuilderMode, routeBuilder?.activeTarget, activePlace]);
+
+  const warningTopOffset = useMemo(() => {
+    if (isActiveTripMode) {
+      return (insets.top || 0) + 106;
+    }
+    return (insets.top || 0) + 114;
+  }, [isActiveTripMode, insets.top]);
 
   return (
     <View
@@ -733,23 +1183,40 @@ export default function MapScreen() {
           {wardGeo ? <WardLayer geojson={wardGeo} /> : null}
 
           <CurrentLocationMarker
-            location={currentLocation}
+            location={isActiveTripMode ? activeTripLocation : currentLocation}
             avatarUri={currentUserAvatarUri}
-            heading={currentLocation?.heading}
-            headingAccuracy={currentLocation?.headingAccuracy}
+            heading={
+              (isActiveTripMode ? activeTripLocation : currentLocation)?.heading
+            }
+            headingAccuracy={
+              (isActiveTripMode ? activeTripLocation : currentLocation)
+                ?.headingAccuracy
+            }
           />
 
           <RouteBuilderStopsMarkerLayer stops={routeBuilderDraftStops} />
 
-          <ActiveRouteLayer
-            routeBuilderEnabled={routeBuilderEnabled}
-            routeBuilderRecoveryMode={routeBuilderRecoveryMode}
-            routeBuilderRecoveryCoordinates={routeBuilderRecoveryCoordinates}
-            routeBuilderRecoverySource={routeBuilderRecoverySource}
-            routeBuilderLegVisuals={routeBuilderLegVisuals}
-            routeCoordinates={routeCoordinates}
-            routeSource={routeSource}
-          />
+          {isActiveTripMode && activeRouteCoordinates.length > 1 ? (
+            <RoutePolyline
+              coordinates={activeRouteCoordinates}
+              source={activeRouteSource || "osrm"}
+              strokeWidth={6}
+              isPrimary
+              dashed={activeRouteSource === "fallback"}
+              color="hsl(145, 63%, 38%)"
+              strokeOpacity={0.95}
+            />
+          ) : (
+            <ActiveRouteLayer
+              routeBuilderEnabled={routeBuilderEnabled}
+              routeBuilderRecoveryMode={routeBuilderRecoveryMode}
+              routeBuilderRecoveryCoordinates={routeBuilderRecoveryCoordinates}
+              routeBuilderRecoverySource={routeBuilderRecoverySource}
+              routeBuilderLegVisuals={routeBuilderLegVisuals}
+              routeCoordinates={routeCoordinates}
+              routeSource={routeSource}
+            />
+          )}
         </MapView>
       </View>
 
@@ -792,6 +1259,130 @@ export default function MapScreen() {
         onConfirm={handleConfirmArrivedRouteBuilderLeg}
       />
 
+      <ActiveTripNavBanner
+        visible={isActiveTripMode && !activeTrip.isPaused}
+        topOffset={(insets.top || 0) + 12}
+        instruction={activeInstruction}
+        instructionIcon={activeInstructionIcon}
+        targetName={activeTargetPoint?.name}
+        etaLabel={activeRouteEtaLabel}
+        distanceLabel={activeRouteDistanceLabel}
+        isFetching={isActiveRouteFetching}
+        travelMode={activeTravelMode}
+        onExit={handleExitActiveTrip}
+      />
+
+      <NearbyWarningBanner
+        visible={isActiveTripMode && !activeTrip.isPaused && nearbyTriggered}
+        topOffset={(insets.top || 0) + 94}
+        targetName={activeTargetPoint?.name}
+        distanceMeters={activeDistanceToTarget ?? 0}
+      />
+
+      <DepartureReminderBanner
+        visible={Boolean(departureReminder)}
+        bottomOffset={FLOATING_TAB_CLEARANCE + 12}
+        nextName={departureReminder?.nextName}
+        minutesLeft={departureReminder?.minutesLeft ?? 10}
+      />
+
+      {/* Banner khi Hành trình đang tạm nghỉ */}
+      {isActiveTripMode && activeTrip.isPaused && (
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            bottom: FLOATING_TAB_CLEARANCE + 12,
+            zIndex: 80,
+          }}
+        >
+          <BlurView
+            tint="dark"
+            intensity={36}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderRadius: 18,
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: "rgba(255, 255, 255, 0.16)",
+              backgroundColor: "rgba(16, 24, 32, 0.92)",
+            }}
+          >
+            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <MaterialIcons name="pause-circle-filled" size={24} color="#FFD60A" />
+              <View style={{ flex: 1, gap: 1 }}>
+                <Text style={{ color: "#FFFFFF", fontSize: 14, fontFamily: TOKENS.font.semibold }}>
+                  Hành trình đang tạm nghỉ
+                </Text>
+                <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, fontFamily: TOKENS.font.medium }}>
+                  Dẫn đường và theo dõi GPS đã dừng để tiết kiệm pin.
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={async () => {
+                await activeTrip.resumeActiveTrip();
+                followCameraRef.current = true;
+                await locateActiveTripNow();
+              }}
+              style={{
+                paddingHorizontal: 14,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "#007BFF",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: TOKENS.font.semibold }}>
+                Tiếp tục
+              </Text>
+            </Pressable>
+          </BlurView>
+        </View>
+      )}
+
+      <StartNavigationModal
+        visible={startNavConfirmVisible}
+        onDismiss={() => {
+          setStartNavConfirmVisible(false);
+          handleExitActiveTrip();
+        }}
+        onConfirm={async () => {
+          setStartNavConfirmVisible(false);
+          followCameraRef.current = true;
+          await locateActiveTripNow();
+        }}
+      />
+
+      <TripCompleteModal
+        visible={tripCompleteVisible}
+        isTripEnd={completeIsTripEnd}
+        dayNumber={completeDayNumber}
+        onDismiss={() => {
+          setTripCompleteVisible(false);
+          if (completeIsTripEnd) {
+            handleExitActiveTrip();
+          }
+        }}
+        onPrimaryAction={handlePrimaryTripComplete}
+        primaryActionText={completeIsTripEnd ? "Hoàn tất" : "Tạm nghỉ"}
+      />
+
+      <ArrivalConfirmModal
+        visible={isActiveTripMode && !activeTrip.isPaused && activeArrivalVisible}
+        targetName={activeTargetPoint?.name}
+        onDismiss={handleDismissActiveArrival}
+        onConfirm={handleConfirmActiveArrival}
+      />
+
       <NavigationStatusBanner
         visible={routeEnabled && Boolean(routeStatus)}
         routeStatus={routeStatus}
@@ -808,158 +1399,223 @@ export default function MapScreen() {
         }
       />
 
+      {showFerryWarning && (
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            ...(isActiveTripMode
+              ? { top: warningTopOffset }
+              : {
+                  bottom: routeBuilderMode
+                    ? FLOATING_TAB_CLEARANCE + 154
+                    : activePlace
+                      ? FLOATING_TAB_CLEARANCE + 196
+                      : FLOATING_TAB_CLEARANCE + 128,
+                }),
+            zIndex: 99,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+              backgroundColor: "#FEF2F2",
+              borderWidth: 1,
+              borderColor: "#FECACA",
+              borderRadius: 14,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+              <MaterialIcons name="directions-boat" size={16} color="#B45309" />
+              <Text
+                style={{
+                  flex: 1,
+                  fontSize: 11,
+                  fontFamily: TOKENS.font.semibold,
+                  color: "#92400E",
+                  lineHeight: 15,
+                }}
+              >
+                Không tìm thấy đường tránh phà. Đã chấp nhận tuyến có phà.
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       <View
         className="flex-1 flex-col"
         style={{ paddingTop: (insets.top || 0) + 12 }}
         pointerEvents="box-none"
       >
-        <View className="flex-row items-center px-4 gap-3" pointerEvents="auto">
-          {/* Search bar — full width glass pill */}
-          <Pressable
-            onPress={searchOpen ? undefined : openSearch}
-            style={{ flex: 1 }}
+        {!isActiveTripMode ? (
+          <View
+            className="flex-row items-center px-4 gap-3"
+            pointerEvents="auto"
           >
-            <BlurView
-              tint="light"
-              intensity={80}
-              style={{
-                borderRadius: 24,
-                flexDirection: "row",
-                alignItems: "center",
-                overflow: "hidden",
-                height: 44,
-                backgroundColor: "rgba(255, 255, 255, 0.88)",
-                borderWidth: 1,
-                borderColor: "rgba(255, 255, 255, 0.5)",
-              }}
+            {/* Search bar — full width glass pill */}
+            <Pressable
+              onPress={searchOpen ? undefined : openSearch}
+              style={{ flex: 1 }}
             >
-              <View
+              <BlurView
+                tint="light"
+                intensity={80}
                 style={{
-                  width: 44,
-                  height: 44,
+                  borderRadius: 24,
+                  flexDirection: "row",
                   alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
+                  overflow: "hidden",
+                  height: 44,
+                  backgroundColor: "rgba(255, 255, 255, 0.88)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255, 255, 255, 0.5)",
                 }}
               >
-                <MaterialIcons
-                  name="search"
-                  size={20}
-                  color={
-                    searchOpen
-                      ? TOKENS.color.primary[500]
-                      : TOKENS.color.neutral[500]
-                  }
-                />
-              </View>
-
-              {searchOpen ? (
-                <>
-                  <TextInput
-                    ref={searchInputRef}
-                    value={searchText}
-                    onChangeText={setSearchText}
-                    placeholder={MAP_TEXT.search.placeholder}
-                    placeholderTextColor={TOKENS.color.neutral[400]}
-                    style={{
-                      flex: 1,
-                      height: 44,
-                      fontSize: 14,
-                      color: TOKENS.color.neutral[900],
-                      fontFamily: TOKENS.font.medium,
-                    }}
-                    returnKeyType="search"
-                    onSubmitEditing={() => Keyboard.dismiss()}
-                    autoCorrect={false}
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <MaterialIcons
+                    name="search"
+                    size={20}
+                    color={
+                      searchOpen
+                        ? TOKENS.color.primary[500]
+                        : TOKENS.color.neutral[500]
+                    }
                   />
-                  {searchText.length > 0 ? (
+                </View>
+
+                {searchOpen ? (
+                  <>
+                    <TextInput
+                      ref={searchInputRef}
+                      value={searchText}
+                      onChangeText={setSearchText}
+                      placeholder={MAP_TEXT.search.placeholder}
+                      placeholderTextColor={TOKENS.color.neutral[400]}
+                      style={{
+                        flex: 1,
+                        height: 44,
+                        fontSize: 14,
+                        color: TOKENS.color.neutral[900],
+                        fontFamily: TOKENS.font.medium,
+                      }}
+                      returnKeyType="search"
+                      onSubmitEditing={() => Keyboard.dismiss()}
+                      autoCorrect={false}
+                    />
+                    {searchText.length > 0 ? (
+                      <Pressable
+                        onPress={() => setSearchText("")}
+                        hitSlop={8}
+                        style={{
+                          width: 36,
+                          height: 44,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <MaterialIcons
+                          name="close"
+                          size={18}
+                          color={TOKENS.color.neutral[400]}
+                        />
+                      </Pressable>
+                    ) : null}
                     <Pressable
-                      onPress={() => setSearchText("")}
+                      onPress={closeSearch}
                       hitSlop={8}
                       style={{
-                        width: 36,
+                        paddingRight: 14,
+                        paddingLeft: 4,
                         height: 44,
-                        alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
-                      <MaterialIcons
-                        name="close"
-                        size={18}
-                        color={TOKENS.color.neutral[400]}
-                      />
+                      <Text
+                        style={{
+                          color: TOKENS.color.neutral[500],
+                          fontSize: 13,
+                          fontFamily: TOKENS.font.medium,
+                        }}
+                      >
+                        {MAP_TEXT.search.cancel}
+                      </Text>
                     </Pressable>
-                  ) : null}
-                  <Pressable
-                    onPress={closeSearch}
-                    hitSlop={8}
+                  </>
+                ) : (
+                  <Text
                     style={{
+                      flex: 1,
+                      color: TOKENS.color.neutral[400],
+                      fontSize: 14,
+                      fontFamily: TOKENS.font.medium,
                       paddingRight: 14,
-                      paddingLeft: 4,
-                      height: 44,
-                      justifyContent: "center",
                     }}
+                    numberOfLines={1}
                   >
-                    <Text
-                      style={{
-                        color: TOKENS.color.neutral[500],
-                        fontSize: 13,
-                        fontFamily: TOKENS.font.medium,
-                      }}
-                    >
-                      {MAP_TEXT.search.cancel}
-                    </Text>
-                  </Pressable>
-                </>
-              ) : (
-                <Text
-                  style={{
-                    flex: 1,
-                    color: TOKENS.color.neutral[400],
-                    fontSize: 14,
-                    fontFamily: TOKENS.font.medium,
-                    paddingRight: 14,
-                  }}
-                  numberOfLines={1}
-                >
-                  {MAP_TEXT.search.placeholder}
-                </Text>
-              )}
-            </BlurView>
-          </Pressable>
-
-          {/* Profile avatar */}
-          {!searchOpen ? (
-            <Pressable
-              onPress={() => router.push("/(tabs)/profile")}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(255, 255, 255, 0.88)",
-                borderWidth: 1,
-                borderColor: "rgba(255, 255, 255, 0.5)",
-                overflow: "hidden",
-              }}
-            >
-              <MaterialIcons
-                name="person"
-                size={22}
-                color={TOKENS.color.neutral[600]}
-              />
+                    {MAP_TEXT.search.placeholder}
+                  </Text>
+                )}
+              </BlurView>
             </Pressable>
-          ) : null}
-        </View>
 
-        <FilterGroupBar
-          activeFilterGroup={activeFilterGroup}
-          onSelectFilterGroup={handleSelectFilterGroup}
-          activeFilterGroupMeta={activeFilterGroupMeta}
-          activeFilterSummaryLabel={activeFilterSummaryLabel}
-          onOpenFilterPicker={handleOpenFilterPicker}
-        />
+            {/* Profile avatar */}
+            {!searchOpen ? (
+              <Pressable
+                onPress={() => router.push("/(tabs)/profile")}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(255, 255, 255, 0.88)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255, 255, 255, 0.5)",
+                  overflow: "hidden",
+                }}
+              >
+                <MaterialIcons
+                  name="person"
+                  size={22}
+                  color={TOKENS.color.neutral[600]}
+                />
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
+        {!isActiveTripMode ? (
+          <FilterGroupBar
+            activeFilterGroup={activeFilterGroup}
+            onSelectFilterGroup={handleSelectFilterGroup}
+            activeFilterGroupMeta={activeFilterGroupMeta}
+            activeFilterSummaryLabel={activeFilterSummaryLabel}
+            onOpenFilterPicker={handleOpenFilterPicker}
+          />
+        ) : null}
+
+{/* Phương tiện active trip tự động lấy từ transportToNext */}
 
         {/* Floating action buttons — vertical stack */}
         <View
@@ -1099,7 +1755,7 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {activePlace && !routeBuilderMode ? (
+      {activePlace && !routeBuilderMode && !isActiveTripMode ? (
         <View
           pointerEvents="box-none"
           style={{
@@ -1110,7 +1766,7 @@ export default function MapScreen() {
             zIndex: 70,
           }}
         >
-          <PlacePreviewCard
+        <PlacePreviewCard
             place={activePlace}
             onClose={handleClosePreview}
             onViewDetail={handleOpenPlaceDetail}
@@ -1125,7 +1781,7 @@ export default function MapScreen() {
             travelLoading={previewTravelLoading}
             compact={isCompactPreviewCard}
           />
-        </View>
+          </View>
       ) : null}
 
       <FilterPickerModal

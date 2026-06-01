@@ -90,6 +90,26 @@ export function getDisplayStatus(trip) {
   return "upcoming";
 }
 
+/**
+ * Chuyến đi có thể "Bắt đầu hành trình" hôm nay hay không.
+ * Điều kiện: hôm nay nằm trong khoảng startDate..endDate (hoặc bắt đầu hôm nay)
+ * và chuyến đi chưa hoàn thành / hủy.
+ */
+export function canStartTrip(trip) {
+  if (!trip) return false;
+  const rawStatus = String(trip.status || "").toLowerCase();
+  if (rawStatus === "completed" || rawStatus === "cancelled") return false;
+
+  const startDaysUntil = getDaysUntil(trip.startDate);
+  // Không xác định được ngày bắt đầu → cho phép bắt đầu thủ công.
+  if (startDaysUntil === null) return true;
+  if (startDaysUntil > 0) return false;
+
+  const endDaysUntil = getDaysUntil(trip.endDate);
+  if (endDaysUntil !== null && endDaysUntil < 0) return false;
+  return true;
+}
+
 export function getTimelineLabel(trip) {
   const displayStatus = getDisplayStatus(trip);
   if (displayStatus === "completed") return "Đã kết thúc";
@@ -229,7 +249,7 @@ export function toYmdString(dateObj) {
  */
 export function formatPrice(amount) {
   const value = Number(amount || 0);
-  return `${value.toLocaleString("vi-VN")}đ`;
+  return `${value.toLocaleString("vi-VN")} VND`;
 }
 
 /**
@@ -507,7 +527,9 @@ export function computeBudgetSummary(tripBookings) {
     const amount = Number(booking?.finalPrice || 0);
     const status = String(booking?.status || "").toLowerCase();
 
-    summary.totalAmount += amount;
+    if (status !== "cancelled" && status !== "no_show") {
+      summary.totalAmount += amount;
+    }
     if (status === "pending") summary.pendingAmount += amount;
     if (status === "confirmed") summary.confirmedAmount += amount;
     if (status === "completed") summary.completedAmount += amount;

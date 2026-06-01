@@ -3,6 +3,7 @@ import {
   getMyProfileApi,
   updateMyAvatarApi,
   updateMyProfileApi,
+  updateNotificationSettingsApi,
 } from "../api/profileApi";
 
 const PROFILE_QUERY_KEY = ["my-profile"];
@@ -46,6 +47,17 @@ export function useUpdateAvatar() {
 
   return useMutation({
     mutationFn: updateMyAvatarApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
+    },
+  });
+}
+
+export function useUpdateNotificationSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateNotificationSettingsApi,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
     },

@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -45,6 +45,7 @@ export function TripsDashboard({
   activeFilter,
   onSelectFilter,
   onOpenHero,
+  onCreate,
 }) {
   const heroTrip = useMemo(() => getHeroTrip(trips), [trips]);
   const summary = useMemo(() => buildSummary(trips), [trips]);
@@ -52,6 +53,13 @@ export function TripsDashboard({
   const heroCover = heroTrip
     ? heroTrip.thumbnail || heroTrip.destinations?.[0]?.place?.thumbnail
     : null;
+
+  const fallbackCover = "https://images.unsplash.com/photo-1527668752968-14ce70a6a7ae?w=600&auto=format&fit=crop";
+  const [imgSrc, setImgSrc] = useState(heroCover ? { uri: heroCover } : { uri: fallbackCover });
+
+  useEffect(() => {
+    setImgSrc(heroCover ? { uri: heroCover } : { uri: fallbackCover });
+  }, [heroCover]);
 
   const timelineLabel = heroTrip ? getTimelineLabel(heroTrip) : null;
 
@@ -78,11 +86,12 @@ export function TripsDashboard({
         >
           {heroCover ? (
             <Image
-              source={{ uri: heroCover }}
+              source={imgSrc}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               transition={300}
               cachePolicy="memory-disk"
+              onError={() => setImgSrc({ uri: fallbackCover })}
             />
           ) : (
             <LinearGradient

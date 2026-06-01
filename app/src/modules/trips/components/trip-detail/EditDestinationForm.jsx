@@ -10,6 +10,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   ScrollView,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -19,6 +20,7 @@ import {
   formatDuration,
   TRANSPORT_OPTIONS,
   isTransportSelected,
+  toTimeSortValue,
 } from "../../utils/tripHelpers";
 import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
 import TimeField from "./TimeField";
@@ -45,12 +47,21 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
   const handleSave = useCallback(() => {
     if (isLoading || !dest?.id) return;
 
+    if (startTime && endTime && toTimeSortValue(endTime) < toTimeSortValue(startTime)) {
+      Alert.alert("Lỗi", "Thời gian kết thúc không được nhỏ hơn thời gian bắt đầu.");
+      return;
+    }
+
+    const finalDuration = typeof calculatedDuration === "number" && !isNaN(calculatedDuration) && calculatedDuration > 0
+      ? calculatedDuration
+      : 0;
+
     onSave({
       destId: dest.id,
       data: {
         startTime: startTime || null,
         endTime: endTime || null,
-        durationMinutes: calculatedDuration,
+        durationMinutes: finalDuration,
         note: note || null,
         transportToNext: isLast ? null : transportToNext,
       },
@@ -156,10 +167,10 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
                             <MaterialIcons
                               name={opt.icon}
                               size={16}
-                              color={isSelected ? T.onPrimary : "rgba(0,0,0,0.6)"}
+                              color={isSelected ? "#1D1D1F" : "rgba(0,0,0,0.6)"}
                             />
                             <Text className={`text-[13px] font-semibold ${
-                              isSelected ? "text-white" : "text-black/60"
+                              isSelected ? "text-[#1D1D1F]" : "text-black/60"
                             }`}>
                               {opt.label}
                             </Text>

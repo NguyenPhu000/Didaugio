@@ -1,5 +1,6 @@
 import profileService from "../../services/profile/profile.service.js";
 import appService from "../../services/app/app.service.js";
+import tripService from "../../services/trip/trip.service.js";
 import * as bookingService from "../../services/booking/booking.service.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import prisma from "../../config/prismaClient.js";
@@ -181,7 +182,7 @@ export const unsavePlace = async (req, res, next) => {
 
 export const getSavedTrips = async (req, res, next) => {
   try {
-    const data = await appService.getMySavedTrips(getUserId(req));
+    const data = await tripService.getMySavedTrips(getUserId(req));
     res.json({
       success: true,
       data,
@@ -204,7 +205,7 @@ export const saveTrip = async (req, res, next) => {
       });
     }
 
-    const data = await appService.saveTrip(getUserId(req), tripId);
+    const data = await tripService.saveTrip(getUserId(req), tripId);
     res.status(201).json({ success: true, data, message: "Đã lưu chuyến đi" });
   } catch (error) {
     next(error);
@@ -223,7 +224,7 @@ export const unsaveTrip = async (req, res, next) => {
       });
     }
 
-    await appService.unsaveTrip(getUserId(req), tripId);
+    await tripService.unsaveTrip(getUserId(req), tripId);
     res.json({ success: true, data: null, message: "Đã bỏ lưu chuyến đi" });
   } catch (error) {
     next(error);
@@ -278,7 +279,7 @@ export const deleteSavedCollection = async (req, res, next) => {
 
 export const getMyTrips = async (req, res, next) => {
   try {
-    const result = await appService.getMyTrips(getUserId(req), req.query);
+    const result = await tripService.getMyTrips(getUserId(req), req.query);
     res.json({
       success: true,
       data: result.data,
@@ -383,7 +384,7 @@ export const linkMyBookingToTrip = async (req, res, next) => {
 
 export const generateTrip = async (req, res, next) => {
   try {
-    const result = await appService.generateAndSaveTrip(
+    const result = await tripService.generateAndSaveTrip(
       getUserId(req),
       req.body || {},
     );
@@ -417,7 +418,7 @@ export const createTrip = async (req, res, next) => {
     const ALLOWED_INITIAL_STATUSES = ["planned"];
     const finalStatus = ALLOWED_INITIAL_STATUSES.includes(status) ? status : "planned";
 
-    const trip = await appService.createTrip(getUserId(req), {
+    const trip = await tripService.createTrip(getUserId(req), {
       title,
       description,
       startDate,
@@ -442,7 +443,7 @@ export const getTripDetail = async (req, res, next) => {
       return res
         .status(400)
         .json({ success: false, data: null, message: "ID không hợp lệ" });
-    const trip = await appService.getTripDetail(id, getUserId(req));
+    const trip = await tripService.getTripDetail(id, getUserId(req));
     if (!trip)
       return res.status(404).json({
         success: false,
@@ -466,7 +467,7 @@ export const updateTrip = async (req, res, next) => {
       return res
         .status(400)
         .json({ success: false, data: null, message: "ID không hợp lệ" });
-    const trip = await appService.updateTrip(id, getUserId(req), req.body);
+    const trip = await tripService.updateTrip(id, getUserId(req), req.body);
     res.json({
       success: true,
       data: trip,
@@ -484,7 +485,7 @@ export const deleteTrip = async (req, res, next) => {
       return res
         .status(400)
         .json({ success: false, data: null, message: "ID không hợp lệ" });
-    await appService.deleteTrip(id, getUserId(req));
+    await tripService.deleteTrip(id, getUserId(req));
     res.json({
       success: true,
       data: null,
@@ -512,7 +513,7 @@ export const addDestination = async (req, res, next) => {
       transportToNext,
       distanceToNext,
     } = req.body;
-    const dest = await appService.addDestination(tripId, getUserId(req), {
+    const dest = await tripService.addDestination(tripId, getUserId(req), {
       placeId,
       dayNumber,
       order,
@@ -540,7 +541,7 @@ export const removeDestination = async (req, res, next) => {
       return res
         .status(400)
         .json({ success: false, data: null, message: "ID không hợp lệ" });
-    await appService.removeDestination(tripId, destId, getUserId(req));
+    await tripService.removeDestination(tripId, destId, getUserId(req));
     res.json({
       success: true,
       data: null,
@@ -559,7 +560,7 @@ export const reorderDestinations = async (req, res, next) => {
     const { dayNumber, orderedIds } = req.body;
     if (!Array.isArray(orderedIds) || orderedIds.length === 0)
       return res.status(400).json({ success: false, data: null, message: "Danh sach sap xep khong hop le", errorCode: ERROR_CODES.VALIDATION_ERROR });
-    const destinations = await appService.reorderDestinations(tripId, getUserId(req), { dayNumber, orderedIds });
+    const destinations = await tripService.reorderDestinations(tripId, getUserId(req), { dayNumber, orderedIds });
     res.json({ success: true, data: destinations, message: "Da cap nhat thu tu lich trinh" });
   } catch (error) {
     next(error);
@@ -572,7 +573,7 @@ export const updateDestination = async (req, res, next) => {
     const destId = parseId(req.params.destId);
     if (!tripId || !destId)
       return res.status(400).json({ success: false, data: null, message: "ID khong hop le", errorCode: ERROR_CODES.VALIDATION_ERROR });
-    const dest = await appService.updateDestination(tripId, destId, getUserId(req), req.body);
+    const dest = await tripService.updateDestination(tripId, destId, getUserId(req), req.body);
     res.json({ success: true, data: dest, message: "Da cap nhat dia diem" });
   } catch (error) {
     next(error);
@@ -586,8 +587,57 @@ export const moveDestination = async (req, res, next) => {
     if (!tripId || !destId)
       return res.status(400).json({ success: false, data: null, message: "ID khong hop le", errorCode: ERROR_CODES.VALIDATION_ERROR });
     const { newDayNumber, newOrder } = req.body;
-    const dest = await appService.moveDestination(tripId, destId, getUserId(req), { newDayNumber, newOrder });
+    const dest = await tripService.moveDestination(tripId, destId, getUserId(req), { newDayNumber, newOrder });
     res.json({ success: true, data: dest, message: "Da chuyen dia diem sang ngay khac" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── TripShare Controllers ──────────────────────────────────────────────────
+
+export const createTripShare = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.id);
+    if (!tripId)
+      return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    const share = await tripService.createTripShare(tripId, getUserId(req), req.body);
+    res.status(201).json({ success: true, data: share, message: "Tạo link chia sẻ thành công" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTripShares = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.id);
+    if (!tripId)
+      return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    const shares = await tripService.getTripShares(tripId, getUserId(req));
+    res.json({ success: true, data: shares, message: "Lấy danh sách chia sẻ thành công" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const accessTripShare = async (req, res, next) => {
+  try {
+    const { shareCode } = req.params;
+    const { password } = req.body || {};
+    const result = await tripService.accessTripShare(shareCode, password);
+    res.json({ success: true, data: result, message: "Truy cập chuyến đi thành công" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteTripShare = async (req, res, next) => {
+  try {
+    const shareId = parseId(req.params.shareId);
+    if (!shareId)
+      return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    await tripService.deleteTripShare(shareId, getUserId(req));
+    res.json({ success: true, data: null, message: "Xóa link chia sẻ thành công" });
   } catch (error) {
     next(error);
   }
@@ -658,5 +708,9 @@ export default {
   reorderDestinations,
   updateDestination,
   moveDestination,
+  createTripShare,
+  getTripShares,
+  accessTripShare,
+  deleteTripShare,
   updatePushToken,
 };

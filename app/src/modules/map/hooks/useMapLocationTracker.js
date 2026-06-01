@@ -7,7 +7,11 @@ const LAST_KNOWN_MAX_AGE_MS = 5 * 60 * 1000;
 const WATCH_STATE_PUBLISH_INTERVAL_MS = 3500;
 const WATCH_STATE_PUBLISH_DISTANCE_M = 18;
 
-export function useMapLocationTracker({ watchEnabled = false } = {}) {
+export function useMapLocationTracker({
+  watchEnabled = false,
+  timeInterval = 5000,
+  distanceInterval = 12
+} = {}) {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [heading, setHeading] = useState(null);
   const currentLocationSharedValue = useSharedValue(null);
@@ -180,8 +184,8 @@ export function useMapLocationTracker({ watchEnabled = false } = {}) {
         subscriber = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
-            distanceInterval: 12,
-            timeInterval: 5000,
+            distanceInterval: distanceInterval,
+            timeInterval: timeInterval,
           },
           (location) => {
             if (!location?.coords) return;
@@ -203,7 +207,7 @@ export function useMapLocationTracker({ watchEnabled = false } = {}) {
       active = false;
       subscriber?.remove?.();
     };
-  }, [publishLocation, watchEnabled]);
+  }, [publishLocation, watchEnabled, timeInterval, distanceInterval]);
 
   const locateNow = useCallback(async () => {
     try {

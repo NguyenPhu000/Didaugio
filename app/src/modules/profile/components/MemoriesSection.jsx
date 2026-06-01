@@ -21,7 +21,7 @@ export function MemoriesSection({ completedTrips }) {
   const extraCount = Math.max(0, completedTrips.length - 2);
 
   const memory1 = {
-    title: mem1?.name || "Hành trình",
+    title: mem1?.title || "Hành trình",
     date: mem1?.endDate
       ? new Date(mem1.endDate).toLocaleDateString("vi-VN", { month: "long", year: "numeric" }).toUpperCase()
       : "",
@@ -33,7 +33,7 @@ export function MemoriesSection({ completedTrips }) {
 
   const memory2 = mem2
     ? {
-        title: mem2?.name || "Hành trình",
+        title: mem2?.title || "Hành trình",
         image:
           mem2?.thumbnail ||
           mem2?.destinations?.[0]?.place?.thumbnail ||

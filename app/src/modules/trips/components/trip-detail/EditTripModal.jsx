@@ -1,19 +1,26 @@
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { MaterialIcons } from "@expo/vector-icons";
 import { CustomDatePicker } from "../../../../components/ui/CustomDatePicker";
+import { compressImageToDataUrl } from "../../../../lib/image-compress";
+import { resolveMediaUrl } from "../../../../lib/media-url";
 import { toYmdString, toValidDate } from "../../utils/tripHelpers";
 
 function calcTotalDays(start, end) {
@@ -28,21 +35,68 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState(null);
+  const [pendingThumbnail, setPendingThumbnail] = useState(undefined);
+  const [isProcessingThumbnail, setIsProcessingThumbnail] = useState(false);
+  const [avoidFerry, setAvoidFerry] = useState(false);
+
+  const wasVisible = useRef(false);
 
   useEffect(() => {
-    if (!visible) return;
-    setTitle(trip?.title || "");
-    setDescription(trip?.description || "");
-    setStartDate(toValidDate(trip?.startDate));
-    setEndDate(toValidDate(trip?.endDate));
-  }, [
-    visible,
-    trip?.id,
-    trip?.title,
-    trip?.description,
-    trip?.startDate,
-    trip?.endDate,
-  ]);
+    if (visible && !wasVisible.current) {
+      setTitle(trip?.title || "");
+      setDescription(trip?.description || "");
+      setStartDate(toValidDate(trip?.startDate));
+      setEndDate(toValidDate(trip?.endDate));
+      setThumbnailPreview(resolveMediaUrl(trip?.thumbnail));
+      setPendingThumbnail(undefined);
+    }
+    if (visible && trip?.id) {
+      AsyncStorage.getItem(`trip_avoidFerry_${trip.id}`).then((val) => {
+        setAvoidFerry(val === "true");
+      });
+    }
+    wasVisible.current = visible;
+  }, [visible, trip]);
+
+  const handlePickThumbnail = useCallback(async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Chưa có quyền truy cập ảnh",
+          "Vui lòng cấp quyền truy cập thư viện ảnh để chọn ảnh bìa.",
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 1,
+      });
+
+      const selectedUri = result?.assets?.[0]?.uri;
+      if (result.canceled || !selectedUri) return;
+
+      setIsProcessingThumbnail(true);
+      const compressed = await compressImageToDataUrl(selectedUri, {
+        startWidth: 1280,
+      });
+      setThumbnailPreview(compressed.dataUrl);
+      setPendingThumbnail(compressed.dataUrl);
+    } catch (error) {
+      Alert.alert("Lỗi", error?.message || "Không thể xử lý ảnh. Vui lòng thử lại.");
+    } finally {
+      setIsProcessingThumbnail(false);
+    }
+  }, []);
+
+  const handleRemoveThumbnail = useCallback(() => {
+    setThumbnailPreview(null);
+    setPendingThumbnail(null);
+  }, []);
 
   const handleStartDateChange = useCallback(
     (date) => {
@@ -54,9 +108,22 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
     [endDate],
   );
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle || isSaving) return;
+
+    if (startDate && endDate && endDate < startDate) {
+      Alert.alert("Lỗi", "Ngày kết thúc không được nhỏ hơn ngày bắt đầu.");
+      return;
+    }
+
+    if (trip?.id) {
+      try {
+        await AsyncStorage.setItem(`trip_avoidFerry_${trip.id}`, String(avoidFerry));
+      } catch (e) {
+        console.error("Lỗi khi lưu cấu hình tránh phà:", e);
+      }
+    }
 
     onSave({
       title: trimmedTitle,
@@ -64,10 +131,11 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
       startDate: startDate ? toYmdString(startDate) : null,
       endDate: endDate ? toYmdString(endDate) : null,
       totalDays: calcTotalDays(startDate, endDate),
+      ...(pendingThumbnail !== undefined && { thumbnail: pendingThumbnail }),
     });
-  }, [description, endDate, isSaving, onSave, startDate, title]);
+  }, [description, endDate, isSaving, onSave, startDate, title, pendingThumbnail, avoidFerry, trip?.id]);
 
-  const canSave = title.trim().length > 0 && !isSaving;
+  const canSave = title.trim().length > 0 && !isSaving && !isProcessingThumbnail;
 
   return (
     <Modal
@@ -114,6 +182,51 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
               nestedScrollEnabled
             >
               <View className="gap-1.5">
+                <Text className="text-[11px] text-black/40 font-semibold uppercase tracking-widest">Ảnh bìa</Text>
+                <Pressable
+                  onPress={handlePickThumbnail}
+                  disabled={isProcessingThumbnail}
+                  className="w-full h-[160px] rounded-2xl overflow-hidden bg-[#F5F5F7] border border-black/[0.06] items-center justify-center"
+                >
+                  {thumbnailPreview ? (
+                    <Image
+                      source={{ uri: thumbnailPreview }}
+                      style={StyleSheet.absoluteFillObject}
+                      contentFit="cover"
+                      transition={200}
+                    />
+                  ) : (
+                    <View className="items-center gap-2">
+                      <MaterialIcons name="add-photo-alternate" size={32} color="rgba(0,0,0,0.3)" />
+                      <Text className="text-[13px] text-black/40 font-medium">Chạm để chọn ảnh bìa</Text>
+                    </View>
+                  )}
+
+                  {isProcessingThumbnail ? (
+                    <View className="absolute inset-0 items-center justify-center bg-black/30">
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    </View>
+                  ) : null}
+
+                  {thumbnailPreview && !isProcessingThumbnail ? (
+                    <View className="absolute top-2.5 right-2.5 flex-row gap-2">
+                      <View className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-full bg-black/55">
+                        <MaterialIcons name="edit" size={13} color="#FFFFFF" />
+                        <Text className="text-white text-[11px] font-semibold">Đổi ảnh</Text>
+                      </View>
+                      <Pressable
+                        onPress={handleRemoveThumbnail}
+                        hitSlop={8}
+                        className="w-7 h-7 rounded-full bg-black/55 items-center justify-center"
+                      >
+                        <MaterialIcons name="close" size={15} color="#FFFFFF" />
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </Pressable>
+              </View>
+
+              <View className="gap-1.5">
                 <Text className="text-[11px] text-black/40 font-semibold uppercase tracking-widest">Tên chuyến đi</Text>
                 <TextInput
                   value={title}
@@ -152,6 +265,26 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                   onChange={setEndDate}
                   minimumDate={startDate ?? undefined}
                   placeholder="Chọn ngày"
+                />
+              </View>
+
+
+              <View className="rounded-2xl bg-[#F5F5F7] px-4 py-3.5 border border-black/[0.06] flex-row items-center justify-between">
+                <View className="flex-row items-center gap-3 flex-1">
+                  <View className="w-9 h-9 rounded-xl bg-white items-center justify-center border border-black/[0.06]">
+                    <MaterialIcons name="directions-boat" size={18} color={avoidFerry ? "#FF9500" : "rgba(0,0,0,0.35)"} />
+                  </View>
+                  <View className="flex-1 gap-0.5">
+                    <Text className="text-[15px] font-semibold text-[#1D1D1F] tracking-tight">Tránh đi phà</Text>
+                    <Text className="text-[12px] text-black/40 tracking-tight">Tìm đường không qua bến phà</Text>
+                  </View>
+                </View>
+                <Switch
+                  value={avoidFerry}
+                  onValueChange={setAvoidFerry}
+                  trackColor={{ false: "rgba(0,0,0,0.12)", true: "#34C759" }}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor="rgba(0,0,0,0.12)"
                 />
               </View>
             </ScrollView>

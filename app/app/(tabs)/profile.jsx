@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -7,6 +7,7 @@ import {
   Share,
   Text,
   View,
+  Animated,
 } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -74,13 +75,14 @@ function formatCompactNumber(value) {
 }
 
 function buildStats(profile, storedUser, tripsCount = 0) {
-  const reviewsCount = profile?.stats?.reviewsCount || 0;
-  const savedCount = profile?.stats?.savedCount || 0;
+  const reviewsCount = profile?.stats?.reviews || 0;
+  const savedCount = profile?.stats?.favorites || 0;
+  const finalTripsCount = profile?.stats?.trips ?? tripsCount;
 
   return [
     {
       key: "trips",
-      value: formatCompactNumber(tripsCount),
+      value: formatCompactNumber(finalTripsCount),
       label: "CHUYẾN ĐI",
     },
     {
@@ -94,6 +96,72 @@ function buildStats(profile, storedUser, tripsCount = 0) {
       label: "ĐÃ LƯU",
     },
   ];
+}
+
+function CustomToast({ message, visible, onHide }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+
+      const timer = setTimeout(() => {
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }).start(() => onHide());
+      }, 2500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [visible, opacity, onHide]);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        bottom: 120,
+        left: 24,
+        right: 24,
+        opacity,
+        zIndex: 9999,
+        transform: [
+          {
+            translateY: opacity.interpolate({
+              inputRange: [0, 1],
+              outputRange: [15, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      <View
+        className="flex-row items-center gap-3 rounded-2xl border px-4 py-3 bg-slate-900 border-slate-800"
+        style={{
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.12,
+          shadowRadius: 10,
+          elevation: 5,
+        }}
+      >
+        <MaterialIcons name="info-outline" size={20} color="#F59E0B" style={{ marginRight: 6 }} />
+        <Text
+          style={{ fontFamily: TOKENS.font.medium }}
+          className="text-white text-[13.5px] flex-1 leading-5"
+        >
+          {message}
+        </Text>
+      </View>
+    </Animated.View>
+  );
 }
 
 /* ====================== SUB COMPONENTS ====================== */
@@ -155,7 +223,7 @@ function AvatarBlock({ avatarUri, displayName }) {
   );
 }
 
-function SettingsSection() {
+function SettingsSection({ onSoonFeature }) {
   const router = useRouter();
 
   const settingsItems = [
@@ -172,7 +240,7 @@ function SettingsSection() {
     {
       icon: "credit-card",
       label: "Phương thức thanh toán",
-      route: "/profile/payment-methods",
+      onPress: () => onSoonFeature("Phương thức thanh toán"),
     },
     {
       icon: "notifications",
@@ -203,7 +271,7 @@ function SettingsSection() {
           <Pressable
             key={index}
             className="flex-row items-center py-4 px-5 gap-4"
-            onPress={() => router.push(item.route)}
+            onPress={item.onPress || (() => router.push(item.route))}
           >
             <MaterialIcons name={item.icon} size={24} color="#64748B" />
             <Text
@@ -368,6 +436,13 @@ function LoggedInProfileScreen({ insets, storedUser }) {
   const { data: profile, isLoading, refetch, isRefetching } = useProfile(true);
   const { data: trips = [] } = useTrips(true);
   const [displayLocation, setDisplayLocation] = useState("Đang tải địa chỉ...");
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  const handleSoonFeature = (title) => {
+    setToastMessage(`${title} sẽ có trong bản cập nhật tới!`);
+    setToastVisible(true);
+  };
 
   const displayName = getDisplayName(profile, storedUser);
   const avatarUri = getAvatarUri(profile, storedUser);
@@ -606,10 +681,15 @@ function LoggedInProfileScreen({ insets, storedUser }) {
 
           {/* Settings - exactly like second image */}
           <View className="mt-6 px-6">
-            <SettingsSection />
+            <SettingsSection onSoonFeature={handleSoonFeature} />
           </View>
         </ScrollView>
       )}
+      <CustomToast
+        message={toastMessage}
+        visible={toastVisible}
+        onHide={() => setToastVisible(false)}
+      />
     </View>
   );
 }

@@ -153,6 +153,7 @@ export default function TripsScreen() {
               activeFilter={activeFilter}
               onSelectFilter={setActiveFilter}
               onOpenHero={handlePressTrip}
+              onCreate={handleCreate}
             />
           ) : null
         }
@@ -163,7 +164,11 @@ export default function TripsScreen() {
           ) : isError ? (
             <ErrorState onRetry={refetch} />
           ) : (
-            <EmptyTrips onCreate={handleCreate} activeFilter={activeFilter} />
+            <EmptyTrips
+              onCreate={handleCreate}
+              activeFilter={activeFilter}
+              onClearFilter={() => setActiveFilter("all")}
+            />
           )
         }
         ListFooterComponent={<View className="h-4" />}

@@ -10,7 +10,7 @@ function mapModeToProfile(mode) {
   return map[mode] || "driving";
 }
 
-export async function calculateTable(points, mode = "driving") {
+export async function calculateTable(points, mode = "driving", options = {}) {
   if (!Array.isArray(points) || points.length < 2) {
     throw new Error("Cần tối thiểu 2 điểm cho table calculation");
   }
@@ -22,6 +22,10 @@ export async function calculateTable(points, mode = "driving") {
   const coords = points.map((p) => `${p.lng},${p.lat}`).join(";");
   const url = `${OSRM_URL}/table/v1/${profile}/${coords}`;
   const params = new URLSearchParams({ annotations: "duration,distance" });
+
+  if (options.exclude) {
+    params.append("exclude", options.exclude);
+  }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TABLE_TIMEOUT_MS);
@@ -45,11 +49,11 @@ export async function calculateTable(points, mode = "driving") {
   }
 }
 
-export async function calculateSequentialLegs(waypoints, mode = "driving") {
+export async function calculateSequentialLegs(waypoints, mode = "driving", options = {}) {
   if (waypoints.length < 2) return { legs: [], totalDistance: 0, totalDuration: 0 };
   if (waypoints.length <= 10) {
     try {
-      const table = await calculateTable(waypoints, mode);
+      const table = await calculateTable(waypoints, mode, options);
       const legs = [];
       for (let i = 0; i < waypoints.length - 1; i++) {
         const distance = table.distances[i]?.[i + 1] ?? null;

@@ -6,11 +6,6 @@ import { StatusBadge } from "./StatusBadge";
 import { formatBookingDateTime, formatPrice } from "../../utils/tripHelpers";
 import s, { T, STYLES } from "../../utils/tripDetailTokens";
 
-const formatVnd = (amount) => {
-  const value = Number(amount || 0);
-  return `${value.toLocaleString("vi-VN")} VND`;
-};
-
 export const BudgetTab = memo(function BudgetTab({
   bookings,
   summary,
@@ -118,7 +113,7 @@ export const BudgetTab = memo(function BudgetTab({
             />
           </View>
           <Text className="text-[15px] font-bold text-[#1D1D1F] tracking-tight text-center z-10" numberOfLines={1}>
-            {formatVnd(confirmedAmount + completedAmount)}
+            {formatPrice(confirmedAmount + completedAmount)}
           </Text>
           <Text className="text-[12px] font-normal text-black/45 tracking-tight text-center mt-0.5 z-10">
             Đã xác nhận
@@ -134,7 +129,7 @@ export const BudgetTab = memo(function BudgetTab({
             />
           </View>
           <Text className="text-[15px] font-bold text-[#1D1D1F] tracking-tight text-center z-10" numberOfLines={1}>
-            {formatVnd(pendingAmount)}
+            {formatPrice(pendingAmount)}
           </Text>
           <Text className="text-[12px] font-normal text-black/45 tracking-tight text-center mt-0.5 z-10">
             Chờ xác nhận

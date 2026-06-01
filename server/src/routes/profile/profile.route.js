@@ -2,7 +2,18 @@ import express from "express";
 import profileController from "../../controllers/profile/profile.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { validateBody } from "../../middlewares/validateSchema.js";
-import { notificationSettingsSchema } from "../../models/index.js";
+import {
+  notificationSettingsSchema,
+  createTripSchema,
+  updateTripSchema,
+  addDestinationSchema,
+  updateDestinationSchema,
+  moveDestinationSchema,
+  reorderDestinationsSchema,
+  generateTripSchema,
+  createTripShareSchema,
+  accessTripShareSchema,
+} from "../../models/index.js";
 
 const router = express.Router();
 
@@ -69,14 +80,15 @@ router.post(
   authenticate,
   profileController.linkMyBookingToTrip,
 );
-router.post("/trips/generate", authenticate, profileController.generateTrip);
-router.post("/trips", authenticate, profileController.createTrip);
+router.post("/trips/generate", authenticate, validateBody(generateTripSchema), profileController.generateTrip);
+router.post("/trips", authenticate, validateBody(createTripSchema), profileController.createTrip);
 router.get("/trips/:id", authenticate, profileController.getTripDetail);
-router.patch("/trips/:id", authenticate, profileController.updateTrip);
+router.patch("/trips/:id", authenticate, validateBody(updateTripSchema), profileController.updateTrip);
 router.delete("/trips/:id", authenticate, profileController.deleteTrip);
 router.post(
   "/trips/:id/destinations",
   authenticate,
+  validateBody(addDestinationSchema),
   profileController.addDestination,
 );
 router.delete(
@@ -87,17 +99,40 @@ router.delete(
 router.patch(
   "/trips/:id/destinations/reorder",
   authenticate,
+  validateBody(reorderDestinationsSchema),
   profileController.reorderDestinations,
 );
 router.patch(
   "/trips/:id/destinations/:destId",
   authenticate,
+  validateBody(updateDestinationSchema),
   profileController.updateDestination,
 );
 router.patch(
   "/trips/:id/destinations/:destId/move",
   authenticate,
+  validateBody(moveDestinationSchema),
   profileController.moveDestination,
+);
+
+// ─── TripShare Routes ──────────────────────────────────────────────────────
+
+router.post(
+  "/trips/:id/share",
+  authenticate,
+  validateBody(createTripShareSchema),
+  profileController.createTripShare,
+);
+router.get("/trips/:id/share", authenticate, profileController.getTripShares);
+router.post(
+  "/shared-trip/:shareCode",
+  validateBody(accessTripShareSchema),
+  profileController.accessTripShare,
+);
+router.delete(
+  "/trips/share/:shareId",
+  authenticate,
+  profileController.deleteTripShare,
 );
 
 router.patch("/push-token", authenticate, profileController.updatePushToken);

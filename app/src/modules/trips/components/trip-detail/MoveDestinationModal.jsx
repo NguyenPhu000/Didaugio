@@ -134,19 +134,23 @@ function MoveDestinationModal({
                       return (
                         <Pressable
                           key={day.dayNumber}
-                          className={`px-3.5 py-2.5 rounded-xl bg-[#F5F5F7] border-[1.5px] border-transparent items-center min-w-[80px] ${
-                            isSelected ? STYLES.chipActive : ""
+                          className={`px-3.5 py-2.5 rounded-xl border-[1.5px] border-transparent items-center min-w-[80px] ${
+                            isSelected ? "bg-[#1D1D1F]" : "bg-[#F5F5F7]"
                           }`}
                           onPress={() => setSelectedDay(day.dayNumber)}
                         >
                           <Text
-                            className={`text-[13px] font-semibold text-[#1D1D1F]`}
+                            className={`text-[13px] font-semibold ${
+                              isSelected ? "text-white" : "text-[#1D1D1F]"
+                            }`}
                           >
                             Ngày {day.dayNumber}
                           </Text>
                           {day.date ? (
                             <Text
-                              className={`text-[11px] font-normal text-black/40 mt-0.5`}
+                              className={`text-[11px] font-normal mt-0.5 ${
+                                isSelected ? "text-white/60" : "text-black/40"
+                              }`}
                             >
                               {formatDate(day.date)}
                             </Text>

@@ -30,15 +30,25 @@ const isValidPoint = (point) =>
   Math.abs(point.lat) <= 90 &&
   Math.abs(point.lng) <= 180;
 
+const DEFAULT_ROUTE_OPTIONS = {
+  alternatives: 1,
+  steps: true,
+  overview: "full",
+  geometries: "polyline6",
+  snapToRoad: true,
+  simplifyGeometry: true,
+};
+
 /**
  * Hook tính route 2 điểm — dùng trong MapScreen / directions flow.
  *
- * @param {{ origin, destination, mode?, enabled? }} options
+ * @param {{ origin, destination, mode?, options?, enabled? }} params
  */
 export function useMapRouting({
   origin,
   destination,
   mode = "driving",
+  options = {},
   enabled = true,
 } = {}) {
   const normalizedOrigin = useMemo(() => normalizePoint(origin), [origin]);
@@ -53,8 +63,8 @@ export function useMapRouting({
     isValidPoint(normalizedDestination);
 
   const queryKey = useMemo(
-    () => ["route", normalizedOrigin, normalizedDestination, mode],
-    [normalizedDestination, normalizedOrigin, mode],
+    () => ["route", normalizedOrigin, normalizedDestination, mode, options],
+    [normalizedDestination, normalizedOrigin, mode, options],
   );
 
   const query = useQuery({
@@ -71,6 +81,7 @@ export function useMapRouting({
           geometries: "polyline6",
           snapToRoad: true,
           simplifyGeometry: true,
+          ...options,
         },
       }),
     enabled: isReady,
@@ -86,6 +97,7 @@ export function useMapRouting({
     routes: query.data?.routes ?? [],
     source: query.data?.source ?? null,
     isFallback: query.data?.isFallback ?? false,
+    ferryAvoidanceFailed: query.data?.ferryAvoidanceFailed ?? false,
     distanceM: query.data?.distanceM ?? null,
     durationS: query.data?.durationS ?? null,
     isLoading: query.isLoading,
@@ -99,11 +111,12 @@ export function useMapRouting({
 /**
  * Hook tính legs giữa nhiều waypoints — dùng trong Trip Detail / AI Planner.
  *
- * @param {{ waypoints, mode?, enabled? }} options
+ * @param {{ waypoints, mode?, options?, enabled? }} params
  */
 export function useRoutingLegs({
   waypoints = [],
   mode = "driving",
+  options = {},
   enabled = true,
 } = {}) {
   const normalizedWaypoints = useMemo(
@@ -114,8 +127,8 @@ export function useRoutingLegs({
   const isReady = enabled && normalizedWaypoints.length >= 2;
 
   const queryKey = useMemo(
-    () => ["route-legs", normalizedWaypoints, mode],
-    [normalizedWaypoints, mode],
+    () => ["route-legs", normalizedWaypoints, mode, options],
+    [normalizedWaypoints, mode, options],
   );
 
   const query = useQuery({
@@ -126,6 +139,7 @@ export function useRoutingLegs({
         mode,
         options: {
           simplifyGeometry: true,
+          ...options,
         },
       }),
     enabled: isReady,
@@ -140,6 +154,7 @@ export function useRoutingLegs({
     totalDistance: query.data?.totalDistance ?? null,
     totalDuration: query.data?.totalDuration ?? null,
     legs: query.data?.legs ?? [],
+    ferryAvoidanceFailed: query.data?.ferryAvoidanceFailed ?? false,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isError: query.isError,

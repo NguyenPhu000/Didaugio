@@ -13,6 +13,8 @@ import {
   geminiModel,
   geminiStructuredModel,
 } from "../../config/geminiClient.js";
+import { kMeansClustering, solveNearestNeighborTSP } from "../../utils/clustering.js";
+import { validateAndCorrectItinerary } from "../../utils/itineraryFormatter.js";
 
 const DEFAULT_DESTINATIONS_PER_DAY = 3;
 const START_TIME_SLOTS = ["08:00", "11:00", "14:30"];
@@ -198,15 +200,18 @@ export function generateFallbackItinerary(preferences = {}, places = []) {
 /**
  * Build a structured prompt for trip itinerary generation.
  * @param {Object} preferences - User travel preferences
- * @param {Array}  places      - Available approved places from DB
+ * @param {Array}  clusteredPlaces - Available approved places from DB, grouped by day index
  */
-function buildItineraryPrompt(preferences, places) {
+function buildItineraryPrompt(preferences, clusteredPlaces) {
   const { totalDays, travelStyle, groupSize, budget, notes } = preferences;
 
-  const minifiedPlaces = places.slice(0, 45).map((p) => ({
-    i: p.id,
-    n: p.name,
-    c: p.category?.name || "Khác",
+  const minifiedClustered = clusteredPlaces.map((cluster, idx) => ({
+    dayNumber: idx + 1,
+    places: cluster.map((p) => ({
+      i: p.id,
+      n: p.name,
+      c: p.category?.name || "Khác",
+    })),
   }));
 
   return `Bạn là trợ lý du lịch thông minh cho Cần Thơ, Việt Nam.
@@ -219,13 +224,13 @@ Hãy tạo lịch trình du lịch Cần Thơ chi tiết dựa theo các thông 
 - Ngân sách ước tính: ${budget ? budget + " VNĐ/người" : "Không giới hạn"}
 ${notes ? `- Ghi chú: ${notes}` : ""}
 
-**Danh sách địa điểm DUY NHẤT được phép chọn (JSON rút gọn: i = ID, n = Tên, c = Danh mục):**
-${JSON.stringify(minifiedPlaces)}
+**Danh sách địa điểm ĐÃ PHÂN CỤM THEO TỪNG NGÀY (i = ID, n = Tên, c = Danh mục):**
+${JSON.stringify(minifiedClustered)}
 
 **YÊU CẦU NGHIÊM NGẶT:**
-1. Bạn CHỈ ĐƯỢC CHỌN các địa điểm có trong danh sách trên. Tuyệt đối KHÔNG tự ý bịa tên hoặc dùng địa điểm ngoài danh sách này.
+1. Bạn CHỈ ĐƯỢC phép xếp địa điểm của cụm Ngày N vào đúng ngày ("dayNumber": N) trong lịch trình đầu ra. Không được hoán đổi địa điểm giữa các ngày.
 2. Dùng đúng ID ("i") của địa điểm cho trường "placeId" của đầu ra.
-3. Trả về JSON hợp lệ, không giải thích thêm.`;
+3. Trả về JSON hợp lệ khớp với schema yêu cầu, không giải thích gì thêm.`;
 }
 
 /**
@@ -237,6 +242,10 @@ ${JSON.stringify(minifiedPlaces)}
 export async function generateItinerary(preferences, places) {
   const jsonSchema = zodToJsonSchema(ItinerarySchema, { target: "openApi3" });
   const model = geminiStructuredModel(jsonSchema);
+
+  // Phân cụm địa điểm bằng K-Means trước khi gọi Gemini AI
+  const totalDays = toPositiveInt(preferences.totalDays, 1);
+  const clusteredPlaces = kMeansClustering(places, totalDays);
 
   // Caching nâng cao
   const placeIds = places.map((p) => p.id).sort((a, b) => a - b).join(",");
@@ -261,7 +270,7 @@ export async function generateItinerary(preferences, places) {
     // Bỏ qua lỗi đọc cache và gọi trực tiếp Gemini
   }
 
-  const prompt = buildItineraryPrompt(preferences, places);
+  const prompt = buildItineraryPrompt(preferences, clusteredPlaces);
   const start = Date.now();
 
   let result;
@@ -290,6 +299,51 @@ export async function generateItinerary(preferences, places) {
       ERROR_CODES.VALIDATION_ERROR,
     );
   }
+
+  // 1. Validate và co kéo thời gian khớp giờ mở cửa thực tế
+  parsed.days = validateAndCorrectItinerary(parsed.days, places);
+
+  // 2. Tối ưu hóa thứ tự chặng đi bằng TSP Solver trong từng ngày
+  parsed.days = parsed.days.map((day) => {
+    const destinations = day.destinations || [];
+    if (destinations.length <= 2) return day;
+
+    // Lấy tọa độ địa lý của các điểm trong ngày này để giải TSP
+    const dayPlaces = destinations.map((d) => {
+      const p = places.find((pl) => pl.id === d.placeId);
+      return {
+        ...d,
+        latitude: p?.latitude,
+        longitude: p?.longitude,
+      };
+    });
+
+    const optimizedDayPlaces = solveNearestNeighborTSP(dayPlaces);
+
+    // Sắp xếp lại khung giờ theo thứ tự tăng dần ban đầu để giữ cấu trúc logic (sáng, trưa, tối) của AI
+    const sortedTimes = destinations
+      .map((d) => ({ start: d.startTime, end: d.endTime, duration: d.durationMinutes }))
+      .sort((a, b) => (a.start || "").localeCompare(b.start || ""));
+
+    const optimizedDestinations = optimizedDayPlaces.map((d, index) => {
+      const timeSlot = sortedTimes[index] || {};
+      return {
+        placeId: d.placeId,
+        order: index + 1,
+        startTime: timeSlot.start || d.startTime,
+        endTime: timeSlot.end || d.endTime,
+        durationMinutes: timeSlot.duration || d.durationMinutes,
+        note: d.note,
+        transportToNext: d.transportToNext,
+        estimatedCost: d.estimatedCost,
+      };
+    });
+
+    return {
+      ...day,
+      destinations: optimizedDestinations,
+    };
+  });
 
   // Lưu cache (upsert tránh race khi nhiều request cùng filterHash)
   try {

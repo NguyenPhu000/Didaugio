@@ -113,6 +113,7 @@ class RoutingService {
         : points;
 
       let osrmResponse;
+      let usedOptions = options;
       try {
         osrmResponse = await this._callOsrm(effectivePoints, mode, options);
       } catch (firstError) {
@@ -121,10 +122,52 @@ class RoutingService {
         osrmResponse = await this._callOsrm(points, mode, options);
       }
 
+      // Retry logic: nếu bật avoid ferry mà OSRM trả NoRoute, thử lại không exclude.
+      const isFerryFailure =
+        options.exclude?.includes("ferry") &&
+        (!osrmResponse || osrmResponse.code === "NoRoute");
+      if (isFerryFailure) {
+        logger.info("[routing] Ferry avoidance failed, retrying without exclude", {
+          mode,
+        });
+        const retryOptions = { ...options, exclude: undefined };
+        try {
+          const retryResponse = await this._callOsrm(
+            snapToRoad ? effectivePoints : points,
+            mode,
+            retryOptions,
+          );
+          if (retryResponse && retryResponse.code === "Ok") {
+            osrmResponse = retryResponse;
+            usedOptions = retryOptions;
+            // Đánh dấu rằng tránh phà thất bại nhưng vẫn có đường đi thực tế.
+            const normalized = this._normalizeRouteResponse(
+              osrmResponse,
+              "osrm",
+              usedOptions,
+            );
+            normalized.ferryAvoidanceFailed = true;
+            const withTraffic = applyTrafficToResponse(normalized, new Date(), options?.weather);
+            withTraffic.ferryAvoidanceFailed = true;
+            this.cache.set(cacheKey, withTraffic);
+            if (CIRCUIT_BREAKER_ENABLED) {
+              this.circuitBreaker.recordSuccess();
+            }
+            this.metrics.consecutiveFailures = 0;
+            this.metrics.lastSuccessAt = new Date().toISOString();
+            return withTraffic;
+          }
+        } catch (retryErr) {
+          logger.warn("[routing] Ferry retry also failed", {
+            error: retryErr.message,
+          });
+        }
+      }
+
       const normalized = this._normalizeRouteResponse(
         osrmResponse,
         "osrm",
-        options,
+        usedOptions,
       );
       const withTraffic = applyTrafficToResponse(normalized, new Date(), options?.weather);
 
@@ -144,11 +187,68 @@ class RoutingService {
       this.metrics.lastFailureAt = new Date().toISOString();
       this.metrics.lastFailureMessage = error?.message || "OSRM failed";
 
-      logger.warn("[routing] OSRM failed, using fallback route", {
+      logger.warn("[routing] OSRM failed, trying fallback options or route", {
         error: this.metrics.lastFailureMessage,
         mode,
         circuit: this.circuitBreaker.snapshot(),
       });
+
+      // Tuân thủ kế hoạch: Thử lại không tránh phà khi bị lỗi NoRoute do sông ngòi
+      if (options.exclude && options.exclude.includes("ferry") &&
+          (error.message?.includes("NoRoute") || error.message?.includes("No segment") || error.message?.includes("HTTP 400"))) {
+        try {
+          logger.info("[routing] Ferry avoidance failed, retrying without ferry exclusion", { mode });
+
+          const retryOptions = { ...options };
+          if (typeof retryOptions.exclude === "string") {
+            retryOptions.exclude = retryOptions.exclude
+              .split(",")
+              .filter((x) => x !== "ferry")
+              .join(",");
+            if (!retryOptions.exclude) {
+              delete retryOptions.exclude;
+            }
+          } else if (Array.isArray(retryOptions.exclude)) {
+            retryOptions.exclude = retryOptions.exclude.filter((x) => x !== "ferry");
+            if (retryOptions.exclude.length === 0) {
+              delete retryOptions.exclude;
+            }
+          }
+
+          const effectivePoints = snapToRoad
+            ? await this._snapPoints(points, mode)
+            : points;
+
+          let osrmResponse;
+          try {
+            osrmResponse = await this._callOsrm(effectivePoints, mode, retryOptions);
+          } catch (retrySnapError) {
+            if (!snapToRoad) throw retrySnapError;
+            osrmResponse = await this._callOsrm(points, mode, retryOptions);
+          }
+
+          const normalized = this._normalizeRouteResponse(
+            osrmResponse,
+            "osrm",
+            retryOptions,
+          );
+          normalized.ferryAvoidanceFailed = true;
+
+          const withTraffic = applyTrafficToResponse(normalized, new Date(), options?.weather);
+          this.cache.set(cacheKey, withTraffic);
+
+          if (CIRCUIT_BREAKER_ENABLED) {
+            this.circuitBreaker.recordSuccess();
+          }
+          this.metrics.consecutiveFailures = 0;
+          this.metrics.lastSuccessAt = new Date().toISOString();
+          return withTraffic;
+        } catch (retryError) {
+          logger.warn("[routing] Retry without ferry exclusion also failed", {
+            error: retryError.message,
+          });
+        }
+      }
 
       const fallbackKey = this._buildCacheKey("fallback", points, mode, options);
       const cachedFallback = this.cache.get(fallbackKey);
@@ -158,6 +258,10 @@ class RoutingService {
       }
 
       const fallback = this._buildFallbackResponse(points, mode);
+      if (options.exclude && options.exclude.includes("ferry") && 
+          (error.message?.includes("NoRoute") || error.message?.includes("No segment"))) {
+        fallback.ferryAvoidanceFailed = true;
+      }
       this.cache.set(fallbackKey, fallback, FALLBACK_TTL_SEC);
       return fallback;
     } finally {
@@ -254,7 +358,7 @@ class RoutingService {
       );
     }
     try {
-      const tableResult = await calculateSequentialLegs(waypoints, mode);
+      const tableResult = await calculateSequentialLegs(waypoints, mode, options);
       if (tableResult) {
         return {
           code: "Ok",
@@ -347,6 +451,10 @@ class RoutingService {
       annotations: "duration,distance",
     });
 
+    if (options.exclude) {
+      params.append("exclude", options.exclude);
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
@@ -362,6 +470,10 @@ class RoutingService {
 
       const data = await res.json();
       if (data.code !== "Ok") {
+        // Trả về data để caller xử lý retry (ví dụ: NoRoute khi tránh phà).
+        if (data.code === "NoRoute") {
+          return data;
+        }
         throw new Error(`OSRM ${data.code}: ${data.message || "Unknown"}`);
       }
 

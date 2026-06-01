@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import NetInfo from "@react-native-community/netinfo";
-import { getMyTripsApi, createTripApi, deleteTripApi } from "../api/tripsApi";
+import { getMyTripsApi, createTripApi, deleteTripApi, getTripDetailApi } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 import { TRIP_OFFLINE_GC_MS } from "../../../constants/trip-offline-cache";
 
@@ -102,7 +102,7 @@ export function useNetworkStatus() {
 
 export function useTripsCached(enabled = true) {
   const queryClient = useQueryClient();
-  const isOnlineRef = useRef(true);
+  const isOnlineRef = useRef(false);
   const [isOffline, setIsOffline] = useState(false);
   const [cachedData, setCachedData] = useState(null);
 
@@ -187,11 +187,8 @@ export function useTripDetailCached(tripId, enabled = true) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: QUERY_KEYS.trips.detail(tripId),
     queryFn: async () => {
-      const tripsResponse = await getMyTripsApi();
-      const trips = tripsResponse?.data || [];
-      const trip = trips.find(
-        (t) => t.id === tripId || String(t.id) === String(tripId),
-      );
+      const tripResponse = await getTripDetailApi(tripId);
+      const trip = tripResponse?.data || null;
 
       if (trip) {
         await AsyncStorage.setItem(
@@ -227,13 +224,15 @@ export function useCreateTripCached() {
       const queuePending = async (type, data) => {
         const raw = await AsyncStorage.getItem(pendingActionsKey);
         const actions = raw ? JSON.parse(raw) : [];
-        actions.push({ type, data, timestamp: Date.now() });
+        const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        actions.push({ type, data, tempId, timestamp: Date.now() });
         await AsyncStorage.setItem(pendingActionsKey, JSON.stringify(actions));
+        return tempId;
       };
 
       if (!isConnected) {
-        await queuePending("CREATE_TRIP", tripData);
-        return { success: true, pending: true };
+        const tempId = await queuePending("CREATE_TRIP", tripData);
+        return { success: true, pending: true, tempId };
       }
 
       try {
@@ -262,7 +261,7 @@ export function useDeleteTripCached() {
       const queuePending = async (type, id) => {
         const raw = await AsyncStorage.getItem(pendingActionsKey);
         const actions = raw ? JSON.parse(raw) : [];
-        actions.push({ type, data: { id }, timestamp: Date.now() });
+        actions.push({ type, data: { id }, tempId: String(id), timestamp: Date.now() });
         await AsyncStorage.setItem(pendingActionsKey, JSON.stringify(actions));
       };
 
@@ -290,6 +289,30 @@ export function useDeleteTripCached() {
   };
 }
 
+/**
+ * Loại bỏ các cặp CREATE+DELETE triệt tiêu nhau và các action trung gian.
+ * Kịch bản: User tạo trip offline → thêm destination → xóa trip offline.
+ * Nếu chỉ gửi CREATE+DELETE sẽ lãng phí, còn action ADD_DESTINATION sẽ lỗi 404.
+ */
+function dedupOfflineActions(actions) {
+  // Bước 1: Tìm tempId bị triệt tiêu (CREATE bị DELETE cancel)
+  const cancelledTempIds = new Set();
+  actions.forEach((action, i) => {
+    if (action.type === "DELETE_TRIP") {
+      const createIdx = actions.findIndex(
+        (c) => c.type === "CREATE_TRIP" && c.tempId && c.tempId === action.tempId,
+      );
+      if (createIdx !== -1 && createIdx < i) {
+        cancelledTempIds.add(action.tempId);
+      }
+    }
+  });
+
+  // Bước 2: Lọc bỏ tất cả action liên quan đến tempId bị triệt tiêu
+  if (cancelledTempIds.size === 0) return actions;
+  return actions.filter((action) => !cancelledTempIds.has(action.tempId));
+}
+
 export function useOfflineSync() {
   const queryClient = useQueryClient();
   const { isConnected } = useNetworkStatus();
@@ -308,8 +331,17 @@ export function useOfflineSync() {
           return;
         }
 
-        const actions = JSON.parse(raw);
+        let actions = JSON.parse(raw);
         if (actions.length === 0) {
+          isSyncingRef.current = false;
+          return;
+        }
+
+        // Triệt tiêu cặp CREATE+DELETE và action trung gian
+        actions = dedupOfflineActions(actions);
+
+        if (actions.length === 0) {
+          await AsyncStorage.removeItem(pendingActionsKey);
           isSyncingRef.current = false;
           return;
         }

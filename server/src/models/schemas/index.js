@@ -46,3 +46,4 @@ export * from "./routing/routing.schema.js";
 export * from "./business/blockedDate.schema.js";
 export * from "./business/businessSettings.schema.js";
 export * from "./profile/notificationSettings.schema.js";
+export * from "./trip/trip.schema.js";

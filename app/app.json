@@ -28,7 +28,10 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Đi Đâu Giờ? cần vị trí để hiển thị địa điểm gần bạn."
+          "locationWhenInUsePermission": "Đi Đâu Giờ? cần vị trí để hiển thị địa điểm gần bạn.",
+          "locationAlwaysAndWhenInUsePermission": "Đi Đâu Giờ? cần vị trí chạy nền để dẫn đường và nhắc nhở di chuyển trong hành trình của bạn.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       "expo-web-browser",
@@ -44,7 +47,10 @@
       "package": "vn.didaugio.app",
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
       ]
     },
     "androidStatusBar": {

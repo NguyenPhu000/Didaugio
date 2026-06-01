@@ -228,8 +228,9 @@ export default function CreateTripScreen() {
       }
     } catch (error) {
       hasSavedRef.current = false;
+      const serverMessage = error?.response?.data?.message;
       setDestinationError(
-        error?.message || "Có lỗi xảy ra, vui lòng thử lại.",
+        serverMessage || error?.message || "Có lỗi xảy ra, vui lòng thử lại.",
       );
     } finally {
       setIsAddingDestinations(false);

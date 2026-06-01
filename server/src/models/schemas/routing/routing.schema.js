@@ -20,6 +20,7 @@ const routeOptionsSchema = z
     simplifyGeometry: z.boolean().optional(),
     simplificationToleranceMeters: z.coerce.number().min(1).max(50).optional(),
     weather: z.enum(["clear", "cloudy", "rain_light", "rain_heavy", "storm"]).optional(),
+    exclude: z.string().optional(),
   })
   .optional();
 
@@ -43,6 +44,7 @@ export const routingTableSchema = z.object({
     lng: z.number().min(-180).max(180),
   })).min(2).max(50),
   mode: z.enum(["driving", "walking", "cycling", "motorcycle"]).default("driving"),
+  options: routeOptionsSchema,
 });
 
 const routeCandidateSchema = z.object({
