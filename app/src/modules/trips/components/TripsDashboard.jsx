@@ -1,9 +1,8 @@
-import { memo, useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { LinearGradient } from "expo-linear-gradient";
-import { cn } from "../../../lib/cn";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -30,33 +29,7 @@ const STAT_ICONS = {
   red: { bg: "rgba(255,59,48,0.1)", color: "#FF3B30" },
 };
 
-const StatPill = memo(function StatPill({ icon, value, label, tone }) {
-  const theme = STAT_ICONS[tone] || STAT_ICONS.blue;
-  return (
-    <View
-      className="w-[48%] flex-row items-center gap-3 py-4 px-4 rounded-[20px] bg-white"
-      style={styles.statShadow}
-    >
-      <View
-        className="w-10 h-10 rounded-xl items-center justify-center"
-        style={{ backgroundColor: theme.bg }}
-      >
-        <MaterialIconsRounded name={icon} size={20} color={theme.color} />
-      </View>
-      <View className="flex-1">
-        <Text
-          className="text-[22px] font-heading tracking-tight"
-          style={{ color: APPLE_THEME.text }}
-        >
-          {value}
-        </Text>
-        <Text className="text-xs font-medium mt-0.5" style={{ color: APPLE_THEME.textMuted }}>
-          {label}
-        </Text>
-      </View>
-    </View>
-  );
-});
+
 
 export function TripsDashboard({
   trips,
@@ -83,17 +56,16 @@ export function TripsDashboard({
   const timelineLabel = heroTrip ? getTimelineLabel(heroTrip) : null;
 
   return (
-    <View style={{ paddingHorizontal: TAB_SCREEN_PADDING }} className="pt-2 pb-6">
+    <View style={{ paddingHorizontal: TAB_SCREEN_PADDING, paddingTop: 8, paddingBottom: 24 }}>
       {/* ── Header ── */}
-      <View className="flex-row items-center justify-between mt-4 mb-6">
-        <View className="flex-1 pr-3">
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 16, marginBottom: 24 }}>
+        <View style={{ flex: 1, paddingRight: 12 }}>
           <Text
-            className="text-[34px] font-heading tracking-tight"
-            style={{ color: APPLE_THEME.text }}
+            style={{ fontSize: 34, fontFamily: TOKENS.font.heading, color: APPLE_THEME.text, letterSpacing: -0.5 }}
           >
             Hành trình
           </Text>
-          <Text className="text-[15px] font-body mt-1 tracking-tight" style={{ color: APPLE_THEME.textMuted }}>
+          <Text style={{ fontSize: 15, fontFamily: TOKENS.font.body, color: APPLE_THEME.textMuted, marginTop: 4, letterSpacing: -0.2 }}>
             {(trips?.length ?? 0) > 0
               ? `${trips.length} chuyến đi của bạn`
               : "Khởi tạo kỷ niệm mới"}
@@ -103,8 +75,12 @@ export function TripsDashboard({
           onPress={onCreate}
           accessibilityLabel="Tạo chuyến đi mới"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          className="w-11 h-11 rounded-full items-center justify-center bg-[#1D1D1F]"
-          style={({ pressed }) => (pressed ? { opacity: 0.85 } : undefined)}
+          style={{
+            width: 44, height: 44, borderRadius: 22,
+            alignItems: "center", justifyContent: "center",
+            backgroundColor: "#1D1D1F",
+          }}
+          className="active:opacity-[0.85]"
         >
           <MaterialIconsRounded name="add" size={26} color="#FFFFFF" />
         </Pressable>
@@ -114,13 +90,12 @@ export function TripsDashboard({
       {heroTrip ? (
         <Pressable
           onPress={() => onOpenHero(heroTrip.id)}
-          className="h-[280px] rounded-3xl overflow-hidden mb-6 bg-[#1C1C1E] relative"
-          style={styles.heroShadow}
+          style={[styles.heroCard, styles.heroShadow]}
         >
           {imgSrc?.uri ? (
             <Image
               source={imgSrc}
-              style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+              style={StyleSheet.absoluteFill}
               contentFit="cover"
               transition={300}
               cachePolicy="memory-disk"
@@ -129,58 +104,67 @@ export function TripsDashboard({
           ) : null}
           <LinearGradient
             colors={[
-              "rgba(0,0,0,0.1)",
-              "rgba(0,0,0,0.3)",
-              "rgba(0,0,0,0.7)",
-              "rgba(0,0,0,0.9)",
+              "rgba(0,0,0,0.05)",
+              "rgba(0,0,0,0.2)",
+              "rgba(0,0,0,0.6)",
+              "rgba(0,0,0,0.85)",
             ]}
-            locations={[0, 0.4, 0.7, 1]}
-            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+            locations={[0, 0.35, 0.65, 1]}
+            style={StyleSheet.absoluteFill}
           />
 
           {/* Top-right arrow */}
-          <View className="absolute top-4 right-4 z-[2]">
+          <View style={{ position: "absolute", top: 16, right: 16, zIndex: 2 }}>
             <View
-              className="w-[38px] h-[38px] rounded-[19px] items-center justify-center overflow-hidden bg-white/20 border border-white/30"
+              style={{
+                width: 38, height: 38, borderRadius: 19,
+                alignItems: "center", justifyContent: "center",
+                backgroundColor: "rgba(255,255,255,0.2)",
+                borderWidth: 1, borderColor: "rgba(255,255,255,0.3)",
+              }}
             >
               <MaterialIconsRounded name="arrow-forward" size={18} color="#FFFFFF" />
             </View>
           </View>
 
           {/* Bottom content */}
-          <View className="absolute bottom-0 left-0 right-0 p-6 gap-2.5">
-            <View className="self-start rounded-full overflow-hidden mb-1">
-              <View className="flex-row items-center px-3 py-1.5 gap-1.5 bg-white/25">
+          <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 24, gap: 10 }}>
+            <View style={{ alignSelf: "flex-start", borderRadius: 999, overflow: "hidden", marginBottom: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 6, gap: 6, backgroundColor: "rgba(255,255,255,0.25)" }}>
                 <View
-                  className="w-1.5 h-1.5 rounded-full bg-green-500"
                   style={{
+                    width: 6, height: 6, borderRadius: 3,
+                    backgroundColor: "#34C759",
                     shadowColor: "#34C759",
                     shadowOffset: { width: 0, height: 0 },
                     shadowOpacity: 0.8,
                     shadowRadius: 4,
                   }}
                 />
-                <Text className="text-white text-xs font-bold uppercase tracking-[0.5px]">
+                <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: TOKENS.font.semibold, textTransform: "uppercase", letterSpacing: 0.5 }}>
                   {timelineLabel || "Sắp tới"}
                 </Text>
               </View>
             </View>
 
-            <Text className="text-white text-[28px] font-heading leading-[34px] tracking-tight" numberOfLines={2}>
+            <Text
+              style={{ color: "#FFFFFF", fontSize: 28, fontFamily: TOKENS.font.heading, lineHeight: 34, letterSpacing: -0.5 }}
+              numberOfLines={2}
+            >
               {heroTrip.title || "Chuyến đi mới"}
             </Text>
 
-            <View className="flex-row items-center gap-2 mt-1">
-              <View className="flex-row items-center gap-1">
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <MaterialIconsRounded name="event" size={14} color="rgba(255,255,255,0.8)" />
-                <Text className="text-white/90 text-sm font-medium tracking-tight">
+                <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 14, fontFamily: TOKENS.font.medium, letterSpacing: -0.2 }}>
                   {getDateRangeLabel(heroTrip)}
                 </Text>
               </View>
-              <View className="w-1 h-1 rounded-full bg-white/40 mx-1" />
-              <View className="flex-row items-center gap-1">
+              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.4)", marginHorizontal: 4 }} />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <MaterialIconsRounded name="place" size={14} color="rgba(255,255,255,0.8)" />
-                <Text className="text-white/90 text-sm font-medium tracking-tight">
+                <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 14, fontFamily: TOKENS.font.medium, letterSpacing: -0.2 }}>
                   {heroTrip.destinations?.length || 0} điểm đến
                 </Text>
               </View>
@@ -190,71 +174,92 @@ export function TripsDashboard({
       ) : (
         <Pressable
           onPress={onCreate}
-          className="h-[120px] rounded-[24px] overflow-hidden flex-row items-center px-5 mb-6 border border-black/5"
-          style={styles.createShadow}
+          style={[styles.createCard, styles.createShadow]}
+          className="active:opacity-[0.95]"
         >
           <LinearGradient
             colors={["#F8F9FA", "#F1F3F5"]}
-            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+            style={StyleSheet.absoluteFill}
           />
-          <View className="w-14 h-14 rounded-[20px] overflow-hidden items-center justify-center mr-4">
+          <View style={{ width: 56, height: 56, borderRadius: 20, overflow: "hidden", alignItems: "center", justifyContent: "center", marginRight: 16 }}>
             <LinearGradient
               colors={["#1D1D1F", "#000000"]}
-              style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+              style={StyleSheet.absoluteFill}
             />
             <MaterialIconsRounded name="add-location-alt" size={28} color="#FFFFFF" />
           </View>
-          <View className="flex-1">
-            <Text className="text-[17px] font-semibold tracking-tight mb-1" style={{ color: APPLE_THEME.text }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 17, fontFamily: TOKENS.font.semibold, color: APPLE_THEME.text, letterSpacing: -0.2, marginBottom: 4 }}>
               Tạo chuyến đi đầu tiên
             </Text>
-            <Text className="text-sm font-body tracking-tight" style={{ color: APPLE_THEME.textMuted }}>
+            <Text style={{ fontSize: 14, fontFamily: TOKENS.font.body, color: APPLE_THEME.textMuted, letterSpacing: -0.2 }}>
               Bắt đầu hành trình khám phá thế giới của bạn
             </Text>
           </View>
-          <View className="w-8 h-8 rounded-[16px] bg-black/[0.06] items-center justify-center ml-3">
+          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.06)", alignItems: "center", justifyContent: "center", marginLeft: 12 }}>
             <MaterialIconsRounded name="arrow-forward" size={20} color="#1D1D1F" />
           </View>
         </Pressable>
       )}
 
-      {/* ── Stats Strip (Grid) ── */}
-      <View className="flex-row flex-wrap justify-between gap-y-3 mb-7">
-        {summary.map((item) => (
-          <StatPill
-            key={item.key}
-            icon={item.icon}
-            value={item.value}
-            label={item.label}
-            tone={item.tone}
-          />
-        ))}
+      {/* ── Stats Summary Row (Compact, Apple Travel Style, individual white pills) ── */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 24 }}>
+        {summary.map((item) => {
+          const theme = STAT_ICONS[item.tone] || STAT_ICONS.blue;
+          return (
+            <View
+              key={item.key}
+              style={{
+                flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+                backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "rgba(0,0,0,0.05)",
+                paddingVertical: 6, paddingHorizontal: 4, borderRadius: 12,
+                shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04, shadowRadius: 6, elevation: 1.5,
+              }}
+            >
+              <MaterialIconsRounded name={item.icon} size={14} color={theme.color} />
+              <View style={{ alignItems: "flex-start" }}>
+                <Text style={{ fontSize: 13, fontFamily: TOKENS.font.semibold, color: "#1D1D1F", lineHeight: 16 }}>
+                  {item.value}
+                </Text>
+                <Text style={{ fontSize: 9, fontFamily: TOKENS.font.body, color: "#9CA3AF", lineHeight: 12 }}>
+                  {item.label}
+                </Text>
+              </View>
+            </View>
+          );
+        })}
       </View>
 
-      {/* ── Section Header + Filters ── */}
-      <View className="flex-row items-center justify-between mb-4">
-        <Text className="text-xl font-semibold tracking-tight" style={{ color: APPLE_THEME.text }}>
+      {/* ── Section Header + Apple Custom Segmented Filters ── */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <Text style={{ fontSize: 20, fontFamily: TOKENS.font.semibold, color: APPLE_THEME.text, letterSpacing: -0.2 }}>
           {filteredCount > 0 ? `Danh sách (${filteredCount})` : "Danh sách"}
         </Text>
-        <View className="flex-row gap-2">
+        <View style={{ flexDirection: "row", backgroundColor: "rgba(0,0,0,0.05)", padding: 2, borderRadius: 9, alignItems: "center" }}>
           {FILTERS.map((filter) => {
             const active = activeFilter === filter.key;
             return (
               <Pressable
                 key={filter.key}
                 onPress={() => onSelectFilter(filter.key)}
-                className={cn(
-                  "rounded-full px-4 py-2",
-                  active ? "bg-[#1D1D1F]" : "bg-gray-100",
-                )}
+                style={{
+                  paddingHorizontal: 12, paddingVertical: 4, borderRadius: 7,
+                  alignItems: "center", justifyContent: "center",
+                  backgroundColor: active ? "#FFFFFF" : "transparent",
+                  ...(active ? {
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.12,
+                    shadowRadius: 1.5,
+                    elevation: 1,
+                  } : {}),
+                }}
               >
-                <Text
-                  className={cn(
-                    "text-[13px] font-semibold tracking-tight",
-                    active ? "text-white" : "",
-                  )}
-                  style={!active ? { color: APPLE_THEME.textMuted } : undefined}
-                >
+                <Text style={{
+                  fontSize: 12, fontFamily: TOKENS.font.semibold, letterSpacing: -0.2,
+                  color: active ? "#1D1D1F" : "rgba(0,0,0,0.4)",
+                }}>
                   {filter.label}
                 </Text>
               </Pressable>
@@ -267,25 +272,38 @@ export function TripsDashboard({
 }
 
 const styles = StyleSheet.create({
-  statShadow: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+  heroCard: {
+    height: 280,
+    borderRadius: 24,
+    overflow: "hidden",
+    marginBottom: 24,
+    backgroundColor: "#1C1C1E",
+    position: "relative",
   },
   heroShadow: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
     elevation: 8,
+  },
+  createCard: {
+    height: 120,
+    borderRadius: 24,
+    overflow: "hidden",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+    position: "relative",
   },
   createShadow: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
     elevation: 2,
   },
 });

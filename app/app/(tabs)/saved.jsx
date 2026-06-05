@@ -178,126 +178,220 @@ export default function SavedScreen() {
     return { Icon: Grid3x3, color: "#6B7280" };
   };
 
-  // Apple-style pill chip component
-  const FilterPill = ({ item, active, onPress, getIcon }) => {
-    const iconMeta = getIcon ? getIcon(item.name) : null;
-    const Icon = iconMeta?.Icon;
-    const iconColor = iconMeta?.color;
+  // Build category items with counts
+  const catItems = useMemo(() => {
+    const items = [{ key: ALL_CATEGORIES_KEY, name: "Tất cả", count: savedData.length }];
+    categoryOptions.forEach((opt) => {
+      const count = savedData.filter((entry) => {
+        const place = entry?.place || entry;
+        const cat = place?.category;
+        if (!cat) return false;
+        const catKey = cat.id != null ? `category:${cat.id}` : `category-name:${(cat.name || "").trim().toLowerCase()}`;
+        return catKey === opt.key;
+      }).length;
+      items.push({ ...opt, count });
+    });
+    return items;
+  }, [savedData, categoryOptions]);
 
-    return (
-      <Pressable
-        onPress={() => onPress(item.key)}
-        style={({ pressed }) => ({
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 4,
-          paddingHorizontal: 13,
-          height: 32,
-          borderRadius: 16,
-          backgroundColor: active ? "#1C1C1E" : "rgba(118,118,128,0.12)",
-          opacity: pressed ? 0.7 : 1,
-        })}
-      >
-        {Icon && (
-          <Icon
-            size={11}
-            color={active ? (iconColor || "#FFFFFF") : "#6B7280"}
-            strokeWidth={2.5}
-          />
-        )}
-        <Text
-          numberOfLines={1}
-          style={{
-            fontSize: 13,
-            fontWeight: active ? "600" : "400",
-            color: active ? "#FFFFFF" : "#3C3C43",
-            letterSpacing: -0.1,
-            fontFamily: active ? TOKENS.font.semibold : TOKENS.font.body,
-          }}
-        >
-          {item.name}
-        </Text>
-      </Pressable>
-    );
-  };
+  // Build area items with counts
+  const areaItems = useMemo(() => {
+    const items = [{ key: ALL_AREAS_KEY, name: "Tất cả", count: savedData.length }];
+    areaOptions.forEach((opt) => {
+      const count = savedData.filter((entry) => {
+        const place = entry?.place || entry;
+        const districtId = place?.district?.id ?? place?.ward?.districtId ?? place?.districtId;
+        const districtName = place?.district?.name ?? place?.ward?.district?.name ?? null;
+        let key;
+        if (districtId != null) key = `id:${districtId}`;
+        else if (districtName) key = `name:${districtName.trim().toLowerCase()}`;
+        else return false;
+        return key === opt.key;
+      }).length;
+      items.push({ ...opt, count });
+    });
+    return items;
+  }, [savedData, areaOptions]);
 
   const renderHeader = useCallback(() => {
     if (isLoading || isError) return null;
 
-    const catItems = [
-      { key: ALL_CATEGORIES_KEY, name: "Tất cả" },
-      ...categoryOptions,
-    ];
-
-    const areaItems = [
-      { key: ALL_AREAS_KEY, name: "Tất cả" },
-      ...areaOptions,
-    ];
-
-    const showCategories = categoryOptions.length > 0;
-    const showAreas = areaOptions.length > 0;
+    const showCategories = catItems.length > 1;
+    const showAreas = areaItems.length > 1;
 
     return (
-      <View style={{ paddingTop: 16, paddingBottom: 12, paddingHorizontal: 16, gap: 14 }}>
+      <View style={{ paddingTop: 16, paddingBottom: 14, paddingHorizontal: 16 }}>
         {/* Tiêu đề + Badge */}
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Text style={{ fontSize: 28, fontWeight: "700", color: "#0F172A", letterSpacing: -0.8, fontFamily: TOKENS.font.heading }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <Text style={{ fontSize: 28, fontFamily: TOKENS.font.heading, color: "#0F172A", letterSpacing: -0.8 }}>
             Yêu thích
           </Text>
           {filteredSavedData.length > 0 && (
             <View style={{ height: 26, borderRadius: 13, paddingHorizontal: 10, backgroundColor: "rgba(0,0,0,0.06)", alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: "#6B7280", fontFamily: TOKENS.font.semibold }}>
+              <Text style={{ fontSize: 13, fontFamily: TOKENS.font.semibold, color: "#6B7280" }}>
                 {filteredSavedData.length}
               </Text>
             </View>
           )}
         </View>
 
-        {/* Filter rows */}
-        {(showCategories || showAreas) && (
-          <View style={{ gap: 8 }}>
-            {showCategories && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 6, paddingRight: 4 }}
-              >
-                {catItems.map((item) => (
-                  <FilterPill
-                    key={item.key}
-                    item={item}
-                    active={activeCategory === item.key}
-                    onPress={setActiveCategory}
-                    getIcon={item.key === ALL_CATEGORIES_KEY ? null : getCategoryIcon}
-                  />
-                ))}
-              </ScrollView>
-            )}
+        {/* Category pills */}
+        {showCategories && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8, paddingRight: 4, alignItems: "center" }}
+            style={{ marginBottom: showAreas ? 8 : 0 }}
+          >
+            {catItems.map((item) => {
+              const active = activeCategory === item.key;
+              return (
+                <View key={item.key} style={{ overflow: "visible" }}>
+                  <Pressable
+                    onPress={() => setActiveCategory(item.key)}
+                    style={({ pressed }) => [
+                      pressed && { opacity: 0.9 },
+                      {
+                        paddingHorizontal: 12,
+                        borderRadius: 16,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: 56,
+                        minWidth: 64,
+                        maxWidth: 88,
+                        backgroundColor: active ? "#1D1D1F" : "rgba(0,0,0,0.04)",
+                      },
+                    ]}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: 13,
+                        fontFamily: TOKENS.font.semibold,
+                        color: active ? "#FFFFFF" : "#1D1D1F",
+                        letterSpacing: -0.2,
+                      }}
+                    >
+                      {item.name}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: 10,
+                        fontFamily: TOKENS.font.body,
+                        color: active ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.35)",
+                        marginTop: 1,
+                      }}
+                    >
+                      {item.count} địa điểm
+                    </Text>
+                  </Pressable>
+                  {item.count > 0 && !active ? (
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: -7,
+                        alignSelf: "center",
+                        zIndex: 1,
+                        minWidth: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        paddingHorizontal: 5,
+                        backgroundColor: active ? "#1D1D1F" : "rgba(0,0,0,0.12)",
+                      }}
+                    >
+                      <Text style={{ fontSize: 10, fontFamily: TOKENS.font.semibold, color: active ? "#FFFFFF" : "#1D1D1F" }}>
+                        {item.count}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+          </ScrollView>
+        )}
 
-            {showAreas && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 6, paddingRight: 4 }}
-              >
-                {areaItems.map((item) => (
-                  <FilterPill
-                    key={item.key}
-                    item={item}
-                    active={activeArea === item.key}
-                    onPress={setActiveArea}
-                    getIcon={item.key === ALL_AREAS_KEY
-                      ? () => ({ Icon: Map, color: "#6B7280" })
-                      : () => ({ Icon: MapPin, color: "#6B7280" })}
-                  />
-                ))}
-              </ScrollView>
-            )}
-          </View>
+        {/* Area pills */}
+        {showAreas && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8, paddingRight: 4, alignItems: "center" }}
+          >
+            {areaItems.map((item) => {
+              const active = activeArea === item.key;
+              return (
+                <View key={item.key} style={{ overflow: "visible" }}>
+                  <Pressable
+                    onPress={() => setActiveArea(item.key)}
+                    style={({ pressed }) => [
+                      pressed && { opacity: 0.9 },
+                      {
+                        paddingHorizontal: 12,
+                        borderRadius: 16,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: 56,
+                        minWidth: 64,
+                        maxWidth: 88,
+                        backgroundColor: active ? "#1D1D1F" : "rgba(0,0,0,0.04)",
+                      },
+                    ]}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: 13,
+                        fontFamily: TOKENS.font.semibold,
+                        color: active ? "#FFFFFF" : "#1D1D1F",
+                        letterSpacing: -0.2,
+                      }}
+                    >
+                      {item.name}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: 10,
+                        fontFamily: TOKENS.font.body,
+                        color: active ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.35)",
+                        marginTop: 1,
+                      }}
+                    >
+                      {item.count} địa điểm
+                    </Text>
+                  </Pressable>
+                  {item.count > 0 && !active ? (
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: -7,
+                        alignSelf: "center",
+                        zIndex: 1,
+                        minWidth: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        paddingHorizontal: 5,
+                        backgroundColor: active ? "#1D1D1F" : "rgba(0,0,0,0.12)",
+                      }}
+                    >
+                      <Text style={{ fontSize: 10, fontFamily: TOKENS.font.semibold, color: active ? "#FFFFFF" : "#1D1D1F" }}>
+                        {item.count}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+          </ScrollView>
         )}
       </View>
     );
-  }, [isLoading, isError, savedData.length, areaOptions, categoryOptions, activeArea, activeCategory, filteredSavedData.length]);
+  }, [isLoading, isError, catItems, areaItems, activeArea, activeCategory, filteredSavedData.length]);
 
   if (!isLoggedIn) {
     return (
