@@ -10,22 +10,12 @@ import {
   StyleSheet,
   Text,
   View,
-  Platform,
-  Modal,
-  TextInput,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
-import * as ImageManipulator from "expo-image-manipulator";
-import * as ImagePicker from "expo-image-picker";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import BottomSheet, {
-  BottomSheetScrollView,
-  BottomSheetTextInput,
-  BottomSheetView,
-  BottomSheetFlatList,
-} from "@gorhom/bottom-sheet";
+import { Bookmark } from "lucide-react-native";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import {
@@ -33,44 +23,45 @@ import {
   usePlaceDetail,
   usePlaceReviews,
 } from "../../src/modules/place/hooks/usePlaceDetail";
+import { useUIStore } from "../../src/stores/uiStore";
 import {
   useSavePlace,
   useUnsavePlace,
 } from "../../src/modules/saved/hooks/useSaved";
+import {
+  OpeningHours,
+  SectionCard,
+  StatPill,
+  FactCard,
+  AmenityCard,
+  DetailRow,
+} from "../../src/modules/place/components/PlaceDetailComponents";
 import { useAuthStore } from "../../src/stores/authStore";
-import { useQueryClient } from "@tanstack/react-query";
-import { useTrips } from "../../src/modules/trips/hooks/useTrips";
-import { addDestinationApi } from "../../src/modules/trips/api/tripsApi";
-import { QUERY_KEYS } from "../../src/constants/query-keys";
 import { GLASS_THEME, TOKENS } from "../../src/constants/design-tokens";
-import { resolveMediaUrl, getCategoryPlaceholder } from "../../src/lib/media-url";
+import {
+  resolveMediaUrl,
+  getCategoryPlaceholder,
+} from "../../src/lib/media-url";
 import { useI18n } from "../../src/hooks/useI18n";
 import {
   formatPriceLine,
   getCategoryIcon,
   getPlaceLocation,
 } from "../../src/modules/explore/utils/exploreHelpers";
+import {
+  PALETTE,
+  formatReviewCount,
+} from "../../src/modules/place/constants/placeSheetConstants";
+import { TripSelectorSheet } from "../../src/modules/place/components/TripSelectorSheet";
+import { ReviewComposerSheetContent } from "../../src/modules/place/components/ReviewComposerSheet";
+import {
+  AllReviewsSheetContent,
+  ReviewCard,
+  StarRow,
+} from "../../src/modules/place/components/AllReviewsSheet";
 
 const DAY_NAMES = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
-const PALETTE = {
-  bg: "#F4F7FB", // Lighter, clean background
-  surface: "#FFFFFF",
-  surfaceAlt: "#FAFCFF", // Very subtle tint
-  text: "#0F172A", // Darker slate for contrast
-  textMuted: "#475569", // Medium slate
-  textSoft: "#94A3B8", // Light slate
-  border: "#E2E8F0",
-  borderSoft: "#F1F5F9",
-  primary: "#2563EB", // Vibrant blue
-  primaryDark: "#1D4ED8",
-  primarySoft: "#EFF6FF", // Soft blue background for chips
-  success: "#10B981",
-  warning: "#F59E0B",
-  overlayStrong: "rgba(15, 23, 42, 0.65)", // Darker gradient
-  heroFallback: "#CBD5E1",
-  accent: "#FBBF24",
-};
 const PRICE_RANGE_LABELS = {
   FREE: "Miễn phí",
   BUDGET: "Bình dân",
@@ -78,22 +69,7 @@ const PRICE_RANGE_LABELS = {
   EXPENSIVE: "Cao cấp",
   LUXURY: "Sang trọng",
 };
-const REVIEW_MEDIA_LIMIT = 5;
-const REVIEW_IMAGE_WIDTH = 1000;
-const REVIEW_IMAGE_COMPRESS = 0.72;
 const MAIN_REVIEW_LIMIT = 5;
-const REVIEW_FILTER_RATINGS = [5, 4, 3, 2, 1];
-
-function formatReviewCount(value, t) {
-  const count = Number(value || 0);
-  if (!count) return t("Mới", "New");
-  if (count >= 1000)
-    return t(
-      `${(count / 1000).toFixed(1).replace(/\.0$/, "")}k đánh giá`,
-      `${(count / 1000).toFixed(1).replace(/\.0$/, "")}k reviews`,
-    );
-  return t(`${count} đánh giá`, `${count} reviews`);
-}
 
 function getAddressLine(place) {
   return [place?.address, place?.ward?.name, place?.district?.name]
@@ -279,1048 +255,7 @@ function getAmenityCards(place, t) {
   return items.slice(0, 3);
 }
 
-const StarRow = ({ rating, size = 16 }) =>
-  [1, 2, 3, 4, 5].map((value) => (
-    <MaterialIconsRounded
-      key={value}
-      name={value <= Math.round(rating) ? "star" : "star-border"}
-      size={size}
-      color="#FBBF24"
-    />
-  ));
 
-function getReviewMediaUri(media) {
-  return resolveMediaUrl(
-    media?.mediaData ||
-      media?.thumbnailUrl ||
-      media?.secureUrl ||
-      media?.url ||
-      null,
-  );
-}
-
-function ReviewCard({ review, t }) {
-  const author =
-    review?.user?.profile?.fullName ||
-    review?.user?.email?.split("@")[0] ||
-    t("Ẩn danh", "Anonymous");
-  const avatar = resolveMediaUrl(review?.user?.profile?.avatar);
-  const media = (review?.media || []).map(getReviewMediaUri).filter(Boolean);
-  const visibleReplies = (review?.replies || []).filter(
-    (reply) => reply?.status !== "hidden",
-  );
-
-  return (
-    <View style={styles.reviewCard}>
-      <View style={styles.reviewHeader}>
-        <View style={styles.reviewAvatar}>
-          {avatar ? (
-            <Image
-              source={{ uri: avatar }}
-              style={styles.reviewAvatarImage}
-              contentFit="cover"
-            />
-          ) : (
-            <Text style={styles.reviewAvatarFallback}>
-              {author.charAt(0).toUpperCase()}
-            </Text>
-          )}
-        </View>
-        <View style={styles.reviewMeta}>
-          <View style={styles.reviewAuthorRow}>
-            <Text style={styles.reviewAuthor}>{author}</Text>
-            {review?.isVerifiedPurchase ? (
-              <View style={styles.verifiedReviewBadge}>
-                <MaterialIconsRounded
-                  name="verified"
-                  size={12}
-                  color={PALETTE.success}
-                />
-                <Text style={styles.verifiedReviewText}>
-                  {t("Đã xác thực", "Verified")}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-          <View style={styles.reviewStars}>
-            <StarRow rating={review?.rating || 0} size={12} />
-          </View>
-        </View>
-        <Text style={styles.reviewDate}>
-          {review?.createdAt
-            ? new Date(review.createdAt).toLocaleDateString("vi-VN")
-            : ""}
-        </Text>
-      </View>
-      {review?.content ? (
-        <Text style={styles.reviewContent}>{review.content}</Text>
-      ) : null}
-      {media.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.reviewMediaScroller}
-          contentContainerStyle={styles.reviewMediaList}
-        >
-          {media.slice(0, REVIEW_MEDIA_LIMIT).map((uri, index) => (
-            <Image
-              key={`${uri}-${index}`}
-              source={{ uri }}
-              style={styles.reviewMediaImage}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-            />
-          ))}
-        </ScrollView>
-      ) : null}
-      {visibleReplies.length > 0 ? (
-        <View style={styles.reviewReplyList}>
-          {visibleReplies.map((reply) => (
-            <View key={reply.id} style={styles.reviewReplyCard}>
-              <View style={styles.reviewReplyHeader}>
-                <MaterialIconsRounded
-                  name="storefront"
-                  size={15}
-                  color={PALETTE.primaryDark}
-                />
-                <Text style={styles.reviewReplyAuthor}>
-                  {reply?.user?.profile?.fullName ||
-                    t("Phản hồi từ doanh nghiệp", "Business reply")}
-                </Text>
-              </View>
-              <Text style={styles.reviewReplyContent}>{reply.content}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function OpeningHours({ hours, t }) {
-  const today = new Date().getDay();
-
-  return (
-    <View style={styles.openingHoursList}>
-      {DAY_NAMES.map((day, index) => {
-        const dayNumber = index === 6 ? 0 : index + 1;
-        const item = hours?.find((entry) => entry.dayOfWeek === dayNumber);
-        const isToday = today === dayNumber;
-        const label = item?.isClosed
-          ? t("Đóng cửa", "Closed")
-          : item?.openTime && item?.closeTime
-            ? `${item.openTime} - ${item.closeTime}`
-            : t("Chưa cập nhật", "Not updated");
-
-        return (
-          <View
-            key={day}
-            style={[styles.openingRow, isToday && styles.openingRowActive]}
-          >
-            <Text
-              style={[styles.openingDay, isToday && styles.openingDayActive]}
-            >
-              {day}
-            </Text>
-            <Text
-              style={[
-                styles.openingLabel,
-                isToday && styles.openingLabelActive,
-              ]}
-            >
-              {label}
-            </Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-function SectionCard({ title, actionLabel, onActionPress, children }) {
-  return (
-    <View style={styles.sectionCard}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {actionLabel ? (
-          <Pressable onPress={onActionPress} hitSlop={8}>
-            <Text style={styles.sectionAction}>{actionLabel}</Text>
-          </Pressable>
-        ) : null}
-      </View>
-      {children}
-    </View>
-  );
-}
-
-function StatPill({ icon, label }) {
-  return (
-    <View style={styles.statPill}>
-      <MaterialIconsRounded name={icon} size={15} color={PALETTE.textMuted} />
-      <Text style={styles.statPillText} numberOfLines={1}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-function FactCard({ icon, label, value }) {
-  return (
-    <View style={styles.factCard}>
-      <View style={styles.factIconWrap}>
-        <MaterialIconsRounded name={icon} size={18} color={PALETTE.primaryDark} />
-      </View>
-      <View style={styles.factContent}>
-        <Text style={styles.factLabel}>{label}</Text>
-        <Text style={styles.factValue} numberOfLines={2}>
-          {value}
-        </Text>
-      </View>
-      <MaterialIconsRounded name="chevron-right" size={18} color={PALETTE.textSoft} />
-    </View>
-  );
-}
-
-function AmenityCard({ icon, label, tag, onPress }) {
-  return (
-    <Pressable onPress={onPress} style={styles.amenityCard}>
-      <View style={styles.amenityIconWrap}>
-        <MaterialIconsRounded name={icon} size={22} color={PALETTE.primaryDark} />
-      </View>
-      <Text style={styles.amenityLabel} numberOfLines={1}>
-        {label}
-      </Text>
-      {tag ? (
-        <Text style={styles.amenityTagText} numberOfLines={1}>
-          {tag}
-        </Text>
-      ) : null}
-    </Pressable>
-  );
-}
-
-function DetailRow({ icon, label, value, onPress, highlight = false }) {
-  const content = (
-    <View style={styles.detailRow}>
-      <View style={styles.detailIconWrap}>
-        <MaterialIconsRounded
-          name={icon}
-          size={17}
-          color={highlight ? PALETTE.primaryDark : PALETTE.textMuted}
-        />
-      </View>
-      <View style={styles.detailContent}>
-        <Text style={styles.detailLabel}>{label}</Text>
-        <Text
-          style={[styles.detailValue, highlight && styles.detailValueHighlight]}
-          numberOfLines={3}
-        >
-          {value}
-        </Text>
-      </View>
-      {onPress ? (
-        <MaterialIconsRounded name="open-in-new" size={17} color={PALETTE.textSoft} />
-      ) : null}
-    </View>
-  );
-
-  if (onPress) {
-    return (
-      <Pressable onPress={onPress} style={styles.detailRowPressable}>
-        {content}
-      </Pressable>
-    );
-  }
-
-  return content;
-}
-
-function parseTimeToDate(str) {
-  if (!str) return null;
-  const [h, m] = str.split(":").map(Number);
-  if (isNaN(h) || isNaN(m)) return null;
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  return d;
-}
-
-function formatHHMM(date) {
-  const h = String(date.getHours()).padStart(2, "0");
-  const m = String(date.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
-}
-
-function TimeField({ label, value, onChange, placeholder, icon }) {
-  const [show, setShow] = useState(false);
-  const dateValue = parseTimeToDate(value) || new Date();
-
-  const handleChange = useCallback(
-    (_event, selectedDate) => {
-      if (Platform.OS === "android") {
-        setShow(false);
-      }
-      if (selectedDate) {
-        onChange(formatHHMM(selectedDate));
-      }
-    },
-    [onChange],
-  );
-
-  return (
-    <View style={styles.tripFormCol}>
-      <Text style={styles.tripFormLabel}>{label}</Text>
-      <Pressable
-        style={({ pressed }) => [
-          styles.tripFormInput,
-          { flexDirection: "row", alignItems: "center", gap: 6 },
-          pressed && { backgroundColor: "rgba(0,0,0,0.06)" },
-        ]}
-        onPress={() => setShow(true)}
-      >
-        <MaterialIconsRounded
-          name={icon || "schedule"}
-          size={14}
-          color={PALETTE.textSoft}
-        />
-        <Text style={[{ color: PALETTE.text, fontFamily: TOKENS.font.body, fontSize: 14 }, !value && { color: "rgba(15, 23, 42, 0.38)" }]}>
-          {value || placeholder}
-        </Text>
-      </Pressable>
-
-      {Platform.OS === "ios" ? (
-        <Modal
-          visible={show}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShow(false)}
-        >
-          <Pressable style={styles.tripFormPickerOverlay} onPress={() => setShow(false)}>
-            <View style={styles.tripFormPickerSheet} onStartShouldSetResponder={() => true}>
-              <View style={styles.tripFormPickerHeader}>
-                <Text style={styles.tripFormPickerTitle}>{label}</Text>
-                <Pressable onPress={() => setShow(false)}>
-                  <Text style={styles.tripFormPickerDone}>Xong</Text>
-                </Pressable>
-              </View>
-              <DateTimePicker
-                value={dateValue}
-                mode="time"
-                is24Hour
-                display="spinner"
-                onChange={handleChange}
-                locale="vi-VN"
-                themeVariant="light"
-              />
-            </View>
-          </Pressable>
-        </Modal>
-      ) : (
-        show && (
-          <DateTimePicker
-            value={dateValue}
-            mode="time"
-            is24Hour
-            display="default"
-            onChange={handleChange}
-          />
-        )
-      )}
-    </View>
-  );
-}
-
-function TripSelectorSheet({ placeId, placeName, onClose, onStepChange, t }) {
-  const router = useRouter();
-  const { data: tripsRaw, isLoading } = useTrips();
-  const trips = Array.isArray(tripsRaw)
-    ? tripsRaw
-    : Array.isArray(tripsRaw?.data)
-      ? tripsRaw.data
-      : [];
-  const queryClient = useQueryClient();
-
-  const [step, setStep] = useState(1); // 1: list trips, 2: config form
-  const [selectedTrip, setSelectedTrip] = useState(null);
-
-  // Form states
-  const [dayNumber, setDayNumber] = useState(1);
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [note, setNote] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-
-  const handleSelectTrip = useCallback((trip) => {
-    setSelectedTrip(trip);
-    setDayNumber(1);
-    setStartTime("");
-    setEndTime("");
-    setNote("");
-    setErrorMsg("");
-    setStep(2);
-    onStepChange?.(2);
-  }, [onStepChange]);
-
-  const handleAdd = useCallback(async () => {
-    if (!selectedTrip || isSubmitting) return;
-    setIsSubmitting(true);
-    setErrorMsg("");
-
-    try {
-      const parsedPlaceId = parseInt(placeId, 10);
-      if (!Number.isFinite(parsedPlaceId) || parsedPlaceId <= 0) {
-        throw new Error(
-          t(
-            "Không xác định được địa điểm để thêm vào chuyến đi.",
-            "Could not resolve this place for the trip.",
-          ),
-        );
-      }
-
-      await addDestinationApi(selectedTrip.id, {
-        placeId: parsedPlaceId,
-        dayNumber: Number(dayNumber),
-        startTime: startTime || null,
-        endTime: endTime || null,
-        note: note || null,
-        order: 0,
-      });
-
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: QUERY_KEYS.trips.detail(selectedTrip.id),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: QUERY_KEYS.trips.list(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: QUERY_KEYS.trips.all ? QUERY_KEYS.trips.all() : ["trips"],
-        }),
-      ]);
-
-      onClose();
-    } catch (err) {
-      setErrorMsg(err?.message || t("Có lỗi xảy ra khi thêm địa điểm.", "Error adding place."));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [selectedTrip, dayNumber, startTime, endTime, note, placeId, queryClient, onClose, isSubmitting, t]);
-
-  return (
-    <View style={styles.tripSheet}>
-      {/* Header */}
-      <View style={styles.tripSheetHeader}>
-        <View style={{ flex: 1 }}>
-          {step === 2 && (
-            <Pressable
-              onPress={() => setStep(1)}
-              hitSlop={8}
-              style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 }}
-            >
-              <MaterialIconsRounded name="arrow-back" size={16} color={PALETTE.primary} />
-              <Text style={{ color: PALETTE.primary, fontSize: 13, fontFamily: TOKENS.font.semibold }}>
-                {t("Quay lại", "Back")}
-              </Text>
-            </Pressable>
-          )}
-          <Text style={styles.tripSheetTitle}>
-            {step === 1 ? t("Thêm vào chuyến đi", "Add to trip") : t("Lên lịch trình", "Schedule destination")}
-          </Text>
-          {placeName ? (
-            <Text style={styles.tripSheetSubtitle}>{placeName}</Text>
-          ) : null}
-        </View>
-        <Pressable onPress={onClose} hitSlop={8} style={styles.tripSheetClose}>
-          <MaterialIconsRounded
-            name="close"
-            size={20}
-            color={PALETTE.textMuted}
-          />
-        </Pressable>
-      </View>
-
-      {/* Content */}
-      {step === 1 ? (
-        isLoading ? (
-          <ActivityIndicator
-            size="small"
-            color={PALETTE.primary}
-            style={{ marginTop: 20 }}
-          />
-        ) : trips.length === 0 ? (
-          <View style={styles.emptyTripState}>
-            <Text style={styles.emptyTripText}>
-              {t("Bạn chưa có chuyến đi nào", "You have no trips yet")}
-            </Text>
-            <Pressable
-              onPress={() => {
-                onClose();
-                router.push("/trip/create");
-              }}
-              style={styles.createTripButton}
-            >
-              <Text style={styles.createTripButtonText}>
-                {t("Tạo chuyến đi mới", "Create new trip")}
-              </Text>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            <BottomSheetFlatList
-              data={trips}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={({ item }) => {
-                return (
-                  <Pressable
-                    onPress={() => handleSelectTrip(item)}
-                    style={styles.tripItem}
-                  >
-                    <View style={styles.tripItemIcon}>
-                      <MaterialIconsRounded
-                        name="luggage"
-                        size={18}
-                        color={PALETTE.primary}
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.tripItemTitle}>{item.title}</Text>
-                      <Text style={styles.tripItemMeta}>
-                        {t(
-                          `${item.destinations?.length || 0} điểm đến`,
-                          `${item.destinations?.length || 0} destinations`,
-                        )}
-                      </Text>
-                    </View>
-                    <MaterialIconsRounded
-                      name="chevron-right"
-                      size={22}
-                      color={PALETTE.primary}
-                    />
-                  </Pressable>
-                );
-              }}
-              style={{ maxHeight: 320 }}
-              showsVerticalScrollIndicator={false}
-            />
-
-            <Pressable
-              onPress={() => {
-                onClose();
-                router.push("/trip/create");
-              }}
-              style={styles.tripSecondaryButton}
-            >
-              <MaterialIconsRounded
-                name="add"
-                size={18}
-                color={PALETTE.primary}
-              />
-              <Text style={styles.tripSecondaryButtonText}>
-                {t("Tạo chuyến đi mới", "Create new trip")}
-              </Text>
-            </Pressable>
-          </>
-        )
-      ) : (
-        /* STEP 2: CONFIGURE FORM */
-        <View style={{ flexDirection: "column" }}>
-          {/* Xác nhận chuyến đi */}
-          <View style={{ backgroundColor: "rgba(37,99,235,0.05)", padding: 12, borderRadius: 14, borderWidth: 1, borderColor: "rgba(37,99,235,0.1)", marginBottom: 12 }}>
-            <Text style={{ color: PALETTE.text, fontSize: 14, fontFamily: TOKENS.font.semibold }}>
-              {t("Xác nhận thêm vào chuyến đi:", "Confirm add to trip:")}
-            </Text>
-            <Text style={{ color: PALETTE.primary, fontSize: 15, fontFamily: TOKENS.font.heading, marginTop: 4 }}>
-              {selectedTrip?.title}
-            </Text>
-          </View>
-
-          {/* Chọn ngày */}
-          <View style={{ marginBottom: 12 }}>
-            <Text style={styles.tripFormLabel}>{t("Chọn ngày hoạt động", "Select day")}</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.tripFormDayChips}
-            >
-              {Array.from({ length: selectedTrip?.totalDays || 1 }).map((_, idx) => {
-                const dayVal = idx + 1;
-                const isActive = dayNumber === dayVal;
-                return (
-                  <Pressable
-                    key={dayVal}
-                    style={[styles.tripFormDayChip, isActive && styles.tripFormDayChipActive]}
-                    onPress={() => setDayNumber(dayVal)}
-                  >
-                    <Text style={[styles.tripFormDayChipText, isActive && styles.tripFormDayChipTextActive]}>
-                      {t(`Ngày ${dayVal}`, `Day ${dayVal}`)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* Chọn giờ */}
-          <View style={styles.tripFormRow}>
-            <TimeField
-              label={t("Bắt đầu", "Start time")}
-              value={startTime}
-              onChange={setStartTime}
-              placeholder="--:--"
-              icon="play-circle-outline"
-            />
-            <TimeField
-              label={t("Kết thúc", "End time")}
-              value={endTime}
-              onChange={setEndTime}
-              placeholder="--:--"
-              icon="stop-circle"
-            />
-          </View>
-
-          {/* Ghi chú */}
-          <View style={{ marginTop: 12, marginBottom: 12 }}>
-            <Text style={styles.tripFormLabel}>{t("Ghi chú hành trình", "Trip note")}</Text>
-            <TextInput
-              style={[styles.tripFormInput, styles.tripFormTextArea]}
-              value={note}
-              onChangeText={setNote}
-              placeholder={t("Thêm ghi chú cho chặng đi...", "Add note for this step...")}
-              placeholderTextColor="rgba(15, 23, 42, 0.38)"
-              multiline
-              numberOfLines={3}
-            />
-          </View>
-
-          {/* Lỗi nếu có */}
-          {errorMsg ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
-              <MaterialIconsRounded name="error-outline" size={16} color={TOKENS.color.error} />
-              <Text style={{ color: TOKENS.color.error, fontSize: 13, fontFamily: TOKENS.font.body }}>
-                {errorMsg}
-              </Text>
-            </View>
-          ) : null}
-
-          {/* Nút bấm */}
-          <View style={{ flexDirection: "row", gap: 12, marginTop: 16, paddingBottom: 16 }}>
-            <Pressable
-              onPress={handleAdd}
-              disabled={isSubmitting}
-              style={({ pressed }) => [
-                {
-                  flex: 1.5,
-                  height: 48,
-                  borderRadius: 24,
-                  backgroundColor: "#2563EB",
-                  alignItems: "center",
-                  justifyContent: "center",
-                },
-                isSubmitting && { opacity: 0.6 },
-                pressed && !isSubmitting && { opacity: 0.8 },
-              ]}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={{ color: "#FFFFFF", fontSize: 14, fontFamily: TOKENS.font.semibold }}>
-                  {t("Lưu", "Save")}
-                </Text>
-              )}
-            </Pressable>
-
-            <Pressable
-              onPress={onClose}
-              disabled={isSubmitting}
-              style={{
-                flex: 1,
-                height: 48,
-                borderRadius: 24,
-                borderWidth: 1,
-                borderColor: "#E2E8F0",
-                backgroundColor: "transparent",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ color: "#475569", fontSize: 14, fontFamily: TOKENS.font.body }}>
-                {t("Hủy", "Cancel")}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      )}
-    </View>
-  );
-}
-
-function ReviewComposerSheetContent({
-  placeName,
-  isSubmitting,
-  onClose,
-  onSubmit,
-  t,
-}) {
-  const [rating, setRating] = useState(5);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [images, setImages] = useState([]);
-  const [isPicking, setIsPicking] = useState(false);
-  const [isProcessingSubmit, setIsProcessingSubmit] = useState(false);
-
-  const handlePickImages = useCallback(async () => {
-    const remainingSlots = REVIEW_MEDIA_LIMIT - images.length;
-    if (remainingSlots <= 0) return;
-
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(
-        t("Cần quyền truy cập ảnh", "Photo permission required"),
-        t(
-          "Hãy cấp quyền để đính kèm ảnh thực tế của địa điểm.",
-          "Please allow photo access to attach place photos.",
-        ),
-      );
-      return;
-    }
-
-    setIsPicking(true);
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        allowsMultipleSelection: true,
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.9,
-        selectionLimit: remainingSlots,
-      });
-
-      if (!result.canceled) {
-        setImages((current) =>
-          [...current, ...result.assets].slice(0, REVIEW_MEDIA_LIMIT),
-        );
-      }
-    } finally {
-      setIsPicking(false);
-    }
-  }, [images.length, t]);
-
-  const handleRemoveImage = useCallback((indexToRemove) => {
-    setImages((current) =>
-      current.filter((_, index) => index !== indexToRemove),
-    );
-  }, []);
-
-  const handleSubmit = useCallback(async () => {
-    const trimmedContent = content.trim();
-    const trimmedTitle = title.trim();
-
-    if (!trimmedContent) {
-      Alert.alert(
-        t("Thiếu nội dung", "Missing content"),
-        t("Vui lòng nhập cảm nhận của bạn.", "Please enter your review."),
-      );
-      return;
-    }
-
-    setIsProcessingSubmit(true);
-    try {
-      const media = await Promise.all(
-        images.map(async (asset, index) => {
-          const result = await ImageManipulator.manipulateAsync(
-            asset.uri,
-            [{ resize: { width: REVIEW_IMAGE_WIDTH } }],
-            {
-              compress: REVIEW_IMAGE_COMPRESS,
-              format: ImageManipulator.SaveFormat.JPEG,
-              base64: true,
-            },
-          );
-
-          return {
-            mediaData: `data:image/jpeg;base64,${result.base64}`,
-            mediaType: "image",
-            order: index,
-          };
-        }),
-      );
-
-      await onSubmit({
-        rating,
-        title: trimmedTitle || null,
-        content: trimmedContent,
-        media,
-      });
-      setRating(5);
-      setTitle("");
-      setContent("");
-      setImages([]);
-    } catch (error) {
-      Alert.alert(
-        t("Không thể gửi đánh giá", "Could not submit review"),
-        error?.message || t("Vui lòng thử lại sau.", "Please try again later."),
-      );
-    } finally {
-      setIsProcessingSubmit(false);
-    }
-  }, [content, images, onSubmit, rating, t, title]);
-
-  const isBusy = isSubmitting || isProcessingSubmit;
-
-  return (
-    <BottomSheetScrollView
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.reviewSheetContent}
-    >
-      <View style={styles.reviewModalHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.reviewModalTitle}>
-            {t("Viết đánh giá", "Write review")}
-          </Text>
-          {placeName ? (
-            <Text style={styles.reviewModalSubtitle} numberOfLines={1}>
-              {placeName}
-            </Text>
-          ) : null}
-        </View>
-        <Pressable onPress={onClose} style={styles.reviewModalClose}>
-          <MaterialIconsRounded name="close" size={20} color={PALETTE.textMuted} />
-        </Pressable>
-      </View>
-
-      <View style={styles.reviewRatingPicker}>
-        {[1, 2, 3, 4, 5].map((value) => (
-          <Pressable key={value} onPress={() => setRating(value)} hitSlop={8}>
-            <MaterialIconsRounded
-              name={value <= rating ? "star" : "star-border"}
-              size={34}
-              color="#FBBF24"
-            />
-          </Pressable>
-        ))}
-      </View>
-
-      <BottomSheetTextInput
-        value={title}
-        onChangeText={setTitle}
-        placeholder={t("Tiêu đề ngắn (không bắt buộc)", "Short title")}
-        placeholderTextColor={PALETTE.textSoft}
-        style={styles.reviewInput}
-        maxLength={120}
-        returnKeyType="next"
-      />
-      <BottomSheetTextInput
-        value={content}
-        onChangeText={setContent}
-        placeholder={t(
-          "Chia sẻ trải nghiệm của bạn...",
-          "Share your experience...",
-        )}
-        placeholderTextColor={PALETTE.textSoft}
-        style={[styles.reviewInput, styles.reviewContentInput]}
-        maxLength={2000}
-        multiline
-        textAlignVertical="top"
-      />
-
-      <View style={styles.reviewImageHeader}>
-        <Text style={styles.reviewImageTitle}>
-          {t("Ảnh thực tế", "Real photos")}
-        </Text>
-        <Text style={styles.reviewImageCount}>
-          {images.length}/{REVIEW_MEDIA_LIMIT}
-        </Text>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.reviewPickerList}
-      >
-        {images.map((asset, index) => (
-          <View key={`${asset.uri}-${index}`} style={styles.reviewPickItem}>
-            <Image
-              source={{ uri: asset.uri }}
-              style={styles.reviewPickImage}
-              contentFit="cover"
-            />
-            <Pressable
-              onPress={() => handleRemoveImage(index)}
-              style={styles.reviewPickRemove}
-            >
-              <MaterialIconsRounded name="close" size={14} color="#FFFFFF" />
-            </Pressable>
-          </View>
-        ))}
-        {images.length < REVIEW_MEDIA_LIMIT ? (
-          <Pressable
-            onPress={handlePickImages}
-            disabled={isPicking || isBusy}
-            style={styles.reviewAddImageButton}
-          >
-            {isPicking ? (
-              <ActivityIndicator size="small" color={PALETTE.primary} />
-            ) : (
-              <>
-                <MaterialIconsRounded
-                  name="add-photo-alternate"
-                  size={24}
-                  color={PALETTE.primaryDark}
-                />
-                <Text style={styles.reviewAddImageText}>
-                  {t("Thêm ảnh", "Add photo")}
-                </Text>
-              </>
-            )}
-          </Pressable>
-        ) : null}
-      </ScrollView>
-
-      <Pressable
-        onPress={handleSubmit}
-        disabled={isBusy}
-        style={[
-          styles.reviewSubmitButton,
-          isBusy && styles.reviewSubmitButtonDisabled,
-        ]}
-      >
-        {isBusy ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
-        ) : (
-          <Text style={styles.reviewSubmitText}>
-            {t("Gửi đánh giá", "Submit review")}
-          </Text>
-        )}
-      </Pressable>
-    </BottomSheetScrollView>
-  );
-}
-
-function AllReviewsSheetContent({ reviews, totalCount, onClose, t }) {
-  const [ratingFilter, setRatingFilter] = useState(null);
-  const [photosOnly, setPhotosOnly] = useState(false);
-
-  const filteredReviews = useMemo(() => {
-    return [...reviews]
-      .filter((review) =>
-        ratingFilter ? Number(review?.rating) === ratingFilter : true,
-      )
-      .filter((review) =>
-        photosOnly
-          ? Array.isArray(review?.media) && review.media.length > 0
-          : true,
-      )
-      .sort(
-        (a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0),
-      );
-  }, [photosOnly, ratingFilter, reviews]);
-
-  return (
-    <BottomSheetView style={styles.allReviewsSheet}>
-      <View style={styles.allReviewsHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.reviewModalTitle}>
-            {t("Tất cả đánh giá", "All reviews")}
-          </Text>
-          <Text style={styles.reviewModalSubtitle}>
-            {formatReviewCount(totalCount, t)}
-          </Text>
-        </View>
-        <Pressable onPress={onClose} style={styles.reviewModalClose}>
-          <MaterialIconsRounded name="close" size={20} color={PALETTE.textMuted} />
-        </Pressable>
-      </View>
-
-      <View style={styles.reviewFilterWrap}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.reviewFilterRow}
-        >
-          <Pressable
-            onPress={() => setRatingFilter(null)}
-            style={[
-              styles.reviewFilterChip,
-              ratingFilter == null && styles.reviewFilterChipActive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.reviewFilterText,
-                ratingFilter == null && styles.reviewFilterTextActive,
-              ]}
-            >
-              {t("Mới nhất", "Latest")}
-            </Text>
-          </Pressable>
-          {REVIEW_FILTER_RATINGS.map((rating) => (
-            <Pressable
-              key={rating}
-              onPress={() =>
-                setRatingFilter((current) =>
-                  current === rating ? null : rating,
-                )
-              }
-              style={[
-                styles.reviewFilterChip,
-                ratingFilter === rating && styles.reviewFilterChipActive,
-              ]}
-            >
-              <MaterialIconsRounded
-                name="star"
-                size={14}
-                color={ratingFilter === rating ? "#FFFFFF" : PALETTE.accent}
-              />
-              <Text
-                style={[
-                  styles.reviewFilterText,
-                  ratingFilter === rating && styles.reviewFilterTextActive,
-                ]}
-              >
-                {rating}
-              </Text>
-            </Pressable>
-          ))}
-          <Pressable
-            onPress={() => setPhotosOnly((value) => !value)}
-            style={[
-              styles.reviewFilterChip,
-              photosOnly && styles.reviewFilterChipActive,
-            ]}
-          >
-            <MaterialIconsRounded
-              name="photo-library"
-              size={14}
-              color={photosOnly ? "#FFFFFF" : PALETTE.primaryDark}
-            />
-            <Text
-              style={[
-                styles.reviewFilterText,
-                photosOnly && styles.reviewFilterTextActive,
-              ]}
-            >
-              {t("Có ảnh", "With photos")}
-            </Text>
-          </Pressable>
-        </ScrollView>
-      </View>
-
-      {filteredReviews.length === 0 ? (
-        <View style={styles.allReviewsEmpty}>
-          <Text style={styles.emptyReviewText}>
-            {t("Không có đánh giá phù hợp", "No matching reviews")}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredReviews}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <ReviewCard review={item} t={t} />}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.allReviewsList}
-        />
-      )}
-    </BottomSheetView>
-  );
-}
 
 export default function PlaceDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -1356,6 +291,7 @@ export default function PlaceDetailScreen() {
   const totalReviews = Number(reviewData?.pagination?.total || reviews.length);
   const recentReviews = reviews.slice(0, MAIN_REVIEW_LIMIT);
 
+  const addToast = useUIStore((s) => s.addToast);
   const saveMutation = useSavePlace();
   const unsaveMutation = useUnsavePlace();
   const createReviewMutation = useCreateReview(resolvedPlaceId);
@@ -1375,7 +311,7 @@ export default function PlaceDetailScreen() {
     [SCREEN_WIDTH],
   );
 
-  const handleSaveToggle = useCallback(() => {
+  const handleSaveToggle = useCallback(async () => {
     if (!accessToken) {
       Alert.alert(
         t("Cần đăng nhập", "Login required"),
@@ -1396,29 +332,33 @@ export default function PlaceDetailScreen() {
 
     if (!place?.id) return;
 
-    if (isSavedLocal) {
-      setIsSavedLocal(false);
-      unsaveMutation.mutate(place.id, {
-        onError: () => setIsSavedLocal(true),
+    const currentStatus = isSavedLocal;
+    // Optimistic UI update
+    setIsSavedLocal(!currentStatus);
+
+    try {
+      if (currentStatus) {
+        await unsaveMutation.mutateAsync(place.id);
+        addToast({
+          type: "success",
+          message: "Địa điểm đã không còn trong danh sách yêu thích",
+        });
+      } else {
+        await saveMutation.mutateAsync({ placeId: place.id });
+        addToast({
+          type: "success",
+          message: "Địa điểm đã được lưu vào danh sách yêu thích",
+        });
+      }
+    } catch (error) {
+      // Revert lại trạng thái nếu gọi API lỗi
+      setIsSavedLocal(currentStatus);
+      addToast({
+        type: "error",
+        message: currentStatus ? "Không thể bỏ lưu địa điểm" : "Không thể lưu địa điểm",
       });
-    } else if (place?.id) {
-      setIsSavedLocal(true);
-      saveMutation.mutate(
-        { placeId: place.id },
-        {
-          onError: () => setIsSavedLocal(false),
-        },
-      );
     }
-  }, [
-    accessToken,
-    isSavedLocal,
-    place?.id,
-    router,
-    saveMutation,
-    t,
-    unsaveMutation,
-  ]);
+  }, [accessToken, place, isSavedLocal, unsaveMutation, saveMutation, addToast, router, t]);
 
   const handleNavigate = useCallback(() => {
     if (place?.latitude && place?.longitude) {
@@ -1548,7 +488,11 @@ export default function PlaceDetailScreen() {
     return (
       <View style={styles.errorState}>
         <View style={styles.errorIconWrap}>
-          <MaterialIconsRounded name="error-outline" size={40} color="#EF4444" />
+          <MaterialIconsRounded
+            name="error-outline"
+            size={40}
+            color="#EF4444"
+          />
         </View>
         <Text style={styles.errorTitle}>
           {error?.message || t("Không tìm thấy địa điểm", "Place not found")}
@@ -1558,9 +502,9 @@ export default function PlaceDetailScreen() {
   }
 
   const images = place?.images || [];
-  const fallbackImage = resolveMediaUrl(
-    place?.thumbnailUrl || place?.thumbnail,
-  ) || getCategoryPlaceholder(place?.category?.name);
+  const fallbackImage =
+    resolveMediaUrl(place?.thumbnailUrl || place?.thumbnail) ||
+    getCategoryPlaceholder(place?.category?.name);
   const currentImage = resolveMediaUrl(
     images[activeImage]?.secureUrl ||
       images[activeImage]?.thumbnailUrl ||
@@ -1687,7 +631,11 @@ export default function PlaceDetailScreen() {
 
             <View style={styles.heroActions}>
               <Pressable onPress={handleNavigate} style={styles.iconButton}>
-                <MaterialIconsRounded name="near-me" size={20} color={PALETTE.text} />
+                <MaterialIconsRounded
+                  name="near-me"
+                  size={20}
+                  color={PALETTE.text}
+                />
               </Pressable>
               <Pressable onPress={handleAddToTrip} style={styles.iconButton}>
                 <MaterialIconsRounded
@@ -1702,7 +650,11 @@ export default function PlaceDetailScreen() {
           <View style={styles.heroContent}>
             {addressLine ? (
               <View style={styles.heroMetaRow}>
-                <MaterialIconsRounded name="home-work" size={14} color="#FFFFFF" />
+                <MaterialIconsRounded
+                  name="home-work"
+                  size={14}
+                  color="#FFFFFF"
+                />
                 <Text style={styles.heroMetaText} numberOfLines={2}>
                   {addressLine}
                 </Text>
@@ -1720,7 +672,11 @@ export default function PlaceDetailScreen() {
               <Text style={styles.heroReviewText}>
                 {formatReviewCount(reviewCount, t)}
               </Text>
-              <MaterialIconsRounded name="chevron-right" size={16} color="#FFFFFF" />
+              <MaterialIconsRounded
+                name="chevron-right"
+                size={16}
+                color="#FFFFFF"
+              />
             </Pressable>
           </View>
 
@@ -1738,17 +694,18 @@ export default function PlaceDetailScreen() {
             </View>
           ) : null}
 
-          <Pressable onPress={handleSaveToggle} style={styles.favoriteFab}>
-            <MaterialIconsRounded
-              name={isSavedLocal ? "star" : "star-border"}
-              size={28}
-              color={isSavedLocal ? "#1D1D1F" : "#6B7280"}
-            />
-          </Pressable>
         </View>
 
         <View style={styles.contentWrap}>
           <View style={styles.introCard}>
+            <Pressable onPress={handleSaveToggle} style={styles.favoriteFab}>
+              <Bookmark
+                size={24}
+                fill={isSavedLocal ? "#FF9F0A" : "none"}
+                color={isSavedLocal ? "#FF9F0A" : "#6B7280"}
+                strokeWidth={1.75}
+              />
+            </Pressable>
             <View style={styles.locationBadgeRow}>
               <MaterialIconsRounded
                 name={categoryIcon}
@@ -1988,11 +945,20 @@ export default function PlaceDetailScreen() {
           { paddingBottom: Math.max(insets.bottom, 16) },
         ]}
       >
-        <Pressable onPress={handleSaveToggle} style={styles.bottomIconButton}>
+        <Pressable
+          onPress={handleSaveToggle}
+          style={[
+            styles.bottomIconButton,
+            isSavedLocal && {
+              backgroundColor: "rgba(255, 159, 10, 0.08)",
+              borderColor: "rgba(255, 159, 10, 0.2)",
+            },
+          ]}
+        >
           <MaterialIconsRounded
             name={isSavedLocal ? "bookmark" : "bookmark-border"}
             size={24}
-            color={isSavedLocal ? "#1D1D1F" : PALETTE.textMuted}
+            color={isSavedLocal ? "#FF9F0A" : PALETTE.textMuted}
           />
         </Pressable>
 
@@ -2000,7 +966,11 @@ export default function PlaceDetailScreen() {
           onPress={handleNavigate}
           style={styles.bottomSecondaryButton}
         >
-          <MaterialIconsRounded name="map" size={19} color={PALETTE.primaryDark} />
+          <MaterialIconsRounded
+            name="map"
+            size={19}
+            color={PALETTE.primaryDark}
+          />
           <Text style={styles.bottomSecondaryText}>{t("Bản đồ", "Map")}</Text>
         </Pressable>
 
@@ -2210,7 +1180,7 @@ const styles = StyleSheet.create({
   favoriteFab: {
     position: "absolute",
     right: 24,
-    bottom: -26,
+    top: -32,
     width: 64,
     height: 64,
     borderRadius: 32,
@@ -2222,6 +1192,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.16,
     shadowRadius: 24,
     elevation: 10,
+    zIndex: 10,
   },
   contentWrap: { marginTop: -40, paddingHorizontal: 16 },
   introCard: {
@@ -2316,7 +1287,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 2,
   },
-  factGrid: { gap: 10, marginTop: 18 },
   factCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -2354,44 +1324,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 19,
     fontFamily: TOKENS.font.semibold,
-  },
-  overviewGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  overviewItem: {
-    width: "48.5%",
-    borderRadius: 18,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: PALETTE.borderSoft,
-    backgroundColor: PALETTE.surfaceAlt,
-  },
-  overviewIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-    marginBottom: 8,
-  },
-  overviewTextWrap: {
-    gap: 4,
-  },
-  overviewLabel: {
-    color: PALETTE.textSoft,
-    fontSize: 11,
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-    fontFamily: TOKENS.font.semibold,
-  },
-  overviewValue: {
-    color: PALETTE.text,
-    fontSize: 15,
-    lineHeight: 20,
-    fontFamily: TOKENS.font.heading,
   },
   tagWrap: {
     flexDirection: "row",
@@ -2572,14 +1504,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontFamily: TOKENS.font.body,
   },
-  infoRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  infoText: {
-    flex: 1,
-    color: PALETTE.textMuted,
-    fontSize: 14,
-    lineHeight: 22,
-    fontFamily: TOKENS.font.body,
-  },
   openingHoursList: { gap: 8 },
   openingRow: {
     flexDirection: "row",
@@ -2632,325 +1556,6 @@ const styles = StyleSheet.create({
   seeAllReviewsText: {
     color: PALETTE.primaryDark,
     fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  reviewCard: {
-    padding: 16,
-    borderRadius: 20,
-    backgroundColor: PALETTE.surfaceAlt,
-    marginBottom: 10,
-  },
-  reviewHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
-  reviewAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.primarySoft,
-  },
-  reviewAvatarImage: { width: 44, height: 44 },
-  reviewAvatarFallback: {
-    color: PALETTE.primaryDark,
-    fontSize: 16,
-    fontFamily: TOKENS.font.heading,
-  },
-  reviewMeta: { flex: 1 },
-  reviewAuthorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  reviewAuthor: {
-    color: PALETTE.text,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  verifiedReviewBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    borderRadius: 999,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    backgroundColor: "#ECFDF5",
-  },
-  verifiedReviewText: {
-    color: PALETTE.success,
-    fontSize: 10,
-    fontFamily: TOKENS.font.semibold,
-  },
-  reviewStars: { flexDirection: "row", gap: 1, marginTop: 2 },
-  reviewDate: {
-    color: PALETTE.textSoft,
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-  },
-  reviewContent: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    lineHeight: 21,
-    marginTop: 12,
-    fontFamily: TOKENS.font.body,
-  },
-  reviewMediaScroller: { marginTop: 12 },
-  reviewMediaList: { gap: 8, paddingRight: 4 },
-  reviewMediaImage: {
-    width: 92,
-    height: 92,
-    borderRadius: 16,
-    backgroundColor: PALETTE.borderSoft,
-  },
-  reviewReplyList: {
-    gap: 8,
-    marginTop: 12,
-  },
-  reviewReplyCard: {
-    borderLeftWidth: 3,
-    borderLeftColor: PALETTE.primary,
-    borderRadius: 16,
-    padding: 12,
-    backgroundColor: "#FFFFFF",
-  },
-  reviewReplyHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 6,
-  },
-  reviewReplyAuthor: {
-    color: PALETTE.primaryDark,
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-  },
-  reviewReplyContent: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    lineHeight: 20,
-    fontFamily: TOKENS.font.body,
-  },
-  reviewSheetBackground: {
-    backgroundColor: PALETTE.surface,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-  },
-  reviewSheetIndicator: {
-    width: 42,
-    backgroundColor: PALETTE.border,
-  },
-  reviewSheetContent: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 32,
-  },
-  allReviewsSheet: {
-    flex: 1,
-    paddingHorizontal: 18,
-    paddingTop: 8,
-  },
-  allReviewsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 14,
-  },
-  reviewFilterWrap: {
-    marginHorizontal: -18,
-    marginBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: PALETTE.borderSoft,
-    paddingBottom: 12,
-  },
-  reviewFilterRow: {
-    gap: 8,
-    paddingHorizontal: 18,
-  },
-  reviewFilterChip: {
-    minHeight: 36,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: PALETTE.border,
-    backgroundColor: PALETTE.surfaceAlt,
-    paddingHorizontal: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  reviewFilterChipActive: {
-    borderColor: PALETTE.primary,
-    backgroundColor: PALETTE.primary,
-  },
-  reviewFilterText: {
-    color: PALETTE.textMuted,
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-  },
-  reviewFilterTextActive: {
-    color: "#FFFFFF",
-  },
-  allReviewsList: {
-    paddingBottom: 32,
-  },
-  allReviewsEmpty: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  reviewModalBackdrop: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(15,23,42,0.38)",
-  },
-  reviewModalScrim: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  reviewKeyboardAvoider: {
-    width: "100%",
-    justifyContent: "flex-end",
-  },
-  reviewModalCard: {
-    maxHeight: "88%",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 24,
-    backgroundColor: PALETTE.surface,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: -12 },
-    shadowOpacity: 0.16,
-    shadowRadius: 28,
-    elevation: 18,
-  },
-  reviewModalContent: {
-    paddingBottom: 8,
-  },
-  reviewModalHandle: {
-    alignSelf: "center",
-    width: 44,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: PALETTE.border,
-    marginBottom: 16,
-  },
-  reviewModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 14,
-  },
-  reviewModalTitle: {
-    color: PALETTE.text,
-    fontSize: 20,
-    fontFamily: TOKENS.font.heading,
-  },
-  reviewModalSubtitle: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    marginTop: 4,
-    fontFamily: TOKENS.font.body,
-  },
-  reviewModalClose: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.surfaceAlt,
-  },
-  reviewRatingPicker: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginBottom: 16,
-  },
-  reviewInput: {
-    minHeight: 48,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: PALETTE.border,
-    backgroundColor: PALETTE.surfaceAlt,
-    color: PALETTE.text,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    fontFamily: TOKENS.font.body,
-    marginBottom: 10,
-  },
-  reviewContentInput: {
-    minHeight: 104,
-    lineHeight: 21,
-  },
-  reviewImageHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 4,
-    marginBottom: 10,
-  },
-  reviewImageTitle: {
-    color: PALETTE.text,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  reviewImageCount: {
-    color: PALETTE.textMuted,
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-  },
-  reviewPickerList: { gap: 10, paddingRight: 4 },
-  reviewPickItem: {
-    width: 82,
-    height: 82,
-    borderRadius: 18,
-    overflow: "hidden",
-    backgroundColor: PALETTE.borderSoft,
-  },
-  reviewPickImage: { width: 82, height: 82 },
-  reviewPickRemove: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(15,23,42,0.72)",
-  },
-  reviewAddImageButton: {
-    width: 82,
-    height: 82,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: PALETTE.primary,
-    backgroundColor: PALETTE.primarySoft,
-  },
-  reviewAddImageText: {
-    color: PALETTE.primaryDark,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  reviewSubmitButton: {
-    height: 54,
-    borderRadius: 27,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.primary,
-    marginTop: 18,
-  },
-  reviewSubmitButtonDisabled: {
-    opacity: 0.75,
-  },
-  reviewSubmitText: {
-    color: "#FFFFFF",
-    fontSize: 15,
     fontFamily: TOKENS.font.semibold,
   },
   bottomBar: {
@@ -3020,215 +1625,4 @@ const styles = StyleSheet.create({
     borderColor: PALETTE.border,
   },
   sheetIndicator: { backgroundColor: "rgba(0, 0, 0, 0.18)", width: 36 },
-  tripSheet: { flex: 1, paddingHorizontal: 20, paddingTop: 8 },
-  tripSheetHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 18,
-  },
-  tripSheetTitle: {
-    color: PALETTE.text,
-    fontSize: 18,
-    fontFamily: TOKENS.font.heading,
-  },
-  tripSheetSubtitle: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    marginTop: 4,
-    fontFamily: TOKENS.font.body,
-  },
-  tripSheetClose: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.05)",
-  },
-  emptyTripState: { alignItems: "center", paddingVertical: 28, gap: 12 },
-  emptyTripText: {
-    color: PALETTE.textMuted,
-    textAlign: "center",
-    fontFamily: TOKENS.font.body,
-  },
-  createTripButton: {
-    backgroundColor: PALETTE.primary,
-    borderRadius: 18,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  createTripButtonText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontFamily: TOKENS.font.heading,
-  },
-  tripItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: 18,
-    backgroundColor: PALETTE.surfaceAlt,
-    borderWidth: 1,
-    borderColor: PALETTE.borderSoft,
-    marginBottom: 10,
-  },
-  tripItemIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(37, 99, 235, 0.08)",
-  },
-  tripItemTitle: {
-    color: PALETTE.text,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  tripItemMeta: {
-    color: PALETTE.textMuted,
-    fontSize: 12,
-    marginTop: 2,
-    fontFamily: TOKENS.font.body,
-  },
-  tripSecondaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: 14,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: PALETTE.border,
-    marginTop: 4,
-  },
-  tripSecondaryButtonText: {
-    color: PALETTE.primary,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  tripFormLabel: {
-    color: PALETTE.text,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  tripFormInput: {
-    backgroundColor: PALETTE.surfaceAlt,
-    borderWidth: 1,
-    borderColor: PALETTE.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    color: PALETTE.text,
-    fontSize: 14,
-    fontFamily: TOKENS.font.body,
-  },
-  tripFormTextArea: {
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-  tripFormRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  tripFormCol: {
-    flex: 1,
-    gap: 6,
-  },
-  tripFormDayChips: {
-    flexDirection: "row",
-    gap: 8,
-    paddingVertical: 4,
-  },
-  tripFormDayChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: PALETTE.surfaceAlt,
-    borderWidth: 1,
-    borderColor: PALETTE.border,
-  },
-  tripFormDayChipActive: {
-    backgroundColor: PALETTE.primary,
-    borderColor: PALETTE.primary,
-  },
-  tripFormDayChipText: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    color: PALETTE.textMuted,
-  },
-  tripFormDayChipTextActive: {
-    color: "#FFFFFF",
-  },
-  tripFormBtnRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 16,
-  },
-  tripFormBtnPrimary: {
-    flex: 1.5,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: PALETTE.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tripFormBtnSecondary: {
-    flex: 1,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: PALETTE.border,
-    backgroundColor: "transparent",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tripFormBtnPrimaryText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  tripFormBtnSecondaryText: {
-    color: PALETTE.textMuted,
-    fontSize: 14,
-    fontFamily: TOKENS.font.body,
-  },
-  tripFormPickerOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  tripFormPickerSheet: {
-    backgroundColor: PALETTE.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 34,
-    borderWidth: 1,
-    borderColor: PALETTE.border,
-  },
-  tripFormPickerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: PALETTE.border,
-  },
-  tripFormPickerTitle: {
-    fontSize: 16,
-    fontFamily: TOKENS.font.semibold,
-    color: PALETTE.text,
-  },
-  tripFormPickerDone: {
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-    color: PALETTE.primary,
-  },
 });

@@ -108,6 +108,10 @@ model User {
   trips                   Trip[]
   savedTrips              SavedTrip[]
   checkins                UserCheckin[]
+  createdEvents           Event[]                 @relation("EventCreator")
+  eventParticipations     EventParticipant[]
+  eventMoments            EventMoment[]
+  activeSessions          ActiveSession[]
   grantedPermissions      UserPermission[]        @relation("GrantedPermissions")
   staffInvitationsCreated StaffInvitation[]       @relation("StaffInvitationCreator")
   staffInvitationAccepted StaffInvitation[]       @relation("StaffInvitationAccepted")
@@ -117,6 +121,8 @@ model User {
   sessions                UserSession[]
   role                    Role                    @relation(fields: [roleId], references: [id])
 
+  @@index([deletedAt])
+  @@index([status])
   @@map("users")
 }
 
@@ -381,7 +387,6 @@ model Category {
   places       Place[]
 
   @@index([slug])
-  @@index([level])
   @@index([level], map: "idx_categories_level")
   @@map("categories")
 }
@@ -412,8 +417,6 @@ model CategoryTag {
   tag        PlaceTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@unique([categoryId, tagId])
-  @@index([categoryId])
-  @@index([tagId])
   @@index([categoryId], map: "idx_category_tags_category_id")
   @@index([tagId], map: "idx_category_tags_tag_id")
   @@map("category_tags")
@@ -482,6 +485,7 @@ model Place {
   @@index([latitude, longitude])
   @@index([ratingAvg(sort: Desc)])
   @@index([slug])
+  @@index([deletedAt])
   @@map("places")
 }
 
@@ -575,6 +579,7 @@ model Review {
   @@index([userId])
   @@index([rating])
   @@index([isSeeded])
+  @@index([status])
   @@map("reviews")
 }
 
@@ -694,6 +699,7 @@ model Trip {
   destinations  TripDestination[]
   shares        TripShare[]
   savedBy       SavedTrip[]
+  events        Event[]
   user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -802,6 +808,7 @@ model Business {
   blockedDates           BusinessBlockedDate[]
   settings               Json                    @default("{}") @map("settings")
 
+  @@index([status])
   @@map("businesses")
 }
 
@@ -1037,6 +1044,7 @@ model Booking {
   // Dùng cho check availability với startTime/endTime
   @@index([resourceId, startTime, endTime])
   @@index([serviceId, startTime, endTime])
+  @@index([deletedAt])
   @@map("bookings")
 }
 
@@ -1116,4 +1124,77 @@ model CachedItinerary {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@map("cached_itineraries")
+}
+
+model Event {
+  id                Int                @id @default(autoincrement())
+  title             String
+  description       String?
+  thumbnail         String?            // Dữ liệu ảnh (URL Cloudinary tối ưu)
+  thumbnailPublicId String?            @map("thumbnail_public_id") // publicId Cloudinary để dễ xóa
+  startDate         DateTime           @map("start_date") @db.Date
+  endDate           DateTime           @map("end_date") @db.Date
+  location          String?            @default("Cần Thơ")
+  maxParticipants   Int?               @map("max_participants")
+  status            String             @default("active") // active | inactive | completed
+  isFeaturedBanner  Boolean            @default(false) @map("is_featured_banner") // Hiển thị trên Carousel Explore
+  
+  // ─── Tích hợp 4 Viễn cảnh Trải nghiệm ───
+  totalCheckIns     Int                @default(0) @map("total_check_ins") // Viễn cảnh 2: Tiến trình cộng đồng
+  broadcastNotice   String?            @db.VarChar(255) @map("broadcast_notice") // Viễn cảnh 4: Ticker khẩn cấp từ BTC
+  
+  tripId            Int?               @map("trip_id")
+  trip              Trip?              @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  createdBy         Int                @map("created_by")
+  createdByUser     User               @relation("EventCreator", fields: [createdBy], references: [id])
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  participants      EventParticipant[]
+  moments           EventMoment[]
+  activeSessions    ActiveSession[]
+
+  @@map("events")
+}
+
+model EventParticipant {
+  id        Int      @id @default(autoincrement())
+  eventId   Int      @map("event_id")
+  userId    Int      @map("user_id")
+  joinedAt  DateTime @default(now()) @map("joined_at")
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("event_participants")
+}
+
+// Viễn cảnh 1: Mỗi người đóng góp duy nhất 1 tấm ảnh hình vuông tại mỗi chặng check-in
+model EventMoment {
+  id            Int      @id @default(autoincrement())
+  eventId       Int      @map("event_id")
+  placeId       Int      @map("place_id")
+  userId        Int      @map("user_id")
+  imageUrl      String   @map("image_url") // URL Cloudinary
+  imagePublicId String   @map("image_public_id") // publicId Cloudinary để dọn dẹp ảnh mồ côi
+  createdAt     DateTime @default(now()) @map("created_at")
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, placeId, userId]) // Đảm bảo: 1 user chỉ đóng góp tối đa 1 ảnh tại 1 địa điểm trong 1 sự kiện
+  @@map("event_moments")
+}
+
+// Viễn cảnh 3: Quản lý lượt ping hoạt động để đếm số lượng người đồng hành thực tế
+model ActiveSession {
+  id        Int      @id @default(autoincrement())
+  eventId   Int      @map("event_id")
+  placeId   Int      @map("place_id")
+  userId    Int      @map("user_id")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId]) // Mỗi user chỉ có duy nhất 1 session hoạt động tại 1 thời điểm trong 1 event (tránh đếm trùng khi chuyển chặng nhanh)
+  @@index([updatedAt]) // Tối ưu hóa đếm active count theo thời gian (decay 5 phút)
+  @@map("active_sessions")
 }

@@ -1,5 +1,5 @@
 import { memo, useMemo, useState, useEffect } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { LinearGradient } from "expo-linear-gradient";
@@ -16,7 +16,11 @@ import {
   getDateRangeLabel,
   getTimelineLabel,
 } from "../utils/tripHelpers";
-import { resolveMediaUrl, resolvePlaceImageUri } from "../../../lib/media-url";
+import {
+  resolveTripCoverUri,
+} from "../../../lib/media-url";
+
+const HERO_COVER_WIDTH = 800;
 
 const STAT_ICONS = {
   blue: { bg: "rgba(29,29,31,0.06)", color: "#1D1D1F" },
@@ -31,13 +35,7 @@ const StatPill = memo(function StatPill({ icon, value, label, tone }) {
   return (
     <View
       className="w-[48%] flex-row items-center gap-3 py-4 px-4 rounded-[20px] bg-white"
-      style={{
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-        elevation: 2,
-      }}
+      style={styles.statShadow}
     >
       <View
         className="w-10 h-10 rounded-xl items-center justify-center"
@@ -71,18 +69,16 @@ export function TripsDashboard({
   const heroTrip = useMemo(() => getHeroTrip(trips), [trips]);
   const summary = useMemo(() => buildSummary(trips), [trips]);
 
-  const heroCover = heroTrip
-    ? (heroTrip.thumbnail
-      ? resolveMediaUrl(heroTrip.thumbnail)
-      : resolvePlaceImageUri(heroTrip.destinations?.[0]?.place))
-    : null;
+  const heroCoverUri = useMemo(
+    () => (heroTrip ? resolveTripCoverUri(heroTrip, HERO_COVER_WIDTH) : null),
+    [heroTrip],
+  );
 
-  const fallbackCover = "https://picsum.photos/id/408/600/400";
-  const [imgSrc, setImgSrc] = useState(heroCover ? { uri: heroCover } : { uri: fallbackCover });
+  const [imgSrc, setImgSrc] = useState({ uri: heroCoverUri });
 
   useEffect(() => {
-    setImgSrc(heroCover ? { uri: heroCover } : { uri: fallbackCover });
-  }, [heroCover]);
+    setImgSrc({ uri: heroCoverUri });
+  }, [heroCoverUri]);
 
   const timelineLabel = heroTrip ? getTimelineLabel(heroTrip) : null;
 
@@ -90,7 +86,7 @@ export function TripsDashboard({
     <View style={{ paddingHorizontal: TAB_SCREEN_PADDING }} className="pt-2 pb-6">
       {/* ── Header ── */}
       <View className="flex-row items-center justify-between mt-4 mb-6">
-        <View>
+        <View className="flex-1 pr-3">
           <Text
             className="text-[34px] font-heading tracking-tight"
             style={{ color: APPLE_THEME.text }}
@@ -103,37 +99,34 @@ export function TripsDashboard({
               : "Khởi tạo kỷ niệm mới"}
           </Text>
         </View>
+        <Pressable
+          onPress={onCreate}
+          accessibilityLabel="Tạo chuyến đi mới"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          className="w-11 h-11 rounded-full items-center justify-center bg-[#1D1D1F]"
+          style={({ pressed }) => (pressed ? { opacity: 0.85 } : undefined)}
+        >
+          <MaterialIconsRounded name="add" size={26} color="#FFFFFF" />
+        </Pressable>
       </View>
 
       {/* ── Hero Trip Card ── */}
       {heroTrip ? (
-        <TouchableOpacity
-          activeOpacity={0.85}
+        <Pressable
           onPress={() => onOpenHero(heroTrip.id)}
           className="h-[280px] rounded-3xl overflow-hidden mb-6 bg-[#1C1C1E] relative"
-          style={{
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.15,
-            shadowRadius: 16,
-            elevation: 8,
-          }}
+          style={styles.heroShadow}
         >
-          {heroCover ? (
+          {imgSrc?.uri ? (
             <Image
               source={imgSrc}
               style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
               contentFit="cover"
               transition={300}
               cachePolicy="memory-disk"
-              onError={() => setImgSrc({ uri: fallbackCover })}
+              onError={() => setImgSrc({ uri: null })}
             />
-          ) : (
-            <LinearGradient
-              colors={["#2C2C2E", "#1C1C1E", "#000000"]}
-              style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
-            />
-          )}
+          ) : null}
           <LinearGradient
             colors={[
               "rgba(0,0,0,0.1)",
@@ -193,19 +186,12 @@ export function TripsDashboard({
               </View>
             </View>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       ) : (
-        <TouchableOpacity
-          activeOpacity={0.8}
+        <Pressable
           onPress={onCreate}
           className="h-[120px] rounded-[24px] overflow-hidden flex-row items-center px-5 mb-6 border border-black/5"
-          style={{
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.05,
-            shadowRadius: 8,
-            elevation: 2,
-          }}
+          style={styles.createShadow}
         >
           <LinearGradient
             colors={["#F8F9FA", "#F1F3F5"]}
@@ -229,7 +215,7 @@ export function TripsDashboard({
           <View className="w-8 h-8 rounded-[16px] bg-black/[0.06] items-center justify-center ml-3">
             <MaterialIconsRounded name="arrow-forward" size={20} color="#1D1D1F" />
           </View>
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       {/* ── Stats Strip (Grid) ── */}
@@ -254,9 +240,8 @@ export function TripsDashboard({
           {FILTERS.map((filter) => {
             const active = activeFilter === filter.key;
             return (
-              <TouchableOpacity
+              <Pressable
                 key={filter.key}
-                activeOpacity={0.7}
                 onPress={() => onSelectFilter(filter.key)}
                 className={cn(
                   "rounded-full px-4 py-2",
@@ -272,7 +257,7 @@ export function TripsDashboard({
                 >
                   {filter.label}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>
@@ -280,3 +265,27 @@ export function TripsDashboard({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  statShadow: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  heroShadow: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  createShadow: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+});

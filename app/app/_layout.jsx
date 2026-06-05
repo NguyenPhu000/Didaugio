@@ -31,6 +31,7 @@ import {
 import { AppProvider } from "../src/providers/AppProvider";
 import { OfflineToast } from "../src/components/composed/OfflineToast";
 import { AIFloatingButton } from "../src/components/composed/AIFloatingButton";
+import { ToastContainer } from "../src/components/composed/ToastContainer";
 import { useAuthStore } from "../src/stores/authStore";
 import { useUIStore } from "../src/stores/uiStore";
 import { useOfflineSync } from "../src/modules/trips/hooks/useTripsOffline";
@@ -164,8 +165,9 @@ export default function RootLayout() {
       rootSegment === "(tabs)" &&
       (childSegment === "map" || childSegment === "explore");
     const inPlaceDetail = rootSegment === "place";
+    const inEventDetail = rootSegment === "event";
     const inExploreStack = rootSegment === "explore";
-    const isPublicRoute = inPublicTabs || inPlaceDetail || inExploreStack;
+    const isPublicRoute = inPublicTabs || inPlaceDetail || inEventDetail || inExploreStack;
     const isLoggedIn = !!accessToken || isGuest;
 
     if (!isLoggedIn && !inAuthGroup && !isPublicRoute) {
@@ -206,6 +208,10 @@ export default function RootLayout() {
                     options={{ animation: "slide_from_right" }}
                   />
                   <Stack.Screen
+                    name="event/[id]"
+                    options={{ animation: "slide_from_right" }}
+                  />
+                  <Stack.Screen
                     name="profile/settings"
                     options={{ animation: "slide_from_right" }}
                   />
@@ -229,6 +235,7 @@ export default function RootLayout() {
                 {segments[0] !== "(auth)" && <AIFloatingButton />}
                 <OfflineToast />
                 <GlobalAlert />
+                <ToastContainer />
               </BottomSheetModalProvider>
             </View>
           </AppProvider>

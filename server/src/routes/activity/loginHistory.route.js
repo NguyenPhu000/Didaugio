@@ -2,6 +2,7 @@ import express from "express";
 import * as loginHistoryController from "../../controllers/activity/loginHistory.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { blockGuestFromAdmin } from "../../middlewares/blockGuestFromAdmin.js";
+import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { validateParams } from "../../middlewares/validateSchema.js";
 import { idSchema } from "../../models/index.js";
 import { z } from "zod";
@@ -17,7 +18,7 @@ router.use(authenticate, blockGuestFromAdmin);
  * @access  Private (Admin hoặc User xem history của mình)
  * @query   page, limit, userId, deviceName, isActive
  */
-router.get("/", loginHistoryController.getAll);
+router.get("/", hasPermission("password_reset.view"), loginHistoryController.getAll);
 
 /**
  * @route   GET /api/login-history/:id
@@ -26,6 +27,7 @@ router.get("/", loginHistoryController.getAll);
  */
 router.get(
   "/:id",
+  hasPermission("password_reset.view"),
   validateParams(z.object({ id: idSchema })),
   loginHistoryController.getById,
 );
@@ -36,7 +38,7 @@ router.get(
  * @access  Private (Admin hoặc User revoke session của mình)
  * @body    { sessionId }
  */
-router.post("/revoke", loginHistoryController.revoke);
+router.post("/revoke", hasPermission("password_reset.view"), loginHistoryController.revoke);
 
 /**
  * @route   POST /api/login-history/revoke-all/:userId
@@ -46,6 +48,7 @@ router.post("/revoke", loginHistoryController.revoke);
  */
 router.post(
   "/revoke-all/:userId",
+  hasPermission("password_reset.view"),
   validateParams(z.object({ userId: idSchema })),
   loginHistoryController.revokeAll,
 );

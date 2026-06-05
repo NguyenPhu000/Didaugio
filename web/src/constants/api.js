@@ -25,8 +25,6 @@ const PUBLIC_AUTH_PATHS = new Set([
   "/auth/verify-email",
   "/auth/resend-verification-public",
   "/auth/google",
-  "/auth/google/exchange",
-  "/auth/google/exchange-result",
 ]);
 
 const normalizeRequestPath = (requestUrl) => {

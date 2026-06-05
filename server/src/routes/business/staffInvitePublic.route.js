@@ -1,5 +1,7 @@
 import { Router } from "express";
 import * as invitationController from "../../controllers/business/staffInvitation.controller.js";
+import { validateBody } from "../../middlewares/validateSchema.js";
+import { acceptInvitationSchema } from "../../models/index.js";
 
 const router = Router();
 
@@ -7,6 +9,6 @@ const router = Router();
 router.get("/:token", invitationController.validateToken);
 
 // POST /api/staff/invite/accept - Hoàn tất đăng ký (Public)
-router.post("/accept", invitationController.accept);
+router.post("/accept", validateBody(acceptInvitationSchema), invitationController.accept);
 
 export default router;

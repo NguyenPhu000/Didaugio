@@ -32,41 +32,41 @@ export const TRIP_THEME = {
 export const TRIP_STATUS_META = {
   upcoming: {
     label: "Sắp tới",
-    bg: "#E0F2FE",        // Xanh biển trời trong trẻo (Sky Blue)
-    color: "#0369A1",     // Chữ xanh đại dương đậm rực
-    text: "#0369A1",
+    bg: "#BAE6FD",
+    color: "#075985",
+    text: "#075985",
     accent: "#0EA5E9",
     icon: "schedule",
   },
   active: {
     label: "Đang diễn ra",
-    bg: "#DBEAFE",        // Xanh dương hừng đông rực rỡ
-    color: "#1E40AF",     // Chữ xanh Royal đậm, cực kỳ hút mắt
-    text: "#1E40AF",
+    bg: "#BFDBFE",
+    color: "#1E3A8A",
+    text: "#1E3A8A",
     accent: "#2563EB",
     icon: "flight-takeoff",
   },
   ongoing: {
     label: "Đang diễn ra",
-    bg: "#DBEAFE",        // Đồng bộ với active
-    color: "#1E40AF",
-    text: "#1E40AF",
+    bg: "#BFDBFE",
+    color: "#1E3A8A",
+    text: "#1E3A8A",
     accent: "#2563EB",
     icon: "flight-takeoff",
   },
   completed: {
     label: "Đã hoàn thành",
-    bg: "#DCFCE7",        // Xanh lá cây miền nhiệt đới tươi mát
-    color: "#15803D",     // Chữ xanh lục sẫm rực rỡ
-    text: "#15803D",
+    bg: "#BBF7D0",
+    color: "#14532D",
+    text: "#14532D",
     accent: "#22C55E",
     icon: "task-alt",
   },
   cancelled: {
     label: "Đã hủy",
-    bg: "#FEE2E2",        // Đỏ dâu tây nhạt
-    color: "#DC2626",     // Chữ đỏ rực rỡ, mang tính cảnh báo mạnh
-    text: "#DC2626",
+    bg: "#FECACA",
+    color: "#991B1B",
+    text: "#991B1B",
     accent: "#EF4444",
     icon: "event-busy",
   },

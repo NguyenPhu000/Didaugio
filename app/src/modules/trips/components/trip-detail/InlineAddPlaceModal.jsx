@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useQueryClient } from "@tanstack/react-query";
 import { useExplore } from "../../../explore/hooks/useExplore";
-import { useSavedPlaces } from "../../../saved/hooks/useSaved";
+import { useSavedPlacesCached } from "../../../saved/hooks/useSavedOffline";
 import { addDestinationApi } from "../../api/tripsApi";
 import { QUERY_KEYS } from "../../../../constants/query-keys";
 import {
@@ -97,7 +97,7 @@ function InlineAddPlaceModal({
     return exploreData?.pages.flatMap((page) => page?.data || []) ?? [];
   }, [exploreData]);
 
-  const { data: savedPlaces = [] } = useSavedPlaces(visible);
+  const { data: savedPlaces = [] } = useSavedPlacesCached(visible);
 
   const normalizedSavedPlaces = useMemo(() => {
     return (savedPlaces || []).map((item) => item?.place || item).filter((p) => p && p.id);

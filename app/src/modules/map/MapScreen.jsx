@@ -16,6 +16,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
+import { Marker } from "react-native-maps";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
+import { Image } from "expo-image";
+import { Alert } from "react-native";
+import { usePingEvent, useEventDetail, useCreateMoment } from "../explore/hooks/useEvents";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useHomeData } from "./hooks/useHomeData";
 import { useMapPlaces } from "./hooks/useMapPlaces";
@@ -53,7 +59,7 @@ import CurrentLocationMarker from "./components/map-overlays/CurrentLocationMark
 import RouteBuilderStopsMarkerLayer from "./components/map-overlays/RouteBuilderStopsMarkerLayer";
 import ActiveRouteLayer from "./components/map-overlays/ActiveRouteLayer";
 import { useMapRouting } from "./hooks/useMapRouting";
-import { AIEntryButton } from "../../components/composed/AIEntryButton";
+import { Locate, Layers, X } from "lucide-react-native";
 import {
   PlacePreviewCard,
   getPlaceRatingValue,
@@ -183,6 +189,18 @@ export default function MapScreen() {
   const [tripCompleteVisible, setTripCompleteVisible] = useState(false);
   const [completeIsTripEnd, setCompleteIsTripEnd] = useState(false);
   const [completeDayNumber, setCompleteDayNumber] = useState(1);
+
+  // Event states
+  const [activeEventId, setActiveEventId] = useState(null);
+  const [isMomentUploading, setIsMomentUploading] = useState(false);
+
+  // Fetch event detail with auto-polling every 10s for broadcastNotice
+  const { data: eventData } = useEventDetail(activeEventId, !!activeEventId, {
+    refetchInterval: activeEventId ? 10_000 : false,
+  });
+  const broadcastNotice = eventData?.broadcastNotice || null;
+
+  const createMomentMutation = useCreateMoment();
 
   const {
     data: mapPlaces,
@@ -465,6 +483,7 @@ export default function MapScreen() {
   } = activeTrip;
 
   const updateActiveTripMutation = useUpdateTrip(activeTrip.activeTripId);
+  const pingEventMutation = usePingEvent();
 
   // Tần suất và khoảng cách GPS động dựa trên nearbyTriggered
   const gpsIntervals = useMemo(() => {
@@ -505,6 +524,140 @@ export default function MapScreen() {
       cancelled = true;
     };
   }, [isActiveTripMode]);
+
+  // 1. Đọc activeEventId từ AsyncStorage khi activeTrip.activeTripId thay đổi
+  useEffect(() => {
+    const checkActiveEvent = async () => {
+      try {
+        if (isActiveTripMode && activeTrip.activeTripId) {
+          const evId = await AsyncStorage.getItem(
+            `didaugio:active_event_trip:${activeTrip.activeTripId}`
+          );
+          setActiveEventId(evId ? parseInt(evId, 10) : null);
+        } else {
+          setActiveEventId(null);
+        }
+      } catch (err) {
+        console.error("Lỗi đọc activeEventId:", err);
+      }
+    };
+    checkActiveEvent();
+  }, [isActiveTripMode, activeTrip.activeTripId]);
+
+  // 3. Định kỳ 3 phút gửi ping vị trí GPS chặng hiện tại lên API
+  useEffect(() => {
+    if (
+      !isActiveTripMode ||
+      !activeEventId ||
+      !activeTripLocation ||
+      activeTrip.isPaused ||
+      !activeNextDestination?.placeId
+    ) {
+      return;
+    }
+
+    const sendPing = async () => {
+      try {
+        await pingEventMutation.mutateAsync({
+          id: activeEventId,
+          payload: {
+            latitude: activeTripLocation.latitude,
+            longitude: activeTripLocation.longitude,
+            placeId: activeNextDestination.placeId,
+          },
+        });
+      } catch (err) {
+        console.error("Lỗi ping vị trí lên server:", err);
+      }
+    };
+
+    sendPing();
+    const interval = setInterval(sendPing, 180000); // 3 phút
+    return () => clearInterval(interval);
+  }, [
+    isActiveTripMode,
+    activeEventId,
+    activeTripLocation?.latitude,
+    activeTripLocation?.longitude,
+    activeNextDestination?.placeId,
+    activeTrip.isPaused,
+    pingEventMutation,
+  ]);
+
+  // 4. Giả lập 3 đốm Neon nhấp nháy xung quanh đích chặng
+  const neonSpots = useMemo(() => {
+    if (!isActiveTripMode || !activeTargetPoint) return [];
+    const baseLat = activeTargetPoint.lat;
+    const baseLng = activeTargetPoint.lng;
+    return [
+      { id: "neon-1", latitude: baseLat + 0.0004, longitude: baseLng - 0.0003, color: "#38BDF8" },
+      { id: "neon-2", latitude: baseLat - 0.0003, longitude: baseLng + 0.0005, color: "#34C759" },
+      { id: "neon-3", latitude: baseLat + 0.0002, longitude: baseLng + 0.0004, color: "#FF2D55" },
+    ];
+  }, [isActiveTripMode, activeTargetPoint?.lat, activeTargetPoint?.lng]);
+
+  // 5. Chụp ảnh check-in nén 0.6 và gửi lên API moments khi bấm ĐĂNG KHOẢNH KHẮC
+  const handleCameraCheckIn = useCallback(async () => {
+    if (!activeEventId || !activeNextDestination) return;
+
+    const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
+    if (cameraStatus.status !== "granted") {
+      Alert.alert("Quyền truy cập", "Bạn cần cấp quyền camera để chụp ảnh check-in.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (result.canceled || !result.assets?.[0]?.uri) return;
+
+    setIsMomentUploading(true);
+
+    try {
+      // Nén & crop 1:1
+      const manipulated = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 400, height: 400 } }],
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      const response = await fetch(manipulated.uri);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onloadend = async () => {
+        const base64data = reader.result;
+
+        try {
+          await createMomentMutation.mutateAsync({
+            id: activeEventId,
+            payload: {
+              placeId: activeNextDestination.placeId,
+              imageUrl: base64data,
+            },
+          });
+
+          // Lưu AsyncStorage đánh dấu hoàn thành chặng đi này
+          const key = `didaugio:event:${activeEventId}:checkedin:${activeNextDestination.placeId}`;
+          await AsyncStorage.setItem(key, "true");
+
+          Alert.alert("Thành công", "Đăng khoảnh khắc check-in ẩn danh thành công! Ảnh của bạn đã xuất hiện trên bức tường khoảnh khắc.");
+        } catch (err) {
+          Alert.alert("Lỗi", err?.message || "Đăng khoảnh khắc thất bại.");
+        } finally {
+          setIsMomentUploading(false);
+        }
+      };
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Lỗi", "Không thể xử lý ảnh.");
+      setIsMomentUploading(false);
+    }
+  }, [activeEventId, activeNextDestination]);
 
   // Bật auto-follow + bay camera về vị trí hiện tại khi vào chế độ.
   useEffect(() => {
@@ -1188,7 +1341,6 @@ export default function MapScreen() {
 
           <CurrentLocationMarker
             location={isActiveTripMode ? activeTripLocation : currentLocation}
-            avatarUri={currentUserAvatarUri}
             heading={
               (isActiveTripMode ? activeTripLocation : currentLocation)?.heading
             }
@@ -1221,6 +1373,45 @@ export default function MapScreen() {
               routeSource={routeSource}
             />
           )}
+
+          {isActiveTripMode && neonSpots.length > 0
+            ? neonSpots.map((spot) => (
+                <Marker
+                  key={spot.id}
+                  coordinate={{ latitude: spot.latitude, longitude: spot.longitude }}
+                  anchor={{ x: 0.5, y: 0.5 }}
+                  tracksViewChanges={false}
+                >
+                  <View style={{ alignItems: "center", justifyContent: "center" }}>
+                    <View
+                      style={{
+                        backgroundColor: spot.color,
+                        opacity: 0.25,
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        position: "absolute",
+                      }}
+                    />
+                    <View
+                      style={{
+                        backgroundColor: spot.color,
+                        borderColor: "#FFFFFF",
+                        borderWidth: 1,
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 2,
+                        elevation: 3,
+                      }}
+                    />
+                  </View>
+                </Marker>
+              ))
+            : null}
         </MapView>
       </View>
 
@@ -1282,6 +1473,52 @@ export default function MapScreen() {
         targetName={activeTargetPoint?.name}
         distanceMeters={activeDistanceToTarget ?? 0}
       />
+
+      {/* Broadcast Notice from Event Organizers */}
+      {broadcastNotice ? (
+        <View
+          pointerEvents="auto"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            top: isActiveTripMode ? (insets.top || 0) + 156 : (insets.top || 0) + 64,
+            zIndex: 99,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              backgroundColor: "#DC2626",
+              borderWidth: 1,
+              borderColor: "#EF4444",
+              borderRadius: 14,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 6,
+              elevation: 5,
+            }}
+          >
+            <MaterialIconsRounded name="warning" size={16} color="#FFFFFF" />
+            <Text
+              style={{
+                flex: 1,
+                color: "#FFFFFF",
+                fontSize: 12,
+                fontFamily: TOKENS.font.bold,
+              }}
+              numberOfLines={2}
+            >
+              THÔNG BÁO TỪ BTC: {broadcastNotice}
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
       <DepartureReminderBanner
         visible={Boolean(departureReminder)}
@@ -1599,11 +1836,19 @@ export default function MapScreen() {
                   overflow: "hidden",
                 }}
               >
-                <MaterialIconsRounded
-                  name="person"
-                  size={22}
-                  color={TOKENS.color.neutral[600]}
-                />
+                {currentUserAvatarUri ? (
+                  <Image
+                    source={{ uri: currentUserAvatarUri }}
+                    style={{ width: 44, height: 44 }}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <MaterialIconsRounded
+                    name="person"
+                    size={22}
+                    color={TOKENS.color.neutral[600]}
+                  />
+                )}
               </Pressable>
             ) : null}
           </View>
@@ -1621,111 +1866,70 @@ export default function MapScreen() {
 
 {/* Phương tiện active trip tự động lấy từ transportToNext */}
 
+        {isActiveTripMode && !activeTrip.isPaused && activeEventId && activeDistanceToTarget <= 50 ? (
+          <Pressable
+            onPress={handleCameraCheckIn}
+            disabled={isMomentUploading}
+            style={{
+              position: "absolute",
+              right: 14,
+              bottom: FLOATING_TAB_CLEARANCE + 180,
+              zIndex: 99,
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: "#34C759",
+                borderColor: "#FFFFFF",
+                borderWidth: 1.5,
+                borderRadius: 24,
+                width: 48,
+                height: 48,
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 6,
+                elevation: 6,
+              }}
+            >
+              {isMomentUploading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <MaterialIconsRounded name="photo-camera" size={22} color="#FFFFFF" />
+              )}
+            </View>
+          </Pressable>
+        ) : null}
+
         {/* Floating action buttons — vertical stack */}
         <View
           pointerEvents="box-none"
           style={{
             position: "absolute",
             right: 14,
-            bottom:
-              activePlace && !routeBuilderMode
-                ? FLOATING_TAB_CLEARANCE + 108
-                : FLOATING_TAB_CLEARANCE + 12,
-            zIndex: 55,
+            top: (insets.top || 0) + 120,
+            zIndex: 50,
           }}
         >
           <View
             style={{ alignItems: "flex-end", gap: 10 }}
             pointerEvents="auto"
           >
-            {/* Layer picker popover */}
-            {layerModalVisible && (
-              <GlassPanel
-                style={{
-                  flexDirection: "row",
-                  padding: 3,
-                  borderRadius: 22,
-                  alignItems: "center",
-                  gap: 3,
-                }}
-                intensity={80}
-              >
-                <Pressable
-                  onPress={() => {
-                    LayoutAnimation.configureNext(
-                      LayoutAnimation.Presets.easeInEaseOut,
-                    );
-                    setMapStyle(MAP_STYLES.OSM);
-                    setLayerModalVisible(false);
-                  }}
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 19,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor:
-                      mapStyle.key === "osm" ? "#1D1D1F" : "transparent",
-                  }}
-                >
-                  <MaterialIconsRounded
-                    name="map"
-                    size={18}
-                    color={
-                      mapStyle.key === "osm" ? "#FFFFFF" : MAP_UI_THEME.text
-                    }
-                  />
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    LayoutAnimation.configureNext(
-                      LayoutAnimation.Presets.easeInEaseOut,
-                    );
-                    setMapStyle(MAP_STYLES.HYBRID);
-                    setLayerModalVisible(false);
-                  }}
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 19,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor:
-                      mapStyle.key === "hybrid" ? "#1D1D1F" : "transparent",
-                  }}
-                >
-                  <MaterialIconsRounded
-                    name="satellite"
-                    size={18}
-                    color={
-                      mapStyle.key === "hybrid" ? "#FFFFFF" : MAP_UI_THEME.text
-                    }
-                  />
-                </Pressable>
-              </GlassPanel>
-            )}
+            {/* Locate Button */}
+            <Pressable
+              onPress={handleLocate}
+              className="w-11 h-11 rounded-full items-center justify-center border border-black/[0.04] bg-white/90 shadow-lg shadow-slate-900/5 active:scale-95 transition-all"
+            >
+              <Locate
+                size={20}
+                color="#007AFF"
+              />
+            </Pressable>
 
-            {/* Locate + Layer row */}
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <Pressable onPress={handleLocate}>
-                <GlassPanel
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                  intensity={52}
-                >
-                  <MaterialIconsRounded
-                    name="my-location"
-                    size={19}
-                    color={MAP_UI_THEME.neon}
-                  />
-                </GlassPanel>
-              </Pressable>
-
+            {/* Layer Button + Popover Row */}
+            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
               <Pressable
                 onPress={() => {
                   LayoutAnimation.configureNext(
@@ -1733,28 +1937,68 @@ export default function MapScreen() {
                   );
                   setLayerModalVisible(!layerModalVisible);
                 }}
+                className="w-11 h-11 rounded-full items-center justify-center border border-black/[0.04] bg-white/90 shadow-lg shadow-slate-900/5 active:scale-95 transition-all"
               >
-                <GlassPanel
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                  intensity={52}
-                >
-                  <MaterialIconsRounded
-                    name={layerModalVisible ? "close" : "layers"}
-                    size={19}
-                    color={MAP_UI_THEME.text}
-                  />
-                </GlassPanel>
+                {layerModalVisible ? (
+                  <X size={20} color="#4B5563" />
+                ) : (
+                  <Layers size={20} color="#4B5563" />
+                )}
               </Pressable>
-            </View>
 
-            {/* AI button */}
-            <AIEntryButton onPress={() => router.push("/(tabs)/ai")} compact />
+              {/* Layer picker popover */}
+              {layerModalVisible && (
+                <View
+                  style={{ padding: 3 }}
+                  className="flex-row rounded-full items-center gap-1 bg-white/90 border border-black/[0.04] shadow-lg shadow-slate-900/5"
+                >
+                  <Pressable
+                    onPress={() => {
+                      LayoutAnimation.configureNext(
+                        LayoutAnimation.Presets.easeInEaseOut,
+                      );
+                      setMapStyle(MAP_STYLES.OSM);
+                      setLayerModalVisible(false);
+                    }}
+                    className={`px-3.5 h-8 rounded-full items-center justify-center transition-all duration-200 ${
+                      mapStyle.key === "osm"
+                        ? "bg-slate-900"
+                        : "bg-transparent active:bg-slate-100"
+                    }`}
+                  >
+                    <Text
+                      className={`text-[13px] font-medium transition-colors duration-200 ${
+                        mapStyle.key === "osm" ? "text-white" : "text-slate-600"
+                      }`}
+                    >
+                      Bản đồ
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      LayoutAnimation.configureNext(
+                        LayoutAnimation.Presets.easeInEaseOut,
+                      );
+                      setMapStyle(MAP_STYLES.HYBRID);
+                      setLayerModalVisible(false);
+                    }}
+                    className={`px-3.5 h-8 rounded-full items-center justify-center transition-all duration-200 ${
+                      mapStyle.key === "hybrid"
+                        ? "bg-slate-900"
+                        : "bg-transparent active:bg-slate-100"
+                    }`}
+                  >
+                    <Text
+                      className={`text-[13px] font-medium transition-colors duration-200 ${
+                        mapStyle.key === "hybrid" ? "text-white" : "text-slate-600"
+                      }`}
+                    >
+                      Vệ tinh
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
           </View>
         </View>
       </View>

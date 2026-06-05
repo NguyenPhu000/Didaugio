@@ -23,7 +23,8 @@ export const QUERY_KEYS = {
     profile: () => ["user", "profile"],
     summary: () => ["user", "summary"],
     trips: () => ["user", "trips"],
-    savedPlaces: () => ["user", "saved-places"],
+    savedPlaces: () => ["saved-places"],
+    savedCollections: () => ["saved-collections"],
   },
   trips: {
     all: () => ["trips"],

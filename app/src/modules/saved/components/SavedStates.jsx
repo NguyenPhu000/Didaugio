@@ -1,28 +1,39 @@
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../constants/design-tokens";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Compass, Bookmark, CloudOff, RefreshCw, FolderX } from "lucide-react-native";
+import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 
 export function LoadingState() {
   return (
-    <View className="items-center justify-center px-10 pt-14 pb-10 gap-2.5">
-      <View className="w-14 h-14 rounded-[28px] bg-black/[0.04] items-center justify-center mb-2">
-        <ActivityIndicator size="small" color="#1D1D1F" />
-      </View>
-      <Text className="text-[17px] font-semibold tracking-tight" style={{ color: APPLE_THEME.text }}>
-        Đang tải bộ sưu tập
-      </Text>
-      <Text className="text-sm font-body tracking-tight" style={{ color: APPLE_THEME.textMuted }}>
-        Đồng bộ địa điểm đã lưu của bạn...
-      </Text>
+    <View style={{ flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 6, paddingTop: 16 }}>
+      {[1, 2, 3, 4].map((i, index) => (
+        <View 
+          key={i} 
+          style={{
+            width: "50%",
+            paddingHorizontal: 6,
+            marginBottom: 12,
+            paddingTop: index % 2 === 0 ? 0 : 24,
+          }}
+        >
+          <View style={styles.skeletonCard}>
+            {/* Top Row: Category and Actions */}
+            <View style={styles.skeletonTopRow}>
+              <View style={styles.skeletonCategoryPill} />
+              <View style={styles.skeletonActionBtns}>
+                <View style={styles.skeletonRoundBtn} />
+                <View style={styles.skeletonRoundBtn} />
+              </View>
+            </View>
+            
+            {/* Bottom Panel */}
+            <View style={styles.skeletonMetaPanel}>
+              <View style={styles.skeletonLineTitle} />
+              <View style={styles.skeletonLineText} />
+            </View>
+          </View>
+        </View>
+      ))}
     </View>
   );
 }
@@ -30,70 +41,198 @@ export function LoadingState() {
 export function EmptyState({ onExplore, activeFilter }) {
   const isFiltered = Boolean(activeFilter);
   return (
-    <View style={{ paddingHorizontal: TAB_SCREEN_PADDING }} className="pt-4">
-      <View className="rounded-3xl p-8 bg-white items-center border border-black/5">
-        <View
-          className={`w-[88px] h-[88px] rounded-3xl items-center justify-center mb-[22px] ${isFiltered ? "bg-black/[0.03]" : "bg-black/[0.04]"}`}
-        >
-          <MaterialIconsRounded
-            name={isFiltered ? "filter-alt-off" : "bookmark-border"}
-            size={36}
-            color={isFiltered ? APPLE_THEME.textMuted : "#1D1D1F"}
-          />
-        </View>
-        <Text className="text-[21px] text-center font-heading tracking-tight" style={{ color: APPLE_THEME.text }}>
-          {isFiltered ? "Không có địa điểm" : "Chưa có địa điểm nào"}
-        </Text>
-        <Text
-          className="mt-2 text-sm leading-[21px] text-center font-body max-w-[300px] tracking-tight"
-          style={{ color: APPLE_THEME.textMuted }}
-        >
-          {isFiltered
-            ? "Thử đổi bộ lọc hoặc khu vực để xem các địa điểm khác bạn đã lưu."
-            : "Hãy thử khám phá và lưu các địa điểm yêu thích để dễ truy cập."}
-        </Text>
-        {!isFiltered && onExplore ? (
-          <Pressable
-            onPress={onExplore}
-            className="flex-row items-center gap-2 mt-6 rounded-full px-6 py-[13px] bg-[#1D1D1F]"
-            style={({ pressed }) => pressed && { backgroundColor: "#000000", transform: [{ scale: 0.97 }] }}
-          >
-            <MaterialIconsRounded name="explore" size={18} color="#FFFFFF" />
-            <Text className="text-[15px] font-semibold tracking-tight text-white">Khám phá địa điểm</Text>
-          </Pressable>
-        ) : null}
+    <View style={styles.stateCard}>
+      <View style={[styles.stateIconWrap, isFiltered && styles.stateIconWrapMuted]}>
+        {isFiltered ? (
+          <FolderX size={32} color="#64748B" strokeWidth={1.5} />
+        ) : (
+          <Bookmark size={32} color="#0F172A" strokeWidth={1.5} />
+        )}
       </View>
+      <Text style={styles.stateTitle}>
+        {isFiltered ? "Không có địa điểm" : "Chưa có địa điểm nào"}
+      </Text>
+      <Text style={styles.stateDesc}>
+        {isFiltered
+          ? "Thử đổi bộ lọc hoặc khu vực để xem các địa điểm khác bạn đã lưu."
+          : "Hãy thử khám phá và lưu các địa điểm yêu thích để dễ truy cập."}
+      </Text>
+      {!isFiltered && onExplore ? (
+        <Pressable
+          onPress={onExplore}
+          style={({ pressed }) => [styles.stateCta, pressed && styles.stateCtaPressed]}
+        >
+          <Compass size={17} color="#FFFFFF" strokeWidth={1.75} />
+          <Text style={styles.stateCtaText}>Khám phá địa điểm</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
 
 export function ErrorState({ onRetry }) {
   return (
-    <View style={{ paddingHorizontal: TAB_SCREEN_PADDING }} className="pt-4">
-      <View className="rounded-3xl p-8 bg-white items-center border border-black/5">
-        <View className="w-[88px] h-[88px] rounded-3xl items-center justify-center bg-red-500/[0.08] mb-[22px]">
-          <MaterialIconsRounded name="cloud-off" size={36} color="#FF3B30" />
-        </View>
-        <Text className="text-[21px] text-center font-heading tracking-tight" style={{ color: APPLE_THEME.text }}>
-          Không tải được dữ liệu
-        </Text>
-        <Text
-          className="mt-2 text-sm leading-[21px] text-center font-body max-w-[300px] tracking-tight"
-          style={{ color: APPLE_THEME.textMuted }}
-        >
-          Vui lòng kiểm tra kết nối mạng và thử lại để đồng bộ địa điểm đã lưu.
-        </Text>
-        {onRetry ? (
-          <Pressable
-            onPress={onRetry}
-            className="flex-row items-center gap-2 mt-6 rounded-full px-6 py-[13px] bg-red-500/[0.08] border border-red-500/15"
-            style={({ pressed }) => pressed && { backgroundColor: "rgba(255,59,48,0.14)", transform: [{ scale: 0.97 }] }}
-          >
-            <MaterialIconsRounded name="refresh" size={18} color="#FF3B30" />
-            <Text className="text-[15px] font-semibold tracking-tight text-red-500">Thử lại</Text>
-          </Pressable>
-        ) : null}
+    <View style={styles.stateCard}>
+      <View style={[styles.stateIconWrap, styles.stateIconError]}>
+        <CloudOff size={32} color="#FF3B30" strokeWidth={1.5} />
       </View>
+      <Text style={styles.stateTitle}>Không tải được dữ liệu</Text>
+      <Text style={styles.stateDesc}>
+        Vui lòng kiểm tra kết nối mạng và thử lại để đồng bộ địa điểm đã lưu.
+      </Text>
+      {onRetry ? (
+        <Pressable
+          onPress={onRetry}
+          style={({ pressed }) => [styles.stateRetry, pressed && styles.stateRetryPressed]}
+        >
+          <RefreshCw size={15} color="#FF3B30" strokeWidth={1.75} />
+          <Text style={styles.stateRetryText}>Thử lại</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  stateCard: {
+    marginHorizontal: TAB_SCREEN_PADDING,
+    marginTop: 16,
+    borderRadius: 28,
+    padding: 36,
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "rgba(15, 23, 42, 0.05)",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.03,
+    shadowRadius: 16,
+    elevation: 1,
+  },
+  stateIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.04)",
+    marginBottom: 14,
+  },
+  stateIconWrapMuted: {
+    backgroundColor: "rgba(15, 23, 42, 0.03)",
+  },
+  stateIconError: {
+    backgroundColor: "rgba(255, 59, 48, 0.08)",
+  },
+  stateTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#0F172A",
+    textAlign: "center",
+    fontFamily: TOKENS.font.heading,
+    letterSpacing: -0.3,
+  },
+  stateDesc: {
+    fontSize: 13,
+    color: "#64748B",
+    textAlign: "center",
+    lineHeight: 20,
+    maxWidth: 280,
+    fontFamily: TOKENS.font.body,
+    marginTop: 6,
+  },
+  stateCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: "#0F172A", // slate-900
+  },
+  stateCtaPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.97 }],
+  },
+  stateCtaText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    fontFamily: TOKENS.font.semibold,
+  },
+  stateRetry: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 59, 48, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 59, 48, 0.12)",
+  },
+  stateRetryPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.97 }],
+  },
+  stateRetryText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FF3B30",
+    fontFamily: TOKENS.font.semibold,
+  },
+  skeletonCard: {
+    width: "100%",
+    height: 220,
+    borderRadius: 28,
+    backgroundColor: "rgba(15, 23, 42, 0.04)",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    justifyContent: "space-between",
+  },
+  skeletonTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  skeletonCategoryPill: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(15, 23, 42, 0.05)",
+  },
+  skeletonActionBtns: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  skeletonRoundBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(15, 23, 42, 0.05)",
+  },
+  skeletonMetaPanel: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  skeletonLineTitle: {
+    width: "80%",
+    height: 14,
+    borderRadius: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+  },
+  skeletonLineText: {
+    width: "50%",
+    height: 10,
+    borderRadius: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+  },
+});

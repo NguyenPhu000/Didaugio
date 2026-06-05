@@ -21,11 +21,10 @@ const resolveRoleId = (decoded = {}) => {
 export const authenticate = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    // SSE fallback: accept token from query param
-    const queryToken = req.query?.token;
+
     const token = (authHeader && authHeader.startsWith("Bearer "))
       ? authHeader.split(" ")[1]
-      : queryToken;
+      : null;
 
     if (!token) {
       return res.status(401).json({
@@ -153,4 +152,53 @@ export const authorize = (allowedRoles) => {
   };
 };
 
-export default { authenticate, authenticateOptional, authorize };
+/** Admin CMS: SUPER_ADMIN, ADMIN, STAFF */
+export const isAdminOrStaff = authorize([
+  ROLES.SUPER_ADMIN,
+  ROLES.ADMIN,
+  ROLES.STAFF,
+]);
+
+/**
+ * SSE-specific auth: accepts token from query param.
+ * Only use this for Server-Sent Events endpoints where
+ * the client cannot set Authorization headers.
+ */
+export const authenticateSSE = (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const queryToken = req.query?.token;
+    const token = (authHeader && authHeader.startsWith("Bearer "))
+      ? authHeader.split(" ")[1]
+      : queryToken;
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        data: null,
+        message: "Token khong duoc cung cap",
+        errorCode: "NO_TOKEN",
+      });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    req.user = {
+      ...decoded,
+      userId: decoded.userId || decoded.id,
+      id: decoded.id || decoded.userId,
+      roleId: resolveRoleId(decoded),
+    };
+
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      data: null,
+      message: "Token khong hop le",
+      errorCode: "INVALID_TOKEN",
+    });
+  }
+};
+
+export default { authenticate, authenticateOptional, authenticateSSE, authorize, isAdminOrStaff };

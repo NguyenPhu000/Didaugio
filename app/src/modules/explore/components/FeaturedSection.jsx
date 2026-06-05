@@ -25,16 +25,26 @@ const getItemLayout = (_, index) => ({
 const keyExtractor = (item, index) =>
   item?.id != null ? String(item.id) : `featured-${index}`;
 
-function FeaturedSectionInner({ places, onPressPlace, onPressViewAll }) {
+function FeaturedSectionInner({ places, onPressPlace, onPressViewAll, onSavePlace, savedPlaceIds }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const dotCount = useMemo(() => Math.min(places?.length || 0, 4), [places]);
 
   const renderItem = useCallback(
     ({ item, index }) => {
       const handlePress = () => onPressPlace(item);
-      return <FeaturedCard place={item} onPress={handlePress} index={index} />;
+      const handleSave = () => onSavePlace?.(item);
+      const isSaved = savedPlaceIds?.has?.(item?.id) || false;
+      return (
+        <FeaturedCard
+          place={item}
+          onPress={handlePress}
+          onSave={handleSave}
+          isSaved={isSaved}
+          index={index}
+        />
+      );
     },
-    [onPressPlace],
+    [onPressPlace, onSavePlace, savedPlaceIds],
   );
 
   if (!places?.length) return null;

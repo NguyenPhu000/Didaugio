@@ -60,13 +60,16 @@ const LoginPage = () => {
     document.title = "Đăng nhập - Đi Đâu Giờ?";
   }, []);
 
-  const handleGoogleSuccess = async (codeResponse) => {
+  const handleGoogleSuccess = async (credentialResponse) => {
     setIsLoading(true);
     try {
-      const response = await authService.googleLogin(
-        codeResponse.code,
-        window.location.origin,
-      );
+      // GoogleLogin default flow returns { credential: "<id_token>" }
+      const idToken = credentialResponse.credential;
+      if (!idToken) {
+        toast.error("Không nhận được ID token từ Google");
+        return;
+      }
+      const response = await authService.googleLogin(idToken);
       if (response.success) {
         const dashboardUrl = resolvePostLoginRoute(response.data.user);
         if (dashboardUrl === AUTH_ROUTES.LOGIN) {

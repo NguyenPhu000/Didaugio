@@ -79,4 +79,12 @@ export const ENDPOINTS = {
     wards: "/boundaries/wards",
   },
   feedback: "/feedback",
+  events: {
+    list: "/events",
+    detail: (id) => `/events/${id}`,
+    join: (id) => `/events/${id}/join`,
+    ping: (id) => `/events/${id}/ping`,
+    moments: (id) => `/events/${id}/moments`,
+    deleteMoment: (momentId) => `/events/moments/${momentId}`,
+  },
 };

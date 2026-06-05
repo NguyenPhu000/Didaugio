@@ -1,6 +1,7 @@
 export const ALL_AREAS_KEY = "__all_areas__";
 export const ALL_COLLECTIONS_KEY = "__all_collections__";
 export const NOTES_COLLECTION_KEY = "__notes__";
+export const ALL_CATEGORIES_KEY = "__all_categories__";
 
 export const FILTERS = [
   { key: "all", label: "Tất cả" },
@@ -153,9 +154,27 @@ export function buildAreaOptions(savedData) {
   );
 }
 
-export function filterSavedEntries({ savedData, activeCollection, activeArea }) {
+export function buildCategoryOptions(savedData) {
+  const map = new Map();
+  savedData.forEach((entry) => {
+    const place = entry?.place || entry;
+    const categoryId = place?.category?.id ?? place?.categoryId;
+    const categoryName = place?.category?.name ?? place?.categoryName;
+    if (!categoryName) return;
+    const key = categoryId != null ? `cat:${categoryId}` : `cat-name:${String(categoryName).trim().toLowerCase()}`;
+    if (!map.has(key)) {
+      map.set(key, { key, name: categoryName });
+    }
+  });
+  return Array.from(map.values()).sort((a, b) =>
+    String(a.name).localeCompare(String(b.name), "vi"),
+  );
+}
+
+export function filterSavedEntries({ savedData, activeCollection, activeArea, activeCategory }) {
   return savedData.filter((entry) => {
     const place = entry?.place || entry;
+
     if (activeCollection === NOTES_COLLECTION_KEY) {
       if (!String(entry?.note || "").trim()) return false;
     } else if (activeCollection !== ALL_COLLECTIONS_KEY) {
@@ -163,9 +182,21 @@ export function filterSavedEntries({ savedData, activeCollection, activeArea }) 
       if (collection?.key !== activeCollection) return false;
     }
 
-    if (activeArea === ALL_AREAS_KEY) return true;
-    const area = getPlaceArea(place);
-    return area?.key === activeArea;
+    if (activeArea !== ALL_AREAS_KEY) {
+      const area = getPlaceArea(place);
+      if (area?.key !== activeArea) return false;
+    }
+
+    if (activeCategory && activeCategory !== ALL_CATEGORIES_KEY) {
+      const categoryId = place?.category?.id ?? place?.categoryId;
+      const categoryName = place?.category?.name ?? place?.categoryName;
+      const catKey = categoryId != null
+        ? `cat:${categoryId}`
+        : `cat-name:${String(categoryName || "").trim().toLowerCase()}`;
+      if (catKey !== activeCategory) return false;
+    }
+
+    return true;
   });
 }
 

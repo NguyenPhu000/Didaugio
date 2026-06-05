@@ -51,7 +51,8 @@ export const refreshLimiter = createLimiter({
   envKey: "REFRESH_RATE_LIMIT_MAX",
   devDefault: 120,
   prodDefault: 30,
-  message: "Qua nhieu yeu cau lam moi phien, vui long thu lai sau",
+  windowMs: 15 * 60 * 1000,
+  message: "Qua nhieu yeu cau lam moi phien, vui long thu lai sau 15 phut",
 });
 
 export const recoveryLimiter = createLimiter({

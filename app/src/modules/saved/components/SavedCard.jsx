@@ -1,186 +1,311 @@
-import { memo } from "react";
-import { Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { memo, useCallback } from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  CATEGORY_COLORS,
-  TOKENS,
-} from "../../../constants/design-tokens";
-import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
+  MapPin,
+  Coffee,
+  Utensils,
+  Hotel,
+  Compass,
+  Sparkles,
+  Star,
+  Pencil,
+  Heart,
+} from "lucide-react-native";
+import { TOKENS } from "../../../constants/design-tokens";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
-import {
-  formatPriceLabel,
-  formatReviewLabel,
-  getCategorySlug,
-  getLocationText,
-  getReviewCount,
-} from "../utils/savedHelpers";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+// Lấy nhãn thể loại hiển thị cho Prime Pick Tag
+const getCategoryLabel = (categoryName) => {
+  const name = String(categoryName || "").toLowerCase();
+  if (name.includes("ăn") || name.includes("uống") || name.includes("nhà hàng") || name.includes("ẩm thực"))
+    return "Ẩm thực";
+  if (name.includes("cà phê") || name.includes("cafe") || name.includes("trà"))
+    return "Cà phê";
+  if (name.includes("khách sạn") || name.includes("lưu trú") || name.includes("homestay") || name.includes("nhà nghỉ"))
+    return "Lưu trú";
+  if (name.includes("tham quan") || name.includes("du lịch") || name.includes("di tích") || name.includes("bảo tàng"))
+    return "Tham quan";
+  if (name.includes("vui chơi") || name.includes("giải trí") || name.includes("bar") || name.includes("pub"))
+    return "Giải trí";
+  return "Địa điểm";
+};
+
+// Lấy màu icon và icon Lucide theo thể loại
+const getCategoryMeta = (categoryName) => {
+  const name = String(categoryName || "").toLowerCase();
+  if (name.includes("ăn") || name.includes("uống") || name.includes("nhà hàng") || name.includes("ẩm thực"))
+    return { icon: "utensils", color: "#FB923C" };
+  if (name.includes("cà phê") || name.includes("cafe") || name.includes("trà"))
+    return { icon: "coffee", color: "#FBBF24" };
+  if (name.includes("khách sạn") || name.includes("lưu trú") || name.includes("homestay") || name.includes("nhà nghỉ"))
+    return { icon: "hotel", color: "#38BDF8" };
+  if (name.includes("tham quan") || name.includes("du lịch") || name.includes("di tích") || name.includes("bảo tàng"))
+    return { icon: "compass", color: "#34D399" };
+  if (name.includes("vui chơi") || name.includes("giải trí") || name.includes("bar") || name.includes("pub"))
+    return { icon: "sparkles", color: "#C084FC" };
+  return { icon: "map-pin", color: "#94A3B8" };
+};
+
+const CategoryIcon = ({ iconKey, color }) => {
+  const size = 11;
+  switch (iconKey) {
+    case "utensils": return <Utensils size={size} color={color} strokeWidth={2.5} />;
+    case "coffee": return <Coffee size={size} color={color} strokeWidth={2.5} />;
+    case "hotel": return <Hotel size={size} color={color} strokeWidth={2.5} />;
+    case "compass": return <Compass size={size} color={color} strokeWidth={2.5} />;
+    case "sparkles": return <Sparkles size={size} color={color} strokeWidth={2.5} />;
+    default: return <MapPin size={size} color={color} strokeWidth={2.5} />;
+  }
+};
 
 export const SavedCard = memo(function SavedCard({
   entry,
+  index = 0,
+  scrollY,
   onPress,
   onOpenNote,
   onUnsave,
-  unsaveDisabled,
 }) {
   const place = entry?.place || entry;
   const imageUri = resolvePlaceImageUri(place);
-  const category = place?.category?.name ?? place?.categoryName ?? "Địa điểm";
-  const accent = CATEGORY_COLORS[getCategorySlug(place)] ?? CATEGORY_COLORS.default;
   const ratingValue = Number(place?.ratingAvg ?? place?.averageRating ?? 0);
-  const hasRating = Number.isFinite(ratingValue) && ratingValue > 0;
-  const reviewLabel = formatReviewLabel(getReviewCount(place));
-  const priceLabel = formatPriceLabel(place);
-  const collectionName = String(entry?.collectionName || "").trim();
+  const rating = Number.isFinite(ratingValue) && ratingValue > 0 ? ratingValue.toFixed(1) : "4.5";
   const note = String(entry?.note || "").trim();
-  const locationText = getLocationText(place);
+  const categoryName = place?.category?.name || place?.categoryName || "";
+  const categoryLabel = getCategoryLabel(categoryName);
+  const categoryMeta = getCategoryMeta(categoryName);
+
+  const scale = useSharedValue(1);
+
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.975, { damping: 15, stiffness: 200 });
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 150 });
+  }, [scale]);
+
+  const handlePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress?.();
+  }, [onPress]);
+
+  const handleNotePress = useCallback(
+    (e) => {
+      e?.stopPropagation?.();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onOpenNote?.(entry);
+    },
+    [entry, onOpenNote],
+  );
+
+  const handleUnsavePress = useCallback(
+    (e) => {
+      e?.stopPropagation?.();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onUnsave?.(place?.id);
+    },
+    [place?.id, onUnsave],
+  );
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  // Tọa độ Y thực tế cho Parallax dựa vào hàng trong FlatList 2 cột
+  // Mỗi hàng cao 252px (240 card + 12 gap), cột lẻ có offset 24px
+  const rowIndex = Math.floor(index / 2);
+  const cardY = rowIndex * 252 + (index % 2 === 0 ? 0 : 24);
+
+  // Hiệu ứng Parallax ảnh nền mượt mà theo tọa độ Y thực tế
+  const animatedImageStyle = useAnimatedStyle(() => {
+    if (!scrollY) return { transform: [{ translateY: 0 }, { scale: 1.12 }] };
+    const translateY = (scrollY.value - cardY) * 0.08;
+    const clampedTranslateY = Math.max(-14, Math.min(14, translateY));
+    return {
+      transform: [{ translateY: clampedTranslateY }, { scale: 1.12 }],
+    };
+  });
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      onPress={onPress}
-      className="bg-white rounded-[24px] p-3.5 gap-3 shadow-sm elevation-2"
-      style={{ marginHorizontal: TAB_SCREEN_PADDING }}
+    <View className="w-full relative mb-6">
+    <AnimatedPressable
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={[
+        animatedStyle,
+        {
+          shadowColor: "#000",
+          shadowOpacity: 0.08,
+          shadowRadius: 20,
+          shadowOffset: { width: 0, height: 12 },
+          elevation: 6,
+        },
+      ]}
+      className="w-full h-[245px] rounded-[30px] overflow-hidden bg-zinc-950 relative"
     >
-      <View className="flex-row gap-3.5">
-        <View className="w-24 h-24 rounded-[18px] overflow-hidden bg-[#F2F2F7] relative">
-          {imageUri ? (
-            <>
-              <Image
-                source={{ uri: imageUri }}
-                style={{ width: "100%", height: "100%" }}
-                contentFit="cover"
-                transition={200}
-                cachePolicy="memory-disk"
-              />
-              <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.15)"]}
-                className="absolute inset-0"
-              />
-            </>
-          ) : (
-            <View
-              className="flex-1 items-center justify-center"
-              style={{ backgroundColor: `${accent}1A` }}
-            >
-              <MaterialIconsRounded name="place" size={28} color={accent} />
-            </View>
-          )}
-          {hasRating ? (
-            <View className="absolute left-2 top-2 flex-row items-center gap-0.5 px-2 py-1 rounded-full bg-white/95">
-              <MaterialIconsRounded name="star" size={11} color="#FF9F0A" />
-              <Text className="text-[#1D1D1F] text-[11px] font-semibold tracking-[-0.1px]">{ratingValue.toFixed(1)}</Text>
-            </View>
-          ) : null}
+      {/* 1. Ảnh nền toàn màn hình với hiệu ứng Parallax */}
+      <Animated.View
+        style={[StyleSheet.absoluteFillObject, animatedImageStyle, { overflow: "hidden" }]}
+      >
+        {imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={StyleSheet.absoluteFillObject}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+          />
+        ) : (
+          <LinearGradient
+            colors={["#1E293B", "#334155", "#475569"]}
+            style={StyleSheet.absoluteFillObject}
+          />
+        )}
+      </Animated.View>
+
+      {/* 2. Lớp phủ Vignette Gradient điện ảnh sâu thẳm - chìm từ 40% đáy xuống */}
+      <LinearGradient
+        colors={[
+          "rgba(9,15,26,0.0)",
+          "rgba(9,15,26,0.15)",
+          "rgba(9,15,26,0.55)",
+          "rgba(9,15,26,0.93)",
+        ]}
+        locations={[0, 0.35, 0.62, 1]}
+        className="absolute inset-0"
+      />
+
+      {/* 3. TẦNG ĐỈNH: Nhãn thể loại Prime Pick trắng phẳng + nút tương tác */}
+      <View className="absolute top-3.5 left-3.5 right-3.5 flex-row justify-between items-center z-20">
+        {/* Nhãn Prime Pick trắng phẳng - giống ảnh mẫu */}
+        <View className="bg-white flex-row items-center gap-1.5 px-2.5 py-1.5 rounded-full">
+          <CategoryIcon iconKey={categoryMeta.icon} color={categoryMeta.color} />
+          <Text
+            style={{ fontFamily: TOKENS.font.semibold }}
+            className="text-slate-900 text-[11px] tracking-tight"
+          >
+            {categoryLabel}
+          </Text>
         </View>
 
-        <View className="flex-1 gap-1.5 justify-center">
-          <View className="flex-row items-center gap-2">
-            <Text className="flex-1 text-[#1D1D1F] text-[17px] font-semibold tracking-[-0.4px] leading-[22px]" numberOfLines={1}>
-              {place?.name || "Địa điểm đã lưu"}
-            </Text>
-            <View className="w-2 h-2 rounded-full" style={{ backgroundColor: accent }} />
-          </View>
-
-          <View className="flex-row items-center gap-1.25">
-            <MaterialIconsRounded
-              name="place"
+        {/* Cụm nút tương tác bóng mờ tinh tế */}
+        <View className="flex-row items-center gap-2">
+          {/* Nút Sửa ghi chú */}
+          <Pressable
+            onPress={handleNotePress}
+            className="w-8 h-8 rounded-full bg-black/25 active:bg-black/45 border border-white/15 items-center justify-center"
+          >
+            <Pencil
               size={13}
-              color={APPLE_THEME.textMuted}
+              color={note ? "#FF9F0A" : "rgba(255,255,255,0.85)"}
+              strokeWidth={2}
             />
-            <Text className="shrink text-[#54647A] text-[13px] tracking-[-0.1px] font-normal" numberOfLines={1}>
-              {locationText}
-            </Text>
-          </View>
+          </Pressable>
 
-          <View className="flex-row items-center gap-1.25">
-            <MaterialIconsRounded
-              name="category"
-              size={13}
-              color={APPLE_THEME.textMuted}
-            />
-            <Text className="shrink text-[#54647A] text-[13px] tracking-[-0.1px] font-normal" numberOfLines={1}>
-              {category}
-            </Text>
-            <View className="w-[3px] h-[3px] rounded-full bg-black/18 mx-1" />
-            <Text className="shrink text-[#54647A] text-[13px] tracking-[-0.1px] font-normal" numberOfLines={1}>
-              {reviewLabel}
-            </Text>
-          </View>
-
-          {priceLabel ? (
-            <View className="self-start flex-row items-center gap-1 px-2.5 py-1 rounded-full bg-[#E7F0FF]">
-              <MaterialIconsRounded name="payments" size={12} color="#1D4ED8" />
-              <Text className="text-[#1D4ED8] text-xs font-semibold tracking-[-0.1px]">{priceLabel}</Text>
-            </View>
-          ) : null}
+          {/* Nút Bỏ lưu trái tim */}
+          <Pressable
+            onPress={handleUnsavePress}
+            className="w-8 h-8 rounded-full bg-black/25 active:bg-black/45 border border-white/15 items-center justify-center"
+          >
+            <Heart size={13} color="#EF4444" fill="#EF4444" strokeWidth={2} />
+          </Pressable>
         </View>
       </View>
 
-      {collectionName || note ? (
-        <View className="gap-1.5">
-          {collectionName ? (
-            <View className="flex-row items-start gap-2 px-3 py-2.5 rounded-[14px] bg-[#F9F9FB]">
-              <View className="w-5.5 h-5.5 rounded-full items-center justify-center bg-white">
-                <MaterialIconsRounded
-                  name="collections-bookmark"
-                  size={14}
-                  color={APPLE_THEME.text}
-                />
-              </View>
-              <Text className="flex-1 text-[#1D1D1F] text-[13px] leading-[18px] tracking-[-0.1px] font-normal" numberOfLines={1}>
-                {collectionName}
-              </Text>
-            </View>
-          ) : null}
+      {/* 4. TẦNG NỘI DUNG CHÌM (Naked Immersive Layout) - Không có hộp kính */}
+      <View className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-3 z-20">
 
-          {note ? (
-            <View className="flex-row items-start gap-2 px-3 py-2.5 rounded-[14px] bg-[#F9F9FB]">
-              <View className="w-5.5 h-5.5 rounded-full items-center justify-center bg-white">
-                <MaterialIconsRounded
-                  name="sticky-note-2"
-                  size={14}
-                  color={APPLE_THEME.text}
-                />
-              </View>
-              <Text className="flex-1 text-[#1D1D1F] text-[13px] leading-[18px] tracking-[-0.1px] font-normal" numberOfLines={2}>
-                {note}
+        {/* Tên địa điểm - Phóng lớn, Bold rực rỡ trên gradient tối */}
+        <Text
+          style={{ fontFamily: TOKENS.font.semibold }}
+          className="text-[19px] text-white font-bold tracking-tight leading-6"
+          numberOfLines={2}
+        >
+          {place?.name || "Địa điểm yêu thích"}
+        </Text>
+
+        {/* Hàng địa chỉ + Rating */}
+        <View className="flex-row items-start justify-between mt-1.5">
+          {/* Địa chỉ mờ sương nhẹ bên trái */}
+          <View className="flex-row items-start gap-1 flex-1 mr-3">
+            <MapPin size={11} color="rgba(255,255,255,0.5)" strokeWidth={2} style={{ marginTop: 1 }} />
+            <Text
+              style={{ fontFamily: TOKENS.font.body }}
+              className="text-[12px] text-white/65 flex-1"
+              numberOfLines={2}
+            >
+              {place?.address || "Cần Thơ, Việt Nam"}
+            </Text>
+          </View>
+
+          {/* Cụm Rating */}
+          <View className="flex-col items-center">
+            <View className="flex-row items-center gap-1">
+              <Star size={11} fill="#FFB800" color="#FFB800" strokeWidth={0} />
+              <Text
+                style={{ fontFamily: TOKENS.font.semibold }}
+                className="text-white text-[13px] font-bold"
+              >
+                {rating}
               </Text>
             </View>
-          ) : null}
+            <Text
+              style={{ fontFamily: TOKENS.font.body }}
+              className="text-white/40 text-[9px] mt-0.5"
+            >
+              Đánh giá
+            </Text>
+          </View>
+        </View>
+
+      </View>
+
+    </AnimatedPressable>
+
+      {/* Note Badge nổi ra ngoài góc dưới bên phải của card */}
+      {note ? (
+        <View
+          style={{
+            position: "absolute",
+            bottom: -10,
+            right: 12,
+            maxWidth: "60%",
+            zIndex: 50,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "rgba(251,191,36,0.15)",
+              borderWidth: 1,
+              borderColor: "rgba(251,191,36,0.45)",
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: 12,
+            }}
+          >
+            <Text
+              style={{ fontFamily: TOKENS.font.medium, fontSize: 10.5, color: "#FCD34D" }}
+              numberOfLines={1}
+            >
+              {note}
+            </Text>
+          </View>
         </View>
       ) : null}
-
-      <View className="flex-row gap-2 justify-end border-t border-black/[0.06] pt-2.5">
-        <Pressable
-          onPress={(event) => {
-            event?.stopPropagation?.();
-            onOpenNote?.(entry);
-          }}
-          className="flex-row items-center gap-1.5 px-3 py-[7px] rounded-xl bg-black/[0.04] active:bg-black/[0.08]"
-        >
-          <MaterialIconsRounded name="edit-note" size={15} color={APPLE_THEME.text} />
-          <Text className="text-[#1D1D1F] text-[13px] font-semibold tracking-[-0.1px]">
-            {note ? "Sửa ghi chú" : "Thêm ghi chú"}
-          </Text>
-        </Pressable>
-
-        <Pressable
-          disabled={unsaveDisabled}
-          onPress={(event) => {
-            event?.stopPropagation?.();
-            onUnsave?.(place?.id);
-          }}
-          className={`flex-row items-center gap-1.5 px-3 py-[7px] rounded-xl bg-[#FF3B30]/[0.08] active:bg-[#FF3B30]/[0.14] ${
-            unsaveDisabled ? "opacity-45" : ""
-          }`}
-        >
-          <MaterialIconsRounded name="bookmark-remove" size={15} color="#FF3B30" />
-          <Text className="text-[#FF3B30] text-[13px] font-semibold tracking-[-0.1px]">Bỏ lưu</Text>
-        </Pressable>
-      </View>
-    </TouchableOpacity>
+    </View>
   );
 });
+
+export default SavedCard;

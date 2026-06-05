@@ -1,5 +1,7 @@
 import express from "express";
 import * as boundaryController from "../../controllers/boundary/boundary.controller.js";
+import { authenticate } from "../../middlewares/authMiddleware.js";
+import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import {
   validateBody,
   validateParams,
@@ -30,6 +32,8 @@ router.get(
 
 router.post(
   "/cache/invalidate",
+  authenticate,
+  hasPermission("settings.manage"),
   validateBody(invalidateBoundaryCacheSchema),
   boundaryController.invalidateCache,
 );

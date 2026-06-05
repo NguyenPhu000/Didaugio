@@ -37,6 +37,7 @@ export const createTripSchema = z.object({
   groupSize: z.coerce.number().int().min(1).max(50).optional(),
   status: z.enum(["planned"]).optional(),
   thumbnail: z.string().optional().nullable(),
+  placeIds: z.array(z.coerce.number().int().positive()).optional(),
 });
 
 export const updateTripSchema = z.object({

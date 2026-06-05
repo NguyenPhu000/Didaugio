@@ -1,16 +1,23 @@
 import { useCallback, useMemo, useState } from "react";
-import { View, FlatList, RefreshControl } from "react-native";
+import { View, RefreshControl } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTripsCached } from "../../src/modules/trips/hooks/useTripsOffline";
-import { useSaveTrip, useUnsaveTrip } from "../../src/modules/trips/hooks/useTrips";
+import {
+  useSaveTrip,
+  useUnsaveTrip,
+} from "../../src/modules/trips/hooks/useTrips";
 import { useAuthStore } from "../../src/stores/authStore";
 import { GuestGate } from "../../src/components/ui/GuestGate";
 import { OfflineBanner } from "../../src/components/ui/OfflineBanner";
 import { TAB_BAR_HEIGHT } from "./_layout";
 import { TripsDashboard } from "../../src/modules/trips/components/TripsDashboard";
 import { TripCard } from "../../src/modules/trips/components/TripCard";
-import { getDisplayStatus, getSafeDateTime } from "../../src/modules/trips/utils/tripHelpers";
+import {
+  getDisplayStatus,
+  getSafeDateTime,
+} from "../../src/modules/trips/utils/tripHelpers";
 import {
   LoadingState,
   EmptyTrips,
@@ -18,9 +25,8 @@ import {
 } from "../../src/modules/trips/components/TripsStates";
 import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../src/constants/design-tokens";
 
-
 function ItemSeparator() {
-  return <View className="h-2.5" />;
+  return <View className="h-3.5" />;
 }
 
 export default function TripsScreen() {
@@ -57,10 +63,7 @@ export default function TripsScreen() {
       if (activeFilter === "all") return true;
       const displayStatus = getDisplayStatus(trip);
       if (activeFilter === "active") {
-        return (
-          displayStatus === "upcoming" ||
-          displayStatus === "ongoing"
-        );
+        return displayStatus === "upcoming" || displayStatus === "ongoing";
       }
       if (activeFilter === "done") {
         return displayStatus === "completed" || displayStatus === "cancelled";
@@ -128,14 +131,19 @@ export default function TripsScreen() {
   return (
     <View
       className="flex-1"
-      style={{ paddingTop: insets.top, backgroundColor: APPLE_THEME.background }}
+      style={{
+        paddingTop: insets.top,
+        backgroundColor: APPLE_THEME.background,
+      }}
     >
       <OfflineBanner />
-      <FlatList
+      <FlashList
         data={!isLoading && !isError ? filteredTrips : []}
         renderItem={renderTripCard}
         keyExtractor={keyExtractor}
+        extraData={trips}
         showsVerticalScrollIndicator={false}
+        estimatedItemSize={252}
         contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 24 }}
         refreshControl={
           <RefreshControl
@@ -176,4 +184,3 @@ export default function TripsScreen() {
     </View>
   );
 }
-

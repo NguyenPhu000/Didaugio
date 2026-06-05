@@ -7,6 +7,14 @@ import { generateUniqueUsername } from "../../utils/username.js";
 import { sendStaffInvitationEmail } from "../communication/mailer.service.js";
 
 const INVITATION_EXPIRY_DAYS = 7;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+
+/**
+ * Hash token trước khi lưu/lookup (SHA-256, giống password reset)
+ */
+function hashToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
 
 /**
  * Tạo invitation link cho staff
@@ -66,7 +74,8 @@ export const createInvitation = async (businessId, createdById, data) => {
     }
   }
 
-  const token = crypto.randomBytes(32).toString("hex");
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = hashToken(rawToken);
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + INVITATION_EXPIRY_DAYS);
 
@@ -75,7 +84,7 @@ export const createInvitation = async (businessId, createdById, data) => {
       businessId,
       roleId: roleId || null,
       email: email || null,
-      token,
+      token: tokenHash,
       status: "pending",
       expiresAt,
       createdBy: createdById,
@@ -86,13 +95,13 @@ export const createInvitation = async (businessId, createdById, data) => {
     },
   });
 
-  // Gửi email mời nếu có email
+  // Gửi email mời nếu có email (dùng rawToken, không phải hash)
   let emailSent = false;
   if (email) {
     try {
       await sendStaffInvitationEmail({
         to: email,
-        token: invitation.token,
+        token: rawToken,
         businessName: invitation.business.businessName,
         roleName: invitation.role?.name || null,
         expiresAt: invitation.expiresAt,
@@ -106,7 +115,7 @@ export const createInvitation = async (businessId, createdById, data) => {
 
   return {
     id: invitation.id,
-    token: invitation.token,
+    token: rawToken,
     email: invitation.email,
     roleName: invitation.role?.name || null,
     businessName: invitation.business.businessName,
@@ -119,8 +128,9 @@ export const createInvitation = async (businessId, createdById, data) => {
  * Kiểm tra token khi staff click vào link
  */
 export const validateInvitationToken = async (token) => {
+  const tokenHash = hashToken(token);
   const invitation = await prisma.staffInvitation.findUnique({
-    where: { token },
+    where: { token: tokenHash },
     include: {
       role: { select: { id: true, name: true, description: true } },
       business: { select: { id: true, businessName: true } },
@@ -178,17 +188,26 @@ export const acceptInvitation = async (token, staffData) => {
     );
   }
 
-  if (password.length < 6) {
+  if (password.length < 8) {
     throw new ServiceError(
-      "Mật khẩu phải có ít nhất 6 ký tự",
+      "Mật khẩu phải có ít nhất 8 ký tự",
       400,
       "WEAK_PASSWORD",
     );
   }
 
-  // Tìm và validate invitation
+  if (!PASSWORD_REGEX.test(password)) {
+    throw new ServiceError(
+      "Mật khẩu phải có ít nhất: 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt",
+      400,
+      "WEAK_PASSWORD",
+    );
+  }
+
+  // Tìm và validate invitation (hash token trước khi lookup)
+  const tokenHash = hashToken(token);
   const invitation = await prisma.staffInvitation.findUnique({
-    where: { token },
+    where: { token: tokenHash },
     include: {
       business: { select: { id: true } },
     },

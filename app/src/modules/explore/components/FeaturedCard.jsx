@@ -36,7 +36,7 @@ const CARD_H = 400;
 
 const SPRING_CONFIG = TOKENS.spring.press;
 
-function FeaturedCardInner({ place, onPress, index = 0 }) {
+function FeaturedCardInner({ place, onPress, onSave, isSaved, index = 0 }) {
   const scale = useSharedValue(1);
   const imageUri = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place);
@@ -62,6 +62,11 @@ function FeaturedCardInner({ place, onPress, index = 0 }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress?.();
   }, [onPress]);
+
+  const handleSave = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onSave?.(place);
+  }, [onSave, place]);
 
   const shadowStyle = {
     textShadowColor: "rgba(0, 0, 0, 0.55)",
@@ -133,14 +138,22 @@ function FeaturedCardInner({ place, onPress, index = 0 }) {
       ) : null}
 
       {/* Favourite button */}
-      <View className="absolute top-3.5 right-3.5 z-[3] w-[34px] h-[34px] rounded-full items-center justify-center overflow-hidden border-[0.5px] border-white/35">
+      <Pressable
+        onPress={handleSave}
+        hitSlop={8}
+        className="absolute top-3.5 right-3.5 z-[3] w-[34px] h-[34px] rounded-full items-center justify-center overflow-hidden border-[0.5px] border-white/35"
+      >
         <BlurView
           intensity={60}
           tint="dark"
           style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
         />
-        <MaterialIconsRounded name="favorite-border" size={17} color="#FFFFFF" />
-      </View>
+        <MaterialIconsRounded
+          name={isSaved ? "favorite" : "favorite-border"}
+          size={17}
+          color={isSaved ? "#FF3B30" : "#FFFFFF"}
+        />
+      </Pressable>
 
       {/* Footer: frosted glass */}
       <View className="absolute left-2.5 right-2.5 bottom-2.5 z-[3] rounded-[22px] overflow-hidden border-[0.5px] border-white/60">

@@ -137,8 +137,6 @@ export const create = async (email, ipAddress) => {
 
   return {
     ...reset,
-    // Trả về rawToken cho dev mode để test
-    ...(process.env.NODE_ENV === "development" && { rawToken }),
   };
 };
 

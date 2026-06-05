@@ -54,7 +54,11 @@ export const RetryQueueBanner = () => {
             {status.isProcessing ? (
               <MaterialIconsRounded name="sync" size={18} color="#FFFFFF" />
             ) : (
-              <MaterialIconsRounded name="cloud-upload" size={18} color="#FFFFFF" />
+              <MaterialIconsRounded
+                name="cloud-upload"
+                size={18}
+                color="#FFFFFF"
+              />
             )}
             <Text className="text-white text-[13px] font-medium">
               {status.isProcessing
@@ -73,25 +77,40 @@ export const RetryQueueBanner = () => {
           <View className="bg-blue-600 px-4 pb-3 gap-1.5">
             {status.pendingCount > 0 && (
               <View className="flex-row items-center gap-1.5">
-                <MaterialIconsRounded name="schedule" size={14} color="#FFFFFF" />
-                <Text className="text-white text-xs">{status.pendingCount} đang chờ</Text>
+                <MaterialIconsRounded
+                  name="schedule"
+                  size={14}
+                  color="#FFFFFF"
+                />
+                <Text className="text-white text-xs">
+                  {status.pendingCount} đang chờ
+                </Text>
               </View>
             )}
             {status.processingCount > 0 && (
               <View className="flex-row items-center gap-1.5">
                 <MaterialIconsRounded name="sync" size={14} color="#FFFFFF" />
-                <Text className="text-white text-xs">{status.processingCount} đang xử lý</Text>
+                <Text className="text-white text-xs">
+                  {status.processingCount} đang xử lý
+                </Text>
               </View>
             )}
             {status.failedCount > 0 && (
               <View className="flex-row items-center gap-1.5">
-                <MaterialIconsRounded name="error-outline" size={14} color="#FFB74D" />
-                <Text className="text-amber-400 text-xs">{status.failedCount} thất bại</Text>
+                <MaterialIconsRounded
+                  name="error-outline"
+                  size={14}
+                  color="#FFB74D"
+                />
+                <Text className="text-amber-400 text-xs">
+                  {status.failedCount} thất bại
+                </Text>
               </View>
             )}
             {status.lastSyncTime && (
               <Text className="text-white/70 text-[11px] mt-1">
-                Đồng bộ lần cuối: {new Date(status.lastSyncTime).toLocaleString("vi-VN")}
+                Đồng bộ lần cuối:{" "}
+                {new Date(status.lastSyncTime).toLocaleString("vi-VN")}
               </Text>
             )}
             {!status.isProcessing && status.pendingCount > 0 && (
@@ -99,8 +118,14 @@ export const RetryQueueBanner = () => {
                 className="flex-row items-center justify-center gap-1.5 bg-white/20 py-2 px-4 rounded-lg mt-2"
                 onPress={() => processQueue()}
               >
-                <MaterialIconsRounded name="refresh" size={14} color="#FFFFFF" />
-                <Text className="text-white text-[13px] font-semibold">Đồng bộ ngay</Text>
+                <MaterialIconsRounded
+                  name="refresh"
+                  size={14}
+                  color="#FFFFFF"
+                />
+                <Text className="text-white text-[13px] font-semibold">
+                  Đồng bộ ngay
+                </Text>
               </TouchableOpacity>
             )}
           </View>

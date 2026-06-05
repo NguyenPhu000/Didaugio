@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -25,6 +26,7 @@ import {
   useExplore,
 } from "../../src/modules/explore/hooks/useExplore";
 import { useAuthStore } from "../../src/stores/authStore";
+import { useUIStore } from "../../src/stores/uiStore";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -44,6 +46,15 @@ import { ExploreModernHeader } from "../../src/modules/explore/components/Explor
 import { ExploreQuickActions } from "../../src/modules/explore/components/ExploreQuickActions";
 import { CategoryPills } from "../../src/modules/explore/components/CategoryPills";
 
+// Event components
+import { useEvents } from "../../src/modules/explore/hooks/useEvents";
+import { EventBannerCarousel } from "../../src/modules/explore/components/EventBannerCarousel";
+import { EventSection } from "../../src/modules/explore/components/EventSection";
+
+// Save/favorite hooks
+import { useSavePlace, useUnsavePlace, useSavedPlaces } from "../../src/modules/saved/hooks/useSaved";
+
+
 const FEATURED_COUNT = 6;
 const FOOD_HINTS = ["ẩm thực", "food", "restaurant", "ăn", "quán", "bánh"].map(
   (item) => normalizeText(item),
@@ -55,6 +66,7 @@ export default function ExploreScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
+  const isGuest = useAuthStore((s) => s.isGuest);
 
   const [searchVisible, setSearchVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -70,6 +82,71 @@ export default function ExploreScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useExplore({ categoryId: selectedCategory });
+
+  const { data: events = [], refetch: refetchEvents } = useEvents();
+
+  const featuredEvents = useMemo(() => {
+    return Array.isArray(events) ? events.filter((e) => e?.isFeaturedBanner) : [];
+  }, [events]);
+
+  const regularEvents = useMemo(() => {
+    return Array.isArray(events) ? events.filter((e) => !e?.isFeaturedBanner) : [];
+  }, [events]);
+
+  const handlePressEvent = useCallback((eventItem) => {
+    if (eventItem?.id) {
+      router.push({ pathname: "/event/[id]", params: { id: eventItem.id } });
+    }
+  }, [router]);
+
+  // Save/favorite functionality
+  const isLoggedIn = !!user && !isGuest;
+  const { data: savedPlaces = [] } = useSavedPlaces(isLoggedIn);
+  const saveMutation = useSavePlace();
+  const unsaveMutation = useUnsavePlace();
+
+  const savedPlaceIds = useMemo(() => {
+    const ids = new Set();
+    for (const item of savedPlaces) {
+      const placeId = item?.placeId ?? item?.place?.id ?? item?.id;
+      if (placeId != null) ids.add(Number(placeId));
+    }
+    return ids;
+  }, [savedPlaces]);
+
+  const handleSavePlace = useCallback(async (place) => {
+    if (!isLoggedIn) {
+      Alert.alert("Đăng nhập để lưu", "Bạn cần đăng nhập để lưu địa điểm.", [
+        { text: "Để sau", style: "cancel" },
+        { text: "Đăng nhập", onPress: () => router.push("/(auth)/login") },
+      ]);
+      return;
+    }
+    if (!place?.id) return;
+    const placeId = Number(place.id);
+    const isCurrentlySaved = savedPlaceIds.has(placeId);
+
+    try {
+      if (isCurrentlySaved) {
+        await unsaveMutation.mutateAsync(placeId);
+        useUIStore.getState().addToast({
+          type: "success",
+          message: "Địa điểm đã không còn trong danh sách yêu thích",
+        });
+      } else {
+        await saveMutation.mutateAsync({ placeId });
+        useUIStore.getState().addToast({
+          type: "success",
+          message: "Địa điểm đã được lưu vào danh sách yêu thích",
+        });
+      }
+    } catch {
+      useUIStore.getState().addToast({
+        type: "error",
+        message: isCurrentlySaved ? "Không thể bỏ lưu địa điểm" : "Không thể lưu địa điểm",
+      });
+    }
+  }, [isLoggedIn, savedPlaceIds, saveMutation, unsaveMutation, router]);
 
   const allPlaces = useMemo(
     () => exploreData?.pages.flatMap((page) => page?.data || []) ?? [],
@@ -146,7 +223,8 @@ export default function ExploreScreen() {
   const handleRefresh = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     refetch();
-  }, [refetch]);
+    refetchEvents();
+  }, [refetch, refetchEvents]);
 
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -238,6 +316,14 @@ export default function ExploreScreen() {
             />
           ) : null}
 
+          {/* Event Banner Carousel */}
+          {selectedCategory === null && featuredEvents.length > 0 ? (
+            <EventBannerCarousel
+              events={featuredEvents}
+              onPressEvent={handlePressEvent}
+            />
+          ) : null}
+
           {/* Inline filter indicator — only when a category is selected */}
           {selectedCategoryName ? (
             <View className="flex-row items-center mx-5 mt-2.5 px-3.5 h-9 rounded-full bg-[#0071E3]/[0.06] border border-[#0071E3]/[0.12] gap-2">
@@ -270,6 +356,16 @@ export default function ExploreScreen() {
                 places={featuredPlaces}
                 onPressPlace={handlePressPlace}
                 onPressViewAll={() => handleSelectCategory(null)}
+                onSavePlace={handleSavePlace}
+                savedPlaceIds={savedPlaceIds}
+              />
+            ) : null}
+
+            {/* Event Section */}
+            {selectedCategory === null && regularEvents.length > 0 ? (
+              <EventSection
+                events={regularEvents}
+                onPressEvent={handlePressEvent}
               />
             ) : null}
 

@@ -106,11 +106,10 @@ export const authService = {
     return response;
   },
 
-  // Đăng nhập Google (exchange code)
-  googleLogin: async (code, redirectUri) => {
-    const response = await api.post("/auth/google/exchange", {
-      code,
-      redirectUri,
+  // Đăng nhập Google (id_token flow, khớp với server POST /api/auth/google)
+  googleLogin: async (idToken) => {
+    const response = await api.post("/auth/google", {
+      idToken,
     });
     return response;
   },

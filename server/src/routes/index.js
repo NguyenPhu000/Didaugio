@@ -38,6 +38,7 @@ import routingRoutes from "../modules/routing/routing.routes.js";
 import navigationRoutes from "../modules/navigation/navigation.routes.js";
 import dashboardRoutes from "./dashboard/dashboard.route.js";
 import notificationRoutes from "./notification/notification.route.js";
+import eventRoutes from "./event/event.route.js";
 import {
   authLimiter,
   apiLimiter,
@@ -111,6 +112,7 @@ export const registerApiRoutes = (app) => {
   app.use("/api/business", businessRoutes);
   app.use("/api/feedback", feedbackRoutes);
   app.use("/api/notifications", notificationRoutes);
+  app.use("/api/events", eventRoutes);
   app.use("/api/ai", aiRoutes);
   app.use("/api/routes", routingRoutes);
   app.use("/api/navigation", navigationRoutes);

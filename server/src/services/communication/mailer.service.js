@@ -4,6 +4,19 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const EMAIL_FROM = process.env.EMAIL_FROM || "Didaugio <no-reply@didaugio.vn>";
 
 /**
+ * Escape HTML special characters to prevent XSS in email templates
+ */
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * Create SMTP transporter for nodemailer (FREE - Gmail, Outlook, custom SMTP)
  */
 const transporter = nodemailer.createTransport({
@@ -171,7 +184,7 @@ export const sendVerificationEmail = async ({ to, token, name }) => {
         </div>
         <div class="content">
           <p class="label">TÀI KHOẢN:</p>
-          <p><strong>${name || "BẠN"}</strong></p>
+          <p><strong>${escapeHtml(name) || "BẠN"}</strong></p>
           
           <p style="margin-top: 24px;">Cảm ơn bạn đã đăng ký tài khoản. Để hoàn tất quá trình đăng ký và kích hoạt tài khoản, vui lòng xác thực địa chỉ email của bạn:</p>
           
@@ -199,7 +212,7 @@ export const sendVerificationEmail = async ({ to, token, name }) => {
   `;
 
   const text = `
-Xin chào ${name || "bạn"},
+Xin chào ${escapeHtml(name) || "bạn"},
 
 Cảm ơn bạn đã đăng ký tài khoản.
 
@@ -377,7 +390,7 @@ export const sendPasswordResetEmail = async ({ to, token, name }) => {
         </div>
         <div class="content">
           <p class="label">TÀI KHOẢN:</p>
-          <p><strong>${name || "BẠN"}</strong></p>
+          <p><strong>${escapeHtml(name) || "BẠN"}</strong></p>
           
           <p style="margin-top: 24px;">Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Nhấn vào nút bên dưới để tạo mật khẩu mới:</p>
           
@@ -407,7 +420,7 @@ export const sendPasswordResetEmail = async ({ to, token, name }) => {
   const text = `
 🔑 ĐẶT LẠI MẬT KHẨU
 
-Xin chào ${name || "bạn"},
+Xin chào ${escapeHtml(name) || "bạn"},
 
 Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.
 
@@ -596,7 +609,7 @@ export const sendStaffInvitationEmail = async ({
         <div class="content">
           <p>Xin chào,</p>
 
-          <p>Bạn đã được mời tham gia <strong>${businessName}</strong> trên nền tảng Đi Đâu Giớ? với vai trò <strong>${roleName || "Nhân viên"}</strong>.</p>
+          <p>Bạn đã được mời tham gia <strong>${escapeHtml(businessName)}</strong> trên nền tảng Đi Đâu Giớ? với vai trò <strong>${escapeHtml(roleName) || "Nhân viên"}</strong>.</p>
 
           <p>Nhấn vào nút bên dưới để đăng ký tài khoản và bắt đầu làm việc:</p>
 
@@ -628,7 +641,7 @@ export const sendStaffInvitationEmail = async ({
 
 Xin chào,
 
-Bạn đã được mời tham gia ${businessName} trên nền tảng Đi Đâu Giớ? với vai trò ${roleName || "Nhân viên"}.
+Bạn đã được mời tham gia ${escapeHtml(businessName)} trên nền tảng Đi Đâu Giớ? với vai trò ${escapeHtml(roleName) || "Nhân viên"}.
 
 Để đăng ký tài khoản, vui lòng truy cập link sau:
 ${inviteUrl}
@@ -641,7 +654,7 @@ ${inviteUrl}
   await transporter.sendMail({
     from: EMAIL_FROM,
     to,
-    subject: `Lời mời làm việc tại ${businessName}`,
+    subject: `Lời mời làm việc tại ${escapeHtml(businessName)}`,
     text,
     html,
   });

@@ -10,6 +10,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { create } from "zustand";
+import { savePlaceApi, unsavePlaceApi } from "../saved/api/savedApi";
 
 const PENDING_ACTIONS_KEY = "@pending_actions_queue";
 const MAX_RETRY_ATTEMPTS = 3;
@@ -209,10 +210,10 @@ const executeAction = async (action) => {
       // await bookingApi.cancel(action.data.id, action.data.reason);
       break;
     case ACTION_TYPES.SAVE_PLACE:
-      // await savedApi.savePlace(action.data.placeId);
+      await savePlaceApi(action.data.placeId, action.data.note, action.data.collectionName);
       break;
     case ACTION_TYPES.UNSAVE_PLACE:
-      // await savedApi.unsavePlace(action.data.placeId);
+      await unsavePlaceApi(action.data.placeId);
       break;
     case ACTION_TYPES.ADD_REVIEW:
       // await reviewApi.create(action.data);

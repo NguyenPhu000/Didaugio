@@ -18,10 +18,8 @@ export function NoteEditorModal({
   visible,
   placeName,
   value,
-  collectionName,
   saving,
   onChangeText,
-  onChangeCollectionName,
   onClose,
   onSubmit,
 }) {
@@ -51,15 +49,6 @@ export function NoteEditorModal({
             maxLength={500}
             className="min-h-[120px] rounded-[18px] px-3.5 py-3 text-[#1D1D1F] text-sm leading-5 bg-[#F5F5F7] border border-black/[0.06]"
             textAlignVertical="top"
-          />
-
-          <TextInput
-            value={collectionName}
-            onChangeText={onChangeCollectionName}
-            placeholder="Tên bộ sưu tập riêng (VD: Đi với gia đình)"
-            placeholderTextColor="rgba(29, 29, 31, 0.42)"
-            maxLength={80}
-            className="rounded-[16px] px-3.5 py-3 text-[#1D1D1F] text-sm bg-[#F5F5F7] border border-black/[0.06]"
           />
 
           <View className="flex-row gap-2.5 mt-1">

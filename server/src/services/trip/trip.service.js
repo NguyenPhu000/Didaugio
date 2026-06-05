@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import prisma from "../../config/prismaClient.js";
 import { PRIMARY_GEMINI_MODEL } from "../../config/geminiClient.js";
 import { mapGeminiError } from "../../lib/geminiErrorHandler.js";
@@ -7,6 +8,7 @@ import {
 } from "../ai/gemini.service.js";
 import routingService from "../routing/routing.service.js";
 import { normalizeItinerary } from "../../utils/itineraryFormatter.js";
+import { uploadPlaceImage } from "../media/media.service.js";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -25,6 +27,16 @@ const parsePagination = (query = {}) => {
   const limit = Math.min(Math.max(toInt(query.limit, 10), 1), 50);
   const skip = (page - 1) * limit;
   return { page, limit, skip };
+};
+
+/** Chuyển data URL base64 thành URL Cloudinary (giống event thumbnail). */
+const normalizeTripThumbnail = async (thumbnail) => {
+  if (thumbnail == null || thumbnail === "") return thumbnail;
+  if (typeof thumbnail === "string" && thumbnail.startsWith("data:image/")) {
+    const uploadResult = await uploadPlaceImage(thumbnail, "didaugio/trips");
+    return uploadResult.secureUrl;
+  }
+  return thumbnail;
 };
 
 const approvedPlaceWhere = {
@@ -695,24 +707,50 @@ export const createTrip = async (userId, data) => {
     travelStyle,
     groupSize,
     status,
+    placeIds,
+    thumbnail,
   } = data;
-  return prisma.trip.create({
-    data: {
-      userId,
-      title,
-      description,
-      startDate: startDate ? new Date(startDate) : null,
-      endDate: endDate ? new Date(endDate) : null,
-      totalDays: toInt(totalDays, 1),
-      travelStyle,
-      groupSize: toInt(groupSize, 1),
-      status: status || "upcoming",
-    },
-    include: {
-      destinations: {
-        include: { place: { select: TRIP_PLACE_SELECT } },
+
+  const normalizedThumbnail = await normalizeTripThumbnail(thumbnail);
+
+  return prisma.$transaction(async (tx) => {
+    const trip = await tx.trip.create({
+      data: {
+        userId,
+        title,
+        description,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+        totalDays: toInt(totalDays, 1),
+        travelStyle,
+        groupSize: toInt(groupSize, 1),
+        status: status || "upcoming",
+        ...(normalizedThumbnail !== undefined && normalizedThumbnail !== null
+          ? { thumbnail: normalizedThumbnail }
+          : {}),
       },
-    },
+    });
+
+    if (Array.isArray(placeIds) && placeIds.length > 0) {
+      const destinations = placeIds.map((placeId, index) => ({
+        tripId: trip.id,
+        placeId: toInt(placeId),
+        dayNumber: 1,
+        order: index + 1,
+        status: "planned",
+      }));
+      await tx.tripDestination.createMany({ data: destinations });
+    }
+
+    return tx.trip.findUnique({
+      where: { id: trip.id },
+      include: {
+        destinations: {
+          orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+          include: { place: { select: TRIP_PLACE_SELECT } },
+        },
+      },
+    });
   });
 };
 
@@ -768,6 +806,9 @@ export const updateTrip = async (id, userId, data) => {
     }
   }
 
+  const normalizedThumbnail =
+    thumbnail !== undefined ? await normalizeTripThumbnail(thumbnail) : undefined;
+
   return prisma.trip.update({
     where: { id },
     data: {
@@ -783,7 +824,7 @@ export const updateTrip = async (id, userId, data) => {
       ...(travelStyle !== undefined && { travelStyle }),
       ...(groupSize !== undefined && { groupSize: toInt(groupSize, 1) }),
       ...(status !== undefined && { status }),
-      ...(thumbnail !== undefined && { thumbnail }),
+      ...(normalizedThumbnail !== undefined && { thumbnail: normalizedThumbnail }),
     },
     include: {
       destinations: {
@@ -995,12 +1036,17 @@ export const createTripShare = async (tripId, userId, data = {}) => {
   }
 
   const shareCode = generateShareCode();
+  // Hash password before storing
+  const hashedPassword = data.password
+    ? await bcrypt.hash(data.password, 10)
+    : null;
+
   const share = await prisma.tripShare.create({
     data: {
       tripId,
       shareCode,
       shareType: data.shareType || "view",
-      password: data.password || null,
+      password: hashedPassword,
       expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
       maxAccess: data.maxAccess || null,
     },
@@ -1056,10 +1102,18 @@ export const accessTripShare = async (shareCode, password = null) => {
     throw err;
   }
 
-  if (share.password && share.password !== password) {
-    const err = new Error("Mật khẩu không đúng");
-    err.statusCode = 403;
-    throw err;
+  if (share.password) {
+    if (!password) {
+      const err = new Error("Cần mật khẩu để xem chuyến đi này");
+      err.statusCode = 403;
+      throw err;
+    }
+    const isMatch = await bcrypt.compare(password, share.password);
+    if (!isMatch) {
+      const err = new Error("Mật khẩu không đúng");
+      err.statusCode = 403;
+      throw err;
+    }
   }
 
   await prisma.tripShare.update({

@@ -1,0 +1,175 @@
+import { memo, useCallback } from "react";
+import { Dimensions, Pressable, Text, View } from "react-native";
+import { Image } from "expo-image";
+import { BlurView } from "expo-blur";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
+import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../../lib/media-url";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const SCREEN_W = Dimensions.get("window").width;
+const CARD_W = Math.min(280, SCREEN_W - 48);
+const CARD_H = 220;
+
+const SPRING_CONFIG = TOKENS.spring.press;
+
+function EventCardInner({ event, onPress }) {
+  const scale = useSharedValue(1);
+
+  const rawImage = event?.thumbnail || event?.imageUrl;
+  const imageUri = rawImage ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 600) : "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80";
+
+  const startDateStr = event?.startDate ? new Date(event.startDate).toLocaleDateString("vi-VN", {
+    day: "numeric",
+    month: "numeric",
+  }) : "";
+  const endDateStr = event?.endDate ? new Date(event.endDate).toLocaleDateString("vi-VN", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+  }) : "";
+
+  const dateRange = startDateStr && endDateStr ? `${startDateStr} - ${endDateStr}` : "";
+
+  // Tính trạng thái
+  const now = new Date();
+  const start = event?.startDate ? new Date(event.startDate) : null;
+  const end = event?.endDate ? new Date(event.endDate) : null;
+
+  let statusText = "Sắp diễn ra";
+  let statusColor = "#0071E3"; // Apple Blue
+  let statusBg = "rgba(0, 113, 227, 0.15)";
+
+  if (start && end) {
+    if (now >= start && now <= end) {
+      statusText = "Đang diễn ra";
+      statusColor = "#34C759"; // Apple Green
+      statusBg = "rgba(52, 199, 89, 0.15)";
+    } else if (now > end) {
+      statusText = "Đã kết thúc";
+      statusColor = "#8E8E93"; // Apple Gray
+      statusBg = "rgba(142, 142, 147, 0.15)";
+    }
+  }
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.97, SPRING_CONFIG);
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, SPRING_CONFIG);
+  }, [scale]);
+
+  const handlePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress?.();
+  }, [onPress]);
+
+  const participantCount = event?._count?.participants || event?.participantCount || 0;
+
+  return (
+    <AnimatedPressable
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={[animatedStyle, { width: CARD_W, height: CARD_H }]}
+      className="rounded-[24px] overflow-hidden bg-[#EDEDF2] shadow-sm relative border border-black/5"
+    >
+      {/* Background Image */}
+      <Image
+        source={{ uri: imageUri }}
+        contentFit="cover"
+        transition={200}
+        cachePolicy="memory-disk"
+        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
+      />
+
+      {/* Shadows */}
+      <View className="absolute inset-0 bg-black/20" pointerEvents="none" />
+      <View className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/80 via-black/40 to-transparent" pointerEvents="none" />
+
+      {/* Top badges */}
+      <View className="absolute top-3 left-3 right-3 flex-row justify-between items-center z-[2]">
+        {/* Status Badge */}
+        <View 
+          className="px-2.5 py-1 rounded-full items-center justify-center border border-white/20"
+          style={{ backgroundColor: statusBg }}
+        >
+          <Text className="text-[11px] font-semibold" style={{ color: statusColor, fontFamily: TOKENS.font.semibold }}>
+            {statusText}
+          </Text>
+        </View>
+
+        {/* Companion count (neon neon) */}
+        {event?.activeCompanionCount > 0 ? (
+          <View className="px-2 py-1 rounded-full bg-black/60 border border-white/10 flex-row items-center gap-1">
+            <View className="w-1.5 h-1.5 rounded-full bg-[#34C759] animate-pulse" />
+            <Text className="text-white text-[10px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
+              {event.activeCompanionCount} online
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      {/* Bottom Information */}
+      <View className="absolute bottom-3.5 left-3.5 right-3.5 z-[2] gap-1">
+        {/* Date Range */}
+        {dateRange ? (
+          <View className="flex-row items-center gap-1">
+            <MaterialIconsRounded name="calendar-today" size={10} color="rgba(255,255,255,0.7)" />
+            <Text className="text-white/70 text-[11px] font-medium" style={{ fontFamily: TOKENS.font.medium }}>
+              {dateRange}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Title */}
+        <Text className="text-white text-base leading-[20px] font-bold tracking-tight" style={{ fontFamily: TOKENS.font.heading }} numberOfLines={2}>
+          {event?.title}
+        </Text>
+
+        {/* Stats Row */}
+        <View className="flex-row items-center justify-between mt-1">
+          <View className="flex-row items-center gap-2">
+            <View className="flex-row items-center gap-0.5">
+              <MaterialIconsRounded name="people" size={12} color="rgba(255,255,255,0.8)" />
+              <Text className="text-white/90 text-[11px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
+                {participantCount} tham gia
+              </Text>
+            </View>
+
+            {event?.trip?.destinations?.length > 0 ? (
+              <View className="flex-row items-center gap-0.5">
+                <MaterialIconsRounded name="map" size={12} color="rgba(255,255,255,0.8)" />
+                <Text className="text-white/90 text-[11px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
+                  {event.trip.destinations.length} chặng
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View className="w-6 h-6 rounded-full bg-white/20 items-center justify-center border border-white/30">
+            <MaterialIconsRounded name="chevron-right" size={16} color="#FFFFFF" />
+          </View>
+        </View>
+      </View>
+    </AnimatedPressable>
+  );
+}
+
+export const EventCard = memo(EventCardInner);
+export { CARD_W as EVENT_CARD_W, CARD_H as EVENT_CARD_H };

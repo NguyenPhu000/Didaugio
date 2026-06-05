@@ -1,17 +1,18 @@
+import React from "react";
+import { useWindowDimensions } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
 } from "react-native-reanimated";
 import { useRouter, usePathname } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ANIMATIONS } from "../../lib/animations";
 import { AIEntryButton } from "./AIEntryButton";
 
 const HIDE_PATHS = new Set([
   "/(tabs)/ai",
   "/ai",
-  "/(tabs)/map",
-  "/map",
   "/(auth)/login",
   "/login",
   "/(auth)/register",
@@ -23,10 +24,57 @@ export function AIFloatingButton() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const startX = useSharedValue(0);
+  const startY = useSharedValue(0);
   const scale = useSharedValue(1);
 
+  const buttonSize = 52;
+  const margin = 16;
+  const initialX = screenWidth - 18 - buttonSize;
+  const initialY = screenHeight - (insets.bottom + 148) - buttonSize;
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-10, 10])
+    .activeOffsetY([-10, 10])
+    .onStart(() => {
+      startX.value = translateX.value;
+      startY.value = translateY.value;
+      scale.value = withSpring(1.08);
+    })
+    .onUpdate((event) => {
+      translateX.value = startX.value + event.translationX;
+      translateY.value = startY.value + event.translationY;
+    })
+    .onEnd(() => {
+      scale.value = withSpring(1);
+
+      const currentAbsoluteX = initialX + translateX.value;
+      const snapToLeftX = margin - initialX;
+      const snapToRightX = screenWidth - margin - buttonSize - initialX;
+
+      const midPoint = screenWidth / 2;
+      const snapX = currentAbsoluteX < midPoint ? snapToLeftX : snapToRightX;
+
+      const currentAbsoluteY = initialY + translateY.value;
+      const snapY = Math.min(
+        Math.max(currentAbsoluteY, insets.top + margin),
+        screenHeight - insets.bottom - 90 - buttonSize
+      ) - initialY;
+
+      translateX.value = withSpring(snapX, { damping: 15, stiffness: 120 });
+      translateY.value = withSpring(snapY, { damping: 15, stiffness: 120 });
+    });
+
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value }
+    ],
   }));
 
   const shouldHide =
@@ -39,26 +87,24 @@ export function AIFloatingButton() {
   if (shouldHide) return null;
 
   return (
-    <Animated.View
-      style={[
-        animatedStyle,
-        {
-          position: "absolute",
-          bottom: insets.bottom + 86,
-          right: 18,
-        },
-      ]}
-    >
-      <AIEntryButton
-        compact
-        onPress={() => router.push("/(tabs)/ai")}
-        onPressIn={() => {
-          scale.value = ANIMATIONS.cardPressIn;
-        }}
-        onPressOut={() => {
-          scale.value = ANIMATIONS.cardPressOut;
-        }}
-      />
-    </Animated.View>
+    <GestureDetector gesture={panGesture}>
+      <Animated.View
+        style={[
+          animatedStyle,
+          {
+            position: "absolute",
+            bottom: insets.bottom + 148,
+            right: 18,
+            zIndex: 99999,
+          },
+        ]}
+      >
+        <AIEntryButton
+          compact
+          onPress={() => router.push("/(tabs)/ai")}
+        />
+      </Animated.View>
+    </GestureDetector>
   );
 }
+export default AIFloatingButton;

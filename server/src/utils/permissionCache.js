@@ -4,7 +4,25 @@
  */
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 10000; // Maximum number of entries
+const CLEANUP_INTERVAL = 60 * 1000; // Cleanup every 1 minute
+
 const cache = new Map();
+
+// Periodic cleanup of expired entries
+const cleanupInterval = setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of cache.entries()) {
+    if (entry.expiry <= now) {
+      cache.delete(key);
+    }
+  }
+}, CLEANUP_INTERVAL);
+
+// Allow the interval to not prevent Node from exiting
+if (cleanupInterval.unref) {
+  cleanupInterval.unref();
+}
 
 /**
  * Get cached permissions for a user.
@@ -28,6 +46,14 @@ export function getCachedPermissions(cacheKey) {
  * @param {object} value - { isSuperAdmin, permissions }
  */
 export function setCachedPermissions(cacheKey, value) {
+  // Evict oldest entries if cache is full
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) {
+      cache.delete(oldestKey);
+    }
+  }
+
   cache.set(cacheKey, {
     ...value,
     expiry: Date.now() + CACHE_TTL,
@@ -65,4 +91,11 @@ export function invalidateRoleCache(roleId) {
  */
 export function clearPermissionCache() {
   cache.clear();
+}
+
+/**
+ * Get current cache size (for monitoring).
+ */
+export function getCacheSize() {
+  return cache.size;
 }

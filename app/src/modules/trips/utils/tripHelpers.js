@@ -8,27 +8,35 @@ import { TRIP_STATUS_META } from "./tripTheme";
 
 export const STATUS_THEME = TRIP_STATUS_META;
 
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+
+/**
+ * Định dạng ngày tường minh dd/mm/yy (hoặc dd/mm/yyyy).
+ */
+export function formatDateDmy(dateInput, { twoDigitYear = true } = {}) {
+  const date =
+    dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const day = pad2(date.getDate());
+  const month = pad2(date.getMonth() + 1);
+  const year = twoDigitYear
+    ? pad2(date.getFullYear() % 100)
+    : String(date.getFullYear());
+
+  return `${day}/${month}/${year}`;
+}
+
 export function formatDate(dateStr) {
   if (!dateStr) return null;
-
-  return new Date(dateStr).toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  return formatDateDmy(dateStr);
 }
 
 export function formatFriendlyDate(dateStr, includeYear = true) {
   if (!dateStr) return null;
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return null;
-  const day = d.getDate();
-  const month = d.getMonth() + 1;
-  const year = d.getFullYear();
-  if (includeYear) {
-    return `${day} thg ${month}, ${year}`;
-  }
-  return `${day} thg ${month}`;
+  return formatDateDmy(dateStr, { twoDigitYear: includeYear });
 }
 
 export function getDateRangeLabel(trip) {
@@ -36,43 +44,46 @@ export function getDateRangeLabel(trip) {
     const start = new Date(trip.startDate);
     const end = new Date(trip.endDate);
     if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
-      const startDay = start.getDate();
-      const startMonth = start.getMonth() + 1;
-      const startYear = start.getFullYear();
-
-      const endDay = end.getDate();
-      const endMonth = end.getMonth() + 1;
-      const endYear = end.getFullYear();
-
-      const currentYear = new Date().getFullYear();
-      const showStartYear = startYear !== currentYear;
-      const showEndYear = endYear !== currentYear;
-
-      if (startYear === endYear) {
-        const showYear = startYear !== currentYear;
-        if (startMonth === endMonth) {
-          if (startDay === endDay) {
-            return `${startDay} thg ${startMonth}${showYear ? `, ${startYear}` : ""}`;
-          }
-          return `${startDay} - ${endDay} thg ${startMonth}${showYear ? `, ${startYear}` : ""}`;
-        }
-        return `${startDay} thg ${startMonth} - ${endDay} thg ${endMonth}${showYear ? `, ${startYear}` : ""}`;
-      }
-      return `${startDay} thg ${startMonth}, ${startYear} - ${endDay} thg ${endMonth}, ${endYear}`;
+      const startLabel = formatDateDmy(start);
+      const endLabel = formatDateDmy(end);
+      if (startLabel === endLabel) return startLabel;
+      return `${startLabel} - ${endLabel}`;
     }
   }
 
   if (trip.startDate) {
     const start = new Date(trip.startDate);
     if (!Number.isNaN(start.getTime())) {
-      const startYear = start.getFullYear();
-      const currentYear = new Date().getFullYear();
-      const showYear = startYear !== currentYear;
-      return `Từ ${start.getDate()} thg ${start.getMonth() + 1}${showYear ? `, ${startYear}` : ""}`;
+      return `Từ ${formatDateDmy(start)}`;
     }
   }
 
   return "Chưa chọn ngày";
+}
+
+/**
+ * Ngày tách dòng cho TripCard (tránh cắt chữ khi range dài).
+ */
+export function getTripCardDateDisplay(trip) {
+  const startLabel = trip?.startDate ? formatDateDmy(trip.startDate) : null;
+  const endLabel = trip?.endDate ? formatDateDmy(trip.endDate) : null;
+
+  if (startLabel && endLabel) {
+    if (startLabel === endLabel) {
+      return { kind: "single", label: startLabel };
+    }
+    return { kind: "range", start: startLabel, end: endLabel };
+  }
+
+  if (startLabel) {
+    return { kind: "from", label: startLabel };
+  }
+
+  if (endLabel) {
+    return { kind: "to", label: endLabel };
+  }
+
+  return { kind: "empty" };
 }
 
 export function getDaysUntil(dateStr) {
@@ -266,16 +277,12 @@ export function toValidDate(value) {
 }
 
 /**
- * Format a date string to DD/MM/YYYY.
+ * Format a date string to dd/mm/yyyy.
  */
 export function formatDateYmd(dateStr) {
   const date = toValidDate(dateStr);
   if (!date) return null;
-  return date.toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  return formatDateDmy(date, { twoDigitYear: false });
 }
 
 /**

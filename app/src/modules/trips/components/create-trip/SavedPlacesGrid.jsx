@@ -1,87 +1,147 @@
-import { memo, useCallback } from "react";
-import { Pressable, Text, View } from "react-native";
+import { memo, useCallback, useMemo } from "react";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import Animated, { FadeInRight, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeInRight,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import { cn } from "../../../../lib/cn";
 import { TOKENS, BOOKING_APPLE_THEME as APPLE_THEME } from "../../../../constants/design-tokens";
-import { resolvePlaceImageUri } from "../../../../lib/media-url";
+import {
+  getOptimizedCloudinaryUrl,
+  resolvePlaceImageUri,
+} from "../../../../lib/media-url";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+const CARD_WIDTH = 136;
+const IMAGE_HEIGHT = 96;
+const THUMB_SIZE = 280;
+
 const T = {
   ink: APPLE_THEME.text,
-  canvas: APPLE_THEME.surface,
-  parchment: APPLE_THEME.background,
-  muted48: APPLE_THEME.textMuted,
+  muted: APPLE_THEME.textMuted,
   primary: APPLE_THEME.primary,
   onPrimary: APPLE_THEME.white,
+  surface: APPLE_THEME.surfaceElevated,
+  hairline: APPLE_THEME.borderSoft,
 };
 
-// Bọc memo cho từng Chip để tránh re-render toàn bộ lưới khi chọn/bỏ chọn
-const SavedPlaceChip = memo(({ entry, selected, onToggle, index }) => {
-  const place = entry?.place || entry;
-  const placeId = place?.id;
+function getPlaceSubtitle(place) {
+  const district = place?.district?.name;
+  const category = place?.category?.name;
+  if (district && category) return `${district} · ${category}`;
+  return district || category || place?.address || "";
+}
+
+const SavedPlaceCard = memo(function SavedPlaceCard({
+  place,
+  placeId,
+  selected,
+  onToggle,
+  index,
+}) {
   const scale = useSharedValue(1);
-  const imageUri = resolvePlaceImageUri(place);
+  const rawUri = resolvePlaceImageUri(place);
+  const imageUri =
+    rawUri && rawUri.includes("res.cloudinary.com")
+      ? getOptimizedCloudinaryUrl(rawUri, THUMB_SIZE)
+      : rawUri;
 
   const handlePressIn = useCallback(() => {
     scale.value = withSpring(0.96, TOKENS.spring.press);
-  }, []);
+  }, [scale]);
 
   const handlePressOut = useCallback(() => {
     scale.value = withSpring(1, TOKENS.spring.press);
-  }, []);
+  }, [scale]);
 
   const handlePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onToggle?.(placeId);
+    onToggle(placeId);
   }, [placeId, onToggle]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
-  if (!placeId) return null;
-
   return (
-    <Animated.View entering={FadeInRight.delay(index * 40).duration(300)}>
+    <Animated.View entering={FadeInRight.delay(Math.min(index * 50, 300)).duration(400)}>
       <AnimatedPressable
         onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        className={cn(
-          "flex-row items-center h-10 pl-1 pr-3 rounded-[20px] bg-white border gap-1.5 max-w-[170px]",
-          selected ? "border-primary bg-black/[0.02]" : "border-black/[0.06]",
-        )}
-        style={animStyle}
+        accessibilityRole="button"
+        accessibilityState={{ selected }}
+        accessibilityLabel={`${place?.name || "Địa điểm"}${selected ? ", đã chọn" : ""}`}
+        style={[styles.card, selected && styles.cardSelected, animStyle]}
       >
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} className="w-8 h-8 rounded-full bg-background" contentFit="cover" transition={150} />
-        ) : (
-          <View className="w-8 h-8 rounded-full bg-background items-center justify-center">
-            <MaterialIconsRounded name="place" size={16} color={T.muted48} />
-          </View>
-        )}
-
-        <Text
-          className={cn(
-            "flex-1 text-[13px] font-semibold tracking-tight",
-            selected ? "text-primary" : "text-ink",
+        <View style={styles.imageWrap}>
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              recyclingKey={`saved-place-${placeId}`}
+              style={styles.image}
+              contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
+            />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <MaterialIconsRounded name="place" size={28} color={T.muted} />
+            </View>
           )}
-          numberOfLines={1}
-        >
-          {place?.name || "Địa điểm"}
-        </Text>
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.35)"]}
+            style={styles.imageGradient}
+            pointerEvents="none"
+          />
+          {selected ? (
+            <View style={styles.checkBadge}>
+              <MaterialIconsRounded name="check" size={14} color={T.onPrimary} />
+            </View>
+          ) : (
+            <View style={styles.addHint}>
+              <MaterialIconsRounded name="add" size={14} color={T.onPrimary} />
+            </View>
+          )}
+        </View>
 
-        {selected && (
-          <View className="w-4 h-4 rounded-[8px] bg-primary items-center justify-center">
-            <MaterialIconsRounded name="check" size={10} color={T.onPrimary} />
-          </View>
-        )}
+        <View style={styles.cardBody}>
+          <Text style={[styles.placeName, selected && styles.placeNameSelected]} numberOfLines={2}>
+            {place?.name || "Địa điểm"}
+          </Text>
+          {getPlaceSubtitle(place) ? (
+            <Text style={styles.placeMeta} numberOfLines={1}>
+              {getPlaceSubtitle(place)}
+            </Text>
+          ) : null}
+        </View>
       </AnimatedPressable>
     </Animated.View>
+  );
+});
+
+const SkeletonCard = memo(function SkeletonCard() {
+  return (
+    <View style={styles.card}>
+      <View style={[styles.imageWrap, styles.skeletonBlock]} />
+      <View style={styles.cardBody}>
+        <View style={[styles.skeletonLine, { width: "85%" }]} />
+        <View style={[styles.skeletonLine, { width: "60%", marginTop: 6 }]} />
+      </View>
+    </View>
   );
 });
 
@@ -93,62 +153,273 @@ function SavedPlacesGridInner({
   isError,
   onToggle,
 }) {
+  const selectedSet = useMemo(
+    () => new Set(selectedIds.map(String)),
+    [selectedIds],
+  );
+
+  const entries = useMemo(
+    () =>
+      (savedPlaces || [])
+        .map((entry) => {
+          const place = entry?.place || entry;
+          const placeId = place?.id;
+          if (!placeId) return null;
+          return { entry, place, placeId: String(placeId) };
+        })
+        .filter(Boolean),
+    [savedPlaces],
+  );
+
   if (isLoading) {
     return (
-      <View className="py-1">
-        <View className="flex-row gap-2">
-          {[0, 1, 2].map((i) => (
-            <View key={i} className="w-[110px] h-10 rounded-[20px] bg-background" />
-          ))}
-        </View>
-      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {[0, 1, 2, 3].map((i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </ScrollView>
     );
   }
 
-  if (isError || !savedPlaces || savedPlaces.length === 0) {
+  if (isError || entries.length === 0) {
     return (
-      <View className="items-center py-6 gap-1.5">
-        <View className="w-12 h-12 rounded-[24px] bg-background items-center justify-center mb-0.5">
-          <MaterialIconsRounded name={isError ? "cloud-off" : "bookmark-border"} size={22} color={T.muted48} />
+      <View style={styles.emptyWrap}>
+        <View style={styles.emptyIconRing}>
+          <MaterialIconsRounded
+            name={isError ? "cloud-off" : "bookmark-border"}
+            size={26}
+            color={T.muted}
+          />
         </View>
-        <Text className="text-sm font-semibold tracking-tight" style={{ color: T.ink }}>
+        <Text style={styles.emptyTitle}>
           {isError ? "Không thể tải dữ liệu" : "Chưa có địa điểm đã lưu"}
         </Text>
-        <Text className="text-xs font-body text-center leading-4 px-8" style={{ color: T.muted48 }}>
-          {isError ? "Vui lòng kiểm tra kết nối và thử lại" : "Hãy lưu những địa điểm yêu thích để lên lịch trình nhanh hơn"}
+        <Text style={styles.emptySubtitle}>
+          {isError
+            ? "Kiểm tra kết nối mạng và thử lại sau"
+            : "Lưu địa điểm yêu thích từ bản đồ hoặc Khám phá để thêm nhanh vào chuyến đi"}
         </Text>
       </View>
     );
   }
 
   return (
-    <View className="gap-3">
-      <View className="flex-row flex-wrap gap-2">
-        {savedPlaces.map((entry, index) => {
-          const place = entry?.place || entry;
-          const isSelected = selectedIds.map(String).includes(String(place?.id));
-          return (
-            <SavedPlaceChip
-              key={`${entry?.id || place?.id}-${index}`}
-              entry={entry}
-              selected={isSelected}
-              onToggle={onToggle}
-              index={index}
-            />
-          );
-        })}
+    <View style={styles.root}>
+      <View style={styles.listHeader}>
+        <Text style={styles.listHint}>Chạm để chọn địa điểm</Text>
+        <View style={styles.countPill}>
+          <Text style={styles.countText}>{entries.length} đã lưu</Text>
+        </View>
       </View>
 
-      {selectedIds.length > 0 && (
-        <Animated.View entering={FadeInRight.duration(200)} className="flex-row items-center gap-1.5 pt-0.5 px-1">
-          <MaterialIconsRounded name="check-circle" size={14} color={T.primary} />
-          <Text className="text-xs font-medium tracking-tight" style={{ color: T.primary }}>
-            Đã chọn {selectedIds.length} địa điểm cho ngày {targetDay}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        decelerationRate="fast"
+      >
+        {entries.map(({ place, placeId, entry }, index) => (
+          <SavedPlaceCard
+            key={entry?.id ? `saved-${entry.id}` : `place-${placeId}`}
+            place={place}
+            placeId={placeId}
+            selected={selectedSet.has(placeId)}
+            onToggle={onToggle}
+            index={index}
+          />
+        ))}
+      </ScrollView>
+
+      {selectedIds.length > 0 ? (
+        <Animated.View entering={FadeIn.duration(220)} style={styles.selectionBar}>
+          <MaterialIconsRounded name="check-circle" size={18} color={T.primary} />
+          <Text style={styles.selectionText}>
+            Đã chọn {selectedIds.length} địa điểm
+            {targetDay > 0 ? ` · Ngày ${targetDay}` : ""}
           </Text>
         </Animated.View>
-      )}
+      ) : null}
     </View>
   );
 }
 
 export const SavedPlacesGrid = memo(SavedPlacesGridInner);
+
+const styles = StyleSheet.create({
+  root: {
+    gap: 12,
+  },
+  listHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 2,
+  },
+  listHint: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: T.muted,
+    letterSpacing: -0.2,
+  },
+  countPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.04)",
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: T.ink,
+    letterSpacing: -0.1,
+  },
+  scrollContent: {
+    gap: 10,
+    paddingVertical: 2,
+    paddingRight: 4,
+  },
+  card: {
+    width: CARD_WIDTH,
+    borderRadius: 18,
+    backgroundColor: T.surface,
+    borderWidth: 1,
+    borderColor: T.hairline,
+    overflow: "hidden",
+  },
+  cardSelected: {
+    borderColor: T.primary,
+    borderWidth: 2,
+    backgroundColor: "rgba(0,122,255,0.04)",
+  },
+  imageWrap: {
+    width: "100%",
+    height: IMAGE_HEIGHT,
+    backgroundColor: APPLE_THEME.background,
+    overflow: "hidden",
+  },
+  image: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+  },
+  imagePlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.03)",
+  },
+  imageGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  checkBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: T.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: T.onPrimary,
+  },
+  addHint: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardBody: {
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 10,
+    gap: 2,
+    minHeight: 52,
+  },
+  placeName: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: T.ink,
+    letterSpacing: -0.2,
+    lineHeight: 17,
+  },
+  placeNameSelected: {
+    color: T.primary,
+  },
+  placeMeta: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: T.muted,
+    letterSpacing: -0.1,
+  },
+  selectionBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,122,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(0,122,255,0.12)",
+  },
+  selectionText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: T.primary,
+    letterSpacing: -0.2,
+  },
+  skeletonBlock: {
+    backgroundColor: "rgba(0,0,0,0.06)",
+  },
+  skeletonLine: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "rgba(0,0,0,0.06)",
+  },
+  emptyWrap: {
+    alignItems: "center",
+    paddingVertical: 28,
+    paddingHorizontal: 16,
+    gap: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: T.hairline,
+    backgroundColor: "rgba(0,0,0,0.02)",
+  },
+  emptyIconRing: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: T.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: T.ink,
+    letterSpacing: -0.3,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    fontWeight: "400",
+    color: T.muted,
+    textAlign: "center",
+    lineHeight: 18,
+    maxWidth: 280,
+  },
+});

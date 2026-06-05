@@ -47,21 +47,24 @@ export function ChatPanel() {
     buttons: null,
   });
 
-  const showAlert = useCallback(({ title, message, type = "info", buttons }) => {
-    setAlertConfig({
-      visible: true,
-      title,
-      message,
-      type,
-      buttons: buttons?.map((btn) => ({
-        ...btn,
-        onPress: () => {
-          setAlertConfig((prev) => ({ ...prev, visible: false }));
-          btn.onPress?.();
-        },
-      })),
-    });
-  }, []);
+  const showAlert = useCallback(
+    ({ title, message, type = "info", buttons }) => {
+      setAlertConfig({
+        visible: true,
+        title,
+        message,
+        type,
+        buttons: buttons?.map((btn) => ({
+          ...btn,
+          onPress: () => {
+            setAlertConfig((prev) => ({ ...prev, visible: false }));
+            btn.onPress?.();
+          },
+        })),
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     const showEvent =
@@ -102,7 +105,8 @@ export function ChatPanel() {
       if (activeTrips.length === 0) {
         showAlert({
           title: "Chưa có chuyến đi",
-          message: "Bạn cần tạo một chuyến đi trước để thêm địa điểm này vào lịch trình.",
+          message:
+            "Bạn cần tạo một chuyến đi trước để thêm địa điểm này vào lịch trình.",
           type: "warning",
           buttons: [{ text: "Đóng", style: "cancel" }],
         });
@@ -152,13 +156,10 @@ export function ChatPanel() {
         title: "Chọn chuyến đi",
         message: `Bạn muốn thêm "${place.name}" vào chuyến đi nào?`,
         type: "confirm",
-        buttons: [
-          ...buttons,
-          { text: "Hủy", style: "cancel" },
-        ],
+        buttons: [...buttons, { text: "Hủy", style: "cancel" }],
       });
     },
-    [myTrips, refetchTrips, showAlert]
+    [myTrips, refetchTrips, showAlert],
   );
 
   const handleSend = useCallback(
@@ -168,7 +169,7 @@ export function ChatPanel() {
       setInputText("");
       setError(null);
       setIsSending(true);
- 
+
       try {
         await sendChatMessage(message);
       } catch (err) {
@@ -241,12 +242,16 @@ export function ChatPanel() {
                   ? "border-slate-300 bg-slate-100"
                   : "border-red-500/45 bg-red-500/10"
               }`}
-              style={({ pressed }) => pressed && !isSending ? { opacity: 0.94 } : undefined}
+              style={({ pressed }) =>
+                pressed && !isSending ? { opacity: 0.94 } : undefined
+              }
             >
               <MaterialIconsRounded
                 name="delete-outline"
                 size={14}
-                color={isSending ? TOKENS.color.neutral[400] : TOKENS.color.error}
+                color={
+                  isSending ? TOKENS.color.neutral[400] : TOKENS.color.error
+                }
               />
               <Text
                 className={`text-[11px] font-semibold tracking-[0.2px] ${
@@ -289,7 +294,10 @@ export function ChatPanel() {
                   onPress={() => handleSend(item.text)}
                   className="flex-row items-center gap-2.5 px-4 py-3 rounded-xl bg-white/75 border border-slate-200/80"
                   style={({ pressed }) => [
-                    pressed && { backgroundColor: "rgba(59,130,246,0.06)", borderColor: "rgba(59,130,246,0.25)" },
+                    pressed && {
+                      backgroundColor: "rgba(59,130,246,0.06)",
+                      borderColor: "rgba(59,130,246,0.25)",
+                    },
                     {
                       shadowColor: "#000",
                       shadowOffset: { width: 0, height: 1 },
@@ -299,8 +307,14 @@ export function ChatPanel() {
                     },
                   ]}
                 >
-                  <MaterialIconsRounded name={item.icon} size={16} color={ACCENT} />
-                  <Text className="flex-1 text-[13px] font-medium text-slate-700">{item.text}</Text>
+                  <MaterialIconsRounded
+                    name={item.icon}
+                    size={16}
+                    color={ACCENT}
+                  />
+                  <Text className="flex-1 text-[13px] font-medium text-slate-700">
+                    {item.text}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -324,10 +338,20 @@ export function ChatPanel() {
 
         {error ? (
           <View className="flex-row items-center gap-2 self-center mt-2 px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/25">
-            <MaterialIconsRounded name="error-outline" size={14} color={TOKENS.color.error} />
-            <Text className="flex-1 text-[13px] font-medium text-red-500">{error}</Text>
+            <MaterialIconsRounded
+              name="error-outline"
+              size={14}
+              color={TOKENS.color.error}
+            />
+            <Text className="flex-1 text-[13px] font-medium text-red-500">
+              {error}
+            </Text>
             <Pressable onPress={() => setError(null)}>
-              <MaterialIconsRounded name="close" size={14} color={TOKENS.color.error} />
+              <MaterialIconsRounded
+                name="close"
+                size={14}
+                color={TOKENS.color.error}
+              />
             </Pressable>
           </View>
         ) : null}

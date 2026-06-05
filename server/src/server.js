@@ -17,7 +17,7 @@ validateEnv();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const BODY_LIMIT = process.env.BODY_LIMIT || "10mb";
+const BODY_LIMIT = process.env.BODY_LIMIT || "2mb";
 
 const CORS_ALLOW_ALL = String(process.env.CORS_ALLOW_ALL || "false") === "true";
 const configuredOrigins = (process.env.CORS_ORIGINS || "")
@@ -25,6 +25,12 @@ const configuredOrigins = (process.env.CORS_ORIGINS || "")
   .map((o) => o.trim())
   .filter(Boolean);
 const isProduction = process.env.NODE_ENV === "production";
+
+// Trust first proxy hop (nginx, load balancer, cloud platform)
+// Ensures req.ip returns client's real IP, not proxy IP
+if (isProduction) {
+  app.set("trust proxy", 1);
+}
 
 const devDefaultOrigins = [
   "http://localhost:3000",
@@ -88,7 +94,7 @@ app.use(
         frameSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
-        upgradeInsecureRequests: isProduction ? [] : null,
+        upgradeInsecureRequests: isProduction ? true : null,
       },
     },
     crossOriginEmbedderPolicy: false,

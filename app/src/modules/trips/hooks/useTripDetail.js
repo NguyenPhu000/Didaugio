@@ -27,7 +27,16 @@ export function useUpdateTrip(id) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data) => updateTripApi(id, data),
-    onSuccess: () => {
+    onSuccess: (response) => {
+      const updated = response?.data;
+      if (updated?.id != null) {
+        queryClient.setQueryData(QUERY_KEYS.trips.list(), (old) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((t) =>
+            String(t.id) === String(updated.id) ? { ...t, ...updated } : t,
+          );
+        });
+      }
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.detail(id) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
     },

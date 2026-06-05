@@ -13,6 +13,7 @@ import {
   generateTripSchema,
   createTripShareSchema,
   accessTripShareSchema,
+  updateProfileSchema,
 } from "../../models/index.js";
 
 const router = express.Router();
@@ -20,7 +21,7 @@ const router = express.Router();
 router.get("/", authenticate, profileController.getProfile);
 router.get("/summary", authenticate, profileController.getProfileSummary);
 
-router.put("/", authenticate, profileController.updateProfile);
+router.put("/", authenticate, validateBody(updateProfileSchema), profileController.updateProfile);
 router.put("/avatar", authenticate, profileController.updateAvatar);
 
 router.put(

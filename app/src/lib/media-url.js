@@ -141,3 +141,62 @@ export function resolvePlaceImageUri(place) {
   if (resolved) return resolved;
   return getCategoryPlaceholder(place?.category?.name);
 }
+
+/**
+ * Ảnh bìa/thumbnail cho trip card — cùng logic với EditTripModal (resolveMediaUrl trước).
+ * Trả về `null` nếu không có ảnh thật (không dùng picsum fake).
+ */
+export function resolveTripCoverUri(trip, width = 400) {
+  if (!trip || typeof trip !== "object") return null;
+
+  const tripThumb = resolveMediaUrl(trip.thumbnail);
+  if (tripThumb) {
+    if (tripThumb.startsWith("data:")) return tripThumb;
+    if (tripThumb.includes("res.cloudinary.com")) {
+      return getOptimizedCloudinaryUrl(tripThumb, width) || tripThumb;
+    }
+    return tripThumb;
+  }
+
+  const destinations = Array.isArray(trip.destinations) ? trip.destinations : [];
+  for (const dest of destinations) {
+    const place = dest?.place;
+    if (!place) continue;
+    const firstImage = place?.images?.[0];
+    const raw =
+      firstImage?.secureUrl ||
+      firstImage?.thumbnailUrl ||
+      firstImage?.imageData ||
+      firstImage?.url ||
+      place?.thumbnailUrl ||
+      place?.thumbnail ||
+      null;
+    const resolved = resolveMediaUrl(raw);
+    if (resolved) {
+      if (resolved.includes("res.cloudinary.com")) {
+        return getOptimizedCloudinaryUrl(resolved, width) || resolved;
+      }
+      return resolved;
+    }
+  }
+
+  return null;
+}
+
+export function getOptimizedCloudinaryUrl(url, width = 800) {
+  if (!url || typeof url !== "string") return url;
+  if (!url.includes("res.cloudinary.com")) return url;
+
+  const marker = "/upload/";
+  const markerIndex = url.indexOf(marker);
+  if (markerIndex < 0) return url;
+
+  const prefix = url.slice(0, markerIndex + marker.length);
+  const suffix = url.slice(markerIndex + marker.length);
+  const segments = suffix.split("/");
+  const versionIndex = segments.findIndex((segment) => /^v\d+$/.test(segment));
+  if (versionIndex < 0) return url;
+
+  const publicPath = segments.slice(versionIndex).join("/");
+  return `${prefix}f_auto,q_auto,w_${width},c_fill/${publicPath}`;
+}

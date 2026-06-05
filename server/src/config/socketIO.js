@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import prisma from "./prismaClient.js";
+import logger from "./logger.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -54,8 +55,8 @@ export const initSocketIO = (httpServer, allowedOrigins = []) => {
     pingTimeout: 20000,
   });
 
-  // Auth middleware
-  io.use((socket, next) => {
+  // Auth middleware - verify JWT + check user status + session validity
+  io.use(async (socket, next) => {
     const token =
       socket.handshake.auth?.token ||
       socket.handshake.query?.token ||
@@ -67,7 +68,35 @@ export const initSocketIO = (httpServer, allowedOrigins = []) => {
 
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      socket.userId = decoded.userId || decoded.id;
+      const userId = decoded.userId || decoded.id;
+
+      // Kiểm tra user có bị ban/inactive không
+      const user = await prisma.user.findUnique({
+        where: { id: Number(userId) },
+        select: { id: true, status: true, deletedAt: true },
+      });
+
+      if (!user || user.deletedAt) {
+        return next(new Error("User not found"));
+      }
+
+      if (user.status === "banned" || user.status === "inactive") {
+        return next(new Error("Account is banned or inactive"));
+      }
+
+      // Kiểm tra session có còn active không (nếu token có sessionId)
+      if (decoded.sessionId) {
+        const session = await prisma.userSession.findUnique({
+          where: { id: decoded.sessionId },
+          select: { id: true, revokedAt: true },
+        });
+
+        if (!session || session.revokedAt) {
+          return next(new Error("Session revoked"));
+        }
+      }
+
+      socket.userId = userId;
       socket.roleId = resolveRoleId(decoded);
       next();
     } catch (err) {
@@ -101,19 +130,19 @@ export const initSocketIO = (httpServer, allowedOrigins = []) => {
         socket.join(`business:${businessId}`);
       }
     } catch (error) {
-      console.warn("[Socket] Could not resolve business room:", error.message);
+      logger.warn("[Socket] Could not resolve business room:", error.message);
     }
 
     // Track connection after room assignment
     connectedUsers.set(socket.id, { userId, roleId, businessId });
 
-    console.log(
+    logger.info(
       `[Socket] User ${userId} connected (${socket.id}), total: ${connectedUsers.size}`
     );
 
     socket.on("disconnect", () => {
       connectedUsers.delete(socket.id);
-      console.log(
+      logger.info(
         `[Socket] User ${userId} disconnected (${socket.id}), total: ${connectedUsers.size}`
       );
     });
