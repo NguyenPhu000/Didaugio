@@ -1,142 +1,147 @@
-const DEFAULT_TARGET_NAME = "điểm đến";
+import i18n from "../../../i18n";
 
+const DEFAULT_TARGET_NAME_KEY = "map.common.destinationNameLower";
+
+/**
+ * Map text constants with i18n support.
+ * Uses i18n.t() for static strings and returns functions for dynamic ones.
+ */
 export const MAP_TEXT = Object.freeze({
   common: {
-    currentLocationName: "Vị trí hiện tại",
-    destinationName: "Điểm đến",
-    destinationMissingName: "Điểm đang thiếu",
-    destinationNameLower: DEFAULT_TARGET_NAME,
+    get currentLocationName() { return i18n.t("map.common.currentLocationName"); },
+    get destinationName() { return i18n.t("map.common.destinationName"); },
+    get destinationMissingName() { return i18n.t("map.common.destinationMissingName"); },
+    get destinationNameLower() { return i18n.t("map.common.destinationNameLower"); },
     unknownValue: "unknown",
   },
   layerSwitcher: {
-    title: "Chọn kiểu bản đồ",
+    get title() { return i18n.t("map.layerSwitcher.title"); },
   },
   loading: {
-    map: "Đang tải bản đồ...",
+    get map() { return i18n.t("map.loading.map"); },
   },
   errors: {
-    mapData: "Không tải được dữ liệu",
-    retry: "Thử lại",
-    routeBuild: "Không thể tính tuyến.",
-    routeDirectionTitle: "Không thể lấy chỉ đường",
-    routeDirectionMessage: "Kết nối định tuyến gặp lỗi. Vui lòng thử lại.",
-    routeFallbackTitle: "Đang dùng tuyến ước tính",
-    routeFallbackMessage:
-      "Lộ trình có thể lệch nhẹ, vui lòng kiểm tra thực tế khi di chuyển.",
+    get mapData() { return i18n.t("map.errors.mapData"); },
+    get retry() { return i18n.t("map.errors.retry"); },
+    get routeBuild() { return i18n.t("map.errors.routeBuild"); },
+    get routeDirectionTitle() { return i18n.t("map.errors.routeDirectionTitle"); },
+    get routeDirectionMessage() { return i18n.t("map.errors.routeDirectionMessage"); },
+    get routeFallbackTitle() { return i18n.t("map.errors.routeFallbackTitle"); },
+    get routeFallbackMessage() { return i18n.t("map.errors.routeFallbackMessage"); },
   },
   search: {
-    placeholder: "Tìm kiếm địa điểm...",
-    cancel: "Hủy",
+    get placeholder() { return i18n.t("map.search.placeholder"); },
+    get cancel() { return i18n.t("map.search.cancel"); },
   },
   web: {
-    noticeTitle: "Chế độ web đang sử dụng danh sách",
-    noticeSubtext:
-      "Bản đồ native không hỗ trợ trên web. Bạn vẫn có thể tìm, lọc và mở địa điểm trên Google Maps.",
-    allCategories: "Tất cả",
-    summaryFound: (count) => `Tìm thấy ${count} địa điểm`,
-    loadingPlaces: "Đang tải dữ liệu...",
-    placesLoadError: "Không tải được dữ liệu địa điểm",
-    noPlacesForFilters: "Không có địa điểm phù hợp bộ lọc",
-    openInGoogleMaps: "Mở trên Google Maps",
+    get noticeTitle() { return i18n.t("map.web.noticeTitle"); },
+    get noticeSubtext() { return i18n.t("map.web.noticeSubtext"); },
+    get allCategories() { return i18n.t("map.web.allCategories"); },
+    summaryFound: (count) => i18n.t("map.web.summaryFound", { count }),
+    get loadingPlaces() { return i18n.t("map.web.loadingPlaces"); },
+    get placesLoadError() { return i18n.t("map.web.placesLoadError"); },
+    get noPlacesForFilters() { return i18n.t("map.web.noPlacesForFilters"); },
+    get openInGoogleMaps() { return i18n.t("map.web.openInGoogleMaps"); },
   },
   mapConfig: {
     mapStyles: {
-      osm: "Bản đồ",
-      hybrid: "Vệ tinh",
+      get osm() { return i18n.t("map.mapConfig.mapStyles.osm"); },
+      get hybrid() { return i18n.t("map.mapConfig.mapStyles.hybrid"); },
     },
     categoryLabels: {
-      cuisine: "Ẩm thực",
-      lodging: "Lưu trú",
-      sightseeing: "Tham quan",
-      shopping: "Mua sắm",
-      ecotourism: "Sinh thái",
-      cafe: "Cafe",
-      homestay: "Homestay",
-      ecoPark: "Khu sinh thái",
-      place: "Địa điểm",
+      get cuisine() { return i18n.t("map.mapConfig.categoryLabels.cuisine"); },
+      get lodging() { return i18n.t("map.mapConfig.categoryLabels.lodging"); },
+      get sightseeing() { return i18n.t("map.mapConfig.categoryLabels.sightseeing"); },
+      get shopping() { return i18n.t("map.mapConfig.categoryLabels.shopping"); },
+      get ecotourism() { return i18n.t("map.mapConfig.categoryLabels.ecotourism"); },
+      get cafe() { return i18n.t("map.mapConfig.categoryLabels.cafe"); },
+      get homestay() { return i18n.t("map.mapConfig.categoryLabels.homestay"); },
+      get ecoPark() { return i18n.t("map.mapConfig.categoryLabels.ecoPark"); },
+      get place() { return i18n.t("map.mapConfig.categoryLabels.place"); },
     },
   },
   routeFormatting: {
-    minuteUnit: "phút",
-    hourUnit: "h",
-    minuteShortUnit: "p",
-    meterUnit: "m",
-    kilometerUnit: "km",
+    get minuteUnit() { return i18n.t("map.routeFormatting.minuteUnit"); },
+    get hourUnit() { return i18n.t("map.routeFormatting.hourUnit"); },
+    get minuteShortUnit() { return i18n.t("map.routeFormatting.minuteShortUnit"); },
+    get meterUnit() { return i18n.t("map.routeFormatting.meterUnit"); },
+    get kilometerUnit() { return i18n.t("map.routeFormatting.kilometerUnit"); },
   },
   accessibility: {
-    openMenu: "Mo menu",
+    get openMenu() { return i18n.t("common.close"); },
   },
   analytics: {
     routeModeCurrentLocationToPlace: "current_location_to_place",
   },
   routeBuilder: {
-    panelTitle: "Xây dựng lộ trình của bạn",
-    emptyDraftHint: "Nhấn giữ marker để thêm điểm dừng",
-    readyToConfirmHint: "Sẵn sàng xác nhận",
-    minimumStopsHint: (minimumStops) => `Cần tối thiểu ${minimumStops} điểm`,
+    get panelTitle() { return i18n.t("map.routeBuilder.panelTitle"); },
+    get emptyDraftHint() { return i18n.t("map.routeBuilder.emptyDraftHint"); },
+    get readyToConfirmHint() { return i18n.t("map.routeBuilder.readyToConfirmHint"); },
+    minimumStopsHint: (minimumStops) => i18n.t("map.routeBuilder.minimumStopsHint", { minimumStops }),
     statusHint: ({ draftCount, canConfirm, minimumStops }) => {
-      if (!draftCount) return "Nhấn giữ marker để thêm điểm dừng";
-      return `${draftCount} điểm dừng • ${
-        canConfirm ? "Sẵn sàng xác nhận" : `Cần tối thiểu ${minimumStops} điểm`
+      if (!draftCount) return i18n.t("map.routeBuilder.emptyDraftHint");
+      return `${draftCount} ${i18n.t("common.results")} • ${
+        canConfirm
+          ? i18n.t("map.routeBuilder.readyToConfirmHint")
+          : i18n.t("map.routeBuilder.minimumStopsHint", { minimumStops })
       }`;
     },
-    stopFallbackName: (index) => `Điểm dừng ${index + 1}`,
-    noStopNotice: "Chưa có điểm dừng. Nhấn giữ marker để thêm vào tuyến.",
-    updateRoute: "Cập nhật tuyến",
-    confirmRoute: "Xác nhận tuyến",
-    clearAll: "Xóa hết",
+    stopFallbackName: (index) => i18n.t("map.routeBuilder.stopFallbackName", { index: index + 1 }),
+    get noStopNotice() { return i18n.t("map.routeBuilder.noStopNotice"); },
+    get updateRoute() { return i18n.t("map.routeBuilder.updateRoute"); },
+    get confirmRoute() { return i18n.t("map.routeBuilder.confirmRoute"); },
+    get clearAll() { return i18n.t("map.routeBuilder.clearAll"); },
     pendingArrivalNotice: (targetName) =>
-      `Đã đến ${targetName || DEFAULT_TARGET_NAME}. Vui lòng xác nhận trong thông báo.`,
-    recoveryTitle: "Bạn đã đi huốt điểm đến",
+      i18n.t("map.arrivalModal.body", { targetName: targetName || i18n.t(DEFAULT_TARGET_NAME_KEY) }),
+    get recoveryTitle() { return i18n.t("map.routeBuilder.recoveryTitle"); },
     recoveryMessage: (targetName, distanceLabel) =>
-      `Đang dẫn quay lại ${targetName || DEFAULT_TARGET_NAME}${
+      `${i18n.t("map.routeBuilder.recoveryTitle")} ${targetName || i18n.t(DEFAULT_TARGET_NAME_KEY)}${
         distanceLabel ? ` (${distanceLabel})` : ""
       }.`,
     progressLabel: (completedLegs, legCount) =>
-      `Hoàn thành ${Math.min(completedLegs, legCount)}/${legCount} chặng`,
-    etaPrefix: "Dự kiến",
-    stateCompleted: "Tất cả chặng đã hoàn thành",
+      `${i18n.t("common.done")} ${Math.min(completedLegs, legCount)}/${legCount}`,
+    get etaPrefix() { return i18n.t("map.routeBuilder.etaPrefix"); },
+    get stateCompleted() { return i18n.t("map.routeBuilder.stateCompleted"); },
     statePendingConfirm: (targetName) =>
-      `Đã đến ${targetName || DEFAULT_TARGET_NAME} • Chờ xác nhận`,
+      `${i18n.t("map.arrivalModal.title")} ${targetName || i18n.t(DEFAULT_TARGET_NAME_KEY)} • ${i18n.t("common.confirm")}`,
     stateRecovery: (targetName) =>
-      `Bạn đi huốt ${targetName || DEFAULT_TARGET_NAME} • Đang dẫn quay lại`,
-    retryRoute: "Thử lại tuyến",
+      `${i18n.t("map.routeBuilder.recoveryTitle")} ${targetName || i18n.t(DEFAULT_TARGET_NAME_KEY)}`,
+    get retryRoute() { return i18n.t("map.routeBuilder.retryRoute"); },
   },
   arrivalModal: {
-    title: "Đã đến điểm đến",
+    get title() { return i18n.t("map.arrivalModal.title"); },
     body: (targetName) =>
-      `Bạn đã đến ${targetName || DEFAULT_TARGET_NAME}. Xác nhận để hoàn thành chặng này.`,
-    cancel: "Hủy",
-    confirm: "Xác nhận",
+      i18n.t("map.arrivalModal.body", { targetName: targetName || i18n.t(DEFAULT_TARGET_NAME_KEY) }),
+    get cancel() { return i18n.t("map.arrivalModal.cancel"); },
+    get confirm() { return i18n.t("map.arrivalModal.confirm"); },
   },
   navigationStatusBanner: {
-    fallbackInfo:
-      "Ước tính: thời gian và khoảng cách có thể thay đổi theo giao thông thực tế.",
-    optimizedInfo: "Đã tối ưu theo thời gian di chuyển hiện tại.",
-    retryingRoute: "Đang thử lại...",
-    retryRoute: "Thử lại chỉ đường",
+    get fallbackInfo() { return i18n.t("map.navigationStatusBanner.fallbackInfo"); },
+    get optimizedInfo() { return i18n.t("map.navigationStatusBanner.optimizedInfo"); },
+    get retryingRoute() { return i18n.t("map.navigationStatusBanner.retryingRoute"); },
+    get retryRoute() { return i18n.t("map.navigationStatusBanner.retryRoute"); },
   },
   filters: {
     quickOptions: {
-      topRated: "Đánh giá cao",
-      trending: "Trending",
-      budget: "Giá rẻ",
-      premium: "Cao cấp",
-      openNow: "Mở cửa gần nhất",
+      get topRated() { return i18n.t("map.filters.quickOptions.topRated"); },
+      get trending() { return i18n.t("map.filters.quickOptions.trending"); },
+      get budget() { return i18n.t("map.filters.quickOptions.budget"); },
+      get premium() { return i18n.t("map.filters.quickOptions.premium"); },
+      get openNow() { return i18n.t("map.filters.quickOptions.openNow"); },
     },
     groupOptions: {
-      category: "Mục",
-      area: "Vùng",
-      quick: "Nhanh",
+      get category() { return i18n.t("map.filters.groupOptions.category"); },
+      get area() { return i18n.t("map.filters.groupOptions.area"); },
+      get quick() { return i18n.t("map.filters.groupOptions.quick"); },
     },
     pickerTitle: (groupLabel) =>
-      `Chọn ${String(groupLabel || "bộ lọc").toLowerCase()} để lọc`,
-    allCategories: "Tất cả danh mục",
-    categoryFallback: "Danh mục",
-    allAreas: "Tất cả khu vực",
-    areaFallback: "Khu vực",
-    noneApplied: "Chưa áp dụng",
-    countApplied: (count) => `${count} bộ lọc`,
-    groupFallback: "bộ lọc",
+      i18n.t("map.filters.pickerTitle", { groupLabel: String(groupLabel || i18n.t("map.filters.groupFallback")).toLowerCase() }),
+    get allCategories() { return i18n.t("map.filters.allCategories"); },
+    get categoryFallback() { return i18n.t("map.filters.categoryFallback"); },
+    get allAreas() { return i18n.t("map.filters.allAreas"); },
+    get areaFallback() { return i18n.t("map.filters.areaFallback"); },
+    get noneApplied() { return i18n.t("map.filters.noneApplied"); },
+    countApplied: (count) => i18n.t("map.filters.countApplied", { count }),
+    get groupFallback() { return i18n.t("map.filters.groupFallback"); },
   },
 });

@@ -2,6 +2,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../stores/authStore";
 
 const TAB_BAR_HEIGHT = 80;
@@ -10,13 +11,16 @@ const BLACK = "#0F172A";
 
 export const GuestGate = ({
   icon = "lock",
-  title = "Đăng nhập để tiếp tục",
-  description = "Tính năng này yêu cầu tài khoản đăng nhập.",
+  title,
+  description,
   children,
 }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const accessToken = useAuthStore((s) => s.accessToken);
+  const resolvedTitle = title || t("guestGate.title");
+  const resolvedDescription = description || t("guestGate.description");
   const isGuest = useAuthStore((s) => s.isGuest);
   const exitGuestMode = useAuthStore((s) => s.exitGuestMode);
 
@@ -56,8 +60,8 @@ export const GuestGate = ({
       </View>
 
       {/* Text */}
-      <Text className="text-2xl font-heading text-ink text-center mb-2.5">{title}</Text>
-      <Text className="text-[15px] font-body text-slate-500 text-center leading-[23px] max-w-[320px]">{description}</Text>
+      <Text className="text-2xl font-heading text-ink text-center mb-2.5">{resolvedTitle}</Text>
+      <Text className="text-[15px] font-body text-slate-500 text-center leading-[23px] max-w-[320px]">{resolvedDescription}</Text>
 
       {/* Divider */}
       <View className="w-12 h-[3px] rounded-full bg-slate-200 my-7" />
@@ -79,7 +83,7 @@ export const GuestGate = ({
         ]}
       >
         <MaterialIconsRounded name="login" size={18} color="#fff" />
-        <Text className="text-[15px] font-semibold text-white tracking-[0.2px]">Đăng nhập</Text>
+        <Text className="text-[15px] font-semibold text-white tracking-[0.2px]">{t("guestGate.login")}</Text>
       </Pressable>
 
       {/* Nút đăng ký — nền đen */}
@@ -99,11 +103,11 @@ export const GuestGate = ({
         ]}
       >
         <MaterialIconsRounded name="person-add-alt-1" size={18} color="#fff" />
-        <Text className="text-[15px] font-semibold text-white tracking-[0.2px]">Đăng ký tài khoản mới</Text>
+        <Text className="text-[15px] font-semibold text-white tracking-[0.2px]">{t("guestGate.register")}</Text>
       </Pressable>
 
       {/* Hint */}
-      <Text className="mt-[18px] text-xs font-body text-slate-400 text-center">Miễn phí · Không cần thẻ tín dụng</Text>
+      <Text className="mt-[18px] text-xs font-body text-slate-400 text-center">{t("guestGate.freeNote")}</Text>
     </ScrollView>
   );
 };

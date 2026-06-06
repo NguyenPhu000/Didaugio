@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import {
   Card,
@@ -26,18 +28,19 @@ import {
 } from "@/components/ui/toggle-group";
 import { dashboardService } from "@/apis/dashboardService";
 
-const chartConfig = {
+const getChartConfig = (t) => ({
   places: {
-    label: "Địa điểm",
+    label: t("admin.chart.views"),
     color: "var(--primary)",
   },
   views: {
-    label: "Lượt xem",
+    label: t("admin.chart.bookings"),
     color: "var(--primary)",
   },
-};
+});
 
 export default function ChartAreaInteractive() {
+  const { t } = useTranslation();
   const [timeRange, setTimeRange] = useState("90d");
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -105,12 +108,12 @@ export default function ChartAreaInteractive() {
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Hoạt động hệ thống</CardTitle>
+        <CardTitle>{t("admin.chart.title")}</CardTitle>
         <CardDescription>
           <span className="hidden @[540px]/card:block">
-            Thống kê địa điểm & lượt xem
+            {t("admin.chart.title")}
           </span>
-          <span className="@[540px]/card:hidden">Thống kê</span>
+          <span className="@[540px]/card:hidden">{t("admin.chart.title")}</span>
         </CardDescription>
         <CardAction>
           <ToggleGroup
@@ -120,27 +123,27 @@ export default function ChartAreaInteractive() {
             variant="outline"
             className="hidden *:data-[slot=toggle-group-item]:!px-4 @[767px]/card:flex"
           >
-            <ToggleGroupItem value="90d">3 tháng</ToggleGroupItem>
-            <ToggleGroupItem value="30d">30 ngày</ToggleGroupItem>
-            <ToggleGroupItem value="7d">7 ngày</ToggleGroupItem>
+            <ToggleGroupItem value="90d">{t("admin.chart.last90Days")}</ToggleGroupItem>
+            <ToggleGroupItem value="30d">{t("admin.chart.last30Days")}</ToggleGroupItem>
+            <ToggleGroupItem value="7d">{t("admin.chart.last7Days")}</ToggleGroupItem>
           </ToggleGroup>
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger
               className="flex w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate @[767px]/card:hidden"
               size="sm"
-              aria-label="Chọn khoảng thời gian"
+              aria-label={t("admin.chart.period")}
             >
               <SelectValue placeholder="3 tháng" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
               <SelectItem value="90d" className="rounded-lg">
-                3 tháng
+                {t("admin.chart.last90Days")}
               </SelectItem>
               <SelectItem value="30d" className="rounded-lg">
-                30 ngày
+                {t("admin.chart.last30Days")}
               </SelectItem>
               <SelectItem value="7d" className="rounded-lg">
-                7 ngày
+                {t("admin.chart.last7Days")}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -151,7 +154,7 @@ export default function ChartAreaInteractive() {
           <div className="h-[250px] w-full animate-pulse rounded bg-muted" />
         ) : (
           <ChartContainer
-            config={chartConfig}
+            config={getChartConfig(t)}
             className="aspect-auto h-[250px] w-full"
           >
             <AreaChart data={filteredData}>
@@ -190,7 +193,7 @@ export default function ChartAreaInteractive() {
                 minTickGap={32}
                 tickFormatter={(value) => {
                   const date = new Date(value);
-                  return date.toLocaleDateString("vi-VN", {
+                  return date.toLocaleDateString(i18n.language === "vi" ? "vi-VN" : "en-US", {
                     month: "short",
                     day: "numeric",
                   });
@@ -201,7 +204,7 @@ export default function ChartAreaInteractive() {
                 content={
                   <ChartTooltipContent
                     labelFormatter={(value) =>
-                      new Date(value).toLocaleDateString("vi-VN", {
+                      new Date(value).toLocaleDateString(i18n.language === "vi" ? "vi-VN" : "en-US", {
                         month: "short",
                         day: "numeric",
                         year: "numeric",

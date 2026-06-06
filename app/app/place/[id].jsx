@@ -42,7 +42,7 @@ import {
   resolveMediaUrl,
   getCategoryPlaceholder,
 } from "../../src/lib/media-url";
-import { useI18n } from "../../src/hooks/useI18n";
+import { useTranslation } from "react-i18next";
 import {
   formatPriceLine,
   getCategoryIcon,
@@ -60,15 +60,6 @@ import {
   StarRow,
 } from "../../src/modules/place/components/AllReviewsSheet";
 
-const DAY_NAMES = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-
-const PRICE_RANGE_LABELS = {
-  FREE: "Miễn phí",
-  BUDGET: "Bình dân",
-  MODERATE: "Trung bình",
-  EXPENSIVE: "Cao cấp",
-  LUXURY: "Sang trọng",
-};
 const MAIN_REVIEW_LIMIT = 5;
 
 function getAddressLine(place) {
@@ -84,32 +75,32 @@ function getTodayHours(hours) {
 
 function getTodayHoursLabel(hours, t) {
   const todayHours = getTodayHours(hours);
-  if (!todayHours) return t("Cập nhật sau", "Updated later");
-  if (todayHours.isClosed) return t("Đóng cửa hôm nay", "Closed today");
+  if (!todayHours) return t("place.detail.updatedLater");
+  if (todayHours.isClosed) return t("place.detail.closedToday");
   if (todayHours.openTime && todayHours.closeTime) {
     return `${todayHours.openTime} - ${todayHours.closeTime}`;
   }
-  return t("Cập nhật sau", "Updated later");
+  return t("place.detail.updatedLater");
 }
 
 function getOpenState(hours, t) {
   const todayHours = getTodayHours(hours);
   if (!todayHours) {
     return {
-      label: t("Chờ cập nhật", "Pending update"),
+      label: t("place.detail.pendingUpdate"),
       color: PALETTE.warning,
       icon: "schedule",
     };
   }
   if (todayHours.isClosed) {
     return {
-      label: t("Hôm nay đóng cửa", "Closed today"),
+      label: t("place.detail.closedToday"),
       color: "#EF4444",
       icon: "do-not-disturb-on",
     };
   }
   return {
-    label: t("Mở cửa hôm nay", "Open today"),
+    label: t("place.detail.openToday"),
     color: PALETTE.success,
     icon: "schedule",
   };
@@ -124,21 +115,21 @@ function getFactCards(place, t) {
     cards.push({
       key: "location",
       icon: "place",
-      label: t("Khu vực", "Area"),
+      label: t("place.detail.area"),
       value: location,
     });
   }
   cards.push({
     key: "hours",
     icon: "calendar-today",
-    label: t("Hôm nay", "Today"),
+    label: t("place.detail.today"),
     value: todayHours,
   });
   if (place?.phone) {
     cards.push({
       key: "phone",
       icon: "call",
-      label: t("Liên hệ", "Contact"),
+      label: t("place.detail.contactSection"),
       value: place.phone,
     });
   }
@@ -190,16 +181,24 @@ function getCreatorName(place, t) {
     place?.createdByUser?.fullName ||
     place?.createdByUser?.email ||
     place?.business?.businessName ||
-    t("Hệ thống", "System")
+    t("place.detail.system")
   );
 }
 
+const PRICE_RANGE_I18N_KEYS = {
+  FREE: "place.priceRange.free",
+  BUDGET: "place.priceRange.budget",
+  MODERATE: "place.priceRange.moderate",
+  EXPENSIVE: "place.priceRange.expensive",
+  LUXURY: "place.priceRange.luxury",
+};
+
 function formatPriceRange(place, t) {
-  if (place?.priceRange && PRICE_RANGE_LABELS[place.priceRange]) {
-    return PRICE_RANGE_LABELS[place.priceRange];
+  if (place?.priceRange && PRICE_RANGE_I18N_KEYS[place.priceRange]) {
+    return t(PRICE_RANGE_I18N_KEYS[place.priceRange]);
   }
   if (place?.priceRange) return String(place.priceRange);
-  return t("Cập nhật sau", "Updated later");
+  return t("place.detail.updatedLater");
 }
 
 function toExternalUrl(value) {
@@ -219,21 +218,21 @@ function getAmenityCards(place, t) {
     key: "open",
     icon: "schedule",
     label: openLabel,
-    tag: t("Hôm nay", "Today"),
+    tag: t("place.detail.today"),
   });
 
   if (place?.phone) {
     items.push({
       key: "phone",
       icon: "call",
-      label: t("Gọi nhanh", "Quick call"),
+      label: t("place.detail.quickCall"),
       tag: String(place.phone).replace(/\s+/g, "").slice(0, 14),
     });
   } else {
     items.push({
       key: "map",
       icon: "map",
-      label: t("Dễ tìm", "Easy to find"),
+      label: t("place.detail.easyToFind"),
     });
   }
 
@@ -241,14 +240,14 @@ function getAmenityCards(place, t) {
     items.push({
       key: "web",
       icon: "language",
-      label: t("Website", "Website"),
+      label: t("place.website"),
       tag: websiteLabel?.slice(0, 18),
     });
   } else {
     items.push({
       key: "save",
       icon: "star-outline",
-      label: t("Yêu thích", "Favorite"),
+      label: t("place.detail.favorite"),
     });
   }
 
@@ -266,7 +265,7 @@ export default function PlaceDetailScreen() {
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { t } = useI18n();
+  const { t } = useTranslation();
   const accessToken = useAuthStore((state) => state.accessToken);
   const bottomSheetRef = useRef(null);
   const writeReviewSheetRef = useRef(null);
@@ -314,15 +313,12 @@ export default function PlaceDetailScreen() {
   const handleSaveToggle = useCallback(async () => {
     if (!accessToken) {
       Alert.alert(
-        t("Cần đăng nhập", "Login required"),
-        t(
-          "Hãy đăng nhập để lưu địa điểm yêu thích.",
-          "Please log in to save this place.",
-        ),
+        t("common.loginRequired"),
+        t("place.detail.loginToSave"),
         [
-          { text: t("Để sau", "Later"), style: "cancel" },
+          { text: t("common.later"), style: "cancel" },
           {
-            text: t("Đăng nhập", "Login"),
+            text: t("common.login"),
             onPress: () => router.push("/(auth)/login"),
           },
         ],
@@ -341,13 +337,13 @@ export default function PlaceDetailScreen() {
         await unsaveMutation.mutateAsync(place.id);
         addToast({
           type: "success",
-          message: "Địa điểm đã không còn trong danh sách yêu thích",
+          message: t("place.detail.toast.unsaved"),
         });
       } else {
         await saveMutation.mutateAsync({ placeId: place.id });
         addToast({
           type: "success",
-          message: "Địa điểm đã được lưu vào danh sách yêu thích",
+          message: t("place.detail.toast.saved"),
         });
       }
     } catch (error) {
@@ -355,7 +351,7 @@ export default function PlaceDetailScreen() {
       setIsSavedLocal(currentStatus);
       addToast({
         type: "error",
-        message: currentStatus ? "Không thể bỏ lưu địa điểm" : "Không thể lưu địa điểm",
+        message: currentStatus ? t("place.detail.toast.unsaveError") : t("place.detail.toast.saveError"),
       });
     }
   }, [accessToken, place, isSavedLocal, unsaveMutation, saveMutation, addToast, router, t]);
@@ -386,15 +382,12 @@ export default function PlaceDetailScreen() {
 
     if (!accessToken) {
       Alert.alert(
-        t("Cần đăng nhập", "Login required"),
-        t(
-          "Hãy đăng nhập để thêm địa điểm vào chuyến đi.",
-          "Please log in to add this place to your trip.",
-        ),
+        t("common.loginRequired"),
+        t("place.detail.loginToAddToTrip"),
         [
-          { text: t("Để sau", "Later"), style: "cancel" },
+          { text: t("common.later"), style: "cancel" },
           {
-            text: t("Đăng nhập", "Login"),
+            text: t("common.login"),
             onPress: () => router.push("/(auth)/login"),
           },
         ],
@@ -408,15 +401,12 @@ export default function PlaceDetailScreen() {
   const handleGetTicket = useCallback(() => {
     if (!accessToken) {
       Alert.alert(
-        t("Cần đăng nhập", "Login required"),
-        t(
-          "Hãy đăng nhập mới có thể đặt chỗ/booking.",
-          "Please log in to continue booking.",
-        ),
+        t("common.loginRequired"),
+        t("place.detail.loginToBook"),
         [
-          { text: t("Để sau", "Later"), style: "cancel" },
+          { text: t("common.later"), style: "cancel" },
           {
-            text: t("Đăng nhập", "Login"),
+            text: t("common.login"),
             onPress: () => router.push("/(auth)/login"),
           },
         ],
@@ -431,15 +421,12 @@ export default function PlaceDetailScreen() {
   const handleOpenReviewComposer = useCallback(() => {
     if (!accessToken) {
       Alert.alert(
-        t("Cần đăng nhập", "Login required"),
-        t(
-          "Hãy đăng nhập để viết đánh giá địa điểm.",
-          "Please log in to write a review.",
-        ),
+        t("common.loginRequired"),
+        t("place.detail.loginToWriteReview"),
         [
-          { text: t("Để sau", "Later"), style: "cancel" },
+          { text: t("common.later"), style: "cancel" },
           {
-            text: t("Đăng nhập", "Login"),
+            text: t("common.login"),
             onPress: () => router.push("/(auth)/login"),
           },
         ],
@@ -454,11 +441,8 @@ export default function PlaceDetailScreen() {
       await createReviewMutation.mutateAsync(payload);
       writeReviewSheetRef.current?.close();
       Alert.alert(
-        t("Đã gửi đánh giá", "Review submitted"),
-        t(
-          "Cảm ơn bạn đã chia sẻ trải nghiệm.",
-          "Thank you for sharing your experience.",
-        ),
+        t("place.detail.reviewSubmitted"),
+        t("place.detail.reviewSubmittedDesc"),
       );
     },
     [createReviewMutation, t],
@@ -495,7 +479,7 @@ export default function PlaceDetailScreen() {
           />
         </View>
         <Text style={styles.errorTitle}>
-          {error?.message || t("Không tìm thấy địa điểm", "Place not found")}
+          {error?.message || t("place.notFound")}
         </Text>
       </View>
     );
@@ -520,7 +504,7 @@ export default function PlaceDetailScreen() {
   const systemTags = getSystemTags(place);
   const location = getPlaceLocation(place);
   const categoryName =
-    place?.category?.name || t("Điểm đến nổi bật", "Featured place");
+    place?.category?.name || t("place.detail.featuredPlace");
   const categoryIcon = getCategoryIcon(categoryName);
   const priceLine = formatPriceLine(place);
   const priceRangeLabel = formatPriceRange(place, t);
@@ -539,25 +523,25 @@ export default function PlaceDetailScreen() {
     {
       key: "category",
       icon: "category",
-      label: t("Danh mục", "Category"),
+      label: t("place.detail.category"),
       value: categoryName,
     },
     {
       key: "area",
       icon: "explore",
-      label: t("Khu vực", "Area"),
-      value: location || t("Cần Thơ", "Can Tho"),
+      label: t("place.detail.area"),
+      value: location || t("place.detail.canTho"),
     },
     {
       key: "price",
       icon: "payments",
-      label: t("Mức giá", "Price range"),
+      label: t("place.detail.priceRange"),
       value: priceRangeLabel,
     },
     {
       key: "owner",
       icon: "account-circle",
-      label: t("Người đăng", "Owner"),
+      label: t("place.detail.owner"),
       value: ownerName,
     },
   ];
@@ -565,7 +549,7 @@ export default function PlaceDetailScreen() {
   const subtitle =
     place?.category?.name ||
     location ||
-    t("Điểm đến nổi bật", "Featured place");
+    t("place.detail.featuredPlace");
 
   return (
     <View style={styles.screen}>
@@ -720,7 +704,7 @@ export default function PlaceDetailScreen() {
             <Text style={styles.titleCentered}>{place?.name}</Text>
 
             <View style={styles.pillRowCentered}>
-              <StatPill icon="place" label={location || "Cần Thơ"} />
+              <StatPill icon="place" label={location || t("place.defaultLocation")} />
               <StatPill
                 icon="calendar-today"
                 label={getTodayHoursLabel(place?.openingHours, t)}
@@ -749,10 +733,10 @@ export default function PlaceDetailScreen() {
 
             <View style={styles.introFooter}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.priceCaption}>Từ</Text>
+                <Text style={styles.priceCaption}>{t("place.priceFrom")}</Text>
                 <View style={styles.priceRow}>
                   <Text style={styles.priceMain}>
-                    {priceLine?.main || t("Liên hệ", "Contact")}
+                    {priceLine?.main || t("place.detail.contactSection")}
                   </Text>
                   {priceLine?.suffix ? (
                     <Text style={styles.priceSuffix}>{priceLine.suffix}</Text>
@@ -763,8 +747,8 @@ export default function PlaceDetailScreen() {
               <Pressable onPress={handleGetTicket} style={styles.bookButton}>
                 <Text style={styles.bookButtonText}>
                   {accessToken
-                    ? t("Đặt ngay", "Book now")
-                    : t("Đăng nhập để đặt", "Login to book")}
+                    ? t("place.bookNow")
+                    : t("place.detail.loginToBookButton")}
                 </Text>
               </Pressable>
             </View>
@@ -778,7 +762,7 @@ export default function PlaceDetailScreen() {
                 color={PALETTE.primaryDark}
               />
               <Text style={styles.secondaryActionText}>
-                {t("Chỉ đường", "Directions")}
+                {t("place.directions")}
               </Text>
             </Pressable>
 
@@ -789,17 +773,17 @@ export default function PlaceDetailScreen() {
                 color={PALETTE.primaryDark}
               />
               <Text style={styles.secondaryActionText}>
-                {t("Thêm vào trip", "Add to trip")}
+                {t("place.detail.addToTrip")}
               </Text>
             </Pressable>
           </View>
 
           {rating > 0 || reviewCount > 0 ? (
-            <SectionCard title={t("Đánh giá nổi bật", "Top rating")}>
+            <SectionCard title={t("place.detail.topRating")}>
               <View style={styles.ratingSummary}>
                 <View>
                   <Text style={styles.ratingValue}>
-                    {rating > 0 ? rating.toFixed(1) : t("Mới", "New")}
+                    {rating > 0 ? rating.toFixed(1) : t("place.detail.new")}
                   </Text>
                   <Text style={styles.ratingCount}>
                     {formatReviewCount(reviewCount, t)}
@@ -821,7 +805,7 @@ export default function PlaceDetailScreen() {
           ) : null}
 
           {place?.description ? (
-            <SectionCard title={t("Giới thiệu", "About")}>
+            <SectionCard title={t("place.detail.about")}>
               <Text style={styles.description}>{place.description}</Text>
             </SectionCard>
           ) : null}
@@ -841,12 +825,12 @@ export default function PlaceDetailScreen() {
           ) : null}
 
           {hasContactInfo ? (
-            <SectionCard title={t("Liên hệ", "Contact")}>
+            <SectionCard title={t("place.detail.contactSection")}>
               <View style={styles.detailList}>
                 {addressLine ? (
                   <DetailRow
                     icon="place"
-                    label={t("Địa chỉ", "Address")}
+                    label={t("place.detail.addressLabel")}
                     value={addressLine}
                     onPress={handleNavigate}
                   />
@@ -854,7 +838,7 @@ export default function PlaceDetailScreen() {
                 {place?.phone ? (
                   <DetailRow
                     icon="call"
-                    label={t("Điện thoại", "Phone")}
+                    label={t("place.detail.phoneLabel")}
                     value={place.phone}
                     highlight
                     onPress={() => handleOpenUrl(`tel:${place.phone}`)}
@@ -863,7 +847,7 @@ export default function PlaceDetailScreen() {
                 {place?.email ? (
                   <DetailRow
                     icon="mail"
-                    label={t("Email", "Email")}
+                    label={t("place.detail.emailLabel")}
                     value={place.email}
                     onPress={() => handleOpenUrl(`mailto:${place.email}`)}
                   />
@@ -871,7 +855,7 @@ export default function PlaceDetailScreen() {
                 {websiteUrl ? (
                   <DetailRow
                     icon="language"
-                    label={t("Website", "Website")}
+                    label={t("place.website")}
                     value={websiteUrl.replace(/^https?:\/\//, "")}
                     onPress={() => handleOpenUrl(websiteUrl)}
                   />
@@ -879,7 +863,7 @@ export default function PlaceDetailScreen() {
                 {facebookUrl ? (
                   <DetailRow
                     icon="facebook"
-                    label={t("Facebook", "Facebook")}
+                    label={t("place.detail.facebookLabel")}
                     value={facebookUrl.replace(
                       /^https?:\/\/(www\.)?facebook\.com\//,
                       "fb/",
@@ -892,21 +876,21 @@ export default function PlaceDetailScreen() {
           ) : null}
 
           {place?.openingHours?.length > 0 ? (
-            <SectionCard title={t("Giờ mở cửa", "Opening hours")}>
+            <SectionCard title={t("place.detail.openingHoursLabel")}>
               <OpeningHours hours={place.openingHours} t={t} />
             </SectionCard>
           ) : null}
 
           <SectionCard
-            title={t("Đánh giá", "Reviews")}
+            title={t("place.detail.reviewsSection")}
             actionLabel={
-              accessToken ? t("Viết đánh giá", "Write review") : undefined
+              accessToken ? t("place.writeReview") : undefined
             }
             onActionPress={handleOpenReviewComposer}
           >
             {recentReviews.length === 0 ? (
               <Text style={styles.emptyReviewText}>
-                {t("Chưa có đánh giá nào", "No reviews yet")}
+                {t("place.noReviews")}
               </Text>
             ) : (
               <>
@@ -919,10 +903,7 @@ export default function PlaceDetailScreen() {
                     style={styles.seeAllReviewsButton}
                   >
                     <Text style={styles.seeAllReviewsText}>
-                      {t(
-                        `Xem tất cả ${totalReviews} đánh giá`,
-                        `See all ${totalReviews} reviews`,
-                      )}
+                      {t("place.detail.seeAllReviews", { count: totalReviews })}
                     </Text>
                     <MaterialIconsRounded
                       name="keyboard-arrow-up"
@@ -971,14 +952,14 @@ export default function PlaceDetailScreen() {
             size={19}
             color={PALETTE.primaryDark}
           />
-          <Text style={styles.bottomSecondaryText}>{t("Bản đồ", "Map")}</Text>
+          <Text style={styles.bottomSecondaryText}>{t("place.detail.mapButton")}</Text>
         </Pressable>
 
         <Pressable onPress={handleGetTicket} style={styles.bottomPrimaryButton}>
           <Text style={styles.bottomPrimaryText}>
             {accessToken
-              ? t("Đặt ngay", "Book now")
-              : t("Đăng nhập để đặt", "Login to book")}
+              ? t("place.bookNow")
+              : t("place.detail.loginToBookButton")}
           </Text>
         </Pressable>
       </BlurView>

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -24,7 +25,14 @@ import {
   Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import useBusinessStore from "@/stores/businessStore";
+import {
+  useBusinesses,
+  useApproveBusiness,
+  useRejectBusiness,
+  useSuspendBusiness,
+  useReactivateBusiness,
+  useTerminateBusiness,
+} from "@/hooks/queries/useBusinessQueries";
 import { exportToCsv, slugifyFilename } from "@/utils/csvExport";
 import BusinessReviewApproveModal from "@/components/admin/BusinessReviewApproveModal";
 import BusinessDetailModal from "@/components/admin/BusinessDetailModal";
@@ -33,16 +41,6 @@ import {
   BUSINESS_STATUS,
   BUSINESS_TYPE_LABELS,
 } from "@/constants/businessConstants";
-
-const STATUS_OPTIONS = [
-  { value: "all", label: "TẤT CẢ" },
-  { value: "pending", label: "CHỜ DUYỆT" },
-  { value: "approved", label: "ĐÃ DUYỆT" },
-  { value: "rejected", label: "TỪ CHỐI" },
-  { value: "suspended", label: "TẠM NGƯNG" },
-  { value: "terminated", label: "CHẤM DỨT" },
-  { value: "suspicious", label: "ĐÁNG NGỜ" },
-];
 
 const getBusinessStatusBadge = (status) => {
   const config = {
@@ -89,19 +87,17 @@ const getBusinessStatusBadge = (status) => {
 };
 
 const BusinessListPage = ({ initialStatus = "all" }) => {
-  const {
-    businesses,
-    loading,
-    pagination,
-    summary,
-    fetchAll,
-    refetchBusinessList,
-    approveBusiness,
-    rejectBusiness,
-    suspendBusiness,
-    reactivateBusiness,
-    terminateBusiness,
-  } = useBusinessStore();
+  const { t } = useTranslation();
+
+  const STATUS_OPTIONS = [
+    { value: "all", label: t("admin.business.all") },
+    { value: "pending", label: t("admin.business.pendingApproval") },
+    { value: "approved", label: t("admin.business.approved") },
+    { value: "rejected", label: t("admin.business.rejected") },
+    { value: "suspended", label: t("admin.business.suspended") },
+    { value: "terminated", label: t("admin.business.terminated") },
+    { value: "suspicious", label: t("admin.business.suspicious") },
+  ];
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -111,6 +107,23 @@ const BusinessListPage = ({ initialStatus = "all" }) => {
   const [reviewBusinessId, setReviewBusinessId] = useState(null);
   const [detailBusinessId, setDetailBusinessId] = useState(null);
   const searchDebounceRef = useRef(null);
+
+  const queryParams = useMemo(
+    () => ({ search: debouncedSearch, status, page }),
+    [debouncedSearch, status, page],
+  );
+
+  const { data: queryResult, isLoading, refetch } = useBusinesses(queryParams);
+  const approveMutation = useApproveBusiness();
+  const rejectMutation = useRejectBusiness();
+  const suspendMutation = useSuspendBusiness();
+  const reactivateMutation = useReactivateBusiness();
+  const terminateMutation = useTerminateBusiness();
+
+  const businesses = queryResult?.data ?? [];
+  const pagination = queryResult?.pagination ?? { page: 1, totalPages: 1, total: 0 };
+  const summary = queryResult?.summary ?? null;
+  const loading = isLoading;
 
 const KYCProgress = ({ biz }) => {
   const items = [
@@ -155,99 +168,87 @@ const KYCProgress = ({ biz }) => {
     return () => cancelAnimationFrame(id);
   }, [debouncedSearch, status]);
 
-  useEffect(() => {
-    fetchAll({ search: debouncedSearch, status, page });
-  }, [debouncedSearch, status, page, fetchAll]);
-
   const handleRefresh = () => {
-    refetchBusinessList();
-    toast.success("Đã làm mới danh sách");
+    refetch();
+    toast.success(t("admin.business.refreshList"));
   };
 
   const handleSuspend = async (id) => {
-    const reason = window.prompt(
-      "Nhập lý do tạm khóa doanh nghiệp (tối thiểu 10 ký tự):\n\nLưu ý: Tất cả địa điểm sẽ bị ẩn, các đặt chỗ chưa hoàn thành sẽ tự động hủy và hoàn tiền.",
-    );
+    const reason = window.prompt(t("admin.business.suspendPrompt"));
     if (!reason || reason.trim().length < 10) {
-      if (reason !== null) toast.error("Lý do phải có ít nhất 10 ký tự");
+      if (reason !== null) toast.error(t("admin.business.reasonMinLength"));
       return;
     }
     try {
-      await suspendBusiness(id, reason.trim());
-      toast.success("Đã tạm khóa doanh nghiệp");
+      await suspendMutation.mutateAsync({ id, reason: reason.trim() });
+      toast.success(t("admin.business.businessSuspended"));
     } catch (error) {
-      toast.error(error.message || "Không thể tạm khóa");
+      toast.error(error.message || t("admin.business.suspendFailed"));
     }
   };
 
   const handleReactivate = async (id) => {
-    if (!window.confirm("Kích hoạt lại doanh nghiệp này? Các địa điểm sẽ được khôi phục.")) {
+    if (!window.confirm(t("admin.business.reactivateConfirm"))) {
       return;
     }
     try {
-      await reactivateBusiness(id);
-      toast.success("Đã kích hoạt lại doanh nghiệp");
+      await reactivateMutation.mutateAsync(id);
+      toast.success(t("admin.business.businessReactivated"));
     } catch (error) {
-      toast.error(error.message || "Không thể kích hoạt lại");
+      toast.error(error.message || t("admin.business.reactivateFailed"));
     }
   };
 
   const handleTerminate = async (id) => {
-    const step1 = window.confirm(
-      "⚠️ BƯỚC 1/2: Bạn có chắc muốn CHẤM DỨT HỢP ĐỒNG doanh nghiệp này?\n\nHành động này sẽ:\n- Ẩn tất cả địa điểm vĩnh viễn\n- Hủy tất cả đặt chỗ đang hoạt động + hoàn tiền\n- Vô hiệu hóa dịch vụ & voucher\n- Hạ quyền chủ tài khoản về User\n\nNhấn OK để tiếp tục bước 2.",
-    );
+    const step1 = window.confirm(t("admin.business.terminateStep1Confirm"));
     if (!step1) return;
 
-    const confirmText = window.prompt(
-      'BƯỚC 2/2: Gõ "CONFIRM" để xác nhận chấm dứt hợp đồng:',
-    );
+    const confirmText = window.prompt(t("admin.business.terminateStep2Prompt"));
     if (confirmText !== "CONFIRM") {
-      toast.error("Xác nhận không khớp. Hành động bị hủy.");
+      toast.error(t("admin.business.confirmMismatch"));
       return;
     }
 
-    const reason = window.prompt(
-      "Nhập lý do chấm dứt hợp đồng (tối thiểu 10 ký tự):",
-    );
+    const reason = window.prompt(t("admin.business.terminateReasonPrompt"));
     if (!reason || reason.trim().length < 10) {
-      if (reason !== null) toast.error("Lý do phải có ít nhất 10 ký tự");
+      if (reason !== null) toast.error(t("admin.business.reasonMinLength"));
       return;
     }
 
     try {
-      await terminateBusiness(id, reason.trim());
-      toast.success("Đã chấm dứt hợp đồng doanh nghiệp");
+      await terminateMutation.mutateAsync({ id, reason: reason.trim() });
+      toast.success(t("admin.business.businessTerminated"));
     } catch (error) {
-      toast.error(error.message || "Không thể chấm dứt hợp đồng");
+      toast.error(error.message || t("admin.business.terminateFailed"));
     }
   };
 
   const handleExportCsv = () => {
     if (!businesses || businesses.length === 0) {
-      toast.error("Không có dữ liệu để xuất");
+      toast.error(t("admin.business.noDataToExport"));
       return;
     }
 
     exportToCsv({
       columns: [
         { key: "id", label: "ID" },
-        { key: "businessName", label: "Tên doanh nghiệp" },
-        { key: (row) => BUSINESS_TYPE_LABELS[row.businessType] || row.businessType, label: "Loại hình" },
-        { key: "status", label: "Trạng thái" },
-        { key: (row) => row.owner?.email || "", label: "Email chủ" },
-        { key: (row) => row.owner?.profile?.fullName || "", label: "Tên chủ" },
-        { key: (row) => row.taxCode || "", label: "Mã số thuế" },
-        { key: (row) => (row.contractSigned ? "Đã ký" : "Chưa ký"), label: "Hợp đồng" },
-        { key: (row) => row._count?.places ?? 0, label: "Địa điểm" },
-        { key: (row) => row._count?.services ?? 0, label: "Dịch vụ" },
-        { key: (row) => row._count?.vouchers ?? 0, label: "Voucher" },
-        { key: (row) => row._count?.bookings ?? 0, label: "Booking" },
+        { key: "businessName", label: t("admin.business.csvColumns.businessName") },
+        { key: (row) => BUSINESS_TYPE_LABELS[row.businessType] || row.businessType, label: t("admin.business.csvColumns.type") },
+        { key: "status", label: t("admin.business.status") },
+        { key: (row) => row.owner?.email || "", label: t("admin.business.ownerEmail") },
+        { key: (row) => row.owner?.profile?.fullName || "", label: t("admin.business.csvColumns.ownerName") },
+        { key: (row) => row.taxCode || "", label: t("admin.business.csvColumns.taxCode") },
+        { key: (row) => (row.contractSigned ? t("admin.business.csvColumns.signed") : t("admin.business.csvColumns.unsigned")), label: t("admin.business.contract") },
+        { key: (row) => row._count?.places ?? 0, label: t("admin.business.places") },
+        { key: (row) => row._count?.services ?? 0, label: t("admin.business.services") },
+        { key: (row) => row._count?.vouchers ?? 0, label: t("admin.business.vouchers") },
+        { key: (row) => row._count?.bookings ?? 0, label: t("admin.business.bookings") },
       ],
       data: businesses,
       filename: slugifyFilename("danh_sach_doanh_nghiep"),
     });
 
-    toast.success(`Đã xuất ${businesses.length} bản ghi`);
+    toast.success(t("admin.business.exportSuccess", { count: businesses.length }));
   };
 
   const s = summary || {
@@ -269,12 +270,12 @@ const KYCProgress = ({ biz }) => {
           <div className="flex items-center gap-6">
             <div className="accent-bar h-16" />
             <div>
-              <h1 className="tim-title">QUẢN LÝ DOANH NGHIỆP</h1>
+              <h1 className="tim-title">{t("admin.business.title")}</h1>
               <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-2">
                 <span className="tim-system bg-black text-white px-2 py-1">
-                  DATABASE // BUSINESSES
+                  {t("admin.business.system")}
                 </span>
-                <p className="tim-meta">DUYỆT HỒ SƠ · VẬN HÀNH ĐỐI TÁC</p>
+                <p className="tim-meta">{t("admin.business.subtitle")}</p>
               </div>
             </div>
           </div>
@@ -283,7 +284,7 @@ const KYCProgress = ({ biz }) => {
               type="button"
               onClick={handleExportCsv}
               className="h-12 px-4 flex items-center justify-center border border-black bg-white hover:bg-black hover:text-white transition-colors shrink-0 font-mono text-xs uppercase font-bold gap-2"
-              title="Xuất CSV"
+              title={t("admin.business.csvExport")}
             >
               <Download className="h-4 w-4" />
               CSV
@@ -292,7 +293,7 @@ const KYCProgress = ({ biz }) => {
               type="button"
               onClick={handleRefresh}
               className="h-12 w-12 flex items-center justify-center border border-black bg-white hover:bg-gray-100 transition-colors shrink-0"
-              title="Làm mới"
+              title={t("common.refresh")}
             >
               <RefreshCw
                 className={`h-5 w-5 text-black ${loading ? "animate-spin" : ""}`}
@@ -304,34 +305,34 @@ const KYCProgress = ({ biz }) => {
         {/* Stats — cùng kiểu danh mục */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <TimStatsCard
-            title="TỔNG HỒ SƠ"
+            title={t("admin.business.totalProfiles")}
             value={s.totalBusinesses}
             icon={Briefcase}
             serial="BIZ-001"
           />
           <TimStatsCard
-            title="CHỜ DUYỆT"
+            title={t("admin.business.pendingApproval")}
             value={s.pending}
             icon={Clock}
             serial="BIZ-002"
             textColor="text-amber-600"
           />
           <TimStatsCard
-            title="ĐÃ DUYỆT"
+            title={t("admin.business.approved")}
             value={s.approved}
             icon={CheckCircle2}
             serial="BIZ-003"
             textColor="text-emerald-600"
           />
           <TimStatsCard
-            title="TỔNG ĐỊA ĐIỂM (ĐỐI TÁC)"
+            title={t("admin.business.totalPartnerPlaces")}
             value={s.totalPlaces}
             icon={MapPin}
             serial="BIZ-004"
             color="bg-yellow-50"
           />
           <TimStatsCard
-            title="ĐÃ DUYỆT CHƯA KÝ HĐ"
+            title={t("admin.business.approvedNoContract")}
             value={s.approvedWithoutContract}
             icon={FileSignature}
             serial="BIZ-005"
@@ -348,7 +349,7 @@ const KYCProgress = ({ biz }) => {
             </div>
             <input
               type="text"
-              placeholder="TÌM THEO TÊN DN, EMAIL, HỌ TÊN CHỦ..."
+              placeholder={t("admin.business.searchPlaceholder")}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="flex-1 bg-zinc-50 px-4 font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400 transition-colors"
@@ -404,21 +405,21 @@ const KYCProgress = ({ biz }) => {
               <div className="flex flex-col items-center justify-center py-20 space-y-4">
                 <div className="w-12 h-12 border-4 border-black border-t-primary rounded-full animate-spin" />
                 <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                  LOADING BUSINESS STREAM...
+                  {t("admin.business.loading")}
                 </div>
               </div>
             );
           }
 
-          if (businesses.length === 0) {
+          if (!businesses || businesses.length === 0) {
             return (
               <div className="border-2 border-dashed border-black bg-white/80 p-16 text-center">
                 <Briefcase className="h-14 w-14 mx-auto text-muted-foreground mb-4" />
                 <p className="font-semibold text-lg uppercase tracking-tight">
-                  Không có doanh nghiệp nào
+                  {t("admin.business.noBusinesses")}
                 </p>
                 <p className="text-sm text-muted-foreground mt-2 font-mono">
-                  Thử đổi bộ lọc hoặc từ khóa tìm kiếm.
+                  {t("admin.business.noBusinessesHint")}
                 </p>
               </div>
             );
@@ -428,7 +429,7 @@ const KYCProgress = ({ biz }) => {
             <>
               {viewMode === "card" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {businesses.map((biz) => (
+                {(businesses || []).map((biz) => (
                   <div
                     key={biz.id}
                     className="relative group bg-white border-2 border-black transition-all hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden flex flex-col"
@@ -473,7 +474,7 @@ const KYCProgress = ({ biz }) => {
                               : "bg-red-50 border-red-400 text-red-700"
                           }`}
                         >
-                          {biz.contractSigned ? "ĐÃ KÝ HĐ" : "CHƯA KÝ HĐ"}
+                          {biz.contractSigned ? t("admin.business.contractSigned") : t("admin.business.contractUnsigned")}
                         </span>
                         <span className="text-gray-300">//</span>
                         <span
@@ -487,7 +488,7 @@ const KYCProgress = ({ biz }) => {
                       <div className="grid grid-cols-2 gap-2 border-t-2 border-black pt-4 mb-4">
                         <div className="text-center bg-gray-50 border border-gray-200 p-2">
                           <div className="text-[10px] text-gray-400 font-mono uppercase mb-1 flex items-center justify-center gap-1">
-                            <MapPin className="w-3 h-3" /> ĐỊA ĐIỂM
+                            <MapPin className="w-3 h-3" /> {t("admin.business.places")}
                           </div>
                           <div className="font-black text-xl tracking-tighter">
                             {biz._count?.places ?? 0}
@@ -495,7 +496,7 @@ const KYCProgress = ({ biz }) => {
                         </div>
                         <div className="text-center bg-yellow-50 border border-yellow-200 p-2">
                           <div className="text-[10px] text-gray-500 font-mono uppercase mb-1 flex items-center justify-center gap-1">
-                            <Layers className="w-3 h-3" /> DỊCH VỤ
+                            <Layers className="w-3 h-3" /> {t("admin.business.services")}
                           </div>
                           <div className="font-black text-xl tracking-tighter text-yellow-800">
                             {biz._count?.services ?? 0}
@@ -503,7 +504,7 @@ const KYCProgress = ({ biz }) => {
                         </div>
                         <div className="text-center bg-gray-50 border border-gray-200 p-2">
                           <div className="text-[10px] text-gray-400 font-mono uppercase mb-1 flex items-center justify-center gap-1">
-                            <Ticket className="w-3 h-3" /> VOUCHER
+                            <Ticket className="w-3 h-3" /> {t("admin.business.vouchers")}
                           </div>
                           <div className="font-black text-xl tracking-tighter">
                             {biz._count?.vouchers ?? 0}
@@ -511,7 +512,7 @@ const KYCProgress = ({ biz }) => {
                         </div>
                         <div className="text-center bg-slate-50 border border-slate-200 p-2">
                           <div className="text-[10px] text-gray-500 font-mono uppercase mb-1 flex items-center justify-center gap-1">
-                            <CalendarCheck className="w-3 h-3" /> ĐẶT CHỖ
+                            <CalendarCheck className="w-3 h-3" /> {t("admin.business.bookings")}
                           </div>
                           <div className="font-black text-xl tracking-tighter">
                             {biz._count?.bookings ?? 0}
@@ -522,7 +523,7 @@ const KYCProgress = ({ biz }) => {
                       <div className="flex items-center justify-between border-t border-black/10 pt-2">
                         <KYCProgress biz={biz} />
                         <span className={cn("font-mono text-[10px] uppercase px-1.5 py-0.5 border", biz.contractSigned ? "bg-emerald-50 border-emerald-400 text-emerald-700" : "bg-red-50 border-red-400 text-red-700")}>
-                          {biz.contractSigned ? "Đã ký HĐ" : "Chưa ký HĐ"}
+                          {biz.contractSigned ? t("admin.business.contractSigned") : t("admin.business.contractUnsigned")}
                         </span>
                       </div>
 
@@ -535,7 +536,7 @@ const KYCProgress = ({ biz }) => {
                           className="rounded-none border-black font-mono text-[11px] uppercase font-bold gap-1.5"
                         >
                           <MapPin className="h-4 w-4" />
-                          Chi tiết &amp; địa điểm
+                          {t("admin.business.detailsAndPlaces")}
                         </Button>
                         {biz.status === BUSINESS_STATUS.PENDING && (
                           <Button
@@ -544,7 +545,7 @@ const KYCProgress = ({ biz }) => {
                             className="rounded-none border-black bg-black text-white hover:bg-[#F3E600] hover:text-black font-mono text-[11px] uppercase font-bold gap-1.5"
                           >
                             <ClipboardCheck className="h-4 w-4" />
-                            Đối chiếu & duyệt
+                            {t("admin.business.crossCheckApprove")}
                           </Button>
                         )}
                         {biz.status === BUSINESS_STATUS.APPROVED && (
@@ -555,7 +556,7 @@ const KYCProgress = ({ biz }) => {
                             className="rounded-none border-amber-600 text-amber-900 hover:bg-amber-50 font-mono text-[11px] uppercase font-bold"
                           >
                             <Pause className="h-4 w-4 mr-1" />
-                            Tạm ngưng
+                            {t("admin.business.suspend")}
                           </Button>
                         )}
                         {biz.status === BUSINESS_STATUS.SUSPENDED && (
@@ -566,7 +567,7 @@ const KYCProgress = ({ biz }) => {
                             className="rounded-none border-emerald-600 text-emerald-900 hover:bg-emerald-50 font-mono text-[11px] uppercase font-bold"
                           >
                             <RotateCcw className="h-4 w-4 mr-1" />
-                            Kích hoạt lại
+                            {t("admin.business.reactivate")}
                           </Button>
                         )}
                         {(biz.status === BUSINESS_STATUS.APPROVED || biz.status === BUSINESS_STATUS.SUSPENDED) && (
@@ -577,7 +578,7 @@ const KYCProgress = ({ biz }) => {
                             className="rounded-none border-red-700 text-red-800 hover:bg-red-50 font-mono text-[11px] uppercase font-bold"
                           >
                             <XCircle className="h-4 w-4 mr-1" />
-                            Chấm dứt HĐ
+                            {t("admin.business.terminateContract")}
                           </Button>
                         )}
                       </div>
@@ -591,21 +592,21 @@ const KYCProgress = ({ biz }) => {
                   <thead>
                     <tr className="bg-black text-white font-mono text-[10px] uppercase tracking-wider">
                       <th className="px-3 py-3 text-left border-r border-white/20">#</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20">Tên DN</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20">Loại</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20">Trạng thái</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20">KYC</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20">HĐ</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20">Email chủ</th>
-                      <th className="px-3 py-3 text-center border-r border-white/20">Địa điểm</th>
-                      <th className="px-3 py-3 text-center border-r border-white/20">Dịch vụ</th>
-                      <th className="px-3 py-3 text-center border-r border-white/20">Voucher</th>
-                      <th className="px-3 py-3 text-center border-r border-white/20">Booking</th>
-                      <th className="px-3 py-3 text-right">Hành động</th>
+                      <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.businessName")}</th>
+                      <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.type")}</th>
+                      <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.status")}</th>
+                      <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.kyc")}</th>
+                      <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.contract")}</th>
+                      <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.ownerEmail")}</th>
+                      <th className="px-3 py-3 text-center border-r border-white/20">{t("admin.business.places")}</th>
+                      <th className="px-3 py-3 text-center border-r border-white/20">{t("admin.business.services")}</th>
+                      <th className="px-3 py-3 text-center border-r border-white/20">{t("admin.business.vouchers")}</th>
+                      <th className="px-3 py-3 text-center border-r border-white/20">{t("admin.business.bookings")}</th>
+                      <th className="px-3 py-3 text-right">{t("admin.business.actions")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black/10">
-                    {businesses.map((biz) => (
+                    {(businesses || []).map((biz) => (
                       <tr key={biz.id} className="hover:bg-muted/30 transition-colors">
                         <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground">{biz.id}</td>
                         <td className="px-3 py-2 font-semibold text-xs uppercase max-w-[200px] truncate" title={biz.businessName}>{biz.businessName}</td>
@@ -614,7 +615,7 @@ const KYCProgress = ({ biz }) => {
                         <td className="px-3 py-2"><KYCProgress biz={biz} /></td>
                         <td className="px-3 py-2">
                           <span className={cn("font-mono text-[10px] uppercase px-1.5 py-0.5 border", biz.contractSigned ? "bg-emerald-50 border-emerald-400 text-emerald-700" : "bg-red-50 border-red-400 text-red-700")}>
-                            {biz.contractSigned ? "Đã ký" : "Chưa"}
+                            {biz.contractSigned ? t("admin.business.contractSignedShort") : t("admin.business.contractUnsignedShort")}
                           </span>
                         </td>
                         <td className="px-3 py-2 text-[11px] text-muted-foreground truncate max-w-[160px]" title={biz.owner?.email}>{biz.owner?.email || "—"}</td>
@@ -624,18 +625,18 @@ const KYCProgress = ({ biz }) => {
                         <td className="px-3 py-2 text-center font-mono text-xs">{biz._count?.bookings ?? 0}</td>
                         <td className="px-3 py-2 text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button size="sm" variant="outline" onClick={() => setDetailBusinessId(biz.id)} className="rounded-none border-black font-mono text-[10px] uppercase h-7 px-2">Chi tiết</Button>
+                            <Button size="sm" variant="outline" onClick={() => setDetailBusinessId(biz.id)} className="rounded-none border-black font-mono text-[10px] uppercase h-7 px-2">{t("admin.business.details")}</Button>
                             {biz.status === BUSINESS_STATUS.PENDING && (
-                              <Button size="sm" onClick={() => setReviewBusinessId(biz.id)} className="rounded-none bg-black text-white hover:bg-[#F3E600] hover:text-black font-mono text-[10px] uppercase h-7 px-2">Duyệt</Button>
+                              <Button size="sm" onClick={() => setReviewBusinessId(biz.id)} className="rounded-none bg-black text-white hover:bg-[#F3E600] hover:text-black font-mono text-[10px] uppercase h-7 px-2">{t("admin.business.approve")}</Button>
                             )}
                             {biz.status === BUSINESS_STATUS.APPROVED && (
-                              <Button size="sm" variant="outline" onClick={() => handleSuspend(biz.id)} className="rounded-none border-amber-600 text-amber-900 hover:bg-amber-50 font-mono text-[10px] uppercase h-7 px-2">Tạm khóa</Button>
+                              <Button size="sm" variant="outline" onClick={() => handleSuspend(biz.id)} className="rounded-none border-amber-600 text-amber-900 hover:bg-amber-50 font-mono text-[10px] uppercase h-7 px-2">{t("admin.business.lock")}</Button>
                             )}
                             {biz.status === BUSINESS_STATUS.SUSPENDED && (
-                              <Button size="sm" variant="outline" onClick={() => handleReactivate(biz.id)} className="rounded-none border-emerald-600 text-emerald-900 hover:bg-emerald-50 font-mono text-[10px] uppercase h-7 px-2">Kích hoạt</Button>
+                              <Button size="sm" variant="outline" onClick={() => handleReactivate(biz.id)} className="rounded-none border-emerald-600 text-emerald-900 hover:bg-emerald-50 font-mono text-[10px] uppercase h-7 px-2">{t("admin.business.reactivate")}</Button>
                             )}
                             {(biz.status === BUSINESS_STATUS.APPROVED || biz.status === BUSINESS_STATUS.SUSPENDED) && (
-                              <Button size="sm" variant="outline" onClick={() => handleTerminate(biz.id)} className="rounded-none border-red-700 text-red-800 hover:bg-red-50 font-mono text-[10px] uppercase h-7 px-2">Chấm dứt</Button>
+                              <Button size="sm" variant="outline" onClick={() => handleTerminate(biz.id)} className="rounded-none border-red-700 text-red-800 hover:bg-red-50 font-mono text-[10px] uppercase h-7 px-2">{t("admin.business.terminateContract")}</Button>
                             )}
                           </div>
                         </td>
@@ -657,11 +658,10 @@ const KYCProgress = ({ biz }) => {
                     className="rounded-none border-black font-mono text-xs uppercase"
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" />
-                    Trước
+                    {t("admin.business.prevPage")}
                   </Button>
                   <span className="font-mono text-xs text-muted-foreground">
-                    TRANG {page} / {pagination.totalPages} · Tổng{" "}
-                    {pagination.total} hồ sơ
+                    {t("admin.business.pagination", { page, totalPages: pagination.totalPages, total: pagination.total })}
                   </span>
                   <Button
                     type="button"
@@ -673,7 +673,7 @@ const KYCProgress = ({ biz }) => {
                     }
                     className="rounded-none border-black font-mono text-xs uppercase"
                   >
-                    Sau
+                    {t("admin.business.nextPage")}
                     <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 </div>
@@ -697,8 +697,8 @@ const KYCProgress = ({ biz }) => {
           if (!open) setReviewBusinessId(null);
         }}
         businessId={reviewBusinessId}
-        onApproved={(id, payload) => approveBusiness(id, payload)}
-        onRejected={(id, reason) => rejectBusiness(id, reason)}
+        onApproved={(id, payload) => approveMutation.mutateAsync({ id, data: payload })}
+        onRejected={(id, reason) => rejectMutation.mutateAsync({ id, reason })}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { memo, useCallback, useMemo, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -26,6 +27,7 @@ function MoveDestinationModal({
   onCancel,
   isLoading,
 }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [selectedDay, setSelectedDay] = useState(null);
   const [startTime, setStartTime] = useState("");
@@ -99,7 +101,7 @@ function MoveDestinationModal({
               <View className="flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]">
                 <View className="flex-row items-center gap-2 flex-1">
                   <MaterialIconsRounded name="edit-location-alt" size={20} color="#1D1D1F" />
-                  <Text className="text-[17px] font-semibold text-[#1D1D1F] tracking-tight">Chỉnh sửa lịch trình</Text>
+                  <Text className="text-[17px] font-semibold text-[#1D1D1F] tracking-tight">{t('moveDestination.editItinerary')}</Text>
                 </View>
                 <Pressable
                   onPress={onCancel}
@@ -127,7 +129,7 @@ function MoveDestinationModal({
                 keyboardShouldPersistTaps="handled"
               >
                 <View className="gap-2.5">
-                  <Text className={STYLES.fieldLabel}>Chọn ngày hoạt động</Text>
+                  <Text className={STYLES.fieldLabel}>{t('moveDestination.selectDay')}</Text>
                   <View className="flex-row flex-wrap gap-2">
                     {days.map((day) => {
                       const isSelected = selectedDay === day.dayNumber;
@@ -144,7 +146,7 @@ function MoveDestinationModal({
                               isSelected ? "text-white" : "text-[#1D1D1F]"
                             }`}
                           >
-                            Ngày {day.dayNumber}
+                            {t('moveDestination.dayLabel', { number: day.dayNumber })}
                           </Text>
                           {day.date ? (
                             <Text
@@ -162,17 +164,17 @@ function MoveDestinationModal({
                 </View>
 
                 <View className="gap-2.5 pt-4 border-t border-black/[0.08]">
-                  <Text className={STYLES.fieldLabel}>Thời gian chi tiết</Text>
+                  <Text className={STYLES.fieldLabel}>{t('moveDestination.detailTime')}</Text>
                   <View className="flex-row gap-3">
                     <TimeField
-                      label="Bắt đầu"
+                      label={t('moveDestination.start')}
                       value={startTime}
                       onChange={setStartTime}
                       placeholder="--:--"
                       icon="play-circle-outline"
                     />
                     <TimeField
-                      label="Kết thúc"
+                      label={t('moveDestination.end')}
                       value={endTime}
                       onChange={setEndTime}
                       placeholder="--:--"
@@ -182,12 +184,12 @@ function MoveDestinationModal({
                 </View>
 
                 <View className="gap-2.5 pt-4 border-t border-black/[0.08]">
-                  <Text className={STYLES.fieldLabel}>Ghi chú hành trình</Text>
+                  <Text className={STYLES.fieldLabel}>{t('moveDestination.tripNotes')}</Text>
                   <TextInput
                     className={`${STYLES.field} min-h-[72px]`}
                     value={note}
                     onChangeText={setNote}
-                    placeholder="Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây..."
+                    placeholder={t('moveDestination.notesPlaceholder')}
                     placeholderTextColor={ALPHA.placeholder}
                     multiline
                     numberOfLines={3}
@@ -206,7 +208,7 @@ function MoveDestinationModal({
                   {isLoading ? (
                     <ActivityIndicator size="small" color={T.onPrimary} />
                   ) : (
-                    <Text className={STYLES.submitBtnText}>Lưu thay đổi</Text>
+                    <Text className={STYLES.submitBtnText}>{t('moveDestination.saveChanges')}</Text>
                   )}
                 </Pressable>
               </View>

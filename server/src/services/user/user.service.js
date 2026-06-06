@@ -225,7 +225,7 @@ export const createUser = async (userData) => {
       nickname,
       phone,
       gender,
-      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      dateOfBirth: dateOfBirth === null ? null : (dateOfBirth ? new Date(dateOfBirth) : undefined),
       address,
       provinceCode,
       districtCode,
@@ -324,7 +324,7 @@ export const updateUser = async (id, updateData) => {
       nickname,
       phone,
       gender,
-      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      dateOfBirth: dateOfBirth === null ? null : (dateOfBirth ? new Date(dateOfBirth) : undefined),
       address,
       provinceCode,
       districtCode,
@@ -342,6 +342,13 @@ export const updateUser = async (id, updateData) => {
           userId,
           ...cleanProfileData,
         },
+      });
+    }
+
+    if (userData.status === USER_STATUS.INACTIVE || userData.status === USER_STATUS.BANNED) {
+      await tx.userSession.updateMany({
+        where: { userId, isActive: true },
+        data: { isActive: false },
       });
     }
 

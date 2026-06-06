@@ -1,16 +1,19 @@
 import { Link } from "react-router-dom";
 import Filter from "lucide-react/dist/esm/icons/filter";
 import { ADMIN_ROUTES } from "@/constants/routes";
+import { useTranslation } from "react-i18next";
 
 /**
  * DashboardCategories - Category list module in dashboard
  */
 const DashboardCategories = ({ categories, places }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="border border-black bg-white flex flex-col">
       <div className="p-4 border-b border-black border-dashed flex items-center justify-between">
         <h3 className="font-bold font-mono text-sm uppercase tracking-widest">
-          DANH MỤC CƠ SỞ
+          {t("dashboard.categories.title")}
         </h3>
         <Filter className="h-4 w-4 text-gray-400" />
       </div>
@@ -36,7 +39,7 @@ const DashboardCategories = ({ categories, places }) => {
         to={ADMIN_ROUTES.CATEGORIES}
         className="p-4 border-t border-black bg-gray-50 text-center font-bold text-xs uppercase hover:bg-black hover:text-white transition-colors"
       >
-        QUẢN LÝ DANH MỤC &rarr;
+        {t("dashboard.categories.manage")} &rarr;
       </Link>
     </div>
   );

@@ -22,6 +22,7 @@ import { useNotifications } from "../../src/modules/notifications/hooks/useNotif
 import { TOKENS } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "../(tabs)/_layout";
 import { TAB_SCREEN_PADDING, TAB_THEME } from "../(tabs)/tabTheme";
+import { useTranslation } from "react-i18next";
 
 const ACCENT_BLUE = "#3478F6";
 
@@ -108,6 +109,7 @@ function NotificationBadge({ count }) {
 }
 
 function LogoutConfirmModal({ visible, onCancel, onConfirm }) {
+  const { t } = useTranslation();
   return (
     <Modal
       visible={visible}
@@ -120,17 +122,17 @@ function LogoutConfirmModal({ visible, onCancel, onConfirm }) {
           <View style={styles.modalIconWrap}>
             <MaterialIconsRounded name="logout" size={28} color={TOKENS.color.error} />
           </View>
-          <Text style={styles.modalTitle}>Đăng xuất khỏi tài khoản?</Text>
+          <Text style={styles.modalTitle}>{t("settings.logoutConfirmTitle")}</Text>
           <Text style={styles.modalCopy}>
-            Bạn sẽ cần đăng nhập lại để sử dụng các tính năng cá nhân.
+            {t("settings.logoutConfirmMessage")}
           </Text>
 
           <View style={styles.modalActions}>
             <Pressable onPress={onCancel} style={styles.modalCancelBtn}>
-              <Text style={styles.modalCancelText}>Hủy</Text>
+              <Text style={styles.modalCancelText}>{t("common.cancel")}</Text>
             </Pressable>
             <Pressable onPress={onConfirm} style={styles.modalConfirmBtn}>
-              <Text style={styles.modalConfirmText}>Đăng xuất</Text>
+              <Text style={styles.modalConfirmText}>{t("settings.logout")}</Text>
             </Pressable>
           </View>
         </View>
@@ -207,6 +209,7 @@ function CustomToast({ message, visible, onHide }) {
 
 /* ====================== MAIN SCREEN ====================== */
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const storedUser = useAuthStore((s) => s.user);
@@ -214,8 +217,9 @@ export default function SettingsScreen() {
   const isGuest = useAuthStore((s) => s.isGuest);
   const isLoggedIn = !!accessToken && !isGuest;
 
-  const language = useUIStore((s) => s.language || "vi");
+  const language = useUIStore((s) => s.language || "device");
   const setLanguage = useUIStore((s) => s.setLanguage);
+  const getResolvedLanguage = useUIStore((s) => s.getResolvedLanguage);
   const themePreference = useUIStore((s) => s.themePreference || "auto");
   const setTheme = useUIStore((s) => s.setTheme);
   const profileSettings = useUIStore((s) => s.profileSettings);
@@ -239,13 +243,13 @@ export default function SettingsScreen() {
     : (profileSettings?.pushEnabled ?? true);
   const syncEnabled = profileSettings?.syncEnabled ?? true;
   const hapticEnabled = profileSettings?.hapticEnabled ?? true; // Mới: haptic feedback
-  const email = profile?.email || storedUser?.email || "Chưa cập nhật";
+  const email = profile?.email || storedUser?.email || t("settings.emailNotSet");
 
   const isPushPending = updateNotifSettingsMutation.isPending;
 
   // Handlers
   const handleSoonFeature = useCallback((title) => {
-    setToastMessage(`${title} sẽ có trong bản cập nhật tới!`);
+    setToastMessage(t("settings.comingSoon", { feature: title }));
     setToastVisible(true);
   }, []);
 
@@ -282,7 +286,7 @@ export default function SettingsScreen() {
           console.error("Lỗi đồng bộ cài đặt thông báo:", error);
           // Revert local store if failed
           updateProfileSettings?.({ pushEnabled: !enabled });
-          setToastMessage("Không thể đồng bộ cài đặt thông báo với máy chủ!");
+          setToastMessage(t("settings.syncError"));
           setToastVisible(true);
         }
       }
@@ -300,9 +304,18 @@ export default function SettingsScreen() {
     [updateProfileSettings]
   );
 
-  const handleToggleLanguage = useCallback(() => {
-    setLanguage(language === "en" ? "vi" : "en");
+  const handleCycleLanguage = useCallback(() => {
+    const cycle = { device: "en", en: "vi", vi: "device" };
+    setLanguage(cycle[language] || "device");
   }, [language, setLanguage]);
+
+  const resolvedLang = getResolvedLanguage();
+  const languageLabel = language === "device"
+    ? `${t("language.deviceLanguage")} (${resolvedLang === "vi" ? "VI" : "EN"})`
+    : language === "en"
+      ? "English"
+      : "Tiếng Việt";
+  const languageBadge = language === "device" ? (resolvedLang === "vi" ? "VI" : "EN") : language === "en" ? "EN" : "VI";
 
   const handleConfirmLogout = useCallback(() => {
     setLogoutModalVisible(false);
@@ -311,16 +324,16 @@ export default function SettingsScreen() {
 
   const handleClearCache = useCallback(() => {
     Alert.alert(
-      "Xóa cache?",
-      "Điều này sẽ xóa dữ liệu tạm và làm mới ứng dụng. Bạn có chắc không?",
+      t("settings.clearCacheTitle"),
+      t("settings.clearCacheMessage"),
       [
-        { text: "Hủy", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Xóa",
+          text: t("settings.clearCacheConfirm"),
           style: "destructive",
           onPress: () => {
             // Có thể thêm AsyncStorage.clear() hoặc tương tự ở đây nếu cần
-            Alert.alert("Đã xóa cache!", "Ứng dụng đã được làm mới.");
+            Alert.alert(t("settings.clearCacheSuccess"), t("settings.clearCacheSuccessMessage"));
           },
         },
       ]
@@ -330,7 +343,7 @@ export default function SettingsScreen() {
   const handleOpenPrivacy = useCallback(() => {
     // Demo mở link (bạn có thể thay bằng link thật của app)
     Linking.openURL("https://yourapp.com/privacy").catch(() =>
-      handleSoonFeature("Privacy Policy")
+      handleSoonFeature(t("settings.privacyPolicy"))
     );
   }, [handleSoonFeature]);
 
@@ -341,7 +354,7 @@ export default function SettingsScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <MaterialIconsRounded name="arrow-back" size={26} color="#0F172A" />
         </Pressable>
-        <Text style={styles.headerTitle}>CÀI ĐẶT</Text>
+        <Text style={styles.headerTitle}>{t("settings.title")}</Text>
         <View style={styles.headerPlaceholder} />
       </View>
 
@@ -352,15 +365,15 @@ export default function SettingsScreen() {
         {/* ==================== ACCOUNT SECTION (nếu đã login) ==================== */}
         {isLoggedIn && (
           <>
-            <SectionHeader text="Tài khoản" />
+            <SectionHeader text={t("settings.account")} />
             <View style={styles.settingsCard}>
               {/* Profile preview hiện đại */}
               <SettingRow
                 icon="person"
                 iconBg="rgba(16,185,129,0.1)"
                 iconColor="#10B981"
-                title="Chỉnh sửa hồ sơ"
-                subtitle="Cập nhật tên, avatar & thông tin"
+                title={t("settings.editProfile")}
+                subtitle={t("settings.editProfileSubtitle")}
                 onPress={() => router.push("/profile/edit")}
               />
               <View style={styles.divider} />
@@ -369,7 +382,7 @@ export default function SettingsScreen() {
                 icon="mail-outline"
                 iconBg="rgba(148,163,184,0.1)"
                 iconColor="#64748B"
-                title="Email đăng nhập"
+                title={t("settings.loginEmail")}
                 subtitle={email}
               />
               <View style={styles.divider} />
@@ -378,16 +391,16 @@ export default function SettingsScreen() {
                 icon="security"
                 iconBg="rgba(245,158,11,0.1)"
                 iconColor="#F59E0B"
-                title="Bảo mật tài khoản"
-                subtitle="Quản lý phiên & mật khẩu"
-                onPress={() => handleSoonFeature("Account Security")}
+                title={t("settings.accountSecurity")}
+                subtitle={t("settings.accountSecuritySubtitle")}
+                onPress={() => handleSoonFeature(t("settings.accountSecurity"))}
               />
               <View style={styles.divider} />
 
               <SettingRow
                 icon="sync"
-                title="Đồng bộ hồ sơ"
-                subtitle={isRefetching ? "Đang lấy dữ liệu..." : "Giữ hồ sơ luôn mới"}
+                title={t("settings.syncProfile")}
+                subtitle={isRefetching ? t("settings.syncing") : t("settings.syncProfileSubtitle")}
                 onPress={isRefetching ? undefined : refetch}
               />
             </View>
@@ -395,15 +408,15 @@ export default function SettingsScreen() {
         )}
 
         {/* ==================== PREFERENCES SECTION ==================== */}
-        <SectionHeader text="Tùy chỉnh" />
+        <SectionHeader text={t("settings.preferences")} />
         <View style={styles.settingsCard}>
           {/* Dark mode */}
           <SettingRow
             icon="dark-mode"
             iconBg="rgba(99,102,241,0.1)"
             iconColor="#6366F1"
-            title="Chế độ tối"
-            subtitle={darkModeEnabled ? "Đang bật" : "Đang tắt"}
+            title={t("settings.darkMode")}
+            subtitle={darkModeEnabled ? t("settings.darkModeOn") : t("settings.darkModeOff")}
             rightElement={
               <Switch
                 value={darkModeEnabled}
@@ -420,13 +433,13 @@ export default function SettingsScreen() {
             icon="language"
             iconBg="rgba(16,185,129,0.1)"
             iconColor="#10B981"
-            title="Ngôn ngữ"
-            subtitle={language === "en" ? "English" : "Tiếng Việt"}
-            onPress={handleToggleLanguage}
+            title={t("settings.customize.language")}
+            subtitle={languageLabel}
+            onPress={handleCycleLanguage}
             rightElement={
               <View style={styles.languageBadge}>
                 <Text style={styles.languageBadgeText}>
-                  {language === "en" ? "EN" : "VI"}
+                  {languageBadge}
                 </Text>
               </View>
             }
@@ -438,12 +451,12 @@ export default function SettingsScreen() {
             icon="notifications"
             iconBg="rgba(239,68,68,0.08)"
             iconColor="#EF4444"
-            title="Thông báo"
+            title={t("settings.notifications")}
             subtitle={(() => {
               const count = unreadCount;
               return count > 0
-                ? `${count} thông báo mới chưa đọc`
-                : "Không có thông báo mới";
+                ? t("settings.notificationsUnread", { count })
+                : t("settings.noNewNotifications");
             })()}
             onPress={() => router.push("/profile/notifications")}
             rightElement={
@@ -461,8 +474,8 @@ export default function SettingsScreen() {
             icon="notifications-active"
             iconBg="rgba(0,113,227,0.08)"
             iconColor="#0071E3"
-            title="Thông báo đẩy"
-            subtitle={pushEnabled ? "Bật" : "Tắt"}
+            title={t("settings.pushNotifications")}
+            subtitle={pushEnabled ? t("settings.pushOn") : t("settings.pushOff")}
             disabled={isPushPending}
             rightElement={
               <Switch
@@ -481,8 +494,8 @@ export default function SettingsScreen() {
             icon="vibration"
             iconBg="rgba(234,179,8,0.1)"
             iconColor="#EAB308"
-            title="Rung phản hồi"
-            subtitle="Rung khi chạm"
+            title={t("settings.hapticFeedback")}
+            subtitle={t("settings.hapticSubtitle")}
             rightElement={
               <Switch
                 value={hapticEnabled}
@@ -497,13 +510,13 @@ export default function SettingsScreen() {
           {/* Auto Sync */}
           <SettingRow
             icon="sync"
-            title="Tự động đồng bộ"
+            title={t("settings.autoSync")}
             subtitle={
               syncEnabled
                 ? isRefetching
-                  ? "Đang đồng bộ..."
-                  : "Luôn cập nhật"
-                : "Chỉ đồng bộ thủ công"
+                  ? t("settings.autoSyncing")
+                  : t("settings.autoSyncOn")
+                : t("settings.autoSyncOff")
             }
             rightElement={
               <Switch
@@ -517,11 +530,11 @@ export default function SettingsScreen() {
         </View>
 
         {/* ==================== SAVED & PAYMENT (giữ nguyên nhưng hiện đại hơn) ==================== */}
-        <SectionHeader text="Tính năng" />
+        <SectionHeader text={t("settings.features")} />
         <View style={styles.settingsCard}>
           <SettingRow
             icon="bookmark"
-            title="Địa điểm đã lưu"
+            title={t("settings.savedPlaces")}
             onPress={() => router.push("/(tabs)/saved")}
           />
           <View style={styles.divider} />
@@ -529,60 +542,60 @@ export default function SettingsScreen() {
             icon="credit-card"
             iconBg="rgba(245,158,11,0.1)"
             iconColor="#F59E0B"
-            title="Phương thức thanh toán"
-            onPress={() => handleSoonFeature("Payment Methods")}
+            title={t("settings.paymentMethods")}
+            onPress={() => handleSoonFeature(t("settings.paymentMethods"))}
           />
         </View>
 
         {/* ==================== SUPPORT SECTION (mới - chức năng tiêu chuẩn) ==================== */}
-        <SectionHeader text="Hỗ trợ" />
+        <SectionHeader text={t("settings.support")} />
         <View style={styles.settingsCard}>
           <SettingRow
             icon="help-outline"
-            title="Trung tâm trợ giúp"
-            subtitle="Hướng dẫn & FAQ"
-            onPress={() => handleSoonFeature("Help & Support")}
+            title={t("settings.helpCenter")}
+            subtitle={t("settings.helpCenterSubtitle")}
+            onPress={() => handleSoonFeature(t("settings.helpCenter"))}
           />
           <View style={styles.divider} />
 
           <SettingRow
             icon="feedback"
-            title="Gửi phản hồi"
-            subtitle="Đóng góp ý kiến cho chúng tôi"
+            title={t("settings.sendFeedback")}
+            subtitle={t("settings.sendFeedbackSubtitle")}
             onPress={() => router.push("/feedback")}
           />
           <View style={styles.divider} />
 
           <SettingRow
             icon="delete-sweep"
-            title="Xóa cache"
-            subtitle="Giải phóng dung lượng"
+            title={t("settings.clearCache")}
+            subtitle={t("settings.clearCacheSubtitle")}
             onPress={handleClearCache}
           />
         </View>
 
         {/* ==================== LEGAL SECTION (mới - chức năng tiêu chuẩn) ==================== */}
-        <SectionHeader text="Pháp lý" />
+        <SectionHeader text={t("settings.legal")} />
         <View style={styles.settingsCard}>
           <SettingRow
             icon="policy"
-            title="Chính sách bảo mật"
+            title={t("settings.privacyPolicy")}
             onPress={handleOpenPrivacy}
           />
           <View style={styles.divider} />
           <SettingRow
             icon="description"
-            title="Điều khoản dịch vụ"
-            onPress={() => handleSoonFeature("Terms of Service")}
+            title={t("settings.termsOfService")}
+            onPress={() => handleSoonFeature(t("settings.termsOfService"))}
           />
           <View style={styles.divider} />
           <SettingRow
             icon="info-outline"
             iconBg="rgba(148,163,184,0.12)"
             iconColor="#64748B"
-            title="Phiên bản ứng dụng"
+            title={t("settings.appVersion")}
             subtitle="v1.2.4 (build 2026.04)"
-            onPress={() => handleSoonFeature("App Version")}
+            onPress={() => handleSoonFeature(t("settings.appVersion"))}
           />
         </View>
 
@@ -591,7 +604,7 @@ export default function SettingsScreen() {
           <View style={[styles.settingsCard, { marginTop: 12, marginBottom: 24 }]}>
             <SettingRow
               icon="logout"
-              title="Đăng xuất"
+              title={t("settings.logout")}
               danger={true}
               onPress={() => setLogoutModalVisible(true)}
               rightElement={<View />} // Không hiển thị dấu chevron

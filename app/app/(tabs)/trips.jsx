@@ -3,6 +3,7 @@ import { View, RefreshControl } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useTripsCached } from "../../src/modules/trips/hooks/useTripsOffline";
 import {
   useSaveTrip,
@@ -30,6 +31,7 @@ function ItemSeparator() {
 }
 
 export default function TripsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -122,8 +124,8 @@ export default function TripsScreen() {
     return (
       <GuestGate
         icon="luggage"
-        title="Đăng nhập để quản lý chuyến đi"
-        description="Đồng bộ lịch trình, điểm đến và tiến độ hành trình của bạn trên mọi thiết bị."
+        title={t("trips.guestTitle")}
+        description={t("trips.guestDescription")}
       />
     );
   }

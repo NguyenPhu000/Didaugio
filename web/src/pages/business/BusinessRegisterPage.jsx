@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import useBusinessStore from "@/stores/businessStore";
+import { useRegisterBusiness } from "@/hooks/queries/useBusinessQueries";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import {
   PageHeader,
@@ -53,9 +54,9 @@ const FormField = ({ label, required, error, children }) => (
 );
 
 const BusinessRegisterPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const { registerBusiness } = useBusinessStore();
-  const [isLoading, setIsLoading] = useState(false);
+  const registerMutation = useRegisterBusiness();
   const [documents, setDocuments] = useState({
     idCardFront: [],
     idCardBack: [],
@@ -73,6 +74,8 @@ const BusinessRegisterPage = () => {
     resolver: zodResolver(registerSchema),
     defaultValues: { businessType: "individual" },
   });
+
+  const isLoading = registerMutation.isPending;
 
   const onSubmit = async (data) => {
     const nextErrors = {
@@ -96,28 +99,25 @@ const BusinessRegisterPage = () => {
       return;
     }
 
-    setIsLoading(true);
     try {
-      await registerBusiness({
+      await registerMutation.mutateAsync({
         ...data,
         idCardFront: documents.idCardFront[0],
         idCardBack: documents.idCardBack[0],
         businessLicense: documents.businessLicense[0],
       });
-      toast.success("Đăng ký thành công! Hồ sơ đang chờ duyệt.");
+      toast.success(t("business.register.title"));
       navigate(BUSINESS_ROUTES.PROFILE);
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể đăng ký");
-    } finally {
-      setIsLoading(false);
+      toastApiErrorIfNeeded(error, t("common.operationFailed"));
     }
   };
 
   return (
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
       <PageHeader
-        title="Đăng ký doanh nghiệp"
-        subtitle="Điền thông tin để bắt đầu đăng địa điểm trên Đi Đâu Giờ"
+        title={t("business.register.title")}
+        subtitle={t("business.register.title")}
       />
 
       <SectionCard title="Thông tin đăng ký" titleIcon={Store}>

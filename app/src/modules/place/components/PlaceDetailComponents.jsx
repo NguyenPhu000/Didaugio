@@ -4,22 +4,23 @@ import { MaterialIconsRounded } from "../../../components/primitives/MaterialIco
 import { PALETTE } from "../constants/placeSheetConstants";
 import { TOKENS } from "../../../constants/design-tokens";
 
-const DAY_NAMES = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+const DAY_NAMES_DEFAULT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function OpeningHours({ hours, t }) {
   const today = new Date().getDay();
+  const dayNames = t("place.dayNames", { returnObjects: true }) || DAY_NAMES_DEFAULT;
 
   return (
     <View style={styles.openingHoursList}>
-      {DAY_NAMES.map((day, index) => {
+      {dayNames.map((day, index) => {
         const dayNumber = index === 6 ? 0 : index + 1;
         const item = hours?.find((entry) => entry.dayOfWeek === dayNumber);
         const isToday = today === dayNumber;
         const label = item?.isClosed
-          ? t("Đóng cửa", "Closed")
+          ? t("place.detail.closed")
           : item?.openTime && item?.closeTime
             ? `${item.openTime} - ${item.closeTime}`
-            : t("Chưa cập nhật", "Not updated");
+            : t("place.detail.notUpdated");
 
         return (
           <View

@@ -7,26 +7,28 @@ import {
   Checkbox,
   Input,
 } from "@/components/ui";
+import { useTranslation } from "react-i18next";
 
 const FeatureModulesCard = ({ value, onChange }) => {
+  const { t } = useTranslation();
   const flags = [
-    ["placeApproval", "Place approval"],
-    ["routing", "Routing"],
-    ["aiPlanner", "AI Planner"],
-    ["notifications", "Notifications"],
-    ["newsModule", "News module"],
-    ["reportsModule", "Reports module"],
-    ["cacheEnabled", "Cache enabled"],
+    ["placeApproval", t("settings.features.placeApproval")],
+    ["routing", t("settings.features.routing")],
+    ["aiPlanner", t("settings.features.aiPlanner")],
+    ["notifications", t("settings.features.notifications")],
+    ["newsModule", t("settings.features.newsModule")],
+    ["reportsModule", t("settings.features.reportsModule")],
+    ["cacheEnabled", t("settings.features.cacheEnabled")],
   ];
 
   return (
     <Card className="rounded-none border-black bg-white">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-black uppercase tracking-wide">
-          5) Feature & Module Settings
+          {t("settings.features.title")}
         </CardTitle>
         <CardDescription className="font-mono text-xs uppercase tracking-wider text-gray-500">
-          Bật/tắt module, upload config, cache và performance
+          {t("settings.features.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -50,13 +52,13 @@ const FeatureModulesCard = ({ value, onChange }) => {
           value={value.maxUploadSizeMb}
           onChange={(e) => onChange("maxUploadSizeMb", e.target.value)}
           className="rounded-none border-black"
-          placeholder="Max upload size (MB)"
+          placeholder={t("settings.features.maxUploadSizeMb")}
         />
         <Input
           value={value.allowedFileTypes}
           onChange={(e) => onChange("allowedFileTypes", e.target.value)}
           className="rounded-none border-black"
-          placeholder="Allowed file types"
+          placeholder={t("settings.features.allowedFileTypes")}
         />
       </CardContent>
     </Card>

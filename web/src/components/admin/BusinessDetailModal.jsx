@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { Link } from "react-router-dom";
 import {
   Dialog,
@@ -37,17 +39,18 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const PLACE_STATUS_LABEL = {
-  draft: "Nháp",
-  pending: "Chờ duyệt",
-  approved: "Đã duyệt",
-  rejected: "Từ chối",
-  hidden: "Ẩn",
-};
+const getPlaceStatusLabels = (t) => ({
+  draft: t("places.statusFilters.draft"),
+  pending: t("places.statusFilters.pending"),
+  approved: t("places.statusFilters.approved"),
+  rejected: t("places.statusFilters.rejected"),
+  hidden: t("categories.status.hidden"),
+});
 
 const formatCurrency = (value) => {
   const n = Number(value || 0);
-  return n.toLocaleString("vi-VN", {
+  const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
+  return n.toLocaleString(locale, {
     style: "currency",
     currency: "VND",
     maximumFractionDigits: 0,
@@ -62,7 +65,7 @@ const ChecklistItem = ({ label, checked, previewUrl, onPreview }) => (
         <button 
           onClick={() => onPreview?.(previewUrl, label)} 
           className="text-muted-foreground hover:text-black" 
-          title="Xem tài liệu"
+          title={t("common.viewAll")}
         >
           <Eye className="h-3.5 w-3.5" />
         </button>
@@ -76,7 +79,7 @@ const ChecklistItem = ({ label, checked, previewUrl, onPreview }) => (
           : "bg-red-50 border-red-500 text-red-700",
       )}
     >
-      {checked ? "Đạt" : "Thiếu"}
+      {checked ? t("common.active") : t("common.inactive")}
     </span>
   </div>
 );
@@ -86,6 +89,7 @@ export default function BusinessDetailModal({
   onOpenChange,
   businessId,
 }) {
+  const { t } = useTranslation();
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
@@ -106,7 +110,7 @@ export default function BusinessDetailModal({
         if (!cancelled) setDetail(res.data);
       } catch (e) {
         if (!cancelled) {
-          toast.error(e.message || "Không tải được doanh nghiệp");
+          toast.error(e.message || t("common.operationFailed"));
           onOpenChange?.(false);
         }
       } finally {
@@ -165,14 +169,14 @@ export default function BusinessDetailModal({
         <DialogHeader className="shrink-0 border-b-2 border-black bg-[#F4F4F4] px-5 py-4 text-left">
           <DialogTitle className="flex items-center gap-2 font-black uppercase tracking-tight text-base">
             <Building2 className="h-5 w-5 shrink-0" aria-hidden />
-            Chi tiết doanh nghiệp · kiểm kê quản trị
+            {t("business.detailModal.title")}
           </DialogTitle>
           <DialogDescription className="font-mono text-[11px] uppercase text-muted-foreground">
-            Hồ sơ · doanh thu · hợp đồng · tuân thủ · địa điểm trực thuộc
+            {t("business.detailModal.title")}
           </DialogDescription>
           <div className="flex gap-1 mt-2 border-2 border-black bg-white">
-            <button onClick={() => setActiveTab("detail")} className={cn("px-4 py-1.5 font-mono text-[11px] uppercase font-bold transition-colors", activeTab === "detail" ? "bg-black text-white" : "bg-white text-black hover:bg-muted")}>Chi tiết</button>
-            <button onClick={() => setActiveTab("audit")} className={cn("px-4 py-1.5 font-mono text-[11px] uppercase font-bold transition-colors flex items-center gap-1.5", activeTab === "audit" ? "bg-black text-white" : "bg-white text-black hover:bg-muted")}><Clock className="h-3 w-3" />Nhật ký kiểm toán</button>
+            <button onClick={() => setActiveTab("detail")} className={cn("px-4 py-1.5 font-mono text-[11px] uppercase font-bold transition-colors", activeTab === "detail" ? "bg-black text-white" : "bg-white text-black hover:bg-muted")}>{t("common.edit")}</button>
+            <button onClick={() => setActiveTab("audit")} className={cn("px-4 py-1.5 font-mono text-[11px] uppercase font-bold transition-colors flex items-center gap-1.5", activeTab === "audit" ? "bg-black text-white" : "bg-white text-black hover:bg-muted")}><Clock className="h-3 w-3" />{t("auditLogs.title")}</button>
           </div>
         </DialogHeader>
 
@@ -193,7 +197,7 @@ export default function BusinessDetailModal({
                 <div className="border border-black bg-white">
                   <div className="border-b border-black bg-[#F4F4F4] px-4 py-2">
                     <p className="font-mono text-[10px] uppercase font-bold text-muted-foreground">
-                      Lịch sử hành động quản trị — Doanh nghiệp #{businessId}
+                      {t("auditLogs.title")} — #{businessId}
                     </p>
                   </div>
                   {auditLoading ? (
@@ -202,7 +206,7 @@ export default function BusinessDetailModal({
                     </div>
                   ) : auditLogs.length === 0 ? (
                     <p className="text-sm text-muted-foreground p-6 text-center">
-                      Chưa có nhật ký kiểm toán cho doanh nghiệp này.
+                      {t("common.noData")}
                     </p>
                   ) : (
                     <div className="divide-y divide-black/10">
@@ -217,10 +221,10 @@ export default function BusinessDetailModal({
                           </div>
                           {(log.newData || log.oldData) && (
                             <div className="mt-2 text-xs space-y-1">
-                              {log.newData?.status && <p>Trạng thái: <strong>{log.oldData?.status || "—"}</strong> → <strong>{log.newData.status}</strong></p>}
-                              {log.newData?.suspensionReason && <p className="text-red-700">Lý do tạm khóa: {log.newData.suspensionReason}</p>}
-                              {log.newData?.terminationReason && <p className="text-red-900">Lý do chấm dứt: {log.newData.terminationReason}</p>}
-                              {log.newData?.rejectionReason && <p className="text-red-700">Lý do từ chối: {log.newData.rejectionReason}</p>}
+                              {log.newData?.status && <p>{t("common.status")}: <strong>{log.oldData?.status || "—"}</strong> → <strong>{log.newData.status}</strong></p>}
+                              {log.newData?.suspensionReason && <p className="text-red-700">{log.newData.suspensionReason}</p>}
+                              {log.newData?.terminationReason && <p className="text-red-900">{log.newData.terminationReason}</p>}
+                              {log.newData?.rejectionReason && <p className="text-red-700">{log.newData.rejectionReason}</p>}
                             </div>
                           )}
                           <p className="text-[10px] text-muted-foreground font-mono mt-1">IP: {log.ipAddress || "—"} · {log.userAgent?.substring(0, 60) || "—"}</p>
@@ -275,13 +279,13 @@ export default function BusinessDetailModal({
                     <div className="flex items-center gap-2 text-muted-foreground min-w-0">
                       <Phone className="h-4 w-4 shrink-0" />
                       <span className="truncate">
-                        {detail.owner?.phone || "Chưa có SĐT"}
+                        {detail.owner?.phone || t("common.noData")}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground min-w-0 lg:col-span-2">
                       <MapPin className="h-4 w-4 shrink-0" />
                       <span className="truncate" title={detail.owner?.address}>
-                        {detail.owner?.address || "Chưa có địa chỉ HQ"}
+                        {detail.owner?.address || t("common.noData")}
                       </span>
                     </div>
                     <div className="col-span-full font-mono text-xs mt-2 border-t border-dashed border-border/50 pt-2 flex flex-wrap gap-4">
@@ -295,52 +299,51 @@ export default function BusinessDetailModal({
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className="border border-black bg-white p-4 space-y-1">
                     <p className="font-mono text-[10px] uppercase text-muted-foreground flex items-center gap-1">
-                      <Wallet className="h-3.5 w-3.5" /> Tài chính tổng quan
+                      <Wallet className="h-3.5 w-3.5" /> {t("business.detailModal.revenue")}
                     </p>
                     <p className="text-sm">
-                      Doanh thu hoàn tất:{" "}
+                      {t("business.revenue.totalRevenue")}:{" "}
                       <strong>
                         {formatCurrency(financial.completedRevenue)}
                       </strong>
                     </p>
                     <p className="text-sm">
-                      Hoa hồng nền tảng:{" "}
+                      {t("business.revenue.systemCommission")}:{" "}
                       <strong>
                         {formatCurrency(financial.completedCommission)}
                       </strong>
                     </p>
                     <p className="text-sm">
-                      Doanh thu ròng DN:{" "}
+                      {t("business.revenue.netRevenue")}:{" "}
                       <strong>
                         {formatCurrency(financial.completedNetRevenue)}
                       </strong>
                     </p>
                     <p className="text-sm font-mono">
-                      Tỷ lệ thực tế:{" "}
                       {financial.completedCommissionSharePct ?? 0}%
                     </p>
                   </div>
 
                   <div className="border border-black bg-white p-4 space-y-1">
                     <p className="font-mono text-[10px] uppercase text-muted-foreground">
-                      Vận hành booking
+                      {t("business.detailModal.bookings")}
                     </p>
                     <p className="text-sm">
-                      Tổng booking:{" "}
+                      {t("business.detailModal.bookings")}:{" "}
                       <strong>{financial.totalBookings ?? 0}</strong>
                     </p>
                     <p className="text-sm">
-                      Đã hoàn tất:{" "}
+                      {t("business.bookings.completed")}:{" "}
                       <strong>{financial.completedBookings ?? 0}</strong>
                     </p>
                     <p className="text-sm">
-                      Đang xử lý:{" "}
+                      {t("business.bookings.pending")}:{" "}
                       <strong>
                         {insights.bookingStatusCounts?.pending ?? 0}
                       </strong>
                     </p>
                     <p className="text-sm">
-                      Chưa thanh toán:{" "}
+                      {t("business.bookingDetail.unpaid")}:{" "}
                       <strong>
                         {insights.paymentStatusCounts?.unpaid ?? 0}
                       </strong>
@@ -349,30 +352,30 @@ export default function BusinessDetailModal({
 
                   <div className="border border-black bg-white p-4 space-y-1">
                     <p className="font-mono text-[10px] uppercase text-muted-foreground flex items-center gap-1">
-                      <FileSignature className="h-3.5 w-3.5" /> Hợp đồng
+                      <FileSignature className="h-3.5 w-3.5" /> {t("business.detailModal.contractStatus")}
                     </p>
                     <p className="text-sm">
-                      Trạng thái:{" "}
+                      {t("common.status")}:{" "}
                       <strong>
-                        {contract.contractSigned ? "Đã ký" : "Chưa ký"}
+                        {contract.contractSigned ? t("business.detailModal.signed") : t("business.detailModal.unsigned")}
                       </strong>
                     </p>
                     <p className="text-sm">
-                      Phiên bản:{" "}
+                      {t("business.profile.contractVersion")}{" "}
                       <strong>{contract.contractVersion || "—"}</strong>
                     </p>
                     <p className="text-sm">
-                      Ký lúc:{" "}
+                      {t("business.profile.signedAt")}{" "}
                       <strong>
                         {contract.contractSignedAt
                           ? new Date(contract.contractSignedAt).toLocaleString(
-                              "vi-VN",
+                              i18n.language === "vi" ? "vi-VN" : "en-US",
                             )
                           : "—"}
                       </strong>
                     </p>
                     <p className="text-sm">
-                      Hoa hồng cấu hình:{" "}
+                      {t("business.detailModal.systemCommission")}{" "}
                       <strong>
                         {contract.commissionRate ?? detail.commissionRate ?? 0}%
                       </strong>
@@ -383,36 +386,36 @@ export default function BusinessDetailModal({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="border border-black bg-white p-4">
                     <p className="font-mono text-[10px] uppercase text-muted-foreground mb-2">
-                      Checklist tuân thủ
+                      {t("business.detailModal.kycStatus")}
                     </p>
                     <ChecklistItem
-                      label="Mã số thuế"
+                      label={t("business.detailModal.taxCode")}
                       checked={Boolean(compliance.hasTaxCode)}
                     />
                     <ChecklistItem
-                      label="CCCD mặt trước"
+                      label={t("business.detailModal.idFront")}
                       checked={Boolean(compliance.hasIdCardFront)}
                       previewUrl={compliance.idCardFrontUrl}
                       onPreview={(url, label) => setPreviewData({ url, title: label })}
                     />
                     <ChecklistItem
-                      label="CCCD mặt sau"
+                      label={t("business.detailModal.idBack")}
                       checked={Boolean(compliance.hasIdCardBack)}
                       previewUrl={compliance.idCardBackUrl}
                       onPreview={(url, label) => setPreviewData({ url, title: label })}
                     />
                     <ChecklistItem
-                      label="Giấy phép kinh doanh"
+                      label={t("business.detailModal.businessLicense")}
                       checked={Boolean(compliance.hasBusinessLicense)}
                       previewUrl={compliance.businessLicenseUrl}
                       onPreview={(url, label) => setPreviewData({ url, title: label })}
                     />
                     <ChecklistItem
-                      label="Thông tin ngân hàng"
+                      label={t("business.detailModal.bankName")}
                       checked={Boolean(compliance.hasBankInfo)}
                     />
                     <ChecklistItem
-                      label="Đã ký hợp đồng"
+                      label={t("business.detailModal.contractStatus")}
                       checked={Boolean(compliance.hasSignedContract)}
                     />
                   </div>
@@ -423,7 +426,7 @@ export default function BusinessDetailModal({
                     </p>
                     {risks.length === 0 ? (
                       <p className="text-sm text-emerald-700">
-                        Không phát hiện rủi ro nổi bật.
+                        {t("common.noData")}
                       </p>
                     ) : (
                       <ul className="space-y-1">
@@ -440,19 +443,18 @@ export default function BusinessDetailModal({
 
                     <div className="pt-2 border-t border-black/20 text-sm space-y-1">
                       <p>
-                        Dịch vụ active/inactive:{" "}
+                        {t("business.detailModal.services")}{" "}
                         <strong>{operations.activeServiceCount ?? 0}</strong> /{" "}
                         <strong>{operations.inactiveServiceCount ?? 0}</strong>
                       </p>
                       <p>
-                        Voucher active/hết hạn:{" "}
+                        {t("business.detailModal.vouchers")}{" "}
                         <strong>{operations.activeVoucherCount ?? 0}</strong> /{" "}
                         <strong>{operations.expiredVoucherCount ?? 0}</strong>
                       </p>
                       <p>
-                        Địa điểm đã duyệt:{" "}
-                        <strong>{placeStatusCounts.approved ?? 0}</strong> · chờ
-                        duyệt: <strong>{placeStatusCounts.pending ?? 0}</strong>
+                        {t("business.detailModal.places")}{" "}
+                        <strong>{placeStatusCounts.approved ?? 0}</strong> · {t("places.statusFilters.pending")}: <strong>{placeStatusCounts.pending ?? 0}</strong>
                       </p>
                     </div>
                   </div>
@@ -461,45 +463,45 @@ export default function BusinessDetailModal({
                 {/* Admin Actions — dynamic by status */}
                 <div className="border border-black bg-[#F4F4F4] p-4 flex flex-wrap gap-3 items-center justify-between">
                   <div>
-                    <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Admin Actions</p>
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("common.actions")}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Trạng thái: <span className={cn("font-mono text-[10px] uppercase px-1.5 py-0.5 border", detail.status === BUSINESS_STATUS.APPROVED && "bg-[#F3E600] text-black border-black", detail.status === BUSINESS_STATUS.PENDING && "bg-amber-100 text-amber-900 border-amber-400", detail.status === BUSINESS_STATUS.SUSPENDED && "bg-neutral-200 text-neutral-800 border-neutral-400", detail.status === BUSINESS_STATUS.REJECTED && "bg-red-100 text-red-800 border-red-400", detail.status === BUSINESS_STATUS.TERMINATED && "bg-red-200 text-red-900 border-red-600", detail.status === BUSINESS_STATUS.SUSPICIOUS && "bg-amber-200 text-amber-900 border-amber-600")}>{statusLabel}</span>
-                      {detail.suspensionReason && <span className="ml-2 text-red-700 text-[11px]">Lý do tạm khóa: {detail.suspensionReason}</span>}
-                      {detail.terminationReason && <span className="ml-2 text-red-900 text-[11px]">Lý do chấm dứt: {detail.terminationReason}</span>}
+                      {t("common.status")}: <span className={cn("font-mono text-[10px] uppercase px-1.5 py-0.5 border", detail.status === BUSINESS_STATUS.APPROVED && "bg-[#F3E600] text-black border-black", detail.status === BUSINESS_STATUS.PENDING && "bg-amber-100 text-amber-900 border-amber-400", detail.status === BUSINESS_STATUS.SUSPENDED && "bg-neutral-200 text-neutral-800 border-neutral-400", detail.status === BUSINESS_STATUS.REJECTED && "bg-red-100 text-red-800 border-red-400", detail.status === BUSINESS_STATUS.TERMINATED && "bg-red-200 text-red-900 border-red-600", detail.status === BUSINESS_STATUS.SUSPICIOUS && "bg-amber-200 text-amber-900 border-amber-600")}>{statusLabel}</span>
+                      {detail.suspensionReason && <span className="ml-2 text-red-700 text-[11px]">{detail.suspensionReason}</span>}
+                      {detail.terminationReason && <span className="ml-2 text-red-900 text-[11px]">{detail.terminationReason}</span>}
                     </p>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    <Button variant="outline" size="sm" className="rounded-none border-black font-mono text-[10px] uppercase gap-1" onClick={() => toast.success("Đã gửi yêu cầu bổ sung giấy tờ")}>
-                      <BellRing className="h-3 w-3" /> Yêu cầu bổ sung
+                    <Button variant="outline" size="sm" className="rounded-none border-black font-mono text-[10px] uppercase gap-1" onClick={() => toast.success(t("common.savedSuccessfully"))}>
+                      <BellRing className="h-3 w-3" /> {t("common.add")}
                     </Button>
                     {(detail.status === BUSINESS_STATUS.APPROVED || detail.status === BUSINESS_STATUS.SUSPICIOUS) && (
                       <Button variant="outline" size="sm" className="rounded-none border-amber-600 text-amber-900 hover:bg-amber-50 font-mono text-[10px] uppercase gap-1" onClick={async () => {
-                        const reason = window.prompt("Nhập lý do tạm khóa (tối thiểu 10 ký tự):");
-                        if (!reason || reason.trim().length < 10) { if (reason !== null) toast.error("Lý do phải có ít nhất 10 ký tự"); return; }
-                        try { await businessApi.suspend(businessId, reason.trim()); toast.success("Đã tạm khóa"); onOpenChange?.(false); } catch (e) { toast.error(e.message || "Lỗi"); }
+                        const reason = window.prompt(t("admin.business.suspendPrompt"));
+                        if (!reason || reason.trim().length < 10) { if (reason !== null) toast.error(t("admin.business.reasonMinLength")); return; }
+                        try { await businessApi.suspend(businessId, reason.trim()); toast.success(t("admin.business.businessSuspended")); onOpenChange?.(false); } catch (e) { toast.error(e.message || t("common.operationFailed")); }
                       }}>
-                        <AlertOctagon className="h-3 w-3" /> Tạm khóa
+                        <AlertOctagon className="h-3 w-3" /> {t("admin.business.lock")}
                       </Button>
                     )}
                     {detail.status === BUSINESS_STATUS.SUSPENDED && (
                       <Button variant="outline" size="sm" className="rounded-none border-emerald-600 text-emerald-900 hover:bg-emerald-50 font-mono text-[10px] uppercase gap-1" onClick={async () => {
-                        if (!window.confirm("Kích hoạt lại doanh nghiệp?")) return;
-                        try { await businessApi.reactivate(businessId); toast.success("Đã kích hoạt lại"); onOpenChange?.(false); } catch (e) { toast.error(e.message || "Lỗi"); }
+                        if (!window.confirm(t("admin.business.reactivateConfirm"))) return;
+                        try { await businessApi.reactivate(businessId); toast.success(t("admin.business.businessReactivated")); onOpenChange?.(false); } catch (e) { toast.error(e.message || t("common.operationFailed")); }
                       }}>
-                        <RotateCcw className="h-3 w-3" /> Kích hoạt lại
+                        <RotateCcw className="h-3 w-3" /> {t("admin.business.reactivate")}
                       </Button>
                     )}
                     {(detail.status === BUSINESS_STATUS.APPROVED || detail.status === BUSINESS_STATUS.SUSPENDED) && (
                       <Button variant="destructive" size="sm" className="rounded-none font-mono text-[10px] uppercase gap-1" onClick={async () => {
-                        const step1 = window.confirm('⚠️ BƯỚC 1/2: Chấm dứt hợp đồng? Nhấn OK để tiếp tục.');
+                        const step1 = window.confirm(t("admin.business.terminateStep1Confirm"));
                         if (!step1) return;
-                        const confirm = window.prompt('BƯỚC 2/2: Gõ "CONFIRM" để xác nhận:');
-                        if (confirm !== "CONFIRM") { toast.error("Xác nhận không khớp"); return; }
-                        const reason = window.prompt("Nhập lý do chấm dứt (tối thiểu 10 ký tự):");
-                        if (!reason || reason.trim().length < 10) { if (reason !== null) toast.error("Lý do phải có ít nhất 10 ký tự"); return; }
-                        try { await businessApi.terminate(businessId, reason.trim()); toast.success("Đã chấm dứt hợp đồng"); onOpenChange?.(false); } catch (e) { toast.error(e.message || "Lỗi"); }
+                        const confirm = window.prompt(t("admin.business.terminateStep2Prompt"));
+                        if (confirm !== "CONFIRM") { toast.error(t("admin.business.confirmMismatch")); return; }
+                        const reason = window.prompt(t("admin.business.terminateReasonPrompt"));
+                        if (!reason || reason.trim().length < 10) { if (reason !== null) toast.error(t("admin.business.reasonMinLength")); return; }
+                        try { await businessApi.terminate(businessId, reason.trim()); toast.success(t("admin.business.businessTerminated")); onOpenChange?.(false); } catch (e) { toast.error(e.message || t("common.operationFailed")); }
                       }}>
-                        <XCircle className="h-3 w-3" /> Chấm dứt HĐ
+                        <XCircle className="h-3 w-3" /> {t("admin.business.terminateContract")}
                       </Button>
                     )}
                   </div>
@@ -508,11 +510,11 @@ export default function BusinessDetailModal({
                 <div>
                   <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5" />
-                    Địa điểm ({places.length})
+                    {t("business.detailModal.places")} ({places.length})
                   </p>
                   {places.length === 0 ? (
                     <p className="text-sm text-muted-foreground border border-dashed border-black/30 p-6 text-center">
-                      Chưa có địa điểm nào gắn với doanh nghiệp này.
+                      {t("common.noData")}
                     </p>
                   ) : (
                     <div className="border border-black divide-y divide-black">
@@ -533,7 +535,7 @@ export default function BusinessDetailModal({
                                 "—"}
                             </p>
                             <span className="inline-block font-mono text-[10px] uppercase border border-black/20 px-1.5 py-0.5">
-                              {PLACE_STATUS_LABEL[p.status] || p.status}
+                              {getPlaceStatusLabels(t)[p.status] || p.status}
                             </span>
                           </div>
                           <Button
@@ -546,7 +548,7 @@ export default function BusinessDetailModal({
                               to={ADMIN_ROUTES.PLACES_EDIT(p.id)}
                               onClick={() => onOpenChange?.(false)}
                             >
-                              Sửa địa điểm
+                              {t("common.edit")}
                               <ExternalLink className="h-3 w-3 ml-1" />
                             </Link>
                           </Button>
@@ -560,9 +562,8 @@ export default function BusinessDetailModal({
                       className="underline font-medium text-foreground hover:text-primary"
                       onClick={() => onOpenChange?.(false)}
                     >
-                      Lọc danh sách địa điểm theo doanh nghiệp này
-                    </Link>{" "}
-                    (nếu trang địa điểm hỗ trợ tham số).
+                      {t("common.viewAll")}
+                    </Link>
                   </p>
                 </div>
               </>
@@ -585,7 +586,7 @@ export default function BusinessDetailModal({
               )}
             </div>
             <div className="mt-4 flex justify-end">
-              <Button onClick={() => setPreviewData(null)} variant="outline">Đóng</Button>
+              <Button onClick={() => setPreviewData(null)} variant="outline">{t("common.close")}</Button>
             </div>
           </div>
         </DialogContent>

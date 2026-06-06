@@ -67,7 +67,9 @@ export {
   CATEGORY_CONFIG,
   DEFAULT_CATEGORY,
   getCategoryConfig,
+  getCategoryLabel,
   PRICE_LABELS,
+  getPriceLabel,
 } from "./config/placeMapConfig";
 
 // Utilities

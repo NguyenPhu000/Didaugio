@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { LinearGradient } from "expo-linear-gradient";
@@ -39,6 +40,7 @@ export function TripsDashboard({
   onOpenHero,
   onCreate,
 }) {
+  const { t } = useTranslation();
   const heroTrip = useMemo(() => getHeroTrip(trips), [trips]);
   const summary = useMemo(() => buildSummary(trips), [trips]);
 
@@ -63,17 +65,17 @@ export function TripsDashboard({
           <Text
             style={{ fontSize: 34, fontFamily: TOKENS.font.heading, color: APPLE_THEME.text, letterSpacing: -0.5 }}
           >
-            Hành trình
+            {t('tripDashboard.journey')}
           </Text>
           <Text style={{ fontSize: 15, fontFamily: TOKENS.font.body, color: APPLE_THEME.textMuted, marginTop: 4, letterSpacing: -0.2 }}>
             {(trips?.length ?? 0) > 0
-              ? `${trips.length} chuyến đi của bạn`
-              : "Khởi tạo kỷ niệm mới"}
+              ? t('tripDashboard.yourTrips', { count: trips.length })
+              : t('tripDashboard.createMemory')}
           </Text>
         </View>
         <Pressable
           onPress={onCreate}
-          accessibilityLabel="Tạo chuyến đi mới"
+          accessibilityLabel={t('tripDashboard.createTripAccessibility')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={{
             width: 44, height: 44, borderRadius: 22,
@@ -142,7 +144,7 @@ export function TripsDashboard({
                   }}
                 />
                 <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: TOKENS.font.semibold, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  {timelineLabel || "Sắp tới"}
+                  {timelineLabel || t('tripDashboard.upcoming')}
                 </Text>
               </View>
             </View>
@@ -151,7 +153,7 @@ export function TripsDashboard({
               style={{ color: "#FFFFFF", fontSize: 28, fontFamily: TOKENS.font.heading, lineHeight: 34, letterSpacing: -0.5 }}
               numberOfLines={2}
             >
-              {heroTrip.title || "Chuyến đi mới"}
+              {heroTrip.title || t('tripDashboard.newTrip')}
             </Text>
 
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
@@ -165,7 +167,7 @@ export function TripsDashboard({
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <MaterialIconsRounded name="place" size={14} color="rgba(255,255,255,0.8)" />
                 <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 14, fontFamily: TOKENS.font.medium, letterSpacing: -0.2 }}>
-                  {heroTrip.destinations?.length || 0} điểm đến
+                  {t('tripDashboard.destinations', { count: heroTrip.destinations?.length || 0 })}
                 </Text>
               </View>
             </View>
@@ -190,10 +192,10 @@ export function TripsDashboard({
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 17, fontFamily: TOKENS.font.semibold, color: APPLE_THEME.text, letterSpacing: -0.2, marginBottom: 4 }}>
-              Tạo chuyến đi đầu tiên
+              {t('tripDashboard.createFirst')}
             </Text>
             <Text style={{ fontSize: 14, fontFamily: TOKENS.font.body, color: APPLE_THEME.textMuted, letterSpacing: -0.2 }}>
-              Bắt đầu hành trình khám phá thế giới của bạn
+              {t('tripDashboard.startExploring')}
             </Text>
           </View>
           <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.06)", alignItems: "center", justifyContent: "center", marginLeft: 12 }}>
@@ -234,7 +236,7 @@ export function TripsDashboard({
       {/* ── Section Header + Apple Custom Segmented Filters ── */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <Text style={{ fontSize: 20, fontFamily: TOKENS.font.semibold, color: APPLE_THEME.text, letterSpacing: -0.2 }}>
-          {filteredCount > 0 ? `Danh sách (${filteredCount})` : "Danh sách"}
+          {filteredCount > 0 ? t('tripDashboard.listWithCount', { count: filteredCount }) : t('tripDashboard.list')}
         </Text>
         <View style={{ flexDirection: "row", backgroundColor: "rgba(0,0,0,0.05)", padding: 2, borderRadius: 9, alignItems: "center" }}>
           {FILTERS.map((filter) => {

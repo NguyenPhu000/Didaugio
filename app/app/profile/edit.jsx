@@ -29,6 +29,7 @@ import {
 import { resolveMediaUrl } from "../../src/lib/media-url";
 import { BottomSheetPicker } from "../../src/components/ui/BottomSheetPicker";
 import { ProvinceDistrictSelect } from "../../src/modules/profile/components/ProvinceDistrictSelect";
+import { useTranslation } from "react-i18next";
 
 const MAX_AVATAR_BYTES = 200 * 1024;
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
@@ -43,13 +44,6 @@ const APPLE_COLORS = {
   accent: "#111111",
   disabled: "#D1D5DB",
 };
-
-const GENDER_OPTIONS = [
-  { value: "", label: "Không chọn" },
-  { value: "male", label: "Nam" },
-  { value: "female", label: "Nữ" },
-  { value: "other", label: "Khác" },
-];
 
 const normalizeText = (value) => String(value || "").trim();
 
@@ -131,7 +125,7 @@ async function compressAvatarToDataUrl(uri) {
     nextQuality = Math.max(0.4, Number((nextQuality - 0.1).toFixed(2)));
   }
 
-  throw new Error("Không thể nén ảnh dưới 200KB. Vui lòng chọn ảnh khác.");
+  throw new Error("COMPRESS_FAILED");
 }
 
 export default function EditProfileScreen() {
@@ -161,6 +155,17 @@ export default function EditProfileScreen() {
   const seededRef = useRef(false);
   const seededFromProfileRef = useRef(false);
   const genderSheetRef = useRef(null);
+  const { t } = useTranslation();
+
+  const genderOptions = useMemo(
+    () => [
+      { value: "", label: t("editProfile.gender.notSelected") },
+      { value: "male", label: t("editProfile.gender.male") },
+      { value: "female", label: t("editProfile.gender.female") },
+      { value: "other", label: t("editProfile.gender.other") },
+    ],
+    [t],
+  );
 
   const seedForm = (source) => {
     if (!source) return;
@@ -242,8 +247,8 @@ export default function EditProfileScreen() {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(
-          "Chưa có quyền truy cập ảnh",
-          "Vui lòng cấp quyền thư viện ảnh để cập nhật avatar.",
+          t("editProfile.errors.noPhotoAccess"),
+          t("editProfile.errors.grantPhotoPermission"),
         );
         return;
       }
@@ -260,7 +265,7 @@ export default function EditProfileScreen() {
 
       const selectedUri = result.assets?.[0]?.uri;
       if (!selectedUri) {
-        Alert.alert("Không tìm thấy ảnh", "Vui lòng thử chọn lại ảnh khác.");
+        Alert.alert(t("editProfile.errors.imageNotFound"), t("editProfile.errors.trySelectAgain"));
         return;
       }
 
@@ -270,8 +275,8 @@ export default function EditProfileScreen() {
       setPendingAvatarDataUrl(compressed.dataUrl);
     } catch (error) {
       Alert.alert(
-        "Không thể xử lý ảnh",
-        error?.message || "Vui lòng thử lại với ảnh khác.",
+        t("editProfile.errors.processImage"),
+        t("editProfile.errors.tryAgain"),
       );
     } finally {
       setIsProcessingAvatar(false);
@@ -283,19 +288,19 @@ export default function EditProfileScreen() {
     const cleanUsername = normalizeText(username);
 
     if (cleanFullName.length < 2) {
-      Alert.alert("Thiếu thông tin", "Tên hiển thị phải có ít nhất 2 ký tự.");
+      Alert.alert(t("editProfile.errors.missingInfo"), t("editProfile.errors.nameMinChars"));
       return;
     }
 
     if (!cleanUsername) {
-      Alert.alert("Thiếu thông tin", "Username là bắt buộc.");
+      Alert.alert(t("editProfile.errors.missingInfo"), t("editProfile.errors.usernameRequired"));
       return;
     }
 
     if (!USERNAME_REGEX.test(cleanUsername)) {
       Alert.alert(
-        "Username chưa hợp lệ",
-        "Username chỉ gồm chữ, số, dấu gạch dưới và dài 3-30 ký tự.",
+        t("editProfile.errors.invalidUsername"),
+        t("editProfile.errors.usernameFormat"),
       );
       return;
     }
@@ -356,12 +361,12 @@ export default function EditProfileScreen() {
         profile: mergedProfile,
       });
 
-      Alert.alert("Cập nhật thành công", "Hồ sơ của bạn đã được lưu.");
+      Alert.alert(t("editProfile.success.title"), t("editProfile.success.message"));
       router.back();
     } catch (error) {
       Alert.alert(
-        "Không thể cập nhật hồ sơ",
-        error?.message || "Vui lòng thử lại sau.",
+        t("editProfile.errors.updateFailed"),
+        t("editProfile.errors.tryAgainLater"),
       );
     }
   };
@@ -382,7 +387,7 @@ export default function EditProfileScreen() {
             style={({ pressed }) => pressed && { opacity: 0.7 }}
             className="py-2"
           >
-            <Text className="text-base text-[#6B7280] font-medium">Hủy</Text>
+            <Text className="text-base text-[#6B7280] font-medium">{t("editProfile.cancel")}</Text>
           </Pressable>
         </View>
 
@@ -390,7 +395,7 @@ export default function EditProfileScreen() {
           style={{ fontFamily: TOKENS.font.heading }}
           className="text-xl text-[#111111]"
         >
-          Chỉnh sửa hồ sơ
+          {t("editProfile.title")}
         </Text>
 
         <View className="w-12" />
@@ -447,18 +452,18 @@ export default function EditProfileScreen() {
               style={{ fontFamily: TOKENS.font.medium }}
               className="mt-3 text-xs text-[#6B7280]"
             >
-              Chạm để đổi ảnh đại diện
+              {t("editProfile.changeAvatar")}
             </Text>
           </View>
 
           {/* Form Fields */}
           <View className="bg-white p-5 rounded-3xl border border-[#F3F4F6] gap-4 mt-4 shadow-sm mb-6">
             <View>
-              <FieldLabel text="Tên hiển thị" required={true} />
+              <FieldLabel text={t("editProfile.fields.displayName")} required={true} />
               <TextInput
                 value={fullName}
                 onChangeText={setFullName}
-                placeholder="Ví dụ: Nguyễn Văn A"
+                placeholder={t("editProfile.placeholders.displayName")}
                 placeholderTextColor={APPLE_COLORS.placeholder}
                 style={{ fontFamily: TOKENS.font.body }}
                 className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl px-4 py-3 text-base text-[#111111] min-h-[52px]"
@@ -467,11 +472,11 @@ export default function EditProfileScreen() {
             </View>
 
             <View>
-              <FieldLabel text="Username" required={true} />
+              <FieldLabel text={t("editProfile.fields.username")} required={true} />
               <TextInput
                 value={username}
                 onChangeText={setUsername}
-                placeholder="username_3_30_ky_tu"
+                placeholder={t("editProfile.placeholders.username")}
                 placeholderTextColor={APPLE_COLORS.placeholder}
                 style={{ fontFamily: TOKENS.font.body }}
                 className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl px-4 py-3 text-base text-[#111111] min-h-[52px]"
@@ -482,11 +487,11 @@ export default function EditProfileScreen() {
             </View>
 
             <View>
-              <FieldLabel text="Nickname" />
+              <FieldLabel text={t("editProfile.fields.nickname")} />
               <TextInput
                 value={nickname}
                 onChangeText={setNickname}
-                placeholder="Tên hiển thị trên bản đồ"
+                placeholder={t("editProfile.placeholders.nickname")}
                 placeholderTextColor={APPLE_COLORS.placeholder}
                 style={{ fontFamily: TOKENS.font.body }}
                 className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl px-4 py-3 text-base text-[#111111] min-h-[52px]"
@@ -495,11 +500,11 @@ export default function EditProfileScreen() {
             </View>
 
             <View>
-              <FieldLabel text="Số điện thoại" />
+              <FieldLabel text={t("editProfile.fields.phone")} />
               <TextInput
                 value={phone}
                 onChangeText={setPhone}
-                placeholder="090..."
+                placeholder={t("editProfile.placeholders.phone")}
                 placeholderTextColor={APPLE_COLORS.placeholder}
                 style={{ fontFamily: TOKENS.font.body }}
                 className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl px-4 py-3 text-base text-[#111111] min-h-[52px]"
@@ -509,7 +514,7 @@ export default function EditProfileScreen() {
             </View>
 
             <View>
-              <FieldLabel text="Giới tính" />
+              <FieldLabel text={t("editProfile.fields.gender")} />
               <View className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl overflow-hidden">
                 <Pressable
                   className="flex-row items-center min-h-[52px] px-4 active:bg-[#F8FAFC]"
@@ -534,8 +539,8 @@ export default function EditProfileScreen() {
                     className={`text-[14.5px] flex-1 ${gender ? "text-[#1E293B]" : "text-[#94A3B8]"}`}
                   >
                     {gender
-                      ? GENDER_OPTIONS.find((o) => o.value === gender)?.label
-                      : "Chọn giới tính"}
+                      ? genderOptions.find((o) => o.value === gender)?.label
+                      : t("editProfile.selectGender")}
                   </Text>
                   <MaterialIconsRounded
                     name="chevron-right"
@@ -548,7 +553,7 @@ export default function EditProfileScreen() {
 
 
             <View>
-              <FieldLabel text="Khu vực" />
+              <FieldLabel text={t("editProfile.fields.region")} />
               <ProvinceDistrictSelect
                 provinceCode={provinceCode}
                 districtCode={districtCode}
@@ -558,11 +563,11 @@ export default function EditProfileScreen() {
             </View>
 
             <View>
-              <FieldLabel text="Chi tiết địa chỉ" />
+              <FieldLabel text={t("editProfile.fields.address")} />
               <TextInput
                 value={address}
                 onChangeText={setAddress}
-                placeholder="Số nhà, tên đường..."
+                placeholder={t("editProfile.placeholders.address")}
                 placeholderTextColor={APPLE_COLORS.placeholder}
                 style={{ fontFamily: TOKENS.font.body }}
                 className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl px-4 py-3 text-base text-[#111111] min-h-[52px]"
@@ -571,11 +576,11 @@ export default function EditProfileScreen() {
             </View>
 
             <View>
-              <FieldLabel text="Giới thiệu" />
+              <FieldLabel text={t("editProfile.fields.bio")} />
               <TextInput
                 value={bio}
                 onChangeText={setBio}
-                placeholder="Giới thiệu ngắn về bạn"
+                placeholder={t("editProfile.placeholders.bio")}
                 placeholderTextColor={APPLE_COLORS.placeholder}
                 style={{ fontFamily: TOKENS.font.body }}
                 className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl px-4 py-3 text-base text-[#111111] min-h-[120px] pt-3"
@@ -591,8 +596,8 @@ export default function EditProfileScreen() {
 
       <BottomSheetPicker
         ref={genderSheetRef}
-        title="Chọn Giới Tính"
-        data={GENDER_OPTIONS}
+        title={t("editProfile.selectGender")}
+        data={genderOptions}
         selectedValue={gender}
         snapPoints={["35%"]}
         showSearch={false}
@@ -620,7 +625,7 @@ export default function EditProfileScreen() {
               style={{ fontFamily: TOKENS.font.semibold }}
               className={`text-lg ${!isDirty || isSaving ? "text-[#A1A1AA]" : "text-white"}`}
             >
-              Lưu Thay Đổi
+              {t("editProfile.saveChanges")}
             </Text>
           )}
         </Pressable>

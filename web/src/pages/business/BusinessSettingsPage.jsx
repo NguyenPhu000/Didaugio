@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Save, Loader2, Settings } from "lucide-react";
 import { Button } from "@/components/ui";
@@ -40,6 +41,7 @@ const safeNum = (v, fallback = 0) => {
 };
 
 const BusinessSettingsPage = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -54,7 +56,7 @@ const BusinessSettingsPage = () => {
         if (!disposed) setSettings((prev) => mergeRemote(prev, data));
       } catch (err) {
         if (!disposed) {
-          toast.error(err.message || "Không thể tải cài đặt doanh nghiệp");
+          toast.error(err.message || t("business.settingsPage.loadFailed"));
         }
       } finally {
         if (!disposed) setLoading(false);
@@ -90,9 +92,9 @@ const BusinessSettingsPage = () => {
       if (response?.data) {
         setSettings((prev) => mergeRemote(prev, response.data));
       }
-      toast.success("Cập nhật cài đặt thành công!");
+      toast.success(t("business.settingsPage.updateSuccess"));
     } catch (err) {
-      toast.error(err.message || "Cập nhật cài đặt thất bại");
+      toast.error(err.message || t("business.settingsPage.updateFailed"));
     } finally {
       setSaving(false);
     }
@@ -107,10 +109,10 @@ const BusinessSettingsPage = () => {
           <div>
             <h1 className="text-2xl font-black uppercase tracking-tight flex items-center gap-2">
               <Settings className="h-6 w-6" />
-              CÀI ĐẶT DOANH NGHIỆP
+              {t("business.settingsPage.title")}
             </h1>
             <p className="text-xs text-gray-500 uppercase font-mono">
-              QUẢN LÝ CẤU HÌNH & QUY TẮC ĐẶT LỊCH
+              {t("business.settingsPage.title")}
             </p>
           </div>
         </div>
@@ -124,7 +126,7 @@ const BusinessSettingsPage = () => {
           ) : (
             <Save className="h-4 w-4 mr-2" />
           )}
-          LƯU CÀI ĐẶT
+          {t("business.settingsPage.title")}
         </Button>
       </div>
 

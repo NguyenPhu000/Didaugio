@@ -658,6 +658,24 @@
 }
 
 /* ============================================
+   Page Transitions - Smooth fade for auth pages
+   ============================================ */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-fade-in 0.3s ease-out forwards;
+}
+
+/* ============================================
    Accessibility: Reduced Motion Support
    UX-08: Honor user's OS-level motion preference
    ============================================ */

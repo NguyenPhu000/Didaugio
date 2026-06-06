@@ -4,6 +4,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { Lock, Eye, EyeOff, CheckCircle, XCircle } from "lucide-react";
 import {
   Button,
@@ -21,19 +23,20 @@ const resetPasswordSchema = z
   .object({
     newPassword: z
       .string()
-      .min(6, "Mật khẩu phải có ít nhất 6 ký tự")
+      .min(6, i18n.t("validation.passwordMin", { min: 6 }))
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số"
+        i18n.t("validation.passwordPattern")
       ),
-    confirmPassword: z.string().min(1, "Vui lòng xác nhận mật khẩu"),
+    confirmPassword: z.string().min(1, i18n.t("validation.confirmPasswordRequired")),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Mật khẩu xác nhận không khớp",
+    message: i18n.t("validation.passwordMismatch"),
     path: ["confirmPassword"],
   });
 
 const ResetPasswordPage = () => {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -57,13 +60,13 @@ const ResetPasswordPage = () => {
 
   useEffect(() => {
     if (!token) {
-      setTokenError("Token không hợp lệ hoặc đã hết hạn");
+      setTokenError(t("auth.resetPassword.tokenExpired"));
     }
   }, [token]);
 
   const onSubmit = async (data) => {
     if (!token) {
-      toast.error("Token không hợp lệ");
+      toast.error(t("auth.resetPassword.invalidToken"));
       return;
     }
 
@@ -75,14 +78,14 @@ const ResetPasswordPage = () => {
         data.confirmPassword
       );
       setResetSuccess(true);
-      toast.success("Đặt lại mật khẩu thành công!");
+      toast.success(t("auth.resetPassword.success"));
 
       // Chuyển hướng sau 3 giây
       setTimeout(() => {
         navigate("/auth/login");
       }, 3000);
     } catch (error) {
-      toast.error(error.message || "Đặt lại mật khẩu thất bại");
+      toast.error(error.message || t("auth.resetPassword.failed"));
       if (error.message.includes("token")) {
         setTokenError(error.message);
       }
@@ -103,11 +106,11 @@ const ResetPasswordPage = () => {
     if (/[^a-zA-Z0-9]/.test(password)) strength++;
 
     const levels = [
-      { strength: 1, label: "Yếu", color: "bg-red-500" },
-      { strength: 2, label: "Trung bình", color: "bg-yellow-500" },
-      { strength: 3, label: "Tốt", color: "bg-blue-500" },
-      { strength: 4, label: "Mạnh", color: "bg-green-500" },
-      { strength: 5, label: "Rất mạnh", color: "bg-green-600" },
+      { strength: 1, label: t("auth.resetPassword.strengthWeak"), color: "bg-red-500" },
+      { strength: 2, label: t("auth.resetPassword.strengthFair"), color: "bg-yellow-500" },
+      { strength: 3, label: t("auth.resetPassword.strengthGood"), color: "bg-blue-500" },
+      { strength: 4, label: t("auth.resetPassword.strengthStrong"), color: "bg-green-500" },
+      { strength: 5, label: t("auth.resetPassword.strengthVeryStrong"), color: "bg-green-600" },
     ];
 
     return levels.find((l) => l.strength === strength) || levels[0];
@@ -124,13 +127,12 @@ const ResetPasswordPage = () => {
               <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
                 <XCircle className="h-10 w-10 text-red-600" />
               </div>
-              <h2 className="text-xl font-semibold">Token không hợp lệ</h2>
+              <h2 className="text-xl font-semibold">{t("auth.resetPassword.invalidToken")}</h2>
               <p className="text-gray-600">
-                {tokenError ||
-                  "Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn."}
+                {tokenError || t("auth.resetPassword.invalidTokenMessage")}
               </p>
               <Button asChild className="w-full">
-                <Link to="/auth/forgot-password">Gửi lại yêu cầu</Link>
+                <Link to="/auth/forgot-password">{t("auth.resetPassword.resendRequest")}</Link>
               </Button>
             </div>
           </CardContent>
@@ -148,13 +150,12 @@ const ResetPasswordPage = () => {
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                 <CheckCircle className="h-10 w-10 text-green-600" />
               </div>
-              <h2 className="text-xl font-semibold">Thành công!</h2>
+              <h2 className="text-xl font-semibold">{t("auth.resetPassword.success")}</h2>
               <p className="text-gray-600">
-                Mật khẩu của bạn đã được đặt lại thành công. Bạn sẽ được chuyển
-                hướng đến trang đăng nhập...
+                {t("auth.resetPassword.successMessage")}
               </p>
               <Button asChild className="w-full">
-                <Link to="/auth/login">Đăng nhập ngay</Link>
+                <Link to="/auth/login">{t("auth.resetPassword.loginNow")}</Link>
               </Button>
             </div>
           </CardContent>
@@ -171,9 +172,9 @@ const ResetPasswordPage = () => {
             <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
               <Lock className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Đặt lại mật khẩu</CardTitle>
+            <CardTitle className="text-2xl">{t("auth.resetPassword.title")}</CardTitle>
             <CardDescription>
-              Nhập mật khẩu mới cho tài khoản của bạn
+              {t("auth.resetPassword.newPasswordPlaceholder")}
             </CardDescription>
           </CardHeader>
 
@@ -181,12 +182,12 @@ const ResetPasswordPage = () => {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {/* New Password */}
               <div className="space-y-2">
-                <Label htmlFor="newPassword">Mật khẩu mới</Label>
+                <Label htmlFor="newPassword">{t("auth.resetPassword.newPassword")}</Label>
                 <div className="relative">
                   <Input
                     id="newPassword"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
+                    placeholder={t("auth.resetPassword.newPasswordPlaceholder")}
                     autoFocus
                     autoComplete="new-password"
                     {...register("newPassword")}
@@ -226,7 +227,7 @@ const ResetPasswordPage = () => {
                       ))}
                     </div>
                     <p className="text-xs text-gray-600">
-                      Độ mạnh:{" "}
+                      {t("auth.resetPassword.strengthLabel")}{" "}
                       <span className="font-medium">
                         {passwordStrength.label}
                       </span>
@@ -237,12 +238,12 @@ const ResetPasswordPage = () => {
 
               {/* Confirm Password */}
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
+                <Label htmlFor="confirmPassword">{t("auth.resetPassword.confirmPassword")}</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Nhập lại mật khẩu mới"
+                    placeholder={t("auth.resetPassword.confirmPasswordPlaceholder")}
                     autoComplete="new-password"
                     {...register("confirmPassword")}
                     className="pr-10"
@@ -273,7 +274,7 @@ const ResetPasswordPage = () => {
                 disabled={isLoading}
               >
                 <Lock className="mr-2 h-4 w-4" />
-                Đặt lại mật khẩu
+                {t("auth.resetPassword.submit")}
               </Button>
             </form>
 
@@ -282,7 +283,7 @@ const ResetPasswordPage = () => {
                 to="/auth/login"
                 className="text-sm text-primary hover:underline"
               >
-                Quay lại đăng nhập
+                {t("auth.resetPassword.backToLogin")}
               </Link>
             </div>
           </CardContent>

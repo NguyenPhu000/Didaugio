@@ -12,6 +12,7 @@ import {
   Download,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { exportToCsv, fetchAllPages, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 import {
   Card,
@@ -30,6 +31,7 @@ import { useAuthStore } from "@/stores/authStore";
 import TimStatsCard from "@/components/admin/TimStatsCard";
 
 const LoginHistoryPage = () => {
+  const { t } = useTranslation();
   const { user: currentUser } = useAuthStore();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -64,7 +66,7 @@ const LoginHistoryPage = () => {
         setTotalPages(response.pagination?.totalPages || 1);
       }
     } catch (error) {
-      toast.error("Lỗi khi tải lịch sử đăng nhập");
+      toast.error(t("loginHistory.loadingError"));
       console.error(error);
     } finally {
       setLoading(false);
@@ -95,24 +97,24 @@ const LoginHistoryPage = () => {
         setShowDetailModal(true);
       }
     } catch (error) {
-      toast.error("Lỗi khi tải chi tiết session");
+      toast.error(t("loginHistory.detailError"));
       console.error(error);
     }
   };
 
   // Revoke session
   const handleRevoke = async (sessionId) => {
-    if (!window.confirm("Bạn có chắc muốn vô hiệu hóa session này?")) return;
+    if (!window.confirm(t("loginHistory.confirmRevoke"))) return;
 
     try {
       const response = await loginHistoryService.revoke(sessionId);
       if (response.success) {
-        toast.success("Đã vô hiệu hóa session");
+        toast.success(t("loginHistory.sessionDeactivated"));
         fetchSessions();
         fetchStats();
       }
     } catch (error) {
-      toast.error("Lỗi khi vô hiệu hóa session");
+      toast.error(t("loginHistory.revokeError"));
       console.error(error);
     }
   };
@@ -121,7 +123,7 @@ const LoginHistoryPage = () => {
   const handleRevokeAll = async (userId) => {
     if (
       !window.confirm(
-        "Bạn có chắc muốn đăng xuất tất cả thiết bị khác? (Giữ lại session hiện tại)",
+        t("loginHistory.confirmRevokeAll"),
       )
     )
       return;
@@ -134,13 +136,13 @@ const LoginHistoryPage = () => {
         currentSessionId,
       );
       if (response.success) {
-        toast.success(response.message || "Đã đăng xuất tất cả thiết bị khác");
+        toast.success(response.message || t("loginHistory.loggedOutAll"));
         fetchSessions();
         fetchStats();
       }
     } catch (error) {
       toast.error(
-        error.response?.data?.message || "Lỗi khi đăng xuất tất cả thiết bị",
+        error.response?.data?.message || t("loginHistory.logoutAllError"),
       );
       console.error(error);
     }
@@ -149,37 +151,37 @@ const LoginHistoryPage = () => {
   // Export CSV
   const handleExportCsv = async () => {
     try {
-      toast.loading("Đang xuất dữ liệu...", { id: "csv-export" });
+      toast.loading(t("loginHistory.exporting"), { id: "csv-export" });
       const allData = await fetchAllPages(loginHistoryService.getAll, {
         isActive: statusFilter === "all" ? undefined : statusFilter === "active",
       });
 
       const getStatusLabel = (s) => {
         const status = s.status || "active";
-        if (status === "revoked" || !s.isActive) return "Đã vô hiệu";
-        if (status === "expired") return "Hết hạn";
-        return "Đang hoạt động";
+        if (status === "revoked" || !s.isActive) return t("loginHistory.revoked");
+        if (status === "expired") return t("loginHistory.expired");
+        return t("loginHistory.active");
       };
 
       exportToCsv({
         columns: [
           { key: "id", label: "ID" },
-          { key: (row) => row.user?.profile?.fullName || "N/A", label: "Người dùng" },
+          { key: (row) => row.user?.profile?.fullName || "N/A", label: t("loginHistory.user") },
           { key: (row) => row.user?.email || "", label: "Email" },
-          { key: "deviceName", label: "Thiết bị" },
+          { key: "deviceName", label: t("loginHistory.device") },
           { key: "ipAddress", label: "IP" },
-          { key: getStatusLabel, label: "Trạng thái" },
-          { key: (row) => formatCsvDate(row.createdAt), label: "Đăng nhập" },
-          { key: (row) => formatCsvDate(row.lastUsedAt), label: "Dùng gần nhất" },
-          { key: (row) => formatCsvDate(row.expiresAt), label: "Hết hạn" },
+          { key: getStatusLabel, label: t("loginHistory.status") },
+          { key: (row) => formatCsvDate(row.createdAt), label: t("loginHistory.loggedIn") },
+          { key: (row) => formatCsvDate(row.lastUsedAt), label: t("loginHistory.lastUsed") },
+          { key: (row) => formatCsvDate(row.expiresAt), label: t("loginHistory.expiresAt") },
         ],
         data: allData,
         filename: slugifyFilename("lich_su_dang_nhap"),
       });
 
-      toast.success(`Đã xuất ${allData.length} bản ghi`, { id: "csv-export" });
+      toast.success(t("loginHistory.exportSuccess", { count: allData.length }), { id: "csv-export" });
     } catch {
-      toast.error("Lỗi khi xuất dữ liệu", { id: "csv-export" });
+      toast.error(t("loginHistory.exportError"), { id: "csv-export" });
     }
   };
 
@@ -190,20 +192,20 @@ const LoginHistoryPage = () => {
 
     if (status === "revoked" || !session.isActive) {
       return {
-        label: "Đã vô hiệu",
+        label: t("loginHistory.revoked"),
         color: "text-gray-600 bg-gray-100",
         icon: <Ban className="w-4 h-4" />,
       };
     }
     if (status === "expired") {
       return {
-        label: "Hết hạn",
+        label: t("loginHistory.expired"),
         color: "text-red-600 bg-red-100",
         icon: <XCircle className="w-4 h-4" />,
       };
     }
     return {
-      label: "Đang hoạt động",
+      label: t("loginHistory.active"),
       color: "text-green-600 bg-green-100",
       icon: <CheckCircle className="w-4 h-4" />,
     };
@@ -241,12 +243,12 @@ const LoginHistoryPage = () => {
           <div className="flex items-center gap-6">
             <div className="accent-bar h-16"></div>
             <div>
-              <h1 className="tim-title">LỊCH SỚ ĐĂNG NHẬP</h1>
+              <h1 className="tim-title">{t("loginHistory.title")}</h1>
               <div className="flex items-center gap-4 mt-2">
                 <span className="tim-system bg-black text-white px-2 py-1">
-                  SYSTEM // LOGIN HISTORY
+                  {t("loginHistory.system")}
                 </span>
-                <p className="tim-meta">QUẢN LÝ SESSIONS VÀ THIẾT BỊ</p>
+                <p className="tim-meta">{t("loginHistory.subtitle")}</p>
               </div>
             </div>
           </div>
@@ -273,27 +275,27 @@ const LoginHistoryPage = () => {
         {/* Thống kê nhanh */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <TimStatsCard
-            title="TỔNG SESSION"
+            title={t("loginHistory.totalSessions")}
             value={stats.total}
             icon={Monitor}
             serial="LGN-001"
           />
           <TimStatsCard
-            title="ĐANG HOẠT ĐỘNG"
+            title={t("loginHistory.active")}
             value={stats.active}
             icon={CheckCircle}
             serial="LGN-002"
             textColor="text-emerald-600"
           />
           <TimStatsCard
-            title="ĐÃ VÔ HIỆU"
+            title={t("loginHistory.revoked")}
             value={stats.revoked}
             icon={Ban}
             serial="LGN-003"
             textColor="text-gray-500"
           />
           <TimStatsCard
-            title="HẾT HẠN"
+            title={t("loginHistory.expired")}
             value={stats.expired}
             icon={XCircle}
             serial="LGN-004"
@@ -305,7 +307,7 @@ const LoginHistoryPage = () => {
         {/* Filter Bar */}
         <div className="bg-white border border-black p-4 shadow-sm">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <span className="tim-meta">BỘ LỌC DỮ LIỆU</span>
+            <span className="tim-meta">{t("common.filter").toUpperCase()}</span>
             <div className="flex gap-2">
               <select
                 value={statusFilter}
@@ -315,9 +317,9 @@ const LoginHistoryPage = () => {
                 }}
                 className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50"
               >
-                <option value="all">TẤT CẢ TRẠNG THÁI</option>
-                <option value="active">ĐANG HOẠT ĐỘNG</option>
-                <option value="inactive">ĐÃ VÔ HIỆU</option>
+                <option value="all">{t("loginHistory.allStatuses")}</option>
+                <option value="active">{t("loginHistory.activeStatus")}</option>
+                <option value="inactive">{t("loginHistory.inactiveStatus")}</option>
               </select>
               {currentUser && (
                 <Button
@@ -326,7 +328,7 @@ const LoginHistoryPage = () => {
                   className="h-10 rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
                 >
                   <Ban className="w-4 h-4 mr-2" />
-                  ĐĂNG XUẤT TẤT CẢ
+                  {t("loginHistory.logoutAll")}
                 </Button>
               )}
             </div>
@@ -341,7 +343,7 @@ const LoginHistoryPage = () => {
                 <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
                   <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
                   <span className="font-mono text-xs uppercase text-gray-500">
-                    LOADING DATA...
+                    {t("loginHistory.loadingData")}
                   </span>
                 </div>
               );
@@ -352,7 +354,7 @@ const LoginHistoryPage = () => {
                 <div className="flex flex-col items-center justify-center py-20">
                   <Monitor className="h-12 w-12 text-gray-300 mb-4" />
                   <div className="font-bold uppercase text-gray-400">
-                    KHÔNG TÌM THẤY DỮ LIỆU
+                    {t("loginHistory.noData")}
                   </div>
                 </div>
               );
@@ -367,21 +369,21 @@ const LoginHistoryPage = () => {
                         ID
                       </th>
                       <th className="p-4 border-r border-black/20">USER</th>
-                      <th className="p-4 border-r border-black/20">THIẾT BỊ</th>
+                      <th className="p-4 border-r border-black/20">{t("loginHistory.device").toUpperCase()}</th>
                       <th className="p-4 border-r border-black/20">
                         IP ADDRESS
                       </th>
                       <th className="p-4 border-r border-black/20">
-                        TRẠNG THÁI
+                        {t("loginHistory.status").toUpperCase()}
                       </th>
                       <th className="p-4 border-r border-black/20">
-                        ĐĂNG NHẬP
+                        {t("loginHistory.loggedIn").toUpperCase()}
                       </th>
                       <th className="p-4 border-r border-black/20">
-                        DÙNG GẦN NHẤT
+                        {t("loginHistory.lastUsed").toUpperCase()}
                       </th>
-                      <th className="p-4 border-r border-black/20">HẾT HẠN</th>
-                      <th className="p-4 text-center">THAO TÁC</th>
+                      <th className="p-4 border-r border-black/20">{t("loginHistory.expiresAt").toUpperCase()}</th>
+                      <th className="p-4 text-center">{t("loginHistory.actions").toUpperCase()}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black/5">
@@ -475,7 +477,7 @@ const LoginHistoryPage = () => {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between p-4 border-t border-black bg-gray-50 font-mono text-xs uppercase">
-              <div>HIỂN THỊ {sessions.length} KẾT QUẢ</div>
+              <div>{t("common.showing")} {sessions.length} {t("common.results")}</div>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -484,7 +486,7 @@ const LoginHistoryPage = () => {
                   disabled={currentPage === 1}
                   className="rounded-none border-black h-8 hover:bg-black hover:text-white"
                 >
-                  TRƯỚC
+                  {t("common.previous")}
                 </Button>
                 <span className="flex items-center px-4 font-bold">
                   {currentPage}
@@ -498,7 +500,7 @@ const LoginHistoryPage = () => {
                   disabled={currentPage === totalPages}
                   className="rounded-none border-black h-8 hover:bg-black hover:text-white"
                 >
-                  SAU
+                  {t("common.nextPage")}
                 </Button>
               </div>
             </div>
@@ -509,7 +511,7 @@ const LoginHistoryPage = () => {
         <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Chi tiết Session #{selectedSession?.id}</DialogTitle>
+              <DialogTitle>{t("loginHistory.detailTitle", { id: selectedSession?.id })}</DialogTitle>
             </DialogHeader>
             {selectedSession && (
               <div className="space-y-4">
@@ -528,7 +530,7 @@ const LoginHistoryPage = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">
-                      Trạng thái
+                      {t("loginHistory.status")}
                     </label>
                     <p className="mt-1">
                       {(() => {
@@ -546,7 +548,7 @@ const LoginHistoryPage = () => {
                   </div>
                   <div className="col-span-2">
                     <label className="text-sm font-medium text-gray-500">
-                      Thiết bị
+                      {t("loginHistory.device")}
                     </label>
                     <div className="mt-1 flex items-center gap-2">
                       {getDeviceIcon(selectedSession.deviceName)}
@@ -571,7 +573,7 @@ const LoginHistoryPage = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">
-                      Đăng nhập lúc
+                      {t("loginHistory.loggedIn")}
                     </label>
                     <p className="mt-1">
                       {formatDate(selectedSession.createdAt)}
@@ -579,7 +581,7 @@ const LoginHistoryPage = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">
-                      Sử dụng lần cuối
+                      {t("loginHistory.lastUsed")}
                     </label>
                     <p className="mt-1">
                       {formatDate(selectedSession.lastUsedAt)}
@@ -587,7 +589,7 @@ const LoginHistoryPage = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">
-                      Hết hạn lúc
+                      {t("loginHistory.expiresAt")}
                     </label>
                     <p className="mt-1">
                       {formatDate(selectedSession.expiresAt)}
@@ -595,7 +597,7 @@ const LoginHistoryPage = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">
-                      Refresh Token
+                      {t("loginHistory.refreshToken")}
                     </label>
                     <p className="mt-1 font-mono text-xs truncate">
                       {selectedSession.refreshToken}
@@ -614,7 +616,7 @@ const LoginHistoryPage = () => {
                       className="w-full"
                     >
                       <Ban className="w-4 h-4 mr-2" />
-                      Vô hiệu hóa Session
+                      {t("loginHistory.deactivateSession")}
                     </Button>
                   </div>
                 )}

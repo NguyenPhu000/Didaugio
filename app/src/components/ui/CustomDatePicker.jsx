@@ -8,6 +8,7 @@ import {
   View,
   TouchableOpacity,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { TOKENS } from "../../constants/design-tokens";
@@ -66,6 +67,7 @@ function isBeforeDay(a, b) {
 /* ── Calendar Modal ── */
 
 function CalendarModal({ visible, value, minimumDate, onConfirm, onClose }) {
+  const { t } = useTranslation();
   const { width: screenW } = useWindowDimensions();
   const cellSize = Math.floor((screenW - 80) / 7);
 
@@ -179,7 +181,7 @@ function CalendarModal({ visible, value, minimumDate, onConfirm, onClose }) {
           {/* Actions */}
           <View style={st.actions}>
             <Pressable onPress={onClose} style={st.cancelBtn}>
-              <Text style={st.cancelText}>Hủy</Text>
+              <Text style={st.cancelText}>{t("datePicker.cancel")}</Text>
             </Pressable>
             <Pressable
               onPress={handleConfirm}
@@ -189,7 +191,7 @@ function CalendarModal({ visible, value, minimumDate, onConfirm, onClose }) {
               <Text
                 style={[st.confirmText, !selected && st.confirmTextDisabled]}
               >
-                Xác nhận
+                {t("datePicker.confirm")}
               </Text>
             </Pressable>
           </View>
@@ -206,9 +208,11 @@ export function CustomDatePicker({
   value,
   onChange,
   minimumDate,
-  placeholder = "Chọn",
+  placeholder,
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const defaultPlaceholder = placeholder || t("datePicker.select");
   const displayText = formatDisplay(value);
 
   return (
@@ -221,7 +225,7 @@ export function CustomDatePicker({
         <Text style={st.rowLabel}>{label}</Text>
 
         <Text style={[st.rowValue, !displayText && st.rowPlaceholder]} numberOfLines={1}>
-          {displayText ?? placeholder}
+          {displayText ?? defaultPlaceholder}
         </Text>
 
         {value ? (

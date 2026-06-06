@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
 import Eye from "lucide-react/dist/esm/icons/eye";
@@ -29,6 +30,7 @@ import { exportToCsv, fetchAllPages, formatCsvDate, slugifyFilename } from "@/ut
 import TimStatsCard from "@/components/admin/TimStatsCard";
 
 const AuditLogsPage = () => {
+  const { t } = useTranslation();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
@@ -80,7 +82,7 @@ const AuditLogsPage = () => {
         });
       }
     } catch (error) {
-      toast.error("Lỗi khi tải audit logs");
+      toast.error(t("auditLogs.loadingError"));
       console.error(error);
     } finally {
       setLoading(false);
@@ -100,7 +102,7 @@ const AuditLogsPage = () => {
         setShowDetailModal(true);
       }
     } catch (error) {
-      toast.error("Lỗi khi tải chi tiết log");
+      toast.error(t("auditLogs.detailError"));
       console.error(error);
     }
   };
@@ -108,7 +110,7 @@ const AuditLogsPage = () => {
   // Export CSV
   const handleExportCsv = async () => {
     try {
-      toast.loading("Đang xuất dữ liệu...", { id: "csv-export" });
+      toast.loading(t("auditLogs.exporting"), { id: "csv-export" });
       const allData = await fetchAllPages(auditLogService.getAll, {
         action: actionFilter === "all" ? undefined : actionFilter,
         tableName: tableFilter === "all" ? undefined : tableFilter,
@@ -119,23 +121,23 @@ const AuditLogsPage = () => {
       exportToCsv({
         columns: [
           { key: "id", label: "ID" },
-          { key: (row) => row.user?.profile?.fullName || "N/A", label: "Người thực hiện" },
+          { key: (row) => row.user?.profile?.fullName || "N/A", label: t("auditLogs.performer") },
           { key: (row) => row.user?.email || "", label: "Email" },
-          { key: (row) => row.user?.role?.displayName || row.user?.role?.name || "", label: "Vai trò" },
-          { key: "action", label: "Hành động" },
-          { key: "tableName", label: "Đối tượng" },
+          { key: (row) => row.user?.role?.displayName || row.user?.role?.name || "", label: t("auditLogs.role") },
+          { key: "action", label: t("auditLogs.action") },
+          { key: "tableName", label: t("auditLogs.object") },
           { key: "recordId", label: "Record ID" },
-          { key: "description", label: "Mô tả" },
+          { key: "description", label: t("auditLogs.description") },
           { key: "ipAddress", label: "IP" },
-          { key: (row) => formatCsvDate(row.createdAt), label: "Thời gian" },
+          { key: (row) => formatCsvDate(row.createdAt), label: t("auditLogs.time") },
         ],
         data: allData,
         filename: slugifyFilename("nhat_ky_he_thong"),
       });
 
-      toast.success(`Đã xuất ${allData.length} bản ghi`, { id: "csv-export" });
+      toast.success(t("auditLogs.exportSuccess", { count: allData.length }), { id: "csv-export" });
     } catch {
-      toast.error("Lỗi khi xuất dữ liệu", { id: "csv-export" });
+      toast.error(t("auditLogs.exportError"), { id: "csv-export" });
     }
   };
 
@@ -185,7 +187,7 @@ const AuditLogsPage = () => {
                 <span className="tim-system bg-black text-white px-2 py-1">
                   SYSTEM // AUDIT TRACKING
                 </span>
-                <p className="tim-meta">LỊCH SỬ HOẠT ĐỘNG HỆ THỐNG</p>
+                <p className="tim-meta">{t("auditLogs.subtitle")}</p>
               </div>
             </div>
           </div>
@@ -212,27 +214,27 @@ const AuditLogsPage = () => {
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <TimStatsCard
-            title="TỔNG GHI NHẬN"
+            title={t("auditLogs.totalRecords")}
             value={stats.total}
             icon={FileText}
             serial="AUD-001"
           />
           <TimStatsCard
-            title="TẠO MỚI"
+            title={t("auditLogs.created")}
             value={stats.create}
             icon={CheckCircle}
             serial="AUD-002"
             textColor="text-emerald-600"
           />
           <TimStatsCard
-            title="CẬP NHẬT"
+            title={t("auditLogs.updated")}
             value={stats.update}
             icon={Edit}
             serial="AUD-003"
             textColor="text-blue-600"
           />
           <TimStatsCard
-            title="XÓA"
+            title={t("auditLogs.deleted")}
             value={stats.delete}
             icon={Trash2}
             serial="AUD-004"
@@ -244,7 +246,7 @@ const AuditLogsPage = () => {
         {/* Filter Bar */}
         <div className="bg-white border border-black p-4 shadow-sm">
           <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
-            <span className="tim-meta">BỘ LỌC DỮ LIỆU</span>
+            <span className="tim-meta">{t("common.filter").toUpperCase()}</span>
             {hasActiveFilters && (
               <Button
                 variant="ghost"
@@ -253,14 +255,14 @@ const AuditLogsPage = () => {
                 className="rounded-none border border-red-300 text-red-600 hover:bg-red-50 h-8 text-xs"
               >
                 <X className="w-3 h-3 mr-1" />
-                XÓA BỘ LỌC
+                {t("auditLogs.clearFilters")}
               </Button>
             )}
           </div>
           <div className="flex gap-3 flex-wrap items-end">
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-mono uppercase text-gray-500">
-                Hành động
+                {t("auditLogs.action")}
               </label>
               <select
                 value={actionFilter}
@@ -270,7 +272,7 @@ const AuditLogsPage = () => {
                 }}
                 className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50 min-w-[180px]"
               >
-                <option value="all">TẤT CẢ HÀNH ĐỘNG</option>
+                <option value="all">{t("auditLogs.allActions")}</option>
                 {auditLogService.getActionTypes().map((action) => (
                   <option key={action} value={action}>
                     {auditLogService.getActionLabel(action)} ({action})
@@ -280,7 +282,7 @@ const AuditLogsPage = () => {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-mono uppercase text-gray-500">
-                Bảng dữ liệu
+                {t("auditLogs.dataTable")}
               </label>
               <select
                 value={tableFilter}
@@ -290,7 +292,7 @@ const AuditLogsPage = () => {
                 }}
                 className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50 min-w-[180px]"
               >
-                <option value="all">TẤT CẢ BẢNG</option>
+                <option value="all">{t("auditLogs.allTables")}</option>
                 {auditLogService.getTableNames().map((table) => (
                   <option key={table} value={table}>
                     {auditLogService.getTableLabel(table)} ({table})
@@ -300,7 +302,7 @@ const AuditLogsPage = () => {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-mono uppercase text-gray-500">
-                Từ ngày
+                {t("auditLogs.fromDate")}
               </label>
               <input
                 type="date"
@@ -314,7 +316,7 @@ const AuditLogsPage = () => {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-mono uppercase text-gray-500">
-                Đến ngày
+                {t("auditLogs.toDate")}
               </label>
               <input
                 type="date"
@@ -337,7 +339,7 @@ const AuditLogsPage = () => {
                 <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
                   <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
                   <span className="font-mono text-xs uppercase text-gray-500">
-                    LOADING DATA...
+                    {t("auditLogs.loadingData")}
                   </span>
                 </div>
               );
@@ -348,7 +350,7 @@ const AuditLogsPage = () => {
                 <div className="flex flex-col items-center justify-center py-20">
                   <FileText className="h-12 w-12 text-gray-300 mb-4" />
                   <div className="font-bold uppercase text-gray-400">
-                    KHÔNG TÌM THẤY DỮ LIỆU
+                    {t("auditLogs.noData")}
                   </div>
                   {hasActiveFilters && (
                     <Button
@@ -357,7 +359,7 @@ const AuditLogsPage = () => {
                       onClick={clearFilters}
                       className="mt-3 rounded-none border border-black hover:bg-black hover:text-white"
                     >
-                      XÓA BỘ LỌC
+                      {t("auditLogs.clearFilters")}
                     </Button>
                   )}
                 </div>
@@ -373,27 +375,27 @@ const AuditLogsPage = () => {
                         ID
                       </th>
                       <th className="p-3 border-r border-black/20 min-w-[200px]">
-                        NGƯỜI THỰC HIỆN
+                        {t("auditLogs.performer").toUpperCase()}
                       </th>
                       <th className="p-3 border-r border-black/20 w-[100px]">
-                        VAI TRÒ
+                        {t("auditLogs.role").toUpperCase()}
                       </th>
                       <th className="p-3 border-r border-black/20 w-[130px]">
-                        HÀNH ĐỘNG
+                        {t("auditLogs.actionCol").toUpperCase()}
                       </th>
                       <th className="p-3 border-r border-black/20 w-[120px]">
-                        ĐỐI TƯỢNG
+                        {t("auditLogs.object").toUpperCase()}
                       </th>
                       <th className="p-3 border-r border-black/20">
-                        MÔ TẢ HOẠT ĐỘNG
+                        {t("auditLogs.description").toUpperCase()}
                       </th>
                       <th className="p-3 border-r border-black/20 w-[90px]">
-                        IP
+                        {t("auditLogs.ip").toUpperCase()}
                       </th>
                       <th className="p-3 border-r border-black/20 w-[140px]">
-                        THỜI GIAN
+                        {t("auditLogs.time").toUpperCase()}
                       </th>
-                      <th className="p-3 text-center w-[60px]">CHI TIẾT</th>
+                      <th className="p-3 text-center w-[60px]">{t("auditLogs.details").toUpperCase()}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black/5">
@@ -483,7 +485,7 @@ const AuditLogsPage = () => {
           {totalPages > 1 && (
             <div className="flex items-center justify-between p-4 border-t border-black bg-gray-50 font-mono text-xs uppercase">
               <div>
-                TRANG {currentPage}/{totalPages} &middot; {logs.length} KẾT QUẢ
+                {t("auditLogs.page", { page: currentPage, totalPages, count: logs.length })}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -502,7 +504,7 @@ const AuditLogsPage = () => {
                   disabled={currentPage === 1}
                   className="rounded-none border-black h-8 hover:bg-black hover:text-white"
                 >
-                  TRƯỚC
+                  {t("common.previous")}
                 </Button>
                 <span className="flex items-center px-4 font-bold">
                   {currentPage}
@@ -516,7 +518,7 @@ const AuditLogsPage = () => {
                   disabled={currentPage === totalPages}
                   className="rounded-none border-black h-8 hover:bg-black hover:text-white"
                 >
-                  SAU
+                  {t("common.nextPage")}
                 </Button>
                 <Button
                   variant="outline"
@@ -540,7 +542,7 @@ const AuditLogsPage = () => {
                 <div className="accent-bar h-12"></div>
                 <div>
                   <DialogTitle className="tim-title text-2xl">
-                    CHI TIẾT HOẠT ĐỘNG
+                    {t("auditLogs.detailTitle")}
                   </DialogTitle>
                   <div className="tim-meta mt-1">
                     AUDIT LOG #{selectedLog?.id}
@@ -554,7 +556,7 @@ const AuditLogsPage = () => {
                 {/* Action & Table Info */}
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-gray-50 border border-black p-3">
-                    <label className="tim-meta block mb-2">HÀNH ĐỘNG</label>
+                    <label className="tim-meta block mb-2">{t("auditLogs.actionCol").toUpperCase()}</label>
                     <span
                       className={`px-3 py-1.5 rounded-none border text-xs font-bold uppercase font-mono inline-block ${auditLogService.getActionColor(selectedLog.action)}`}
                     >
@@ -564,7 +566,7 @@ const AuditLogsPage = () => {
                   </div>
 
                   <div className="bg-gray-50 border border-black p-3">
-                    <label className="tim-meta block mb-2">ĐỐI TƯỢNG</label>
+                    <label className="tim-meta block mb-2">{t("auditLogs.object").toUpperCase()}</label>
                     <div className="font-mono font-bold text-sm">
                       {auditLogService.getTableLabel(selectedLog.tableName)}
                     </div>
@@ -574,7 +576,7 @@ const AuditLogsPage = () => {
                   </div>
 
                   <div className="bg-gray-50 border border-black p-3">
-                    <label className="tim-meta block mb-2">THỜI GIAN</label>
+                    <label className="tim-meta block mb-2">{t("auditLogs.time").toUpperCase()}</label>
                     <div className="font-mono text-sm">
                       {formatDateTime(selectedLog.createdAt)}
                     </div>
@@ -585,7 +587,7 @@ const AuditLogsPage = () => {
                 {selectedLog.description && (
                   <div className="bg-yellow-50 border-l-4 border-l-[#F3E600] border border-black p-4">
                     <label className="tim-meta block mb-2">
-                      MÔ TẢ HOẠT ĐỘNG
+                      {t("auditLogs.description").toUpperCase()}
                     </label>
                     <div className="text-sm font-medium">
                       {selectedLog.description}
@@ -596,7 +598,7 @@ const AuditLogsPage = () => {
                 {/* User Info */}
                 <div className="bg-white border-l-4 border-l-[#F3E600] border border-black p-4">
                   <label className="tim-meta block mb-3">
-                    NGƯỜI THỰC HIỆN
+                    {t("auditLogs.performer").toUpperCase()}
                   </label>
                   <div className="flex items-center gap-4">
                     <div className="bg-black text-white w-12 h-12 flex items-center justify-center rounded-none">
@@ -629,18 +631,18 @@ const AuditLogsPage = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-gray-50 border border-black p-3">
                     <label className="tim-meta block mb-2 flex items-center gap-1">
-                      <Globe className="w-3 h-3" /> ĐỊA CHỈ IP
+                      <Globe className="w-3 h-3" /> {t("auditLogs.ipAddress")}
                     </label>
                     <div className="font-mono text-sm">
-                      {selectedLog.ipAddress || "Không xác định"}
+                      {selectedLog.ipAddress || t("auditLogs.notDefined")}
                     </div>
                   </div>
                   <div className="bg-gray-50 border border-black p-3">
                     <label className="tim-meta block mb-2 flex items-center gap-1">
-                      <Monitor className="w-3 h-3" /> THIẾT BỊ
+                      <Monitor className="w-3 h-3" /> {t("auditLogs.device")}
                     </label>
                     <div className="font-mono text-xs text-gray-600 break-all line-clamp-2">
-                      {selectedLog.userAgent || "Không xác định"}
+                      {selectedLog.userAgent || t("auditLogs.notDefined")}
                     </div>
                   </div>
                 </div>
@@ -649,14 +651,14 @@ const AuditLogsPage = () => {
                 {(selectedLog.oldData || selectedLog.newData) && (
                   <div>
                     <label className="tim-meta block mb-3">
-                      THAY ĐỔI DỮ LIỆU
+                      {t("auditLogs.dataChanges")}
                     </label>
                     <div className="grid grid-cols-2 gap-3">
                       {selectedLog.oldData && (
                         <div className="bg-white border border-black">
                           <div className="bg-red-600 text-white p-2 border-b border-black">
                             <span className="tim-meta text-white flex items-center gap-1">
-                              <X className="w-3 h-3" /> DỮ LIỆU CŨ
+                              <X className="w-3 h-3" /> {t("auditLogs.oldData")}
                             </span>
                           </div>
                           <div className="p-3 max-h-64 overflow-y-auto">
@@ -673,7 +675,7 @@ const AuditLogsPage = () => {
                         <div className="bg-white border border-black">
                           <div className="bg-emerald-600 text-white p-2 border-b border-black">
                             <span className="tim-meta text-white flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" /> DỮ LIỆU MỚI
+                              <CheckCircle className="w-3 h-3" /> {t("auditLogs.newData")}
                             </span>
                           </div>
                           <div className="p-3 max-h-64 overflow-y-auto">
@@ -695,7 +697,7 @@ const AuditLogsPage = () => {
                     onClick={() => setShowDetailModal(false)}
                     className="rounded-none border border-black bg-white text-black hover:bg-black hover:text-white h-10 px-8 font-bold uppercase"
                   >
-                    ĐÓNG
+                    {t("auditLogs.close")}
                   </Button>
                 </div>
               </div>

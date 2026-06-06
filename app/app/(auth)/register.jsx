@@ -19,11 +19,13 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRegister } from "../../src/modules/auth/hooks/useRegister";
 import { cn } from "../../src/lib/cn";
+import { useTranslation } from "react-i18next";
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { register, isLoading, error, successMessage } = useRegister();
+  const { t } = useTranslation();
 
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
@@ -104,8 +106,8 @@ export default function RegisterScreen() {
             >
               <MaterialIcons name="travel-explore" size={32} color="#007AFF" />
             </View>
-            <Text className="text-[28px] font-extrabold text-white tracking-[-0.5px]">Đi Đâu Giờ</Text>
-            <Text className="text-sm text-white/60 mt-1 font-medium">Tạo tài khoản du lịch thông minh</Text>
+            <Text className="text-[28px] font-extrabold text-white tracking-[-0.5px]">{t("common.appName")}</Text>
+            <Text className="text-sm text-white/60 mt-1 font-medium">{t("auth.register.subtitle")}</Text>
           </View>
 
           {/* Glassmorphic Register Card */}
@@ -118,11 +120,11 @@ export default function RegisterScreen() {
               shadowRadius: 24,
             } : null}
           >
-            <Text className="text-[30px] font-extrabold text-[#000000] mb-1.5">Tạo tài khoản</Text>
+            <Text className="text-[30px] font-extrabold text-[#000000] mb-1.5">{t("auth.register.title")}</Text>
          
 
             {/* Section 1: Personal Info Grouped Cell */}
-            <Text className="text-[11px] font-bold text-[#8E8E93] mb-2 ml-1 tracking-[0.5px]">THÔNG TIN CÁ NHÂN</Text>
+            <Text className="text-[11px] font-bold text-[#8E8E93] mb-2 ml-1 tracking-[0.5px]">{t("auth.register.personalInfo")}</Text>
             <View className="rounded-[14px] bg-[#F2F2F7] overflow-hidden border border-[#E5E5EA] mb-5">
               {/* Họ tên */}
               <View className={cn("flex-row items-center h-[52px] px-4 bg-transparent", fullNameFocused && "bg-[#E5E5EA]")}>
@@ -140,7 +142,7 @@ export default function RegisterScreen() {
                   onBlur={() => setFullNameFocused(false)}
                   autoCapitalize="words"
                   autoComplete="name"
-                  placeholder="Họ và tên"
+                  placeholder={t("auth.register.fullName")}
                   placeholderTextColor="#AEAEB2"
                   className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
                   textContentType="name"
@@ -168,7 +170,7 @@ export default function RegisterScreen() {
                   onBlur={() => setUsernameFocused(false)}
                   autoComplete="username"
                   autoCapitalize="none"
-                  placeholder="Username"
+                  placeholder={t("auth.register.username")}
                   placeholderTextColor="#AEAEB2"
                   className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
                   textContentType="username"
@@ -197,7 +199,7 @@ export default function RegisterScreen() {
                   keyboardType="email-address"
                   autoComplete="email"
                   autoCapitalize="none"
-                  placeholder="Email"
+                  placeholder={t("auth.register.email")}
                   placeholderTextColor="#AEAEB2"
                   className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
                   textContentType="emailAddress"
@@ -208,7 +210,7 @@ export default function RegisterScreen() {
             </View>
 
             {/* Section 2: Security Grouped Cell */}
-            <Text className="text-[11px] font-bold text-[#8E8E93] mb-2 ml-1 tracking-[0.5px]">MẬT KHẨU BẢO MẬT</Text>
+            <Text className="text-[11px] font-bold text-[#8E8E93] mb-2 ml-1 tracking-[0.5px]">{t("auth.register.securityPassword")}</Text>
             <View className="rounded-[14px] bg-[#F2F2F7] overflow-hidden border border-[#E5E5EA] mb-5">
               {/* Mật khẩu */}
               <View className={cn("flex-row items-center h-[52px] px-4 bg-transparent", passwordFocused && "bg-[#E5E5EA]")}>
@@ -228,7 +230,7 @@ export default function RegisterScreen() {
                   secureTextEntry={!showPassword}
                   autoComplete="new-password"
                   autoCapitalize="none"
-                  placeholder="Mật khẩu"
+                  placeholder={t("auth.register.password")}
                   placeholderTextColor="#AEAEB2"
                   className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
                   textContentType="newPassword"
@@ -268,7 +270,7 @@ export default function RegisterScreen() {
                   secureTextEntry={!showConfirmPassword}
                   autoComplete="new-password"
                   autoCapitalize="none"
-                  placeholder="Xác nhận mật khẩu"
+                  placeholder={t("auth.register.confirmPassword")}
                   placeholderTextColor="#AEAEB2"
                   className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
                   textContentType="password"
@@ -329,7 +331,7 @@ export default function RegisterScreen() {
                   {isLoading ? (
                     <ActivityIndicator color="#ffffff" size="small" />
                   ) : (
-                    <Text className="text-white text-base font-bold">Đăng ký tài khoản</Text>
+                    <Text className="text-white text-base font-bold">{t("auth.register.submit")}</Text>
                   )}
                 </LinearGradient>
               </Pressable>
@@ -337,10 +339,10 @@ export default function RegisterScreen() {
 
             {/* Footer switcher */}
             <View className="flex-row justify-center items-center mt-5 gap-1.5">
-              <Text className="text-[#8E8E93] text-sm font-medium">Đã có tài khoản?</Text>
+              <Text className="text-[#8E8E93] text-sm font-medium">{t("auth.register.hasAccount")}</Text>
               <Link href="/(auth)/login" asChild>
                 <Pressable hitSlop={8} className="active:opacity-70">
-                  <Text className="text-[#007AFF] text-sm font-semibold">Đăng nhập ngay</Text>
+                  <Text className="text-[#007AFF] text-sm font-semibold">{t("auth.register.loginNow")}</Text>
                 </Pressable>
               </Link>
             </View>

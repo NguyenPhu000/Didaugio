@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import Mail from "lucide-react/dist/esm/icons/mail";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import Send from "lucide-react/dist/esm/icons/send";
@@ -26,6 +27,7 @@ import { forgotPasswordSchema } from "@/schemas/auth";
 // const forgotPasswordSchema = z.object({...}); // Removed
 
 const ForgotPasswordPage = () => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
@@ -45,7 +47,7 @@ const ForgotPasswordPage = () => {
     try {
       const response = await authService.forgotPassword(data.email);
       setEmailSent(true);
-      toast.success("Vui lòng kiểm tra email để đặt lại mật khẩu");
+      toast.success(t("auth.forgotPassword.success"));
 
       // Hiển thị token nếu ở dev mode (để test)
       if (response.data?.resetToken) {
@@ -55,7 +57,7 @@ const ForgotPasswordPage = () => {
         });
       }
     } catch (error) {
-      toast.error(error.message || "Có lỗi xảy ra. Vui lòng thử lại");
+      toast.error(error.message || t("auth.forgotPassword.failed"));
     } finally {
       setIsLoading(false);
     }
@@ -112,9 +114,12 @@ const ForgotPasswordPage = () => {
             </div>
 
             <p className="text-gray-400 font-mono text-sm uppercase leading-relaxed max-w-md">
-              KHÔI PHỤC MẬT KHẨU AN TOÀN
-              <br />
-              VỚI HỆ THỐNG XÁC THỰC EMAIL
+              {t("auth.forgotPassword.heroDesc").split("\n").map((line, i) => (
+                <span key={i}>
+                  {line}
+                  {i < t("auth.forgotPassword.heroDesc").split("\n").length - 1 && <br />}
+                </span>
+              ))}
             </p>
 
             {/* Security Features */}
@@ -196,7 +201,7 @@ const ForgotPasswordPage = () => {
                     </h1>
                   </div>
                   <p className="text-xs text-gray-500 uppercase font-mono text-center">
-                    NHẬP EMAIL ĐỂ KHÔI PHỤC TÀI KHOẢN
+                    {t("auth.forgotPassword.subtitle")}
                   </p>
                 </div>
 
@@ -254,26 +259,22 @@ const ForgotPasswordPage = () => {
 
                   <div>
                     <h2 className="text-2xl font-black uppercase mb-2">
-                      EMAIL SENT
+                      {t("auth.forgotPassword.emailSent")}
                     </h2>
                     <p className="text-xs text-gray-500 uppercase font-mono">
-                      KIỂM TRA HỘP THƯ CỦA BẠN
+                      {t("auth.forgotPassword.checkInbox")}
                     </p>
                   </div>
 
                   <div className="bg-[#F3E600] border-2 border-black p-4">
                     <AlertCircle className="h-8 w-8 mx-auto mb-3" />
-                    <p className="text-xs font-mono uppercase leading-relaxed">
-                      NẾU EMAIL <strong>{email}</strong> TỒN TẠI TRONG HỆ THỐNG,
-                      <br />
-                      BẠN SẼ NHẬN ĐƯỢC HƯỚNG DẪN ĐẶT LẠI MẬT KHẨU.
-                    </p>
+                    <p className="text-xs font-mono uppercase leading-relaxed" dangerouslySetInnerHTML={{ __html: t("auth.forgotPassword.emailSentNote", { email }) }} />
                   </div>
 
                   <div className="space-y-2 text-xs text-gray-600 uppercase font-mono bg-gray-50 border border-gray-200 p-4">
-                    <p>• CHECK INBOX & SPAM FOLDER</p>
-                    <p>• LINK EXPIRES IN 1 HOUR</p>
-                    <p>• CONTACT SUPPORT IF NEEDED</p>
+                    <p>• {t("auth.forgotPassword.checkSpam")}</p>
+                    <p>• {t("auth.forgotPassword.linkExpiry")}</p>
+                    <p>• {t("auth.forgotPassword.contactSupport")}</p>
                   </div>
 
                   <div className="flex flex-col gap-2 pt-4">
@@ -282,14 +283,14 @@ const ForgotPasswordPage = () => {
                       onClick={handleResend}
                       className="w-full rounded-none border-2 border-black h-11 hover:bg-gray-100 uppercase font-black text-xs"
                     >
-                      TRY DIFFERENT EMAIL
+                      {t("auth.forgotPassword.tryDifferentEmail")}
                     </Button>
                     <Link
                       to="/auth/login"
                       className="inline-block w-full rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-11 px-6 uppercase font-black text-xs transition-all flex items-center justify-center"
                     >
                       <ArrowLeft className="mr-2 h-4 w-4" />
-                      BACK TO LOGIN
+                      {t("auth.forgotPassword.backToLogin")}
                     </Link>
                   </div>
                 </div>
@@ -300,7 +301,7 @@ const ForgotPasswordPage = () => {
           {/* Footer */}
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-400 uppercase font-mono">
-              NEED HELP? CONTACT{" "}
+              {t("auth.forgotPassword.needHelp")}{" "}
               <a
                 href="mailto:support@didaugio.com"
                 className="text-black underline hover:text-[#F3E600]"

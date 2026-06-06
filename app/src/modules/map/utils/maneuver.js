@@ -1,16 +1,17 @@
 /**
  * Ánh xạ maneuver của OSRM sang nhãn tiếng Việt + icon MaterialIcons.
  */
+import i18n from "@/i18n";
 
 const MODIFIER_LABELS = {
-  left: "trái",
-  right: "phải",
-  "slight left": "chếch trái",
-  "slight right": "chếch phải",
-  "sharp left": "gắt sang trái",
-  "sharp right": "gắt sang phải",
-  straight: "đi thẳng",
-  uturn: "quay đầu",
+  left: i18n.t("maneuver.left"),
+  right: i18n.t("maneuver.right"),
+  "slight left": i18n.t("maneuver.slightLeft"),
+  "slight right": i18n.t("maneuver.slightRight"),
+  "sharp left": i18n.t("maneuver.sharpLeft"),
+  "sharp right": i18n.t("maneuver.sharpRight"),
+  straight: i18n.t("maneuver.straight"),
+  uturn: i18n.t("maneuver.uturn"),
 };
 
 const MODIFIER_ICONS = {
@@ -31,30 +32,30 @@ export function buildManeuverLabel(step) {
   const maneuver = step?.maneuver || {};
   const type = maneuver.type || "";
   const modifier = maneuver.modifier || "";
-  const road = step?.name ? ` vào ${step.name}` : "";
+  const road = step?.name ? ` ${step.name}` : "";
 
   switch (type) {
     case "depart":
-      return step?.name ? `Xuất phát trên ${step.name}` : "Bắt đầu di chuyển";
+      return step?.name ? i18n.t("maneuver.depart", { road: step.name }) : i18n.t("maneuver.startMoving");
     case "arrive":
-      return "Đã đến nơi";
+      return i18n.t("maneuver.arrived");
     case "roundabout":
     case "rotary":
-      return `Đi vào vòng xuyến${road}`;
+      return i18n.t("maneuver.roundabout", { road });
     case "merge":
-      return `Nhập làn${road}`;
+      return i18n.t("maneuver.merge", { road });
     case "fork":
-      return `Đi theo nhánh ${MODIFIER_LABELS[modifier] || ""}`.trim() + road;
+      return i18n.t("maneuver.fork", { road: MODIFIER_LABELS[modifier] || "" }).trim() + road;
     case "continue":
-      return `Tiếp tục đi thẳng${road}`;
+      return i18n.t("maneuver.continueStraight", { road });
     case "turn":
     case "end of road":
     default: {
       const dir = MODIFIER_LABELS[modifier];
-      if (modifier === "straight") return `Đi thẳng${road}`;
-      if (modifier === "uturn") return `Quay đầu${road}`;
-      if (dir) return `Rẽ ${dir}${road}`;
-      return step?.name ? `Tiếp tục${road}` : "Tiếp tục di chuyển";
+      if (modifier === "straight") return i18n.t("maneuver.goStraight", { road });
+      if (modifier === "uturn") return i18n.t("maneuver.makeUturn", { road });
+      if (dir) return i18n.t("maneuver.turn", { dir, road });
+      return step?.name ? i18n.t("maneuver.continue", { road }) : i18n.t("maneuver.continueMoving");
     }
   }
 }

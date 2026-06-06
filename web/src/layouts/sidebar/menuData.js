@@ -24,6 +24,7 @@ import {
 import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/constants";
 import { PERMISSIONS } from "@/constants/permissions";
+import i18n from "@/i18n";
 
 const R = ROLES;
 
@@ -32,44 +33,54 @@ const R = ROLES;
  * Each item can have an optional `roles` array.
  * If omitted, the item is visible to all authenticated roles.
  * Sub-items inherit parent visibility unless they define their own `roles`.
+ *
+ * Call getMenuData() to get the current menu with translated strings.
  */
-const menuData = {
+export function getMenuData() {
+  const t = i18n.t.bind(i18n);
+  return {
   main: [
     {
-      title: "Dashboard",
+      key: "dashboard",
+      title: t("nav.dashboard"),
       icon: Home,
       url: ADMIN_ROUTES.DASHBOARD,
       roles: [R.SUPER_ADMIN, R.ADMIN, R.STAFF],
       badge: null,
     },
     {
-      title: "Dashboard",
+      key: "dashboard-business",
+      title: t("nav.dashboard"),
       icon: Home,
       url: BUSINESS_ROUTES.DASHBOARD,
       roles: [R.BUSINESS],
       badge: null,
     },
     {
-      title: "Bản đồ",
+      key: "map",
+      title: t("nav.map"),
       icon: Map,
       url: ADMIN_ROUTES.MAP,
       roles: [R.SUPER_ADMIN, R.ADMIN, R.BUSINESS],
-      badge: { text: "Mới", variant: "default" },
+      badge: { text: t("nav.badge.new"), variant: "default" },
     },
   ],
   management: [
     {
-      title: "Địa điểm",
+      key: "places",
+      title: t("nav.management.places"),
       icon: MapPin,
       roles: [R.SUPER_ADMIN, R.ADMIN, R.BUSINESS],
       items: [
         {
-          title: "Danh sách địa điểm",
+          key: "places-list",
+          title: t("nav.management.placesList"),
           url: ADMIN_ROUTES.PLACES,
           icon: List,
         },
         {
-          title: "Duyệt địa điểm",
+          key: "places-pending",
+          title: t("nav.management.placesPending"),
           url: ADMIN_ROUTES.PLACES_PENDING,
           icon: ClipboardCheck,
           roles: [R.SUPER_ADMIN, R.ADMIN, R.STAFF],
@@ -78,21 +89,24 @@ const menuData = {
       ],
     },
     {
-      title: "Danh mục",
+      key: "categories",
+      title: t("nav.management.categories"),
       icon: FolderTree,
       url: ADMIN_ROUTES.CATEGORIES,
       roles: [R.SUPER_ADMIN, R.ADMIN],
       permission: PERMISSIONS.CATEGORIES.VIEW,
     },
     {
-      title: "Tags",
+      key: "tags",
+      title: t("nav.management.tags"),
       icon: Tags,
       url: ADMIN_ROUTES.TAGS,
       roles: [R.SUPER_ADMIN, R.ADMIN],
       permission: PERMISSIONS.CATEGORIES.MANAGE_TAGS,
     },
     {
-      title: "Quận / Huyện",
+      key: "districts",
+      title: t("nav.management.districts"),
       icon: Building2,
       url: ADMIN_ROUTES.DISTRICTS,
       roles: [R.SUPER_ADMIN, R.ADMIN],
@@ -100,71 +114,81 @@ const menuData = {
   ],
   business: [
     {
-      title: "Địa điểm của tôi",
+      key: "my-places",
+      title: t("nav.business.myPlaces"),
       icon: MapPin,
       roles: [R.BUSINESS],
       items: [
-        { title: "Quản lý địa điểm", url: BUSINESS_ROUTES.PLACES },
-        { title: "Thêm địa điểm", url: BUSINESS_ROUTES.PLACES_NEW },
+        { key: "manage-places", title: t("nav.business.managePlaces"), url: BUSINESS_ROUTES.PLACES },
+        { key: "add-place", title: t("nav.business.addPlace"), url: BUSINESS_ROUTES.PLACES_NEW },
       ],
       badge: null,
     },
     {
-      title: "Dịch vụ",
+      key: "services",
+      title: t("nav.business.services"),
       icon: Ticket,
       url: BUSINESS_ROUTES.SERVICES,
       roles: [R.BUSINESS],
     },
     {
-      title: "Đặt chỗ",
+      key: "bookings",
+      title: t("nav.business.bookings"),
       icon: CalendarCheck,
       roles: [R.BUSINESS, R.STAFF],
       permission: PERMISSIONS.BOOKINGS.VIEW,
       items: [
-        { title: "Tất cả đặt chỗ", url: BUSINESS_ROUTES.BOOKINGS, permission: PERMISSIONS.BOOKINGS.VIEW },
-        { title: "Lịch khung giờ", url: BUSINESS_ROUTES.BOOKING_SCHEDULE, roles: [R.BUSINESS] },
-        { title: "Xử lý nhanh & auto-duyệt", url: BUSINESS_ROUTES.BOOKING_QUICK, roles: [R.BUSINESS] },
+        { key: "all-bookings", title: t("nav.business.allBookings"), url: BUSINESS_ROUTES.BOOKINGS, permission: PERMISSIONS.BOOKINGS.VIEW },
+        { key: "booking-schedule", title: t("nav.business.bookingSchedule"), url: BUSINESS_ROUTES.BOOKING_SCHEDULE, roles: [R.BUSINESS] },
+        { key: "booking-quick", title: t("nav.business.bookingQuick"), url: BUSINESS_ROUTES.BOOKING_QUICK, roles: [R.BUSINESS] },
       ],
     },
     {
-      title: "Nhân viên",
+      key: "staff",
+      title: t("nav.business.staff"),
       icon: Users,
       url: BUSINESS_ROUTES.STAFF,
       roles: [R.BUSINESS, R.STAFF],
       permission: PERMISSIONS.STAFF.VIEW,
     },
     {
-      title: "Khuyến mãi",
+      key: "promotions",
+      title: t("nav.business.promotions"),
       icon: Ticket,
       url: BUSINESS_ROUTES.VOUCHERS,
       roles: [R.BUSINESS],
     },
     {
-      title: "Báo cáo",
+      key: "reports",
+      title: t("nav.business.reports"),
       icon: BarChart3,
       url: BUSINESS_ROUTES.REPORTS,
       roles: [R.BUSINESS],
     },
     {
-      title: "Doanh thu",
+      key: "revenue",
+      title: t("nav.business.revenue"),
       icon: BarChart3,
       url: BUSINESS_ROUTES.REVENUE,
       roles: [R.BUSINESS],
     },
     {
-      title: "Thu nhập & Rút tiền",
+      key: "earnings",
+      title: t("nav.business.earnings"),
       icon: TrendingUp,
       url: BUSINESS_ROUTES.EARNINGS,
       roles: [R.BUSINESS],
     },
     {
-      title: "Đánh giá",
+      key: "reviews",
+      title: t("nav.business.reviews"),
       icon: Star,
       url: BUSINESS_ROUTES.REVIEWS,
       roles: [R.BUSINESS],
     },
     {
-      title: "Cài đặt",
+      key: "settings",
+      title: t("nav.business.settings"),
       icon: Settings,
       url: BUSINESS_ROUTES.SETTINGS,
       roles: [R.BUSINESS],
@@ -172,36 +196,41 @@ const menuData = {
   ],
   adminBusiness: [
     {
-      title: "Quản lý Business",
+      key: "manage-business",
+      title: t("nav.adminBusiness.title"),
       icon: Briefcase,
       roles: [R.SUPER_ADMIN, R.ADMIN],
       permission: PERMISSIONS.BUSINESS.VIEW,
       items: [
-        { title: "Danh sách", url: ADMIN_ROUTES.BUSINESS_LIST },
-        { title: "Chờ duyệt", url: ADMIN_ROUTES.BUSINESS_PENDING, permission: PERMISSIONS.BUSINESS.APPROVE },
+        { key: "business-list", title: t("nav.adminBusiness.list"), url: ADMIN_ROUTES.BUSINESS_LIST },
+        { key: "business-pending", title: t("nav.adminBusiness.pending"), url: ADMIN_ROUTES.BUSINESS_PENDING, permission: PERMISSIONS.BUSINESS.APPROVE },
       ],
     },
     {
-      title: "Thống kê nâng cao",
+      key: "analytics",
+      title: t("nav.adminBusiness.analytics"),
       icon: TrendingUp,
       url: ADMIN_ROUTES.ANALYTICS,
       roles: [R.SUPER_ADMIN, R.ADMIN],
     },
     {
-      title: "Quản lý nội dung",
+      key: "cms",
+      title: t("nav.adminBusiness.cms"),
       icon: FileText,
       url: ADMIN_ROUTES.CMS,
       roles: [R.SUPER_ADMIN, R.ADMIN],
     },
     {
-      title: "Moderation đánh giá",
+      key: "review-moderation",
+      title: t("nav.adminBusiness.reviewModeration"),
       icon: Star,
       url: ADMIN_ROUTES.REVIEWS_MODERATION,
       roles: [R.SUPER_ADMIN, R.ADMIN],
       permission: PERMISSIONS.REVIEWS.VIEW,
     },
     {
-      title: "Quản lý rút tiền",
+      key: "payouts",
+      title: t("nav.adminBusiness.payouts"),
       icon: Wallet,
       url: ADMIN_ROUTES.PAYOUTS,
       roles: [R.SUPER_ADMIN, R.ADMIN],
@@ -210,45 +239,50 @@ const menuData = {
   ],
   users: [
     {
-      title: "Người dùng",
+      key: "user-list",
+      title: t("nav.users.title"),
       icon: Users,
       url: ADMIN_ROUTES.USERS,
       roles: [R.SUPER_ADMIN, R.ADMIN],
       permission: PERMISSIONS.USERS.VIEW,
     },
     {
-      title: "Phân quyền",
+      key: "permissions",
+      title: t("nav.users.roles"),
       icon: Shield,
       roles: [R.SUPER_ADMIN],
       permission: PERMISSIONS.ROLES.VIEW,
       items: [
-        { title: "Roles", url: ADMIN_ROUTES.ROLES },
-        { title: "Permissions", url: ADMIN_ROUTES.PERMISSIONS, permission: PERMISSIONS.ROLES.MANAGE_PERMISSIONS },
+        { key: "roles", title: t("nav.users.rolesList"), url: ADMIN_ROUTES.ROLES },
+        { key: "perms", title: t("nav.users.permissions"), url: ADMIN_ROUTES.PERMISSIONS, permission: PERMISSIONS.ROLES.MANAGE_PERMISSIONS },
       ],
     },
   ],
   system: [
     {
-      title: "Email & Bảo mật",
+      key: "email-security",
+      title: t("nav.system.title"),
       icon: Mail,
       roles: [R.SUPER_ADMIN, R.ADMIN],
       items: [
-        { title: "Xác thực Email", url: ADMIN_ROUTES.EMAIL_VERIFICATIONS },
-        { title: "Reset Mật khẩu", url: ADMIN_ROUTES.PASSWORD_RESETS },
+        { key: "email-verification", title: t("nav.system.emailVerification"), url: ADMIN_ROUTES.EMAIL_VERIFICATIONS },
+        { key: "password-reset", title: t("nav.system.passwordReset"), url: ADMIN_ROUTES.PASSWORD_RESETS },
       ],
     },
     {
-      title: "Hoạt động",
+      key: "activity",
+      title: t("nav.system.activity"),
       icon: FileText,
       roles: [R.SUPER_ADMIN, R.ADMIN],
       permission: PERMISSIONS.AUDIT_LOG.VIEW,
       items: [
-        { title: "Lịch sử hệ thống", url: ADMIN_ROUTES.AUDIT_LOGS, permission: PERMISSIONS.AUDIT_LOG.VIEW },
-        { title: "Lịch sử đăng nhập", url: ADMIN_ROUTES.LOGIN_HISTORY, permission: PERMISSIONS.LOGIN_HISTORY.VIEW },
+        { key: "audit-logs", title: t("nav.system.auditLogs"), url: ADMIN_ROUTES.AUDIT_LOGS, permission: PERMISSIONS.AUDIT_LOG.VIEW },
+        { key: "login-history", title: t("nav.system.loginHistory"), url: ADMIN_ROUTES.LOGIN_HISTORY, permission: PERMISSIONS.LOGIN_HISTORY.VIEW },
       ],
     },
   ],
 };
+}
 
 export const filterMenuByRole = (menu, { roleId, hasPermission }) => {
   const result = {};
@@ -276,4 +310,5 @@ export const filterMenuByRole = (menu, { roleId, hasPermission }) => {
   return result;
 };
 
+const menuData = getMenuData();
 export default menuData;

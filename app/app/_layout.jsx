@@ -1,5 +1,6 @@
 import "../global.css";
-import { useEffect } from "react";
+import i18n, { resolveLanguage } from "../src/i18n";
+import { useEffect, useState } from "react";
 import { View, Alert } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -29,6 +30,7 @@ import {
   Afacad_700Bold,
 } from "@expo-google-fonts/afacad";
 import { AppProvider } from "../src/providers/AppProvider";
+import { I18nInitializer } from "../src/providers/I18nInitializer";
 import { OfflineToast } from "../src/components/composed/OfflineToast";
 import { AIFloatingButton } from "../src/components/composed/AIFloatingButton";
 import { ToastContainer } from "../src/components/composed/ToastContainer";
@@ -48,7 +50,12 @@ function OfflineSyncManager() {
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
-  const isHydrated = useAuthStore((s) => s.isHydrated);
+  
+  // Trạng thái Hydration từ cả 2 store
+  const isAuthHydrated = useAuthStore((s) => s.isHydrated);
+  const isUiHydrated = useUIStore((s) => s.isHydrated);
+  const userLanguage = useUIStore((s) => s.language);
+  
   const accessToken = useAuthStore((s) => s.accessToken);
   const isGuest = useAuthStore((s) => s.isGuest);
   const hasOnboarded = useUIStore((s) => s.hasOnboarded);
@@ -64,11 +71,36 @@ export default function RootLayout() {
     Afacad_700Bold,
   });
 
+  const [timeoutReady, setTimeoutReady] = useState(false);
+
+  // Phanh cứu hộ chống đứng màn hình Splash Screen (2.5 giây)
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    const timer = setTimeout(() => {
+      setTimeoutReady(true);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Ép i18n nhận diện ngôn ngữ ngay khi uiStore vừa đọc xong từ AsyncStorage
+  useEffect(() => {
+    if (isUiHydrated && userLanguage) {
+      const resolved = resolveLanguage(userLanguage);
+      if (i18n.language !== resolved) {
+        i18n.changeLanguage(resolved);
+      }
+    }
+  }, [isUiHydrated, userLanguage]);
+
+  // Luồng tính toán trạng thái Sẵn Sàng cuối cùng
+  const isStoreReady = isAuthHydrated && isUiHydrated;
+  const isFontReady = fontsLoaded || fontError;
+  const isReady = (isStoreReady && isFontReady) || timeoutReady;
+
+  useEffect(() => {
+    if (isReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [isReady]);
 
   useEffect(() => {
     const originalAlert = Alert.alert;
@@ -77,6 +109,7 @@ export default function RootLayout() {
       let type = "info";
       const combinedText = `${title || ""} ${message || ""}`.toLowerCase();
 
+      // Detect error type (Vietnamese + English)
       if (
         combinedText.includes("lỗi") ||
         combinedText.includes("thất bại") ||
@@ -85,19 +118,27 @@ export default function RootLayout() {
         combinedText.includes("failed") ||
         combinedText.includes("thiếu") ||
         combinedText.includes("bắt buộc") ||
-        combinedText.includes("chưa nhập")
+        combinedText.includes("chưa nhập") ||
+        combinedText.includes("could not") ||
+        combinedText.includes("cannot") ||
+        combinedText.includes("required") ||
+        combinedText.includes("missing")
       ) {
         type = "error";
       } else if (
+        // Detect success type
         combinedText.includes("thành công") ||
         combinedText.includes("đã lưu") ||
         combinedText.includes("đã xóa") ||
         combinedText.includes("success") ||
         combinedText.includes("saved") ||
-        combinedText.includes("hoàn tất")
+        combinedText.includes("hoàn tất") ||
+        combinedText.includes("deleted") ||
+        combinedText.includes("completed")
       ) {
         type = "success";
       } else if (
+        // Detect warning type
         combinedText.includes("cảnh báo") ||
         combinedText.includes("warning") ||
         combinedText.includes("chú ý") ||
@@ -105,11 +146,14 @@ export default function RootLayout() {
       ) {
         type = "warning";
       } else if (
+        // Detect confirm type
         combinedText.includes("chắc chắn") ||
         combinedText.includes("xác nhận") ||
         combinedText.includes("bạn có muốn") ||
         combinedText.includes("bạn có chắc") ||
         combinedText.includes("chắc chắn muốn") ||
+        combinedText.includes("are you sure") ||
+        combinedText.includes("confirm") ||
         (buttons && buttons.length > 1)
       ) {
         type = "confirm";
@@ -133,7 +177,7 @@ export default function RootLayout() {
       } else {
         mappedButtons = [
           {
-            text: "Đóng",
+            text: i18n.t("common.close"),
             onPress: () => useAlertStore.getState().hideAlert(),
             style: "default",
           },
@@ -155,7 +199,7 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (!isHydrated) return;
+    if (!isStoreReady && !timeoutReady) return;
 
     const rootSegment = segments[0];
     const childSegment = segments[1];
@@ -187,9 +231,7 @@ export default function RootLayout() {
     if (isLoggedIn && !inOnboarding && !hasOnboarded && accessToken) {
       router.replace("/onboarding");
     }
-  }, [isHydrated, accessToken, isGuest, segments, hasOnboarded, router]);
-
-  if (!fontsLoaded && !fontError) return null;
+  }, [isStoreReady, timeoutReady, accessToken, isGuest, segments, hasOnboarded, router]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -197,47 +239,53 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <KeyboardProvider>
           <AppProvider>
-            <OfflineSyncManager />
-            <View style={{ flex: 1 }}>
-              <BottomSheetModalProvider>
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="(auth)" options={{ animation: "fade" }} />
-                  <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
-                  <Stack.Screen
-                    name="place/[id]"
-                    options={{ animation: "slide_from_right" }}
-                  />
-                  <Stack.Screen
-                    name="event/[id]"
-                    options={{ animation: "slide_from_right" }}
-                  />
-                  <Stack.Screen
-                    name="profile/settings"
-                    options={{ animation: "slide_from_right" }}
-                  />
-                  <Stack.Screen
-                    name="profile/bookings"
-                    options={{ animation: "slide_from_right" }}
-                  />
-                  <Stack.Screen
-                    name="profile/notifications"
-                    options={{ animation: "slide_from_right" }}
-                  />
-                  <Stack.Screen
-                    name="profile/booking/[id]"
-                    options={{ animation: "slide_from_right" }}
-                  />
-                  <Stack.Screen
-                    name="onboarding"
-                    options={{ animation: "fade" }}
-                  />
-                </Stack>
-                {segments[0] !== "(auth)" && <AIFloatingButton />}
-                <OfflineToast />
-                <GlobalAlert />
-                <ToastContainer />
-              </BottomSheetModalProvider>
-            </View>
+            <I18nInitializer>
+              {isReady ? (
+                <>
+                  <OfflineSyncManager />
+                  <View style={{ flex: 1 }}>
+                    <BottomSheetModalProvider>
+                      <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen name="(auth)" options={{ animation: "fade" }} />
+                        <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
+                        <Stack.Screen
+                          name="place/[id]"
+                          options={{ animation: "slide_from_right" }}
+                        />
+                        <Stack.Screen
+                          name="event/[id]"
+                          options={{ animation: "slide_from_right" }}
+                        />
+                        <Stack.Screen
+                          name="profile/settings"
+                          options={{ animation: "slide_from_right" }}
+                        />
+                        <Stack.Screen
+                          name="profile/bookings"
+                          options={{ animation: "slide_from_right" }}
+                        />
+                        <Stack.Screen
+                          name="profile/notifications"
+                          options={{ animation: "slide_from_right" }}
+                        />
+                        <Stack.Screen
+                          name="profile/booking/[id]"
+                          options={{ animation: "slide_from_right" }}
+                        />
+                        <Stack.Screen
+                          name="onboarding"
+                          options={{ animation: "fade" }}
+                        />
+                      </Stack>
+                      {segments[0] !== "(auth)" && <AIFloatingButton />}
+                      <OfflineToast />
+                      <GlobalAlert />
+                      <ToastContainer />
+                    </BottomSheetModalProvider>
+                  </View>
+                </>
+              ) : null}
+            </I18nInitializer>
           </AppProvider>
         </KeyboardProvider>
       </SafeAreaProvider>

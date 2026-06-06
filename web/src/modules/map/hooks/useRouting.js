@@ -4,6 +4,7 @@
  * For production, swap OSRM_BASE to a self-hosted or VietMap routing instance.
  */
 import { useState, useCallback, useRef } from "react";
+import i18n from "@/i18n";
 
 const OSRM_BASE = "https://router.project-osrm.org/route/v1/driving";
 
@@ -13,11 +14,13 @@ function formatDistance(meters) {
 }
 
 function formatDuration(seconds) {
+  const t = i18n.t.bind(i18n);
   const m = Math.round(seconds / 60);
-  if (m < 60) return `${m} phút`;
+  if (m < 60) return `${m} ${t("map.routing.minutes")}`;
   const h = Math.floor(m / 60);
   const rem = m % 60;
-  return rem ? `${h} giờ ${rem} phút` : `${h} giờ`;
+  const hr = `${h} ${t("map.routing.hours")}`;
+  return rem ? `${hr} ${rem} ${t("map.routing.minutes")}` : hr;
 }
 
 export function useRouting() {
@@ -48,7 +51,7 @@ export function useRouting() {
       const data = await res.json();
 
       if (data.code !== "Ok" || !data.routes?.length) {
-        throw new Error("Không tìm được đường đi giữa hai điểm này");
+        throw new Error(i18n.t("map.routing.routeNotFound"));
       }
 
       const r = data.routes[0];
@@ -64,7 +67,7 @@ export function useRouting() {
         durationLabel: formatDuration(r.duration),
       });
     } catch (e) {
-      setError(e.message ?? "Lỗi tìm đường");
+      setError(e.message ?? i18n.t("map.routing.routingError"));
     } finally {
       setLoading(false);
     }

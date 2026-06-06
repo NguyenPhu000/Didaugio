@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Compass, Bookmark, CloudOff, RefreshCw, FolderX } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 
@@ -39,6 +40,7 @@ export function LoadingState() {
 }
 
 export function EmptyState({ onExplore, activeFilter }) {
+  const { t } = useTranslation();
   const isFiltered = Boolean(activeFilter);
   return (
     <View style={styles.stateCard}>
@@ -50,12 +52,12 @@ export function EmptyState({ onExplore, activeFilter }) {
         )}
       </View>
       <Text style={styles.stateTitle}>
-        {isFiltered ? "Không có địa điểm" : "Chưa có địa điểm nào"}
+        {isFiltered ? t("saved.empty.noResults") : t("saved.empty.noSaved")}
       </Text>
       <Text style={styles.stateDesc}>
         {isFiltered
-          ? "Thử đổi bộ lọc hoặc khu vực để xem các địa điểm khác bạn đã lưu."
-          : "Hãy thử khám phá và lưu các địa điểm yêu thích để dễ truy cập."}
+          ? t("saved.empty.noResultsDesc")
+          : t("saved.empty.noSavedDesc")}
       </Text>
       {!isFiltered && onExplore ? (
         <Pressable
@@ -63,7 +65,7 @@ export function EmptyState({ onExplore, activeFilter }) {
           style={({ pressed }) => [styles.stateCta, pressed && styles.stateCtaPressed]}
         >
           <Compass size={17} color="#FFFFFF" strokeWidth={1.75} />
-          <Text style={styles.stateCtaText}>Khám phá địa điểm</Text>
+          <Text style={styles.stateCtaText}>{t("saved.empty.explore")}</Text>
         </Pressable>
       ) : null}
     </View>
@@ -71,14 +73,15 @@ export function EmptyState({ onExplore, activeFilter }) {
 }
 
 export function ErrorState({ onRetry }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.stateCard}>
       <View style={[styles.stateIconWrap, styles.stateIconError]}>
         <CloudOff size={32} color="#FF3B30" strokeWidth={1.5} />
       </View>
-      <Text style={styles.stateTitle}>Không tải được dữ liệu</Text>
+      <Text style={styles.stateTitle}>{t("common.error")}</Text>
       <Text style={styles.stateDesc}>
-        Vui lòng kiểm tra kết nối mạng và thử lại để đồng bộ địa điểm đã lưu.
+        {t("common.networkError")}
       </Text>
       {onRetry ? (
         <Pressable
@@ -86,7 +89,7 @@ export function ErrorState({ onRetry }) {
           style={({ pressed }) => [styles.stateRetry, pressed && styles.stateRetryPressed]}
         >
           <RefreshCw size={15} color="#FF3B30" strokeWidth={1.75} />
-          <Text style={styles.stateRetryText}>Thử lại</Text>
+          <Text style={styles.stateRetryText}>{t("common.retry")}</Text>
         </Pressable>
       ) : null}
     </View>

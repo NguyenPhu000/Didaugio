@@ -1,12 +1,14 @@
+import i18n from "@/i18n";
+
 export const ALL_AREAS_KEY = "__all_areas__";
 export const ALL_COLLECTIONS_KEY = "__all_collections__";
 export const NOTES_COLLECTION_KEY = "__notes__";
 export const ALL_CATEGORIES_KEY = "__all_categories__";
 
 export const FILTERS = [
-  { key: "all", label: "Tất cả" },
-  { key: "notes", label: "Có ghi chú" },
-  { key: "collections", label: "Bộ sưu tập" },
+  { key: "all", label: i18n.t("savedHelpers.all") },
+  { key: "notes", label: i18n.t("savedHelpers.hasNotes") },
+  { key: "collections", label: i18n.t("savedHelpers.collections") },
 ];
 
 export function getPlaceArea(place) {
@@ -18,7 +20,7 @@ export function getPlaceArea(place) {
   if (districtId != null) {
     return {
       key: `id:${districtId}`,
-      name: districtName || `Khu vực ${districtId}`,
+      name: districtName || i18n.t("savedHelpers.area", { id: districtId }),
     };
   }
 
@@ -39,7 +41,7 @@ export function getPlaceCollection(place) {
   if (categoryId != null) {
     return {
       key: `category:${categoryId}`,
-      name: categoryName || `Danh mục ${categoryId}`,
+      name: categoryName || i18n.t("savedHelpers.category", { id: categoryId }),
     };
   }
 
@@ -71,7 +73,7 @@ export function getLocationText(place) {
   if (place?.address) return place.address;
   const parts = [place?.ward?.name, place?.district?.name].filter(Boolean);
   if (parts.length > 0) return parts.join(", ");
-  return "Cần Thơ";
+  return i18n.t("exploreHelpers.canTho");
 }
 
 export function getReviewCount(place) {
@@ -80,11 +82,11 @@ export function getReviewCount(place) {
 }
 
 export function formatReviewLabel(reviewCount) {
-  if (!reviewCount) return "Mới";
+  if (!reviewCount) return i18n.t("savedHelpers.new");
   if (reviewCount >= 1000) {
-    return `${(reviewCount / 1000).toFixed(1).replace(/\.0$/, "")}k đánh giá`;
+    return `${(reviewCount / 1000).toFixed(1).replace(/\.0$/, "")}k ${i18n.t("savedHelpers.reviews")}`;
   }
-  return `${reviewCount} đánh giá`;
+  return `${reviewCount} ${i18n.t("savedHelpers.reviews")}`;
 }
 
 export function formatPriceLabel(place) {
@@ -133,7 +135,7 @@ export function buildCollectionOptions({ savedData, savedCollections }) {
   if (noteCount > 0) {
     collections.unshift({
       key: NOTES_COLLECTION_KEY,
-      name: `Có ghi chú (${noteCount})`,
+      name: `${i18n.t("savedHelpers.hasNotesLabel")} (${noteCount})`,
       icon: "edit-note",
     });
   }
@@ -213,28 +215,28 @@ export function buildSavedSummary({ savedData, collectionOptions, areaOptions })
       key: "saved",
       icon: "bookmark",
       value: String(savedData.length),
-      label: "Đã lưu",
+      label: i18n.t("savedHelpers.saved"),
       tone: "blue",
     },
     {
       key: "collections",
       icon: "collections-bookmark",
       value: String(collectionCount),
-      label: "Bộ sưu tập",
+      label: i18n.t("savedHelpers.collectionsLabel"),
       tone: "amber",
     },
     {
       key: "areas",
       icon: "map",
       value: String(areaOptions.length),
-      label: "Khu vực",
+      label: i18n.t("savedHelpers.areas"),
       tone: "teal",
     },
     {
       key: "notes",
       icon: "edit-note",
       value: String(noteCount),
-      label: "Có ghi chú",
+      label: i18n.t("savedHelpers.hasNotesLabel"),
       tone: "green",
     },
   ];

@@ -88,17 +88,14 @@ export const TripSelectorSheet = memo(function TripSelectorSheet({
     try {
       await addDestinationApi(selectedTrip.id, { placeId });
       Alert.alert(
-        t("Đã thêm vào chuyến đi", "Added to trip"),
-        t(
-          `Đã thêm "${placeName}" vào "${selectedTrip.name}"`,
-          `Added "${placeName}" to "${selectedTrip.name}"`,
-        ),
+        t("place.detail.addedToTrip"),
+        t("place.detail.addedToTripDesc", { placeName, tripName: selectedTrip.name }),
       );
       onClose?.();
     } catch (err) {
       Alert.alert(
-        t("Có lỗi xảy ra", "Something went wrong"),
-        t("Không thể thêm vào chuyến đi. Vui lòng thử lại.", "Could not add to trip. Please try again."),
+        t("place.detail.somethingWentWrong"),
+        t("place.detail.addToTripError"),
       );
     } finally {
       setIsAdding(false);
@@ -107,10 +104,7 @@ export const TripSelectorSheet = memo(function TripSelectorSheet({
 
   const emptyMessage = useMemo(
     () =>
-      t(
-        "Bạn chưa có chuyến đi nào. Tạo chuyến đi trước khi thêm địa điểm.",
-        "You have no trips yet. Create a trip before adding places.",
-      ),
+      t("place.detail.noTripsYet"),
     [t],
   );
 
@@ -121,13 +115,10 @@ export const TripSelectorSheet = memo(function TripSelectorSheet({
           <MaterialIconsRounded name="arrow-back" size={20} color={PALETTE.text} />
         </Pressable>
         <Text style={styles.sheetTitle}>
-          {t("Thêm vào chuyến đi", "Add to trip")}
+          {t("place.detail.addToTripTitle")}
         </Text>
         <Text style={styles.confirmText}>
-          {t(
-            `Thêm "${placeName}" vào "${selectedTrip.name}"?`,
-            `Add "${placeName}" to "${selectedTrip.name}"?`,
-          )}
+          {t("place.detail.addPlaceConfirm", { placeName, tripName: selectedTrip.name })}
         </Text>
         <Pressable
           onPress={handleAdd}
@@ -138,7 +129,7 @@ export const TripSelectorSheet = memo(function TripSelectorSheet({
             <ActivityIndicator size="small" color="#FFF" />
           ) : (
             <Text style={styles.addBtnText}>
-              {t("Xác nhận", "Confirm")}
+              {t("common.confirm")}
             </Text>
           )}
         </Pressable>
@@ -149,10 +140,10 @@ export const TripSelectorSheet = memo(function TripSelectorSheet({
   return (
     <BottomSheetView style={styles.sheet}>
       <Text style={styles.sheetTitle}>
-        {t("Chọn chuyến đi", "Select trip")}
+        {t("place.detail.selectTrip")}
       </Text>
       <Text style={styles.sheetSubtitle}>
-        {t("Thêm địa điểm này vào chuyến đi của bạn", "Add this place to your trip")}
+        {t("place.detail.addPlaceToTrip")}
       </Text>
 
       {isLoading ? (

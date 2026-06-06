@@ -7,6 +7,15 @@ const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PHONE_REGEX = /^[0-9]{10,11}$/;
 const BASE64_IMAGE_REGEX = /^data:image\/(jpeg|jpg|png|gif|webp);base64,/;
 
+const trimAndEmptyToNull = (val) => {
+  if (val === undefined || val === null) return null;
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    return trimmed === "" ? null : trimmed;
+  }
+  return val;
+};
+
 const PRICE_RANGE_VALUES = [
   "FREE",
   "BUDGET",
@@ -94,31 +103,51 @@ export const createPlaceSchema = z.object({
     .min(5, "Địa chỉ phải có ít nhất 5 ký tự")
     .max(500),
 
-  latitude: z
-    .number({ required_error: "Vĩ độ không được để trống" })
-    .min(8, "Vĩ độ không hợp lệ (Cần Thơ: 9-11)")
-    .max(11, "Vĩ độ không hợp lệ (Cần Thơ: 9-11)"),
+  latitude: z.preprocess(
+    (val) => (val === "" || val === undefined || val === null ? undefined : val),
+    z.coerce
+      .number({
+        required_error: "Vĩ độ không được để trống",
+        invalid_type_error: "Vĩ độ phải là một số thực hợp lệ",
+      })
+      .min(8, "Vĩ độ không hợp lệ (Cần Thơ: 9-11)")
+      .max(11, "Vĩ độ không hợp lệ (Cần Thơ: 9-11)")
+  ),
 
-  longitude: z
-    .number({ required_error: "Kinh độ không được để trống" })
-    .min(104, "Kinh độ không hợp lệ (Cần Thơ: 104-106)")
-    .max(107, "Kinh độ không hợp lệ (Cần Thơ: 104-106)"),
+  longitude: z.preprocess(
+    (val) => (val === "" || val === undefined || val === null ? undefined : val),
+    z.coerce
+      .number({
+        required_error: "Kinh độ không được để trống",
+        invalid_type_error: "Kinh độ phải là một số thực hợp lệ",
+      })
+      .min(104, "Kinh độ không hợp lệ (Cần Thơ: 104-106)")
+      .max(107, "Kinh độ không hợp lệ (Cần Thơ: 104-106)")
+  ),
 
   phone: z
-    .string()
-    .regex(PHONE_REGEX, "Số điện thoại phải có 10-11 chữ số")
-    .optional()
+    .preprocess(trimAndEmptyToNull, z.string().regex(PHONE_REGEX, "Số điện thoại phải có 10-11 chữ số").optional().nullable())
     .nullable(),
 
-  email: z.string().email("Email không hợp lệ").optional().nullable(),
-  website: z.string().url("Website không hợp lệ").optional().nullable(),
-  facebook: z.string().max(200).optional().nullable(),
+  email: z
+    .preprocess(trimAndEmptyToNull, z.string().email("Email không hợp lệ").optional().nullable())
+    .nullable(),
+
+  website: z
+    .preprocess(trimAndEmptyToNull, z.string().url("Website không hợp lệ").optional().nullable())
+    .nullable(),
+
+  facebook: z
+    .preprocess(trimAndEmptyToNull, z.string().max(200).optional().nullable())
+    .nullable(),
 
   priceRange: z
-    .enum(PRICE_RANGE_VALUES, {
-      errorMap: () => ({ message: "Mức giá không hợp lệ" }),
-    })
-    .optional()
+    .preprocess(
+      trimAndEmptyToNull,
+      z.enum(PRICE_RANGE_VALUES, {
+        errorMap: () => ({ message: "Mức giá không hợp lệ" }),
+      }).optional().nullable()
+    )
     .nullable(),
 
   priceFrom: z.number().int().min(0).optional().nullable(),
@@ -147,13 +176,29 @@ export const updatePlaceSchema = z.object({
   districtId: z.number().int().positive().optional(),
   wardId: z.number().int().positive().optional().nullable(),
   address: z.string().min(5).max(500).optional(),
-  latitude: z.number().min(8).max(11).optional(),
-  longitude: z.number().min(104).max(107).optional(),
-  phone: z.string().regex(PHONE_REGEX).optional().nullable(),
-  email: z.string().email().optional().nullable(),
-  website: z.string().url().optional().nullable(),
-  facebook: z.string().max(200).optional().nullable(),
-  priceRange: z.enum(PRICE_RANGE_VALUES).optional().nullable(),
+  latitude: z.preprocess(
+    (val) => (val === "" || val === undefined || val === null ? undefined : val),
+    z.coerce.number({ invalid_type_error: "Vĩ độ phải là một số thực hợp lệ" }).min(8).max(11).optional()
+  ),
+  longitude: z.preprocess(
+    (val) => (val === "" || val === undefined || val === null ? undefined : val),
+    z.coerce.number({ invalid_type_error: "Kinh độ phải là một số thực hợp lệ" }).min(104).max(107).optional()
+  ),
+  phone: z
+    .preprocess(trimAndEmptyToNull, z.string().regex(PHONE_REGEX, "Số điện thoại phải có 10-11 chữ số").optional().nullable())
+    .nullable(),
+  email: z
+    .preprocess(trimAndEmptyToNull, z.string().email("Email không hợp lệ").optional().nullable())
+    .nullable(),
+  website: z
+    .preprocess(trimAndEmptyToNull, z.string().url("Website không hợp lệ").optional().nullable())
+    .nullable(),
+  facebook: z
+    .preprocess(trimAndEmptyToNull, z.string().max(200).optional().nullable())
+    .nullable(),
+  priceRange: z
+    .preprocess(trimAndEmptyToNull, z.enum(PRICE_RANGE_VALUES).optional().nullable())
+    .nullable(),
   priceFrom: z.number().int().min(0).optional().nullable(),
   priceTo: z.number().int().min(0).optional().nullable(),
   images: z

@@ -32,10 +32,13 @@ import {
   TOKENS,
 } from "../../src/constants/design-tokens";
 import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../src/lib/media-url";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 
 const SCREEN_W = Dimensions.get("window").width;
 
 export default function EventDetailScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -100,20 +103,20 @@ export default function EventDetailScreen() {
   // Xử lý Tham gia Sự kiện
   const handleJoinEvent = useCallback(async () => {
     if (!user) {
-      Alert.alert("Yêu cầu đăng nhập", "Bạn cần đăng nhập để tham gia sự kiện và lưu lịch trình.", [
-        { text: "Hủy", style: "cancel" },
-        { text: "Đăng nhập", onPress: () => router.push("/(auth)/login") },
+      Alert.alert(t("event.loginRequired"), t("event.loginRequiredMessage"), [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("common.login"), onPress: () => router.push("/(auth)/login") },
       ]);
       return;
     }
 
     Alert.alert(
-      "Tham gia sự kiện",
-      "Hệ thống sẽ sao chép lịch trình mẫu của sự kiện này thành chuyến đi cá nhân của bạn để bạn dễ dàng theo dõi và định vị. Xác nhận tham gia?",
+      t("event.joinEvent"),
+      t("event.joinEventMessage"),
       [
-        { text: "Hủy", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Xác nhận",
+          text: t("common.confirm"),
           onPress: async () => {
             try {
               const res = await joinEventMutation.mutateAsync(id);
@@ -128,21 +131,21 @@ export default function EventDetailScreen() {
                   console.warn("Không thể lưu mapping event trip:", storageErr?.message);
                 }
               }
-              Alert.alert("Thành công", "Bạn đã tham gia sự kiện. Lịch trình mẫu đã được lưu vào danh sách Chuyến đi của bạn.", [
+              Alert.alert(t("event.success"), t("event.successMessage"), [
                 {
-                  text: "Đi đến Chuyến đi",
+                  text: t("event.goToTrips"),
                   onPress: () => {
                     // Navigate to trips tab
                     router.replace("/(tabs)/trips");
                   }
                 },
                 {
-                  text: "Ở lại",
+                  text: t("event.stay"),
                   onPress: () => refetch()
                 }
               ]);
             } catch (err) {
-              Alert.alert("Lỗi", err?.message || "Không thể tham gia sự kiện.");
+              Alert.alert(t("event.error"), err?.message || t("event.joinErrorMessage"));
             }
           }
         }
@@ -153,13 +156,13 @@ export default function EventDetailScreen() {
   // Xử lý check-in chụp ảnh tại chặng
   const handleCheckInChặng = useCallback(async (dest) => {
     if (!event?.isJoined) {
-      Alert.alert("Chưa tham gia", "Vui lòng bấm nút 'Tham gia sự kiện' ở dưới trước khi đăng khoảnh khắc check-in.");
+      Alert.alert(t("event.notJoined"), t("event.notJoinedMessage"));
       return;
     }
 
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Quyền truy cập", "Bạn cần cấp quyền sử dụng camera để chụp ảnh check-in.");
+      Alert.alert(t("event.cameraPermission"), t("event.cameraPermissionMessage"));
       return;
     }
 
@@ -189,7 +192,7 @@ export default function EventDetailScreen() {
       const base64data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result);
-        reader.onerror = () => reject(new Error("Không thể đọc ảnh"));
+        reader.onerror = () => reject(new Error("Cannot read image"));
         reader.readAsDataURL(blob);
       });
 
@@ -213,12 +216,12 @@ export default function EventDetailScreen() {
         console.warn("Không thể lưu trạng thái check-in cục bộ:", storageErr?.message);
       }
 
-      Alert.alert("Thành công", "Đã check-in và đăng khoảnh khắc thành công!");
+      Alert.alert(t("event.success"), t("event.checkinSuccess"));
       refetchMoments();
       refetch();
     } catch (err) {
       console.error("Check-in error:", err);
-      Alert.alert("Lỗi", err?.message || "Đăng khoảnh khắc thất bại.");
+      Alert.alert(t("event.error"), err?.message || t("event.checkinError"));
     } finally {
       setUploadingChặngId(null);
     }
@@ -236,10 +239,10 @@ export default function EventDetailScreen() {
     return (
       <View className="flex-1 items-center justify-center bg-[#F4F7FB] px-6">
         <Text className="text-[#1D1D1F] text-[18px] font-semibold text-center mb-4">
-          Không tìm thấy sự kiện hoặc sự kiện đã bị xóa.
+          {t("event.notFound")}
         </Text>
         <Pressable onPress={() => router.back()} className="h-10 px-6 rounded-full bg-[#1D1D1F] items-center justify-center">
-          <Text className="text-white font-semibold">Quay lại</Text>
+          <Text className="text-white font-semibold">{t("event.goBack")}</Text>
         </Pressable>
       </View>
     );
@@ -279,7 +282,7 @@ export default function EventDetailScreen() {
               <View className="px-3 py-1.5 rounded-full bg-[#34C759] border border-white/20 flex-row items-center gap-1.5 shadow-sm">
                 <View className="w-2 h-2 rounded-full bg-white animate-pulse" />
                 <Text className="text-white text-[11px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>
-                  {event.totalActiveCompanionCount} ĐANG ONLINE
+                  {event.totalActiveCompanionCount} {t("event.online")}
                 </Text>
               </View>
             ) : null}
@@ -291,11 +294,11 @@ export default function EventDetailScreen() {
           <View className="flex-row items-center gap-2 mb-2">
             <View className="px-2.5 py-0.5 rounded-full bg-[#0071E3]/10">
               <Text className="text-[#0071E3] text-[11px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>
-                SỰ KIỆN CỘNG ĐỒNG
+                {t("event.communityEvent")}
               </Text>
             </View>
             <Text className="text-black/40 text-[12px] font-medium" style={{ fontFamily: TOKENS.font.medium }}>
-              • Cần Thơ
+              {t("event.location")}
             </Text>
           </View>
 
@@ -310,9 +313,9 @@ export default function EventDetailScreen() {
                 <MaterialIconsRounded name="people" size={16} color="#0071E3" />
               </View>
               <View>
-                <Text className="text-black/40 text-[10px] font-bold uppercase" style={{ fontFamily: TOKENS.font.bold }}>Người tham gia</Text>
+                <Text className="text-black/40 text-[10px] font-bold uppercase" style={{ fontFamily: TOKENS.font.bold }}>{t("event.participants")}</Text>
                 <Text className="text-[#1D1D1F] text-[13px] font-bold" style={{ fontFamily: TOKENS.font.semibold }}>
-                  {event._count?.participants || event.participantCount || 0} người
+                  {event._count?.participants || event.participantCount || 0} {t("event.people")}
                 </Text>
               </View>
             </View>
@@ -322,9 +325,9 @@ export default function EventDetailScreen() {
                 <MaterialIconsRounded name="photo-camera" size={16} color="#34C759" />
               </View>
               <View>
-                <Text className="text-black/40 text-[10px] font-bold uppercase" style={{ fontFamily: TOKENS.font.bold }}>Lượt Check-in</Text>
+                <Text className="text-black/40 text-[10px] font-bold uppercase" style={{ fontFamily: TOKENS.font.bold }}>{t("event.checkins")}</Text>
                 <Text className="text-[#1D1D1F] text-[13px] font-bold" style={{ fontFamily: TOKENS.font.semibold }}>
-                  {event.totalCheckIns || 0} lượt
+                  {event.totalCheckIns || 0} {t("event.times")}
                 </Text>
               </View>
             </View>
@@ -336,10 +339,10 @@ export default function EventDetailScreen() {
               <MaterialIconsRounded name="calendar-today" size={18} color="#8E8E93" />
               <View>
                 <Text className="text-[#1D1D1F] text-[13px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
-                  {new Date(event.startDate).toLocaleDateString("vi-VN", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  {new Date(event.startDate).toLocaleDateString(i18n.language === "vi" ? "vi-VN" : "en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </Text>
                 <Text className="text-black/40 text-[11px] font-medium" style={{ fontFamily: TOKENS.font.medium }}>
-                  đến {new Date(event.endDate).toLocaleDateString("vi-VN", { year: 'numeric', month: 'long', day: 'numeric' })}
+                  {t("event.to")} {new Date(event.endDate).toLocaleDateString(i18n.language === "vi" ? "vi-VN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' })}
                 </Text>
               </View>
             </View>
@@ -366,7 +369,7 @@ export default function EventDetailScreen() {
               className={`text-[13px] font-bold ${activeTab === "info" ? "text-[#0071E3]" : "text-black/60"}`}
               style={{ fontFamily: TOKENS.font.semibold }}
             >
-              Lịch trình & Tiến trình
+              {t("event.itinerary")}
             </Text>
           </Pressable>
           <Pressable
@@ -379,7 +382,7 @@ export default function EventDetailScreen() {
               className={`text-[13px] font-bold ${activeTab === "moments" ? "text-[#0071E3]" : "text-black/60"}`}
               style={{ fontFamily: TOKENS.font.semibold }}
             >
-              Moments Check-in ({moments.length})
+              {t("event.momentsCheckin")} ({moments.length})
             </Text>
           </Pressable>
         </View>
@@ -392,10 +395,10 @@ export default function EventDetailScreen() {
               <View className="bg-white p-4 rounded-2xl shadow-sm border border-black/5">
                 <View className="flex-row justify-between items-center mb-2">
                   <Text className="text-[#1D1D1F] text-[15px] font-bold" style={{ fontFamily: TOKENS.font.heading }}>
-                    Tiến trình cá nhân
+                    {t("event.personalProgress")}
                   </Text>
                   <Text className="text-[#0071E3] text-[13px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>
-                    {checkedInCount}/{totalDestinations} chặng
+                    {checkedInCount}/{totalDestinations} {t("event.leg")}
                   </Text>
                 </View>
 
@@ -409,8 +412,8 @@ export default function EventDetailScreen() {
 
                 <Text className="text-black/50 text-[11px] font-medium" style={{ fontFamily: TOKENS.font.body }}>
                   {progressPercent === 1 
-                    ? "🎉 Xuất sắc! Bạn đã check-in toàn bộ chặng đi." 
-                    : "Chụp ảnh check-in tại các chặng đi để hoàn thành chuyến đi nhóm."}
+                    ? t("event.allCheckedIn")
+                    : t("event.checkinHint")}
                 </Text>
               </View>
             ) : null}
@@ -418,11 +421,11 @@ export default function EventDetailScreen() {
             {/* Timeline Destinations */}
             <View className="bg-white p-4 rounded-2xl shadow-sm border border-black/5">
               <Text className="text-[#1D1D1F] text-[16px] font-bold mb-4" style={{ fontFamily: TOKENS.font.heading }}>
-                Lộ trình chi tiết
+                {t("event.routeDetail")}
               </Text>
 
               {destinations.length === 0 ? (
-                <Text className="text-black/40 text-[13px] text-center py-4">Sự kiện chưa có chặng đi nào.</Text>
+                <Text className="text-black/40 text-[13px] text-center py-4">{t("event.noLegs")}</Text>
               ) : (
                 destinations.map((dest, index) => {
                   const place = dest.place;
@@ -463,7 +466,7 @@ export default function EventDetailScreen() {
                             <View className="flex-row items-center gap-1 bg-[#34C759]/10 px-2 py-0.5 rounded-full">
                               <View className="w-1.5 h-1.5 rounded-full bg-[#34C759]" />
                               <Text className="text-[#34C759] text-[9px] font-bold uppercase" style={{ fontFamily: TOKENS.font.bold }}>
-                                {dest.activeCompanionCount} online
+                                {t("event.onlineCount", { count: dest.activeCompanionCount })}
                               </Text>
                             </View>
                           ) : null}
@@ -471,7 +474,7 @@ export default function EventDetailScreen() {
 
                         {dest.startTime ? (
                           <Text className="text-black/40 text-[11px] font-bold mt-1 uppercase" style={{ fontFamily: TOKENS.font.bold }}>
-                            Dự kiến: {dest.startTime} {dest.endTime ? ` - ${dest.endTime}` : ""}
+                            {t("event.estimated")}: {dest.startTime} {dest.endTime ? ` - ${dest.endTime}` : ""}
                           </Text>
                         ) : null}
 
@@ -490,7 +493,7 @@ export default function EventDetailScreen() {
                           >
                             <MaterialIconsRounded name="explore" size={12} color="#1D1D1F" />
                             <Text className="text-[#1D1D1F] text-[11px] font-bold" style={{ fontFamily: TOKENS.font.semibold }}>
-                              Chi tiết điểm
+                              {t("event.pointDetail")}
                             </Text>
                           </Pressable>
 
@@ -516,7 +519,7 @@ export default function EventDetailScreen() {
                                     className={`text-[11px] font-bold ${isCheckedIn ? "text-[#34C759]" : "text-white"}`} 
                                     style={{ fontFamily: TOKENS.font.semibold }}
                                   >
-                                    {isCheckedIn ? "Đã check-in" : "Chụp ảnh check-in"}
+                                    {isCheckedIn ? t("event.checkedIn") : t("event.takePhoto")}
                                   </Text>
                                 </>
                               )}
@@ -536,15 +539,15 @@ export default function EventDetailScreen() {
             <View className="bg-white p-4 rounded-2xl shadow-sm border border-black/5">
               <View className="flex-row items-center gap-1.5 mb-3">
                 <Text className="text-[#1D1D1F] text-[16px] font-bold" style={{ fontFamily: TOKENS.font.heading }}>
-                  Bức tường khoảnh khắc
+                  {t("event.momentsWall")}
                 </Text>
                 <View className="px-2 py-0.5 rounded-full bg-black/5">
-                  <Text className="text-black/50 text-[10px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>ẨN DANH 1:1</Text>
+                  <Text className="text-black/50 text-[10px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>{t("event.anonymous1v1")}</Text>
                 </View>
               </View>
 
               <Text className="text-black/45 text-[12px] leading-[18px] mb-4" style={{ fontFamily: TOKENS.font.body }}>
-                Nơi lưu trữ các khoảnh khắc check-in GPS đẹp của các bạn đồng hành. Mỗi người chỉ được đăng duy nhất 1 ảnh tại mỗi chặng.
+                {t("event.momentsDescription")}
               </Text>
 
               {moments.length === 0 ? (
@@ -553,10 +556,10 @@ export default function EventDetailScreen() {
                     <MaterialIconsRounded name="photo-library" size={24} color="#8E8E93" />
                   </View>
                   <Text className="text-[#1D1D1F] text-[14px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
-                    Chưa có khoảnh khắc nào
+                    {t("event.noMoments")}
                   </Text>
                   <Text className="text-black/40 text-[11px] text-center px-4" style={{ fontFamily: TOKENS.font.body }}>
-                    Hãy là người đầu tiên đăng khoảnh khắc check-in tại các chặng đi!
+                    {t("event.noMomentsMessage")}
                   </Text>
                 </View>
               ) : (
@@ -598,7 +601,7 @@ export default function EventDetailScreen() {
               <>
                 <MaterialIconsRounded name="luggage" size={18} color="#FFFFFF" />
                 <Text className="text-white text-[15px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>
-                  THAM GIA HÀNH TRÌNH
+                  {t("event.joinJourney")}
                 </Text>
               </>
             )}
@@ -612,7 +615,7 @@ export default function EventDetailScreen() {
           <View className="flex-1 h-12 rounded-full bg-[#34C759]/10 border border-[#34C759]/20 items-center justify-center flex-row gap-2">
             <MaterialIconsRounded name="check-circle" size={18} color="#34C759" />
             <Text className="text-[#34C759] text-[14px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>
-              BẠN ĐANG THAM GIA HÀNH TRÌNH
+              {t("event.alreadyJoining")}
             </Text>
           </View>
         </View>
@@ -636,7 +639,7 @@ export default function EventDetailScreen() {
                   <MaterialIconsRounded name="person" size={14} color="#8E8E93" />
                 </View>
                 <Text className="text-[#1D1D1F] text-[13px] font-bold" style={{ fontFamily: TOKENS.font.semibold }}>
-                  Bạn đồng hành ẩn danh
+                  {t("event.anonymousCompanion")}
                 </Text>
               </View>
               <Pressable 
@@ -659,10 +662,10 @@ export default function EventDetailScreen() {
 
             <View className="p-4 bg-black/[0.02] gap-1">
               <Text className="text-black/40 text-[10px] font-bold uppercase" style={{ fontFamily: TOKENS.font.bold }}>
-                Thời gian check-in
+                {t("event.checkinTime")}
               </Text>
               <Text className="text-[#1D1D1F] text-[13px] font-semibold" style={{ fontFamily: TOKENS.font.medium }}>
-                {selectedMoment?.createdAt ? new Date(selectedMoment.createdAt).toLocaleString("vi-VN") : ""}
+                {selectedMoment?.createdAt ? new Date(selectedMoment.createdAt).toLocaleString(i18n.language === "vi" ? "vi-VN" : "en-US") : ""}
               </Text>
             </View>
           </View>

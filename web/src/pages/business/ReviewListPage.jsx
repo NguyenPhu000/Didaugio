@@ -5,6 +5,7 @@ import {
   useMemo,
   useTransition,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
@@ -51,14 +52,6 @@ import { resolveMediaUrl } from "@/utils/mediaUrl";
 
 const REVIEW_API = "/business/reviews";
 const REVIEW_MEDIA_PREVIEW_LIMIT = 5;
-const QUICK_REPLY_TEMPLATES = [
-  "Cảm ơn bạn đã chia sẻ trải nghiệm. Chúng tôi rất vui khi được phục vụ bạn và mong sớm gặp lại bạn.",
-  "Cảm ơn góp ý của bạn. Chúng tôi đã ghi nhận phản hồi này để cải thiện chất lượng dịch vụ.",
-  "Rất tiếc vì trải nghiệm của bạn chưa như kỳ vọng. Chúng tôi sẽ kiểm tra lại ngay và phản hồi hướng xử lý sớm nhất.",
-];
-
-const NEGATIVE_REPLY_TEMPLATE =
-  "Rất tiếc vì trải nghiệm của bạn chưa tốt. Chúng tôi xin ghi nhận và sẽ kiểm tra lại để cải thiện ngay.";
 
 // ─── Star Rating ──────────────────────────────────────────────────────────────
 
@@ -103,6 +96,7 @@ const ReviewCard = ({
   onDeleteReply,
   onModerateReply,
 }) => {
+  const { t } = useTranslation();
   const formatDate = (date) =>
     date ? new Date(date).toLocaleDateString("vi-VN") : "";
   const hasReplied = review.replies?.length > 0;
@@ -132,7 +126,7 @@ const ReviewCard = ({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-sm text-foreground">
-              {review.user?.profile?.fullName || "Ẩn danh"}
+              {review.user?.profile?.fullName || t("admin.reviewModeration.anonymous")}
             </span>
             <StarRating rating={review.rating} />
             {!hasReplied && (
@@ -140,7 +134,7 @@ const ReviewCard = ({
                 variant="outline"
                 className="text-[10px] text-amber-600 border-amber-200 bg-amber-50"
               >
-                Chưa phản hồi
+                {t("business.reviews.title")}
               </Badge>
             )}
             {review.isVerifiedPurchase && (
@@ -148,7 +142,7 @@ const ReviewCard = ({
                 variant="outline"
                 className="text-[10px] border-emerald-200 bg-emerald-50 text-emerald-700"
               >
-                Đã xác thực
+                {t("admin.reviewModeration.verified")}
               </Badge>
             )}
           </div>
@@ -176,11 +170,11 @@ const ReviewCard = ({
               target="_blank"
               rel="noreferrer"
               className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-muted"
-              title={media.caption || "Ảnh đánh giá"}
+              title={media.caption || t("business.reviews.title")}
             >
               <img
                 src={media.src}
-                alt={media.caption || `Ảnh đánh giá ${index + 1}`}
+                alt={media.caption || `${t("business.reviews.title")} ${index + 1}`}
                 className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                 loading="lazy"
               />
@@ -207,7 +201,7 @@ const ReviewCard = ({
                       variant="outline"
                       className="text-[10px] border-amber-300 text-amber-700 bg-amber-50"
                     >
-                      Đã ẩn
+                      {t("admin.reviewModeration.hidden")}
                     </Badge>
                   )}
                 </div>
@@ -311,7 +305,7 @@ const ReviewCard = ({
           <div className="flex gap-2 items-start">
             <Textarea
               autoFocus
-              placeholder="Nhập phản hồi..."
+              placeholder={t("business.reviews.replySuccess")}
               value={replyContent}
               onChange={(e) => onContentChange(e.target.value)}
               rows={2}
@@ -347,7 +341,7 @@ const ReviewCard = ({
               onClick={() => onStartReply(review.id)}
             >
               <MessageSquare className="h-3.5 w-3.5" />
-              Phản hồi
+              {t("admin.reviewModeration.reply")}
             </Button>
             {review.rating <= 2 && (
               <Button
@@ -356,11 +350,11 @@ const ReviewCard = ({
                 className="gap-1.5 h-8 text-xs border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
                 onClick={() => {
                   onStartReply(review.id);
-                  onContentChange(NEGATIVE_REPLY_TEMPLATE);
+                  onContentChange(t("business.reviews.quickReplies.apologize"));
                 }}
               >
                 <AlertTriangle className="h-3.5 w-3.5" />
-                Xử lý nhanh
+                {t("business.schedule.processing")}
               </Button>
             )}
           </div>
@@ -395,6 +389,7 @@ const RatingBar = ({ star, count, total }) => {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const ReviewListPage = () => {
+  const { t } = useTranslation();
   const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -412,6 +407,12 @@ const ReviewListPage = () => {
   const [actionLoadingByReply, setActionLoadingByReply] = useState({});
   const [isPendingTransition, startTransition] = useTransition();
 
+  const QUICK_REPLY_TEMPLATES = [
+    t("business.reviews.quickReplies.thankPositive"),
+    t("business.reviews.quickReplies.thankNeutral"),
+    t("business.reviews.quickReplies.apologize"),
+  ];
+
   const loadReviews = useCallback(async () => {
     setLoading(true);
     try {
@@ -427,11 +428,11 @@ const ReviewListPage = () => {
       });
       setReviews(response.data || []);
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể tải danh sách đánh giá");
+      toastApiErrorIfNeeded(error, t("business.reviews.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [search, ratingFilter, selectedPlaceId, mediaFilter]);
+  }, [search, ratingFilter, selectedPlaceId, mediaFilter, t]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -481,7 +482,7 @@ const ReviewListPage = () => {
 
   const handleReply = async () => {
     if (!replyContent.trim()) {
-      toast.error("Nội dung phản hồi không được trống");
+      toast.error(t("business.reviews.replyFailed"));
       return;
     }
     setSending(true);
@@ -489,12 +490,12 @@ const ReviewListPage = () => {
       await api.post(`${REVIEW_API}/${replyingTo}/reply`, {
         content: replyContent,
       });
-      toast.success("Phản hồi thành công");
+      toast.success(t("business.reviews.replySuccess"));
       setReplyingTo(null);
       setReplyContent("");
       await loadReviews();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể phản hồi");
+      toastApiErrorIfNeeded(error, t("business.reviews.replyFailed"));
     } finally {
       setSending(false);
     }
@@ -512,7 +513,7 @@ const ReviewListPage = () => {
 
   const handleSaveEditReply = async (reviewId, replyId) => {
     if (!editContent.trim()) {
-      toast.error("Nội dung phản hồi không được trống");
+      toast.error(t("business.reviews.replyFailed"));
       return;
     }
 
@@ -521,11 +522,11 @@ const ReviewListPage = () => {
       await api.put(`${REVIEW_API}/${reviewId}/replies/${replyId}`, {
         content: editContent,
       });
-      toast.success("Cập nhật phản hồi thành công");
+      toast.success(t("business.reviews.replySuccess"));
       handleCancelEditReply();
       await loadReviews();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể cập nhật phản hồi");
+      toastApiErrorIfNeeded(error, t("business.reviews.replyFailed"));
     } finally {
       setActionLoadingByReply((prev) => ({ ...prev, [replyId]: false }));
     }
@@ -535,13 +536,13 @@ const ReviewListPage = () => {
     setActionLoadingByReply((prev) => ({ ...prev, [replyId]: true }));
     try {
       await api.delete(`${REVIEW_API}/${reviewId}/replies/${replyId}`);
-      toast.success("Xóa phản hồi thành công");
+      toast.success(t("common.deletedSuccessfully"));
       if (editingReplyId === replyId) {
         handleCancelEditReply();
       }
       await loadReviews();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể xóa phản hồi");
+      toastApiErrorIfNeeded(error, t("business.reviews.replyFailed"));
     } finally {
       setActionLoadingByReply((prev) => ({ ...prev, [replyId]: false }));
     }
@@ -557,48 +558,48 @@ const ReviewListPage = () => {
         },
       );
       toast.success(
-        status === "hidden" ? "Đã ẩn phản hồi" : "Đã hiển thị phản hồi",
+        status === "hidden" ? t("admin.reviewModeration.hidden") : t("admin.reviewModeration.show"),
       );
       await loadReviews();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể moderation phản hồi");
+      toastApiErrorIfNeeded(error, t("business.reviews.replyFailed"));
     } finally {
       setActionLoadingByReply((prev) => ({ ...prev, [replyId]: false }));
     }
   };
 
   const STATUS_LABELS = {
-    visible: "Đang hiển thị",
-    hidden: "Đã ẩn",
-    pending: "Chờ duyệt",
-    reported: "Bị report",
+    visible: t("admin.reviewModeration.show"),
+    hidden: t("admin.reviewModeration.hidden"),
+    pending: t("admin.reviewModeration.pending"),
+    reported: t("admin.reviewModeration.reported"),
   };
 
   const handleExportCsv = () => {
     if (!reviews || reviews.length === 0) {
-      toast.error("Không có dữ liệu để xuất");
+      toast.error(t("admin.reviewModeration.noReviews"));
       return;
     }
 
     exportToCsv({
       columns: [
         { key: "id", label: "ID" },
-        { key: (row) => row.user?.profile?.fullName || row.user?.email?.split("@")[0] || "Ẩn danh", label: "Khách hàng" },
+        { key: (row) => row.user?.profile?.fullName || row.user?.email?.split("@")[0] || t("admin.reviewModeration.anonymous"), label: t("business.reviews.title") },
         { key: (row) => row.user?.email || "", label: "Email" },
-        { key: "rating", label: "Đánh giá" },
-        { key: "comment", label: "Nội dung" },
-        { key: (row) => STATUS_LABELS[row.status] || row.status, label: "Trạng thái" },
-        { key: (row) => row.place?.name || "", label: "Địa điểm" },
-        { key: (row) => row.reply?.content || "", label: "Phản hồi" },
-        { key: (row) => row._count?.replies ?? 0, label: "Số phản hồi" },
-        { key: (row) => (row.media || []).length, label: "Số media" },
-        { key: (row) => formatCsvDate(row.createdAt), label: "Thời gian" },
+        { key: "rating", label: t("admin.analytics.avgRating") },
+        { key: "comment", label: t("business.reviews.title") },
+        { key: (row) => STATUS_LABELS[row.status] || row.status, label: t("business.revenue.status") },
+        { key: (row) => row.place?.name || "", label: t("business.places.title") },
+        { key: (row) => row.reply?.content || "", label: t("admin.reviewModeration.reply") },
+        { key: (row) => row._count?.replies ?? 0, label: t("admin.reviewModeration.reply") },
+        { key: (row) => (row.media || []).length, label: t("business.reviews.title") },
+        { key: (row) => formatCsvDate(row.createdAt), label: t("business.reviews.title") },
       ],
       data: reviews,
       filename: slugifyFilename("danh_sach_danh_gia"),
     });
 
-    toast.success(`Đã xuất ${reviews.length} bản ghi`);
+    toast.success(t("common.export"));
   };
 
   return (
@@ -606,8 +607,8 @@ const ReviewListPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <PageHeader
-          title="Quản lý đánh giá"
-          subtitle="Xem và phản hồi đánh giá từ khách hàng"
+          title={t("business.reviews.title")}
+          subtitle={t("business.reviews.title")}
           badge={stats?.total || undefined}
         />
         <button
@@ -630,7 +631,7 @@ const ReviewListPage = () => {
               </p>
               <StarRating rating={Math.round(stats.avgRating)} size="lg" />
               <p className="text-xs text-muted-foreground">
-                Trung bình từ {stats.total} đánh giá
+                {t("admin.analytics.avgRating")} {stats.total}
               </p>
             </div>
           </SectionCard>
@@ -642,7 +643,7 @@ const ReviewListPage = () => {
                 {Number(stats.responseRate || 0).toFixed(1)}%
               </p>
               <p className="text-xs text-muted-foreground">
-                Tỷ lệ đã phản hồi
+                {t("admin.analytics.avgRating")}
               </p>
             </div>
           </SectionCard>
@@ -654,7 +655,7 @@ const ReviewListPage = () => {
                 {Number(stats.avgResponseTimeHours || 0).toFixed(1)}h
               </p>
               <p className="text-xs text-muted-foreground">
-                Thời gian phản hồi TB
+                {t("admin.analytics.avgRating")}
               </p>
             </div>
           </SectionCard>
@@ -665,12 +666,12 @@ const ReviewListPage = () => {
               <p className="text-3xl font-bold text-foreground">
                 {Math.max((stats.total || 0) - (stats.repliedCount || 0), 0)}
               </p>
-              <p className="text-xs text-muted-foreground">Chưa phản hồi</p>
+              <p className="text-xs text-muted-foreground">{t("admin.reviewModeration.pending")}</p>
             </div>
           </SectionCard>
 
           {/* Rating distribution */}
-          <SectionCard title="Phân bố xếp hạng" className="md:col-span-4">
+          <SectionCard title={t("admin.analytics.avgRating")} className="md:col-span-4">
             <div className="space-y-2.5">
               {[5, 4, 3, 2, 1].map((r) => (
                 <RatingBar
@@ -687,17 +688,17 @@ const ReviewListPage = () => {
 
       {/* Main List */}
       <SectionCard
-        title="Danh sách đánh giá"
+        title={t("business.reviews.title")}
         titleIcon={MessagesSquare}
         bodyClassName="p-0"
         action={
           <div className="flex gap-2 items-center">
             <Select value={selectedPlaceId} onValueChange={setSelectedPlaceId}>
               <SelectTrigger className="h-8 text-xs w-40">
-                <SelectValue placeholder="Tất cả địa điểm" />
+                <SelectValue placeholder={t("business.bookings.allPlaces")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả địa điểm</SelectItem>
+                <SelectItem value="all">{t("business.bookings.allPlaces")}</SelectItem>
                 {places.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     {p.name}
@@ -707,27 +708,27 @@ const ReviewListPage = () => {
             </Select>
             <Select value={ratingFilter} onValueChange={setRatingFilter}>
               <SelectTrigger className="h-8 text-xs w-28">
-                <SelectValue placeholder="Tất cả sao" />
+                <SelectValue placeholder={t("admin.reviewModeration.allStars")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="0">Tất cả sao</SelectItem>
+                <SelectItem value="0">{t("admin.reviewModeration.allStars")}</SelectItem>
                 {[5, 4, 3, 2, 1].map((r) => (
                   <SelectItem key={r} value={String(r)}>
-                    {r} sao
+                    {r} {t("admin.reviewModeration.allStars")}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Select value={mediaFilter} onValueChange={setMediaFilter}>
               <SelectTrigger className="h-8 text-xs w-32">
-                <SelectValue placeholder="Ảnh đánh giá" />
+                <SelectValue placeholder={t("admin.reviewModeration.allPhotos")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả ảnh</SelectItem>
+                <SelectItem value="all">{t("admin.reviewModeration.allPhotos")}</SelectItem>
                 <SelectItem value="with-media">
                   <span className="inline-flex items-center gap-1.5">
                     <ImageIcon className="h-3.5 w-3.5" />
-                    Có ảnh
+                    {t("admin.reviewModeration.withPhotos")}
                   </span>
                 </SelectItem>
               </SelectContent>
@@ -735,7 +736,7 @@ const ReviewListPage = () => {
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <Input
-                placeholder="Tìm nội dung..."
+                placeholder={t("admin.reviewModeration.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-8 h-8 text-xs w-40"
@@ -748,30 +749,30 @@ const ReviewListPage = () => {
           <div className="px-5 border-b border-border/60">
             <TabsList className="h-10 bg-transparent gap-1 p-0">
               <TabsTrigger value="all" className={DESIGN.tabUnderlineTrigger}>
-                Tất cả ({reviews.length})
+                {t("common.all")} ({reviews.length})
               </TabsTrigger>
               <TabsTrigger
                 value="unreplied"
                 className={DESIGN.tabUnderlineTrigger}
               >
-                Chưa phản hồi ({unrepliedCount})
+                {t("admin.reviewModeration.pending")} ({unrepliedCount})
               </TabsTrigger>
               <TabsTrigger
                 value="replied"
                 className={DESIGN.tabUnderlineTrigger}
               >
-                Đã phản hồi ({reviews.length - unrepliedCount})
+                {t("admin.reviewModeration.reply")} ({reviews.length - unrepliedCount})
               </TabsTrigger>
               <TabsTrigger
                 value="attention"
                 className={DESIGN.tabUnderlineTrigger}
               >
-                Cần xử lý ({attentionCount})
+                {t("admin.reviewModeration.needsAction")} ({attentionCount})
               </TabsTrigger>
             </TabsList>
             {isPendingTransition && (
               <p className="py-1 text-[11px] text-muted-foreground">
-                Đang lọc đánh giá...
+                {t("common.processing")}
               </p>
             )}
           </div>
@@ -807,7 +808,7 @@ const ReviewListPage = () => {
                     return (
                       <EmptyState
                         icon={Star}
-                        message="Không có đánh giá nào."
+                        message={t("admin.reviewModeration.noReviews")}
                       />
                     );
                   }

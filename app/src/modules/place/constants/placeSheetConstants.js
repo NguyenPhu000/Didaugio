@@ -59,12 +59,12 @@ export const REVIEW_MEDIA_LIMIT = 6;
 /**
  * Format a review count into a human-readable bilingual string.
  * @param {number} count
- * @param {(vi: string, en: string) => string} t – i18n helper
+ * @param {(key: string, params?: object) => string} t – i18next translation helper
  * @returns {string}
  */
 export function formatReviewCount(count, t) {
   const n = Number(count) || 0;
-  if (n === 0) return t("Chưa có đánh giá", "No reviews yet");
-  if (n === 1) return t("1 đánh giá", "1 review");
-  return t(`${n} đánh giá`, `${n} reviews`);
+  if (n === 0) return t("place.detail.noReviewsShort");
+  if (n === 1) return t("place.detail.oneReview");
+  return t("place.detail.manyReviews", { count: n });
 }

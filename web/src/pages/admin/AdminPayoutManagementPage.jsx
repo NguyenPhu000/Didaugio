@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import api from "@/constants/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,14 +40,15 @@ import {
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 
-const STATUS_MAP = {
-  pending: { label: "Chờ duyệt", color: "text-yellow-700 bg-yellow-50 border-yellow-200" },
-  approved: { label: "Đã duyệt", color: "text-blue-700 bg-blue-50 border-blue-200" },
-  transferred: { label: "Đã chuyển", color: "text-green-700 bg-green-50 border-green-200" },
-  rejected: { label: "Từ chối", color: "text-red-700 bg-red-50 border-red-200" },
-};
-
 export default function AdminPayoutManagementPage() {
+  const { t } = useTranslation();
+
+  const STATUS_MAP = {
+    pending: { label: t("admin.payouts.pending"), color: "text-yellow-700 bg-yellow-50 border-yellow-200" },
+    approved: { label: t("admin.payouts.approvedLabel"), color: "text-blue-700 bg-blue-50 border-blue-200" },
+    transferred: { label: t("admin.payouts.transferred"), color: "text-green-700 bg-green-50 border-green-200" },
+    rejected: { label: t("admin.payouts.rejected"), color: "text-red-700 bg-red-50 border-red-200" },
+  };
   const [payouts, setPayouts] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
@@ -68,7 +70,7 @@ export default function AdminPayoutManagementPage() {
       );
     } catch (err) {
       console.error("Failed to load payouts:", err);
-      toast.error("Không thể tải danh sách rút tiền");
+      toast.error(t("admin.payouts.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -83,14 +85,14 @@ export default function AdminPayoutManagementPage() {
       setActing(id);
       await api.post(`/admin/payouts/${id}/${action}`, body);
       const messages = {
-        approve: "Đã duyệt yêu cầu rút tiền",
-        transfer: "Đã xác nhận chuyển khoản",
-        reject: "Đã từ chối yêu cầu rút tiền",
+        approve: t("admin.payouts.approved"),
+        transfer: t("admin.payouts.transferConfirmed"),
+        reject: t("admin.payouts.rejectedRequest"),
       };
       toast.success(messages[action]);
       fetchPayouts(pagination.page);
     } catch (err) {
-      toast.error(err.message || "Thao tác thất bại");
+      toast.error(err.message || t("admin.payouts.actionFailed"));
     } finally {
       setActing(null);
     }
@@ -117,15 +119,15 @@ export default function AdminPayoutManagementPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
-            Quản lý rút tiền
+            {t("admin.payouts.title")}
           </h2>
           <p className="text-muted-foreground">
-            Duyệt và xử lý yêu cầu rút tiền từ đối tác
+            {t("admin.payouts.subtitle")}
           </p>
         </div>
         <Button variant="outline" onClick={() => fetchPayouts(pagination.page)}>
           <IconRefresh className="mr-2 h-4 w-4" />
-          Làm mới
+          {t("admin.payouts.refresh")}
         </Button>
       </div>
 
@@ -133,7 +135,7 @@ export default function AdminPayoutManagementPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Chờ duyệt</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("admin.payouts.pending")}</CardTitle>
             <IconClock className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
@@ -142,7 +144,7 @@ export default function AdminPayoutManagementPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Đã duyệt chờ chuyển</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("admin.payouts.approvedAwaitingTransfer")}</CardTitle>
             <IconArrowUpRight className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
@@ -151,7 +153,7 @@ export default function AdminPayoutManagementPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Tổng yêu cầu</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("admin.payouts.totalRequests")}</CardTitle>
             <IconWallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -164,14 +166,14 @@ export default function AdminPayoutManagementPage() {
       <div className="flex items-center gap-2">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Trạng thái" />
+            <SelectValue placeholder={t("admin.payouts.status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả</SelectItem>
-            <SelectItem value="pending">Chờ duyệt</SelectItem>
-            <SelectItem value="approved">Đã duyệt</SelectItem>
-            <SelectItem value="transferred">Đã chuyển</SelectItem>
-            <SelectItem value="rejected">Từ chối</SelectItem>
+            <SelectItem value="all">{t("admin.payouts.all")}</SelectItem>
+            <SelectItem value="pending">{t("admin.payouts.pending")}</SelectItem>
+            <SelectItem value="approved">{t("admin.payouts.approvedLabel")}</SelectItem>
+            <SelectItem value="transferred">{t("admin.payouts.transferred")}</SelectItem>
+            <SelectItem value="rejected">{t("admin.payouts.rejected")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -188,19 +190,19 @@ export default function AdminPayoutManagementPage() {
           ) : payouts.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-12">
               <IconWallet className="h-10 w-10 text-muted-foreground" />
-              <p className="text-muted-foreground">Không có yêu cầu rút tiền nào</p>
+              <p className="text-muted-foreground">{t("admin.payouts.noRequests")}</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Đối tác</TableHead>
-                  <TableHead>Số tiền</TableHead>
-                  <TableHead>Ngân hàng</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Ngày yêu cầu</TableHead>
-                  <TableHead>Ghi chú</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
+                  <TableHead>{t("admin.payouts.partner")}</TableHead>
+                  <TableHead>{t("admin.payouts.amount")}</TableHead>
+                  <TableHead>{t("admin.payouts.bank")}</TableHead>
+                  <TableHead>{t("admin.payouts.status")}</TableHead>
+                  <TableHead>{t("admin.payouts.requestDate")}</TableHead>
+                  <TableHead>{t("admin.payouts.notes")}</TableHead>
+                  <TableHead className="text-right">{t("admin.payouts.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -278,7 +280,7 @@ export default function AdminPayoutManagementPage() {
                               onClick={() => handleAction(p.id, "transfer")}
                             >
                               <IconSend className="h-3.5 w-3.5 mr-1" />
-                              Đã chuyển
+                              {t("admin.payouts.transferred")}
                             </Button>
                           )}
                         </div>
@@ -296,7 +298,7 @@ export default function AdminPayoutManagementPage() {
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Trang {pagination.page} / {pagination.totalPages} ({pagination.total} yêu cầu)
+            {t("admin.payouts.pagination", { page: pagination.page, totalPages: pagination.totalPages, total: pagination.total })}
           </p>
           <div className="flex gap-2">
             <Button
@@ -305,7 +307,7 @@ export default function AdminPayoutManagementPage() {
               disabled={pagination.page <= 1}
               onClick={() => fetchPayouts(pagination.page - 1)}
             >
-              Trước
+              {t("admin.payouts.previous")}
             </Button>
             <Button
               variant="outline"
@@ -313,7 +315,7 @@ export default function AdminPayoutManagementPage() {
               disabled={pagination.page >= pagination.totalPages}
               onClick={() => fetchPayouts(pagination.page + 1)}
             >
-              Sau
+              {t("admin.payouts.next")}
             </Button>
           </div>
         </div>
@@ -331,16 +333,16 @@ export default function AdminPayoutManagementPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Từ chối yêu cầu rút tiền</DialogTitle>
+            <DialogTitle>{t("admin.payouts.rejectRequest")}</DialogTitle>
             <DialogDescription>
-              Vui lòng nhập lý do từ chối để đối tác được biết.
+              {t("admin.payouts.rejectReasonPrompt")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="reject-reason">Lý do từ chối</Label>
+            <Label htmlFor="reject-reason">{t("admin.payouts.rejectReason")}</Label>
             <Input
               id="reject-reason"
-              placeholder="Nhập lý do..."
+              placeholder={t("admin.payouts.enterReason")}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
             />
@@ -353,14 +355,14 @@ export default function AdminPayoutManagementPage() {
                 setRejectReason("");
               }}
             >
-              Hủy
+              {t("admin.payouts.cancel")}
             </Button>
             <Button
               variant="destructive"
               onClick={handleReject}
               disabled={acting === rejectDialog.payoutId}
             >
-              Từ chối
+              {t("admin.payouts.reject")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,6 +1,5 @@
-import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
-import useCategoryStore from "@/stores/categoryStore";
+import { useCategoryTree } from "@/hooks/queries/useCategoryQueries";
 import CategoryTreeItem from "./CategoryTreeItem";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -15,14 +14,9 @@ export default function CategoryTree({
   onAddChild,
   onSelect,
 }) {
-  const { categoryTree, loading, error, fetchCategoryTree } =
-    useCategoryStore();
+  const { data: categoryTree = [], isLoading, error } = useCategoryTree();
 
-  useEffect(() => {
-    fetchCategoryTree();
-  }, [fetchCategoryTree]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -33,7 +27,7 @@ export default function CategoryTree({
   if (error) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
+        <AlertDescription>{error.message}</AlertDescription>
       </Alert>
     );
   }

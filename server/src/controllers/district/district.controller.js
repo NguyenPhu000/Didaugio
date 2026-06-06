@@ -15,7 +15,7 @@ export const getDistricts = async (req, res, next) => {
     const cacheKey = "districts:list";
     const cached = cacheGet(cacheKey);
     if (cached) {
-      setPublicListCache(res);
+      setPublicListCache(res, req);
       return res.json(cached);
     }
 
@@ -33,7 +33,7 @@ export const getDistricts = async (req, res, next) => {
       message: "Lấy danh sách quận/huyện thành công",
     };
     cacheSet(cacheKey, body, TTL.STATIC);
-    setPublicListCache(res);
+    setPublicListCache(res, req);
     res.json(body);
   } catch (error) {
     next(error);
@@ -105,7 +105,7 @@ export const getWardsByDistrict = async (req, res, next) => {
     const cacheKey = `districts:wards:${id}`;
     const cached = cacheGet(cacheKey);
     if (cached) {
-      setPublicListCache(res);
+      setPublicListCache(res, req);
       return res.json(cached);
     }
 
@@ -124,7 +124,7 @@ export const getWardsByDistrict = async (req, res, next) => {
       message: "Lấy danh sách phường/xã theo quận/huyện thành công",
     };
     cacheSet(cacheKey, body, TTL.STATIC);
-    setPublicListCache(res);
+    setPublicListCache(res, req);
     res.json(body);
   } catch (error) {
     next(error);

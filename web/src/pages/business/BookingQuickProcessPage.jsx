@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import {
@@ -62,6 +63,7 @@ const SLOT_OPTIONS = [
 ];
 
 const BookingQuickProcessPage = () => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState("pending");
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -133,9 +135,9 @@ const BookingQuickProcessPage = () => {
     try {
       const res = await bookingApi.quickApprove(id);
       if (res?.success) {
-        toast.success("Đã duyệt thành công");
+        toast.success(t("business.bookings.confirmedSuccess"));
         await loadPending();
-      } else toast.error(res?.message || "Lỗi xảy ra");
+      } else toast.error(res?.message || t("common.operationFailed"));
     } catch (e) {
       toastApiErrorIfNeeded(e);
     } finally {
@@ -148,9 +150,9 @@ const BookingQuickProcessPage = () => {
     try {
       const res = await bookingApi.quickReject(id);
       if (res?.success) {
-        toast.success("Đã từ chối");
+        toast.success(t("business.bookings.rejectedSuccess"));
         await loadPending();
-      } else toast.error(res?.message || "Lỗi xảy ra");
+      } else toast.error(res?.message || t("common.operationFailed"));
     } catch (e) {
       toastApiErrorIfNeeded(e);
     } finally {
@@ -173,8 +175,8 @@ const BookingQuickProcessPage = () => {
       }
     }
 
-    if (successCount > 0) toast.success(`Đã duyệt ${successCount} booking`);
-    if (failCount > 0) toast.error(`${failCount} booking bị lỗi`);
+    if (successCount > 0) toast.success(`${t("business.bookings.confirmedSuccess")} ${successCount}`);
+    if (failCount > 0) toast.error(`${failCount} ${t("common.operationFailed")}`);
 
     setSelected([]);
     setBulkActionLoading(false);
@@ -196,8 +198,8 @@ const BookingQuickProcessPage = () => {
       }
     }
 
-    if (successCount > 0) toast.success(`Đã từ chối ${successCount} booking`);
-    if (failCount > 0) toast.error(`${failCount} booking bị lỗi`);
+    if (successCount > 0) toast.success(`${t("business.bookings.rejectedSuccess")} ${successCount}`);
+    if (failCount > 0) toast.error(`${failCount} ${t("common.operationFailed")}`);
 
     setSelected([]);
     setBulkActionLoading(false);
@@ -217,7 +219,7 @@ const BookingQuickProcessPage = () => {
       conditions.minQuantity == null &&
       conditions.maxQuantity == null
     ) {
-      toast.error("Chọn ít nhất một khung giờ hoặc điều kiện số lượng");
+      toast.error(t("business.quickProcess.loadFailed"));
       return;
     }
 
@@ -228,7 +230,7 @@ const BookingQuickProcessPage = () => {
         isActive: ruleForm.isActive,
       });
       if (res?.success) {
-        toast.success("Đã tạo rule thành công");
+        toast.success(t("common.createdSuccessfully"));
         setRuleOpen(false);
         setRuleForm({
           priority: 0,
@@ -249,7 +251,7 @@ const BookingQuickProcessPage = () => {
       const res = await ruleApi.update(rule.id, { isActive: !rule.isActive });
       if (res?.success) {
         await loadRules();
-        toast.success(rule.isActive ? "Đã tắt rule" : "Đã bật rule");
+        toast.success(rule.isActive ? t("common.disabled") : t("common.enabled"));
       }
     } catch (e) {
       toastApiErrorIfNeeded(e);
@@ -261,7 +263,7 @@ const BookingQuickProcessPage = () => {
     try {
       const res = await ruleApi.remove(rule.id);
       if (res?.success) {
-        toast.success("Đã xóa rule");
+        toast.success(t("common.deletedSuccessfully"));
         await loadRules();
       }
     } catch (e) {
@@ -292,19 +294,19 @@ const BookingQuickProcessPage = () => {
         className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
-        Quay lại danh sách
+        {t("common.back")}
       </Link>
 
       <PageHeader
-        title="Xử lý đặt chỗ nhanh"
-        subtitle="Duyệt hoặc từ chối tức thì và cấu hình auto-duyệt theo rule"
+        title={t("business.quickProcess.title")}
+        subtitle={t("business.quickProcess.title")}
       />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 max-w-md">
           <TabsTrigger value="pending" className="gap-2">
             <Clock className="h-4 w-4" />
-            Chờ xử lý
+            {t("business.schedule.pending")}
             {pending.length > 0 && (
               <Badge variant="secondary" className="ml-1 h-5 px-1.5">
                 {pending.length}
@@ -313,7 +315,7 @@ const BookingQuickProcessPage = () => {
           </TabsTrigger>
           <TabsTrigger value="rules" className="gap-2">
             <Sparkles className="h-4 w-4" />
-            Auto-duyệt
+            {t("business.schedule.processing")}
           </TabsTrigger>
         </TabsList>
 
@@ -337,7 +339,7 @@ const BookingQuickProcessPage = () => {
                   ) : (
                     <CheckCircle2 className="h-4 w-4" />
                   )}
-                  Duyệt tất cả
+                  {t("business.bookings.bulkConfirm")}
                 </Button>
                 <Button
                   size="sm"
@@ -351,7 +353,7 @@ const BookingQuickProcessPage = () => {
                   ) : (
                     <XCircle className="h-4 w-4" />
                   )}
-                  Từ chối tất cả
+                  {t("business.bookings.reject")}
                 </Button>
                 <Button
                   size="sm"
@@ -359,7 +361,7 @@ const BookingQuickProcessPage = () => {
                   onClick={() => setSelected([])}
                   className="gap-1.5"
                 >
-                  Bỏ chọn
+                  {t("common.cancel")}
                 </Button>
               </div>
             </div>
@@ -381,9 +383,9 @@ const BookingQuickProcessPage = () => {
                 <div className="rounded-full bg-muted p-4 mb-4">
                   <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="font-medium text-lg">Không có booking chờ xử lý</h3>
+                <h3 className="font-medium text-lg">{t("business.bookings.noBookings")}</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Tất cả các đặt chỗ đã được xử lý
+                  {t("business.bookings.noBookings")}
                 </p>
               </CardContent>
             </Card>
@@ -395,7 +397,7 @@ const BookingQuickProcessPage = () => {
                   onCheckedChange={selectAll}
                 />
                 <span className="text-sm text-muted-foreground">
-                  Chọn tất cả ({pending.length})
+                  {t("common.all")} ({pending.length})
                 </span>
               </div>
 
@@ -466,7 +468,7 @@ const BookingQuickProcessPage = () => {
                           ) : (
                             <Check className="h-4 w-4" />
                           )}
-                          Duyet
+                          {t("business.bookings.confirm")}
                         </Button>
                         <Button
                           size="sm"
@@ -480,7 +482,7 @@ const BookingQuickProcessPage = () => {
                           ) : (
                             <X className="h-4 w-4" />
                           )}
-                          Tu choi
+                          {t("business.bookings.reject")}
                         </Button>
                         <Button size="sm" variant="ghost" asChild>
                           <Link to={BUSINESS_ROUTES.BOOKING_DETAIL(b.id)}>
@@ -500,7 +502,7 @@ const BookingQuickProcessPage = () => {
           <div className="flex justify-end">
             <Button onClick={() => setRuleOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />
-              Tao rule moi
+              {t("common.create")}
             </Button>
           </div>
 
@@ -520,9 +522,9 @@ const BookingQuickProcessPage = () => {
                 <div className="rounded-full bg-muted p-4 mb-4">
                   <Sparkles className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="font-medium text-lg">Chua co rule auto-duyet</h3>
+                <h3 className="font-medium text-lg">{t("business.quickProcess.loadFailed")}</h3>
                 <p className="text-sm text-muted-foreground mt-1 text-center max-w-sm">
-                  Tao rule de tu dong duyet cac dat cho theo dieu kien
+                  {t("business.quickProcess.loadFailed")}
                 </p>
                 <Button
                   variant="outline"
@@ -530,7 +532,7 @@ const BookingQuickProcessPage = () => {
                   onClick={() => setRuleOpen(true)}
                 >
                   <Plus className="h-4 w-4" />
-                  Tao rule dau tien
+                  {t("common.create")}
                 </Button>
               </CardContent>
             </Card>
@@ -556,7 +558,7 @@ const BookingQuickProcessPage = () => {
                           ) : (
                             <ToggleLeft className="h-3 w-3" />
                           )}
-                          {r.isActive ? "Dang hoat dong" : "Da tat"}
+                          {r.isActive ? t("common.active") : t("common.inactive")}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-1">
@@ -585,7 +587,7 @@ const BookingQuickProcessPage = () => {
                         className="gap-1 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        Xoa
+                        {t("common.delete")}
                       </Button>
                     </div>
                   </CardContent>
@@ -601,18 +603,18 @@ const BookingQuickProcessPage = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              Tao rule auto-duyet
+              {t("common.create")}
             </DialogTitle>
             <DialogDescription>
-              Rule se tu dong duyet cac dat cho thoa man dieu kien
+              {t("common.create")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 py-4">
             <div className="space-y-2">
-              <Label htmlFor="priority">Do uu tien</Label>
+              <Label htmlFor="priority">{t("common.edit")}</Label>
               <p className="text-xs text-muted-foreground">
-                Rule co do uu tien cao hon se duoc kiem tra truoc
+                {t("common.edit")}
               </p>
               <Input
                 id="priority"
@@ -630,9 +632,9 @@ const BookingQuickProcessPage = () => {
             </div>
 
             <div className="space-y-3">
-              <Label>Khung gio ap dung</Label>
+              <Label>{t("business.schedule.title")}</Label>
               <p className="text-xs text-muted-foreground">
-                Chon mot hoac nhieu khung gio de ap dung rule
+                {t("business.schedule.title")}
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {SLOT_OPTIONS.map((slot) => (
@@ -665,9 +667,9 @@ const BookingQuickProcessPage = () => {
             </div>
 
             <div className="space-y-3">
-              <Label>So luong khach</Label>
+              <Label>{t("business.bookings.guests")}</Label>
               <p className="text-xs text-muted-foreground">
-                Tay dinh so luong khach de ap dung rule (bo trong la khong gioi han)
+                {t("business.bookings.guests")}
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -678,9 +680,9 @@ const BookingQuickProcessPage = () => {
                     onChange={(e) =>
                       setRuleForm((f) => ({ ...f, minQuantity: e.target.value }))
                     }
-                    placeholder="Toi thieu"
+                    placeholder="0"
                   />
-                  <p className="text-xs text-muted-foreground">Toi thieu</p>
+                  <p className="text-xs text-muted-foreground">{t("common.optional")}</p>
                 </div>
                 <div className="space-y-1">
                   <Input
@@ -690,18 +692,18 @@ const BookingQuickProcessPage = () => {
                     onChange={(e) =>
                       setRuleForm((f) => ({ ...f, maxQuantity: e.target.value }))
                     }
-                    placeholder="Toi da"
+                    placeholder="0"
                   />
-                  <p className="text-xs text-muted-foreground">Toi da</p>
+                  <p className="text-xs text-muted-foreground">{t("common.optional")}</p>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div className="space-y-0.5">
-                <Label className="text-base">Kich hoat rule</Label>
+                <Label className="text-base">{t("common.active")}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Tat rule neu ban muon tam dung auto-duyet
+                  {t("common.active")}
                 </p>
               </div>
               <Switch
@@ -715,11 +717,11 @@ const BookingQuickProcessPage = () => {
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setRuleOpen(false)}>
-              Huy
+              {t("common.cancel")}
             </Button>
             <Button onClick={submitRule} className="gap-1.5">
               <Check className="h-4 w-4" />
-              Tao rule
+              {t("common.create")}
             </Button>
           </DialogFooter>
         </DialogContent>

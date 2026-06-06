@@ -9,8 +9,10 @@ import { Mail, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { authService } from "@/apis";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const ResendVerificationPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
@@ -34,7 +36,7 @@ const ResendVerificationPage = () => {
     setSuccess(false);
 
     if (!email || !email.includes("@")) {
-      setError("Vui lòng nhập email hợp lệ");
+      setError(t("auth.resendVerification.enterValidEmail"));
       return;
     }
 
@@ -48,7 +50,7 @@ const ResendVerificationPage = () => {
       }
 
       setSuccess(true);
-      toast.success("✅ Đã gửi lại email xác thực!");
+      toast.success(t("auth.resendVerification.success"));
 
       // Auto redirect sau 5 giây
       setTimeout(() => {
@@ -56,7 +58,7 @@ const ResendVerificationPage = () => {
       }, 5000);
     } catch (error) {
       const errorMsg =
-        error.response?.data?.message || error.message || "Gửi email thất bại";
+        error.response?.data?.message || error.message || t("auth.resendVerification.sendFailed");
       setError(errorMsg);
       toast.error(`❌ ${errorMsg}`);
     } finally {
@@ -74,10 +76,10 @@ const ResendVerificationPage = () => {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">
-            Gửi lại email xác thực
+            {t("auth.resendVerification.title")}
           </CardTitle>
           <p className="text-gray-600 mt-2">
-            Nhập email để nhận link xác thực mới
+            {t("auth.resendVerification.subtitle")}
           </p>
         </CardHeader>
 
@@ -86,13 +88,12 @@ const ResendVerificationPage = () => {
             <Alert className="bg-green-50 border-green-200">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
-                <p className="font-semibold mb-2">Email đã được gửi!</p>
+                <p className="font-semibold mb-2">{t("auth.resendVerification.emailSent")}</p>
                 <p className="text-sm">
-                  Vui lòng kiểm tra hộp thư của bạn (bao gồm cả thư mục Spam).
-                  Link xác thực có hiệu lực trong 24 giờ.
+                  {t("auth.resendVerification.checkInbox")}
                 </p>
                 <p className="text-sm mt-3 text-gray-600">
-                  Tự động chuyển hướng sau 5 giây...
+                  {t("auth.resendVerification.autoRedirect")}
                 </p>
               </AlertDescription>
             </Alert>
@@ -120,7 +121,7 @@ const ResendVerificationPage = () => {
                 />
                 {isAuthenticated && (
                   <p className="text-xs text-gray-500">
-                    Email được lấy từ tài khoản đã đăng nhập
+                    {t("auth.resendVerification.emailFromAccount")}
                   </p>
                 )}
               </div>
@@ -134,12 +135,12 @@ const ResendVerificationPage = () => {
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Đang gửi...
+                    {t("auth.resendVerification.submitting")}
                   </>
                 ) : (
                   <>
                     <Mail className="mr-2 h-4 w-4" />
-                    Gửi lại email
+                    {t("auth.resendVerification.submit")}
                   </>
                 )}
               </Button>
@@ -149,15 +150,14 @@ const ResendVerificationPage = () => {
                 <AlertDescription className="text-sm text-gray-700">
                   {fromRegister && (
                     <p className="font-semibold mb-2">
-                      ✅ Tài khoản đã tạo thành công. Vui lòng xác thực email
-                      trước khi đăng nhập.
+                      {t("auth.resendVerification.accountCreated")}
                     </p>
                   )}
-                  <p className="font-semibold mb-2">📧 Lưu ý:</p>
+                  <p className="font-semibold mb-2">{t("auth.resendVerification.note")}</p>
                   <ul className="space-y-1 text-xs">
-                    <li>• Kiểm tra cả thư mục Spam/Junk</li>
-                    <li>• Link có hiệu lực trong 24 giờ</li>
-                    <li>• Mỗi email chỉ gửi được 1 lần/phút</li>
+                    <li>• {t("auth.resendVerification.noteCheckSpam")}</li>
+                    <li>• {t("auth.resendVerification.noteExpiry")}</li>
+                    <li>• {t("auth.resendVerification.noteRateLimit")}</li>
                   </ul>
                 </AlertDescription>
               </Alert>
@@ -168,17 +168,17 @@ const ResendVerificationPage = () => {
           <div className="border-t pt-4 mt-6 text-center space-y-2">
             <p className="text-sm text-gray-600">
               <Link to="/login" className="text-blue-600 hover:underline">
-                Quay lại Đăng nhập
+                {t("auth.resendVerification.backToLogin")}
               </Link>
             </p>
             {!isAuthenticated && (
               <p className="text-sm text-gray-600">
-                Chưa có tài khoản?{" "}
+                {t("auth.resendVerification.noAccount")}{" "}
                 <Link
                   to="/register"
                   className="text-blue-600 hover:underline font-medium"
                 >
-                  Đăng ký ngay
+                  {t("auth.resendVerification.registerNow")}
                 </Link>
               </p>
             )}

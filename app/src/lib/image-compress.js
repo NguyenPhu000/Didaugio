@@ -1,4 +1,5 @@
 import * as ImageManipulator from "expo-image-manipulator";
+import i18n from "@/i18n";
 
 const DEFAULT_MAX_BYTES = 200 * 1024;
 
@@ -54,6 +55,6 @@ export async function compressImageToDataUrl(
   }
 
   throw new Error(
-    `Không thể nén ảnh dưới ${Math.round(maxBytes / 1024)}KB. Vui lòng chọn ảnh khác.`,
+    i18n.t("errors.imageCompress", { size: Math.round(maxBytes / 1024) }),
   );
 }

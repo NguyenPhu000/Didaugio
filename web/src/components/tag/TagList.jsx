@@ -1,5 +1,6 @@
 import { Edit, Trash2, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/Card";
 import {
@@ -25,26 +26,17 @@ const TAG_TYPE_COLORS = {
   ai_signal: "bg-zinc-800 text-zinc-100",
 };
 
-const TAG_TYPES_LABEL = {
-  all: "Tất cả",
-  general: "Chung",
-  food: "Ẩm thực",
-  travel: "Du lịch",
-  service: "Dịch vụ",
-  activity: "Hoạt động",
-  ambience: "Không gian",
-  price: "Giá cả",
-  time: "Thời gian",
-  ai_signal: "AI Signal",
-};
+// TAG_TYPES_LABEL removed to use i18n
 
 export default function TagList({ tags, onEdit, onDelete, loading }) {
+  const { t } = useTranslation();
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground space-y-4">
         <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
         <div className="font-mono text-xs uppercase tracking-widest">
-          ĐANG TẢI DỮ LIỆU HỆ THỐNG...
+          {t("common.loading", { defaultValue: "ĐANG TẢI DỮ LIỆU HỆ THỐNG..." })}
         </div>
       </div>
     );
@@ -54,10 +46,10 @@ export default function TagList({ tags, onEdit, onDelete, loading }) {
     return (
       <div className="text-center py-20 border border-dashed border-border rounded-[20px] bg-white/50">
         <p className="font-mono text-lg text-muted-foreground uppercase">
-          KHÔNG TÌM THẤY DỮ LIỆU
+          {t("common.noData", { defaultValue: "KHÔNG TÌM THẤY DỮ LIỆU" })}
         </p>
         <p className="text-xs text-muted-foreground mt-2">
-          Khởi tạo thẻ mới để bắt đầu.
+          {t("tags.emptyDesc", { defaultValue: "Khởi tạo thẻ mới để bắt đầu." })}
         </p>
       </div>
     );
@@ -67,11 +59,11 @@ export default function TagList({ tags, onEdit, onDelete, loading }) {
     <div className="space-y-4 font-mono text-sm">
       {/* Table Header - Industrial Style */}
       <div className="grid grid-cols-12 gap-4 px-6 py-2 border-b border-black text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-        <div className="col-span-4 pl-8">ĐỊNH DANH</div>
-        <div className="col-span-2">DANH MỤC</div>
-        <div className="col-span-2">SỐ LƯỢNG</div>
-        <div className="col-span-2">TRẠNG THÁI</div>
-        <div className="col-span-2 text-right">THAO TÁC</div>
+        <div className="col-span-4 pl-8">{t("tags.table.identity", { defaultValue: "ĐỊNH DANH" })}</div>
+        <div className="col-span-2">{t("tags.table.type", { defaultValue: "DANH MỤC" })}</div>
+        <div className="col-span-2">{t("tags.table.usage", { defaultValue: "SỐ LƯỢNG" })}</div>
+        <div className="col-span-2">{t("tags.table.status", { defaultValue: "TRẠNG THÁI" })}</div>
+        <div className="col-span-2 text-right">{t("tags.table.actions", { defaultValue: "THAO TÁC" })}</div>
       </div>
 
       {/* Table Body - Modular Style */}
@@ -110,7 +102,7 @@ export default function TagList({ tags, onEdit, onDelete, loading }) {
               <span
                 className={`inline-flex items-center px-2 py-1 rounded-[2px] text-[10px] font-bold uppercase tracking-wider border ${TAG_TYPE_COLORS[tag.tagType] || "border-gray-200 bg-gray-50 text-gray-600"}`}
               >
-                {TAG_TYPES_LABEL[tag.tagType] || tag.tagType}
+                {t(`tags.types.${tag.tagType}`, { defaultValue: tag.tagType })}
               </span>
             </div>
 
@@ -122,9 +114,11 @@ export default function TagList({ tags, onEdit, onDelete, loading }) {
             {/* Status Badge */}
             <div className="col-span-2">
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-none animate-pulse"></div>
+                <div className={`w-1.5 h-1.5 rounded-none ${tag.isActive ? "bg-green-500 animate-pulse" : "bg-gray-400"}`}></div>
                 <span className="text-[10px] font-mono uppercase text-gray-500">
-                  HOẠT ĐỘNG
+                  {tag.isActive 
+                    ? t("tags.status.active", { defaultValue: "HOẠT ĐỘNG" }) 
+                    : t("tags.status.inactive", { defaultValue: "KHÔNG HOẠT ĐỘNG" })}
                 </span>
               </div>
             </div>
@@ -150,14 +144,14 @@ export default function TagList({ tags, onEdit, onDelete, loading }) {
                     className="cursor-pointer font-mono text-xs uppercase hover:bg-primary rounded-none p-3"
                   >
                     <Edit className="mr-2 h-3 w-3" />
-                    CHỈNH SỬA
+                    {t("common.edit", { defaultValue: "CHỈNH SỬA" })}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => onDelete(tag)}
                     className="cursor-pointer font-mono text-xs uppercase text-red-600 hover:bg-red-50 rounded-none p-3"
                   >
                     <Trash2 className="mr-2 h-3 w-3" />
-                    XÓA
+                    {t("common.delete", { defaultValue: "XÓA" })}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

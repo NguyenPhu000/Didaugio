@@ -1,23 +1,23 @@
 export const TRAVEL_STYLES = [
-  { id: "food", label: "Ẩm thực", icon: "restaurant", color: "#F5C842" },
-  { id: "history", label: "Lịch sử", icon: "account-balance", color: "#8B6914" },
-  { id: "nature", label: "Thiên nhiên", icon: "park", color: "#2D8E6B" },
-  { id: "shopping", label: "Mua sắm", icon: "shopping-bag", color: "#E85D6B" },
-  { id: "nightlife", label: "Về đêm", icon: "nightlife", color: "#6366F1" },
-  { id: "budget", label: "Tiết kiệm", icon: "savings", color: "#10B981" },
+  { id: "food", labelKey: "preferences.travelStyles.food", icon: "restaurant", color: "#F5C842" },
+  { id: "history", labelKey: "preferences.travelStyles.history", icon: "account-balance", color: "#8B6914" },
+  { id: "nature", labelKey: "preferences.travelStyles.nature", icon: "park", color: "#2D8E6B" },
+  { id: "shopping", labelKey: "preferences.travelStyles.shopping", icon: "shopping-bag", color: "#E85D6B" },
+  { id: "nightlife", labelKey: "preferences.travelStyles.nightlife", icon: "nightlife", color: "#6366F1" },
+  { id: "budget", labelKey: "preferences.travelStyles.budget", icon: "savings", color: "#10B981" },
 ];
 
 export const GROUP_TYPES = [
-  { id: "solo", label: "Một mình", icon: "person" },
-  { id: "couple", label: "Đôi", icon: "favorite" },
-  { id: "family", label: "Gia đình", icon: "family-restroom" },
-  { id: "group", label: "Nhóm bạn", icon: "group" },
+  { id: "solo", labelKey: "preferences.groupTypes.solo", icon: "person" },
+  { id: "couple", labelKey: "preferences.groupTypes.couple", icon: "favorite" },
+  { id: "family", labelKey: "preferences.groupTypes.family", icon: "family-restroom" },
+  { id: "group", labelKey: "preferences.groupTypes.group", icon: "group" },
 ];
 
 export const BUDGET_LEVELS = [
-  { id: "low", label: "Tiết kiệm", description: "< 500.000 VND/ngày" },
-  { id: "medium", label: "Vừa phải", description: "500k - 1.5 triệu/ngày" },
-  { id: "high", label: "Cao cấp", description: "> 1.5 triệu/ngày" },
+  { id: "low", labelKey: "preferences.budgetLevels.low.label", descriptionKey: "preferences.budgetLevels.low.description" },
+  { id: "medium", labelKey: "preferences.budgetLevels.medium.label", descriptionKey: "preferences.budgetLevels.medium.description" },
+  { id: "high", labelKey: "preferences.budgetLevels.high.label", descriptionKey: "preferences.budgetLevels.high.description" },
 ];
 
 export const PREFERENCES_DEFAULT = {

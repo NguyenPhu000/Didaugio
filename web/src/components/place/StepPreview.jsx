@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -16,10 +17,10 @@ import {
   AlertCircle,
 } from "lucide-react";
 import usePlaceStore from "@/stores/placeStore";
-import useCategoryStore from "@/stores/categoryStore";
-import useTagStore from "@/stores/tagStore";
-import * as districtService from "@/apis/districtService";
-import * as wardService from "@/apis/wardService";
+import { useCategories } from "@/hooks/queries/useCategoryQueries";
+import { useTags } from "@/hooks/queries/useTagQueries";
+import { useCreatePlace, useUpdatePlace } from "@/hooks/queries/usePlaceQueries";
+import { useDistrictDetail, useWardDetail } from "@/hooks/queries/useDistrictQueries";
 import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription, Badge } from "@/components/ui";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -30,45 +31,29 @@ import { cn } from "@/lib/utils";
  * Clean, modern Shadcn/UI style
  */
 const StepPreview = ({ isEditMode }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const { wizardData, prevStep, loading, createPlace, updatePlace } =
+  const { wizardData, prevStep } =
     usePlaceStore();
 
-  const { categories } = useCategoryStore();
-  const { tags, fetchTags } = useTagStore();
+  const { data: categories = [] } = useCategories();
+  const { data: tags = [] } = useTags();
+  const createMutation = useCreatePlace();
+  const updateMutation = useUpdatePlace();
 
-  const [district, setDistrict] = useState(null);
-  const [ward, setWard] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
+  // Fetch district/ward details
+  const { data: districtRes } = useDistrictDetail(wizardData.districtId);
+  const district = districtRes?.data || districtRes;
+  const { data: wardRes } = useWardDetail(wizardData.wardId);
+  const ward = wardRes?.data || wardRes;
 
-  useEffect(() => {
-    if (wizardData.districtId) {
-      districtService
-        .getDistrictById(wizardData.districtId)
-        .then((res) => setDistrict(res.data))
-        .catch(() => {});
-    }
-
-    if (wizardData.wardId) {
-      wardService
-        .getWardById(wizardData.wardId)
-        .then((res) => setWard(res.data))
-        .catch(() => {});
-    }
-  }, [wizardData.districtId, wizardData.wardId]);
-
-  useEffect(() => {
-    if (tags.length === 0) {
-      fetchTags();
-    }
-  }, [tags.length, fetchTags]);
+  const submitting = createMutation.isPending || updateMutation.isPending;
 
   const category = categories.find((cat) => cat.id === wizardData.categoryId);
 
   const handleSubmit = async () => {
-    setSubmitting(true);
     try {
       const placeData = {
         ...wizardData,
@@ -85,22 +70,22 @@ const StepPreview = ({ isEditMode }) => {
           console.error("Missing ID in wizardData", wizardData);
           toast({
             variant: "destructive",
-            title: "Lỗi",
-            description: "Không xác định được ID địa điểm",
+            title: t("common.error"),
+            description: t("admin.placeWizard.error"),
           });
           return;
         }
 
-        await updatePlace(updateId, placeData);
+        await updateMutation.mutateAsync({ id: updateId, data: placeData });
         toast({
-          title: "Thành công",
-          description: "Cập nhật địa điểm thành công",
+          title: t("common.success"),
+          description: t("admin.placeWizard.preview.updateSuccess"),
         });
       } else {
-        await createPlace(placeData);
+        await createMutation.mutateAsync(placeData);
         toast({
-          title: "Thành công",
-          description: "Tạo địa điểm mới thành công",
+          title: t("common.success"),
+          description: t("admin.placeWizard.preview.createSuccess"),
         });
       }
 
@@ -109,11 +94,9 @@ const StepPreview = ({ isEditMode }) => {
       console.error(error);
       toast({
         variant: "destructive",
-        title: "Lỗi",
-        description: error.message || "Có lỗi xảy ra khi lưu địa điểm",
+        title: t("common.error"),
+        description: error.message || t("admin.placeWizard.loadFailed"),
       });
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -134,7 +117,7 @@ const StepPreview = ({ isEditMode }) => {
                 </Badge>
               )}
               <h2 className="text-2xl sm:text-3xl font-bold">
-                {wizardData.name || "Chưa có tên"}
+                {wizardData.name || t("common.noData")}
               </h2>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4" />
@@ -147,7 +130,7 @@ const StepPreview = ({ isEditMode }) => {
             </div>
             <div className="flex gap-2">
               <Badge variant="outline" className="text-xs">
-                {wizardData.images?.length || 0} hình ảnh
+                {wizardData.images?.length || 0} {t("admin.placeWizard.preview.images")}
               </Badge>
               {wizardData.slug && (
                 <Badge variant="outline" className="text-xs font-mono lowercase">
@@ -167,7 +150,7 @@ const StepPreview = ({ isEditMode }) => {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <ImageIcon className="h-5 w-5 text-primary" />
-                Thư viện ảnh
+                {t("admin.placeWizard.preview.images")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -185,7 +168,7 @@ const StepPreview = ({ isEditMode }) => {
                       />
                       {img.isCover && (
                         <div className="absolute top-1 left-1 bg-primary text-primary-foreground text-[10px] font-medium px-1.5 py-0.5 rounded">
-                          Bìa
+                          Cover
                         </div>
                       )}
                     </div>
@@ -195,7 +178,7 @@ const StepPreview = ({ isEditMode }) => {
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <ImageIcon className="h-10 w-10 text-muted-foreground/50 mb-2" />
                   <p className="text-sm text-muted-foreground">
-                    Chưa có hình ảnh
+                    {t("admin.placeWizard.preview.noImages")}
                   </p>
                 </div>
               )}
@@ -207,12 +190,12 @@ const StepPreview = ({ isEditMode }) => {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Tag className="h-5 w-5 text-primary" />
-                Mô tả
+                {t("admin.placeWizard.preview.description")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
-                {wizardData.description || "Chưa có mô tả"}
+                {wizardData.description || t("common.noData")}
               </p>
             </CardContent>
           </Card>
@@ -223,7 +206,7 @@ const StepPreview = ({ isEditMode }) => {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Tag className="h-5 w-5 text-primary" />
-                  Tags
+                  {t("admin.placeWizard.preview.tags")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -240,7 +223,7 @@ const StepPreview = ({ isEditMode }) => {
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Chưa có tags
+                    {t("common.noData")}
                   </p>
                 )}
               </CardContent>
@@ -250,7 +233,7 @@ const StepPreview = ({ isEditMode }) => {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <DollarSign className="h-5 w-5 text-primary" />
-                  Giá cả
+                  {t("admin.placeWizard.preview.priceRange")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -260,7 +243,7 @@ const StepPreview = ({ isEditMode }) => {
                 <p className="text-sm text-muted-foreground">
                   {wizardData.priceFrom
                     ? `${Number(wizardData.priceFrom).toLocaleString("vi-VN")} - ${Number(wizardData.priceTo || wizardData.priceFrom).toLocaleString("vi-VN")} VND`
-                    : "Chưa có thông tin giá"}
+                    : t("common.noData")}
                 </p>
               </CardContent>
             </Card>
@@ -273,7 +256,7 @@ const StepPreview = ({ isEditMode }) => {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Clock className="h-5 w-5 text-primary" />
-                Giờ mở cửa
+                {t("admin.placeWizard.preview.openingHours")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -294,7 +277,7 @@ const StepPreview = ({ isEditMode }) => {
                         )}
                       >
                         {slot.isClosed
-                          ? "Đóng cửa"
+                          ? t("common.disabled")
                           : `${slot.openTime} - ${slot.closeTime}`}
                       </span>
                     </div>
@@ -302,7 +285,7 @@ const StepPreview = ({ isEditMode }) => {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Chưa có lịch mở cửa
+                  {t("common.noData")}
                 </p>
               )}
             </CardContent>
@@ -312,7 +295,7 @@ const StepPreview = ({ isEditMode }) => {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Phone className="h-5 w-5 text-primary" />
-                Liên hệ
+                {t("admin.placeWizard.preview.phone")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -336,7 +319,7 @@ const StepPreview = ({ isEditMode }) => {
               )}
               {!wizardData.phone && !wizardData.email && !wizardData.website && (
                 <p className="text-sm text-muted-foreground">
-                  Chưa có thông tin liên hệ
+                  {t("common.noData")}
                 </p>
               )}
             </CardContent>
@@ -354,23 +337,23 @@ const StepPreview = ({ isEditMode }) => {
           className="gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          Quay lại
+          {t("common.back")}
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={submitting || loading}
+          disabled={submitting}
           size="lg"
           className="gap-2"
         >
           {submitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Đang xử lý...
+              {t("common.processing")}
             </>
           ) : (
             <>
               <Check className="h-4 w-4" />
-              {isEditMode ? "Cập nhật" : "Tạo địa điểm"}
+              {isEditMode ? t("admin.placeWizard.preview.save") : t("admin.placeWizard.preview.save")}
             </>
           )}
         </Button>

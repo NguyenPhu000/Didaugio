@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { CATEGORY_ICON_MAP } from "@/constants/categoryConstants";
+import { useTranslation } from "react-i18next";
 
 /**
  * CATEGORY TREE ITEM
@@ -30,6 +31,7 @@ export default function CategoryTreeItem({
   onAddChild,
   onSelect,
 }) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = category.children && category.children.length > 0;
 
@@ -92,7 +94,7 @@ export default function CategoryTreeItem({
           <div className="flex items-center gap-2">
             <span className="font-medium">{category.name}</span>
             <Badge variant="outline" className="text-xs">
-              Cấp {category.level}
+              {t("category.treeItem.level", { n: category.level })}
             </Badge>
           </div>
           {category.description && (
@@ -101,9 +103,9 @@ export default function CategoryTreeItem({
             </p>
           )}
           <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-            <span>{category._count?.children || 0} con</span>
-            <span>{category._count?.places || 0} địa điểm</span>
-            <span>{category._count?.categoryTags || 0} thẻ</span>
+            <span>{t("category.treeItem.children", { count: category._count?.children || 0 })}</span>
+            <span>{t("category.treeItem.places", { count: category._count?.places || 0 })}</span>
+            <span>{t("category.treeItem.tags", { count: category._count?.categoryTags || 0 })}</span>
           </div>
         </div>
 
@@ -117,12 +119,12 @@ export default function CategoryTreeItem({
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onEdit(category)}>
               <Edit className="h-4 w-4 mr-2" />
-              Sửa
+              {t("category.treeItem.edit")}
             </DropdownMenuItem>
             {category.level < 3 && (
               <DropdownMenuItem onClick={() => onAddChild(category)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Thêm danh mục con
+                {t("category.treeItem.addSubcategory")}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
@@ -130,7 +132,7 @@ export default function CategoryTreeItem({
               className="text-destructive"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Xóa
+              {t("category.treeItem.delete")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

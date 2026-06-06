@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Shield, UserPlus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function PermissionCheckbox({
   permission,
@@ -18,6 +19,8 @@ export function PermissionCheckbox({
   isInherited = false,
   showSource = false,
 }) {
+  const { t } = useTranslation();
+
   return (
     <div
       className={cn(
@@ -56,15 +59,15 @@ export function PermissionCheckbox({
                     className="text-xs bg-black text-white border-black flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-none uppercase font-mono"
                   >
                     <Shield className="h-3 w-3" />
-                    ROLE
+                    {t("role.permissionCheckbox.roleBadge")}
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent className="bg-black text-white border-black rounded-none">
                   <p className="uppercase font-mono text-xs">
-                    Quyền mặc định từ vai trò
+                    {t("role.permissionCheckbox.inheritedFromRole")}
                   </p>
                   <p className="text-xs text-gray-300 font-mono">
-                    Bạn có thể bỏ chọn nếu không muốn user có quyền này
+                    {t("role.permissionCheckbox.deselectHint")}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -76,7 +79,7 @@ export function PermissionCheckbox({
               className="text-xs bg-[#F3E600] text-black border-black flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-none uppercase font-mono"
             >
               <UserPlus className="h-3 w-3" />
-              ĐẶC QUYỀN
+              {t("role.permissionCheckbox.specialPermission")}
             </Badge>
           )}
         </div>

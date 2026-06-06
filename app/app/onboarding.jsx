@@ -2,6 +2,7 @@ import { View, Text, Pressable, ScrollView } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   TRAVEL_STYLES,
@@ -16,6 +17,7 @@ import { TOKENS } from "../src/constants/design-tokens";
 const TOTAL_STEPS = 3;
 
 export default function OnboardingScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const setPreferences = useUIStore((s) => s.setPreferences);
@@ -85,10 +87,10 @@ export default function OnboardingScreen() {
           <View className="pt-6 gap-4">
             <View className="gap-1">
               <Text className="text-2xl font-bold text-ink dark:text-white">
-                Bạn thích du lịch kiểu gì? 🗺️
+                {t("onboarding.travelStyleTitle")}
               </Text>
               <Text className="text-sm text-ink-secondary">
-                Chọn những phong cách bạn yêu thích (có thể chọn nhiều)
+                {t("onboarding.travelStyleSubtitle")}
               </Text>
             </View>
             <View className="flex-row flex-wrap gap-3 mt-2">
@@ -123,7 +125,7 @@ export default function OnboardingScreen() {
                           : TOKENS.color.neutral[700],
                       }}
                     >
-                      {style.label}
+                      {t(style.labelKey)}
                     </Text>
                   </Pressable>
                 );
@@ -137,10 +139,10 @@ export default function OnboardingScreen() {
           <View className="pt-6 gap-4">
             <View className="gap-1">
               <Text className="text-2xl font-bold text-ink dark:text-white">
-                Đi du lịch với ai? 👥
+                {t("onboarding.groupTitle")}
               </Text>
               <Text className="text-sm text-ink-secondary">
-                Giúp em Nhi gợi ý phù hợp hơn
+                {t("onboarding.groupSubtitle")}
               </Text>
             </View>
             <View className="gap-3 mt-2">
@@ -179,7 +181,7 @@ export default function OnboardingScreen() {
                           : TOKENS.color.neutral[900],
                       }}
                     >
-                      {group.label}
+                      {t(group.labelKey)}
                     </Text>
                     {isSelected && (
                       <View className="ml-auto">
@@ -202,10 +204,10 @@ export default function OnboardingScreen() {
           <View className="pt-6 gap-4">
             <View className="gap-1">
               <Text className="text-2xl font-bold text-ink dark:text-white">
-                Ngân sách của bạn? 💰
+                {t("onboarding.budgetTitle")}
               </Text>
               <Text className="text-sm text-ink-secondary">
-                Để em Nhi gợi ý phù hợp túi tiền
+                {t("onboarding.budgetSubtitle")}
               </Text>
             </View>
             <View className="gap-3 mt-2">
@@ -236,7 +238,7 @@ export default function OnboardingScreen() {
                             : TOKENS.color.neutral[900],
                         }}
                       >
-                        {level.label}
+                        {t(level.labelKey)}
                       </Text>
                       {isSelected && (
                         <MaterialIconsRounded
@@ -247,7 +249,7 @@ export default function OnboardingScreen() {
                       )}
                     </View>
                     <Text className="text-sm text-ink-secondary mt-0.5">
-                      {level.description}
+                      {t(level.descriptionKey)}
                     </Text>
                   </Pressable>
                 );
@@ -268,11 +270,11 @@ export default function OnboardingScreen() {
           style={{ backgroundColor: TOKENS.color.primary[500] }}
         >
           <Text className="text-base font-bold text-white">
-            {step < TOTAL_STEPS - 1 ? "Tiếp theo" : "Bắt đầu khám phá!"}
+            {step < TOTAL_STEPS - 1 ? t("onboarding.next") : t("onboarding.start")}
           </Text>
         </Pressable>
         <Pressable onPress={handleSkip} className="items-center py-2">
-          <Text className="text-sm text-ink-secondary">Bỏ qua</Text>
+          <Text className="text-sm text-ink-secondary">{t("onboarding.skip")}</Text>
         </Pressable>
       </View>
     </View>

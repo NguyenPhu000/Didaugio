@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
@@ -308,6 +309,7 @@ const PaymentTimeline = ({ booking }) => {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const BookingDetailPage = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
@@ -324,7 +326,7 @@ const BookingDetailPage = () => {
       const response = await bookingApi.getById(id);
       setBooking(response.data);
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể tải thông tin đặt chỗ");
+      toastApiErrorIfNeeded(error, t("business.bookings.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -348,10 +350,10 @@ const BookingDetailPage = () => {
     setActionLoading(true);
     try {
       await bookingApi.confirm(id);
-      toast.success("Xác nhận thành công");
+      toast.success(t("business.bookings.confirmedSuccess"));
       await Promise.all([loadBooking(), loadQR()]);
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể xác nhận");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotConfirm"));
     } finally {
       setActionLoading(false);
     }
@@ -361,11 +363,11 @@ const BookingDetailPage = () => {
     setActionLoading(true);
     try {
       await bookingApi.cancel(id, reason);
-      toast.success("Hủy thành công");
+      toast.success(t("business.bookings.cancelledSuccess"));
       setCancelOpen(false);
       await loadBooking();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể hủy");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotCancel"));
     } finally {
       setActionLoading(false);
     }
@@ -375,10 +377,10 @@ const BookingDetailPage = () => {
     setActionLoading(true);
     try {
       await bookingApi.complete(id);
-      toast.success("Hoàn thành đặt chỗ");
+      toast.success(t("business.bookings.completedSuccess"));
       await loadBooking();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể hoàn thành");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotComplete"));
     } finally {
       setActionLoading(false);
     }
@@ -388,10 +390,10 @@ const BookingDetailPage = () => {
     setActionLoading(true);
     try {
       await bookingApi.markNoShow(id);
-      toast.success("Đánh dấu không đến");
+      toast.success(t("business.bookings.noShowMarked"));
       await loadBooking();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể đánh dấu");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotMarkNoShow"));
     } finally {
       setActionLoading(false);
     }
@@ -404,11 +406,11 @@ const BookingDetailPage = () => {
         note,
         paidAt: new Date().toISOString(),
       });
-      toast.success("Đã cập nhật trạng thái thanh toán");
+      toast.success(t("business.bookings.confirmedSuccess"));
       setMarkPaidOpen(false);
       await loadBooking();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể xác nhận thanh toán");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotConfirm"));
     } finally {
       setActionLoading(false);
     }
@@ -422,11 +424,11 @@ const BookingDetailPage = () => {
         refundAmount: amount,
         refundedAt: new Date().toISOString(),
       });
-      toast.success("Đã xử lý hoàn tiền");
+      toast.success(t("business.bookings.completedSuccess"));
       setRefundOpen(false);
       await loadBooking();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể hoàn tiền");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotComplete"));
     } finally {
       setActionLoading(false);
     }
@@ -439,13 +441,13 @@ const BookingDetailPage = () => {
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <AlertTriangle className="h-10 w-10 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          Đặt chỗ không tồn tại hoặc đã bị xóa
+          {t("business.bookingDetail.title")}
         </p>
         <Button
           variant="outline"
           onClick={() => navigate(BUSINESS_ROUTES.BOOKINGS)}
         >
-          <ArrowLeft className="h-4 w-4 mr-2" /> Quay lại danh sách
+          <ArrowLeft className="h-4 w-4 mr-2" /> {t("common.back")}
         </Button>
       </div>
     );

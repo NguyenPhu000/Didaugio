@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -335,6 +336,7 @@ const ReviewCard = ({
 };
 
 const AdminReviewModerationPage = () => {
+  const { t } = useTranslation();
   const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -507,11 +509,11 @@ const AdminReviewModerationPage = () => {
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold text-foreground">
-              Moderation đánh giá
+              {t("admin.reviewModeration.title")}
             </h1>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Giám sát toàn bộ review, xử lý report, ẩn/khôi phục review và phản hồi.
+            {t("admin.reviewModeration.subtitle")}
           </p>
         </div>
         <Button
@@ -526,22 +528,22 @@ const AdminReviewModerationPage = () => {
 
       {stats && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
-          <StatCard title="Tổng review" value={stats.total} icon={Star} />
+          <StatCard title={t("admin.reviewModeration.totalReviews")} value={stats.total} icon={Star} />
           <StatCard
-            title="Bị report"
+            title={t("admin.reviewModeration.reported")}
             value={stats.reported}
             icon={AlertTriangle}
             tone="danger"
           />
           <StatCard
-            title="Chờ duyệt"
+            title={t("admin.reviewModeration.pending")}
             value={stats.pending}
             icon={MessageSquare}
             tone="warning"
           />
-          <StatCard title="Đã ẩn" value={stats.hidden} icon={EyeOff} />
-          <StatCard title="Dữ liệu seed" value={stats.seeded ?? 0} icon={Tag} />
-          <StatCard title="Rating TB" value={stats.avgRating} icon={Star} />
+          <StatCard title={t("admin.reviewModeration.hidden")} value={stats.hidden} icon={EyeOff} />
+          <StatCard title={t("admin.reviewModeration.seedData")} value={stats.seeded ?? 0} icon={Tag} />
+          <StatCard title={t("admin.reviewModeration.avgRating")} value={stats.avgRating} icon={Star} />
         </div>
       )}
 

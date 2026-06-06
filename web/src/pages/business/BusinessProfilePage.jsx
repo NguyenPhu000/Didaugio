@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -166,6 +167,7 @@ const ProfileSkeleton = () => (
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const BusinessProfilePage = () => {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const contractSectionRef = useRef(null);
   const { business, loading, updateProfile, fetchProfile } = useBusinessStore();
@@ -234,7 +236,7 @@ const BusinessProfilePage = () => {
           ? { businessLicense: documentFiles.businessLicense[0] }
           : {}),
       });
-      toast.success("Cập nhật hồ sơ thành công");
+      toast.success(t("business.profile.title"));
       reset(data);
       setDocumentFiles({
         idCardFront: [],
@@ -243,7 +245,7 @@ const BusinessProfilePage = () => {
       });
       setIsEditing(false);
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể cập nhật hồ sơ");
+      toastApiErrorIfNeeded(error, t("business.profile.loadFailed"));
     } finally {
       setSaving(false);
     }
@@ -358,8 +360,8 @@ const BusinessProfilePage = () => {
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
       {/* Header */}
       <PageHeader
-        title="Hồ sơ doanh nghiệp"
-        subtitle="Quản lý thông tin pháp lý và thanh toán"
+        title={t("business.profile.title")}
+        subtitle={t("business.profile.title")}
         action={headerAction}
       />
 

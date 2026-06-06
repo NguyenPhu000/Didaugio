@@ -2,8 +2,7 @@ import React from "react";
 import { View, Text } from "react-native";
 import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
 import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../../constants/design-tokens";
-
-const STEP_LABELS = ["Dịch vụ", "Xác nhận", "Gửi yêu cầu"];
+import { useTranslation } from "react-i18next";
 
 const BOOKING_THEME = {
   ...APPLE_THEME,
@@ -23,6 +22,8 @@ const BOOKING_THEME = {
 };
 
 export function StepIndicator({ currentStep }) {
+  const { t } = useTranslation();
+  const STEP_LABELS = [t("stepIndicator.service"), t("stepIndicator.confirm"), t("stepIndicator.submit")];
   return (
     <View
       style={{

@@ -23,18 +23,19 @@ import { MemoriesSection } from "../../src/modules/profile/components/MemoriesSe
 import { resolveMediaUrl } from "../../src/lib/media-url";
 import { NotificationBell } from "../../src/components/composed/NotificationBell";
 import { locationService } from "../../src/apis/locationService";
+import { useTranslation } from "react-i18next";
 
 const ACCENT_BLUE = "#3478F6";
 
 /* ====================== HELPERS ====================== */
-function getDisplayName(profile, storedUser) {
+function getDisplayName(profile, storedUser, t) {
   return (
     profile?.fullName ||
     profile?.profile?.fullName ||
     storedUser?.profile?.fullName ||
     storedUser?.fullName ||
     storedUser?.email?.split("@")[0] ||
-    "Lữ khách"
+    t("profile.guestDefault")
   );
 }
 
@@ -48,13 +49,13 @@ function getAvatarUri(profile, storedUser) {
   );
 }
 
-function getLocation(profile, storedUser) {
+function getLocation(profile, storedUser, t) {
   return (
     profile?.address ||
     profile?.profile?.address ||
     storedUser?.profile?.address ||
     storedUser?.address ||
-    "Chưa cập nhật địa chỉ"
+    t("profile.noAddress")
   );
 }
 
@@ -74,7 +75,7 @@ function formatCompactNumber(value) {
   return String(num);
 }
 
-function buildStats(profile, storedUser, tripsCount = 0) {
+function buildStats(profile, storedUser, tripsCount = 0, t) {
   const reviewsCount = profile?.stats?.reviews || 0;
   const savedCount = profile?.stats?.favorites || 0;
   const finalTripsCount = profile?.stats?.trips ?? tripsCount;
@@ -83,17 +84,17 @@ function buildStats(profile, storedUser, tripsCount = 0) {
     {
       key: "trips",
       value: formatCompactNumber(finalTripsCount),
-      label: "CHUYẾN ĐI",
+      label: t("profile.stats.trips"),
     },
     {
       key: "reviews",
       value: formatCompactNumber(reviewsCount),
-      label: "ĐÁNH GIÁ",
+      label: t("profile.stats.reviews"),
     },
     {
       key: "saved",
       value: formatCompactNumber(savedCount),
-      label: "ĐÃ LƯU",
+      label: t("profile.stats.saved"),
     },
   ];
 }
@@ -166,6 +167,7 @@ function CustomToast({ message, visible, onHide }) {
 
 /* ====================== SUB COMPONENTS ====================== */
 function ProfileHeader({ onSettingsPress }) {
+  const { t } = useTranslation();
   const router = useRouter();
   return (
     <View className="flex-row items-center justify-between px-5 py-[14px]">
@@ -176,7 +178,7 @@ function ProfileHeader({ onSettingsPress }) {
         style={{ fontFamily: TOKENS.font.semibold }}
         className="text-lg text-[#0F172A]"
       >
-        HỒ SƠ
+        {t("profile.title")}
       </Text>
       <View className="flex-row items-center gap-[10px]">
         <NotificationBell size={42} />
@@ -224,27 +226,28 @@ function AvatarBlock({ avatarUri, displayName }) {
 }
 
 function SettingsSection({ onSoonFeature }) {
+  const { t } = useTranslation();
   const router = useRouter();
 
   const settingsItems = [
     {
       icon: "confirmation-number",
-      label: "Booking của tôi",
+      label: t("profile.settingsItems.myBookings"),
       route: "/profile/bookings",
     },
     {
       icon: "bookmark",
-      label: "Địa điểm đã lưu",
+      label: t("profile.settingsItems.savedPlaces"),
       route: "/(tabs)/saved",
     },
     {
       icon: "credit-card",
-      label: "Phương thức thanh toán",
-      onPress: () => onSoonFeature("Phương thức thanh toán"),
+      label: t("profile.settingsItems.paymentMethods"),
+      onPress: () => onSoonFeature(t("profile.settingsItems.paymentMethods")),
     },
     {
       icon: "notifications",
-      label: "Thông báo",
+      label: t("profile.settingsItems.notifications"),
       route: "/profile/notifications",
     },
   ];
@@ -255,7 +258,7 @@ function SettingsSection({ onSoonFeature }) {
         style={{ fontFamily: TOKENS.font.semibold }}
         className="text-xl text-[#0F172A]"
       >
-        Cài đặt
+        {t("profile.settings")}
       </Text>
       <View
         className="bg-white rounded-[20px] py-1 mt-3"
@@ -290,6 +293,7 @@ function SettingsSection({ onSoonFeature }) {
 
 /* ====================== MAIN ====================== */
 export default function ProfileScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const storedUser = useAuthStore((s) => s.user);
@@ -336,13 +340,13 @@ export default function ProfileScreen() {
             style={{ fontFamily: TOKENS.font.heading }}
             className="text-2xl text-[#0F172A] text-center mb-[10px]"
           >
-            Đăng nhập để mở khóa hồ sơ
+            {t("profile.guest.title")}
           </Text>
           <Text
             style={{ fontFamily: TOKENS.font.regular }}
             className="text-[15px] text-[#64748B] text-center leading-[23px] max-w-[320px]"
           >
-            Theo dõi chuyến đi, lưu kỷ niệm và đồng bộ dữ liệu trên mọi thiết bị.
+            {t("profile.guest.description")}
           </Text>
 
           {/* Divider */}
@@ -371,7 +375,7 @@ export default function ProfileScreen() {
               style={{ fontFamily: TOKENS.font.semibold }}
               className="text-[15px] text-white tracking-[0.2px]"
             >
-              Đăng nhập
+              {t("profile.guest.login")}
             </Text>
           </Pressable>
 
@@ -398,7 +402,7 @@ export default function ProfileScreen() {
               style={{ fontFamily: TOKENS.font.semibold }}
               className="text-[15px] text-white tracking-[0.2px]"
             >
-              Đăng ký tài khoản mới
+              {t("profile.guest.register")}
             </Text>
           </Pressable>
 
@@ -412,7 +416,7 @@ export default function ProfileScreen() {
               style={{ fontFamily: TOKENS.font.semibold }}
               className="text-[#334155] text-[15px] tracking-[0.2px]"
             >
-              Khám phá bản đồ
+              {t("profile.guest.explore")}
             </Text>
           </Pressable>
 
@@ -421,7 +425,7 @@ export default function ProfileScreen() {
             style={{ fontFamily: TOKENS.font.regular }}
             className="mt-[18px] text-xs text-[#94A3B8] text-center"
           >
-            Miễn phí · Không cần thẻ tín dụng
+            {t("profile.guest.freeNote")}
           </Text>
         </ScrollView>
       </View>
@@ -432,23 +436,24 @@ export default function ProfileScreen() {
 }
 
 function LoggedInProfileScreen({ insets, storedUser }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { data: profile, isLoading, refetch, isRefetching } = useProfile(true);
   const { data: trips = [] } = useTrips(true);
-  const [displayLocation, setDisplayLocation] = useState("Đang tải địa chỉ...");
+  const [displayLocation, setDisplayLocation] = useState(t("profile.loadingAddress"));
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
   const handleSoonFeature = (title) => {
-    setToastMessage(`${title} sẽ có trong bản cập nhật tới!`);
+    setToastMessage(t("profile.comingSoon", { feature: title }));
     setToastVisible(true);
   };
 
-  const displayName = getDisplayName(profile, storedUser);
+  const displayName = getDisplayName(profile, storedUser, t);
   const avatarUri = getAvatarUri(profile, storedUser);
   const bio = getBio(profile, storedUser);
   const tripsCount = trips?.length || 0;
-  const stats = buildStats(profile, storedUser, tripsCount);
+  const stats = buildStats(profile, storedUser, tripsCount, t);
 
   useEffect(() => {
     let isMounted = true;
@@ -460,7 +465,7 @@ function LoggedInProfileScreen({ insets, storedUser }) {
 
       if (!pCode) {
         if (isMounted) {
-          setDisplayLocation(addressDetail || "Chưa cập nhật địa chỉ");
+          setDisplayLocation(addressDetail || t("profile.noAddress"));
         }
         return;
       }
@@ -486,12 +491,12 @@ function LoggedInProfileScreen({ insets, storedUser }) {
 
         const fullAddress = parts.join(", ");
         if (isMounted) {
-          setDisplayLocation(fullAddress || "Chưa cập nhật địa chỉ");
+          setDisplayLocation(fullAddress || t("profile.noAddress"));
         }
       } catch (error) {
         console.error("Error loading address labels:", error);
         if (isMounted) {
-          setDisplayLocation(addressDetail || "Chưa cập nhật địa chỉ");
+          setDisplayLocation(addressDetail || t("profile.noAddress"));
         }
       }
     }
@@ -513,7 +518,7 @@ function LoggedInProfileScreen({ insets, storedUser }) {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Check out ${displayName}'s profile on Đi Đâu Giờ!`,
+        message: t("profile.shareMessage", { name: displayName }),
       });
     } catch {}
   };
@@ -576,7 +581,7 @@ function LoggedInProfileScreen({ insets, storedUser }) {
                 style={{ fontFamily: TOKENS.font.semibold }}
                 className="text-white text-[15px]"
               >
-                Chỉnh sửa hồ sơ
+                {t("profile.actions.editProfile")}
               </Text>
             </Pressable>
             <Pressable
@@ -587,7 +592,7 @@ function LoggedInProfileScreen({ insets, storedUser }) {
                 style={{ fontFamily: TOKENS.font.semibold }}
                 className="text-[#334155] text-[15px]"
               >
-                Chia sẻ hồ sơ
+                {t("profile.actions.shareProfile")}
               </Text>
             </Pressable>
           </View>
@@ -629,14 +634,14 @@ function LoggedInProfileScreen({ insets, storedUser }) {
                 style={{ fontFamily: TOKENS.font.semibold }}
                 className="text-xl text-[#0F172A]"
               >
-                Chuyến đi sắp tới
+                {t("profile.upcomingTrips")}
               </Text>
               <Pressable onPress={() => router.push("/(tabs)/trips")}>
                 <Text
                   style={{ fontFamily: TOKENS.font.semibold }}
                   className="text-[15px] text-[#3478F6]"
                 >
-                  Xem tất cả
+                  {t("common.viewAll")}
                 </Text>
               </Pressable>
             </View>
@@ -662,7 +667,7 @@ function LoggedInProfileScreen({ insets, storedUser }) {
                     fontFamily: TOKENS.font.medium,
                   }}
                 >
-                  Chưa có chuyến đi nào sắp tới
+                  {t("profile.noUpcomingTrips")}
                 </Text>
               </View>
             )}
@@ -674,7 +679,7 @@ function LoggedInProfileScreen({ insets, storedUser }) {
               style={{ fontFamily: TOKENS.font.semibold }}
               className="text-xl text-[#0F172A]"
             >
-              Kỷ niệm
+              {t("profile.memories")}
             </Text>
             <MemoriesSection completedTrips={completedTrips} />
           </View>

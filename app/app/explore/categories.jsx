@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { TOKENS } from "../../src/constants/design-tokens";
@@ -53,6 +54,7 @@ function getModernIcon(name) {
 
 // ==== CATEGORY ROW SECTION ====
 const CategorySection = memo(function CategorySection({ category }) {
+  const { t } = useTranslation();
   const router = useRouter();
   // Fetch places specific to this category
   const { data, isLoading } = useExplore({
@@ -89,7 +91,7 @@ const CategorySection = memo(function CategorySection({ category }) {
           className="flex-row items-center"
           style={({ pressed }) => pressed && { opacity: 0.6 }}
         >
-          <Text className="text-[#8E8E93] text-[15px] font-medium">Xem tất cả</Text>
+          <Text className="text-[#8E8E93] text-[15px] font-medium">{t("exploreCategories.viewAll")}</Text>
           <MaterialCommunityIcons name="chevron-right" size={16} color="#6B7280" />
         </Pressable>
       </View>
@@ -124,6 +126,7 @@ const CategorySection = memo(function CategorySection({ category }) {
 
 // ==== MAIN SCREEN ====
 export default function ExploreCategoriesScreen() {
+  const { t } = useTranslation();
   const { data: categories = [], isLoading } = useCategories();
 
   const items = useMemo(
@@ -138,8 +141,8 @@ export default function ExploreCategoriesScreen() {
 
   return (
     <ExploreListScaffold
-      title="Khám phá theo danh mục"
-      subtitle="Tìm điểm đến hoàn hảo cho bạn."
+      title={t("exploreCategories.title")}
+      subtitle={t("exploreCategories.subtitle")}
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -147,7 +150,7 @@ export default function ExploreCategoriesScreen() {
       >
         {isLoading ? (
           <Text className="text-[#6B7280] text-[14px] font-sans py-[30px] text-center">
-            Đang tải danh mục...
+            {t("exploreCategories.loading")}
           </Text>
         ) : (
           items.map((item) => (

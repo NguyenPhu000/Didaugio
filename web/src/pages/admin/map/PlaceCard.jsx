@@ -1,7 +1,9 @@
 import { MapPin, Star, Navigation, ChevronRight } from "lucide-react";
-import { PRICE_LABELS } from "@/modules/map";
+import { useTranslation } from "react-i18next";
+import { PRICE_LABELS, getPriceLabel } from "@/modules/map";
 
 const PlaceCard = ({ place, onClick }) => {
+  const { t } = useTranslation();
   const price = PRICE_LABELS[place.priceRange];
   const rating = Number(place.averageRating ?? place.ratingAvg ?? 0);
   const imgSrc = place.thumbnail || place.images?.[0]?.secureUrl || place.images?.[0]?.thumbnailUrl || place.images?.[0]?.imageData || place.images?.[0]?.url;
@@ -48,12 +50,12 @@ const PlaceCard = ({ place, onClick }) => {
             <span
               className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${price.cls}`}
             >
-              {price.label}
+              {getPriceLabel(place.priceRange)}
             </span>
           )}
           {place.isFeatured && (
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
-              ★ NỔI BẬT
+              ★ {t("map.markers.featured")}
             </span>
           )}
         </div>

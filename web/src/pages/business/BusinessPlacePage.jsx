@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense, useRef } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   MapProvider,
   useMapContext,
@@ -47,11 +48,14 @@ const PlaceDetailDialog = lazy(() => import("@/components/place/PlaceDetailDialo
 
 // ─── Status Config ───────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG = {
-  approved: { label: "Đã duyệt", bg: "bg-emerald-500", text: "text-white", ring: "ring-emerald-200" },
-  pending: { label: "Chờ duyệt", bg: "bg-amber-500", text: "text-white", ring: "ring-amber-200" },
-  draft: { label: "Nháp", bg: "bg-slate-400", text: "text-white", ring: "ring-slate-200" },
-  rejected: { label: "Từ chối", bg: "bg-red-500", text: "text-white", ring: "ring-red-200" },
+const useStatusConfig = () => {
+  const { t } = useTranslation();
+  return {
+    approved: { label: t("business.places.approved"), bg: "bg-emerald-500", text: "text-white", ring: "ring-emerald-200" },
+    pending: { label: t("business.places.pending"), bg: "bg-amber-500", text: "text-white", ring: "ring-amber-200" },
+    draft: { label: t("business.places.pending"), bg: "bg-slate-400", text: "text-white", ring: "ring-slate-200" },
+    rejected: { label: t("places.statusFilters.rejected"), bg: "bg-red-500", text: "text-white", ring: "ring-red-200" },
+  };
 };
 
 // ─── Image Helper ────────────────────────────────────────────────────────────────
@@ -86,8 +90,9 @@ const StatCard = ({ label, value, color, icon: Icon }) => (
 
 // ─── Place Card Grid ────────────────────────────────────────────────────────────
 
-const PlaceCardGrid = ({ place, onView, onEdit, onFly }) => {
-  const config = STATUS_CONFIG[place.status] || STATUS_CONFIG.draft;
+const PlaceCardGrid = ({ place, onView, onEdit, onFly, statusConfig }) => {
+  const { t } = useTranslation();
+  const config = statusConfig[place.status] || statusConfig.draft;
   const imgSrc = getImageSrc(place);
   const rating = Number(place.ratingAvg ?? 0);
 
@@ -131,7 +136,7 @@ const PlaceCardGrid = ({ place, onView, onEdit, onFly }) => {
         {place.isFeatured && (
           <div className="absolute top-3 left-3 bg-yellow-400 text-black px-2 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 shadow-sm">
             <Star className="h-3 w-3 fill-current" aria-hidden="true" />
-            Nổi bật
+            {t("business.places.featured")}
           </div>
         )}
       </div>
@@ -139,7 +144,7 @@ const PlaceCardGrid = ({ place, onView, onEdit, onFly }) => {
       {/* Content */}
       <div className="p-4">
         <h3 className="font-semibold text-gray-900 truncate line-clamp-1">
-          {place.name || "Không có tên"}
+          {place.name || t("business.places.noName")}
         </h3>
         {place.address && (
           <p className="text-xs text-gray-500 mt-1 truncate">{place.address}</p>
@@ -159,7 +164,7 @@ const PlaceCardGrid = ({ place, onView, onEdit, onFly }) => {
             </span>
           )}
           {place.viewCount != null && (
-            <span className="tabular-nums">{place.viewCount.toLocaleString()} lượt xem</span>
+            <span className="tabular-nums">{place.viewCount.toLocaleString()} {t("business.places.views")}</span>
           )}
         </div>
 
@@ -171,7 +176,7 @@ const PlaceCardGrid = ({ place, onView, onEdit, onFly }) => {
             className="flex-1 flex items-center justify-center gap-1.5 h-8 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:outline-none"
           >
             <Edit2 className="h-3.5 w-3.5" aria-hidden="true" />
-            Sửa
+            {t("common.edit")}
           </button>
           <button
             type="button"
@@ -179,7 +184,7 @@ const PlaceCardGrid = ({ place, onView, onEdit, onFly }) => {
             className="flex-1 flex items-center justify-center gap-1.5 h-8 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:outline-none"
           >
             <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-            Bản đồ
+            {t("business.places.map")}
           </button>
         </div>
       </div>
@@ -189,8 +194,9 @@ const PlaceCardGrid = ({ place, onView, onEdit, onFly }) => {
 
 // ─── Place Row ─────────────────────────────────────────────────────────────────
 
-const PlaceRow = ({ place, onView, onEdit, onFly }) => {
-  const config = STATUS_CONFIG[place.status] || STATUS_CONFIG.draft;
+const PlaceRow = ({ place, onView, onEdit, onFly, statusConfig }) => {
+  const { t } = useTranslation();
+  const config = statusConfig[place.status] || statusConfig.draft;
   const imgSrc = getImageSrc(place);
   const rating = Number(place.ratingAvg ?? 0);
 
@@ -217,7 +223,7 @@ const PlaceRow = ({ place, onView, onEdit, onFly }) => {
 
       <div className="flex-1 min-w-0">
         <p className="font-medium text-gray-900 truncate line-clamp-1">
-          {place.name || "Không có tên"}
+          {place.name || t("business.places.noName")}
         </p>
         {place.address && <p className="text-xs text-gray-500 truncate">{place.address}</p>}
         <div className="flex items-center gap-2 mt-1">
@@ -240,7 +246,7 @@ const PlaceRow = ({ place, onView, onEdit, onFly }) => {
           type="button"
           onClick={(e) => { e.stopPropagation(); onFly(place); }}
           className="h-9 w-9 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:outline-none"
-          aria-label="Xem trên bản đồ"
+          aria-label={t("business.places.viewOnMap")}
         >
           <MapPin className="h-4 w-4" />
         </button>
@@ -248,7 +254,7 @@ const PlaceRow = ({ place, onView, onEdit, onFly }) => {
           type="button"
           onClick={(e) => { e.stopPropagation(); onEdit(place); }}
           className="h-9 w-9 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:outline-none"
-          aria-label="Sửa địa điểm"
+          aria-label={t("business.places.editPlace")}
         >
           <Edit2 className="h-4 w-4" />
         </button>
@@ -256,7 +262,7 @@ const PlaceRow = ({ place, onView, onEdit, onFly }) => {
           type="button"
           onClick={(e) => { e.stopPropagation(); onView(place); }}
           className="h-9 w-9 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:outline-none"
-          aria-label="Xem chi tiết"
+          aria-label={t("business.places.viewDetails")}
         >
           <Eye className="h-4 w-4" />
         </button>
@@ -268,6 +274,7 @@ const PlaceRow = ({ place, onView, onEdit, onFly }) => {
 // ─── Map View ───────────────────────────────────────────────────────────────────
 
 const MapView = ({ places, onPlaceSelect }) => {
+  const { t } = useTranslation();
   const { flyTo, setOnSelectPlace, setPlaces, setFilteredPlaces } = useMapContext();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [panelTab, setPanelTab] = useState("places");
@@ -378,11 +385,11 @@ const MapView = ({ places, onPlaceSelect }) => {
             <MapIcon className="h-4 w-4" aria-hidden="true" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-gray-900">Bản đồ địa điểm</h2>
+            <h2 className="text-sm font-bold text-gray-900">{t("business.places.title")}</h2>
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" aria-hidden="true" />
               <span className="text-[9px] font-mono text-gray-400 uppercase tabular-nums">
-                {filteredPlaces.length} địa điểm
+                {filteredPlaces.length} {t("business.places.total")}
               </span>
             </div>
           </div>
@@ -396,16 +403,16 @@ const MapView = ({ places, onPlaceSelect }) => {
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm…"
+              placeholder={t("common.search")}
               className="w-full h-9 border border-gray-200 rounded-lg pl-9 pr-8 text-sm focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50 placeholder:text-gray-400"
-              aria-label="Tìm kiếm địa điểm"
+              aria-label={t("business.places.searchPlaceholder")}
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:text-gray-600"
-                aria-label="Xóa tìm kiếm"
+                aria-label={t("common.search")}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -421,14 +428,14 @@ const MapView = ({ places, onPlaceSelect }) => {
               className="flex items-center gap-1 h-8 px-3 text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
             >
               <RefreshCw className="h-3 w-3" aria-hidden="true" />
-              Xoá lọc
+              {t("business.places.filter")}
             </button>
           )}
           <button
             type="button"
             onClick={() => setSidebarOpen((v) => !v)}
             className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-            aria-label={sidebarOpen ? "Ẩn thanh bên" : "Hiện thanh bên"}
+            aria-label={t("admin.map.ariaLabels.toggleSidebar")}
             aria-expanded={sidebarOpen}
           >
             <Layers className="h-4 w-4" />
@@ -437,7 +444,7 @@ const MapView = ({ places, onPlaceSelect }) => {
             type="button"
             onClick={toggleFullscreen}
             className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-            aria-label={fullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
+            aria-label={fullscreen ? t("admin.map.ariaLabels.exitFullscreen") : t("admin.map.ariaLabels.enterFullscreen")}
           >
             {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
@@ -448,13 +455,13 @@ const MapView = ({ places, onPlaceSelect }) => {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         {sidebarOpen && (
-          <aside className="w-72 bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-hidden" aria-label="Thanh bên">
+          <aside className="w-72 bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-hidden" aria-label={t("admin.map.ariaLabels.toggleSidebar")}>
             {/* Stats */}
             <div className="grid grid-cols-3 border-b border-gray-100">
               {[
-                { label: "Tổng", value: places.length },
-                { label: "Hiển thị", value: filteredPlaces.length },
-                { label: "Quận", value: districtCount },
+                { label: t("business.places.total"), value: places.length },
+                { label: t("business.places.refresh"), value: filteredPlaces.length },
+                { label: t("admin.map.districts"), value: districtCount },
               ].map(({ label, value }) => (
                 <div key={label} className="py-3 text-center border-r border-gray-100 last:border-r-0">
                   <div className="text-xl font-black text-gray-900 tabular-nums">{value}</div>
@@ -466,8 +473,8 @@ const MapView = ({ places, onPlaceSelect }) => {
             {/* Tabs */}
             <div className="flex border-b border-gray-200 bg-gray-50" role="tablist">
               {[
-                { id: "places", label: "Địa điểm", icon: MapPin },
-                { id: "filters", label: "Lọc", icon: Filter, hasIndicator: hasActiveFilters },
+                { id: "places", label: t("admin.map.places"), icon: MapPin },
+                { id: "filters", label: t("admin.map.filters"), icon: Filter, hasIndicator: hasActiveFilters },
               ].map(({ id, label, icon: TabIcon, hasIndicator }) => (
                 <button
                   key={id}
@@ -486,7 +493,7 @@ const MapView = ({ places, onPlaceSelect }) => {
                   <TabIcon className="h-3.5 w-3.5" aria-hidden="true" />
                   {label}
                   {hasIndicator && (
-                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full" aria-label="Có bộ lọc đang bật" />
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full" aria-label={t("admin.map.ariaLabels.filterActive")} />
                   )}
                 </button>
               ))}
@@ -494,12 +501,12 @@ const MapView = ({ places, onPlaceSelect }) => {
 
             {/* Places Panel */}
             {panelTab === "places" && (
-              <ScrollArea className="flex-1" aria-label="Danh sách địa điểm">
+              <ScrollArea className="flex-1" aria-label={t("admin.map.places")}>
                 <div className="p-2" role="tabpanel" id="places-panel">
                   {filteredPlaces.length === 0 ? (
                     <div className="py-12 text-center">
                       <MapPinOff className="h-8 w-8 text-gray-200 mx-auto mb-2" aria-hidden="true" />
-                      <p className="text-xs text-gray-400 font-medium">Không có địa điểm</p>
+                      <p className="text-xs text-gray-400 font-medium">{t("admin.map.noPlaces")}</p>
                     </div>
                   ) : (
                     filteredPlaces.map((place) => (
@@ -543,7 +550,7 @@ const MapView = ({ places, onPlaceSelect }) => {
           {/* Legend */}
           <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full px-3 py-1.5 flex items-center gap-2 text-[11px] font-medium text-gray-600 shadow-sm" aria-live="polite">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" aria-hidden="true" />
-            <span><strong className="text-gray-900 tabular-nums">{filteredPlaces.length}</strong> địa điểm</span>
+            <span><strong className="text-gray-900 tabular-nums">{filteredPlaces.length}</strong> {t("business.places.total")}</span>
           </div>
         </main>
       </div>
@@ -551,10 +558,10 @@ const MapView = ({ places, onPlaceSelect }) => {
       {/* Status bar */}
       <footer className="h-7 bg-gray-900 flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-4 text-[10px] font-mono text-gray-400">
-          <span>HIỂN THỊ: <span className="text-white tabular-nums">{filteredPlaces.length}</span> / <span className="tabular-nums">{places.length}</span></span>
-          {hasActiveFilters && <span className="text-yellow-400">● BỘ LỌC ĐANG BẬT</span>}
+          <span>{t("admin.map.statusBar.showing", { shown: filteredPlaces.length, total: places.length })}</span>
+          {hasActiveFilters && <span className="text-yellow-400">{t("admin.map.statusBar.filtersActive")}</span>}
         </div>
-        <span className="text-[10px] font-mono text-gray-500">CẦN THƠ — {districtCount} QUẬN/HUYỆN</span>
+        <span className="text-[10px] font-mono text-gray-500">{t("admin.map.statusBar.canTho", { count: districtCount })}</span>
       </footer>
     </div>
   );
@@ -562,44 +569,51 @@ const MapView = ({ places, onPlaceSelect }) => {
 
 // ─── Empty State ────────────────────────────────────────────────────────────────
 
-const EmptyState = ({ onAddNew }) => (
-  <div className="flex flex-col items-center justify-center h-full py-16 text-center" role="status">
-    <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-      <MapPinOff className="h-10 w-10 text-gray-300" aria-hidden="true" />
+const EmptyState = ({ onAddNew }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col items-center justify-center h-full py-16 text-center" role="status">
+      <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+        <MapPinOff className="h-10 w-10 text-gray-300" aria-hidden="true" />
+      </div>
+      <h3 className="text-lg font-semibold text-gray-900">{t("business.places.noPlacesYet")}</h3>
+      <p className="text-sm text-gray-500 mt-1 mb-6 max-w-sm">
+        {t("business.places.noPlacesDesc")}
+      </p>
+      <Button onClick={onAddNew} className="gap-2">
+        <Plus className="h-4 w-4" aria-hidden="true" />
+        {t("business.places.addPlace")}
+      </Button>
     </div>
-    <h3 className="text-lg font-semibold text-gray-900">Chưa có địa điểm nào</h3>
-    <p className="text-sm text-gray-500 mt-1 mb-6 max-w-sm">
-      Bắt đầu bằng cách thêm địa điểm đầu tiên của bạn để hiển thị trên bản đồ
-    </p>
-    <Button onClick={onAddNew} className="gap-2">
-      <Plus className="h-4 w-4" aria-hidden="true" />
-      Thêm địa điểm mới
-    </Button>
-  </div>
-);
+  );
+};
 
 // ─── Loading Skeleton ──────────────────────────────────────────────────────────
 
-const LoadingSkeleton = () => (
-  <div className="p-6" aria-label="Đang tải…" aria-busy="true">
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <Skeleton className="h-40 w-full" />
-          <div className="p-4 space-y-2">
-            <Skeleton className="h-5 w-3/4" />
-            <Skeleton className="h-3 w-1/2" />
-            <Skeleton className="h-8 w-full mt-3" />
+const LoadingSkeleton = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="p-6" aria-label={t("business.places.loading")} aria-busy="true">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <Skeleton className="h-40 w-full" />
+            <div className="p-4 space-y-2">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+              <Skeleton className="h-8 w-full mt-3" />
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 const BusinessPlacePage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -612,6 +626,8 @@ const BusinessPlacePage = () => {
   const [detailOpen, setDetailOpen] = useState(false);
   const searchDebounceRef = useRef(null);
 
+  const statusConfig = useStatusConfig();
+
   const fetchPlaces = useCallback(async () => {
     setLoading(true);
     try {
@@ -619,11 +635,11 @@ const BusinessPlacePage = () => {
       setPlacesData(res.data || []);
     } catch (err) {
       console.error("[BusinessPlacePage] Fetch error:", err);
-      toast({ title: "Lỗi", description: "Không thể tải danh sách địa điểm", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("business.places.loadFailed"), variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     fetchPlaces();
@@ -700,9 +716,9 @@ const BusinessPlacePage = () => {
   }, [handleSearch]);
 
   const TABS = [
-    { id: "grid", label: "Lưới", icon: LayoutGrid },
-    { id: "list", label: "Danh sách", icon: LayoutList },
-    { id: "map", label: "Bản đồ", icon: MapIcon },
+    { id: "grid", label: t("business.places.grid"), icon: LayoutGrid },
+    { id: "list", label: t("business.places.list"), icon: LayoutList },
+    { id: "map", label: t("business.places.map"), icon: MapIcon },
   ];
 
   return (
@@ -711,26 +727,26 @@ const BusinessPlacePage = () => {
       <header className="bg-white border-b border-gray-200 px-6 py-4 shrink-0">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Địa điểm của tôi</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Quản lý địa điểm đã đăng ký</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t("business.places.title")}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">{t("business.places.subtitle")}</p>
           </div>
           <Button onClick={handleAddNew} className="gap-2">
             <Plus className="h-4 w-4" aria-hidden="true" />
-            Thêm địa điểm
+            {t("business.places.addPlace")}
           </Button>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-          <StatCard label="Tổng" value={stats.total} color="bg-gray-900" icon={MapPin} />
-          <StatCard label="Đã duyệt" value={stats.approved} color="bg-emerald-500" icon={CheckCircle2} />
-          <StatCard label="Chờ duyệt" value={stats.pending} color="bg-amber-500" icon={Clock} />
-          <StatCard label="Nháp" value={stats.draft} color="bg-slate-400" icon={Edit2} />
+          <StatCard label={t("business.places.total")} value={stats.total} color="bg-gray-900" icon={MapPin} />
+          <StatCard label={t("business.places.approved")} value={stats.approved} color="bg-emerald-500" icon={CheckCircle2} />
+          <StatCard label={t("business.places.pending")} value={stats.pending} color="bg-amber-500" icon={Clock} />
+          <StatCard label={t("business.places.pending")} value={stats.draft} color="bg-slate-400" icon={Edit2} />
         </div>
       </header>
 
       {/* Tab Navigation */}
-      <nav className="bg-white border-b border-gray-200 px-6 shrink-0" role="tablist" aria-label="Chế độ xem">
+      <nav className="bg-white border-b border-gray-200 px-6 shrink-0" role="tablist" aria-label={t("business.places.viewDetails")}>
         <div className="flex items-center gap-1">
           {TABS.map(({ id, label, icon: TabIcon }) => (
             <button
@@ -763,18 +779,18 @@ const BusinessPlacePage = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" aria-hidden="true" />
           <input
             type="search"
-            placeholder="Tìm kiếm địa điểm…"
+            placeholder={t("business.places.searchPlaceholder")}
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full h-10 pl-9 pr-10 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200 placeholder:text-gray-400"
-            aria-label="Tìm kiếm địa điểm"
+            aria-label={t("business.places.searchPlaceholder")}
           />
           {search && (
             <button
               type="button"
               onClick={() => handleSearchChange("")}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:text-gray-600"
-              aria-label="Xóa tìm kiếm"
+              aria-label={t("common.search")}
             >
               <X className="h-4 w-4" />
             </button>
@@ -791,8 +807,8 @@ const BusinessPlacePage = () => {
         ) : filteredPlaces.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center" role="status">
             <Navigation2 className="h-12 w-12 text-gray-300 mb-3" aria-hidden="true" />
-            <p className="text-gray-500 font-medium">Không tìm thấy địa điểm nào</p>
-            <p className="text-sm text-gray-400 mt-1">Thử từ khóa khác</p>
+            <p className="text-gray-500 font-medium">{t("business.places.noResults")}</p>
+            <p className="text-sm text-gray-400 mt-1">{t("business.places.tryDifferentKeywords")}</p>
           </div>
         ) : viewTab === "grid" ? (
           <ScrollArea className="h-full">
@@ -805,6 +821,7 @@ const BusinessPlacePage = () => {
                     onView={handlePlaceView}
                     onEdit={handlePlaceEdit}
                     onFly={handlePlaceFly}
+                    statusConfig={statusConfig}
                   />
                 ))}
               </div>
@@ -820,6 +837,7 @@ const BusinessPlacePage = () => {
                   onView={handlePlaceView}
                   onEdit={handlePlaceEdit}
                   onFly={handlePlaceFly}
+                  statusConfig={statusConfig}
                 />
               ))}
             </div>

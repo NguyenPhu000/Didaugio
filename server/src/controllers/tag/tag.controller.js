@@ -1,5 +1,6 @@
 import * as tagService from "../../services/tag/tag.service.js";
 import { ERROR_CODES } from "../../config/messages.js";
+import { setPublicListCache } from "../../utils/httpCacheHeaders.js";
 import {
   get as cacheGet,
   set as cacheSet,
@@ -18,6 +19,7 @@ export const getTags = async (req, res, next) => {
     const cacheKey = "tags:list";
     const cached = cacheGet(cacheKey);
     if (cached) {
+      setPublicListCache(res, req);
       return res.json(cached);
     }
 
@@ -37,6 +39,7 @@ export const getTags = async (req, res, next) => {
       message: "Lấy danh sách tag thành công",
     };
     cacheSet(cacheKey, body, TTL.STATIC);
+    setPublicListCache(res, req);
     res.json(body);
   } catch (error) {
     next(error);
@@ -49,6 +52,7 @@ export const getPopularTags = async (req, res, next) => {
     const cacheKey = "tags:popular";
     const cached = cacheGet(cacheKey);
     if (cached) {
+      setPublicListCache(res, req);
       return res.json(cached);
     }
 
@@ -62,6 +66,7 @@ export const getPopularTags = async (req, res, next) => {
       message: "Lấy danh sách tag phổ biến thành công",
     };
     cacheSet(cacheKey, body, TTL.STATIC);
+    setPublicListCache(res, req);
     res.json(body);
   } catch (error) {
     next(error);

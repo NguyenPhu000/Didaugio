@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
@@ -75,15 +76,15 @@ const STATUS_COLORS = {
   [BOOKING_STATUS.NO_SHOW]: { bg: "bg-purple-50", border: "border-l-purple-500", text: "text-purple-700", dot: "bg-purple-500" },
 };
 
-const STATUS_LABELS = {
-  [BOOKING_STATUS.PENDING]: "Chờ xác nhận",
-  [BOOKING_STATUS.CONFIRMED]: "Đã xác nhận",
-  [BOOKING_STATUS.COMPLETED]: "Hoàn thành",
-  [BOOKING_STATUS.CANCELLED]: "Đã hủy",
-  [BOOKING_STATUS.REJECTED]: "Bị từ chối",
-  [BOOKING_STATUS.EXPIRED]: "Hết hạn",
-  [BOOKING_STATUS.NO_SHOW]: "Không đến",
-};
+const getStatusLabels = (t) => ({
+  [BOOKING_STATUS.PENDING]: t("business.schedule.pending"),
+  [BOOKING_STATUS.CONFIRMED]: t("business.schedule.confirmed"),
+  [BOOKING_STATUS.COMPLETED]: t("business.schedule.completed"),
+  [BOOKING_STATUS.CANCELLED]: t("business.schedule.cancelled"),
+  [BOOKING_STATUS.REJECTED]: t("business.schedule.rejected"),
+  [BOOKING_STATUS.EXPIRED]: t("business.schedule.expired"),
+  [BOOKING_STATUS.NO_SHOW]: t("business.schedule.noShow"),
+});
 
 // ─── Helper Functions ────────────────────────────────────────────────────────────
 
@@ -152,7 +153,7 @@ function CapacityIndicator({ used, capacity, className }) {
 
 // ─── Booking Card ───────────────────────────────────────────────────────────────
 
-function BookingCard({ booking, onClick, compact = false }) {
+function BookingCard({ booking, onClick, compact = false, t }) {
   const colors = STATUS_COLORS[booking.status] || STATUS_COLORS[BOOKING_STATUS.PENDING];
 
   return (
@@ -168,7 +169,7 @@ function BookingCard({ booking, onClick, compact = false }) {
     >
       <div className="flex items-start justify-between gap-1">
         <span className="font-semibold text-xs text-gray-900 truncate line-clamp-1">
-          {booking.user?.fullName || booking.guestName || "Khách"}
+          {booking.user?.fullName || booking.guestName || t("business.schedule.guest")}
         </span>
         <span className={cn("w-1.5 h-1.5 rounded-full shrink-0 mt-1", colors.dot)} />
       </div>
@@ -186,7 +187,7 @@ function BookingCard({ booking, onClick, compact = false }) {
           {booking.partySize && (
             <p className="text-[10px] text-gray-400 flex items-center gap-0.5 mt-0.5">
               <Users className="h-2.5 w-2.5" />
-              {booking.partySize} khách
+              {booking.partySize} {t("business.schedule.guests")}
             </p>
           )}
           {booking.user?.phone && (
@@ -203,7 +204,7 @@ function BookingCard({ booking, onClick, compact = false }) {
 
 // ─── Resource Timeline Card (for RESOURCE model) ─────────────────────────────────
 
-function ResourceTimelineCard({ booking, onClick }) {
+function ResourceTimelineCard({ booking, onClick, t }) {
   const colors = STATUS_COLORS[booking.status] || STATUS_COLORS[BOOKING_STATUS.PENDING];
   const service = getServiceFromBooking(booking);
 
@@ -224,13 +225,13 @@ function ResourceTimelineCard({ booking, onClick }) {
       style={{ width: `${Math.max(widthPercent, 25)}%` }}
     >
       <p className="text-[10px] font-semibold text-gray-900 truncate">
-        {booking.user?.fullName || booking.guestName || "Khách"}
+        {booking.user?.fullName || booking.guestName || t("business.schedule.guest")}
       </p>
       <p className="text-[9px] text-gray-500 truncate">
         {booking.useTime} {booking.endTimeStr && `- ${booking.endTimeStr}`}
       </p>
       {booking.partySize && (
-        <p className="text-[9px] text-gray-400">{booking.partySize} khách</p>
+        <p className="text-[9px] text-gray-400">{booking.partySize} {t("business.schedule.guests")}</p>
       )}
     </button>
   );
@@ -248,7 +249,7 @@ function EmptyCell({ showCapacity }) {
 
 // ─── Day Column (Grid View) ─────────────────────────────────────────────────────
 
-function DayColumnGrid({ date, bookings, servicesMap, onViewBooking }) {
+function DayColumnGrid({ date, bookings, servicesMap, onViewBooking, t }) {
   const isToday = isSameDay(date, new Date());
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
@@ -297,6 +298,7 @@ function DayColumnGrid({ date, bookings, servicesMap, onViewBooking }) {
                     booking={booking}
                     onClick={onViewBooking}
                     compact
+                    t={t}
                   />
                 ))}
                 {slotBookings.length > 2 && (
@@ -325,7 +327,7 @@ function DayColumnGrid({ date, bookings, servicesMap, onViewBooking }) {
 
 // ─── Day Column (Timeline View for RESOURCE model) ───────────────────────────────
 
-function DayColumnTimeline({ date, bookings, onViewBooking }) {
+function DayColumnTimeline({ date, bookings, onViewBooking, t }) {
   const isToday = isSameDay(date, new Date());
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
@@ -389,6 +391,7 @@ function DayColumnTimeline({ date, bookings, onViewBooking }) {
               <ResourceTimelineCard
                 booking={booking}
                 onClick={onViewBooking}
+                t={t}
               />
             </div>
           );
@@ -400,9 +403,10 @@ function DayColumnTimeline({ date, bookings, onViewBooking }) {
 
 // ─── Booking Detail Modal ───────────────────────────────────────────────────────
 
-function BookingDetailModal({ booking, open, onClose }) {
+function BookingDetailModal({ booking, open, onClose, t }) {
   if (!booking) return null;
 
+  const STATUS_LABELS = getStatusLabels(t);
   const colors = STATUS_COLORS[booking.status] || STATUS_COLORS[BOOKING_STATUS.PENDING];
   const useDate = booking.useDate ? new Date(booking.useDate) : new Date(booking.bookingAt);
   const service = getServiceFromBooking(booking);
@@ -422,7 +426,7 @@ function BookingDetailModal({ booking, open, onClose }) {
       >
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Chi tiết đặt chỗ</h2>
+            <h2 className="text-lg font-bold text-gray-900">{t("business.schedule.detail")}</h2>
             <p className="text-sm text-gray-500 font-mono">{booking.bookingCode}</p>
           </div>
           <button
@@ -449,18 +453,18 @@ function BookingDetailModal({ booking, open, onClose }) {
 
           {/* Customer Info */}
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Khách hàng</h3>
+            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">{t("business.schedule.customerInfo")}</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-gray-500">Tên</p>
-                <p className="font-medium">{booking.user?.fullName || booking.guestName || "Khách"}</p>
+                <p className="text-xs text-gray-500">{t("business.schedule.name")}</p>
+                <p className="font-medium">{booking.user?.fullName || booking.guestName || t("business.schedule.guest")}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Số điện thoại</p>
+                <p className="text-xs text-gray-500">{t("business.schedule.phone")}</p>
                 <p className="font-medium">{booking.user?.phone || booking.guestPhone || "-"}</p>
               </div>
               <div className="col-span-2">
-                <p className="text-xs text-gray-500">Email</p>
+                <p className="text-xs text-gray-500">{t("business.schedule.email")}</p>
                 <p className="font-medium">{booking.user?.email || booking.guestEmail || "-"}</p>
               </div>
             </div>
@@ -468,10 +472,10 @@ function BookingDetailModal({ booking, open, onClose }) {
 
           {/* Booking Info */}
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Đặt chỗ</h3>
+            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">{t("business.schedule.bookingInfo")}</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-gray-500">Ngày</p>
+                <p className="text-xs text-gray-500">{t("business.schedule.date")}</p>
                 <p className="font-medium">
                   {useDate.toLocaleDateString("vi-VN", {
                     weekday: "long",
@@ -482,18 +486,18 @@ function BookingDetailModal({ booking, open, onClose }) {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Giờ</p>
+                <p className="text-xs text-gray-500">{t("business.schedule.time")}</p>
                 <p className="font-medium">
                   {booking.useTime || "-"}
                   {booking.endTimeStr && ` - ${booking.endTimeStr}`}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Số khách</p>
+                <p className="text-xs text-gray-500">{t("business.schedule.numGuests")}</p>
                 <p className="font-medium">{booking.partySize || booking.quantity || "-"}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Tổng tiền</p>
+                <p className="text-xs text-gray-500">{t("business.schedule.totalAmount")}</p>
                 <p className="font-bold text-lg">
                   {(booking.finalPrice || 0).toLocaleString("vi-VN")} đ
                 </p>
@@ -504,7 +508,7 @@ function BookingDetailModal({ booking, open, onClose }) {
           {/* Service & Place */}
           {(service || place) && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Dịch vụ & Địa điểm</h3>
+              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">{t("business.schedule.serviceAndPlace")}</h3>
               <div className="bg-gray-50 rounded-xl p-4 space-y-2">
                 {place && (
                   <div className="flex items-start gap-2">
@@ -523,10 +527,10 @@ function BookingDetailModal({ booking, open, onClose }) {
                     <div>
                       <p className="font-medium">{service.name}</p>
                       {service.durationMinutes && (
-                        <p className="text-xs text-gray-500">{service.durationMinutes} phút</p>
+                        <p className="text-xs text-gray-500">{service.durationMinutes} {t("business.schedule.duration")}</p>
                       )}
                       {service.maxCapacity && (
-                        <p className="text-xs text-gray-500">Sức chứa: {service.maxCapacity}</p>
+                        <p className="text-xs text-gray-500">{t("business.schedule.capacity")} {service.maxCapacity}</p>
                       )}
                     </div>
                   </div>
@@ -549,7 +553,7 @@ function BookingDetailModal({ booking, open, onClose }) {
           {/* Notes */}
           {booking.note && (
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Ghi chú</h3>
+              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">{t("business.schedule.notes")}</h3>
               <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3">{booking.note}</p>
             </div>
           )}
@@ -557,12 +561,12 @@ function BookingDetailModal({ booking, open, onClose }) {
 
         <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
-            Đóng
+            {t("business.schedule.close")}
           </Button>
           <Link to={BUSINESS_ROUTES.BOOKING_DETAIL(booking.id)}>
             <Button>
               <Eye className="h-4 w-4 mr-2" />
-              Xem chi tiết
+              {t("business.schedule.viewDetail")}
             </Button>
           </Link>
         </div>
@@ -574,6 +578,7 @@ function BookingDetailModal({ booking, open, onClose }) {
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 const BookingSchedulePage = () => {
+  const { t } = useTranslation();
   // Week start (Monday)
   const [weekStart, setWeekStart] = useState(() => {
     const now = new Date();
@@ -731,14 +736,14 @@ const BookingSchedulePage = () => {
                 className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Danh sách đặt chỗ</span>
+                <span className="hidden sm:inline">{t("nav.business.allBookings")}</span>
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Lịch đặt chỗ</h1>
+                <h1 className="text-xl font-bold text-gray-900">{t("business.schedule.title")}</h1>
                 <p className="text-sm text-gray-500">
                   {activeBookingModel === BOOKING_MODELS.RESOURCE
-                    ? "Quản lý theo tài nguyên (bàn/phòng)"
-                    : "Quản lý theo sức chứa"}
+                    ? t("business.schedule.resourceModel")
+                    : t("business.schedule.capacityModel")}
                 </p>
               </div>
             </div>
@@ -782,7 +787,7 @@ const BookingSchedulePage = () => {
                 className="gap-2"
               >
                 <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-                <span className="hidden sm:inline">Làm mới</span>
+                <span className="hidden sm:inline">{t("business.schedule.refresh")}</span>
               </Button>
             </div>
           </div>
@@ -796,7 +801,7 @@ const BookingSchedulePage = () => {
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <Button variant="outline" size="sm" onClick={goToToday} className="h-8">
-                Hôm nay
+                {t("business.schedule.today")}
               </Button>
               <Button variant="outline" size="icon" onClick={goToNextWeek} className="h-8 w-8">
                 <ChevronRight className="h-4 w-4" />
@@ -809,19 +814,19 @@ const BookingSchedulePage = () => {
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-amber-500 rounded-full" />
                 <span className="text-gray-600">
-                  <span className="font-semibold tabular-nums">{stats.pending}</span> chờ
+                  <span className="font-semibold tabular-nums">{stats.pending}</span> {t("business.schedule.pending")}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-blue-500 rounded-full" />
                 <span className="text-gray-600">
-                  <span className="font-semibold tabular-nums">{stats.confirmed}</span> xác nhận
+                  <span className="font-semibold tabular-nums">{stats.confirmed}</span> {t("business.schedule.confirmed")}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-emerald-500 rounded-full" />
                 <span className="text-gray-600">
-                  <span className="font-semibold tabular-nums">{stats.completed}</span> hoàn thành
+                  <span className="font-semibold tabular-nums">{stats.completed}</span> {t("business.schedule.completed")}
                 </span>
               </div>
             </div>
@@ -836,10 +841,10 @@ const BookingSchedulePage = () => {
             <MapPin className="h-4 w-4 text-gray-400" />
             <Select value={selectedPlaceId} onValueChange={setSelectedPlaceId}>
               <SelectTrigger className="w-56 h-9 text-sm">
-                <SelectValue placeholder="Tất cả địa điểm" />
+                <SelectValue placeholder={t("business.schedule.allPlaces")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả địa điểm</SelectItem>
+                <SelectItem value="all">{t("business.schedule.allPlaces")}</SelectItem>
                 {places.map((place) => (
                   <SelectItem key={place.id} value={String(place.id)}>
                     {place.name}
@@ -854,7 +859,7 @@ const BookingSchedulePage = () => {
               <MapPin className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-primary">{selectedPlace.name}</span>
               <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs font-semibold rounded-full tabular-nums">
-                {filteredBookings.length} đặt
+                {filteredBookings.length} {t("business.bookings.bookings")}
               </span>
             </div>
           )}
@@ -869,12 +874,12 @@ const BookingSchedulePage = () => {
             {activeBookingModel === BOOKING_MODELS.RESOURCE ? (
               <>
                 <Users className="h-3.5 w-3.5" />
-                Mô hình: Tài nguyên
+                {t("business.schedule.resourceModel")}
               </>
             ) : (
               <>
                 <CircleCheck className="h-3.5 w-3.5" />
-                Mô hình: Sức chứa
+                {t("business.schedule.capacityModel")}
               </>
             )}
           </div>
@@ -948,11 +953,11 @@ const BookingSchedulePage = () => {
                     {isBlocked ? (
                       <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-red-100 text-[10px] font-medium text-red-700 rounded-full">
                         <Lock className="h-2.5 w-2.5" />
-                        {dayBlocked[0].reason || "Chặn"}
+                        {dayBlocked[0].reason || t("business.schedule.block")}
                       </span>
                     ) : dayBookings.length > 0 ? (
                       <span className="inline-block mt-1 px-1.5 py-0.5 bg-gray-100 text-[10px] font-medium text-gray-600 rounded-full tabular-nums">
-                        {dayBookings.length} đặt
+                        {dayBookings.length} {t("business.bookings.bookings")}
                       </span>
                     ) : null}
                   </div>
@@ -982,6 +987,7 @@ const BookingSchedulePage = () => {
                     date={day}
                     bookings={getBookingsForDay(day)}
                     onViewBooking={handleViewBooking}
+                    t={t}
                   />
                 ) : (
                   <DayColumnGrid
@@ -989,6 +995,7 @@ const BookingSchedulePage = () => {
                     date={day}
                     bookings={getBookingsForDay(day)}
                     onViewBooking={handleViewBooking}
+                    t={t}
                   />
                 )
               ))}
@@ -1000,27 +1007,25 @@ const BookingSchedulePage = () => {
         <div className="mt-4 flex items-center justify-center gap-6 text-xs text-gray-500">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 bg-amber-50 border-l-2 border-l-amber-500 rounded" />
-            <span>Chờ xác nhận</span>
+            <span>{t("business.schedule.legend.pending")}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 bg-blue-50 border-l-2 border-l-blue-500 rounded" />
-            <span>Đã xác nhận</span>
+            <span>{t("business.schedule.legend.confirmed")}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 bg-emerald-50 border-l-2 border-l-emerald-500 rounded" />
-            <span>Hoàn thành</span>
+            <span>{t("business.schedule.legend.completed")}</span>
           </div>
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-3 w-3 text-amber-500" />
-            <span>≥80% sức chứa</span>
+            <span>{t("business.schedule.legend.cancelled")}</span>
           </div>
           <div className="flex items-center gap-2">
-            <CircleX className="h-3 w-3 text-red-500" />
-            <span>Đầy sức chứa</span>
+            <span>{t("business.schedule.legend.rejected")}</span>
           </div>
           <div className="flex items-center gap-2">
             <Lock className="h-3 w-3 text-red-500" />
-            <span>Ngày chặn</span>
+            <span>{t("business.schedule.block")}</span>
           </div>
         </div>
       </div>
@@ -1029,6 +1034,7 @@ const BookingSchedulePage = () => {
       <BookingDetailModal
         booking={selectedBooking}
         open={detailOpen}
+        t={t}
         onClose={() => {
           setDetailOpen(false);
           // Clear after animation completes

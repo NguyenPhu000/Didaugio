@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -11,8 +12,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import usePlaceStore from "@/stores/placeStore";
-import * as districtService from "@/apis/districtService";
-import * as wardService from "@/apis/wardService";
+import { useDistricts, useWards } from "@/hooks/queries/useDistrictQueries";
+import { useCheckSlugExists } from "@/hooks/queries/usePlaceQueries";
 import {
   Button,
   Input,
@@ -34,65 +35,29 @@ import { cn } from "@/lib/utils";
  * Clean, modern Shadcn/UI style
  */
 const StepBasicInfo = () => {
+  const { t } = useTranslation();
   const { toast } = useToast();
-  const { wizardData, updateWizardData, nextStep, loading, checkSlugExists } =
+  const { wizardData, updateWizardData, nextStep, loading } =
     usePlaceStore();
 
-  const [districts, setDistricts] = useState([]);
-  const [wards, setWards] = useState([]);
-  const [loadingDistricts, setLoadingDistricts] = useState(false);
-  const [loadingWards, setLoadingWards] = useState(false);
+  // TanStack Query for districts and wards
+  const { data: districtsRes, isLoading: loadingDistricts } = useDistricts();
+  const districts = districtsRes?.data || districtsRes || [];
+  const { data: wardsRes, isLoading: loadingWards } = useWards(wizardData.districtId);
+  const wards = wardsRes?.data || wardsRes || [];
+
+  const { mutateAsync: checkSlug } = useCheckSlugExists();
+
   const [errors, setErrors] = useState({});
   const [checkingSlug, setCheckingSlug] = useState(false);
   const [slugError, setSlugError] = useState(null);
 
-  const loadDistricts = useCallback(async () => {
-    setLoadingDistricts(true);
-    try {
-      const response = await districtService.getAllDistricts();
-      setDistricts(response.data || []);
-    } catch {
-      toast({
-        variant: "destructive",
-        title: "Lỗi hệ thống",
-        description: "Không thể tải dữ liệu quận/huyện.",
-      });
-    } finally {
-      setLoadingDistricts(false);
-    }
-  }, [toast]);
-
-  const loadWards = useCallback(async (districtId) => {
-    setLoadingWards(true);
-    try {
-      const response = await wardService.getWardsByDistrict(districtId);
-      setWards(response.data || []);
-    } catch {
-      toast({
-        variant: "destructive",
-        title: "Lỗi hệ thống",
-        description: "Không thể tải dữ liệu phường/xã.",
-      });
-      setWards([]);
-    } finally {
-      setLoadingWards(false);
-    }
-  }, [toast]);
-
+  // Reset ward when district changes
   useEffect(() => {
-    loadDistricts();
-  }, [loadDistricts]);
-
-  useEffect(() => {
-    if (wizardData.districtId) {
-      loadWards(wizardData.districtId);
-    } else {
-      setWards([]);
-      if (wizardData.wardId !== null) {
-        updateWizardData({ wardId: null });
-      }
+    if (!wizardData.districtId && wizardData.wardId !== null) {
+      updateWizardData({ wardId: null });
     }
-  }, [wizardData.districtId, wizardData.wardId, loadWards, updateWizardData]);
+  }, [wizardData.districtId, wizardData.wardId, updateWizardData]);
 
   const generateSlug = (name) => {
     return name
@@ -127,7 +92,8 @@ const StepBasicInfo = () => {
     if (slug && slug.length >= 3) {
       setCheckingSlug(true);
       try {
-        const exists = await checkSlugExists(slug);
+        const result = await checkSlug({ slug });
+        const exists = result?.data?.exists || result?.exists || false;
         setSlugError(exists ? "Slug đã tồn tại" : null);
       } catch {
         // Ignore check errors
@@ -141,25 +107,25 @@ const StepBasicInfo = () => {
     const newErrors = {};
 
     if (!wizardData.name?.trim()) {
-      newErrors.name = "Vui lòng nhập tên địa điểm";
+      newErrors.name = t("admin.placeWizard.basicInfo.placeNamePlaceholder");
     }
 
     if (!wizardData.slug?.trim()) {
-      newErrors.slug = "Vui lòng nhập đường dẫn";
+      newErrors.slug = t("validation.required", { field: "Slug" });
     } else if (slugError) {
       newErrors.slug = slugError;
     }
 
     if (!wizardData.categoryId) {
-      newErrors.categoryId = "Vui lòng chọn danh mục";
+      newErrors.categoryId = t("admin.placeWizard.basicInfo.selectCategory");
     }
 
     if (!wizardData.districtId) {
-      newErrors.districtId = "Vui lòng chọn quận/huyện";
+      newErrors.districtId = t("admin.placeWizard.basicInfo.selectDistrict");
     }
 
     if (!wizardData.address?.trim()) {
-      newErrors.address = "Vui lòng nhập địa chỉ";
+      newErrors.address = t("admin.placeWizard.basicInfo.addressPlaceholder");
     }
 
     setErrors(newErrors);
@@ -172,8 +138,8 @@ const StepBasicInfo = () => {
     } else {
       toast({
         variant: "destructive",
-        title: "Dữ liệu không hợp lệ",
-        description: "Vui lòng kiểm tra các trường bắt buộc.",
+        title: t("common.error"),
+        description: t("common.validationError"),
       });
     }
   };
@@ -184,7 +150,7 @@ const StepBasicInfo = () => {
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <div className="w-1 h-6 bg-primary rounded-full" />
-          <h3 className="text-base font-semibold">Danh mục địa điểm</h3>
+          <h3 className="text-base font-semibold">{t("admin.placeWizard.basicInfo.category")}</h3>
         </div>
         <CategorySelector
           value={wizardData.categoryId}
@@ -205,20 +171,20 @@ const StepBasicInfo = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Type className="h-5 w-5 text-primary" />
-              Thông tin cơ bản
+              {t("admin.placeWizard.basicInfo.title")}
             </CardTitle>
             <CardDescription>
-              Nhập tên và mô tả ngắn cho địa điểm của bạn
+              {t("admin.placeWizard.basicInfo.descriptionPlaceholder")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="name" className="text-sm font-medium">
-                Tên địa điểm <span className="text-destructive">*</span>
+                {t("admin.placeWizard.basicInfo.placeName")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="name"
-                placeholder="VD: Quán Cafe Sông Hậu"
+                placeholder={t("admin.placeWizard.basicInfo.placeNamePlaceholder")}
                 value={wizardData.name}
                 onChange={handleNameChange}
                 className={cn(
@@ -236,7 +202,7 @@ const StepBasicInfo = () => {
 
             <div className="space-y-2">
               <Label htmlFor="slug" className="text-sm font-medium">
-                Đường dẫn (Slug) <span className="text-destructive">*</span>
+                Slug <span className="text-destructive">*</span>
               </Label>
               <div className="relative">
                 <Input
@@ -273,11 +239,11 @@ const StepBasicInfo = () => {
 
             <div className="space-y-2">
               <Label htmlFor="shortDescription" className="text-sm font-medium">
-                Mô tả ngắn
+                {t("admin.placeWizard.basicInfo.description")}
               </Label>
               <Textarea
                 id="shortDescription"
-                placeholder="Mô tả ngắn gọn cho thẻ danh sách..."
+                placeholder={t("admin.placeWizard.basicInfo.descriptionPlaceholder")}
                 rows={3}
                 value={wizardData.shortDescription}
                 onChange={(e) =>
@@ -300,17 +266,17 @@ const StepBasicInfo = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <MapPin className="h-5 w-5 text-primary" />
-              Vị trí địa điểm
+              {t("admin.placeWizard.basicInfo.address")}
             </CardTitle>
             <CardDescription>
-              Chọn địa chỉ chính xác để hiển thị trên bản đồ
+              {t("admin.placeWizard.basicInfo.addressPlaceholder")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="district" className="text-sm font-medium">
-                  Quận/Huyện <span className="text-destructive">*</span>
+                  {t("admin.placeWizard.basicInfo.district")} <span className="text-destructive">*</span>
                 </Label>
                 <Select
                   value={
@@ -332,10 +298,10 @@ const StepBasicInfo = () => {
                     {loadingDistricts ? (
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm">Đang tải...</span>
+                        <span className="text-sm">{t("common.loading")}</span>
                       </div>
                     ) : (
-                      <SelectValue placeholder="Chọn quận" />
+                      <SelectValue placeholder={t("admin.placeWizard.basicInfo.selectDistrict")} />
                     )}
                   </SelectTrigger>
                   <SelectContent>
@@ -359,7 +325,7 @@ const StepBasicInfo = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="ward" className="text-sm font-medium">
-                  Phường/Xã
+                  {t("admin.placeWizard.basicInfo.ward")} ({t("common.optional").toLowerCase()})
                 </Label>
                 <Select
                   value={
@@ -374,10 +340,10 @@ const StepBasicInfo = () => {
                     {loadingWards ? (
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm">Đang tải...</span>
+                        <span className="text-sm">{t("common.loading")}</span>
                       </div>
                     ) : (
-                      <SelectValue placeholder="Chọn phường" />
+                      <SelectValue placeholder={t("admin.placeWizard.basicInfo.selectWard")} />
                     )}
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
@@ -396,11 +362,11 @@ const StepBasicInfo = () => {
 
             <div className="space-y-2">
               <Label htmlFor="address" className="text-sm font-medium">
-                Số nhà, tên đường <span className="text-destructive">*</span>
+                {t("admin.placeWizard.basicInfo.address")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="address"
-                placeholder="VD: 123 Nguyễn Văn Linh"
+                placeholder={t("admin.placeWizard.basicInfo.addressPlaceholder")}
                 value={wizardData.address}
                 onChange={(e) =>
                   updateWizardData({ address: e.target.value })
@@ -429,7 +395,7 @@ const StepBasicInfo = () => {
           size="lg"
           className="gap-2"
         >
-          Tiếp tục
+          {t("common.next")}
           <ArrowRight className="h-4 w-4" />
         </Button>
       </div>

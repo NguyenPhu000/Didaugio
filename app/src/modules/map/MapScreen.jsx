@@ -11,6 +11,7 @@ import {
   LayoutAnimation,
   useWindowDimensions,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -163,6 +164,7 @@ function buildLocalDateTime(ymd, hhmm) {
 }
 
 export default function MapScreen() {
+  const { t } = useTranslation();
   const { width: viewportWidth, height: viewportHeight } =
     useWindowDimensions();
   const isCompactPreviewCard = viewportWidth <= 360 || viewportHeight <= 700;
@@ -602,7 +604,7 @@ export default function MapScreen() {
 
     const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
     if (cameraStatus.status !== "granted") {
-      Alert.alert("Quyền truy cập", "Bạn cần cấp quyền camera để chụp ảnh check-in.");
+      Alert.alert(t("mapScreen.accessRequired"), t("mapScreen.cameraRequired"));
       return;
     }
 
@@ -645,16 +647,16 @@ export default function MapScreen() {
           const key = `didaugio:event:${activeEventId}:checkedin:${activeNextDestination.placeId}`;
           await AsyncStorage.setItem(key, "true");
 
-          Alert.alert("Thành công", "Đăng khoảnh khắc check-in ẩn danh thành công! Ảnh của bạn đã xuất hiện trên bức tường khoảnh khắc.");
+          Alert.alert(t("mapScreen.checkinSuccess"), t("mapScreen.checkinSuccessDesc"));
         } catch (err) {
-          Alert.alert("Lỗi", err?.message || "Đăng khoảnh khắc thất bại.");
+          Alert.alert(t("mapScreen.checkinFailed"), err?.message || t("mapScreen.checkinFailedDesc"));
         } finally {
           setIsMomentUploading(false);
         }
       };
     } catch (err) {
       console.error(err);
-      Alert.alert("Lỗi", "Không thể xử lý ảnh.");
+      Alert.alert(t("mapScreen.imageError"), t("mapScreen.imageErrorDesc"));
       setIsMomentUploading(false);
     }
   }, [activeEventId, activeNextDestination]);
@@ -893,8 +895,8 @@ export default function MapScreen() {
     if (isActiveLastDestination) {
       const finishedTripId = activeTrip.activeTripId;
       await sendLocalNotification({
-        title: "Hoàn thành hành trình!",
-        body: `Chúc mừng bạn đã hoàn thành chuyến đi "${activeTripDetail?.title || "của mình"}". Hẹn gặp lại ở những hành trình tiếp theo!`,
+        title: t("mapScreen.journeyComplete"),
+        body: t("mapScreen.journeyCompleteDesc"),
         data: { tripId: finishedTripId },
       });
       if (finishedTripId) {
@@ -914,16 +916,16 @@ export default function MapScreen() {
 
       if (isDayFinished) {
         await sendLocalNotification({
-          title: `Hoàn thành Ngày ${currentDay}!`,
-          body: `Tất cả các địa điểm của ngày hôm nay đã được khám phá. Hãy nghỉ ngơi lấy sức nhé!`,
+          title: t("mapScreen.dayComplete", { day: currentDay }),
+          body: t("mapScreen.dayCompleteDesc"),
         });
         setCompleteIsTripEnd(false);
         setCompleteDayNumber(currentDay);
         setTripCompleteVisible(true);
       } else {
         await sendLocalNotification({
-          title: "Đã điểm danh!",
-          body: `Bạn đã đến ${arrivedDest.place?.name || "địa điểm"}. Tiếp tục đến điểm kế tiếp nhé!`,
+          title: t("mapScreen.checkedIn"),
+          body: t("mapScreen.checkedInDesc", { name: arrivedDest.place?.name || "địa điểm" }),
         });
       }
     }
@@ -1514,7 +1516,7 @@ export default function MapScreen() {
               }}
               numberOfLines={2}
             >
-              THÔNG BÁO TỪ BTC: {broadcastNotice}
+              {t("mapScreen.broadcastFrom", { notice: broadcastNotice })}
             </Text>
           </View>
         </View>
@@ -1560,10 +1562,10 @@ export default function MapScreen() {
               <MaterialIconsRounded name="pause-circle-filled" size={24} color="#FFD60A" />
               <View style={{ flex: 1, gap: 1 }}>
                 <Text style={{ color: "#FFFFFF", fontSize: 14, fontFamily: TOKENS.font.semibold }}>
-                  Hành trình đang tạm nghỉ
+                  {t("mapScreen.journeyPaused")}
                 </Text>
                 <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, fontFamily: TOKENS.font.medium }}>
-                  Dẫn đường và theo dõi GPS đã dừng để tiết kiệm pin.
+                  {t("mapScreen.journeyPausedDesc")}
                 </Text>
               </View>
             </View>
@@ -1583,7 +1585,7 @@ export default function MapScreen() {
               }}
             >
               <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: TOKENS.font.semibold }}>
-                Tiếp tục
+                {t("mapScreen.resume")}
               </Text>
             </Pressable>
           </BlurView>
@@ -1614,7 +1616,7 @@ export default function MapScreen() {
           }
         }}
         onPrimaryAction={handlePrimaryTripComplete}
-        primaryActionText={completeIsTripEnd ? "Hoàn tất" : "Tạm nghỉ"}
+        primaryActionText={completeIsTripEnd ? t("mapScreen.complete") : t("mapScreen.paused")}
       />
 
       <ArrivalConfirmModal
@@ -1689,7 +1691,7 @@ export default function MapScreen() {
                   lineHeight: 15,
                 }}
               >
-                Không tìm thấy đường tránh phà. Đã chấp nhận tuyến có phà.
+                {t("mapScreen.noFerryRoute")}
               </Text>
             </View>
           </View>
@@ -1971,7 +1973,7 @@ export default function MapScreen() {
                         mapStyle.key === "osm" ? "text-white" : "text-slate-600"
                       }`}
                     >
-                      Bản đồ
+                      {t("mapScreen.map")}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -1993,7 +1995,7 @@ export default function MapScreen() {
                         mapStyle.key === "hybrid" ? "text-white" : "text-slate-600"
                       }`}
                     >
-                      Vệ tinh
+                      {t("mapScreen.satellite")}
                     </Text>
                   </Pressable>
                 </View>

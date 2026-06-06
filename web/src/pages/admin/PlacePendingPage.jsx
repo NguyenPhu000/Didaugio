@@ -1,14 +1,16 @@
+import { useTranslation } from "react-i18next";
 import PlaceListPage from "./PlaceListPage";
 
 const PlacePendingPage = () => {
+  const { t } = useTranslation();
   return (
     <PlaceListPage
       initialStatus="pending"
       lockStatusFilter
       moderationMode
       allowCreate={false}
-      pageTitle="HÀNG ĐỢI DUYỆT ĐỊA ĐIỂM"
-      pageMeta="DANH SÁCH ĐỊA ĐIỂM CHỜ PHÊ DUYỆT"
+      pageTitle={t("admin.placePending.title")}
+      pageMeta={t("admin.placePending.subtitle")}
     />
   );
 };

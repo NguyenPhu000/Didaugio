@@ -14,24 +14,28 @@ import {
 import AnimatedIcon from "@/components/ui/animated-icon";
 import { APP_META } from "@/constants/brand";
 import { BUSINESS_ROUTES } from "@/constants/routes";
-import { AdminHeader, CustomSidebarRail, NavMain, menuData } from "./sidebar";
-
-const businessMainMenu = [
-  {
-    title: "Dashboard",
-    icon: BriefcaseBusiness,
-    url: BUSINESS_ROUTES.DASHBOARD,
-  },
-];
+import { useTranslation } from "react-i18next";
+import { AdminHeader, CustomSidebarRail, NavMain, getMenuData } from "./sidebar";
 
 /**
  * Layout riêng cho `/business/*`.
  * Không render các nhóm menu admin để tránh business user lẫn vào admin surface.
  */
 const BusinessLayout = ({ children }) => {
+  const { t } = useTranslation();
+  const menuData = getMenuData();
+
+  const businessMainMenu = [
+    {
+      title: t("nav.dashboard"),
+      icon: BriefcaseBusiness,
+      url: BUSINESS_ROUTES.DASHBOARD,
+    },
+  ];
+
   useEffect(() => {
-    document.title = "Di Dau Gio? - Business Portal";
-  }, []);
+    document.title = `${t("common.appName")} - ${t("common.businessPortal")}`;
+  }, [t]);
 
   return (
     <SidebarProvider>
@@ -55,7 +59,7 @@ const BusinessLayout = ({ children }) => {
                   <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="font-semibold">{APP_META.NAME}</span>
                     <span className="text-xs text-muted-foreground uppercase">
-                      Business Portal
+                      {t("common.businessPortal")}
                     </span>
                   </div>
                 </Link>
@@ -65,8 +69,8 @@ const BusinessLayout = ({ children }) => {
         </SidebarHeader>
 
         <SidebarContent className="px-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <NavMain items={businessMainMenu} label="Business" />
-          <NavMain items={menuData.business || []} label="Vận hành" />
+          <NavMain items={businessMainMenu} label={t("nav.section.main")} />
+          <NavMain items={menuData.business || []} label={t("nav.section.operations")} />
         </SidebarContent>
       </Sidebar>
       <CustomSidebarRail />

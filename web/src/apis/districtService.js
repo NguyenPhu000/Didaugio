@@ -32,6 +32,8 @@ export const getDistrictStats = async (id) => {
 };
 
 export default {
+  getAll: getAllDistricts,
+  getById: getDistrictById,
   getAllDistricts,
   getDistrictById,
   getDistrictBySlug,

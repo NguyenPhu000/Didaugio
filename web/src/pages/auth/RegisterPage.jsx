@@ -4,6 +4,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import EyeOff from "lucide-react/dist/esm/icons/eye-off";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
@@ -29,39 +31,40 @@ const registerSchema = z
   .object({
     fullName: z
       .string()
-      .min(2, "Họ tên phải có ít nhất 2 ký tự")
-      .max(100, "Họ tên quá dài"),
+      .min(2, i18n.t("validation.fullNameMin", { min: 2 }))
+      .max(100, i18n.t("validation.fullNameMax")),
     email: z
       .string()
-      .min(1, "Email không được để trống")
-      .email("Email không hợp lệ"),
+      .min(1, i18n.t("validation.emailRequired"))
+      .email(i18n.t("validation.emailInvalid")),
     username: z
       .string()
-      .min(3, "Username phải có ít nhất 3 ký tự")
-      .max(30, "Username tối đa 30 ký tự")
-      .regex(/^[a-zA-Z0-9_]+$/, "Username chỉ gồm chữ, số và dấu gạch dưới"),
+      .min(3, i18n.t("validation.usernameMin", { min: 3 }))
+      .max(30, i18n.t("validation.usernameMax", { max: 30 }))
+      .regex(/^[a-zA-Z0-9_]+$/, i18n.t("validation.usernamePattern")),
     password: z
       .string()
-      .min(6, "Mật khẩu phải có ít nhất 6 ký tự")
+      .min(6, i18n.t("validation.passwordMin", { min: 6 }))
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số",
+        i18n.t("validation.passwordPattern"),
       ),
-    confirmPassword: z.string().min(1, "Xác nhận mật khẩu không được để trống"),
+    confirmPassword: z.string().min(1, i18n.t("validation.confirmPasswordRequired")),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Mật khẩu xác nhận không khớp",
+    message: i18n.t("validation.passwordMismatch"),
     path: ["confirmPassword"],
   });
 
 const RegisterPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
-    document.title = "Đăng ký doanh nghiệp - Đi Đâu Giờ?";
+    document.title = t("auth.register.pageTitle");
   }, []);
 
   const {
@@ -84,22 +87,38 @@ const RegisterPage = () => {
       });
 
       if (response.success) {
-        toast.success(
-          "Đăng ký thành công! Vui lòng kiểm tra email để xác thực.",
-        );
+        // Trigger browser's "Save password?" dialog
+        if ("credentials" in navigator && navigator.credentials.create) {
+          try {
+            const credential = await navigator.credentials.create({
+              password: {
+                id: data.email,
+                password: data.password,
+                name: data.username || data.email,
+              },
+            });
+            if (credential) {
+              await navigator.credentials.store(credential);
+            }
+          } catch {
+            // Browser doesn't support or user denied
+          }
+        }
+
+        toast.success(t("auth.register.success"));
         navigate(
           `/resend-verification?email=${encodeURIComponent(data.email)}&from=register`,
         );
       }
     } catch (error) {
-      toast.error(error.message || "Đăng ký thất bại");
+      toast.error(error.message || t("auth.register.failed"));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden">
+    <div className="min-h-screen flex relative overflow-hidden page-enter">
       {/* Grid Background */}
       <div className="absolute inset-0 bg-grid-dots opacity-30 pointer-events-none"></div>
       <div className="absolute inset-0 bg-grid-lines opacity-10 pointer-events-none"></div>
@@ -125,7 +144,7 @@ const RegisterPage = () => {
                   DIDAUGIO
                 </h2>
                 <p className="text-[#F3E600] text-xs font-mono uppercase tracking-wider">
-                  ĐĂNG KÝ DOANH NGHIỆP
+                  {t("auth.register.businessTitle")}
                 </p>
               </div>
             </div>
@@ -135,19 +154,23 @@ const RegisterPage = () => {
           <div className="space-y-8">
             <div>
               <h1 className="text-5xl font-black text-white uppercase leading-tight mb-4">
-                ĐĂNG KÝ
-                <br />
-                DOANH NGHIỆP
-                <br />
-                NGAY
+                {t("auth.register.heroTitle").split("\n").map((line, i) => (
+                  <span key={i}>
+                    {line}
+                    {i < t("auth.register.heroTitle").split("\n").length - 1 && <br />}
+                  </span>
+                ))}
               </h1>
               <div className="w-24 h-1 bg-[#F3E600]"></div>
             </div>
 
             <p className="text-gray-400 font-mono text-sm uppercase leading-relaxed max-w-md">
-              QUẢN LÝ DOANH NGHIỆP DU LỊCH
-              <br />
-              TRÊN NỀN TẢNG THÔNG MINH
+              {t("auth.register.heroDesc").split("\n").map((line, i) => (
+                <span key={i}>
+                  {line}
+                  {i < t("auth.register.heroDesc").split("\n").length - 1 && <br />}
+                </span>
+              ))}
             </p>
 
             {/* Benefits */}
@@ -157,7 +180,7 @@ const RegisterPage = () => {
                   <div className="w-2 h-2 bg-[#F3E600]"></div>
                 </div>
                 <p className="text-xs text-gray-400 uppercase font-mono">
-                  QUẢN LÝ ĐẶT LỊCH & DOANH THU
+                  {t("auth.register.benefit1")}
                 </p>
               </div>
               <div className="flex items-start gap-3">
@@ -165,7 +188,7 @@ const RegisterPage = () => {
                   <div className="w-2 h-2 bg-[#F3E600]"></div>
                 </div>
                 <p className="text-xs text-gray-400 uppercase font-mono">
-                  TIẾP CẬN KHÁCH HÀNG TIỀM NĂNG
+                  {t("auth.register.benefit2")}
                 </p>
               </div>
               <div className="flex items-start gap-3">
@@ -173,7 +196,7 @@ const RegisterPage = () => {
                   <div className="w-2 h-2 bg-[#F3E600]"></div>
                 </div>
                 <p className="text-xs text-gray-400 uppercase font-mono">
-                  HỖ TRỢ 24/7 & BẢO MẬT
+                  {t("auth.register.benefit3")}
                 </p>
               </div>
             </div>
@@ -197,7 +220,7 @@ const RegisterPage = () => {
             <div>
               <h2 className="text-xl font-black uppercase">DIDAUGIO</h2>
               <p className="text-[#F3E600] text-xs font-mono uppercase">
-                DOANH NGHIỆP
+                {t("auth.register.mobileSubtitle")}
               </p>
             </div>
           </div>
@@ -209,11 +232,11 @@ const RegisterPage = () => {
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-1 h-8 bg-[#F3E600]"></div>
                 <h1 className="text-3xl font-black uppercase tracking-tight">
-                  ĐĂNG KÝ
+                  {t("auth.register.title")}
                 </h1>
               </div>
               <p className="text-xs text-gray-500 uppercase font-mono ml-4">
-                TẠO TÀI KHOẢN DOANH NGHIỆP
+                {t("auth.register.subtitle")}
               </p>
             </div>
 
@@ -225,13 +248,17 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <User className="h-4 w-4" />
-                  HỌ VÀ TÊN
+                  {t("auth.register.fullName")}
                 </Label>
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="Nguyễn Văn A"
-                  className="rounded-none border-2 border-black h-11 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                  name="fullName"
+                  placeholder={t("auth.register.fullNamePlaceholder")}
+                  className="rounded-none border-2 border-black h-11 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                  autoComplete="name"
+                  autoCapitalize="off"
+                  autoCorrect="off"
                   {...register("fullName")}
                 />
                 {errors.fullName && (
@@ -248,13 +275,17 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <AtSign className="h-4 w-4" />
-                  USERNAME
+                  {t("auth.register.username")}
                 </Label>
                 <Input
                   id="username"
                   type="text"
-                  placeholder="USERNAME_01"
+                  name="username"
+                  placeholder={t("auth.register.usernamePlaceholder")}
                   className="rounded-none border-2 border-black h-11 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                  autoComplete="username"
+                  autoCapitalize="off"
+                  autoCorrect="off"
                   {...register("username")}
                 />
                 {errors.username && (
@@ -271,13 +302,17 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <Mail className="h-4 w-4" />
-                  ĐỊA CHỈ EMAIL
+                  {t("auth.register.email")}
                 </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="email@cuaban.com"
-                  className="rounded-none border-2 border-black h-11 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                  name="email"
+                  placeholder={t("auth.register.emailPlaceholder")}
+                  className="rounded-none border-2 border-black h-11 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                  autoComplete="email"
+                  autoCapitalize="off"
+                  autoCorrect="off"
                   {...register("email")}
                 />
                 {errors.email && (
@@ -294,12 +329,13 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <Lock className="h-4 w-4" />
-                  MẬT KHẨU
+                  {t("auth.register.password")}
                 </Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
+                    name="password"
                     placeholder="••••••••"
                     autoComplete="new-password"
                     className="rounded-none border-2 border-black h-11 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0 pr-12"
@@ -323,7 +359,7 @@ const RegisterPage = () => {
                   </p>
                 )}
                 <p className="text-[10px] text-gray-500 uppercase font-mono">
-                  TỐI THIỂU 6 KÝ TỰ, CHỮ HOA, CHỮ THƯỜNG & SỐ
+                  {t("auth.register.passwordHint")}
                 </p>
               </div>
 
@@ -334,12 +370,13 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <Lock className="h-4 w-4" />
-                  XÁC NHẬN MẬT KHẨU
+                  {t("auth.register.confirmPassword")}
                 </Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
                     placeholder="••••••••"
                     autoComplete="new-password"
                     className="rounded-none border-2 border-black h-11 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0 pr-12"
@@ -371,11 +408,11 @@ const RegisterPage = () => {
                 className="w-full rounded-none border-2 border-black bg-[#F3E600] text-black hover:bg-black hover:text-[#F3E600] h-12 uppercase font-black text-sm transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none mt-6"
               >
                 {isLoading ? (
-                  "ĐANG TẠO TÀI KHOẢN..."
+                  t("auth.register.submitting")
                 ) : (
                   <>
                     <UserPlus className="mr-2 h-4 w-4" />
-                    TẠO TÀI KHOẢN
+                    {t("auth.register.submit")}
                   </>
                 )}
               </Button>
@@ -388,7 +425,7 @@ const RegisterPage = () => {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-white px-4 text-gray-500 font-mono">
-                  HOẶC
+                  {t("common.or")}
                 </span>
               </div>
             </div>
@@ -396,14 +433,14 @@ const RegisterPage = () => {
             {/* Login Link */}
             <div className="text-center">
               <p className="text-xs text-gray-600 uppercase font-mono mb-2">
-                ĐÃ CÓ TÀI KHOẢN?
+                {t("auth.register.hasAccount")}
               </p>
               <Link
                 to="/auth/login"
                 className="w-full rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-11 px-6 uppercase font-black text-sm transition-all flex items-center justify-center"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                QUAY LẠI ĐĂNG NHẬP
+                {t("auth.register.loginNow")}
               </Link>
             </div>
           </div>
@@ -411,7 +448,7 @@ const RegisterPage = () => {
           {/* Footer Note */}
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-400 uppercase font-mono">
-              BẰNG VIỆC ĐĂNG KÝ, BẠN ĐỒNG Ý VỚI ĐIỀU KHOẢN
+              {t("auth.register.termsNote")}
             </p>
           </div>
         </div>

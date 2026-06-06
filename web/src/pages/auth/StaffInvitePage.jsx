@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { staffInvitationApi } from "@/apis/staffInvitationApi";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import {
 } from "@tabler/icons-react";
 
 export default function StaffInvitePage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
@@ -39,7 +41,7 @@ export default function StaffInvitePage() {
 
   useEffect(() => {
     if (!token) {
-      setError("Link mời không hợp lệ. Thiếu token.");
+      setError(t("auth.staffInvite.invalidLink"));
       setLoading(false);
       return;
     }
@@ -51,7 +53,7 @@ export default function StaffInvitePage() {
       } catch (err) {
         const msg =
           err.response?.data?.message ||
-          "Đường dẫn không hợp lệ hoặc đã hết hạn. Vui lòng liên hệ quản lý để nhận link mới.";
+          t("auth.staffInvite.expiredLink");
         setError(msg);
       } finally {
         setLoading(false);
@@ -65,17 +67,17 @@ export default function StaffInvitePage() {
     const errors = {};
 
     if (!form.fullName.trim()) {
-      errors.fullName = "Họ tên là bắt buộc";
+      errors.fullName = t("auth.staffInvite.nameRequired");
     }
 
     if (!form.password) {
-      errors.password = "Mật khẩu là bắt buộc";
+      errors.password = t("auth.staffInvite.passwordRequired");
     } else if (form.password.length < 6) {
-      errors.password = "Mật khẩu phải có ít nhất 6 ký tự";
+      errors.password = t("auth.staffInvite.passwordMin");
     }
 
     if (form.password !== form.confirmPassword) {
-      errors.confirmPassword = "Mật khẩu không khớp";
+      errors.confirmPassword = t("auth.staffInvite.passwordMismatch");
     }
 
     setFormErrors(errors);

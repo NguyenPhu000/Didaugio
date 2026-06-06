@@ -1,11 +1,13 @@
 import { FolderTree, Eye, EyeOff, MapPin } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
+import { useTranslation } from "react-i18next";
 
 /**
  * CATEGORY STATS
  * Stats cards hiển thị tổng quan về categories
  */
 export default function CategoryStats({ categories = [] }) {
+  const { t } = useTranslation();
   const totalCategories = categories.length;
   const activeCategories = categories.filter((cat) => !cat.isHidden).length;
   const hiddenCategories = categories.filter((cat) => cat.isHidden).length;
@@ -16,28 +18,28 @@ export default function CategoryStats({ categories = [] }) {
 
   const stats = [
     {
-      label: "Tổng danh mục",
+      label: t("category.stats.total"),
       value: totalCategories,
       icon: FolderTree,
       color: "#3B82F6",
       bgColor: "#EFF6FF",
     },
     {
-      label: "Đang hiển thị",
+      label: t("category.stats.visible"),
       value: activeCategories,
       icon: Eye,
       color: "#10B981",
       bgColor: "#ECFDF5",
     },
     {
-      label: "Đã ẩn",
+      label: t("category.stats.hidden"),
       value: hiddenCategories,
       icon: EyeOff,
       color: "#6B7280",
       bgColor: "#F3F4F6",
     },
     {
-      label: "Tổng địa điểm",
+      label: t("category.stats.totalPlaces"),
       value: totalPlaces,
       icon: MapPin,
       color: "#F59E0B",

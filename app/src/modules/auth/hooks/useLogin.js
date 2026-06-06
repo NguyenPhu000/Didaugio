@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "expo-router";
+import i18n from "@/i18n";
 import { loginApi } from "../api/authApi";
 import { useAuthStore } from "../../../stores/authStore";
 import { normalizeAuthSessionResponse } from "../utils/normalizeAuthSession";
@@ -23,25 +24,25 @@ export function useLogin() {
         : normalizedIdentifier;
 
       if (!normalizedLoginIdentifier) {
-        setError("Vui lòng nhập email hoặc username.");
+        setError(i18n.t("authValidation.loginRequired"));
         return false;
       }
 
       if (identifierLooksLikeEmail) {
         if (!/\S+@\S+\.\S+/.test(normalizedLoginIdentifier)) {
-          setError("Email không hợp lệ.");
+          setError(i18n.t("authValidation.loginEmailInvalid"));
           return false;
         }
       } else if (
         normalizedLoginIdentifier.length < 3 ||
         !/^[a-zA-Z0-9_]+$/.test(normalizedLoginIdentifier)
       ) {
-        setError("Username phải từ 3 ký tự và chỉ gồm chữ, số, dấu gạch dưới.");
+        setError(i18n.t("authValidation.loginUsernameFormat"));
         return false;
       }
 
       if (!password) {
-        setError("Vui lòng nhập mật khẩu.");
+        setError(i18n.t("authValidation.passwordRequired"));
         return false;
       }
 
@@ -53,7 +54,7 @@ export function useLogin() {
 
         if (!accessToken || !user) {
           throw new Error(
-            errorMessage || "Không nhận được dữ liệu phiên đăng nhập hợp lệ.",
+            errorMessage || i18n.t("authValidation.noSessionData"),
           );
         }
 
@@ -67,12 +68,12 @@ export function useLogin() {
       } catch (err) {
         if (err?.code === "EMAIL_NOT_VERIFIED") {
           setError(
-            "Email chưa xác thực. Vui lòng đăng nhập bằng email để nhận lại liên kết xác thực.",
+            i18n.t("authValidation.emailNotVerified"),
           );
           return false;
         }
 
-        setError(err?.message || "Đăng nhập thất bại. Vui lòng thử lại.");
+        setError(err?.message || i18n.t("authValidation.loginFailed"));
         return false;
       } finally {
         setIsLoading(false);

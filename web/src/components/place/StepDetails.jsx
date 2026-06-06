@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   ArrowRight,
@@ -52,6 +53,7 @@ const MapSkeleton = () => (
  * Clean, modern Shadcn/UI style
  */
 const StepDetails = () => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { wizardData, updateWizardData, nextStep, prevStep, loading } =
     usePlaceStore();
@@ -63,29 +65,33 @@ const StepDetails = () => {
     const newErrors = {};
 
     if (!wizardData.latitude || !wizardData.longitude) {
-      newErrors.location = "Vui lòng chọn vị trí trên bản đồ";
+      newErrors.location = t("admin.placeWizard.details.selectOnMap");
     }
 
     if (!wizardData.description?.trim()) {
-      newErrors.description = "Vui lòng nhập mô tả chi tiết";
+      newErrors.description = t("admin.placeWizard.basicInfo.descriptionPlaceholder");
     }
 
     if (
       wizardData.phone &&
       !/^[0-9]{10,11}$/.test(wizardData.phone.replace(/\s/g, ""))
     ) {
-      newErrors.phone = "Số điện thoại không hợp lệ (10-11 chữ số)";
+      newErrors.phone = t("validation.phoneFormat");
     }
 
     if (
       wizardData.email &&
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(wizardData.email)
     ) {
-      newErrors.email = "Email không hợp lệ";
+      newErrors.email = t("validation.emailInvalid");
     }
 
-    if (wizardData.website && !/^https?:\/\/.+/.test(wizardData.website)) {
-      newErrors.website = "URL website không hợp lệ (cần bắt đầu với http:// hoặc https://)";
+    if (
+      wizardData.website &&
+      wizardData.website.trim() !== "" &&
+      !/^https?:\/\/.+/.test(wizardData.website)
+    ) {
+      newErrors.website = t("validation.websiteInvalid");
     }
 
     setErrors(newErrors);
@@ -113,8 +119,8 @@ const StepDetails = () => {
       if (district) {
         lastLookupRef.current = { lat, lng };
         toast({
-          title: "Đã xác định khu vực",
-          description: `Vị trí thuộc ${district.name}, TP. Cần Thơ`,
+          title: t("common.success"),
+          description: `${district.name}`,
           className: "border-green-200 bg-green-50 text-green-800",
         });
       }
@@ -129,8 +135,8 @@ const StepDetails = () => {
     } else {
       toast({
         variant: "destructive",
-        title: "Lỗi",
-        description: "Vui lòng kiểm tra lại thông tin",
+        title: t("common.error"),
+        description: t("common.validationError"),
       });
     }
   };
@@ -148,28 +154,28 @@ const StepDetails = () => {
             className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm py-3 gap-2"
           >
             <Info className="h-4 w-4" />
-            <span className="hidden sm:inline">Mô tả</span>
+            <span className="hidden sm:inline">{t("admin.placeWizard.details.title")}</span>
           </TabsTrigger>
           <TabsTrigger
             value="images"
             className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm py-3 gap-2"
           >
             <ImageIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">Hình ảnh</span>
+            <span className="hidden sm:inline">{t("admin.placeWizard.preview.images")}</span>
           </TabsTrigger>
           <TabsTrigger
             value="location"
             className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm py-3 gap-2"
           >
             <MapPin className="h-4 w-4" />
-            <span className="hidden sm:inline">Vị trí</span>
+            <span className="hidden sm:inline">{t("admin.placeWizard.preview.location")}</span>
           </TabsTrigger>
           <TabsTrigger
             value="contact"
             className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm py-3 gap-2"
           >
             <Phone className="h-4 w-4" />
-            <span className="hidden sm:inline">Liên hệ</span>
+            <span className="hidden sm:inline">{t("admin.placeWizard.preview.phone")}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -179,20 +185,20 @@ const StepDetails = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Info className="h-5 w-5 text-primary" />
-                Mô tả chi tiết
+                {t("admin.placeWizard.details.title")}
               </CardTitle>
               <CardDescription>
-                Giới thiệu về không gian, phong cách, và những điểm đặc biệt của địa điểm
+                {t("admin.placeWizard.basicInfo.descriptionPlaceholder")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="description" className="text-sm font-medium">
-                  Nội dung <span className="text-destructive">*</span>
+                  {t("admin.placeWizard.basicInfo.description")} <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
                   id="description"
-                  placeholder="Nhập mô tả địa điểm của bạn..."
+                  placeholder={t("admin.placeWizard.basicInfo.descriptionPlaceholder")}
                   rows={6}
                   value={wizardData.description}
                   onChange={(e) =>
@@ -215,7 +221,7 @@ const StepDetails = () => {
               <div className="border-t pt-6">
                 <div className="flex items-center gap-2 mb-4">
                   <DollarSign className="h-5 w-5 text-primary" />
-                  <h4 className="font-semibold">Khoảng giá</h4>
+                  <h4 className="font-semibold">{t("admin.placeWizard.details.priceRange")}</h4>
                 </div>
                 <PriceRangeSlider
                   priceRange={wizardData.priceRange}
@@ -229,7 +235,7 @@ const StepDetails = () => {
               <div className="border-t pt-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Tags className="h-5 w-5 text-primary" />
-                  <h4 className="font-semibold">Tags và thể loại</h4>
+                  <h4 className="font-semibold">{t("admin.placeWizard.details.tags")}</h4>
                 </div>
                 <TagSelector
                   selectedTags={wizardData.tagIds || []}
@@ -241,7 +247,7 @@ const StepDetails = () => {
               <div className="border-t pt-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Clock className="h-5 w-5 text-primary" />
-                  <h4 className="font-semibold">Giờ mở cửa</h4>
+                  <h4 className="font-semibold">{t("admin.placeWizard.details.openingHours")}</h4>
                 </div>
                 <OpeningHoursEditor
                   value={wizardData.openingHours || []}
@@ -258,10 +264,10 @@ const StepDetails = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <ImageIcon className="h-5 w-5 text-primary" />
-                Hình ảnh địa điểm
+                {t("admin.placeWizard.preview.images")}
               </CardTitle>
               <CardDescription>
-                Đăng tải hình ảnh đẹp nhất để thu hút khách hàng. Ảnh bìa sẽ được hiển thị đầu tiên.
+                {t("admin.placeWizard.preview.noImages")}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -279,10 +285,10 @@ const StepDetails = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <MapPin className="h-5 w-5 text-primary" />
-                Vị trí trên bản đồ
+                {t("admin.placeWizard.preview.location")}
               </CardTitle>
               <CardDescription>
-                Kéo marker đến vị trí chính xác của địa điểm
+                {t("admin.placeWizard.details.selectOnMap")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -313,16 +319,16 @@ const StepDetails = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Phone className="h-5 w-5 text-primary" />
-                  Thông tin chính
+                  {t("admin.placeWizard.basicInfo.phone")}
                 </CardTitle>
                 <CardDescription>
-                  Số điện thoại và email để khách hàng liên hệ
+                  {t("admin.placeWizard.basicInfo.email")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="phone" className="text-sm font-medium">
-                    Số điện thoại
+                    {t("admin.placeWizard.basicInfo.phone")}
                   </Label>
                   <Input
                     id="phone"
@@ -346,7 +352,7 @@ const StepDetails = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm font-medium">
-                    Email
+                    {t("admin.placeWizard.basicInfo.email")}
                   </Label>
                   <Input
                     id="email"
@@ -375,16 +381,16 @@ const StepDetails = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Globe className="h-5 w-5 text-primary" />
-                  Mạng xã hội và Website
+                  {t("admin.placeWizard.basicInfo.website")}
                 </CardTitle>
                 <CardDescription>
-                  Đường dẫn mạng xã hội và website của bạn
+                  {t("admin.placeWizard.basicInfo.website")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="website" className="text-sm font-medium">
-                    Website
+                    {t("admin.placeWizard.basicInfo.website")}
                   </Label>
                   <Input
                     id="website"
@@ -436,7 +442,7 @@ const StepDetails = () => {
           className="gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          Quay lại
+          {t("common.back")}
         </Button>
         <Button
           onClick={handleNext}
@@ -444,7 +450,7 @@ const StepDetails = () => {
           size="lg"
           className="gap-2"
         >
-          Tiếp theo
+          {t("common.next")}
           <ArrowRight className="h-4 w-4" />
         </Button>
       </div>

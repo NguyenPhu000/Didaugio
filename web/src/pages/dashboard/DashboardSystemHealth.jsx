@@ -4,6 +4,7 @@ import Database from "lucide-react/dist/esm/icons/database";
 import HardDrive from "lucide-react/dist/esm/icons/hard-drive";
 import Zap from "lucide-react/dist/esm/icons/zap";
 import Users from "lucide-react/dist/esm/icons/users";
+import { useTranslation } from "react-i18next";
 
 const barColor = (v) => {
   if (v >= 80) return "bg-red-500";
@@ -39,11 +40,13 @@ const HealthBar = ({ icon: _Icon, label, value, unit = "%" }) => (
 );
 
 const DashboardSystemHealth = () => {
+  const { t } = useTranslation();
+
   const metrics = [
-    { icon: Cpu, label: "CPU USAGE", value: 24 },
-    { icon: HardDrive, label: "MEMORY", value: 68 },
-    { icon: Database, label: "DATABASE LOAD", value: 42 },
-    { icon: Zap, label: "API RESPONSE", value: 12.5 },
+    { icon: Cpu, label: t("dashboard.systemHealth.cpuUsage"), value: 24 },
+    { icon: HardDrive, label: t("dashboard.systemHealth.memory"), value: 68 },
+    { icon: Database, label: t("dashboard.systemHealth.databaseLoad"), value: 42 },
+    { icon: Zap, label: t("dashboard.systemHealth.apiResponse"), value: 12.5 },
   ];
 
   const [onlineUsers] = useState(() => Math.floor(Math.random() * 50) + 10);
@@ -58,7 +61,7 @@ const DashboardSystemHealth = () => {
       <div className="pt-4 border-t border-dashed border-gray-200">
         <div className="flex items-center justify-between">
           <div>
-            <div className="tim-meta mb-1">USERS ONLINE</div>
+            <div className="tim-meta mb-1">{t("dashboard.systemHealth.usersOnline")}</div>
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
               <span className="text-2xl font-black font-mono">
@@ -74,9 +77,9 @@ const DashboardSystemHealth = () => {
               <span
                 className={`w-1.5 h-1.5 rounded-full animate-pulse ${allOk ? "bg-emerald-500" : "bg-yellow-500"}`}
               />
-              {allOk ? "OPTIMAL" : "WARNING"}
+              {allOk ? t("dashboard.systemHealth.optimal") : t("dashboard.systemHealth.warning")}
             </div>
-            <div className="tim-meta mt-1">SERVER STATUS</div>
+            <div className="tim-meta mt-1">{t("dashboard.systemHealth.serverStatus")}</div>
           </div>
         </div>
       </div>

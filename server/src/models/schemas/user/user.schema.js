@@ -4,6 +4,8 @@ import { ROLES } from "../../../config/constants.js";
 
 const NON_ASSIGNABLE_ROLES = [ROLES.USER, ROLES.GUEST];
 
+const emptyToNull = (val) => (val === "" || val === undefined ? null : val);
+
 export const userStatusEnum = z.enum(["active", "inactive", "banned"]);
 
 export const createUserSchema = z.object({
@@ -40,14 +42,17 @@ export const createUserSchema = z.object({
       message: "USER/GUEST role không thể gán qua admin",
     }),
 
-  fullName: z.string().max(100).optional(),
-  nickname: z.string().min(2).max(50).optional(),
-  phone: z.string().max(20).optional(),
-  gender: z.enum(["male", "female", "other"]).optional(),
-  dateOfBirth: z.string().optional(),
-  address: z.string().max(500).optional(),
-  provinceCode: z.string().optional(),
-  districtCode: z.string().optional(),
+  fullName: z.preprocess(emptyToNull, z.string().max(100).optional()).nullable(),
+  nickname: z.preprocess(emptyToNull, z.string().min(2).max(50).optional()).nullable(),
+  phone: z.preprocess(emptyToNull, z.string().max(20).optional()).nullable(),
+  gender: z.preprocess(emptyToNull, z.enum(["male", "female", "other"]).optional()).nullable(),
+  dateOfBirth: z.preprocess((val) => {
+    if (val === "" || val === undefined || val === null) return null;
+    return val;
+  }, z.string().optional()).nullable(),
+  address: z.preprocess(emptyToNull, z.string().max(500).optional()).nullable(),
+  provinceCode: z.preprocess(emptyToNull, z.string().optional()).nullable(),
+  districtCode: z.preprocess(emptyToNull, z.string().optional()).nullable(),
 });
 
 export const updateUserSchema = z.object({
@@ -88,14 +93,17 @@ export const updateUserSchema = z.object({
     .optional(),
 
   emailVerified: z.boolean().optional(),
-  fullName: z.string().max(100).optional(),
-  nickname: z.string().min(2).max(50).optional().nullable(),
-  phone: z.string().max(20).optional(),
-  gender: z.enum(["male", "female", "other"]).optional(),
-  dateOfBirth: z.string().optional(),
-  address: z.string().max(500).optional(),
-  provinceCode: z.string().optional(),
-  districtCode: z.string().optional(),
+  fullName: z.preprocess(emptyToNull, z.string().max(100).optional()).nullable(),
+  nickname: z.preprocess(emptyToNull, z.string().min(2).max(50).optional()).nullable(),
+  phone: z.preprocess(emptyToNull, z.string().max(20).optional()).nullable(),
+  gender: z.preprocess(emptyToNull, z.enum(["male", "female", "other"]).optional()).nullable(),
+  dateOfBirth: z.preprocess((val) => {
+    if (val === "" || val === undefined || val === null) return null;
+    return val;
+  }, z.string().optional()).nullable(),
+  address: z.preprocess(emptyToNull, z.string().max(500).optional()).nullable(),
+  provinceCode: z.preprocess(emptyToNull, z.string().optional()).nullable(),
+  districtCode: z.preprocess(emptyToNull, z.string().optional()).nullable(),
 });
 
 export const userQuerySchema = paginationSchema.extend({
@@ -103,3 +111,4 @@ export const userQuerySchema = paginationSchema.extend({
   roleId: z.coerce.number().int().positive().optional(),
   search: z.string().trim().max(100).optional(),
 });
+

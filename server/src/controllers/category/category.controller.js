@@ -16,25 +16,30 @@ import {
 // GET /api/categories - Lấy danh sách categories
 export const getCategories = async (req, res, next) => {
   try {
-    const { parentId, level, isActive, search, format } = req.query;
+    const { parentId, level, isActive, search, format, includeInactive } = req.query;
+    const isIncludeInactive = includeInactive === "true" || includeInactive === true;
 
     // Format: tree hoặc flat
     if (format === "tree") {
-      const cacheKey = "categories:tree";
+      const cacheKey = `categories:tree:${isIncludeInactive}`;
       const cached = cacheGet(cacheKey);
       if (cached) {
-        setPublicListCache(res);
+        setPublicListCache(res, req);
         return res.json(cached);
       }
 
-      const tree = await categoryService.getCategoryTree(parentId || null);
+      const tree = await categoryService.getCategoryTree(
+        parentId || null,
+        undefined,
+        isIncludeInactive
+      );
       const body = {
         success: true,
         data: tree,
         message: "Lấy cây danh mục thành công",
       };
       cacheSet(cacheKey, body, TTL.STATIC);
-      setPublicListCache(res);
+      setPublicListCache(res, req);
       return res.json(body);
     }
 
@@ -42,7 +47,7 @@ export const getCategories = async (req, res, next) => {
     const cacheKey = "categories:list";
     const cached = cacheGet(cacheKey);
     if (cached) {
-      setPublicListCache(res);
+      setPublicListCache(res, req);
       return res.json(cached);
     }
 
@@ -60,7 +65,7 @@ export const getCategories = async (req, res, next) => {
       message: "Lấy danh sách danh mục thành công",
     };
     cacheSet(cacheKey, body, TTL.STATIC);
-    setPublicListCache(res);
+    setPublicListCache(res, req);
     res.json(body);
   } catch (error) {
     next(error);
@@ -70,18 +75,20 @@ export const getCategories = async (req, res, next) => {
 // GET /api/categories/tree - Lấy category tree
 export const getCategoryTree = async (req, res, next) => {
   try {
-    const { parentId, maxLevel } = req.query;
+    const { parentId, maxLevel, includeInactive } = req.query;
+    const isIncludeInactive = includeInactive === "true" || includeInactive === true;
 
-    const cacheKey = "categories:tree";
+    const cacheKey = `categories:tree:${isIncludeInactive}`;
     const cached = cacheGet(cacheKey);
     if (cached) {
-      setPublicListCache(res);
+      setPublicListCache(res, req);
       return res.json(cached);
     }
 
     const tree = await categoryService.getCategoryTree(
       parentId || null,
-      maxLevel,
+      maxLevel ? parseInt(maxLevel) : undefined,
+      isIncludeInactive,
     );
 
     const body = {
@@ -90,7 +97,7 @@ export const getCategoryTree = async (req, res, next) => {
       message: "Lấy cây danh mục thành công",
     };
     cacheSet(cacheKey, body, TTL.STATIC);
-    setPublicListCache(res);
+    setPublicListCache(res, req);
     res.json(body);
   } catch (error) {
     next(error);

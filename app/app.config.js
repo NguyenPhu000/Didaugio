@@ -35,6 +35,15 @@ module.exports = () => {
     }
   }
 
+  // Add expo-localization plugin if not already present
+  const hasLocalization = plugins.some((plugin) => {
+    const name = Array.isArray(plugin) ? plugin[0] : plugin;
+    return name === "expo-localization";
+  });
+  if (!hasLocalization) {
+    plugins.push("expo-localization");
+  }
+
   return {
     ...expoConfig,
     plugins,

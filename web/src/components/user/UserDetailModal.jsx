@@ -20,9 +20,11 @@ import {
 import { ROLE_NAMES } from "@/constants/constants";
 import { formatDate, formatDateTime } from "@/utils/dateUtils";
 import { locationService } from "@/apis/locationService";
+import { useTranslation } from "react-i18next";
 
 const UserDetailModal = ({ open, onClose, user }) => {
-  const [fullAddress, setFullAddress] = useState("Đang tải...");
+  const { t } = useTranslation();
+  const [fullAddress, setFullAddress] = useState(t("user.detailModal.loading"));
   const [loadingAddress, setLoadingAddress] = useState(false);
 
   // Build full address from province/district codes
@@ -100,36 +102,44 @@ const UserDetailModal = ({ open, onClose, user }) => {
     };
 
     buildAddress();
-  }, [user, open]);
+  }, [user, open, t]);
 
   if (!user) return null;
 
   // Helper functions
 
   const getRoleName = (roleId) => {
-    return ROLE_NAMES[roleId] || "Không xác định";
+    const roleKeys = {
+      1: "roles.names.superAdmin",
+      2: "roles.names.admin",
+      3: "roles.names.business",
+      4: "roles.names.staff",
+      5: "roles.names.user",
+      6: "roles.names.guest",
+    };
+    return roleKeys[roleId] ? t(roleKeys[roleId]) : t("user.detailModal.unknown");
   };
 
   const getGenderName = (gender) => {
     const genderMap = {
-      male: "Nam",
-      female: "Nữ",
-      other: "Khác",
+      male: t("user.detailModal.male"),
+      female: t("user.detailModal.female"),
+      other: t("user.detailModal.other"),
     };
     return genderMap[gender] || "—";
   };
 
   const getStatusInfo = (status) => {
     if (status === "active") {
-      return { text: "Hoạt động", className: "bg-green-100 text-green-700" };
+      return { text: t("user.detailModal.statusActive"), className: "bg-green-100 text-green-700" };
     }
     if (status === "inactive" || status === "locked") {
-      return { text: "Bị khóa", className: "bg-red-100 text-red-700" };
+      return { text: t("user.detailModal.statusLocked"), className: "bg-red-100 text-red-700" };
     }
     if (status === "banned") {
-      return { text: "Bị cấm", className: "bg-gray-100 text-gray-700" };
+      return { text: t("user.detailModal.statusBanned"), className: "bg-gray-100 text-gray-700" };
     }
-    return { text: "Không xác định", className: "bg-gray-100 text-gray-700" };
+    return { text: t("user.detailModal.unknown"), className: "bg-gray-100 text-gray-700" };
   };
 
   const getRoleColor = (roleId) => {
@@ -145,13 +155,13 @@ const UserDetailModal = ({ open, onClose, user }) => {
 
   // Get display values
   const displayName =
-    user.profile?.fullName || user.fullName || "Chưa cập nhật";
+    user.profile?.fullName || user.fullName || t("user.detailModal.notUpdated");
   const displayPhone = user.profile?.phone || user.phone || "—";
   const displayGender = getGenderName(user.profile?.gender || user.gender);
   const displayDob = formatDate(user.profile?.dateOfBirth || user.dateOfBirth);
   const statusInfo = getStatusInfo(user.status);
   const avatarInitial =
-    displayName !== "Chưa cập nhật"
+    displayName !== t("user.detailModal.notUpdated")
       ? displayName.charAt(0).toUpperCase()
       : user.email.charAt(0).toUpperCase();
 
@@ -159,7 +169,7 @@ const UserDetailModal = ({ open, onClose, user }) => {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Chi tiết người dùng</DialogTitle>
+          <DialogTitle>{t("user.detailModal.title")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -196,7 +206,7 @@ const UserDetailModal = ({ open, onClose, user }) => {
           <div>
             <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-800">
               <Mail className="w-4 h-4 text-blue-500" />
-              Thông tin liên hệ
+              {t("user.detailModal.contactInfo")}
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 rounded-lg p-4">
               <div>
@@ -209,7 +219,7 @@ const UserDetailModal = ({ open, onClose, user }) => {
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
-                  Số điện thoại
+                  {t("user.detailModal.phone")}
                 </p>
                 <p className="font-medium text-gray-900">{displayPhone}</p>
               </div>
@@ -220,20 +230,20 @@ const UserDetailModal = ({ open, onClose, user }) => {
           <div>
             <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-800">
               <User className="w-4 h-4 text-blue-500" />
-              Thông tin cá nhân
+              {t("user.detailModal.personalInfo")}
             </h4>
             <div className="bg-gray-50 rounded-lg p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide">
-                    Giới tính
+                    {t("user.detailModal.gender")}
                   </p>
                   <p className="font-medium text-gray-900">{displayGender}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    Ngày sinh
+                    {t("user.detailModal.dateOfBirth")}
                   </p>
                   <p className="font-medium text-gray-900">{displayDob}</p>
                 </div>
@@ -241,10 +251,10 @@ const UserDetailModal = ({ open, onClose, user }) => {
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
                   <MapPin className="w-3 h-3" />
-                  Địa chỉ
+                  {t("user.detailModal.address")}
                 </p>
                 <p className="font-medium text-gray-900">
-                  {loadingAddress ? "Đang tải..." : fullAddress}
+                  {loadingAddress ? t("user.detailModal.loading") : fullAddress}
                 </p>
               </div>
             </div>
@@ -254,12 +264,12 @@ const UserDetailModal = ({ open, onClose, user }) => {
           <div>
             <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-800">
               <Shield className="w-4 h-4 text-blue-500" />
-              Thông tin tài khoản
+              {t("user.detailModal.accountInfo")}
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 rounded-lg p-4">
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
-                  Vai trò
+                  {t("user.detailModal.role")}
                 </p>
                 <p className="font-medium text-gray-900">
                   {getRoleName(user.roleId)}
@@ -267,27 +277,27 @@ const UserDetailModal = ({ open, onClose, user }) => {
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
-                  Trạng thái
+                  {t("user.detailModal.status")}
                 </p>
                 <p className="font-medium text-gray-900">{statusInfo.text}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
-                  Email xác thực
+                  {t("user.detailModal.emailVerified")}
                 </p>
                 <div className="flex items-center gap-1">
                   {user.emailVerified ? (
                     <>
                       <CheckCircle className="w-4 h-4 text-green-500" />
                       <span className="font-medium text-green-600">
-                        Đã xác thực
+                        {t("user.detailModal.verified")}
                       </span>
                     </>
                   ) : (
                     <>
                       <XCircle className="w-4 h-4 text-red-500" />
                       <span className="font-medium text-red-600">
-                        Chưa xác thực
+                        {t("user.detailModal.notVerified")}
                       </span>
                     </>
                   )}
@@ -300,12 +310,12 @@ const UserDetailModal = ({ open, onClose, user }) => {
           <div>
             <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-800">
               <Clock className="w-4 h-4 text-blue-500" />
-              Thời gian
+              {t("user.detailModal.timeInfo")}
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 rounded-lg p-4">
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
-                  Ngày tạo
+                  {t("user.detailModal.createdAt")}
                 </p>
                 <p className="font-medium text-gray-900">
                   {formatDateTime(user.createdAt)}
@@ -313,7 +323,7 @@ const UserDetailModal = ({ open, onClose, user }) => {
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
-                  Đăng nhập lần cuối
+                  {t("user.detailModal.lastLogin")}
                 </p>
                 <p className="font-medium text-gray-900">
                   {formatDateTime(user.lastLoginAt)}
@@ -325,7 +335,7 @@ const UserDetailModal = ({ open, onClose, user }) => {
 
         {/* Actions */}
         <div className="flex justify-end pt-4 border-t">
-          <Button onClick={onClose}>Đóng</Button>
+          <Button onClick={onClose}>{t("user.detailModal.close")}</Button>
         </div>
       </DialogContent>
     </Dialog>

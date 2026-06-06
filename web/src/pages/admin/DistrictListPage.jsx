@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Search,
   ChevronDown,
@@ -22,18 +23,18 @@ import * as districtService from "@/apis/districtService";
 import * as placeService from "@/apis/placeService";
 import { ADMIN_ROUTES } from "@/constants/routes";
 
-const STATUS_MAP = {
+const getStatusMap = (t) => ({
   approved: {
-    label: "Duyệt",
+    label: t("admin.districts.statusApproved"),
     cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
   },
   pending: {
-    label: "Chờ",
+    label: t("admin.districts.statusPending"),
     cls: "bg-yellow-50 text-yellow-700 border-yellow-200",
   },
-  rejected: { label: "Hủy", cls: "bg-red-50 text-red-600 border-red-200" },
-  draft: { label: "Nháp", cls: "bg-gray-50 text-gray-500 border-gray-200" },
-};
+  rejected: { label: t("admin.districts.statusRejected"), cls: "bg-red-50 text-red-600 border-red-200" },
+  draft: { label: t("admin.districts.statusDraft"), cls: "bg-gray-50 text-gray-500 border-gray-200" },
+});
 
 const STATUS_ICON = {
   approved: CheckCircle,
@@ -43,6 +44,8 @@ const STATUS_ICON = {
 };
 
 const PlaceRow = ({ place, idx }) => {
+  const { t } = useTranslation();
+  const STATUS_MAP = getStatusMap(t);
   const badge = STATUS_MAP[place.status] || STATUS_MAP.draft;
   const Icon = STATUS_ICON[place.status] || AlertCircle;
   return (
@@ -87,6 +90,7 @@ const PlaceRow = ({ place, idx }) => {
 };
 
 const DistrictRow = ({ district, placeCount, maxCount }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   // null = not yet fetched, [] = fetched but empty, [...] = fetched with data
   const [places, setPlaces] = useState(null);
@@ -144,7 +148,7 @@ const DistrictRow = ({ district, placeCount, maxCount }) => {
                 </span>
                 {placeCount === 0 && (
                   <span className="text-[10px] font-mono text-muted-foreground border border-dashed border-gray-300 px-1.5 py-0.5">
-                    TRỐNG
+                    {t("admin.districts.empty")}
                   </span>
                 )}
               </div>
@@ -184,7 +188,7 @@ const DistrictRow = ({ district, placeCount, maxCount }) => {
               return (
                 <div className="flex items-center justify-center gap-2 py-6 tim-meta">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  ĐANG TẢI...
+                  {t("admin.districts.loadingPlaces")}
                 </div>
               );
             }
@@ -193,12 +197,12 @@ const DistrictRow = ({ district, placeCount, maxCount }) => {
               return (
                 <>
                   <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                    <span className="tim-meta">{sorted.length} ĐỊA ĐIỂM</span>
+                    <span className="tim-meta">{sorted.length} {t("admin.districts.places")}</span>
                     <Link
                       to={`${ADMIN_ROUTES.PLACES}?districtId=${district.id}`}
                       className="text-[10px] font-mono uppercase text-primary hover:underline"
                     >
-                      XEM TRONG QUẢN LÝ →
+                      {t("admin.districts.viewInManagement")}
                     </Link>
                   </div>
                   {sorted.map((place, i) => (
@@ -210,7 +214,7 @@ const DistrictRow = ({ district, placeCount, maxCount }) => {
 
             return (
               <div className="px-4 py-6 text-center tim-meta">
-                CHƯA CÓ ĐỊA ĐIỂM NÀO
+                {t("admin.districts.noPlacesYet")}
               </div>
             );
           })()}
@@ -221,6 +225,7 @@ const DistrictRow = ({ district, placeCount, maxCount }) => {
 };
 
 const DistrictListPage = () => {
+  const { t } = useTranslation();
   const [districts, setDistricts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -276,12 +281,12 @@ const DistrictListPage = () => {
           <div className="flex items-center gap-6">
             <div className="accent-bar h-16" />
             <div>
-              <h1 className="tim-title">QUẬN / HUYỆN</h1>
+              <h1 className="tim-title">{t("admin.districts.title")}</h1>
               <div className="flex items-center gap-4 mt-2">
                 <span className="tim-system bg-black text-white px-2 py-1">
-                  GEODATA // DISTRICTS
+                  {t("admin.districts.system")}
                 </span>
-                <p className="tim-meta">PHÂN BỐ ĐỊA ĐIỂM THEO KHU VỰC</p>
+                <p className="tim-meta">{t("admin.districts.subtitle")}</p>
               </div>
             </div>
           </div>
@@ -291,27 +296,27 @@ const DistrictListPage = () => {
         {!loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <TimStatsCard
-              title="KHU VỰC"
+              title={t("admin.districts.areas")}
               value={districts.length}
               icon={Map}
               serial="DST-001"
             />
             <TimStatsCard
-              title="TỔNG ĐỊA ĐIỂM"
+              title={t("admin.districts.totalPlaces")}
               value={totalPlaces}
               icon={MapPin}
               serial="DST-002"
               color="bg-yellow-50"
             />
             <TimStatsCard
-              title="CÓ ĐỊA ĐIỂM"
+              title={t("admin.districts.hasPlaces")}
               value={filtered.filter((d) => (d._count?.places || 0) > 0).length}
               icon={CheckCircle}
               serial="DST-003"
               textColor="text-emerald-600"
             />
             <TimStatsCard
-              title="KHU TRỐNG"
+              title={t("admin.districts.emptyAreas")}
               value={
                 filtered.filter((d) => (d._count?.places || 0) === 0).length
               }
@@ -329,7 +334,7 @@ const DistrictListPage = () => {
               <Search className="h-4 w-4" />
             </div>
             <input
-              placeholder="TÌM KIẾM QUẬN/HUYỆN..."
+              placeholder={t("admin.districts.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="flex-1 h-10 px-4 border-y border-r border-black font-mono text-sm uppercase focus:outline-none focus:bg-primary/5 placeholder:text-gray-400"
@@ -346,7 +351,7 @@ const DistrictListPage = () => {
               ) : (
                 <SortAsc className="h-3.5 w-3.5" />
               )}
-              TÊN
+              {t("admin.districts.name")}
             </button>
             <button
               onClick={() => toggleSort("count")}
@@ -358,7 +363,7 @@ const DistrictListPage = () => {
               ) : (
                 <SortAsc className="h-3.5 w-3.5" />
               )}
-              SỐ LƯỢNG
+              {t("admin.districts.quantity")}
             </button>
           </div>
         </div>
@@ -367,18 +372,18 @@ const DistrictListPage = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
             <div className="w-12 h-12 border-4 border-black border-t-primary rounded-full animate-spin" />
-            <div className="tim-meta">ĐANG TẢI DỮ LIỆU...</div>
+            <div className="tim-meta">{t("admin.districts.loading")}</div>
           </div>
         ) : (
           <div className="space-y-2">
             {/* Header row */}
             <div className="flex items-center gap-4 px-5 py-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
               <div className="w-4 shrink-0" />
-              <div className="flex-1">KHU VỰC + PHÂN BỔ</div>
+              <div className="flex-1">{t("admin.districts.areaDistribution")}</div>
               <div className="hidden sm:block w-24 text-center">
-                DUYỆT / CHỜ
+                {t("admin.districts.approvedPending")}
               </div>
-              <div className="w-16 text-center">ĐỊA ĐIỂM</div>
+              <div className="w-16 text-center">{t("admin.districts.placesLabel")}</div>
             </div>
 
             {filtered.map((district) => (
@@ -393,7 +398,7 @@ const DistrictListPage = () => {
             {filtered.length === 0 && (
               <div className="py-12 text-center border border-dashed border-gray-300">
                 <Map className="h-8 w-8 mx-auto text-gray-300 mb-3" />
-                <p className="tim-meta">KHÔNG TÌM THẤY KHU VỰC PHÙ HỢP</p>
+                <p className="tim-meta">{t("admin.districts.noMatchingAreas")}</p>
               </div>
             )}
           </div>

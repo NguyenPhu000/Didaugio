@@ -1,3 +1,5 @@
+import i18n from "@/i18n";
+
 export const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:8081/api";
 
@@ -75,11 +77,11 @@ export const PRICE_RANGE = {
 };
 
 export const PRICE_RANGE_LABELS = {
-  FREE: "Miễn phí",
-  BUDGET: "Bình dân",
-  MODERATE: "Trung bình",
-  EXPENSIVE: "Cao cấp",
-  LUXURY: "Sang trọng",
+  get FREE() { return i18n.t("explore.search.price.free"); },
+  get BUDGET() { return i18n.t("explore.search.price.budget"); },
+  get MODERATE() { return i18n.t("explore.search.price.midRange"); },
+  get EXPENSIVE() { return i18n.t("explore.search.price.premium"); },
+  LUXURY: "Luxury",
 };
 
 export const DAY_OF_WEEK = {
@@ -93,13 +95,13 @@ export const DAY_OF_WEEK = {
 };
 
 export const DAY_OF_WEEK_NAMES = {
-  0: "Chủ nhật",
-  1: "Thứ 2",
-  2: "Thứ 3",
-  3: "Thứ 4",
-  4: "Thứ 5",
-  5: "Thứ 6",
-  6: "Thứ 7",
+  0: "Sun",
+  1: "Mon",
+  2: "Tue",
+  3: "Wed",
+  4: "Thu",
+  5: "Fri",
+  6: "Sat",
 };
 
 export const PLACE_IMAGE_LIMITS = {

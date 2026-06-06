@@ -18,6 +18,7 @@ import {
   ShieldOff,
   Eye,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 // Lucide mapping
 const ROLE_ICONS_LUCIDE = {
@@ -36,6 +37,7 @@ export default function RoleManagePage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
   const { isSuperAdmin, user: currentUser } = usePermission();
+  const { t } = useTranslation();
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -54,7 +56,7 @@ export default function RoleManagePage() {
       }
     } catch (error) {
       console.error(error);
-      toast.error("Không thể tải danh sách vai trò");
+      toast.error(t("roles.errors.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -103,12 +105,12 @@ export default function RoleManagePage() {
           <div className="flex items-center gap-6">
             <div className="accent-bar h-16"></div>
             <div>
-              <h1 className="tim-title">QUẢN LÝ VAI TRÒ</h1>
+              <h1 className="tim-title">{t("roles.title")}</h1>
               <div className="flex items-center gap-4 mt-2">
                 <span className="tim-system bg-black text-white px-2 py-1">
                   RBAC // ROLES
                 </span>
-                <p className="tim-meta">CẤU HÌNH VAI TRÒ VÀ QUYỀN HẠN</p>
+                <p className="tim-meta">{t("roles.subtitle")}</p>
               </div>
             </div>
           </div>
@@ -129,26 +131,26 @@ export default function RoleManagePage() {
         {!loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <TimStatsCard
-              title="SỐ VAI TRÒ"
+              title={t("roles.stats.count")}
               value={roleStats.count}
               icon={ShieldAlert}
               serial="ROL-001"
             />
             <TimStatsCard
-              title="TỔNG USER GÁN"
+              title={t("roles.stats.totalUsers")}
               value={roleStats.totalUsers}
               icon={Users}
               serial="ROL-002"
               textColor="text-emerald-600"
             />
             <TimStatsCard
-              title="TỔNG GÁN QUYỀN"
+              title={t("roles.stats.totalPermissions")}
               value={roleStats.totalPerms}
               icon={Lock}
               serial="ROL-003"
             />
             <TimStatsCard
-              title="TB USER / VAI TRÒ"
+              title={t("roles.stats.avgUsersPerRole")}
               value={roleStats.avgUsers}
               icon={BarChart3}
               serial="ROL-004"
@@ -184,7 +186,7 @@ export default function RoleManagePage() {
               <div className="text-center py-16 bg-white border border-black border-dashed">
                 <Users className="mx-auto h-12 w-12 text-gray-300" />
                 <p className="mt-4 text-gray-500 font-mono uppercase">
-                  CHƯA CÓ VAI TRÒ
+                  {t("roles.empty")}
                 </p>
               </div>
             );
@@ -223,7 +225,7 @@ export default function RoleManagePage() {
                     <div className="pt-4 border-t border-gray-100 group-hover:border-black/10 transition-colors">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-black">
-                          Permissions
+                          {t("roles.permissions")}
                         </span>
                         <span className="text-xs font-mono font-bold bg-[#F3E600] text-black px-1.5 py-0.5">
                           {role.permissionCount || 0}
@@ -236,12 +238,12 @@ export default function RoleManagePage() {
                           className="w-full bg-white border border-black text-black hover:bg-black hover:text-white rounded-none h-9 text-xs font-bold uppercase tracking-wider"
                         >
                           <Eye className="w-3 h-3 mr-2" />
-                          Xem quyền
+                          {t("roles.viewPermissions")}
                         </Button>
                       ) : currentUser?.roleId >= role.id ? (
                         <div className="w-full bg-gray-50 border border-gray-300 text-gray-400 rounded-none h-9 text-xs font-bold uppercase tracking-wider flex items-center justify-center cursor-not-allowed">
                           <ShieldOff className="w-3 h-3 mr-2" />
-                          Không có quyền
+                          {t("roles.noPermissions")}
                         </div>
                       ) : (
                         <Button
@@ -249,7 +251,7 @@ export default function RoleManagePage() {
                           className="w-full bg-white border border-black text-black hover:bg-black hover:text-white rounded-none h-9 text-xs font-bold uppercase tracking-wider"
                         >
                           <Lock className="w-3 h-3 mr-2" />
-                          Cấu hình quyền
+                          {t("roles.configurePermissions")}
                         </Button>
                       )}
                     </div>

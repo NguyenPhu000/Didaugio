@@ -1,6 +1,8 @@
+import { useTranslation } from "react-i18next";
 import Navbar from "./Navbar";
 
 const MainLayout = ({ children }) => {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen bg-background text-foreground font-sans relative overflow-x-hidden selection:bg-primary selection:text-primary-foreground">
       {/* Background Decor - Grid Pattern (Blueprint style) */}
@@ -32,13 +34,13 @@ const MainLayout = ({ children }) => {
         <footer className="h-10 border-t border-border bg-background/80 backdrop-blur-sm flex items-center px-6 justify-between text-[10px] font-mono text-muted-foreground uppercase tracking-widest mt-auto">
           <div className="flex items-center gap-4">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            <span>SYSTEM STATUS: ONLINE</span>
+            <span>{t("footer.systemStatus")}</span>
           </div>
           <div className="flex gap-4">
             <span>
               COORD: {new Date().getFullYear()}.{new Date().getMonth() + 1}
             </span>
-            <span>DIDAU.GIO // ENDFIELD_THEME</span>
+            <span>{t("footer.theme")}</span>
           </div>
         </footer>
       </div>

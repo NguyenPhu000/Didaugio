@@ -6,6 +6,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/cn";
 import { TOKENS } from "../../constants/design-tokens";
 import { PlacePreviewCard } from "../composed/PlacePreviewCard";
@@ -20,6 +21,7 @@ export function AIBubble({
   onAddToTrip,
 }) {
   const isUser = role === "user";
+  const { t } = useTranslation();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const [dismissedPlaceIds, setDismissedPlaceIds] = useState([]);
@@ -110,7 +112,7 @@ export function AIBubble({
             <View className="flex-row items-center gap-2 py-0.5">
               <ActivityIndicator size="small" color="#4F46E5" />
               <Text className="text-slate-400 text-[12.5px] font-medium" style={{ fontFamily: TOKENS.font.body }}>
-                em Nhi đang gõ...
+                {t("ai.typing")}
               </Text>
             </View>
           ) : (

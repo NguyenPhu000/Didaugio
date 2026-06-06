@@ -19,6 +19,7 @@ import {
 import { TOKENS } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "../(tabs)/_layout";
 import { cn } from "../../src/lib/cn";
+import { useTranslation } from "react-i18next";
 
 /* ─── Helpers ─────────────────────────────────────── */
 function formatTime(value) {
@@ -33,7 +34,7 @@ function formatTime(value) {
   });
 }
 
-function formatRelativeTime(value) {
+function formatRelativeTime(value, t) {
   if (!value) return "";
   const now = new Date();
   const d = new Date(value);
@@ -44,10 +45,10 @@ function formatRelativeTime(value) {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
-  if (minutes < 1) return "Vừa xong";
-  if (minutes < 60) return `${minutes} phút`;
-  if (hours < 24) return `${hours} giờ`;
-  if (days < 7) return `${days} ngày`;
+  if (minutes < 1) return t("notifications.time.justNow");
+  if (minutes < 60) return t("notifications.time.minutes", { count: minutes });
+  if (hours < 24) return t("notifications.time.hours", { count: hours });
+  if (days < 7) return t("notifications.time.days", { count: days });
   return formatTime(value);
 }
 
@@ -110,6 +111,7 @@ const resolveRoute = (item) => {
 
 /* ─── Sub-components ─────────────────────────────────── */
 function ScreenHeader({ unreadCount, onBack, onMarkAll }) {
+  const { t } = useTranslation();
   return (
     <View className="flex-row items-center px-4 py-[14px] bg-[#F5F5F7]">
       <TouchableOpacity
@@ -129,11 +131,11 @@ function ScreenHeader({ unreadCount, onBack, onMarkAll }) {
 
       <View className="flex-1 items-center">
         <Text className="text-[18px] font-bold text-[#1D1D1F] tracking-[-0.3px]">
-          Thông báo
+          {t("notifications.title")}
         </Text>
         {unreadCount > 0 && (
           <Text className="text-[11px] text-[#8E8E93] font-medium mt-[1px]">
-            {unreadCount} chưa đọc
+            {t("notifications.unreadCount", { count: unreadCount })}
           </Text>
         )}
       </View>
@@ -145,7 +147,7 @@ function ScreenHeader({ unreadCount, onBack, onMarkAll }) {
           className="px-3 py-[7px] rounded-[14px] bg-[#0071E3] min-w-[36px] items-center"
         >
           <Text className="text-[13px] font-semibold text-white tracking-[-0.1px]">
-            Đọc hết
+            {t("notifications.markAllRead")}
           </Text>
         </TouchableOpacity>
       ) : (
@@ -156,6 +158,7 @@ function ScreenHeader({ unreadCount, onBack, onMarkAll }) {
 }
 
 function TabBar({ active, onChange, unreadCount }) {
+  const { t } = useTranslation();
   return (
     <View className="flex-row px-4 pb-3 gap-2 bg-[#F5F5F7]">
       <TouchableOpacity
@@ -172,7 +175,7 @@ function TabBar({ active, onChange, unreadCount }) {
             active === "unread" ? "text-white" : "text-[#8E8E93]",
           )}
         >
-          Chưa đọc
+          {t("notifications.filterUnread")}
         </Text>
         {unreadCount > 0 && (
           <View
@@ -202,7 +205,7 @@ function TabBar({ active, onChange, unreadCount }) {
             active === "all" ? "text-white" : "text-[#8E8E93]",
           )}
         >
-          Tất cả
+          {t("notifications.filterAll")}
         </Text>
       </TouchableOpacity>
     </View>
@@ -212,10 +215,11 @@ function TabBar({ active, onChange, unreadCount }) {
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 function NotificationCard({ item, onPress, index }) {
+  const { t } = useTranslation();
   const unread = !item.readAt;
   const meta = item.metadata || {};
   const iconCfg = getIconConfig(meta.type);
-  const relTime = formatRelativeTime(item.createdAt);
+  const relTime = formatRelativeTime(item.createdAt, t);
 
   return (
     <AnimatedTouchable
@@ -257,7 +261,7 @@ function NotificationCard({ item, onPress, index }) {
             )}
             numberOfLines={2}
           >
-            {item.title || "Thông báo"}
+            {item.title || t("notifications.title")}
           </Text>
           {unread && (
             <View className="w-2 h-2 rounded-full bg-[#0071E3] mt-[5px] shrink-0" />
@@ -288,6 +292,7 @@ function NotificationCard({ item, onPress, index }) {
 }
 
 function EmptyState({ tab }) {
+  const { t } = useTranslation();
   return (
     <Animated.View
       entering={FadeIn.duration(300)}
@@ -310,12 +315,12 @@ function EmptyState({ tab }) {
         />
       </View>
       <Text className="text-[20px] font-bold text-[#1D1D1F] text-center mb-2 tracking-[-0.4px]">
-        {tab === "unread" ? "Không có thông báo mới" : "Chưa có thông báo nào"}
+        {tab === "unread" ? t("notifications.empty.noNew") : t("notifications.empty.noNotifications")}
       </Text>
       <Text className="text-[14px] font-sans text-[#8E8E93] text-center leading-[21px] tracking-[-0.1px]">
         {tab === "unread"
-          ? "Tất cả thông báo đã được đọc."
-          : "Thông báo từ booking, địa điểm và hệ thống sẽ xuất hiện ở đây."}
+          ? t("notifications.empty.allRead")
+          : t("notifications.empty.description")}
       </Text>
     </Animated.View>
   );
@@ -331,6 +336,7 @@ function LoadingState() {
 
 /* ─── Main Screen ───────────────────────────────────── */
 export default function NotificationsScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("unread");

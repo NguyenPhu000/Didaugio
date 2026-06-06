@@ -16,45 +16,9 @@ import {
 } from "../../src/constants/design-tokens";
 import { useMyBookings } from "../../src/modules/booking/hooks/useBooking";
 import { NotificationBell } from "../../src/components/composed/NotificationBell";
+import { useTranslation } from "react-i18next";
 
 
-const STATUS_META = {
-  pending: {
-    label: "Chờ xác nhận",
-    color: "#1D1D1F",
-    bg: "#EDEDF2",
-  },
-  confirmed: {
-    label: "Đã xác nhận",
-    color: "#FFFFFF",
-    bg: "#1D1D1F",
-  },
-  completed: {
-    label: "Hoàn thành",
-    color: "#1D1D1F",
-    bg: "#DFDFE4",
-  },
-  cancelled: {
-    label: "Đã hủy",
-    color: "#5A5A5E",
-    bg: "#ECECEF",
-  },
-  rejected: {
-    label: "Bị từ chối",
-    color: "#5A5A5E",
-    bg: "#F2E8DF",
-  },
-  expired: {
-    label: "Hết hạn",
-    color: "#5A5A5E",
-    bg: "#ECECEF",
-  },
-  no_show: {
-    label: "Không đến",
-    color: "#5A5A5E",
-    bg: "#ECECEF",
-  },
-};
 
 const formatCurrency = (value) => {
   const amount = Number(value || 0);
@@ -75,7 +39,21 @@ const formatDate = (value) => {
 export default function MyBookingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { data, isLoading, refetch, isRefetching } = useMyBookings();
+
+  const statusMeta = useMemo(
+    () => ({
+      pending: { label: t("bookings.status.pending"), color: "#1D1D1F", bg: "#EDEDF2" },
+      confirmed: { label: t("bookings.status.confirmed"), color: "#FFFFFF", bg: "#1D1D1F" },
+      completed: { label: t("bookings.status.completed"), color: "#1D1D1F", bg: "#DFDFE4" },
+      cancelled: { label: t("bookings.status.cancelled"), color: "#5A5A5E", bg: "#ECECEF" },
+      rejected: { label: t("bookings.status.rejected"), color: "#5A5A5E", bg: "#F2E8DF" },
+      expired: { label: t("bookings.status.expired"), color: "#5A5A5E", bg: "#ECECEF" },
+      no_show: { label: t("bookings.status.noShow"), color: "#5A5A5E", bg: "#ECECEF" },
+    }),
+    [t],
+  );
 
   const bookings = useMemo(() => data?.data || [], [data?.data]);
   const stats = useMemo(() => {
@@ -97,9 +75,9 @@ export default function MyBookingsScreen() {
         </Pressable>
 
         <View className="flex-1">
-          <Text className="text-[19px] text-[#1D1D1F] font-semibold">Booking của tôi</Text>
+          <Text className="text-[19px] text-[#1D1D1F] font-semibold">{t("bookings.title")}</Text>
           <Text className="mt-0.5 text-[12px] text-[rgba(0,0,0,0.8)] font-sans">
-            Theo dõi xác nhận, QR và liên kết trip
+            {t("bookings.subtitle")}
           </Text>
         </View>
 
@@ -130,15 +108,15 @@ export default function MyBookingsScreen() {
         >
           <View className="flex-row gap-2">
             <View className="flex-1 rounded-[14px] border border-[#D2D2D7] bg-white px-[10px] py-[10px] gap-1">
-              <Text className="text-[rgba(0,0,0,0.48)] text-[11px] font-medium">Tổng</Text>
+              <Text className="text-[rgba(0,0,0,0.48)] text-[11px] font-medium">{t("bookings.stats.total")}</Text>
               <Text className="text-[#1D1D1F] text-[17px] font-semibold">{stats.total}</Text>
             </View>
             <View className="flex-1 rounded-[14px] border border-[#D2D2D7] bg-white px-[10px] py-[10px] gap-1">
-              <Text className="text-[rgba(0,0,0,0.48)] text-[11px] font-medium">Đã xác nhận</Text>
+              <Text className="text-[rgba(0,0,0,0.48)] text-[11px] font-medium">{t("bookings.stats.confirmed")}</Text>
               <Text className="text-[#1D1D1F] text-[17px] font-semibold">{stats.confirmed}</Text>
             </View>
             <View className="flex-1 rounded-[14px] border border-[#D2D2D7] bg-white px-[10px] py-[10px] gap-1">
-              <Text className="text-[rgba(0,0,0,0.48)] text-[11px] font-medium">Đang chờ</Text>
+              <Text className="text-[rgba(0,0,0,0.48)] text-[11px] font-medium">{t("bookings.stats.pending")}</Text>
               <Text className="text-[#1D1D1F] text-[17px] font-semibold">{stats.pending}</Text>
             </View>
           </View>
@@ -150,22 +128,21 @@ export default function MyBookingsScreen() {
                 size={30}
                 color={THEME.textMuted}
               />
-              <Text className="mt-2 text-[17px] text-[#1D1D1F] font-semibold">Bạn chưa có booking nào</Text>
+              <Text className="mt-2 text-[17px] text-[#1D1D1F] font-semibold">{t("bookings.empty.noBookings")}</Text>
               <Text className="mt-[6px] text-[13px] leading-5 text-[rgba(0,0,0,0.8)] text-center font-sans">
-                Sau khi đặt dịch vụ, booking sẽ xuất hiện tại đây để theo dõi
-                trạng thái và lấy QR.
+                {t("bookings.empty.description")}
               </Text>
               <Pressable
                 onPress={() => router.push("/(tabs)/map")}
                 className="mt-4 bg-[#1D1D1F] rounded-full px-5 py-[11px]"
               >
-                <Text className="text-white text-[14px] font-semibold">Khám phá địa điểm</Text>
+                <Text className="text-white text-[14px] font-semibold">{t("bookings.empty.explore")}</Text>
               </Pressable>
             </View>
           ) : (
             bookings.map((booking) => {
-              const status = STATUS_META[booking?.status] || {
-                label: booking?.status || "Không xác định",
+              const status = statusMeta[booking?.status] || {
+                label: booking?.status || t("bookings.status.unknown"),
                 color: THEME.text,
                 bg: "#ECECEF",
               };
@@ -194,10 +171,10 @@ export default function MyBookingsScreen() {
                   </View>
 
                   <Text className="mt-0.5 text-[16px] text-[#1D1D1F] font-semibold">
-                    {booking?.service?.name || "Dịch vụ"}
+                    {booking?.service?.name || t("bookings.defaultService")}
                   </Text>
                   <Text className="text-[13px] text-[rgba(0,0,0,0.8)] font-medium">
-                    {booking?.service?.place?.name || "Địa điểm"}
+                    {booking?.service?.place?.name || t("bookings.defaultPlace")}
                   </Text>
 
                   <View className="mt-[6px] flex-row flex-wrap gap-[10px]">
@@ -235,21 +212,21 @@ export default function MyBookingsScreen() {
 
                   {booking?.status === "confirmed" ? (
                     <Text className="mt-[6px] text-[12px] text-[#34C759] font-medium">
-                      QR đã sẵn sàng, chạm để xem
+                      {t("bookings.qrReady")}
                     </Text>
                   ) : null}
 
                   {booking?.linkedTrip?.id ? (
                     <Text className="mt-1 text-[12px] text-[#0071E3] font-medium">
-                      Đã liên kết trip:{" "}
+                      {t("bookings.linkedTrip")}:{" "}
                       {booking.linkedTrip.title || `#${booking.linkedTrip.id}`}{" "}
-                      (ngày {booking.linkedTrip.dayNumber || 1})
+                      ({t("bookings.linkedTripDay", { day: booking.linkedTrip.dayNumber || 1 })})
                     </Text>
                   ) : null}
 
                   <View className="mt-2 pt-[10px] border-t border-t-[#D2D2D7] flex-row items-center justify-between">
                     <Text className="text-[rgba(0,0,0,0.8)] text-[12px] font-medium">
-                      Xem chi tiết booking
+                      {t("bookings.viewDetail")}
                     </Text>
                     <MaterialIconsRounded
                       name="arrow-forward-ios"

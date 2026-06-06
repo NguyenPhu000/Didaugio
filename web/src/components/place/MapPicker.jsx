@@ -10,8 +10,10 @@ import {
   Navigation,
   Crosshair,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Input, Button, Label, Card, Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import useGeolocation from "@/hooks/useGeolocation";
 import {
   Marker,
   NavigationControl,
@@ -30,13 +32,20 @@ import {
 
 // Inner Component to consume Context
 const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
+  const { t } = useTranslation();
   const mapRef = useRef();
   const lastRightClickRef = useRef(0);
   const { setViewState } = useMapContext();
   const { districts, wards, canThoMask } = useMapData();
+  const {
+    latitude: geoLat,
+    longitude: geoLng,
+    locateNow: geoLocate,
+    loading: geoLoading,
+    error: geoError,
+  } = useGeolocation();
 
   // Local state for UI only (marker position)
-  // We keep marker separate from viewState mostly, unless synced.
   const [marker, setMarker] = useState(() => ({
     latitude: Number(latitude) || CAN_THO_CENTER.lat,
     longitude: Number(longitude) || CAN_THO_CENTER.lng,
@@ -46,8 +55,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Initial Sync ViewState (Only once on mount if not set?)
-  // MapProvider has its own default, but we might want to ensure we start at the marker if provided.
+  // Initial Sync ViewState (Only once on mount if not set)
   useEffect(() => {
     if (
       latitude &&
@@ -72,6 +80,26 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
       return () => cancelAnimationFrame(id);
     }
   }, [latitude, longitude]);
+
+  // Sync geolocation result to map when position updates
+  useEffect(() => {
+    if (geoLat != null && geoLng != null) {
+      updateLocation(geoLat, geoLng);
+      setViewState((prev) => ({
+        ...prev,
+        latitude: geoLat,
+        longitude: geoLng,
+        zoom: 16,
+      }));
+    }
+  }, [geoLat, geoLng]);
+
+  // Show geolocation error
+  useEffect(() => {
+    if (geoError) {
+      alert(t("location.locationError", { message: geoError }));
+    }
+  }, [geoError]);
 
   const updateLocation = useCallback(
     (lat, lng) => {
@@ -119,21 +147,11 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
   );
 
   const handleUseCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          updateLocation(latitude, longitude);
-          setViewState((prev) => ({
-            ...prev,
-            latitude,
-            longitude,
-            zoom: 16,
-          }));
-        },
-        (error) => alert(`Không thể lấy vị trí: ${error.message}`),
-      );
+    if (!navigator.geolocation) {
+      alert(t("location.notSupported"));
+      return;
     }
+    geoLocate();
   };
 
   const handleManualChange = (field, value) => {
@@ -165,11 +183,11 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
               <MapPin className="h-4 w-4" />
             </div>
             <span className="font-semibold text-slate-700 text-sm">
-              Chọn Vị Trí
+              {t("map.picker.selectLocation")}
             </span>
             {error && (
               <Badge variant="destructive" className="ml-2 text-xs">
-                Chưa chọn
+                {t("map.picker.notSelected")}
               </Badge>
             )}
           </div>
@@ -183,7 +201,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
               className="bg-white/90 backdrop-blur-md shadow-sm border border-slate-100 hover:bg-white text-primary font-medium rounded-full h-10 px-4"
             >
               <Locate className="mr-2 h-4 w-4" />
-              Vị trí của tôi
+              {geoLoading ? t("location.gettingLocation") : t("map.picker.myLocation")}
             </Button>
             <Button
               variant="outline"
@@ -249,7 +267,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
                 isDragging && "opacity-100 translate-y-1",
               )}
             >
-              {isDragging ? "Thả để chọn" : "Kéo để di chuyển"}
+              {isDragging ? t("map.picker.dropToSelect") : t("map.picker.dragToMove")}
               <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-slate-800"></div>
             </div>
           </div>
@@ -266,7 +284,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Tọa độ đã chọn
+                {t("map.picker.selectedCoords")}
               </p>
             </div>
           </div>
@@ -297,7 +315,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
             <div className="flex items-center gap-2">
               <Settings className="h-4 w-4 text-slate-500 group-hover:text-primary transition-colors" />
               <span className="text-sm font-medium text-slate-600">
-                Nhập thủ công
+                {t("map.picker.manualInput")}
               </span>
             </div>
             {showManualInput ? (
@@ -346,10 +364,9 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
               <Info className="h-5 w-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-slate-800">Mẹo nhanh</h4>
+              <h4 className="text-sm font-bold text-slate-800">{t("map.picker.quickTip")}</h4>
               <p className="text-xs text-slate-500 leading-relaxed mt-1">
-                Bạn có thể click trực tiếp vào bản đồ để đặt vị trí, hoặc kéo
-                thả marker để điều chỉnh chính xác.
+                {t("map.picker.tipText")}
               </p>
             </div>
           </div>
@@ -372,7 +389,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
       {isDragging && (
         <div className="absolute inset-0 z-0 bg-primary/10 pointer-events-none flex items-center justify-center">
           <div className="bg-primary text-primary-foreground px-6 py-2 rounded-full shadow-2xl font-bold animate-pulse">
-            Thả để đặt vị trí
+            {t("map.picker.dropToSet")}
           </div>
         </div>
       )}

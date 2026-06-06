@@ -4,6 +4,8 @@
  * BOM prefix để Excel mở đúng tiếng Việt
  */
 
+import i18n from "@/i18n";
+
 const BOM = "﻿";
 
 /**
@@ -27,7 +29,7 @@ function escapeCsvValue(value) {
  */
 export function exportToCsv({ columns, data, filename }) {
   if (!data || data.length === 0) {
-    alert("Không có dữ liệu để xuất");
+    alert(i18n.t("csvExport.noData"));
     return;
   }
 

@@ -1,4 +1,5 @@
 import { memo, useState, useCallback, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -49,6 +50,7 @@ function InlineAddPlaceModal({
   destinations,
   onClose,
 }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { height: screenHeight } = useWindowDimensions();
@@ -188,7 +190,7 @@ function InlineAddPlaceModal({
       onClose();
     } catch (err) {
       const serverMessage = err?.response?.data?.message;
-      setErrorMsg(serverMessage || err?.message || "Có lỗi xảy ra khi thêm địa điểm.");
+      setErrorMsg(serverMessage || err?.message || t('inlineAddPlace.addError'));
       setIsSubmitting(false); // Reset submitting state on error
     }
   }, [
@@ -256,7 +258,7 @@ function InlineAddPlaceModal({
                     onPress={handleBackToSearch}
                     hitSlop={8}
                     className="pr-1.5"
-                    accessibilityLabel="Quay lại tìm kiếm"
+                    accessibilityLabel={t('inlineAddPlace.backToSearch')}
                   >
                     <MaterialIconsRounded name="arrow-back" size={20} color="#1D1D1F" />
                   </Pressable>
@@ -268,15 +270,15 @@ function InlineAddPlaceModal({
                 />
                 <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">
                   {step === 1
-                    ? "Thêm địa điểm vào chuyến đi"
-                    : "Lên lịch trình"}
+                    ? t('inlineAddPlace.addPlaceToTrip')
+                    : t('inlineAddPlace.addToItinerary')}
                 </Text>
               </View>
               <Pressable
                 onPress={onClose}
                 hitSlop={12}
                 className="w-8 h-8 rounded-full items-center justify-center"
-                accessibilityLabel="Đóng modal"
+                accessibilityLabel={t('inlineAddPlace.closeModal')}
               >
                 <MaterialIconsRounded name="close" size={18} color="rgba(0,0,0,0.4)" />
               </Pressable>
@@ -291,7 +293,7 @@ function InlineAddPlaceModal({
                   <TextInput
                     value={searchQuery}
                     onChangeText={setSearchQuery}
-                    placeholder="Tìm theo tên địa điểm..."
+                    placeholder={t('inlineAddPlace.searchPlaceholder')}
                     placeholderTextColor="rgba(0,0,0,0.4)"
                     className="flex-1 text-[15px] font-normal text-[#1D1D1F]"
                     returnKeyType="search"
@@ -301,7 +303,7 @@ function InlineAddPlaceModal({
                     <Pressable
                       onPress={() => setSearchQuery("")}
                       hitSlop={8}
-                      accessibilityLabel="Xóa nội dung tìm kiếm"
+                      accessibilityLabel={t('inlineAddPlace.clearSearch')}
                     >
                       <MaterialIconsRounded
                         name="cancel"
@@ -316,9 +318,9 @@ function InlineAddPlaceModal({
                 {searchQuery.trim().length === 0 && mergedPlaces.length === 0 ? (
                   <View className="py-14 items-center gap-2">
                     <MaterialIconsRounded name="search" size={32} color="rgba(0,0,0,0.4)" />
-                    <Text className="text-[15px] font-semibold text-[#1D1D1F]">Nhập từ khóa</Text>
+                    <Text className="text-[15px] font-semibold text-[#1D1D1F]">{t('inlineAddPlace.enterKeyword')}</Text>
                     <Text className="text-[13px] font-normal text-black/50">
-                      Tìm kiếm địa điểm du lịch tại Cần Thơ
+                      {t('inlineAddPlace.searchDesc')}
                     </Text>
                   </View>
                 ) : mergedPlaces.length === 0 && !isSearchLoading ? (
@@ -329,10 +331,10 @@ function InlineAddPlaceModal({
                       color="rgba(0,0,0,0.4)"
                     />
                     <Text className="text-[15px] font-semibold text-[#1D1D1F]">
-                      Không tìm thấy kết quả
+                      {t('inlineAddPlace.noResults')}
                     </Text>
                     <Text className="text-[13px] font-normal text-black/50">
-                      Vui lòng thử từ khóa khác
+                      {t('inlineAddPlace.tryDifferentKeyword')}
                     </Text>
                   </View>
                 ) : (
@@ -340,7 +342,7 @@ function InlineAddPlaceModal({
                     {isSearchLoading && (
                       <View className="flex-row items-center justify-center py-2 gap-2 bg-[#F5F5F7]/85 rounded-xl mb-2 border border-black/[0.04]">
                         <ActivityIndicator size="small" color="#1D1D1F" />
-                        <Text className="text-[12px] text-black/50 font-normal">Đang tìm thêm trên hệ thống...</Text>
+                        <Text className="text-[12px] text-black/50 font-normal">{t('inlineAddPlace.searchingSystem')}</Text>
                       </View>
                     )}
                     <FlatList
@@ -356,7 +358,7 @@ function InlineAddPlaceModal({
                         normalizedSavedPlaces.length > 0 && searchQuery.trim() === "" ? (
                           <View className="pb-2 pt-1">
                             <Text className="text-[11px] font-bold text-black/35 uppercase tracking-wider">
-                              Địa điểm đã lưu của bạn
+                              {t('inlineAddPlace.yourSavedPlaces')}
                             </Text>
                           </View>
                         ) : null
@@ -398,7 +400,7 @@ function InlineAddPlaceModal({
                                 )}
                               </View>
                               <Text className="text-[12px] font-normal text-black/50" numberOfLines={1}>
-                                {item.address || "Cần Thơ"}
+                                {item.address || t('inlineAddPlace.canTho')}
                               </Text>
                             </View>
                             <MaterialIconsRounded
@@ -431,13 +433,13 @@ function InlineAddPlaceModal({
                       {selectedPlace.name}
                     </Text>
                     <Text className="text-[12px] font-normal text-black/50" numberOfLines={1}>
-                      {selectedPlace.address || "Cần Thơ"}
+                      {selectedPlace.address || t('inlineAddPlace.canTho')}
                     </Text>
                   </View>
 
                   {/* Day selector */}
                   <View className="gap-1.5">
-                    <Text className={STYLES.fieldLabel}>Chọn ngày</Text>
+                    <Text className={STYLES.fieldLabel}>{t('inlineAddPlace.selectDay')}</Text>
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
@@ -453,14 +455,14 @@ function InlineAddPlaceModal({
                               isActive ? "bg-[#1D1D1F]" : "bg-[#F5F5F7]"
                             }`}
                             onPress={() => setDayNumber(dayVal)}
-                            accessibilityLabel={`Chọn ngày ${dayVal}`}
+                            accessibilityLabel={t('inlineAddPlace.selectDay') + ` ${dayVal}`}
                           >
                             <Text
                               className={`text-[13px] font-semibold ${
                                 isActive ? "text-white" : "text-[#1D1D1F]"
                               }`}
                             >
-                              Ngày {dayVal}
+                              {t('inlineAddPlace.dayLabel', { number: dayVal })}
                             </Text>
                           </Pressable>
                         );
@@ -471,14 +473,14 @@ function InlineAddPlaceModal({
                   {/* Time range */}
                   <View className="flex-row gap-3">
                     <TimeField
-                      label="Thời gian bắt đầu"
+                      label={t('inlineAddPlace.startTime')}
                       value={startTime}
                       onChange={setStartTime}
                       placeholder="--:--"
                       icon="play-circle-outline"
                     />
                     <TimeField
-                      label="Thời gian kết thúc"
+                      label={t('inlineAddPlace.endTime')}
                       value={endTime}
                       onChange={setEndTime}
                       placeholder="--:--"
@@ -490,11 +492,11 @@ function InlineAddPlaceModal({
                   {hasExistingDestinations ? (
                     <View className="pt-4 mt-1 border-t border-black/[0.08]">
                       <Text className={STYLES.sectionLabel}>
-                        Di chuyển đến địa điểm này
+                        {t('inlineAddPlace.moveToPlace')}
                       </Text>
 
                       <View className="gap-1.5">
-                        <Text className={STYLES.fieldLabel}>Phương tiện</Text>
+                        <Text className={STYLES.fieldLabel}>{t('inlineAddPlace.transport')}</Text>
                         <View className="flex-row gap-2 flex-wrap mt-1">
                           {TRANSPORT_OPTIONS.map((opt) => {
                             const isSelected = transportToNext === opt.value;
@@ -526,12 +528,12 @@ function InlineAddPlaceModal({
 
                   {/* Note */}
                   <View className="gap-1.5">
-                    <Text className={STYLES.fieldLabel}>Ghi chú hành trình</Text>
+                    <Text className={STYLES.fieldLabel}>{t('inlineAddPlace.tripNotes')}</Text>
                     <TextInput
                       className={`${STYLES.field} min-h-[80px]`}
                       value={note}
                       onChangeText={setNote}
-                      placeholder="Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây..."
+                      placeholder={t('inlineAddPlace.notesPlaceholder')}
                       placeholderTextColor={ALPHA.iconStrong}
                       multiline
                       numberOfLines={3}
@@ -555,12 +557,12 @@ function InlineAddPlaceModal({
                     disabled={isSubmitting}
                     activeOpacity={0.8}
                     className={`${STYLES.submitBtn} ${isSubmitting ? "opacity-50" : ""}`}
-                    accessibilityLabel="Thêm vào lịch trình chuyến đi"
+                    accessibilityLabel={t('inlineAddPlace.addToItineraryAccessibility')}
                   >
                     {isSubmitting ? (
                       <ActivityIndicator size="small" color={T.onPrimary} />
                     ) : (
-                      <Text className={STYLES.submitBtnText}>Tạo</Text>
+                      <Text className={STYLES.submitBtnText}>{t('inlineAddPlace.create')}</Text>
                     )}
                   </TouchableOpacity>
                 </View>

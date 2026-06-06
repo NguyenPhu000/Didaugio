@@ -8,9 +8,19 @@ const maxAgeSec = (() => {
   return Number.isFinite(n) && n >= 0 ? Math.min(n, 86400) : 120;
 })();
 
-export function setPublicListCache(res) {
-  res.setHeader(
-    "Cache-Control",
-    `public, max-age=${maxAgeSec}, stale-while-revalidate=${Math.min(60, maxAgeSec)}`,
-  );
+export function setPublicListCache(res, req) {
+  const hasAuth = req && (req.headers?.authorization || req.headers?.Authorization);
+  const noCacheQuery = req && req.query && req.query.noCache === "true";
+
+  if (hasAuth || noCacheQuery) {
+    res.setHeader(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate",
+    );
+  } else {
+    res.setHeader(
+      "Cache-Control",
+      `public, max-age=${maxAgeSec}, stale-while-revalidate=${Math.min(60, maxAgeSec)}`,
+    );
+  }
 }

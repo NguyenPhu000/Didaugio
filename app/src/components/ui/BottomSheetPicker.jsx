@@ -1,5 +1,6 @@
 import React, { forwardRef, useCallback, useMemo, useState } from "react";
 import { Text, View, Pressable, TextInput, ScrollView, ActivityIndicator } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   BottomSheetModal,
   BottomSheetBackdrop,
@@ -23,6 +24,7 @@ const POPULAR_PROVINCES = [
 
 export const BottomSheetPicker = forwardRef(
   ({ data = [], selectedValue, onSelect, title, snapPoints = ["60%", "90%"], isLoading = false, showSearch = true }, ref) => {
+    const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = useState("");
 
     // Reset search khi sheet đóng/mở ổn định qua onChange
@@ -153,7 +155,7 @@ export const BottomSheetPicker = forwardRef(
               <TextInput
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                placeholder={`Tìm kiếm ${String(title || "").toLowerCase()}...`}
+                placeholder={t("bottomSheetPicker.searchPlaceholder", { title: String(title || "").toLowerCase() })}
                 placeholderTextColor="#94A3B8"
                 className="flex-1 text-sm text-slate-800 font-body py-0"
                 clearButtonMode="while-editing"
@@ -210,12 +212,12 @@ export const BottomSheetPicker = forwardRef(
         {isLoading ? (
           <View className="py-[60px] items-center justify-center gap-2.5">
             <ActivityIndicator size="small" color={ACCENT_BLUE} />
-            <Text className="text-[13.5px] font-medium text-slate-500">Đang tải danh sách...</Text>
+            <Text className="text-[13.5px] font-medium text-slate-500">{t("bottomSheetPicker.loading")}</Text>
           </View>
         ) : filteredData.length === 0 ? (
           <View className="py-10 items-center justify-center gap-2">
             <MaterialIconsRounded name="search-off" size={40} color="#CBD5E1" />
-            <Text className="text-[13px] font-medium text-slate-500">Không tìm thấy kết quả phù hợp</Text>
+            <Text className="text-[13px] font-medium text-slate-500">{t("bottomSheetPicker.noResults")}</Text>
           </View>
         ) : (
           <BottomSheetFlatList

@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { FlashList } from "@shopify/flash-list";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -32,21 +33,10 @@ const CHIP_SHADOW = {
   elevation: 2,
 };
 const SEARCH_DEBOUNCE_MS = 300;
-const PRICE_FILTERS = [
-  { label: "Miễn phí", value: "FREE" },
-  { label: "Bình dân", value: "BUDGET" },
-  { label: "Trung bình", value: "MODERATE" },
-  { label: "Cao cấp", value: "EXPENSIVE" },
-];
 const RATING_FILTERS = [
   { label: "4.5+", value: 4.5 },
   { label: "4.0+", value: 4 },
   { label: "3.5+", value: 3.5 },
-];
-const SORT_OPTIONS = [
-  { label: "Mới nhất", value: "newest" },
-  { label: "Đánh giá", value: "rating" },
-  { label: "Phổ biến", value: "popular" },
 ];
 
 const buildPlaceSearchIndex = (place) =>
@@ -148,8 +138,22 @@ const SearchResultItem = memo(function SearchResultItem({
 });
 
 export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  const PRICE_FILTERS = useMemo(() => [
+    { label: t("explore.search.price.free"), value: "FREE" },
+    { label: t("explore.search.price.budget"), value: "BUDGET" },
+    { label: t("explore.search.price.midRange"), value: "MODERATE" },
+    { label: t("explore.search.price.premium"), value: "EXPENSIVE" },
+  ], [t]);
+
+  const SORT_OPTIONS = useMemo(() => [
+    { label: t("explore.search.sort.newest"), value: "newest" },
+    { label: t("explore.search.sort.rating"), value: "rating" },
+    { label: t("explore.search.sort.popular"), value: "popular" },
+  ], [t]);
   const [text, setText] = useState("");
   const [debouncedText, setDebouncedText] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -267,7 +271,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
               autoFocus
               value={text}
               onChangeText={setText}
-              placeholder="Tìm địa điểm, quán ăn, điểm vui chơi..."
+              placeholder={t("explore.search.placeholder")}
               placeholderTextColor={APPLE_THEME.textMuted}
               className="flex-1 text-[#1D1D1F] text-sm py-0 font-sans"
               returnKeyType="search"
@@ -285,14 +289,14 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
             ) : null}
           </View>
           <Pressable onPress={handleClose} hitSlop={10}>
-            <Text className="text-[#007AFF] text-sm font-semibold">Đóng</Text>
+            <Text className="text-[#007AFF] text-sm font-semibold">{t("explore.search.close")}</Text>
           </Pressable>
         </View>
 
         {isActive ? (
           <View className="flex-row items-center justify-between px-5 pb-2 gap-2">
             <Text className="text-[#54647A] text-xs font-medium">
-              {results.length} kết quả phù hợp
+              {t("explore.search.resultsMatch", { count: results.length })}
             </Text>
             <Pressable
               onPress={() => {
@@ -311,7 +315,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
                 size={14}
                 color={APPLE_THEME.focusBlue}
               />
-              <Text className="text-[#007AFF] text-[11px] font-semibold">Đặt lại bộ lọc</Text>
+              <Text className="text-[#007AFF] text-[11px] font-semibold">{t("explore.search.resetFilters")}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -319,7 +323,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
         {/* Category chips */}
         {categories.length > 0 ? (
           <View className="shrink-0 mb-0.5">
-            <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">Danh mục</Text>
+            <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">{t("explore.search.tabs.categories")}</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -337,7 +341,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
                     selectedCategory === null ? "text-white" : "text-[#54647A]"
                   }`}
                 >
-                  Tất cả
+                  {t("common.all")}
                 </Text>
               </Pressable>
 
@@ -367,7 +371,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
 
         {districtOptions.length > 0 ? (
           <View className="shrink-0 mb-0.5">
-            <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">Khu vực</Text>
+            <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">{t("explore.search.tabs.areas")}</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -385,7 +389,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
                     selectedDistrict === null ? "text-white" : "text-[#54647A]"
                   }`}
                 >
-                  Tất cả
+                  {t("common.all")}
                 </Text>
               </Pressable>
 
@@ -416,7 +420,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
         ) : null}
 
         <View className="shrink-0 mb-0.5">
-          <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">Giá</Text>
+          <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">{t("explore.search.tabs.price")}</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -449,7 +453,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
         </View>
 
         <View className="shrink-0 mb-0.5">
-          <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">Đánh giá & sắp xếp</Text>
+          <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">{t("explore.search.tabs.ratingSort")}</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -513,9 +517,9 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
               size={42}
               color={APPLE_THEME.textMuted}
             />
-            <Text className="text-[#1D1D1F] text-[17px] font-bold text-center mt-1">Tìm điểm đến tiếp theo</Text>
+            <Text className="text-[#1D1D1F] text-[17px] font-bold text-center mt-1">{t("explore.search.searchNext")}</Text>
             <Text className="text-[#54647A] text-sm text-center leading-5">
-              Nhập tên địa điểm hoặc chọn danh mục để khám phá.
+              {t("explore.header.searchPlaceholder")}
             </Text>
           </View>
         ) : results.length === 0 ? (
@@ -525,9 +529,9 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
               size={42}
               color={APPLE_THEME.textMuted}
             />
-            <Text className="text-[#1D1D1F] text-[17px] font-bold text-center mt-1">Không tìm thấy kết quả</Text>
+            <Text className="text-[#1D1D1F] text-[17px] font-bold text-center mt-1">{t("explore.search.noResults")}</Text>
             <Text className="text-[#54647A] text-sm text-center leading-5">
-              Thử từ khóa khác hoặc đổi bộ lọc.
+              {t("explore.empty.noResultsDesc")}
             </Text>
           </View>
         ) : (

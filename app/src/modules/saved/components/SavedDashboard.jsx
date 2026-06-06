@@ -1,4 +1,5 @@
 import { memo, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActionSheetIOS,
   Alert,
@@ -85,12 +86,13 @@ export const SavedDashboard = memo(function SavedDashboard({
   onRenameCollection,
   onDeleteCollection,
 }) {
+  const { t } = useTranslation();
   const collectionFilterData = useMemo(
     () => [
       {
         key: ALL_COLLECTIONS_KEY,
         icon: "collections-bookmark",
-        name: `Tất cả (${savedData.length})`,
+        name: t('savedDashboard.allWithCount', { count: savedData.length }),
       },
       ...collectionOptions.map((option) => ({
         ...option,
@@ -105,7 +107,7 @@ export const SavedDashboard = memo(function SavedDashboard({
       {
         key: ALL_AREAS_KEY,
         icon: "map",
-        name: `Mọi khu vực (${savedData.length})`,
+        name: t('savedDashboard.allAreasWithCount', { count: savedData.length }),
       },
       ...areaOptions.map((area) => ({ ...area, icon: "place" })),
     ],
@@ -121,18 +123,18 @@ export const SavedDashboard = memo(function SavedDashboard({
 
       if (Platform.OS === "ios") {
         ActionSheetIOS.showActionSheetWithOptions(
-          { options: [...labels, "Hủy"], cancelButtonIndex: labels.length },
+          { options: [...labels, t('savedDashboard.cancel')], cancelButtonIndex: labels.length },
           (index) => {
             if (index < labels.length) handlers[index]();
           },
         );
       } else {
         Alert.alert(
-          "Quản lý bộ sưu tập",
-          `Bộ sưu tập: ${collectionName}`,
+          t('savedDashboard.manageCollection'),
+          t('savedDashboard.collectionLabel', { name: collectionName }),
           [
             ...options.map((o) => ({ text: o.label, onPress: o.handler })),
-            { text: "Hủy", style: "cancel" },
+            { text: t('savedDashboard.cancel'), style: "cancel" },
           ],
         );
       }
@@ -140,12 +142,12 @@ export const SavedDashboard = memo(function SavedDashboard({
 
     showOptions([
       {
-        label: "Đổi tên",
+        label: t('savedDashboard.renameCollection'),
         handler: () => {
           if (Platform.OS === "ios") {
             Alert.prompt(
-              "Đổi tên bộ sưu tập",
-              `Nhập tên mới cho "${collectionName}"`,
+              t('savedDashboard.renameCollection'),
+              t('savedDashboard.renamePrompt', { name: collectionName }),
               (newName) => {
                 if (newName?.trim()) onRenameCollection?.(collectionName, newName.trim());
               },
@@ -159,15 +161,15 @@ export const SavedDashboard = memo(function SavedDashboard({
         },
       },
       {
-        label: "Xóa",
+        label: t('common.delete'),
         handler: () => {
           Alert.alert(
-            "Xóa bộ sưu tập",
-            `Bạn có chắc muốn xóa "${collectionName}"? Các địa điểm sẽ không bị xóa.`,
+            t('savedDashboard.deleteCollection'),
+            t('savedDashboard.deleteConfirm', { name: collectionName }),
             [
-              { text: "Hủy", style: "cancel" },
+              { text: t('savedDashboard.cancel'), style: "cancel" },
               {
-                text: "Xóa",
+                text: t('common.delete'),
                 style: "destructive",
                 onPress: () => onDeleteCollection?.(collectionName),
               },
@@ -181,7 +183,7 @@ export const SavedDashboard = memo(function SavedDashboard({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Đã lưu</Text>
+        <Text style={styles.title}>{t('savedDashboard.saved')}</Text>
         {filteredCount > 0 ? (
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{filteredCount}</Text>
@@ -191,14 +193,14 @@ export const SavedDashboard = memo(function SavedDashboard({
 
       <View style={styles.filters}>
         <FilterRow
-          title="Bộ sưu tập"
+          title={t('savedDashboard.collections')}
           data={collectionFilterData}
           activeKey={activeCollection}
           onChange={onChangeCollection}
           onLongPressItem={(key, name) => handleCollectionLongPress(key)}
         />
         <FilterRow
-          title="Khu vực"
+          title={t('savedDashboard.areas')}
           data={areaFilterData}
           activeKey={activeArea}
           onChange={onChangeArea}

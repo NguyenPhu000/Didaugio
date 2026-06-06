@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import useUIStore from "@/stores/uiStore";
 import { CATEGORY_ICON_MAP } from "@/constants/categoryConstants";
+import { useTranslation } from "react-i18next";
 
 /**
  * CATEGORY SUB ITEM
@@ -31,6 +32,7 @@ function CategorySubItem({
   onAddChild,
   level = 1,
 }) {
+  const { t } = useTranslation();
   // Use selective subscription - only re-render when THIS category's state changes
   const isExpanded = useUIStore((state) =>
     state.expandedCategories.includes(category.id),
@@ -101,12 +103,12 @@ function CategorySubItem({
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onEdit(category)}>
               <Edit className="h-3 w-3 mr-2" />
-              Sửa
+              {t("category.card.edit")}
             </DropdownMenuItem>
             {category.level < 3 && (
               <DropdownMenuItem onClick={() => onAddChild(category)}>
                 <Plus className="h-3 w-3 mr-2" />
-                Thêm con
+                {t("category.card.addSubcategory")}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
@@ -114,7 +116,7 @@ function CategorySubItem({
               className="text-destructive"
             >
               <Trash2 className="h-3 w-3 mr-2" />
-              Xóa
+              {t("category.card.delete")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -150,6 +152,7 @@ export default function CategoryCard({
   onAddChild,
   onViewDetails,
 }) {
+  const { t } = useTranslation();
   // Use selective subscription - only re-render when THIS category's state changes
   const showSubCategories = useUIStore((state) =>
     state.expandedCategories.includes(category.id),
@@ -211,12 +214,12 @@ export default function CategoryCard({
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onEdit(category)}>
                 <Edit className="h-4 w-4 mr-2" />
-                Sửa
+                {t("category.card.edit")}
               </DropdownMenuItem>
               {category.level < 3 && (
                 <DropdownMenuItem onClick={() => onAddChild(category)}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Thêm danh mục con
+                  {t("category.card.addSubcategory")}
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem
@@ -224,7 +227,7 @@ export default function CategoryCard({
                 className="text-destructive"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Xóa
+                {t("category.card.delete")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -253,15 +256,15 @@ export default function CategoryCard({
               backgroundColor: `${category.color}10`,
             }}
           >
-            Cấp {category.level}
+            {t("category.card.level", { n: category.level })}
           </Badge>
           <Badge variant="secondary" className="text-xs font-medium">
             <FolderTree className="h-3 w-3 mr-1" />
-            {childrenCount} nhánh
+            {childrenCount} {t("category.card.quick")}
           </Badge>
           <Badge variant="secondary" className="text-xs font-medium">
             <MapPin className="h-3 w-3 mr-1" />
-            {placesCount} địa điểm
+            {placesCount} {t("category.card.places")}
           </Badge>
         </div>
       </CardHeader>
@@ -277,7 +280,7 @@ export default function CategoryCard({
               onClick={() => toggleCategoryExpansion(category.id, "single")}
             >
               <span className="text-muted-foreground font-semibold tracking-wide">
-                DANH MỤC CON ({childrenCount})
+                {t("category.card.subcategories", { count: childrenCount })}
               </span>
               {showSubCategories ? (
                 <ChevronUp className="h-4 w-4 transition-transform" />
@@ -307,7 +310,7 @@ export default function CategoryCard({
                     className="w-full text-xs mt-2 hover:text-primary"
                     onClick={() => onViewDetails && onViewDetails(category)}
                   >
-                    Xem tất cả {childrenCount} danh mục con →
+                    {t("category.card.viewAllSubs", { count: childrenCount })} &rarr;
                   </Button>
                 )}
               </div>
@@ -326,7 +329,7 @@ export default function CategoryCard({
                   <FolderTree className="h-5 w-5 text-muted-foreground/50" />
                 </div>
               </div>
-              <p className="text-xs mb-3 font-medium">Chưa có danh mục con</p>
+              <p className="text-xs mb-3 font-medium">{t("category.card.noSubs")}</p>
               <Button
                 variant="outline"
                 size="sm"
@@ -334,7 +337,7 @@ export default function CategoryCard({
                 className="hover:bg-primary hover:text-primary-foreground transition-all"
               >
                 <Plus className="h-3.5 w-3.5 mr-1.5" />
-                Thêm danh mục con
+                {t("category.card.addSubBtn")}
               </Button>
             </div>
           </div>

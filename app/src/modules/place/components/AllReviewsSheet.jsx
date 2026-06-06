@@ -44,7 +44,7 @@ export const ReviewCard = memo(function ReviewCard({ review, t }) {
   const author =
     review?.user?.profile?.fullName ||
     review?.user?.email?.split("@")[0] ||
-    t("Ẩn danh", "Anonymous");
+    t("place.detail.anonymous");
   const avatar = resolveMediaUrl(review?.user?.profile?.avatar);
   const media = (review?.media || []).map(getReviewMediaUri).filter(Boolean);
   const visibleReplies = (review?.replies || []).filter(
@@ -67,7 +67,7 @@ export const ReviewCard = memo(function ReviewCard({ review, t }) {
             {review?.isVerifiedPurchase ? (
               <View style={styles.verifiedBadge}>
                 <MaterialIconsRounded name="verified" size={12} color={PALETTE.success} />
-                <Text style={styles.verifiedText}>{t("Đã xác thực", "Verified")}</Text>
+                <Text style={styles.verifiedText}>{t("place.detail.verified")}</Text>
               </View>
             ) : null}
           </View>
@@ -100,7 +100,7 @@ export const ReviewCard = memo(function ReviewCard({ review, t }) {
               <View style={styles.reviewReplyHeader}>
                 <MaterialIconsRounded name="storefront" size={15} color={PALETTE.primaryDark} />
                 <Text style={styles.reviewReplyAuthor}>
-                  {reply?.user?.profile?.fullName || t("Phản hồi từ doanh nghiệp", "Business reply")}
+                  {reply?.user?.profile?.fullName || t("place.detail.businessReply")}
                 </Text>
               </View>
               <Text style={styles.reviewReplyContent}>{reply.content}</Text>
@@ -127,7 +127,7 @@ export const AllReviewsSheetContent = memo(function AllReviewsSheetContent({ rev
     <BottomSheetView style={styles.sheet}>
       <View style={styles.sheetHeader}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.sheetTitle}>{t("Tất cả đánh giá", "All reviews")}</Text>
+          <Text style={styles.sheetTitle}>{t("place.detail.allReviews")}</Text>
           <Text style={styles.sheetSubtitle}>{formatReviewCount(totalCount, t)}</Text>
         </View>
         <Pressable onPress={onClose} style={styles.closeBtn}>
@@ -142,7 +142,7 @@ export const AllReviewsSheetContent = memo(function AllReviewsSheetContent({ rev
             style={[styles.filterChip, ratingFilter == null && styles.filterChipActive]}
           >
             <Text style={[styles.filterText, ratingFilter == null && styles.filterTextActive]}>
-              {t("Mới nhất", "Latest")}
+              {t("place.detail.latest")}
             </Text>
           </Pressable>
           {REVIEW_FILTER_RATINGS.map((rating) => (
@@ -161,7 +161,7 @@ export const AllReviewsSheetContent = memo(function AllReviewsSheetContent({ rev
           >
             <MaterialIconsRounded name="photo-library" size={14} color={photosOnly ? "#FFFFFF" : PALETTE.primaryDark} />
             <Text style={[styles.filterText, photosOnly && styles.filterTextActive]}>
-              {t("Có ảnh", "With photos")}
+              {t("place.detail.withPhotos")}
             </Text>
           </Pressable>
         </ScrollView>
@@ -169,7 +169,7 @@ export const AllReviewsSheetContent = memo(function AllReviewsSheetContent({ rev
 
       {filteredReviews.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>{t("Không có đánh giá phù hợp", "No matching reviews")}</Text>
+          <Text style={styles.emptyText}>{t("place.detail.noMatchingReviews")}</Text>
         </View>
       ) : (
         <FlatList

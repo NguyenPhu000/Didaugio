@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
@@ -459,6 +460,7 @@ const ConfirmDeleteVoucherModal = ({ open, code, onConfirm, onCancel }) => (
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 const VoucherListPage = () => {
+  const { t } = useTranslation();
   const [vouchers, setVouchers] = useState([]);
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -475,7 +477,7 @@ const VoucherListPage = () => {
       const response = await voucherApi.getAll({ search, page: 1, limit: 50 });
       setVouchers(response.data || []);
     } catch {
-      toast.error("Không thể tải danh sách voucher");
+      toast.error(t("business.vouchers.title"));
     } finally {
       setLoading(false);
     }
@@ -506,13 +508,13 @@ const VoucherListPage = () => {
 
   const handleCreate = async (data) => {
     await voucherApi.create(data);
-    toast.success("Tạo voucher thành công");
+    toast.success(t("common.createdSuccessfully"));
     loadVouchers();
   };
 
   const handleUpdate = async (data) => {
     await voucherApi.update(editVoucher.id, data);
-    toast.success("Cập nhật voucher thành công");
+    toast.success(t("common.updatedSuccessfully"));
     setEditVoucher(null);
     loadVouchers();
   };
@@ -520,7 +522,7 @@ const VoucherListPage = () => {
   const handleDelete = async (id) => {
     try {
       await voucherApi.remove(id);
-      toast.success("Xóa voucher thành công");
+      toast.success(t("common.deletedSuccessfully"));
       loadVouchers();
     } catch (error) {
       toastApiErrorIfNeeded(error, "Không thể xóa");
@@ -531,7 +533,7 @@ const VoucherListPage = () => {
     if (selected.length === 0) return;
     try {
       await voucherApi.bulkDeactivate(selected);
-      toast.success(`Đã tắt ${selected.length} voucher`);
+      toast.success(`${t("common.disabled")} ${selected.length}`);
       setSelected([]);
       loadVouchers();
     } catch (error) {
@@ -557,8 +559,8 @@ const VoucherListPage = () => {
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
       {/* Header */}
       <PageHeader
-        title="Quản lý voucher"
-        subtitle="Tạo và quản lý các mã giảm giá cho dịch vụ của bạn"
+        title={t("business.vouchers.title")}
+        subtitle={t("business.vouchers.title")}
         badge={
           filteredVouchers.length > 0 ? filteredVouchers.length : undefined
         }
@@ -571,12 +573,12 @@ const VoucherListPage = () => {
                 className="gap-2"
               >
                 <ToggleLeft className="h-4 w-4" />
-                Tắt {selected.length} voucher
+                {t("common.disabled")} {selected.length}
               </Button>
             )}
             <Button onClick={() => setShowForm(true)} className="gap-2">
               <Plus className="h-4 w-4" />
-              Tạo voucher
+              {t("common.create")}
             </Button>
           </div>
         }

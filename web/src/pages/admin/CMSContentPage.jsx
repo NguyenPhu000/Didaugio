@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FileText,
   Image as ImageIcon,
@@ -92,60 +93,60 @@ const compressBannerImage = (file) => {
         const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
         resolve(dataUrl);
       };
-      img.onerror = () => reject("Định dạng hình ảnh không hợp lệ");
+      img.onerror = () => reject("Invalid image format");
     };
-    reader.onerror = () => reject("Không thể đọc file");
+    reader.onerror = () => reject("Cannot read file");
   });
 };
 
 // ─── Content Types ─────────────────────────────────────────────────────────────
 
-const CONTENT_TYPES = [
+const getContentTypes = (t) => [
   {
     id: "events",
-    label: "Sự kiện",
+    label: t("admin.cms.tabLabels.events"),
     icon: Calendar,
-    description: "Quản lý sự kiện và chuyến đi cộng đồng",
+    description: t("admin.cms.eventsDesc"),
     color: "bg-rose-500",
     gradient: "from-rose-500 to-pink-600",
   },
   {
     id: "trips",
-    label: "Chuyến đi mẫu",
+    label: t("admin.cms.tabLabels.sampleTrips"),
     icon: Compass,
-    description: "Quản lý lịch trình chuyến đi tham chiếu",
+    description: t("admin.cms.sampleTripsDesc"),
     color: "bg-purple-500",
     gradient: "from-purple-500 to-indigo-600",
   },
   {
     id: "banners",
-    label: "Banner",
+    label: t("admin.cms.tabLabels.banners"),
     icon: ImageIcon,
-    description: "Quản lý banner hiển thị trên app",
+    description: t("admin.cms.bannersDesc"),
     color: "bg-blue-500",
     gradient: "from-blue-500 to-indigo-600",
   },
   {
     id: "announcements",
-    label: "Thông báo",
+    label: t("admin.cms.tabLabels.notifications"),
     icon: Bell,
-    description: "Tạo và quản lý thông báo hệ thống",
+    description: t("admin.cms.notificationsDesc"),
     color: "bg-amber-500",
     gradient: "from-amber-500 to-orange-600",
   },
   {
     id: "featured",
-    label: "Nổi bật",
+    label: t("admin.cms.tabLabels.featured"),
     icon: Star,
-    description: "Quản lý nội dung được đánh dấu nổi bật",
+    description: t("admin.cms.featuredDesc"),
     color: "bg-emerald-500",
     gradient: "from-emerald-500 to-teal-600",
   },
   {
     id: "pages",
-    label: "Trang tĩnh",
+    label: t("admin.cms.tabLabels.staticPages"),
     icon: FileText,
-    description: "Quản lý các trang giới thiệu, điều khoản",
+    description: t("admin.cms.staticPagesDesc"),
     color: "bg-purple-500",
     gradient: "from-purple-500 to-violet-600",
   },
@@ -154,19 +155,20 @@ const CONTENT_TYPES = [
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
 const EventStatusBadge = ({ status }) => {
+  const { t } = useTranslation();
   const config = {
     active: {
-      label: "Đang diễn ra",
+      label: t("admin.cms.ongoing"),
       class: "border-emerald-200 bg-emerald-50 text-emerald-700",
       icon: <CheckCircle className="h-3 w-3" />,
     },
     inactive: {
-      label: "Tạm ẩn",
+      label: t("admin.cms.hiddenTemp"),
       class: "border-slate-200 bg-slate-50 text-slate-500",
       icon: <EyeOff className="h-3 w-3" />,
     },
     completed: {
-      label: "Đã kết thúc",
+      label: t("admin.cms.ended"),
       class: "border-blue-200 bg-blue-50 text-blue-600",
       icon: <CheckCircle className="h-3 w-3" />,
     },
@@ -181,31 +183,35 @@ const EventStatusBadge = ({ status }) => {
   );
 };
 
-const StatusBadge = ({ active }) => (
-  <Badge
-    variant="outline"
-    className={cn(
-      "gap-1",
-      active
-        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-        : "border-slate-200 bg-slate-50 text-slate-500"
-    )}
-  >
-    {active ? (
-      <>
-        <Eye className="h-3 w-3" /> Hoạt động
-      </>
-    ) : (
-      <>
-        <EyeOff className="h-3 w-3" /> Ẩn
-      </>
-    )}
-  </Badge>
-);
+const StatusBadge = ({ active }) => {
+  const { t } = useTranslation();
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "gap-1",
+        active
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-slate-200 bg-slate-50 text-slate-500"
+      )}
+    >
+      {active ? (
+        <>
+          <Eye className="h-3 w-3" /> {t("admin.cms.active")}
+        </>
+      ) : (
+        <>
+          <EyeOff className="h-3 w-3" /> {t("admin.cms.hidden")}
+        </>
+      )}
+    </Badge>
+  );
+};
 
 // ─── Event Card (Beautiful) ────────────────────────────────────────────────────
 
 const EventContentCard = ({ item, onEdit, onToggle, onDelete }) => {
+  const { t } = useTranslation();
   const isActive = item.status === "active";
   const startDate = item.startDate ? new Date(item.startDate) : null;
   const endDate = item.endDate ? new Date(item.endDate) : null;
@@ -268,8 +274,7 @@ const EventContentCard = ({ item, onEdit, onToggle, onDelete }) => {
                 {item._count?.participants !== undefined && (
                   <span className="flex items-center gap-1 text-blue-600">
                     <Users className="h-3 w-3" />
-                    {item._count.participants}
-                    {item.maxParticipants ? `/${item.maxParticipants}` : ""} tham gia
+                    {t("admin.cms.participating", { count: item._count.participants, max: item.maxParticipants || "" })}
                   </span>
                 )}
                 {item.totalCheckIns > 0 && (
@@ -281,7 +286,7 @@ const EventContentCard = ({ item, onEdit, onToggle, onDelete }) => {
                 {item.tripId && (
                   <span className="flex items-center gap-1 text-purple-600">
                     <Link className="h-3 w-3" />
-                    Có lịch trình mẫu
+                    {t("admin.cms.sampleTripItinerary")}
                   </span>
                 )}
               </div>
@@ -294,7 +299,7 @@ const EventContentCard = ({ item, onEdit, onToggle, onDelete }) => {
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => onEdit(item)}
-                title="Chỉnh sửa"
+                title={t("common.edit")}
               >
                 <Edit className="h-4 w-4" />
               </Button>
@@ -303,7 +308,7 @@ const EventContentCard = ({ item, onEdit, onToggle, onDelete }) => {
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => onToggle(item)}
-                title={isActive ? "Tạm ẩn" : "Kích hoạt"}
+                title={isActive ? t("admin.cms.temporaryHide") : t("admin.cms.activate")}
               >
                 {isActive ? (
                   <EyeOff className="h-4 w-4" />
@@ -316,7 +321,7 @@ const EventContentCard = ({ item, onEdit, onToggle, onDelete }) => {
                 size="icon"
                 className="h-8 w-8 text-destructive hover:text-destructive"
                 onClick={() => onDelete(item)}
-                title="Xóa"
+                title={t("common.delete")}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -331,6 +336,7 @@ const EventContentCard = ({ item, onEdit, onToggle, onDelete }) => {
 // ─── Trip Card (Beautiful) ─────────────────────────────────────────────────────
 
 const TripContentCard = ({ item, onEdit, onManageDestinations, onDelete }) => {
+  const { t } = useTranslation();
   const startDate = item.startDate ? new Date(item.startDate) : null;
   const endDate = item.endDate ? new Date(item.endDate) : null;
 
@@ -362,7 +368,7 @@ const TripContentCard = ({ item, onEdit, onManageDestinations, onDelete }) => {
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => onEdit(item)}
-                title="Sửa thông tin"
+                title={t("common.edit")}
               >
                 <Edit className="h-4 w-4" />
               </Button>
@@ -371,7 +377,7 @@ const TripContentCard = ({ item, onEdit, onManageDestinations, onDelete }) => {
                 size="icon"
                 className="h-8 w-8 text-purple-600 hover:text-purple-700"
                 onClick={() => onManageDestinations(item)}
-                title="Chi tiết lịch trình"
+                title={t("admin.cms.itineraryDetails")}
               >
                 <Link className="h-4 w-4" />
               </Button>
@@ -380,7 +386,7 @@ const TripContentCard = ({ item, onEdit, onManageDestinations, onDelete }) => {
                 size="icon"
                 className="h-8 w-8 text-destructive hover:text-destructive"
                 onClick={() => onDelete(item)}
-                title="Xóa"
+                title={t("common.delete")}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -397,7 +403,7 @@ const TripContentCard = ({ item, onEdit, onManageDestinations, onDelete }) => {
             )}
             {item.totalDays && (
               <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-medium">
-                {item.totalDays} ngày
+                {item.totalDays} {t("admin.cms.totalDays")}
               </span>
             )}
             {item.travelStyle && (
@@ -408,13 +414,13 @@ const TripContentCard = ({ item, onEdit, onManageDestinations, onDelete }) => {
             {item.groupSize && (
               <span className="flex items-center gap-1">
                 <Users className="h-3.5 w-3.5" />
-                Đoàn: {item.groupSize} người
+                {t("admin.cms.style")}: {item.groupSize}
               </span>
             )}
             {item.cloneCount !== undefined && (
               <span className="flex items-center gap-1 text-emerald-600">
                 <RefreshCw className="h-3.5 w-3.5" />
-                Đã sao chép: {item.cloneCount} lần
+                {item.cloneCount}
               </span>
             )}
           </div>
@@ -427,6 +433,7 @@ const TripContentCard = ({ item, onEdit, onManageDestinations, onDelete }) => {
 // ─── Generic Content Card ────────────────────────────────────────────────────
 
 const ContentCard = ({ item, onEdit, onToggle, onDelete }) => {
+  const { t } = useTranslation();
   const Icon = item.icon || FileText;
 
   return (
@@ -481,7 +488,7 @@ const ContentCard = ({ item, onEdit, onToggle, onDelete }) => {
               {item.views !== undefined && (
                 <span className="flex items-center gap-1">
                   <Eye className="h-3.5 w-3.5" />
-                  {item.views} lượt xem
+                  {item.views}
                 </span>
               )}
               {item.order !== undefined && (
@@ -531,6 +538,7 @@ const ContentCard = ({ item, onEdit, onToggle, onDelete }) => {
 // ─── Image Upload Area ─────────────────────────────────────────────────────────
 
 const ImageUploadArea = ({ value, onChange, label, hint }) => {
+  const { t } = useTranslation();
   const uniqueId = `file-upload-${label.replace(/\s+/g, '-').toLowerCase()}`;
 
   return (
@@ -549,7 +557,7 @@ const ImageUploadArea = ({ value, onChange, label, hint }) => {
                 htmlFor={uniqueId}
                 className="h-9 px-4 rounded-lg bg-white hover:bg-slate-50 text-slate-800 text-sm font-medium flex items-center justify-center cursor-pointer transition-colors"
               >
-                Thay ảnh
+                {t("common.edit")}
               </Label>
               <button
                 type="button"
@@ -560,7 +568,7 @@ const ImageUploadArea = ({ value, onChange, label, hint }) => {
                   onChange("");
                 }}
               >
-                Xóa ảnh
+                {t("common.delete")}
               </button>
             </div>
             <input
@@ -575,7 +583,7 @@ const ImageUploadArea = ({ value, onChange, label, hint }) => {
           <label htmlFor={uniqueId} className="p-6 text-center cursor-pointer block">
             <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm font-medium text-foreground">
-              Kéo thả hoặc click để tải ảnh lên
+              {t("common.upload")}
             </p>
             {hint && (
               <p className="text-xs text-muted-foreground mt-1">{hint}</p>
@@ -597,6 +605,7 @@ const ImageUploadArea = ({ value, onChange, label, hint }) => {
 // ─── Event Edit Modal ─────────────────────────────────────────────────────────
 
 const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
+  const { t } = useTranslation();
   const isEdit = !!item?.id;
 
   const [form, setForm] = useState({
@@ -675,7 +684,7 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
     setInlineTripSaving(true);
     try {
       const res = await eventService.createTrip(tripForm);
-      toast.success("Đã tạo lịch trình mẫu thành công");
+      toast.success(t("common.createdSuccessfully"));
       setInlineTripModal(false);
       // Refresh danh sach trips va tu dong chon trip vua tao
       await fetchTripsForEvent();
@@ -685,7 +694,7 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
     } catch (err) {
       console.error("Loi tao lich trinh:", err);
       const msg = err.response?.data?.message || err.message;
-      toast.error(msg || "Không thể tạo lịch trình. Vui lòng thử lại.");
+      toast.error(msg || t("admin.cms.createItineraryError"));
     } finally {
       setInlineTripSaving(false);
     }
@@ -699,36 +708,36 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
     const file = e.target?.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("Kích thước file không được vượt quá 10MB");
+      toast.error(t("common.operationFailed"));
       return;
     }
     try {
-      toast.loading("Đang nén ảnh...", { id: "compress" });
+      toast.loading(t("admin.cms.imageCompressing"), { id: "compress" });
       const compressed = await compressBannerImage(file);
       toast.dismiss("compress");
       setForm((prev) => ({ ...prev, thumbnail: compressed, thumbnailPublicId: null }));
-      toast.success("Tải ảnh thành công");
+      toast.success(t("common.savedSuccessfully"));
     } catch (err) {
       toast.dismiss("compress");
-      toast.error("Lỗi khi xử lý ảnh");
+      toast.error(t("admin.cms.imageProcessError"));
     }
   };
 
   const handleSave = () => {
     if (!form.title.trim()) {
-      toast.error("Vui lòng nhập tiêu đề sự kiện");
+      toast.error(t("admin.cms.eventName"));
       return;
     }
     if (!form.startDate) {
-      toast.error("Vui lòng chọn ngày bắt đầu");
+      toast.error(t("admin.cms.startDate"));
       return;
     }
     if (!form.endDate) {
-      toast.error("Vui lòng chọn ngày kết thúc");
+      toast.error(t("admin.cms.endDate"));
       return;
     }
     if (new Date(form.startDate) > new Date(form.endDate)) {
-      toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
+      toast.error(t("admin.cms.endDate"));
       return;
     }
 
@@ -750,40 +759,41 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
             <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">
               <Calendar className="h-4 w-4 text-rose-600" />
             </div>
-            {isEdit ? "Chỉnh sửa sự kiện" : "Tạo sự kiện mới"}
+            {isEdit ? t("admin.cms.editEvent") : t("admin.cms.createEvent")}
           </DialogTitle>
           <DialogDescription>
-            Điền thông tin để {isEdit ? "cập nhật" : "tạo"} sự kiện cộng đồng cho app Đi Đâu Giờ
+            {t("admin.cms.editDescription", { action: isEdit ? t("admin.cms.editAction") : t("admin.cms.createAction") })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 py-1">
-          {/* Section: Thông tin cơ bản */}
+          {/* Section: {t("admin.cms.basicInfo")} */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Thông tin cơ bản
+              {t("admin.cms.basicInfo")}
             </h3>
 
             <div className="space-y-1.5">
               <Label htmlFor="ev-title">
-                Tên sự kiện <span className="text-destructive">*</span>
+                {t("admin.cms.eventName")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="ev-title"
                 value={form.title}
                 onChange={(e) => setField("title", e.target.value)}
-                placeholder="Ví dụ: Hành trình khám phá ẩm thực Cần Thơ 2025"
+                placeholder={t("admin.cms.eventName") + "..."}
+
                 className="text-base"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="ev-desc">Mô tả sự kiện</Label>
+              <Label htmlFor="ev-desc">{t("admin.cms.eventDescriptionLabel")}</Label>
               <Textarea
                 id="ev-desc"
                 value={form.description}
                 onChange={(e) => setField("description", e.target.value)}
-                placeholder="Mô tả về sự kiện, mục tiêu, điểm đến, hoạt động..."
+                placeholder={t("admin.cms.eventDescriptionPlaceholder")}
                 className="min-h-[90px] resize-none"
                 maxLength={2000}
               />
@@ -796,8 +806,8 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
             <ImageUploadArea
               value={form.thumbnail}
               onChange={handleImageChange}
-              label="Ảnh banner sự kiện"
-              hint="PNG, JPG, WEBP - Ảnh sẽ được nén tự động xuống dưới 150KB"
+              label={t("admin.cms.eventBannerLabel")}
+              hint={t("admin.cms.eventBannerHint")}
             />
           </div>
 
@@ -807,13 +817,13 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
           {/* Section: Thời gian & địa điểm */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Thời gian & Địa điểm
+              {t("admin.cms.timeAndLocation")}
             </h3>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="ev-start">
-                  Ngày bắt đầu <span className="text-destructive">*</span>
+                  {t("admin.cms.startDateLabel")} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="ev-start"
@@ -824,7 +834,7 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ev-end">
-                  Ngày kết thúc <span className="text-destructive">*</span>
+                  {t("admin.cms.endDateLabel")} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="ev-end"
@@ -838,7 +848,7 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="ev-location">Địa điểm tổ chức</Label>
+                <Label htmlFor="ev-location">{t("admin.cms.venueLabel")}</Label>
                 <Input
                   id="ev-location"
                   value={form.location}
@@ -847,13 +857,13 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="ev-max">Số người tối đa</Label>
+                <Label htmlFor="ev-max">{t("admin.cms.maxAttendeesLabel")}</Label>
                 <Input
                   id="ev-max"
                   type="number"
                   value={form.maxParticipants}
                   onChange={(e) => setField("maxParticipants", e.target.value)}
-                  placeholder="Không giới hạn"
+                  placeholder={t("admin.cms.unlimited")}
                   min={1}
                 />
               </div>
@@ -866,14 +876,14 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
           {/* Section: Cấu hình */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Cấu hình sự kiện
+              {t("admin.cms.eventConfig")}
             </h3>
 
             {/* Lich trinh mau */}
             <div className="space-y-2">
-              <Label>Lịch trình chuyến đi mẫu (TripId)</Label>
+              <Label>{t("admin.cms.linkedTripItinerary")}</Label>
               <p className="text-xs text-muted-foreground">
-                Khi người dùng tham gia sự kiện, họ sẽ nhận được bản sao của lịch trình này
+                {t("admin.cms.linkedTripHint")}
               </p>
               <div className="flex items-center gap-2">
                 <div className="flex-1">
@@ -883,13 +893,13 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
                     disabled={tripLoading}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={tripLoading ? "Đang tải..." : "Chọn lịch trình liên kết..."} />
+                      <SelectValue placeholder={tripLoading ? t("admin.cms.loadingTrips") : t("admin.cms.selectLinkedItinerary")} />
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
-                      <SelectItem value="none">Không liên kết lịch trình</SelectItem>
+                      <SelectItem value="none">{t("admin.cms.noLinkedItinerary")}</SelectItem>
                       {trips.map((trip) => (
                         <SelectItem key={trip.id} value={String(trip.id)}>
-                          {trip.title} ({trip.totalDays || 1} ngày)
+                          {trip.title} ({t("admin.cms.daysCount", { count: trip.totalDays || 1 })})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -903,7 +913,7 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
                   onClick={() => setInlineTripModal(true)}
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Tạo mới
+                  {t("common.create")}
                 </Button>
               </div>
               {form.tripId && form.tripId !== "none" && (
@@ -911,12 +921,12 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
                   <Compass className="h-4 w-4 text-purple-600 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-purple-800 truncate">
-                      {trips.find((t) => String(t.id) === form.tripId)?.title || "Lịch trình đã chọn"}
+                      {trips.find((tr) => String(tr.id) === form.tripId)?.title || t("admin.cms.selectedItinerary")}
                     </p>
                     <p className="text-[11px] text-purple-600">
-                      {trips.find((t) => String(t.id) === form.tripId)?.totalDays || 1} ngày
-                      {trips.find((t) => String(t.id) === form.tripId)?.travelStyle
-                        ? ` - ${trips.find((t) => String(t.id) === form.tripId).travelStyle}`
+                      {t("admin.cms.daysCount", { count: trips.find((tr) => String(tr.id) === form.tripId)?.totalDays || 1 })}
+                      {trips.find((tr) => String(tr.id) === form.tripId)?.travelStyle
+                        ? ` - ${trips.find((tr) => String(tr.id) === form.tripId).travelStyle}`
                         : ""}
                     </p>
                   </div>
@@ -933,7 +943,7 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
               )}
               {trips.length === 0 && !tripLoading && (
                 <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                  Chưa có lịch trình mẫu nào. Hãy tạo lịch trình mới để liên kết vào sự kiện.
+                  {t("admin.cms.noSampleItineraries")}
                 </p>
               )}
             </div>
@@ -941,7 +951,7 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
             {/* Trạng thái + Banner toggle */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Trạng thái sự kiện</Label>
+                <Label>{t("admin.cms.eventStatusLabel")}</Label>
                 <Select
                   value={form.status}
                   onValueChange={(value) => setField("status", value)}
@@ -953,19 +963,19 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
                     <SelectItem value="active">
                       <span className="flex items-center gap-1.5">
                         <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
-                        Hoạt động
+                        {t("admin.cms.activeStatus")}
                       </span>
                     </SelectItem>
                     <SelectItem value="inactive">
                       <span className="flex items-center gap-1.5">
                         <EyeOff className="h-3.5 w-3.5 text-slate-400" />
-                        Tạm ẩn
+                        {t("admin.cms.inactiveStatus")}
                       </span>
                     </SelectItem>
                     <SelectItem value="completed">
                       <span className="flex items-center gap-1.5">
                         <XCircle className="h-3.5 w-3.5 text-blue-500" />
-                        Đã kết thúc
+                        {t("admin.cms.completedStatus")}
                       </span>
                     </SelectItem>
                   </SelectContent>
@@ -974,7 +984,7 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
 
               {/* Featured Banner Toggle */}
               <div className="space-y-1.5">
-                <Label>Banner nổi bật</Label>
+                <Label>{t("admin.cms.featuredBanner")}</Label>
                 <button
                   type="button"
                   onClick={() => setField("isFeaturedBanner", !form.isFeaturedBanner)}
@@ -986,7 +996,7 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
                   )}
                 >
                   <Star className={cn("h-4 w-4", form.isFeaturedBanner ? "text-yellow-500 fill-yellow-400" : "")} />
-                  {form.isFeaturedBanner ? "Hiện trên Explore" : "Không hiện Banner"}
+                  {form.isFeaturedBanner ? t("admin.cms.showOnExplore") : t("admin.cms.hideBanner")}
                   <div className="ml-auto">
                     {form.isFeaturedBanner ? (
                       <ToggleRight className="h-5 w-5 text-yellow-500" />
@@ -997,7 +1007,7 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
                 </button>
                 {form.isFeaturedBanner && (
                   <p className="text-xs text-yellow-600">
-                    Sự kiện sẽ xuất hiện trong carousel Banner trên màn hình Explore
+                    {t("admin.cms.bannerWillAppear")}
                   </p>
                 )}
               </div>
@@ -1006,17 +1016,17 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
             {/* Thông báo khẩn cấp */}
             <div className="space-y-1.5">
               <Label htmlFor="ev-broadcast">
-                Thông báo từ BTC{" "}
-                <span className="text-muted-foreground font-normal">(tùy chọn)</span>
+                {t("admin.cms.broadcastLabel")}{" "}
+                <span className="text-muted-foreground font-normal">{t("admin.cms.broadcastOptional")}</span>
               </Label>
               <p className="text-xs text-muted-foreground">
-                Thông báo khẩn cấp sẽ hiển thị ngay lập tức cho tất cả người đang tham gia sự kiện
+                {t("admin.cms.broadcastHint")}
               </p>
               <Textarea
                 id="ev-broadcast"
                 value={form.broadcastNotice}
                 onChange={(e) => setField("broadcastNotice", e.target.value)}
-                placeholder="Ví dụ: Mưa lớn, đoàn di chuyển chậm 30 phút, vui lòng chờ tại điểm 2..."
+                placeholder={t("admin.cms.broadcastPlaceholder")}
                 className="min-h-[70px] resize-none"
                 maxLength={255}
               />
@@ -1032,7 +1042,7 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
               <div className="border-t" />
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  Xem trước thẻ sự kiện
+                  {t("admin.cms.previewEventCard")}
                 </h3>
                 <div className="rounded-xl overflow-hidden border bg-white shadow-sm">
                   <div className="flex">
@@ -1076,11 +1086,11 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
 
         <DialogFooter className="gap-2 pt-4 border-t">
           <Button variant="outline" onClick={onClose} disabled={loading}>
-            Hủy
+            {t("common.cancel")}
           </Button>
           <Button onClick={handleSave} disabled={loading} className="min-w-[100px]">
             {loading && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-            {isEdit ? "Lưu thay đổi" : "Tạo sự kiện"}
+            {isEdit ? t("admin.cms.saveChanges") : t("admin.cms.createEventBtn")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1098,6 +1108,7 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
 };
 
 const QuickPlaceCreateModal = ({ open, onClose, onSuccess }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -1135,19 +1146,19 @@ const QuickPlaceCreateModal = ({ open, onClose, onSuccess }) => {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast.error("Vui lòng nhập tên địa điểm");
+      toast.error(t("admin.cms.placeName") + " " + t("common.required"));
       return;
     }
     if (!address.trim()) {
-      toast.error("Vui lòng nhập địa chỉ");
+      toast.error(t("admin.cms.address") + " " + t("common.required"));
       return;
     }
     if (!categoryId) {
-      toast.error("Vui lòng chọn danh mục");
+      toast.error(t("admin.cms.category") + " " + t("common.required"));
       return;
     }
     if (!districtId) {
-      toast.error("Vui lòng chọn quận/huyện");
+      toast.error(t("admin.cms.district") + " " + t("common.required"));
       return;
     }
 
@@ -1170,7 +1181,7 @@ const QuickPlaceCreateModal = ({ open, onClose, onSuccess }) => {
         imageData: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
         isCover: true,
         order: 0,
-        caption: "Ảnh mặc định",
+        caption: "Default image",
       };
 
       const payload = {
@@ -1191,7 +1202,7 @@ const QuickPlaceCreateModal = ({ open, onClose, onSuccess }) => {
         console.warn("Lỗi auto approve địa điểm:", approveErr);
       }
 
-      toast.success("Đã tạo địa điểm mới thành công");
+      toast.success(t("common.createdSuccessfully"));
       onSuccess({
         id: res.id,
         name: res.name || name,
@@ -1201,7 +1212,7 @@ const QuickPlaceCreateModal = ({ open, onClose, onSuccess }) => {
     } catch (err) {
       console.error("Lỗi tạo địa điểm nhanh:", err);
       const msg = err.response?.data?.message || err.message;
-      toast.error(msg || "Không thể tạo địa điểm");
+      toast.error(msg || t("common.operationFailed"));
     } finally {
       setLoading(false);
     }
@@ -1215,38 +1226,38 @@ const QuickPlaceCreateModal = ({ open, onClose, onSuccess }) => {
             <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
               <MapPin className="h-4 w-4 text-emerald-600" />
             </div>
-            Tạo địa điểm nhanh
+            {t("admin.cms.quickCreateDialogTitle")}
           </DialogTitle>
           <DialogDescription>
-            Thêm nhanh địa điểm tham quan mới vào cơ sở dữ liệu hệ thống
+            {t("admin.cms.quickCreateDesc")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Tên địa điểm *</Label>
+            <Label>{t("admin.cms.placeNameLabel")}</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ví dụ: Bến Ninh Kiều, Chợ nổi Cái Răng..."
+              placeholder={t("admin.cms.placeNamePlaceholder")}
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label>Địa chỉ *</Label>
+            <Label>{t("admin.cms.addressLabel")}</Label>
             <Input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Ví dụ: Hai Bà Trưng, Ninh Kiều, Cần Thơ..."
+              placeholder={t("admin.cms.addressPlaceholder")}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Danh mục *</Label>
+              <Label>{t("admin.cms.categoryLabel")}</Label>
               <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Chọn danh mục" />
+                  <SelectValue placeholder={t("admin.cms.selectCategory")} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
                   {categories.map((c) => (
@@ -1259,10 +1270,10 @@ const QuickPlaceCreateModal = ({ open, onClose, onSuccess }) => {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Quận/Huyện *</Label>
+              <Label>{t("admin.cms.districtLabel")}</Label>
               <Select value={districtId} onValueChange={setDistrictId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Chọn quận/huyện" />
+                  <SelectValue placeholder={t("admin.cms.selectDistrict")} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
                   {districts.map((d) => (
@@ -1278,11 +1289,11 @@ const QuickPlaceCreateModal = ({ open, onClose, onSuccess }) => {
 
         <DialogFooter className="gap-2 border-t pt-4 mt-2">
           <Button variant="outline" onClick={onClose} disabled={loading}>
-            Hủy
+            {t("common.cancel")}
           </Button>
           <Button onClick={handleSave} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium">
             {loading && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-            Tạo địa điểm
+            {t("admin.cms.createPlace")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1293,6 +1304,7 @@ const QuickPlaceCreateModal = ({ open, onClose, onSuccess }) => {
 // ─── Trip Edit Modal ──────────────────────────────────────────────────────────
 
 const TripEditModal = ({ open, onClose, item, onSave, loading }) => {
+  const { t } = useTranslation();
   const isEdit = !!item?.id;
 
   const [form, setForm] = useState({
@@ -1347,7 +1359,7 @@ const TripEditModal = ({ open, onClose, item, onSave, loading }) => {
 
   const handleSave = () => {
     if (!form.title.trim()) {
-      toast.error("Vui lòng nhập tên chuyến đi mẫu");
+      toast.error(t("admin.cms.tripName") + " " + t("common.required"));
       return;
     }
     const payload = {
@@ -1372,36 +1384,36 @@ const TripEditModal = ({ open, onClose, item, onSave, loading }) => {
               <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
                 <Compass className="h-4 w-4 text-purple-600" />
               </div>
-              {isEdit ? "Sửa chuyến đi mẫu" : "Tạo chuyến đi mẫu mới"}
+              {isEdit ? t("admin.cms.editSampleTrip") : t("admin.cms.createSampleTrip")}
             </DialogTitle>
             <DialogDescription>
-              Tạo và thiết kế lịch trình mẫu tham chiếu để liên kết các sự kiện du lịch
+              {t("admin.cms.tripDialogTitle")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Tên chuyến đi *</Label>
+              <Label>{t("admin.cms.tripNameLabel")}</Label>
               <Input
                 value={form.title}
                 onChange={(e) => setField("title", e.target.value)}
-                placeholder="Ví dụ: Tour khám phá miền Tây 2 ngày 1 đêm"
+                placeholder={t("admin.cms.tripNamePlaceholder")}
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label>Mô tả chuyến đi</Label>
+              <Label>{t("admin.cms.tripDescLabel")}</Label>
               <Textarea
                 value={form.description}
                 onChange={(e) => setField("description", e.target.value)}
-                placeholder="Giới thiệu sơ lược lộ trình, trải nghiệm chuyến đi mẫu..."
+                placeholder={t("admin.cms.tripDescPlaceholder")}
                 className="min-h-[80px]"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Ngày bắt đầu (Dự kiến)</Label>
+                <Label>{t("admin.cms.expectedStartDate")}</Label>
                 <Input
                   type="date"
                   value={form.startDate}
@@ -1409,7 +1421,7 @@ const TripEditModal = ({ open, onClose, item, onSave, loading }) => {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Ngày kết thúc (Dự kiến)</Label>
+                <Label>{t("admin.cms.expectedEndDate")}</Label>
                 <Input
                   type="date"
                   value={form.endDate}
@@ -1420,7 +1432,7 @@ const TripEditModal = ({ open, onClose, item, onSave, loading }) => {
 
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <Label>Tổng số ngày</Label>
+                <Label>{t("admin.cms.totalDays")}</Label>
                 <Input
                   type="number"
                   value={form.totalDays}
@@ -1429,7 +1441,7 @@ const TripEditModal = ({ open, onClose, item, onSave, loading }) => {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Cỡ đoàn</Label>
+                <Label>{t("admin.cms.groupSizeLabel")}</Label>
                 <Input
                   type="number"
                   value={form.groupSize}
@@ -1438,7 +1450,7 @@ const TripEditModal = ({ open, onClose, item, onSave, loading }) => {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Phong cách</Label>
+                <Label>{t("admin.cms.styleLabel")}</Label>
                 <Select
                   value={form.travelStyle}
                   onValueChange={(val) => setField("travelStyle", val)}
@@ -1447,11 +1459,11 @@ const TripEditModal = ({ open, onClose, item, onSave, loading }) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cultural">Văn hóa</SelectItem>
-                    <SelectItem value="nature">Thiên nhiên</SelectItem>
-                    <SelectItem value="foodie">Ẩm thực</SelectItem>
-                    <SelectItem value="adventure">Khám phá</SelectItem>
-                    <SelectItem value="relaxation">Nghỉ dưỡng</SelectItem>
+                    <SelectItem value="cultural">{t("admin.cms.cultural")}</SelectItem>
+                    <SelectItem value="nature">{t("admin.cms.nature")}</SelectItem>
+                    <SelectItem value="foodie">{t("admin.cms.culinary")}</SelectItem>
+                    <SelectItem value="adventure">{t("admin.cms.exploration")}</SelectItem>
+                    <SelectItem value="relaxation">{t("admin.cms.resort")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1460,19 +1472,19 @@ const TripEditModal = ({ open, onClose, item, onSave, loading }) => {
             {!isEdit && (
               <div className="space-y-1.5 border-t pt-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold text-slate-700">Chọn địa điểm chặng đi ban đầu (Ngày 1)</Label>
+                  <Label className="text-xs font-semibold text-slate-700">{t("admin.cms.selectPlacesDay1")}</Label>
                   <Button
                     variant="link"
                     size="sm"
                     className="h-auto p-0 text-xs text-emerald-600 font-semibold"
                     onClick={() => setQuickPlaceOpen(true)}
                   >
-                    + Tạo địa điểm nhanh
+                    {t("admin.cms.quickCreatePlaceLink")}
                   </Button>
                 </div>
                 <div className="border rounded-lg p-2 max-h-[140px] overflow-y-auto space-y-1.5 bg-slate-50/50">
                   {places.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">Chưa có địa điểm nào</p>
+                    <p className="text-xs text-muted-foreground text-center py-4">{t("admin.cms.noPlacesAvailable")}</p>
                   ) : (
                     places.map((place) => {
                       const isChecked = selectedPlaceIds.includes(place.id);
@@ -1501,11 +1513,11 @@ const TripEditModal = ({ open, onClose, item, onSave, loading }) => {
 
           <DialogFooter className="gap-2 border-t pt-4 mt-2">
             <Button variant="outline" onClick={onClose} disabled={loading}>
-              Hủy
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleSave} disabled={loading} className="bg-purple-600 hover:bg-purple-700 text-white font-medium">
               {loading && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-              {isEdit ? "Lưu thay đổi" : "Tạo lịch trình"}
+              {isEdit ? t("admin.cms.saveChanges") : t("admin.cms.createItinerary")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1534,10 +1546,10 @@ function formatDistance(meters) {
 
 function formatDuration(seconds) {
   const m = Math.round(seconds / 60);
-  if (m < 60) return `${m} phút`;
+  if (m < 60) return `${m} min`;
   const h = Math.floor(m / 60);
   const rem = m % 60;
-  return rem ? `${h} giờ ${rem} phút` : `${h} giờ`;
+  return rem ? `${h} hr ${rem} min` : `${h} hr`;
 }
 
 async function calculateLegDistance(fromPlace, toPlace) {
@@ -1566,18 +1578,19 @@ async function calculateLegDistance(fromPlace, toPlace) {
 
 // ─── Transport Modes ─────────────────────────────────────────────────────────
 
-const TRANSPORT_MODES = [
-  { value: "Xe máy", icon: Bike, color: "text-orange-600", bg: "bg-orange-50" },
-  { value: "Ô tô", icon: Car, color: "text-blue-600", bg: "bg-blue-50" },
-  { value: "Đi bộ", icon: Footprints, color: "text-green-600", bg: "bg-green-50" },
-  { value: "Xe đạp", icon: Bike, color: "text-teal-600", bg: "bg-teal-50" },
-  { value: "Ghe/thuyền", icon: Navigation, color: "text-cyan-600", bg: "bg-cyan-50" },
-  { value: "Xe buýt", icon: Car, color: "text-indigo-600", bg: "bg-indigo-50" },
+const getTransportModes = (t) => [
+  { value: t("admin.cms.motorbike"), icon: Bike, color: "text-orange-600", bg: "bg-orange-50" },
+  { value: t("admin.cms.car"), icon: Car, color: "text-blue-600", bg: "bg-blue-50" },
+  { value: t("admin.cms.walking"), icon: Footprints, color: "text-green-600", bg: "bg-green-50" },
+  { value: t("admin.cms.bicycle"), icon: Bike, color: "text-teal-600", bg: "bg-teal-50" },
+  { value: t("admin.cms.boat"), icon: Navigation, color: "text-cyan-600", bg: "bg-cyan-50" },
+  { value: t("admin.cms.bus"), icon: Car, color: "text-indigo-600", bg: "bg-indigo-50" },
 ];
 
 // ─── Searchable Place Picker ─────────────────────────────────────────────────
 
 const SearchablePlacePicker = ({ places, value, onChange, onCreateQuick }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -1612,7 +1625,7 @@ const SearchablePlacePicker = ({ places, value, onChange, onCreateQuick }) => {
   const groupedPlaces = useMemo(() => {
     const groups = new Map();
     filteredPlaces.forEach((p) => {
-      const catName = p.category?.name || "Khác";
+      const catName = p.category?.name || t("common.other") || "Other";
       const catId = p.category?.id || "other";
       if (!groups.has(catId)) {
         groups.set(catId, { name: catName, items: [] });
@@ -1640,7 +1653,7 @@ const SearchablePlacePicker = ({ places, value, onChange, onCreateQuick }) => {
             )}
           </div>
         ) : (
-          <span className="text-muted-foreground">Chọn địa điểm...</span>
+          <span className="text-muted-foreground">{t("admin.cms.selectPlace")}</span>
         )}
         <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
       </button>
@@ -1654,7 +1667,7 @@ const SearchablePlacePicker = ({ places, value, onChange, onCreateQuick }) => {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Tìm kiếm địa điểm..."
+                placeholder={t("admin.cms.searchPlaces")}
                 className="h-8 pl-8 text-xs"
                 autoFocus
               />
@@ -1669,7 +1682,7 @@ const SearchablePlacePicker = ({ places, value, onChange, onCreateQuick }) => {
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 }`}
               >
-                Tất cả ({places.length})
+                {t("admin.cms.allPlaces", { count: places.length })}
               </button>
               {categories.map((cat) => {
                 const count = places.filter((p) => p.category?.id === cat.id).length;
@@ -1695,7 +1708,7 @@ const SearchablePlacePicker = ({ places, value, onChange, onCreateQuick }) => {
           <div className="max-h-[240px] overflow-y-auto">
             {groupedPlaces.length === 0 ? (
               <div className="p-4 text-center text-xs text-muted-foreground">
-                Không tìm thấy địa điểm nào
+                {t("admin.cms.noPlacesFound")}
               </div>
             ) : (
               groupedPlaces.map((group) => (
@@ -1747,7 +1760,7 @@ const SearchablePlacePicker = ({ places, value, onChange, onCreateQuick }) => {
                 }}
               >
                 <Plus className="h-3 w-3 mr-1" />
-                Tạo địa điểm mới
+                {t("admin.cms.createNewPlace")}
               </Button>
             </div>
           )}
@@ -1760,6 +1773,7 @@ const SearchablePlacePicker = ({ places, value, onChange, onCreateQuick }) => {
 // ─── Trip Destinations Modal ──────────────────────────────────────────────────
 
 const TripDestinationsModal = ({ open, onClose, tripItem }) => {
+  const { t } = useTranslation();
   const [trip, setTrip] = useState(null);
   const [loading, setLoading] = useState(false);
   const [places, setPlaces] = useState([]);
@@ -1775,7 +1789,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
     startTime: "",
     endTime: "",
     note: "",
-    transportToNext: "Xe máy",
+    transportToNext: t("admin.cms.motorbike"),
   });
 
   const fetchTripDetail = useCallback(async () => {
@@ -1786,7 +1800,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
       setTrip(res.data);
     } catch (err) {
       console.error("Lỗi lấy chi tiết chuyến đi:", err);
-      toast.error("Không thể tải chi tiết lịch trình");
+      toast.error(t("admin.cms.cannotLoadItinerary"));
     } finally {
       setLoading(false);
     }
@@ -1850,7 +1864,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
 
   const handleAddDestination = async () => {
     if (!newDest.placeId) {
-      toast.error("Vui lòng chọn địa điểm tham quan");
+      toast.error(t("admin.cms.poi") + " " + t("common.required"));
       return;
     }
     setDestActionLoading(true);
@@ -1864,34 +1878,34 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
         transportToNext: newDest.transportToNext || null,
       };
       await eventService.addDestination(trip.id, payload);
-      toast.success("Đã thêm địa điểm vào lịch trình");
+      toast.success(t("common.createdSuccessfully"));
       setNewDest((prev) => ({
         ...prev,
         startTime: "",
         endTime: "",
         note: "",
-        transportToNext: "Xe máy",
+        transportToNext: t("admin.cms.motorbike"),
       }));
       fetchTripDetail();
     } catch (err) {
       console.error("Lỗi thêm địa điểm:", err);
       const msg = err.response?.data?.message || err.message;
-      toast.error(msg || "Không thể thêm địa điểm");
+      toast.error(msg || t("common.operationFailed"));
     } finally {
       setDestActionLoading(false);
     }
   };
 
   const handleDeleteDestination = async (destId) => {
-    if (!window.confirm("Xóa địa điểm này khỏi lịch trình?")) return;
+    if (!window.confirm(t("admin.cms.confirmDeleteDestination"))) return;
     setDestActionLoading(true);
     try {
       await eventService.removeDestination(trip.id, destId);
-      toast.success("Đã xóa địa điểm khỏi lịch trình");
+      toast.success(t("common.deletedSuccessfully"));
       fetchTripDetail();
     } catch (err) {
       console.error("Lỗi xóa địa điểm:", err);
-      toast.error("Không thể xóa địa điểm");
+      toast.error(t("admin.cms.cannotDeleteDestination"));
     } finally {
       setDestActionLoading(false);
     }
@@ -1910,10 +1924,10 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
             <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
               <Compass className="h-4 w-4 text-purple-600" />
             </div>
-            <span>Chi tiết lịch trình: {trip?.title}</span>
+            <span>{t("admin.cms.itineraryDetailTitle", { title: trip?.title })}</span>
           </DialogTitle>
           <DialogDescription>
-            Tạo và sắp xếp lộ trình chặng đi chi tiết, ghi chú hoạt động của chuyến đi mẫu
+            {t("admin.cms.itineraryDetailDesc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -1935,7 +1949,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
                     onClick={() => setActiveDay(day)}
                     className={activeDay === day ? "bg-purple-600 hover:bg-purple-700 text-white" : ""}
                   >
-                    Ngày {day}
+                    {t("admin.cms.day", { n: day })}
                   </Button>
                 );
               })}
@@ -1946,14 +1960,14 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
               <div className="md:col-span-3 space-y-4">
                 <h3 className="font-semibold text-sm text-slate-700 flex items-center gap-2">
                   <Clock className="h-4 w-4 text-purple-600" />
-                  Lịch trình ngày {activeDay} ({currentDayDestinations.length} điểm)
+                  {t("admin.cms.itineraryDay", { n: activeDay, count: currentDayDestinations.length })}
                 </h3>
 
                 {currentDayDestinations.length === 0 ? (
                   <div className="border border-dashed rounded-xl p-8 text-center text-muted-foreground bg-slate-50/50">
                     <Compass className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                    Chưa có địa điểm tham quan nào trong ngày này.
-                    <p className="text-xs mt-1">Sử dụng form bên phải để thêm điểm đến</p>
+                    {t("admin.cms.noDestinationsDay")}
+                    <p className="text-xs mt-1">{t("admin.cms.useFormToAdd")}</p>
                   </div>
                 ) : (
                   <div className="relative pl-6 border-l border-purple-100 space-y-0 py-2 ml-2">
@@ -1977,7 +1991,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
                                   <span className="text-xs font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
                                     {dest.startTime || "00:00"}{dest.endTime ? ` - ${dest.endTime}` : ""}
                                   </span>
-                                  <h4 className="font-semibold text-sm truncate">{dest.place?.name || "Địa điểm"}</h4>
+                                  <h4 className="font-semibold text-sm truncate">{dest.place?.name || t("admin.cms.defaultPlaceName")}</h4>
                                   {dest.place?.category && (
                                     <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                                       {dest.place.category.name}
@@ -2001,7 +2015,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
                                 {dest.transportToNext && (
                                   <div className={`text-[11px] font-medium mt-1.5 flex items-center gap-1.5 ${transportMode?.color || "text-indigo-600"}`}>
                                     <TransportIcon className="h-3.5 w-3.5" />
-                                    <span>Di chuyển: {dest.transportToNext}</span>
+                                    <span>{t("admin.cms.transportLabel", { mode: dest.transportToNext })}</span>
                                     {routeInfo && (
                                       <span className="text-muted-foreground">
                                         ({routeInfo.distanceLabel} · {routeInfo.durationLabel})
@@ -2038,7 +2052,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
                                 ) : (
                                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50">
                                     <ArrowRight className="h-3 w-3" />
-                                    <span>Đang tính khoảng cách...</span>
+                                    <span>{t("admin.cms.calculatingDistance")}</span>
                                   </div>
                                 )}
                               </div>
@@ -2056,13 +2070,13 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
                 <Card className="border-purple-100 bg-purple-50/10 sticky top-0">
                   <CardHeader className="p-4 border-b">
                     <CardTitle className="text-sm font-semibold text-purple-700 flex items-center gap-2">
-                      <Plus className="h-4 w-4" /> Thêm điểm đến
+                      <Plus className="h-4 w-4" /> {t("admin.cms.addDestination")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 space-y-3">
                     {/* Place Picker - searchable + categorized */}
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Địa điểm tham quan *</Label>
+                      <Label className="text-xs">{t("admin.cms.poi")} *</Label>
                       <SearchablePlacePicker
                         places={places}
                         value={newDest.placeId}
@@ -2074,7 +2088,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
                     {/* Time inputs */}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Giờ đến</Label>
+                        <Label className="text-xs">{t("admin.cms.arrivalTime")}</Label>
                         <Input
                           type="time"
                           value={newDest.startTime}
@@ -2083,7 +2097,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Giờ đi</Label>
+                        <Label className="text-xs">{t("admin.cms.departureTime")}</Label>
                         <Input
                           type="time"
                           value={newDest.endTime}
@@ -2095,7 +2109,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
 
                     {/* Transport mode selection */}
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Phương tiện di chuyển tiếp</Label>
+                      <Label className="text-xs">{t("admin.cms.nextTransport")}</Label>
                       <div className="grid grid-cols-3 gap-1.5">
                         {TRANSPORT_MODES.map((mode) => {
                           const Icon = mode.icon;
@@ -2121,11 +2135,11 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
 
                     {/* Note */}
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Ghi chú hoạt động</Label>
+                      <Label className="text-xs">{t("admin.cms.activityNotes")}</Label>
                       <Input
                         value={newDest.note}
                         onChange={(e) => setNewDest((p) => ({ ...p, note: e.target.value }))}
-                        placeholder="Ăn trưa, chụp ảnh lưu niệm..."
+                        placeholder={t("admin.cms.activityNotes") + "..."}
                         className="h-9 text-xs"
                       />
                     </div>
@@ -2134,7 +2148,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
                     {newDest.placeId && currentDayDestinations.length > 0 && (
                       <div className="text-[10px] text-purple-600 bg-purple-50 p-2 rounded-lg flex items-center gap-1.5">
                         <Route className="h-3 w-3" />
-                        Khoảng cách sẽ được tính tự động từ chặng trước
+                        {t("admin.cms.distanceAutoCalc")}
                       </div>
                     )}
 
@@ -2144,7 +2158,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
                       className="w-full h-9 text-xs bg-purple-600 hover:bg-purple-700 text-white mt-2"
                     >
                       {destActionLoading && <RefreshCw className="h-3 w-3 mr-2 animate-spin" />}
-                      Thêm vào lịch trình
+                      {t("admin.cms.addToItinerary")}
                     </Button>
                   </CardContent>
                 </Card>
@@ -2155,7 +2169,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
 
         <DialogFooter className="border-t pt-4">
           <Button variant="outline" onClick={onClose}>
-            Đóng
+            {t("admin.cms.close")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -2176,6 +2190,7 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
 // ─── Generic Edit Modal ────────────────────────────────────────────────────────
 
 const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
+  const { t } = useTranslation();
   const uniqueFileId = `generic-file-upload-${type?.id}`;
 
   const [form, setForm] = useState({
@@ -2220,7 +2235,7 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
 
   const handleSave = () => {
     if (!form.title.trim()) {
-      toast.error("Vui lòng nhập tiêu đề");
+      toast.error(t("admin.cms.titleLabel").replace(" *", ""));
       return;
     }
     onSave(form);
@@ -2230,7 +2245,7 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        toast.error("Kích thước file không được vượt quá 10MB");
+        toast.error(t("common.operationFailed"));
         return;
       }
       try {
@@ -2251,40 +2266,40 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {item ? "Chỉnh sửa" : "Tạo mới"} {type?.label}
+            {item ? t("admin.cms.editContent") : t("common.create")} {type?.label}
           </DialogTitle>
           <DialogDescription>
-            Điền thông tin chi tiết cho nội dung này
+            {t("admin.cms.editContentDesc")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Tiêu đề *</Label>
+            <Label>{t("admin.cms.titleLabel")}</Label>
             <Input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="Nhập tiêu đề..."
+              placeholder={t("admin.cms.titlePlaceholder")}
             />
           </div>
 
           {type?.id !== "pages" && (
             <div className="space-y-1.5">
-              <Label>Phụ đề</Label>
+              <Label>{t("admin.cms.subtitleLabel")}</Label>
               <Input
                 value={form.subtitle || ""}
                 onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
-                placeholder="Nhập phụ đề..."
+                placeholder={t("admin.cms.subtitlePlaceholder")}
               />
             </div>
           )}
 
           <div className="space-y-1.5">
-            <Label>Mô tả</Label>
+            <Label>{t("admin.cms.descriptionLabel")}</Label>
             <Textarea
               value={form.description || ""}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Nhập mô tả..."
+              placeholder={t("admin.cms.descriptionPlaceholder")}
               className="min-h-[100px]"
             />
           </div>
@@ -2292,7 +2307,7 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
           {type?.id !== "pages" && (
             <>
               <div className="space-y-1.5">
-                <Label>Liên kết (URL)</Label>
+                <Label>{t("admin.cms.linkLabel")}</Label>
                 <Input
                   value={form.link || ""}
                   onChange={(e) => setForm({ ...form, link: e.target.value })}
@@ -2302,7 +2317,7 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Thứ tự hiển thị</Label>
+                  <Label>{t("admin.cms.orderLabel")}</Label>
                   <Input
                     type="number"
                     value={form.order || 1}
@@ -2313,10 +2328,10 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Trạng thái</Label>
+                  <Label>{t("admin.cms.statusLabel")}</Label>
                   <div className="flex items-center gap-2 h-10">
                     <span className="text-sm text-muted-foreground">
-                      {form.active ? "Hoạt động" : "Ẩn"}
+                      {form.active ? t("admin.cms.active") : t("admin.cms.hidden")}
                     </span>
                     <button
                       type="button"
@@ -2335,7 +2350,7 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
 
               {type?.id === "banners" && (
                 <div className="space-y-1.5">
-                  <Label>Hình ảnh {item?.image ? "(Tải lên để thay đổi)" : "*"}</Label>
+                  <Label>{t("admin.cms.imageLabel", { condition: item?.image ? t("admin.cms.imageUploadToChange") : "*" })}</Label>
                   <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors relative bg-muted/20">
                     {form.image ? (
                       <div className="relative group">
@@ -2349,7 +2364,7 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
                             htmlFor={uniqueFileId}
                             className="h-8 px-3 rounded-lg bg-white hover:bg-slate-50 text-slate-800 text-xs font-medium flex items-center justify-center cursor-pointer transition-colors"
                           >
-                            Thay ảnh
+                            {t("common.edit")}
                           </Label>
                           <Button
                             variant="destructive"
@@ -2361,7 +2376,7 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
                               setForm((prev) => ({ ...prev, image: "" }));
                             }}
                           >
-                            Xóa ảnh
+                            {t("common.delete")}
                           </Button>
                         </div>
                         <input
@@ -2376,10 +2391,10 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
                       <label htmlFor={uniqueFileId} className="cursor-pointer block">
                         <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                         <p className="text-sm text-muted-foreground">
-                          Kéo thả hoặc click để tải ảnh lên
+                          {t("common.upload")}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          PNG, JPG, WEBP (tối đa 5MB)
+                          {t("admin.cms.imageMaxSize")}
                         </p>
                         <input
                           id={uniqueFileId}
@@ -2398,7 +2413,7 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
 
           {type?.id === "announcements" && (
             <div className="space-y-1.5">
-              <Label>Loại thông báo</Label>
+              <Label>{t("admin.cms.notificationTypeLabel")}</Label>
               <Select
                 value={form.type || "info"}
                 onValueChange={(value) => setForm({ ...form, type: value })}
@@ -2407,9 +2422,9 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="info">Thông tin</SelectItem>
-                  <SelectItem value="warning">Cảnh báo</SelectItem>
-                  <SelectItem value="promo">Khuyến mãi</SelectItem>
+                  <SelectItem value="info">{t("admin.cms.infoType")}</SelectItem>
+                  <SelectItem value="warning">{t("admin.cms.warningType")}</SelectItem>
+                  <SelectItem value="promo">{t("admin.cms.promoType")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -2418,19 +2433,19 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
           {type?.id === "pages" && (
             <>
               <div className="space-y-1.5">
-                <Label>Slug (URL)</Label>
+                <Label>{t("admin.cms.slugLabel")}</Label>
                 <Input
                   value={form.slug || ""}
                   onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                  placeholder="gioi-thieu"
+                  placeholder={t("admin.cms.slugPlaceholder")}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Nội dung</Label>
+                <Label>{t("admin.cms.contentLabel")}</Label>
                 <Textarea
                   value={form.content || ""}
                   onChange={(e) => setForm({ ...form, content: e.target.value })}
-                  placeholder="Nội dung trang..."
+                  placeholder={t("admin.cms.contentPlaceholder")}
                   className="min-h-[200px]"
                 />
               </div>
@@ -2440,11 +2455,11 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose}>
-            Hủy
+            {t("common.cancel")}
           </Button>
           <Button onClick={handleSave} disabled={loading}>
             {loading && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-            Lưu
+            {t("admin.cms.saveBtn")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -2454,13 +2469,13 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
-const MOCK_DATA = {
+const getMockData = (t) => ({
   banners: [
     {
       id: 1,
-      title: "Khuyến mãi mùa hè",
-      subtitle: "Giảm đến 50%",
-      description: "Ưu đãi đặc biệt cho mùa hè 2024",
+      title: t("admin.cms.mockBanner1Title"),
+      subtitle: t("admin.cms.mockBanner1Subtitle"),
+      description: t("admin.cms.mockBanner1Desc"),
       image: "https://picsum.photos/400/200?random=1",
       link: "/promo/summer",
       order: 1,
@@ -2471,8 +2486,8 @@ const MOCK_DATA = {
     {
       id: 2,
       title: "Grand Opening",
-      subtitle: "Chào đón khách hàng mới",
-      description: "Nhà hàng mới khai trương",
+      subtitle: t("admin.cms.mockBanner2Subtitle"),
+      description: t("admin.cms.mockBanner2Desc"),
       image: "https://picsum.photos/400/200?random=2",
       link: "/new",
       order: 2,
@@ -2484,9 +2499,9 @@ const MOCK_DATA = {
   announcements: [
     {
       id: 1,
-      title: "Bảo trì hệ thống",
-      subtitle: "Ngày 25/06/2024",
-      description: "Hệ thống sẽ bảo trì từ 2:00 - 4:00 sáng",
+      title: t("admin.cms.mockAnnouncementTitle"),
+      subtitle: t("admin.cms.mockAnnouncementSubtitle"),
+      description: t("admin.cms.mockAnnouncementDesc"),
       type: "warning",
       order: 1,
       active: true,
@@ -2496,9 +2511,9 @@ const MOCK_DATA = {
   featured: [
     {
       id: 1,
-      title: "Địa điểm được yêu thích",
-      subtitle: "Top 10 tháng này",
-      description: "Những địa điểm được khách hàng yêu thích nhất",
+      title: t("admin.cms.mockFeaturedTitle"),
+      subtitle: t("admin.cms.mockFeaturedSubtitle"),
+      description: t("admin.cms.mockFeaturedDesc"),
       order: 1,
       active: true,
       startDate: "2024-06-01",
@@ -2507,28 +2522,29 @@ const MOCK_DATA = {
   pages: [
     {
       id: 1,
-      title: "Giới thiệu",
-      subtitle: "Về chúng tôi",
-      description: "Thông tin về công ty và sứ mệnh",
+      title: t("admin.cms.mockPage1Title"),
+      subtitle: t("admin.cms.mockPage1Subtitle"),
+      description: t("admin.cms.mockPage1Desc"),
       order: 1,
       active: true,
       views: 3500,
     },
     {
       id: 2,
-      title: "Điều khoản sử dụng",
+      title: t("admin.cms.mockPage2Title"),
       subtitle: "Terms of Service",
-      description: "Các điều khoản và điều kiện sử dụng",
+      description: t("admin.cms.mockPage2Desc"),
       order: 2,
       active: true,
       views: 2100,
     },
   ],
-};
+});
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const CMSContentPage = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("events");
   const [editModal, setEditModal] = useState({ open: false, item: null });
   const [destModal, setDestModal] = useState({ open: false, item: null });
@@ -2563,16 +2579,16 @@ const CMSContentPage = () => {
         setItems(res.data || []);
       } else {
         await new Promise((resolve) => setTimeout(resolve, 200));
-        setItems(MOCK_DATA[activeTab] || []);
+        setItems(getMockData(t)[activeTab] || []);
       }
     } catch (error) {
       console.error("Failed to fetch items:", error);
-      toast.error("Không thể tải danh sách nội dung");
+      toast.error(t("admin.cms.cannotLoadContent"));
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, t]);
 
   useEffect(() => {
     // Nếu activeTab hiện tại bị loại bỏ do phân quyền, tự động đổi về tab hợp lệ đầu tiên
@@ -2585,7 +2601,7 @@ const CMSContentPage = () => {
     if (activeTab === "events" || activeTab === "trips") {
       fetchItems();
     } else if (!initialized) {
-      setItems(MOCK_DATA[activeTab] || []);
+      setItems(getMockData(t)[activeTab] || []);
       setInitialized(true);
     } else {
       fetchItems();
@@ -2627,10 +2643,10 @@ const CMSContentPage = () => {
         setItems((prev) =>
           prev.map((i) => (i.id === item.id ? { ...i, status: newStatus } : i))
         );
-        toast.success(`${item.title}: ${newStatus === "active" ? "Đã kích hoạt" : "Đã tạm ẩn"}`);
+        toast.success(t(newStatus === "active" ? "admin.cms.activated" : "admin.cms.hiddenItem", { title: item.title }));
       } catch (err) {
         console.error("Lỗi thay đổi trạng thái event:", err);
-        toast.error("Không thể thay đổi trạng thái sự kiện");
+        toast.error(t("common.operationFailed"));
       } finally {
         setIsLoading(false);
       }
@@ -2638,31 +2654,31 @@ const CMSContentPage = () => {
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, active: !i.active } : i))
       );
-      toast.success(`${item.title}: ${item.active ? "Đã ẩn" : "Đã hiển thị"}`);
+      toast.success(t(item.active ? "admin.cms.hiddenItem" : "admin.cms.activated", { title: item.title }));
     }
   };
 
   const handleDelete = async (item) => {
-    const itemName = activeTab === "events" ? "sự kiện" : activeTab === "trips" ? "chuyến đi mẫu" : "nội dung";
-    if (!window.confirm(`Xóa ${itemName} "${item.title}"? Hành động này không thể hoàn tác.`)) return;
+    const itemType = activeTab === "events" ? t("admin.cms.events") : activeTab === "trips" ? t("admin.cms.sampleTrips") : t("admin.cms.events");
+    if (!window.confirm(t("admin.cms.deleteConfirmItem", { type: itemType, title: item.title }))) return;
 
     setIsLoading(true);
     try {
       if (activeTab === "events") {
         await eventService.deleteEvent(item.id);
         setItems((prev) => prev.filter((i) => i.id !== item.id));
-        toast.success("Đã xóa sự kiện thành công");
+        toast.success(t("common.deletedSuccessfully"));
       } else if (activeTab === "trips") {
         await eventService.deleteTrip(item.id);
         setItems((prev) => prev.filter((i) => i.id !== item.id));
-        toast.success("Đã xóa chuyến đi mẫu thành công");
+        toast.success(t("common.deletedSuccessfully"));
       } else {
         setItems((prev) => prev.filter((i) => i.id !== item.id));
-        toast.success("Đã xóa nội dung");
+        toast.success(t("common.deletedSuccessfully"));
       }
     } catch (err) {
       console.error("Lỗi xóa nội dung:", err);
-      toast.error(err.response?.data?.message || "Không thể xóa nội dung");
+      toast.error(err.response?.data?.message || t("admin.cms.cannotDeleteContent"));
     } finally {
       setIsLoading(false);
     }
@@ -2677,11 +2693,11 @@ const CMSContentPage = () => {
           setItems((prev) =>
             prev.map((i) => (i.id === editModal.item.id ? res.data : i))
           );
-          toast.success("Đã cập nhật sự kiện thành công");
+          toast.success(t("common.updatedSuccessfully"));
         } else {
           const res = await eventService.createEvent(form);
           setItems((prev) => [res.data, ...prev]);
-          toast.success("Đã tạo sự kiện mới thành công");
+          toast.success(t("common.createdSuccessfully"));
         }
         setEditModal({ open: false, item: null });
         setTimeout(() => fetchItems(), 500);
@@ -2691,11 +2707,11 @@ const CMSContentPage = () => {
           setItems((prev) =>
             prev.map((i) => (i.id === editModal.item.id ? res.data : i))
           );
-          toast.success("Đã cập nhật chuyến đi mẫu thành công");
+          toast.success(t("common.updatedSuccessfully"));
         } else {
           const res = await eventService.createTrip(form);
           setItems((prev) => [res.data, ...prev]);
-          toast.success("Đã tạo chuyến đi mẫu mới thành công");
+          toast.success(t("common.createdSuccessfully"));
         }
         setEditModal({ open: false, item: null });
         setTimeout(() => fetchItems(), 500);
@@ -2704,7 +2720,7 @@ const CMSContentPage = () => {
           setItems((prev) =>
             prev.map((i) => (i.id === editModal.item.id ? { ...i, ...form } : i))
           );
-          toast.success("Đã cập nhật nội dung");
+          toast.success(t("common.updatedSuccessfully"));
         } else {
           const newItem = {
             ...form,
@@ -2712,14 +2728,14 @@ const CMSContentPage = () => {
             views: 0,
           };
           setItems((prev) => [newItem, ...prev]);
-          toast.success("Đã tạo nội dung mới");
+          toast.success(t("common.createdSuccessfully"));
         }
         setEditModal({ open: false, item: null });
       }
     } catch (err) {
       console.error("Lỗi lưu nội dung:", err);
       const msg = err.response?.data?.message || err.response?.data?.errors?.[0]?.message;
-      toast.error(msg || "Không thể lưu nội dung. Vui lòng thử lại.");
+      toast.error(msg || t("admin.cms.cannotSaveContent"));
     } finally {
       setIsLoading(false);
     }
@@ -2729,7 +2745,7 @@ const CMSContentPage = () => {
     if (typeId === "events" || typeId === "trips") {
       return activeTab === typeId ? items.length : "...";
     }
-    return MOCK_DATA[typeId]?.length || 0;
+    return getMockData(t)[typeId]?.length || 0;
   };
 
   const activeEventCount = items.filter((i) => i.status === "active").length;
@@ -2743,9 +2759,9 @@ const CMSContentPage = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Quản lý nội dung</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t("admin.cms.events")}</h1>
             <p className="text-muted-foreground mt-1">
-              Tạo và quản lý sự kiện, chuyến đi mẫu, banner, thông báo hiển thị trên app Đi Đâu Giờ
+              {t("admin.cms.eventsDesc")}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -2760,7 +2776,7 @@ const CMSContentPage = () => {
               onClick={() => setEditModal({ open: true, item: null })}
             >
               <Plus className="h-4 w-4" />
-              {activeTab === "events" ? "Tạo sự kiện" : activeTab === "trips" ? "Tạo chuyến đi mẫu" : "Tạo mới"}
+              {activeTab === "events" ? t("admin.cms.createEventBtn") : activeTab === "trips" ? t("admin.cms.createSampleTrip") : t("common.create")}
             </Button>
           </div>
         </div>
@@ -2775,7 +2791,7 @@ const CMSContentPage = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{items.length}</p>
-                  <p className="text-xs text-muted-foreground">Tổng sự kiện</p>
+                  <p className="text-xs text-muted-foreground">{t("admin.cms.events")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -2786,7 +2802,7 @@ const CMSContentPage = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{activeEventCount}</p>
-                  <p className="text-xs text-muted-foreground">Đang hoạt động</p>
+                  <p className="text-xs text-muted-foreground">{t("admin.cms.active")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -2797,7 +2813,7 @@ const CMSContentPage = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{featuredBannerCount}</p>
-                  <p className="text-xs text-muted-foreground">Banner nổi bật</p>
+                  <p className="text-xs text-muted-foreground">{t("admin.cms.featuredBanner")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -2814,7 +2830,7 @@ const CMSContentPage = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{totalTrips}</p>
-                  <p className="text-xs text-muted-foreground">Tổng chuyến đi mẫu</p>
+                  <p className="text-xs text-muted-foreground">{t("admin.cms.sampleTrips")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -2825,7 +2841,7 @@ const CMSContentPage = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{totalClones}</p>
-                  <p className="text-xs text-muted-foreground">Sao chép tham chiếu</p>
+                  <p className="text-xs text-muted-foreground">{t("admin.cms.sampleTrips")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -2859,7 +2875,7 @@ const CMSContentPage = () => {
                 </div>
                 <div className="min-w-0">
                   <p className="font-semibold text-sm">{type.label}</p>
-                  <p className="text-xs text-muted-foreground">{count} mục</p>
+                  <p className="text-xs text-muted-foreground">{t("admin.cms.items", { count })}</p>
                 </div>
               </button>
             );
@@ -2873,7 +2889,7 @@ const CMSContentPage = () => {
               <div className="relative flex-1 min-w-[200px] max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={`Tìm kiếm ${selectedType?.label.toLowerCase()}...`}
+                  placeholder={t("admin.cms.searchPlaceholder", { type: selectedType?.label?.toLowerCase() || "" })}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9"
@@ -2881,24 +2897,24 @@ const CMSContentPage = () => {
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Trạng thái" />
+                  <SelectValue placeholder={t("admin.cms.statusPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="all">{t("admin.cms.allStatuses")}</SelectItem>
                   {activeTab === "events" ? (
                     <>
-                      <SelectItem value="active">Hoạt động</SelectItem>
-                      <SelectItem value="inactive">Tạm ẩn</SelectItem>
-                      <SelectItem value="completed">Đã kết thúc</SelectItem>
+                      <SelectItem value="active">{t("admin.cms.activeStatus")}</SelectItem>
+                      <SelectItem value="inactive">{t("admin.cms.inactiveStatus")}</SelectItem>
+                      <SelectItem value="completed">{t("admin.cms.completedStatus")}</SelectItem>
                     </>
                   ) : activeTab === "trips" ? (
                     <>
-                      <SelectItem value="planned">Lịch trình mẫu</SelectItem>
+                      <SelectItem value="planned">{t("admin.cms.planned")}</SelectItem>
                     </>
                   ) : (
                     <>
-                      <SelectItem value="active">Hoạt động</SelectItem>
-                      <SelectItem value="inactive">Ẩn</SelectItem>
+                      <SelectItem value="active">{t("admin.cms.active")}</SelectItem>
+                      <SelectItem value="inactive">{t("admin.cms.hidden")}</SelectItem>
                     </>
                   )}
                 </SelectContent>
@@ -2911,7 +2927,7 @@ const CMSContentPage = () => {
                   className="gap-1 text-muted-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
-                  Xóa bộ lọc
+                  {t("admin.cms.clearFilter")}
                 </Button>
               )}
             </div>
@@ -2949,13 +2965,13 @@ const CMSContentPage = () => {
                 </div>
                 <p className="text-lg font-medium">
                   {search || statusFilter !== "all"
-                    ? "Không tìm thấy kết quả"
-                    : `Chưa có ${selectedType?.label.toLowerCase()} nào`}
+                    ? t("admin.cms.noResults")
+                    : t("admin.cms.noContentYet", { type: selectedType?.label?.toLowerCase() || "" })}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
                   {search || statusFilter !== "all"
-                    ? "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm"
-                    : `Tạo ${selectedType?.label.toLowerCase()} đầu tiên bằng cách nhấn nút phía trên`}
+                    ? t("admin.cms.noResultsHint")
+                    : t("admin.cms.createFirstHint", { type: selectedType?.label?.toLowerCase() || "" })}
                 </p>
                 {!(search || statusFilter !== "all") && (
                   <Button
@@ -2964,7 +2980,7 @@ const CMSContentPage = () => {
                     onClick={() => setEditModal({ open: true, item: null })}
                   >
                     <Plus className="h-4 w-4" />
-                    Tạo mới nội dung
+                    {t("admin.cms.createContent")}
                   </Button>
                 )}
               </CardContent>

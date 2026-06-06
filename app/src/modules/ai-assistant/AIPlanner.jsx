@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 import { useRef, useState, useCallback, useEffect } from "react";
@@ -33,6 +34,7 @@ const QUICK_SUGGESTIONS = [
 const ACCENT = "#3478F6";
 
 export function AIPlanner() {
+  const { t } = useTranslation();
   const [inputText, setInputText] = useState("");
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const scrollRef = useRef(null);
@@ -46,8 +48,8 @@ export function AIPlanner() {
     title: "",
     message: "",
     type: "error",
-    confirmText: "Đóng",
-    cancelText: "Hủy",
+    confirmText: t('aiPlanner.close'),
+    cancelText: t('aiPlanner.cancel'),
     onConfirm: null,
     onCancel: null,
     isDestructive: false,
@@ -159,11 +161,11 @@ export function AIPlanner() {
     if (!hasPlannerHistory || isLoading) return;
 
     showAlert({
-      title: "Xóa lịch sử Planner?",
-      message: "Toàn bộ hội thoại, kế hoạch lịch trình đề xuất và lựa chọn địa điểm sẽ bị xóa trên thiết bị này.",
+      title: t('aiPlanner.confirmDelete'),
+      message: t('aiPlanner.confirmDeleteDesc'),
       type: "confirm",
-      confirmText: "Xóa",
-      cancelText: "Hủy",
+      confirmText: t('aiPlanner.delete'),
+      cancelText: t('aiPlanner.cancel'),
       isDestructive: true,
       onConfirm: () => {
         reset();
@@ -197,7 +199,7 @@ export function AIPlanner() {
               style={{ fontFamily: TOKENS.font.semibold }}
               className="text-[15.5px] text-slate-800 leading-tight"
             >
-              Trợ lý du lịch Nhi
+              {t('aiPlanner.travelAssistant')}
             </Text>
             <View className="flex-row items-center gap-1 mt-1">
               <View className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -205,7 +207,7 @@ export function AIPlanner() {
                 style={{ fontFamily: TOKENS.font.medium }}
                 className="text-[10px] text-slate-400"
               >
-                Sẵn sàng trợ giúp
+                {t('aiPlanner.readyToHelp')}
               </Text>
             </View>
           </View>
@@ -255,13 +257,13 @@ export function AIPlanner() {
               style={{ fontFamily: TOKENS.font.heading }}
               className="text-2xl text-slate-900 text-center mb-2"
             >
-              Lên kế hoạch du lịch
+              {t('aiPlanner.planTravel')}
             </Text>
             <Text
               style={{ fontFamily: TOKENS.font.body }}
               className="text-[13.5px] leading-5 text-slate-505 text-slate-500 text-center max-w-[280px] mb-8"
             >
-              Mình có thể giúp bạn tìm địa điểm ăn uống, vui chơi và sắp xếp lịch trình Cần Thơ tự động!
+              {t('aiPlanner.intro')}
             </Text>
 
             <View className="w-full gap-2.5">
@@ -342,13 +344,13 @@ export function AIPlanner() {
                   style={{ fontFamily: TOKENS.font.semibold }}
                   className="text-[14.5px] text-slate-900"
                 >
-                  Chọn địa điểm bạn muốn
+                  {t('aiPlanner.selectPlaces')}
                 </Text>
                 <Text
                   style={{ fontFamily: TOKENS.font.body }}
                   className="mt-0.5 text-xs text-slate-400"
                 >
-                  Đang chọn {selectedPlaceIds.length}/{draftPlan.suggestedPlaces.length} địa điểm
+                  {t('aiPlanner.selectingCount', { selected: selectedPlaceIds.length, total: draftPlan.suggestedPlaces.length })}
                 </Text>
               </View>
 
@@ -361,7 +363,7 @@ export function AIPlanner() {
                     style={{ fontFamily: TOKENS.font.semibold }}
                     className="text-[11px] text-blue-600"
                   >
-                    Chọn hết
+                    {t('aiPlanner.selectAll')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -372,7 +374,7 @@ export function AIPlanner() {
                     style={{ fontFamily: TOKENS.font.semibold }}
                     className="text-[11px] text-slate-500"
                   >
-                    Bỏ chọn
+                    {t('aiPlanner.deselect')}
                   </Text>
                 </Pressable>
               </View>
@@ -392,10 +394,10 @@ export function AIPlanner() {
                     showCloseButton={false}
                     showSelectionAction
                     showAddToTripAction
-                    selectedLabel="Đã chọn"
-                    unselectedLabel="Chọn địa điểm"
-                    addToTripLabel={isSelected ? "Đã thêm" : "Thêm chuyến đi"}
-                    detailLabel="Chi tiết"
+                    selectedLabel={t('aiPlanner.selected')}
+                    unselectedLabel={t('aiPlanner.selectPlace')}
+                    addToTripLabel={isSelected ? t('aiPlanner.added') : t('aiPlanner.addTrip')}
+                    detailLabel={t('aiPlanner.details')}
                     onViewDetail={handleOpenPlace}
                     onToggleSelection={handleTogglePlace}
                     onAddToTrip={handleAddPlaceToTrip}
@@ -440,7 +442,7 @@ export function AIPlanner() {
                       : "text-white"
                   }`}
                 >
-                  Tạo lịch trình từ lựa chọn
+                  {t('aiPlanner.createFromSelection')}
                 </Text>
               </LinearGradient>
             </Pressable>
@@ -455,10 +457,10 @@ export function AIPlanner() {
               className="text-slate-600 text-[13.5px]"
             >
               {isConfirming
-                ? "Đang tạo chuyến đi..."
+                ? t('aiPlanner.creatingTrip')
                 : isPreviewLoading
-                  ? "Đang gợi ý địa điểm..."
-                  : "Đang xử lý..."}
+                  ? t('aiPlanner.suggestingPlaces')
+                  : t('aiPlanner.processing')}
             </Text>
           </View>
         ) : null}
@@ -488,7 +490,7 @@ export function AIPlanner() {
         <View className="flex-row items-end gap-2.5 px-3 py-2.5 rounded-[26px] bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
           <TextInput
             ref={inputRef}
-            placeholder="Mô tả kế hoạch bạn muốn..."
+            placeholder={t('aiPlanner.inputPlaceholder')}
             placeholderTextColor="#94A3B8"
             value={inputText}
             onChangeText={setInputText}

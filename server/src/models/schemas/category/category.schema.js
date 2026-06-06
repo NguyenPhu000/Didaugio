@@ -21,11 +21,13 @@ export const getCategoriesQuerySchema = z.object({
   isActive: z.coerce.boolean().optional(),
   search: z.string().trim().max(200).optional(),
   format: z.enum(["flat", "tree"]).optional(),
+  includeInactive: z.coerce.boolean().optional(),
 });
 
 export const getCategoryTreeQuerySchema = z.object({
   parentId: z.coerce.number().int().positive().optional(),
   maxLevel: z.coerce.number().int().min(1).max(10).optional(),
+  includeInactive: z.coerce.boolean().optional(),
 });
 
 export const createCategorySchema = z.object({

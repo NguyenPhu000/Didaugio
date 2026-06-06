@@ -1,10 +1,11 @@
-export const FILTERS = [
-  { key: "all", label: "Tất cả" },
-  { key: "active", label: "Sắp tới" },
-  { key: "done", label: "Hoàn thành" },
-];
-
+import i18n from "@/i18n";
 import { TRIP_STATUS_META } from "./tripTheme";
+
+export const FILTERS = [
+  { key: "all", label: i18n.t("tripHelpers.all") },
+  { key: "active", label: i18n.t("tripHelpers.upcoming") },
+  { key: "done", label: i18n.t("tripHelpers.completed") },
+];
 
 export const STATUS_THEME = TRIP_STATUS_META;
 
@@ -54,11 +55,11 @@ export function getDateRangeLabel(trip) {
   if (trip.startDate) {
     const start = new Date(trip.startDate);
     if (!Number.isNaN(start.getTime())) {
-      return `Từ ${formatDateDmy(start)}`;
+      return i18n.t("tripHelpers.from", { date: formatDateDmy(start) });
     }
   }
 
-  return "Chưa chọn ngày";
+  return i18n.t("tripHelpers.noDate");
 }
 
 /**
@@ -168,16 +169,16 @@ export function canStartTrip(trip) {
 
 export function getTimelineLabel(trip) {
   const displayStatus = getDisplayStatus(trip);
-  if (displayStatus === "completed") return "Đã kết thúc";
-  if (displayStatus === "cancelled") return "Không còn hiệu lực";
+  if (displayStatus === "completed") return i18n.t("tripHelpers.ended");
+  if (displayStatus === "cancelled") return i18n.t("tripHelpers.noLongerValid");
 
   const daysUntil = getDaysUntil(trip.startDate);
-  if (displayStatus === "ongoing") return "Đang trong hành trình";
-  if (daysUntil === 0) return "Bắt đầu hôm nay";
-  if (daysUntil === 1) return "Bắt đầu ngày mai";
-  if (daysUntil !== null && daysUntil > 0) return `Còn ${daysUntil} ngày`;
+  if (displayStatus === "ongoing") return i18n.t("tripHelpers.inJourney");
+  if (daysUntil === 0) return i18n.t("tripHelpers.startToday");
+  if (daysUntil === 1) return i18n.t("tripHelpers.startTomorrow");
+  if (daysUntil !== null && daysUntil > 0) return i18n.t("tripHelpers.daysUntil", { count: daysUntil });
 
-  return "Có thể bổ sung sau";
+  return i18n.t("tripHelpers.canAddLater");
 }
 
 export function getHeroTrip(trips) {
@@ -223,28 +224,28 @@ export function buildSummary(trips) {
       key: "trips",
       icon: "luggage",
       value: String(safeTrips.length),
-      label: "Chuyến đi",
+      label: i18n.t("tripHelpers.trip"),
       tone: "blue",
     },
     {
       key: "active",
       icon: "bolt",
       value: String(activeCount),
-      label: "Đang xử lý",
+      label: i18n.t("tripHelpers.processing"),
       tone: "amber",
     },
     {
       key: "places",
       icon: "place",
       value: String(totalDestinations),
-      label: "Điểm đến",
+      label: i18n.t("tripHelpers.destination"),
       tone: "teal",
     },
     {
       key: "done",
       icon: "task-alt",
       value: String(completedCount),
-      label: "Đã xong",
+      label: i18n.t("tripHelpers.done"),
       tone: "green",
     },
   ];
@@ -301,7 +302,8 @@ export function toYmdString(dateObj) {
  */
 export function formatPrice(amount) {
   const value = Number(amount || 0);
-  return `${value.toLocaleString("vi-VN")} VND`;
+  const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
+  return `${value.toLocaleString(locale)} VND`;
 }
 
 /**
@@ -325,11 +327,12 @@ export const formatDistance = (kilometers) => {
 export function formatBookingDateTime(booking) {
   const useDate = String(booking?.useDate || "").slice(0, 10);
   const useTime = booking?.useTime || "--:--";
+  const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
   if (useDate) {
     const dateObj = new Date(`${useDate}T12:00:00`);
     const dateLabel = Number.isNaN(dateObj.getTime())
       ? useDate
-      : dateObj.toLocaleDateString("vi-VN", {
+      : dateObj.toLocaleDateString(locale, {
           day: "2-digit",
           month: "2-digit",
         });
@@ -339,7 +342,7 @@ export function formatBookingDateTime(booking) {
   if (booking?.bookingAt) {
     const bookingAt = toValidDate(booking.bookingAt);
     if (bookingAt) {
-      return bookingAt.toLocaleString("vi-VN", {
+      return bookingAt.toLocaleString(locale, {
         day: "2-digit",
         month: "2-digit",
         hour: "2-digit",
@@ -376,6 +379,7 @@ export function buildTripDays(trip) {
   const start = toValidDate(trip?.startDate);
   const normalizedStart = start ? new Date(start) : null;
   if (normalizedStart) normalizedStart.setHours(12, 0, 0, 0);
+  const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
 
   return Array.from({ length: dayCount }, (_, index) => {
     const dayNumber = index + 1;
@@ -383,7 +387,7 @@ export function buildTripDays(trip) {
       return {
         dayNumber,
         hasDate: false,
-        weekdayLabel: `Ngày ${dayNumber}`,
+        weekdayLabel: `Day ${dayNumber}`,
         dateLabel: "",
         dateYmd: null,
       };
@@ -396,7 +400,7 @@ export function buildTripDays(trip) {
       dayNumber,
       hasDate: true,
       weekdayLabel: WEEKDAY_SHORT[date.getDay()] || "--",
-      dateLabel: date.toLocaleDateString("vi-VN", {
+      dateLabel: date.toLocaleDateString(locale, {
         day: "2-digit",
         month: "2-digit",
       }),
@@ -554,7 +558,7 @@ export function groupBookingsByDay(tripBookings, tripDays) {
   if (ungrouped.length > 0) {
     groups.push({
       dayNumber: 0,
-      label: "Booking chưa gắn ngày rõ ràng",
+      label: i18n.t("tripHelpers.bookingNoDate"),
       items: ungrouped.slice().sort(sortBookingsByTime),
     });
   }
@@ -673,11 +677,11 @@ export function calcDurationMinutes(startTime, endTime) {
  */
 export function formatDuration(minutes) {
   if (!minutes || minutes <= 0) return null;
-  if (minutes < 60) return `${minutes} phút`;
+  if (minutes < 60) return `${minutes} ${i18n.t("tripHelpers.minutes")}`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  if (m === 0) return `${h} giờ`;
-  return `${h} giờ ${m} phút`;
+  if (m === 0) return `${h} ${i18n.t("tripHelpers.hours")}`;
+  return `${h} ${i18n.t("tripHelpers.hours")} ${m} ${i18n.t("tripHelpers.minutes")}`;
 }
 
 /**
@@ -705,21 +709,21 @@ export function formatDestinationTimeLabel(dest) {
     endMin < startMin;
 
   if (hasStart && hasEnd) {
-    return `${dest.startTime} – ${dest.endTime}${crossesMidnight ? " (qua hôm sau)" : ""}`;
+    return `${dest.startTime} – ${dest.endTime}${crossesMidnight ? ` ${i18n.t("tripHelpers.nextDay")}` : ""}`;
   }
-  if (hasStart) return `Bắt đầu ${dest.startTime}`;
-  if (hasEnd) return `Kết thúc ${dest.endTime}`;
-  return "Chưa xếp giờ";
+  if (hasStart) return i18n.t("tripHelpers.startAt", { time: dest.startTime });
+  if (hasEnd) return i18n.t("tripHelpers.endAt", { time: dest.endTime });
+  return i18n.t("tripHelpers.noTime");
 }
 
 // ─── Transport helpers ────────────────────────────────────────────────────────
 
 export const TRANSPORT_OPTIONS = [
-  { label: "Đi bộ", value: "Đi bộ", icon: "directions-walk" },
-  { label: "Xe máy", value: "Xe máy", icon: "motorcycle" },
-  { label: "Xe hơi", value: "Xe hơi", icon: "directions-car" },
-  { label: "Xe buýt", value: "Xe buýt", icon: "directions-bus" },
-  { label: "Khác", value: null, icon: "swap-vert" },
+  { label: i18n.t("tripHelpers.transportWalk"), value: "Đi bộ", icon: "directions-walk" },
+  { label: i18n.t("tripHelpers.transportMotorbike"), value: "Xe máy", icon: "motorcycle" },
+  { label: i18n.t("tripHelpers.transportCar"), value: "Xe hơi", icon: "directions-car" },
+  { label: i18n.t("tripHelpers.transportBus"), value: "Xe buýt", icon: "directions-bus" },
+  { label: i18n.t("tripHelpers.transportOther"), value: null, icon: "swap-vert" },
 ];
 
 /**
@@ -728,10 +732,10 @@ export const TRANSPORT_OPTIONS = [
 export function getTransportLabel(transport) {
   if (!transport) return null;
   const t = transport.toLowerCase();
-  if (t.includes("walk") || t.includes("đi bộ")) return "Đi bộ";
-  if (t.includes("bike") || t.includes("xe máy") || t.includes("motorcycle")) return "Xe máy";
-  if (t.includes("bus") || t.includes("buýt")) return "Xe buýt";
-  if (t.includes("car") || t.includes("xe hơi") || t === "xe") return "Xe hơi";
+  if (t.includes("walk") || t.includes("đi bộ")) return i18n.t("tripHelpers.transportWalk");
+  if (t.includes("bike") || t.includes("xe máy") || t.includes("motorcycle")) return i18n.t("tripHelpers.transportMotorbike");
+  if (t.includes("bus") || t.includes("buýt")) return i18n.t("tripHelpers.transportBus");
+  if (t.includes("car") || t.includes("xe hơi") || t === "xe") return i18n.t("tripHelpers.transportCar");
   return transport;
 }
 

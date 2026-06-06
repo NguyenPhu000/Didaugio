@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Info, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -6,6 +7,7 @@ import { MapView } from "@/modules/map";
 import * as turf from "@turf/turf";
 
 const MapBoundaryPicker = ({ onSelect, className }) => {
+  const { t } = useTranslation();
   const [selectedInfo, setSelectedInfo] = useState(null);
 
   const handleAreaSelect = useCallback(
@@ -64,17 +66,17 @@ const MapBoundaryPicker = ({ onSelect, className }) => {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-foreground">
-            Chọn khu vực Cần Thơ
+            {t("map.boundaryPicker.selectArea")}
           </h3>
           <p className="text-sm text-muted-foreground">
-            Click vào quận/huyện hoặc phường/xã trên bản đồ để tự động lấy tọa
+            {t("map.boundaryPicker.instructions")}
             độ
           </p>
         </div>
         {selectedInfo && (
           <Button variant="outline" size="sm" onClick={clearSelection}>
             <X className="h-4 w-4 mr-2" />
-            Xóa chọn
+            {t("map.boundaryPicker.clearSelection")}
           </Button>
         )}
       </div>
@@ -113,7 +115,7 @@ const MapBoundaryPicker = ({ onSelect, className }) => {
         <div className="text-xl">💡</div>
         <div className="flex-1">
           <h4 className="text-sm font-bold text-primary mb-1">
-            Hướng dẫn sử dụng
+            {t("map.boundaryPicker.usageGuide")}
           </h4>
           <ul className="text-xs text-primary/80 space-y-1">
             <li>

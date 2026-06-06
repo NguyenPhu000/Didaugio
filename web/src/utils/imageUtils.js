@@ -1,4 +1,5 @@
 import { IMAGE_UPLOAD_CONFIG } from "@/constants/placeConstants";
+import i18n from "@/i18n";
 
 const { MAX_WIDTH, MAX_HEIGHT, JPEG_QUALITY } = IMAGE_UPLOAD_CONFIG;
 
@@ -39,8 +40,8 @@ export const compressImage = (file, currentImagesLength) => {
           order: currentImagesLength,
         });
       };
-      img.onerror = () => reject("Định dạng hình ảnh không hợp lệ");
+      img.onerror = () => reject(i18n.t("imageUtils.invalidFormat"));
     };
-    reader.onerror = () => reject("Không thể đọc file");
+    reader.onerror = () => reject(i18n.t("imageUtils.cannotRead"));
   });
 };

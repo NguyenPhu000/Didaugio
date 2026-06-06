@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback, useDeferredValue, lazy, Suspense, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { centroid as turfCentroid } from "@turf/turf";
-import usePlaceStore from "@/stores/placeStore";
-import useCategoryStore from "@/stores/categoryStore";
+import { usePlaces } from "@/hooks/queries/usePlaceQueries";
+import { useCategories } from "@/hooks/queries/useCategoryQueries";
 import {
   MapProvider,
   useMapContext,
@@ -45,6 +46,7 @@ const PlaceDetailDialog = lazy(
 const FETCH_LIMIT = 500;
 
 const MapPageContent = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const {
     flyTo,
@@ -58,8 +60,9 @@ const MapPageContent = () => {
     routing,
   } = useMapContext();
   const { districts, wards, canThoMask, loading, error, retry } = useMapData();
-  const { places, fetchPlaces } = usePlaceStore();
-  const { categories, fetchCategories } = useCategoryStore();
+  const { data: placesRes } = usePlaces({ limit: FETCH_LIMIT, status: "approved" });
+  const places = placesRes?.data || placesRes || [];
+  const { data: categories = [] } = useCategories();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -72,14 +75,6 @@ const MapPageContent = () => {
   const [selectedPlaceDetail, setSelectedPlaceDetail] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const containerRef = useRef(null);
-  const hasBootstrappedRef = useRef(false);
-
-  useEffect(() => {
-    if (hasBootstrappedRef.current) return;
-    hasBootstrappedRef.current = true;
-    fetchPlaces({ limit: FETCH_LIMIT, status: "approved" });
-    if (!categories.length) fetchCategories();
-  }, [fetchPlaces, fetchCategories, categories.length]);
 
   useEffect(() => {
     setOnSelectPlace((place) => {
@@ -222,12 +217,12 @@ const MapPageContent = () => {
             </div>
             <div>
               <div className="text-sm font-black uppercase tracking-tight text-gray-900">
-                Bản Đồ Số
+                {t("map.title")}
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
                 <span className="text-[9px] font-mono text-gray-400 uppercase tracking-widest">
-                  Cần Thơ • {districtList.length || 9} Quận/Huyện
+                  {t("map.cityDistricts", { count: districtList.length || 9 })}
                 </span>
               </div>
             </div>
@@ -239,14 +234,14 @@ const MapPageContent = () => {
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm kiếm địa điểm…"
+                placeholder={t("map.searchPlaceholder")}
                 className="w-full h-9 border border-gray-200 rounded-lg pl-9 pr-8 text-sm focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
-                  aria-label="Xóa tìm kiếm"
+                  aria-label={t("map.ariaLabels.clearSearch")}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -260,7 +255,7 @@ const MapPageContent = () => {
                 onClick={resetFilters}
                 className="flex items-center gap-1.5 h-8 px-3 text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
               >
-                <RefreshCw className="h-3 w-3" /> Xoá lọc
+                <RefreshCw className="h-3 w-3" /> {t("map.clearFilters")}
               </button>
             )}
             <button
@@ -270,15 +265,15 @@ const MapPageContent = () => {
                   ? "bg-blue-600 text-white border-blue-600"
                   : "border-gray-200 hover:bg-gray-100"
               }`}
-              title="Chỉ đường"
-              aria-label="Chế độ chỉ đường"
+              title={t("map.routing")}
+              aria-label={t("map.ariaLabels.routingMode")}
             >
               <Route className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode(viewMode === "map" ? "list" : "map")}
               className={`h-8 w-8 rounded-lg flex items-center justify-center border transition-colors ${viewMode === "list" ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 hover:bg-gray-100"}`}
-              aria-label={viewMode === "map" ? "Chuyển sang danh sách" : "Chuyển sang bản đồ"}
+              aria-label={viewMode === "map" ? t("map.ariaLabels.toList") : t("map.ariaLabels.toMap")}
             >
               {viewMode === "map" ? (
                 <List className="h-4 w-4" />
@@ -289,14 +284,14 @@ const MapPageContent = () => {
             <button
               onClick={() => setSidebarOpen((v) => !v)}
               className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
-              aria-label="Bật/tắt thanh bên"
+              aria-label={t("map.ariaLabels.toggleSidebar")}
             >
               <Layers className="h-4 w-4" />
             </button>
             <button
               onClick={toggleFullscreen}
               className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
-              aria-label={fullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
+              aria-label={fullscreen ? t("map.ariaLabels.exitFullscreen") : t("map.ariaLabels.enterFullscreen")}
             >
               {fullscreen ? (
                 <Minimize2 className="h-4 w-4" />
@@ -317,7 +312,7 @@ const MapPageContent = () => {
               <span className="text-[12px] text-blue-100 font-medium truncate">
                 {routing.origin?.name ?? (
                   <span className="text-blue-400 italic">
-                    Chọn điểm đầu từ popup
+                    {t("map.selectOrigin")}
                   </span>
                 )}
               </span>
@@ -332,7 +327,7 @@ const MapPageContent = () => {
               <span className="text-[12px] text-blue-100 font-medium truncate">
                 {routing.destination?.name ?? (
                   <span className="text-blue-400 italic">
-                    Chọn điểm đến từ popup
+                    {t("map.selectDestination")}
                   </span>
                 )}
               </span>
@@ -351,7 +346,7 @@ const MapPageContent = () => {
 
             {routing.loading && (
               <span className="text-[11px] text-blue-300 italic shrink-0">
-                Đang tìm đường…
+                {t("map.findingRoute")}
               </span>
             )}
             {routing.error && (
@@ -366,7 +361,7 @@ const MapPageContent = () => {
                 setRoutingMode(false);
               }}
               className="shrink-0 text-blue-400 hover:text-white transition-colors"
-              aria-label="Đóng chỉ đường"
+              aria-label={t("map.closeRouting")}
             >
               <X className="w-4 h-4" />
             </button>
@@ -380,14 +375,14 @@ const MapPageContent = () => {
             <div className="w-72 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 overflow-hidden shadow-sm">
               <div className="grid grid-cols-3 border-b border-gray-100">
                 {[
-                  { label: "Địa điểm", value: places.length, icon: MapPin },
+                  { label: t("map.places"), value: places.length, icon: MapPin },
                   {
-                    label: "Hiển thị",
+                    label: t("map.showing"),
                     value: filteredPlaces.length,
                     icon: Eye,
                   },
                   {
-                    label: "Khu vực",
+                    label: t("map.areas"),
                     value: districtList.length,
                     icon: BarChart3,
                   },
@@ -408,9 +403,9 @@ const MapPageContent = () => {
 
               <div className="flex border-b border-gray-200 bg-gray-50">
                 {[
-                  { id: "places", label: "Địa điểm", icon: MapPin },
-                  { id: "districts", label: "Quận", icon: BarChart3 },
-                  { id: "filters", label: "Lọc", icon: Filter },
+                  { id: "places", label: t("map.places"), icon: MapPin },
+                  { id: "districts", label: t("map.districts"), icon: BarChart3 },
+                  { id: "filters", label: t("map.filters"), icon: Filter },
                 ].map(({ id, label, icon: _Icon }) => (
                   <button
                     key={id}
@@ -424,7 +419,7 @@ const MapPageContent = () => {
                     <_Icon className="h-3.5 w-3.5" />
                     {label}
                     {id === "filters" && hasActiveFilters && (
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full" aria-label="Có bộ lọc đang bật" />
+                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full" aria-label={t("map.ariaLabels.filterActive")} />
                     )}
                   </button>
                 ))}
@@ -437,7 +432,7 @@ const MapPageContent = () => {
                     <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
                       {selectedDistrictId
                         ? selectedDistrict?.properties?.name
-                        : "Tất cả địa điểm"}
+                        : t("map.allPlaces")}
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-mono text-gray-400">
@@ -447,7 +442,7 @@ const MapPageContent = () => {
                         <button
                           onClick={resetSelection}
                           className="text-[10px] text-red-500 hover:text-red-700 font-bold"
-                          aria-label="Bỏ chọn khu vực"
+                          aria-label={t("map.deselectArea")}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -459,7 +454,7 @@ const MapPageContent = () => {
                       <div className="py-12 text-center">
                         <MapPin className="h-8 w-8 text-gray-200 mx-auto mb-2" />
                         <p className="text-xs text-gray-400 font-medium">
-                          Không có địa điểm
+                          {t("map.noPlaces")}
                         </p>
                       </div>
                     ) : (
@@ -480,14 +475,14 @@ const MapPageContent = () => {
                 <div className="flex flex-col flex-1 overflow-hidden">
                   <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
                     <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
-                      {districtList.length} Quận / Huyện
+                      {districtList.length} {t("map.districts")}
                     </span>
                     {selectedDistrictId && (
                       <button
                         onClick={resetSelection}
                         className="text-[10px] text-red-500 font-bold flex items-center gap-1 hover:text-red-700"
                       >
-                        <X className="h-3 w-3" /> Bỏ chọn
+                        <X className="h-3 w-3" /> {t("map.deselect")}
                       </button>
                     )}
                   </div>
@@ -508,7 +503,7 @@ const MapPageContent = () => {
                     ))}
                     <div className="mt-2 mx-4 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
                       <p className="text-[11px] font-bold text-gray-500 uppercase mb-2">
-                        Phân bố địa điểm
+                        {t("map.placeDistribution")}
                       </p>
                       {districtList
                         .filter((d) => d.count > 0)
@@ -569,7 +564,7 @@ const MapPageContent = () => {
                   <div className="text-center">
                     <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                     <p className="text-sm font-medium text-gray-500">
-                      Đang tải bản đồ…
+                      {t("map.loading")}
                     </p>
                   </div>
                 </div>
@@ -578,14 +573,14 @@ const MapPageContent = () => {
                 <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 gap-3">
                   <AlertTriangle className="h-10 w-10 text-red-400" />
                   <p className="text-sm font-medium text-gray-600">
-                    Không tải được dữ liệu bản đồ
+                    {t("map.loadError")}
                   </p>
                   <button
                     onClick={retry}
                     className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
                   >
                     <RefreshCw className="h-4 w-4" />
-                    Thử lại
+                    {t("map.retry")}
                   </button>
                 </div>
               )}
@@ -612,7 +607,7 @@ const MapPageContent = () => {
                   <strong className="text-gray-900">
                     {filteredPlaces.length}
                   </strong>{" "}
-                  địa điểm
+                  {t("map.places").toLowerCase()}
                 </span>
                 {selectedDistrictId && (
                   <>
@@ -633,14 +628,10 @@ const MapPageContent = () => {
         <div className="h-7 bg-gray-900 flex items-center justify-between px-4 flex-shrink-0">
           <div className="flex items-center gap-4 text-[10px] font-mono text-gray-400">
             <span>
-              HIỂN THỊ:{" "}
-              <span className="text-white">
-                {filteredPlaces.length}
-              </span>{" "}
-              / {places.length}
+              {t("map.statusBar.showing", { shown: filteredPlaces.length, total: places.length })}
             </span>
             {hasActiveFilters && (
-              <span className="text-yellow-400">● BỘ LỌC ĐANG BẬT</span>
+              <span className="text-yellow-400">{t("map.statusBar.filtersActive")}</span>
             )}
             {selectedDistrictId && (
               <span className="text-yellow-400">
@@ -649,7 +640,7 @@ const MapPageContent = () => {
             )}
           </div>
           <span className="text-[10px] font-mono text-gray-500">
-            CẨN THƠ — {districtList.length || 9} QUẬN/HUYỆN
+            {t("map.statusBar.canTho", { count: districtList.length || 9 })}
           </span>
         </div>
       </div>

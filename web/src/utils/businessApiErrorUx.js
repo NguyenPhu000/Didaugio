@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { appNavigate } from "@/lib/appNavigation";
+import i18n from "@/i18n";
 
 /** Mã từ requireActiveBusiness (server) — chỉ xử lý UX thống nhất cho các mã này */
 export const BUSINESS_GATE_ERROR_CODES = [
@@ -56,7 +57,7 @@ export function applyBusinessApiErrorUx(error) {
   error.globalBusinessUxHandled = true;
 
   const message =
-    error.message || "Không thể thực hiện thao tác. Vui lòng thử lại sau.";
+    error.message || i18n.t("apiError.generic");
 
   toast.error(message, {
     id: TOAST_ID,

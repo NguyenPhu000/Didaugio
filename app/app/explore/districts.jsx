@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -10,7 +11,7 @@ import { useBoundaryData } from "../../src/modules/map/hooks/useBoundaryData";
 import { ExploreListScaffold } from "../../src/modules/explore/components/ExploreListScaffold";
 
 
-function pickDistricts(geojson) {
+function pickDistricts(geojson, fallbackName) {
   const features = Array.isArray(geojson?.features) ? geojson.features : [];
   return features
     .map((f) => ({
@@ -24,27 +25,28 @@ function pickDistricts(geojson) {
         f?.properties?.name ||
         f?.properties?.district ||
         f?.properties?.ten ||
-        "Khu vực",
+        fallbackName,
     }))
     .filter((d) => d.id != null)
     .sort((a, b) => String(a.name).localeCompare(String(b.name), "vi"));
 }
 
 export default function ExploreDistrictsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { districts, isLoading } = useBoundaryData();
 
-  const items = useMemo(() => pickDistricts(districts), [districts]);
+  const items = useMemo(() => pickDistricts(districts, t("districts.fallbackName")), [districts, t]);
 
   return (
     <ExploreListScaffold
-      title="Theo quận"
-      subtitle="Chọn khu vực để xem các địa điểm nổi bật."
+      title={t("districts.title")}
+      subtitle={t("districts.subtitle")}
     >
       <View className="px-6 pt-4 pb-6 gap-[10px]">
         {isLoading ? (
           <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-sans py-5 text-center">
-            Đang tải...
+            {t("districts.loading")}
           </Text>
         ) : (
           items.map((item) => (
@@ -70,7 +72,7 @@ export default function ExploreDistrictsScreen() {
                   {item.name}
                 </Text>
                 <Text className="text-[rgba(0,0,0,0.8)] text-[12.5px] font-sans" numberOfLines={1}>
-                  Xem địa điểm theo khu vực
+                  {t("districts.viewPlaces")}
                 </Text>
               </View>
               <MaterialIconsRounded

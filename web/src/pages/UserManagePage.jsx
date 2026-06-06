@@ -52,12 +52,14 @@ import {
 } from "@/components/ui";
 import { useToast } from "@/hooks/use-toast";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
+import { useTranslation } from "react-i18next";
 
 /**
- * USER MANAGEMENT PAGE - T.I.M STYLE (VIETNAMESE)
+ * USER MANAGEMENT PAGE - T.I.M STYLE
  */
 const UserManagePage = () => {
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   // Data
   const [users, setUsers] = useState([]);
@@ -75,6 +77,7 @@ const UserManagePage = () => {
 
   // Modal
   const [showFormModal, setShowFormModal] = useState(false);
+  const [formMode, setFormMode] = useState("create");
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
@@ -108,8 +111,8 @@ const UserManagePage = () => {
       setPagination(paginationData);
     } catch {
       toast({
-        title: "LỖI HỆ THỐNG",
-        description: "Không thể tải dữ liệu người dùng.",
+        title: t("common.error"),
+        description: t("users.errors.loadFailed"),
         variant: "destructive",
       });
     } finally {
@@ -131,12 +134,45 @@ const UserManagePage = () => {
 
   const handleCreate = () => {
     setSelectedUser(null);
+    setFormMode("create");
     setShowFormModal(true);
   };
 
   const handleEdit = (user) => {
     setSelectedUser(user);
+    setFormMode("edit");
     setShowFormModal(true);
+  };
+
+  const handleChangePassword = (user) => {
+    setSelectedUser(user);
+    setFormMode("change-password");
+    setShowFormModal(true);
+  };
+
+  const handleToggleStatus = async (user) => {
+    const isCurrentlyActive = user.status === "active" || user.isActive;
+    const newStatus = isCurrentlyActive ? "inactive" : "active";
+    try {
+      setLoading(true);
+      await userService.update(user.id, { status: newStatus });
+      toast({
+        title: t("common.success"),
+        description: newStatus === "active"
+          ? t("users.messages.unlockSuccess", "Kích hoạt tài khoản thành công")
+          : t("users.messages.lockSuccess", "Khóa tài khoản thành công"),
+        className: "bg-black text-white border border-primary font-mono",
+      });
+      fetchUsers();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: t("common.error"),
+        description: error.message || t("common.error"),
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDetail = (user) => {
@@ -155,8 +191,8 @@ const UserManagePage = () => {
     try {
       await userService.delete(userToDelete.id);
       toast({
-        title: "THÀNH CÔNG",
-        description: "Đã xóa người dùng khỏi hệ thống.",
+        title: t("common.success"),
+        description: t("users.messages.deleteSuccess"),
         className: "bg-black text-white border border-primary font-mono",
       });
       fetchUsers();
@@ -165,7 +201,7 @@ const UserManagePage = () => {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "LỖI",
+        title: t("common.error"),
         description: error.message,
       });
     }
@@ -176,15 +212,17 @@ const UserManagePage = () => {
       if (isEdit) {
         await userService.update(selectedUser.id, data);
         toast({
-          title: "THÀNH CÔNG",
-          description: "Cập nhật thông tin người dùng thành công.",
+          title: t("common.success"),
+          description: formMode === "change-password"
+            ? t("users.messages.changePasswordSuccess", "Đổi mật khẩu thành công")
+            : t("users.messages.updateSuccess"),
           className: "bg-black text-white border border-primary font-mono",
         });
       } else {
         await userService.create(data);
         toast({
-          title: "THÀNH CÔNG",
-          description: "Tạo người dùng mới thành công.",
+          title: t("common.success"),
+          description: t("users.messages.createSuccess"),
           className: "bg-black text-white border border-primary font-mono",
         });
       }
@@ -193,11 +231,11 @@ const UserManagePage = () => {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "LỖI",
+        title: t("common.error"),
         description:
           error.response?.data?.message ||
           error.message ||
-          "Có lỗi xảy ra khi lưu dữ liệu.",
+          t("users.errors.saveFailed"),
       });
       throw error; // Let modal handle loading state if necessary
     }
@@ -205,7 +243,7 @@ const UserManagePage = () => {
 
   const handleExportCsv = async () => {
     try {
-      toast.loading("Đang xuất dữ liệu...", { id: "csv-export" });
+      toast.loading(t("users.export.loading"), { id: "csv-export" });
       const allData = await fetchAllPages(async (params) => {
         const res = await userService.getAll(params);
         const users = res.data.users || res.data || [];
@@ -223,55 +261,69 @@ const UserManagePage = () => {
       exportToCsv({
         columns: [
           { key: "id", label: "ID" },
-          { key: (row) => row.profile?.fullName || row.fullName || row.username || "", label: "Họ tên" },
+          { key: (row) => row.profile?.fullName || row.fullName || row.username || "", label: t("users.csv.fullName") },
           { key: "email", label: "Email" },
-          { key: (row) => row.profile?.phone || "", label: "Điện thoại" },
-          { key: (row) => ROLE_NAMES[row.roleId] || `Role ${row.roleId}`, label: "Vai trò" },
-          { key: (row) => (row.status === "active" || row.isActive) ? "Hoạt động" : "Đã khóa", label: "Trạng thái" },
-          { key: (row) => formatCsvDate(row.createdAt), label: "Ngày tạo" },
+          { key: (row) => row.profile?.phone || "", label: t("users.csv.phone") },
+          { 
+            key: (row) => {
+              const roleKeys = {
+                1: "roles.names.superAdmin",
+                2: "roles.names.admin",
+                3: "roles.names.business",
+                4: "roles.names.staff",
+                5: "roles.names.user",
+                6: "roles.names.guest",
+              };
+              return roleKeys[row.roleId] ? t(roleKeys[row.roleId]) : `Role ${row.roleId}`;
+            }, 
+            label: t("users.csv.role") 
+          },
+          { key: (row) => (row.status === "active" || row.isActive) ? t("users.status.active") : t("users.status.locked"), label: t("users.csv.status") },
+          { key: (row) => formatCsvDate(row.createdAt), label: t("users.csv.createdAt") },
         ],
         data: allData,
         filename: slugifyFilename("danh_sach_nguoi_dung"),
       });
 
-      toast.success(`Đã xuất ${allData.length} bản ghi`, { id: "csv-export" });
+      toast.success(t("users.export.success", { count: allData.length }), { id: "csv-export" });
     } catch {
-      toast.error("Lỗi khi xuất dữ liệu", { id: "csv-export" });
+      toast.error(t("users.export.error"), { id: "csv-export" });
     }
   };
 
   const getRoleBadge = (roleId) => {
     const roles = {
       [ROLES.SUPER_ADMIN]: {
-        label: ROLE_NAMES[ROLES.SUPER_ADMIN].toUpperCase(),
+        key: "roles.names.superAdmin",
         class: "bg-red-600 text-white border-red-800",
       },
       [ROLES.ADMIN]: {
-        label: ROLE_NAMES[ROLES.ADMIN].toUpperCase(),
+        key: "roles.names.admin",
         class: "bg-black text-white border-black",
       },
       [ROLES.BUSINESS]: {
-        label: ROLE_NAMES[ROLES.BUSINESS].toUpperCase(),
+        key: "roles.names.business",
         class: "bg-blue-600 text-white border-blue-800",
       },
       [ROLES.STAFF]: {
-        label: ROLE_NAMES[ROLES.STAFF].toUpperCase(),
+        key: "roles.names.staff",
         class: "bg-indigo-600 text-white border-indigo-800",
       },
       [ROLES.USER]: {
-        label: ROLE_NAMES[ROLES.USER].toUpperCase(),
+        key: "roles.names.user",
         class: "bg-gray-200 text-black border-gray-400",
       },
     };
     const role = roles[roleId] || {
-      label: `ROLE-${roleId}`,
+      key: null,
       class: "bg-gray-100 text-gray-500",
     };
+    const label = role.key ? t(role.key).toUpperCase() : `ROLE-${roleId}`;
     return (
       <span
         className={`text-[10px] px-2 py-0.5 font-bold uppercase font-mono border ${role.class}`}
       >
-        {role.label}
+        {label}
       </span>
     );
   };
@@ -292,12 +344,12 @@ const UserManagePage = () => {
     return active ? (
       <span className="flex items-center gap-1 text-[10px] font-mono text-green-600 font-bold uppercase">
         <div className="w-1.5 h-1.5 bg-green-600 rounded-full animate-pulse" />
-        HOẠT ĐỘNG
+        {t("users.status.active")}
       </span>
     ) : (
       <span className="flex items-center gap-1 text-[10px] font-mono text-red-500 font-bold uppercase">
         <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-        ĐÃ KHÓA
+        {t("users.status.locked")}
       </span>
     );
   };
@@ -314,12 +366,12 @@ const UserManagePage = () => {
           <div className="flex items-center gap-6">
             <div className="accent-bar h-16"></div>
             <div>
-              <h1 className="tim-title">QUẢN LÝ NGƯỜI DÙNG</h1>
+              <h1 className="tim-title">{t("users.title")}</h1>
               <div className="flex items-center gap-4 mt-2">
                 <span className="tim-system bg-black text-white px-2 py-1">
                   SYSTEM // USERS
                 </span>
-                <p className="tim-meta">QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN</p>
+                <p className="tim-meta">{t("users.subtitle")}</p>
               </div>
             </div>
           </div>
@@ -346,7 +398,7 @@ const UserManagePage = () => {
               className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
             >
               <Plus className="mr-2 h-4 w-4" />
-              THÊM NGƯỜI DÙNG
+              {t("users.addUser")}
             </Button>
           </div>
         </div>
@@ -355,27 +407,27 @@ const UserManagePage = () => {
         {!loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <TimStatsCard
-              title="TỔNG NGƯỜI DÙNG"
+              title={t("users.stats.total")}
               value={userStats.total}
               icon={Users}
               serial="USR-001"
             />
             <TimStatsCard
-              title="HOẠT ĐỘNG (TRANG)"
+              title={t("users.stats.active")}
               value={userStats.active}
               icon={UserCheck}
               serial="USR-002"
               textColor="text-emerald-600"
             />
             <TimStatsCard
-              title="ĐÃ KHÓA (TRANG)"
+              title={t("users.stats.locked")}
               value={userStats.locked}
               icon={UserX}
               serial="USR-003"
               textColor="text-gray-500"
             />
             <TimStatsCard
-              title="BẢN GHI TRANG"
+              title={t("users.stats.perPage")}
               value={userStats.onPage}
               icon={Activity}
               serial="USR-004"
@@ -391,7 +443,7 @@ const UserManagePage = () => {
               <Search className="h-4 w-4" />
             </div>
             <input
-              placeholder="TÌM THEO TÊN, EMAIL, SĐT..."
+              placeholder={t("users.searchPlaceholder")}
               value={filters.search}
               onChange={(e) => handleFilterChange("search", e.target.value)}
               className="flex-1 h-10 px-4 border-y border-r border-black tim-body uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400"
@@ -404,15 +456,15 @@ const UserManagePage = () => {
               onValueChange={(val) => handleFilterChange("roleId", val)}
             >
               <SelectTrigger className="w-[180px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
-                <SelectValue placeholder="VAI TRÒ" />
+                <SelectValue placeholder={t("users.table.role")} />
               </SelectTrigger>
               <SelectContent className="rounded-none border-black">
-                <SelectItem value="all">TẤT CẢ VAI TRÒ</SelectItem>
-                <SelectItem value="1">SUPER ADMIN</SelectItem>
-                <SelectItem value="2">ADMIN</SelectItem>
-                <SelectItem value="3">BUSINESS</SelectItem>
-                <SelectItem value="4">STAFF</SelectItem>
-                <SelectItem value="5">USER</SelectItem>
+                <SelectItem value="all">{t("users.filters.allRoles")}</SelectItem>
+                <SelectItem value="1">{t("roles.names.superAdmin").toUpperCase()}</SelectItem>
+                <SelectItem value="2">{t("roles.names.admin").toUpperCase()}</SelectItem>
+                <SelectItem value="3">{t("roles.names.business").toUpperCase()}</SelectItem>
+                <SelectItem value="4">{t("roles.names.staff").toUpperCase()}</SelectItem>
+                <SelectItem value="5">{t("roles.names.user").toUpperCase()}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -421,12 +473,12 @@ const UserManagePage = () => {
               onValueChange={(val) => handleFilterChange("status", val)}
             >
               <SelectTrigger className="w-[150px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
-                <SelectValue placeholder="TRẠNG THÁI" />
+                <SelectValue placeholder={t("users.table.status")} />
               </SelectTrigger>
               <SelectContent className="rounded-none border-black">
-                <SelectItem value="all">TẤT CẢ</SelectItem>
-                <SelectItem value="active">HOẠT ĐỘNG</SelectItem>
-                <SelectItem value="inactive">ĐÃ KHÓA</SelectItem>
+                <SelectItem value="all">{t("common.all")}</SelectItem>
+                <SelectItem value="active">{t("users.status.active")}</SelectItem>
+                <SelectItem value="inactive">{t("users.status.locked")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -438,7 +490,7 @@ const UserManagePage = () => {
             <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
               <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
               <span className="font-mono text-xs uppercase text-gray-500">
-                LOADING USER DATA...
+                {t("common.loading")}
               </span>
             </div>
           ) : (
@@ -447,15 +499,15 @@ const UserManagePage = () => {
                 <thead>
                   <tr className="bg-black text-white tim-table-header">
                     <th className="p-4 border-r border-black/20 w-[60px]">
-                      ID
+                      {t("users.table.id")}
                     </th>
                     <th className="p-4 border-r border-black/20">
-                      THÔNG TIN CƠ BẢN
+                      {t("users.table.basicInfo")}
                     </th>
-                    <th className="p-4 border-r border-black/20">LIÊN HỆ</th>
-                    <th className="p-4 border-r border-black/20">VAI TRÒ</th>
-                    <th className="p-4 border-r border-black/20">TRẠNG THÁI</th>
-                    <th className="p-4 text-right">THAO TÁC</th>
+                    <th className="p-4 border-r border-black/20">{t("users.table.contact")}</th>
+                    <th className="p-4 border-r border-black/20">{t("users.table.role")}</th>
+                    <th className="p-4 border-r border-black/20">{t("users.table.status")}</th>
+                    <th className="p-4 text-right">{t("users.table.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black/5">
@@ -535,29 +587,46 @@ const UserManagePage = () => {
                             align="end"
                             className="rounded-none border border-black w-48 font-mono text-xs uppercase"
                           >
-                            <DropdownMenuLabel>HÀNH ĐỘNG</DropdownMenuLabel>
+                            <DropdownMenuLabel>{t("common.actions")}</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => handleDetail(user)}
                               className="cursor-pointer"
                             >
-                              <Eye className="mr-2 h-3 w-3" /> CHI TIẾT
+                              <Eye className="mr-2 h-3 w-3" /> {t("users.actions.detail")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleEdit(user)}
                               className="cursor-pointer"
                             >
-                              <Edit className="mr-2 h-3 w-3" /> CHỈNH SỬA
+                              <Edit className="mr-2 h-3 w-3" /> {t("users.actions.edit")}
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer">
-                              <Lock className="mr-2 h-3 w-3" /> ĐỔI MẬT KHẨU
+                            <DropdownMenuItem
+                              onClick={() => handleChangePassword(user)}
+                              className="cursor-pointer"
+                            >
+                              <Lock className="mr-2 h-3 w-3" /> {t("users.actions.changePassword")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleToggleStatus(user)}
+                              className="cursor-pointer"
+                            >
+                              {(user.status === "active" || user.isActive) ? (
+                                <>
+                                  <UserX className="mr-2 h-3 w-3 text-red-600" /> <span className="text-red-600">{t("users.actions.lock", "Khóa tài khoản")}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="mr-2 h-3 w-3 text-green-600" /> <span className="text-green-600">{t("users.actions.unlock", "Kích hoạt")}</span>
+                                </>
+                              )}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => handleDelete(user)}
                               className="text-red-600 hover:bg-red-50 cursor-pointer"
                             >
-                              <Trash2 className="mr-2 h-3 w-3" /> XÓA USER
+                              <Trash2 className="mr-2 h-3 w-3" /> {t("users.actions.delete")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -569,7 +638,7 @@ const UserManagePage = () => {
                       <td colSpan={6} className="p-20 text-center">
                         <UserX className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                         <div className="font-bold uppercase text-gray-400">
-                          KHÔNG TÌM THẤY DỮ LIỆU
+                          {t("common.noData")}
                         </div>
                       </td>
                     </tr>
@@ -583,7 +652,7 @@ const UserManagePage = () => {
           {pagination && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between p-4 border-t border-black bg-gray-50 font-mono text-xs uppercase">
               <div>
-                HIỂN THỊ {users.length} / {pagination.total} KẾT QUẢ
+                {t("users.pagination.showing", { count: users.length, total: pagination.total })}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -592,7 +661,7 @@ const UserManagePage = () => {
                   onClick={() => handleFilterChange("page", filters.page - 1)}
                   className="rounded-none border-black h-8 hover:bg-black hover:text-white"
                 >
-                  TRƯỚC
+                  {t("users.pagination.previous")}
                 </Button>
                 <span className="flex items-center px-4 font-bold">
                   {filters.page}
@@ -603,7 +672,7 @@ const UserManagePage = () => {
                   onClick={() => handleFilterChange("page", filters.page + 1)}
                   className="rounded-none border-black h-8 hover:bg-black hover:text-white"
                 >
-                  SAU
+                  {t("users.pagination.next")}
                 </Button>
               </div>
             </div>
@@ -616,19 +685,15 @@ const UserManagePage = () => {
         <DialogContent className="rounded-none border border-black p-0 overflow-hidden">
           <DialogHeader className="p-6 bg-red-600 text-white">
             <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-              <Activity className="h-6 w-6" /> CẢNH BÁO: QUY TRÌNH XÓA
+              <Activity className="h-6 w-6" /> {t("users.deleteDialog.title")}
             </DialogTitle>
             <DialogDescription className="text-red-100 font-mono text-xs mt-2 uppercase">
-              Thao tác này là vĩnh viễn và không thể hoàn tác. Xin xác nhận.
+              {t("users.deleteDialog.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="p-6 bg-white">
             <p className="font-mono text-sm mb-4">
-              Bạn có chắc chắn muốn xóa tài khoản{" "}
-              <span className="font-bold">
-                [{userToDelete?.username || userToDelete?.email}]
-              </span>{" "}
-              khỏi cơ sở dữ liệu?
+              {t("users.deleteDialog.message", { username: userToDelete?.username || userToDelete?.email })}
             </p>
             <DialogFooter className="gap-2 sm:gap-0">
               <Button
@@ -636,14 +701,14 @@ const UserManagePage = () => {
                 onClick={() => setDeleteDialogOpen(false)}
                 className="rounded-none border-black hover:bg-gray-100"
               >
-                Hủy bỏ
+                {t("common.cancel")}
               </Button>
               <Button
                 variant="destructive"
                 onClick={handleDeleteConfirm}
                 className="rounded-none bg-red-600 hover:bg-red-700 font-bold uppercase"
               >
-                Xác nhận xóa
+                {t("common.confirmDelete")}
               </Button>
             </DialogFooter>
           </div>
@@ -656,6 +721,7 @@ const UserManagePage = () => {
         onClose={() => setShowFormModal(false)}
         user={selectedUser}
         onSuccess={handleSaveUser}
+        mode={formMode}
       />
 
       <UserDetailModal

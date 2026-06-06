@@ -21,6 +21,7 @@ import { useGoogleLogin } from "../../src/modules/auth/hooks/useGoogleLogin";
 import { useAuth } from "../../src/modules/auth/hooks/useAuth";
 import { useLogin } from "../../src/modules/auth/hooks/useLogin";
 import { cn } from "../../src/lib/cn";
+import { useTranslation } from "react-i18next";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -32,6 +33,7 @@ export default function LoginScreen() {
   } = useGoogleLogin();
   const { continueAsGuest } = useAuth();
   const { login, isLoading, error } = useLogin();
+  const { t } = useTranslation();
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -102,8 +104,8 @@ export default function LoginScreen() {
             >
               <MaterialIcons name="travel-explore" size={32} color="#007AFF" />
             </View>
-            <Text className="text-[28px] font-extrabold text-white tracking-[-0.5px]">Đi Đâu Giờ</Text>
-            <Text className="text-sm text-white/60 mt-1 font-medium">Khám phá Cần Thơ theo cách của bạn</Text>
+            <Text className="text-[28px] font-extrabold text-white tracking-[-0.5px]">{t("common.appName")}</Text>
+            <Text className="text-sm text-white/60 mt-1 font-medium">{t("auth.login.brandTagline")}</Text>
           </View>
 
           {/* Glassmorphic Login Card */}
@@ -116,7 +118,7 @@ export default function LoginScreen() {
               shadowRadius: 24,
             } : null}
           >
-            <Text className="text-[30px] font-extrabold  text-[#000000] mb-1.5">Đăng nhập</Text>
+            <Text className="text-[30px] font-extrabold  text-[#000000] mb-1.5">{t("auth.login.title")}</Text>
            
 
             {/* iOS Settings Style Grouped Fields */}
@@ -137,7 +139,7 @@ export default function LoginScreen() {
                   onBlur={() => setIdentifierFocused(false)}
                   autoComplete="username"
                   autoCapitalize="none"
-                  placeholder="Email hoặc username"
+                  placeholder={t("auth.login.emailOrUsername")}
                   placeholderTextColor="#AEAEB2"
                   className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
                   textContentType="username"
@@ -167,7 +169,7 @@ export default function LoginScreen() {
                   secureTextEntry={!showPassword}
                   autoComplete="password"
                   autoCapitalize="none"
-                  placeholder="Mật khẩu"
+                  placeholder={t("auth.login.password")}
                   placeholderTextColor="#AEAEB2"
                   className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
                   textContentType="password"
@@ -227,7 +229,7 @@ export default function LoginScreen() {
                   {isLoading ? (
                     <ActivityIndicator color="#ffffff" size="small" />
                   ) : (
-                    <Text className="text-white text-base font-bold">Đăng nhập</Text>
+                    <Text className="text-white text-base font-bold">{t("auth.login.submit")}</Text>
                   )}
                 </LinearGradient>
               </Pressable>
@@ -236,7 +238,7 @@ export default function LoginScreen() {
             {/* Divider "hoặc" */}
             <View className="flex-row items-center my-6">
               <View className="flex-1 h-[1px] bg-[#E5E5EA]" />
-              <Text className="text-[11px] font-bold text-[#C7C7CC] px-3 tracking-[1px]">HOẶC TIẾP TỤC VỚI</Text>
+              <Text className="text-[11px] font-bold text-[#C7C7CC] px-3 tracking-[1px]">{t("auth.login.orContinueWith")}</Text>
               <View className="flex-1 h-[1px] bg-[#E5E5EA]" />
             </View>
 
@@ -258,7 +260,7 @@ export default function LoginScreen() {
                 ) : (
                   <>
                     <FontAwesome5 name="google" size={15} color="#EA4335" />
-                    <Text className="text-[#1C1C1E] text-[13px] font-semibold">Đăng nhập Google</Text>
+                    <Text className="text-[#1C1C1E] text-[13px] font-semibold">{t("auth.login.googleLogin")}</Text>
                   </>
                 )}
               </Pressable>
@@ -268,16 +270,16 @@ export default function LoginScreen() {
                 className="flex-1 flex-row items-center justify-center h-12 rounded-[14px] bg-[#007AFF]/10 gap-1.5 active:opacity-90 active:scale-[0.98]"
               >
                 <Feather name="compass" size={16} color="#007AFF" />
-                <Text className="text-[#007AFF] text-[13px] font-semibold">Trải nghiệm khách</Text>
+                <Text className="text-[#007AFF] text-[13px] font-semibold">{t("auth.login.guestExperience")}</Text>
               </Pressable>
             </View>
 
             {/* Footer switcher */}
             <View className="flex-row justify-center items-center mt-4 gap-1.5">
-              <Text className="text-[#8E8E93] text-sm font-medium">Chưa có tài khoản?</Text>
+              <Text className="text-[#8E8E93] text-sm font-medium">{t("auth.login.noAccount")}</Text>
               <Link href="/(auth)/register" asChild>
                 <Pressable hitSlop={8} className="active:opacity-70">
-                  <Text className="text-[#007AFF] text-sm font-semibold">Tạo tài khoản mới</Text>
+                  <Text className="text-[#007AFF] text-sm font-semibold">{t("auth.login.createAccount")}</Text>
                 </Pressable>
               </Link>
             </View>

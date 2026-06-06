@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
   interpolate,
@@ -30,6 +31,7 @@ const SPRING_CONFIG = TOKENS.spring.snappy;
 const SCROLL_THRESHOLD = 60;
 
 function ExploreModernHeaderInner({ user, onPressSearch, scrollY }) {
+  const { t } = useTranslation();
   const searchScale = useSharedValue(1);
   const userName = getUserName(user);
   const avatarUri = resolveMediaUrl(
@@ -118,13 +120,12 @@ function ExploreModernHeaderInner({ user, onPressSearch, scrollY }) {
 
       {/* Title - animated */}
       <Animated.View style={[{ marginBottom: 22, overflow: "hidden" }, titleAnimStyle]}>
-        <Text className="text-[26px] text-[#1D1D1F] font-bold tracking-[-0.45px] leading-[32px]">Bạn muốn khám phá gì hôm nay?</Text>
+        <Text className="text-[26px] text-[#1D1D1F] font-bold tracking-[-0.45px] leading-[32px]">{t("explore.header.greeting")}</Text>
         <Animated.Text
           className="mt-2 text-[#54647A] text-sm leading-[20px] font-medium"
           style={subtitleAnimStyle}
         >
-          Chọn danh mục, xem địa điểm nổi bật và bắt đầu hành trình tại Cần
-          Thơ.
+          {t("explore.header.subtitle")}
         </Animated.Text>
       </Animated.View>
 
@@ -156,13 +157,13 @@ function ExploreModernHeaderInner({ user, onPressSearch, scrollY }) {
               />
             </View>
             <Text className="flex-1 ml-1 text-[15px] text-[#54647A] font-medium">
-              Tìm địa điểm, món ăn, hoạt động...
+              {t("explore.header.searchPlaceholder")}
             </Text>
 
             {/* Location Button */}
             <View className="flex-row items-center bg-[#007AFF] h-[42px] pl-3 pr-2.5 rounded-full gap-0.75 shadow-sm elevation-1">
               <MaterialIconsRounded name="place" size={14} color="#FFF" />
-              <Text className="text-white text-[13px] font-semibold">Cần Thơ</Text>
+              <Text className="text-white text-[13px] font-semibold">{t("explore.header.location")}</Text>
               <MaterialIconsRounded name="keyboard-arrow-down" size={14} color="#FFF" />
             </View>
           </View>

@@ -1,4 +1,5 @@
 import api from "@/constants/api";
+import i18n from "@/i18n";
 
 /**
  * Audit Log Service
@@ -147,40 +148,37 @@ export const auditLogService = {
    * @returns {string}
    */
   getActionLabel: (action) => {
-    const labels = {
-      CREATE: "Tạo mới",
-      UPDATE: "Cập nhật",
-      DELETE: "Xóa",
-      UPDATE_ROLE: "Đổi vai trò",
-      UPDATE_PERMISSIONS: "Đổi quyền",
-      ASSIGN_TAGS: "Gán tag",
-      SUBMIT_REVIEW: "Gửi duyệt",
-      APPROVE: "Phê duyệt",
-      REJECT: "Từ chối",
-      UPDATE_STATUS: "Đổi trạng thái",
-      TOGGLE_FEATURED: "Nổi bật",
-      SUSPEND: "Tạm ngưng",
-      REACTIVATE: "Kích hoạt",
-      TERMINATE: "Chấm dứt",
-      SIGN_CONTRACT: "Ký HĐ",
-      UPDATE_DEPOSIT_CONFIG: "CĐ đặt cọc",
-      CONFIRM: "Xác nhận",
-      CANCEL: "Hủy",
-      COMPLETE: "Hoàn thành",
-      NO_SHOW: "Không đến",
-      MARK_PAID: "Đã thanh toán",
-      REFUND: "Hoàn tiền",
-      BULK_CONFIRM: "Xác nhận loạt",
-      BULK_CANCEL: "Hủy loạt",
-      BULK_DEACTIVATE: "Vô hiệu hóa loạt",
-      REPLY: "Trả lời",
-      UPDATE_REPLY: "Sửa trả lời",
-      MODERATE_REPLY: "Duyệt trả lời",
-      DELETE_REPLY: "Xóa trả lời",
-      MODERATE_REVIEW: "Duyệt đánh giá",
-      ADMIN_MODERATE_REVIEW_REPLY: "Admin duyệt trả lời",
+    const t = i18n.t;
+    const keyMap = {
+      CREATE: "create",
+      UPDATE: "update",
+      DELETE: "delete",
+      LOGIN: "login",
+      LOGOUT: "logout",
+      APPROVE: "approve",
+      REJECT: "reject",
+      SUSPEND: "suspend",
+      ACTIVATE: "activate",
+      EXPORT: "export",
+      IMPORT: "import",
+      ASSIGN: "assign",
+      UNASSIGN: "unassign",
+      BOOKMARK: "bookmark",
+      UNBOOKMARK: "unbookmark",
+      FEATURE: "feature",
+      UNFEATURE: "unfeature",
+      LOCK: "lock",
+      UNLOCK: "unlock",
+      VERIFY: "verify",
+      SIGN: "sign",
+      CANCEL: "cancel",
+      REFUND: "refund",
+      PAYOUT: "payout",
+      MODERATE: "moderate",
+      BROADCAST: "broadcast",
     };
-    return labels[action] || action;
+    const key = keyMap[action];
+    return key ? t(`admin.auditLabels.actions.${key}`) : action;
   },
 
   /**
@@ -189,23 +187,26 @@ export const auditLogService = {
    * @returns {string}
    */
   getTableLabel: (tableName) => {
-    const labels = {
-      users: "Người dùng",
-      places: "Địa điểm",
-      businesses: "Doanh nghiệp",
-      business_services: "Dịch vụ",
-      categories: "Danh mục",
-      tags: "Tag",
-      bookings: "Đặt chỗ",
-      vouchers: "Mã giảm giá",
-      reviews: "Đánh giá",
-      review_replies: "Trả lời ĐG",
-      roles: "Vai trò",
-      permissions: "Quyền hạn",
-      role_permissions: "Quyền vai trò",
-      user_permissions: "Quyền người dùng",
+    const t = i18n.t;
+    const keyMap = {
+      user: "user",
+      place: "place",
+      business: "business",
+      booking: "booking",
+      review: "review",
+      category: "category",
+      tag: "tag",
+      service: "service",
+      voucher: "voucher",
+      notification: "notification",
+      setting: "setting",
+      role: "role",
+      payout: "payout",
+      trip: "trip",
+      event: "event",
     };
-    return labels[tableName] || tableName;
+    const key = keyMap[tableName];
+    return key ? t(`admin.auditLabels.tables.${key}`) : tableName;
   },
 
   /**

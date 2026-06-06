@@ -46,107 +46,110 @@ import {
 } from "@/components/ui/table";
 import { Link } from "react-router-dom";
 import { ADMIN_ROUTES } from "@/constants/routes";
-
-const STATUS_MAP = {
-  approved: {
-    label: "Đã duyệt",
-    icon: IconCircleCheckFilled,
-    color: "fill-green-500 dark:fill-green-400",
-    badgeClass: "text-green-700 bg-green-50 border-green-200",
-  },
-  pending: {
-    label: "Chờ duyệt",
-    icon: IconClock,
-    color: "text-yellow-500",
-    badgeClass: "text-yellow-700 bg-yellow-50 border-yellow-200",
-  },
-  rejected: {
-    label: "Từ chối",
-    icon: IconX,
-    color: "text-red-500",
-    badgeClass: "text-red-700 bg-red-50 border-red-200",
-  },
-};
-
-const columns = [
-  {
-    accessorKey: "name",
-    header: "Tên địa điểm",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <Link
-          to={`${ADMIN_ROUTES.PLACES}/${row.original.id}`}
-          className="font-medium text-sm hover:text-primary transition-colors line-clamp-1 max-w-[200px]"
-        >
-          {row.original.name}
-        </Link>
-        {row.original.isFeatured && (
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-            <IconStarFilled className="h-3 w-3 fill-yellow-400 text-yellow-400 mr-1" />
-            HOT
-          </Badge>
-        )}
-      </div>
-    ),
-    enableHiding: false,
-  },
-  {
-    accessorKey: "status",
-    header: "Trạng thái",
-    cell: ({ row }) => {
-      const status = STATUS_MAP[row.original.status] || STATUS_MAP.pending;
-      const StatusIcon = status.icon;
-      return (
-        <Badge variant="outline" className={`px-1.5 ${status.badgeClass}`}>
-          <StatusIcon className={`h-3.5 w-3.5 ${status.color}`} />
-          {status.label}
-        </Badge>
-      );
-    },
-  },
-  {
-    accessorKey: "averageRating",
-    header: "Đánh giá",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-1">
-        <IconStarFilled className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-        <span className="font-mono text-xs">
-          {row.original.averageRating
-            ? Number(row.original.averageRating).toFixed(1)
-            : "—"}
-        </span>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "createdAt",
-    header: "Ngày tạo",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground text-xs">
-        {row.original.createdAt
-          ? new Date(row.original.createdAt).toLocaleDateString("vi-VN", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-          : "—"}
-      </span>
-    ),
-  },
-  {
-    id: "actions",
-    header: "",
-    cell: ({ row }) => (
-      <Link to={`${ADMIN_ROUTES.PLACES}/${row.original.id}`}>
-        <Button variant="ghost" size="sm" className="h-7 text-xs">
-          Chi tiết
-        </Button>
-      </Link>
-    ),
-  },
-];
+import { useTranslation } from "react-i18next";
 
 export default function RecentPlacesTable({ places }) {
+  const { t } = useTranslation();
+
+  const STATUS_MAP = {
+    approved: {
+      label: t("admin.recentTable.approved"),
+      icon: IconCircleCheckFilled,
+      color: "fill-green-500 dark:fill-green-400",
+      badgeClass: "text-green-700 bg-green-50 border-green-200",
+    },
+    pending: {
+      label: t("admin.recentTable.pending"),
+      icon: IconClock,
+      color: "text-yellow-500",
+      badgeClass: "text-yellow-700 bg-yellow-50 border-yellow-200",
+    },
+    rejected: {
+      label: t("admin.recentTable.rejected"),
+      icon: IconX,
+      color: "text-red-500",
+      badgeClass: "text-red-700 bg-red-50 border-red-200",
+    },
+  };
+
+  const columns = [
+    {
+      accessorKey: "name",
+      header: t("admin.recentTable.placeName"),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Link
+            to={`${ADMIN_ROUTES.PLACES}/${row.original.id}`}
+            className="font-medium text-sm hover:text-primary transition-colors line-clamp-1 max-w-[200px]"
+          >
+            {row.original.name}
+          </Link>
+          {row.original.isFeatured && (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+              <IconStarFilled className="h-3 w-3 fill-yellow-400 text-yellow-400 mr-1" />
+              {t("admin.recentTable.hot")}
+            </Badge>
+          )}
+        </div>
+      ),
+      enableHiding: false,
+    },
+    {
+      accessorKey: "status",
+      header: t("admin.recentTable.status"),
+      cell: ({ row }) => {
+        const status = STATUS_MAP[row.original.status] || STATUS_MAP.pending;
+        const StatusIcon = status.icon;
+        return (
+          <Badge variant="outline" className={`px-1.5 ${status.badgeClass}`}>
+            <StatusIcon className={`h-3.5 w-3.5 ${status.color}`} />
+            {status.label}
+          </Badge>
+        );
+      },
+    },
+    {
+      accessorKey: "averageRating",
+      header: t("admin.recentTable.rating"),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1">
+          <IconStarFilled className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+          <span className="font-mono text-xs">
+            {row.original.averageRating
+              ? Number(row.original.averageRating).toFixed(1)
+              : "—"}
+          </span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "createdAt",
+      header: t("admin.recentTable.createdDate"),
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-xs">
+          {row.original.createdAt
+            ? new Date(row.original.createdAt).toLocaleDateString("vi-VN", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+            : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: ({ row }) => (
+        <Link to={`${ADMIN_ROUTES.PLACES}/${row.original.id}`}>
+          <Button variant="ghost" size="sm" className="h-7 text-xs">
+            {t("admin.recentTable.viewDetail")}
+          </Button>
+        </Link>
+      ),
+    },
+  ];
+
   const [sorting, setSorting] = useState([]);
   const [columnFilters, setColumnFilters] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({});
@@ -180,11 +183,18 @@ export default function RecentPlacesTable({ places }) {
     getSortedRowModel: getSortedRowModel(),
   });
 
+  const COLUMN_NAME_MAP = {
+    name: t("admin.recentTable.columnName"),
+    status: t("admin.recentTable.columnStatus"),
+    averageRating: t("admin.recentTable.columnRating"),
+    createdAt: t("admin.recentTable.columnCreatedDate"),
+  };
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between py-4">
         <Input
-          placeholder="Tìm kiếm địa điểm..."
+          placeholder={t("admin.recentTable.searchPlaceholder")}
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="max-w-sm"
@@ -194,7 +204,7 @@ export default function RecentPlacesTable({ places }) {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <IconLayoutColumns />
-                <span className="hidden lg:inline">Cột</span>
+                <span className="hidden lg:inline">{t("admin.recentTable.columns")}</span>
                 <IconChevronDown />
               </Button>
             </DropdownMenuTrigger>
@@ -209,22 +219,14 @@ export default function RecentPlacesTable({ places }) {
                     checked={column.getIsVisible()}
                     onCheckedChange={(value) => column.toggleVisibility(!!value)}
                   >
-                    {column.id === "name"
-                      ? "Tên"
-                      : column.id === "status"
-                        ? "Trạng thái"
-                        : column.id === "averageRating"
-                          ? "Đánh giá"
-                          : column.id === "createdAt"
-                            ? "Ngày tạo"
-                            : column.id}
+                    {COLUMN_NAME_MAP[column.id] || column.id}
                   </DropdownMenuCheckboxItem>
                 ))}
             </DropdownMenuContent>
           </DropdownMenu>
           <Link to={ADMIN_ROUTES.PLACES}>
             <Button variant="outline" size="sm">
-              Xem tất cả
+              {t("admin.recentTable.viewAll")}
             </Button>
           </Link>
         </div>
@@ -270,7 +272,7 @@ export default function RecentPlacesTable({ places }) {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  Chưa có dữ liệu.
+                  {t("admin.recentTable.noData")}
                 </TableCell>
               </TableRow>
             )}
@@ -279,12 +281,12 @@ export default function RecentPlacesTable({ places }) {
       </div>
       <div className="flex items-center justify-between px-4 py-4">
         <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-          {table.getFilteredRowModel().rows.length} địa điểm
+          {t("admin.recentTable.placeCount", { count: table.getFilteredRowModel().rows.length })}
         </div>
         <div className="flex w-full items-center gap-8 lg:w-fit">
           <div className="hidden items-center gap-2 lg:flex">
             <Label htmlFor="rpp" className="text-sm font-medium">
-              Hiển thị
+              {t("admin.recentTable.show")}
             </Label>
             <Select
               value={`${table.getState().pagination.pageSize}`}
@@ -303,8 +305,7 @@ export default function RecentPlacesTable({ places }) {
             </Select>
           </div>
           <div className="flex w-fit items-center justify-center text-sm font-medium">
-            Trang {table.getState().pagination.pageIndex + 1} /{" "}
-            {table.getPageCount()}
+            {t("admin.recentTable.pageInfo", { current: table.getState().pagination.pageIndex + 1, total: table.getPageCount() })}
           </div>
           <div className="ml-auto flex items-center gap-2 lg:ml-0">
             <Button
@@ -313,7 +314,7 @@ export default function RecentPlacesTable({ places }) {
               onClick={() => table.setPageIndex(0)}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">Trang đầu</span>
+              <span className="sr-only">{t("admin.recentTable.firstPage")}</span>
               <IconChevronsLeft />
             </Button>
             <Button
@@ -323,7 +324,7 @@ export default function RecentPlacesTable({ places }) {
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">Trang trước</span>
+              <span className="sr-only">{t("admin.recentTable.prevPage")}</span>
               <IconChevronLeft />
             </Button>
             <Button
@@ -333,7 +334,7 @@ export default function RecentPlacesTable({ places }) {
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">Trang sau</span>
+              <span className="sr-only">{t("admin.recentTable.nextPage")}</span>
               <IconChevronRight />
             </Button>
             <Button
@@ -343,7 +344,7 @@ export default function RecentPlacesTable({ places }) {
               onClick={() => table.setPageIndex(table.getPageCount() - 1)}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">Trang cuối</span>
+              <span className="sr-only">{t("admin.recentTable.lastPage")}</span>
               <IconChevronsRight />
             </Button>
           </div>

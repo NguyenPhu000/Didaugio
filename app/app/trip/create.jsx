@@ -34,6 +34,7 @@ import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../src/constants/
 import { HeroSection } from "../../src/modules/trips/components/create-trip/HeroSection";
 import { SavedPlacesGrid } from "../../src/modules/trips/components/create-trip/SavedPlacesGrid";
 import s, { T } from "../../src/modules/trips/utils/tripDetailTokens";
+import { useTranslation } from "react-i18next";
 
 function calcTotalDays(start, end) {
   if (!start || !end) return null;
@@ -70,6 +71,7 @@ function DurationBadge({ days }) {
 }
 
 export default function CreateTripScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -143,16 +145,16 @@ export default function CreateTripScreen() {
       e.preventDefault();
 
       Alert.alert(
-        "Hủy tạo chuyến đi",
-        "Bạn có chắc chắn muốn thoát? Các thông tin đã nhập sẽ không được lưu.",
+        t("trip.create.cancelAlert"),
+        t("trip.create.cancelMessage"),
         [
           {
-            text: "Tiếp tục chỉnh sửa",
+            text: t("trip.create.continueEditing"),
             style: "cancel",
             onPress: () => {},
           },
           {
-            text: "Hủy bỏ",
+            text: t("common.cancel"),
             style: "destructive",
             onPress: () => {
               hasSavedRef.current = true;
@@ -192,7 +194,7 @@ export default function CreateTripScreen() {
                   placeId,
                   dayNumber: 1,
                   order: index,
-                  note: "Thêm từ địa điểm đã lưu",
+                  note: t("trip.create.addFromSaved"),
                 }),
               ),
             );
@@ -211,11 +213,11 @@ export default function CreateTripScreen() {
 
         if (!destinationsAdded) {
           Alert.alert(
-            "Tạo chuyến đi thành công",
-            "Chuyến đi đã được tạo, nhưng gặp lỗi khi thêm các địa điểm đã lưu. Bạn có thể bổ sung địa điểm sau trong trang chi tiết.",
+            t("trip.create.success"),
+            t("trip.create.partialSuccessMessage"),
             [
               {
-                text: "Đồng ý",
+                text: t("common.ok"),
                 onPress: () => router.replace(`/trip/${newId}`),
               },
             ]
@@ -230,7 +232,7 @@ export default function CreateTripScreen() {
       hasSavedRef.current = false;
       const serverMessage = error?.response?.data?.message;
       setDestinationError(
-        serverMessage || error?.message || "Có lỗi xảy ra, vui lòng thử lại.",
+        serverMessage || error?.message || t("common.genericError"),
       );
     } finally {
       setIsAddingDestinations(false);
@@ -250,9 +252,9 @@ export default function CreateTripScreen() {
 
   const daysLabel =
     totalDays !== null
-      ? `${totalDays} ngày`
+      ? t("trip.create.duration", { count: totalDays })
       : startDate && !endDate
-        ? "Chọn ngày kết thúc"
+        ? t("trip.create.selectEndDate")
         : null;
 
   const ctaAnimatedStyle = useAnimatedStyle(() => ({
@@ -284,7 +286,7 @@ export default function CreateTripScreen() {
         >
           <MaterialIconsRounded name="close" size={20} color={T.ink} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Chuyến đi mới</Text>
+        <Text style={styles.headerTitle}>{t("trip.create.title")}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -300,7 +302,7 @@ export default function CreateTripScreen() {
         <HeroSection />
 
         {/* ── Trip Info ── */}
-        <Section icon="description" label="Thông tin chuyến đi" delay={100}>
+        <Section icon="description" label={t("trip.create.info")} delay={100}>
           <View style={styles.card}>
             <View style={styles.inputRow}>
               <MaterialIconsRounded
@@ -312,7 +314,7 @@ export default function CreateTripScreen() {
               <TextInput
                 value={title}
                 onChangeText={setTitle}
-                placeholder="Tên chuyến đi"
+                placeholder={t("trip.create.namePlaceholder")}
                 placeholderTextColor={T.muted48}
                 style={styles.textInput}
                 returnKeyType="next"
@@ -329,7 +331,7 @@ export default function CreateTripScreen() {
               <TextInput
                 value={description}
                 onChangeText={setDescription}
-                placeholder="Mô tả ngắn về chuyến đi (tùy chọn)"
+                placeholder={t("trip.create.descPlaceholder")}
                 placeholderTextColor={T.muted48}
                 multiline
                 textAlignVertical="top"
@@ -340,21 +342,21 @@ export default function CreateTripScreen() {
         </Section>
 
         {/* ── Dates ── */}
-        <Section icon="event" label="Thời gian" delay={200}>
+        <Section icon="event" label={t("trip.create.time")} delay={200}>
           <View style={styles.card}>
             <CustomDatePicker
-              label="Ngày bắt đầu"
+              label={t("trip.create.startDate")}
               value={startDate}
               onChange={handleStartDate}
-              placeholder="Chọn ngày"
+              placeholder={t("trip.create.selectDate")}
             />
             <View style={styles.divider} />
             <CustomDatePicker
-              label="Ngày kết thúc"
+              label={t("trip.create.endDate")}
               value={endDate}
               onChange={setEndDate}
               minimumDate={startDate ?? undefined}
-              placeholder="Chọn ngày"
+              placeholder={t("trip.create.selectDate")}
             />
 
             <DurationBadge days={daysLabel} />
@@ -363,7 +365,7 @@ export default function CreateTripScreen() {
               <View style={styles.warningRow}>
                 <MaterialIconsRounded name="error-outline" size={16} color={T.danger} />
                 <Text style={styles.warningText}>
-                  Ngày kết thúc phải sau ngày bắt đầu
+                  {t("trip.create.endDateError")}
                 </Text>
               </View>
             ) : null}
@@ -371,7 +373,7 @@ export default function CreateTripScreen() {
         </Section>
 
         {/* ── Saved Places ── */}
-        <Section icon="bookmark" label="Địa điểm đã lưu" delay={300}>
+        <Section icon="bookmark" label={t("trip.create.savedPlaces")} delay={300}>
           <View style={styles.card}>
             <SavedPlacesGrid
               savedPlaces={savedPlacesPreview}
@@ -393,7 +395,7 @@ export default function CreateTripScreen() {
             <Text style={styles.errorText}>
               {destinationError ||
                 createMutation.error?.message ||
-                "Có lỗi xảy ra, vui lòng thử lại"}
+                t("common.genericError")}
             </Text>
           </Animated.View>
         ) : null}
@@ -425,8 +427,8 @@ export default function CreateTripScreen() {
                   ]}
                 >
                   {isAddingDestinations
-                    ? "Đang thêm địa điểm..."
-                    : "Tạo chuyến đi"}
+                    ? t("trip.create.addingPlaces")
+                    : t("trip.create.submit")}
                 </Text>
               </View>
             )}

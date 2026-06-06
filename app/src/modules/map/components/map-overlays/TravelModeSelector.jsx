@@ -1,15 +1,16 @@
 import { memo } from "react";
 import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { BlurView } from "expo-blur";
 import { TOKENS } from "../../../../constants/design-tokens";
 import { cn } from "../../../../lib/cn";
 
 const TRAVEL_MODES = [
-  { id: "motorcycle", icon: "motorcycle", label: "Xe máy" },
-  { id: "driving", icon: "directions-car", label: "Ô tô" },
-  { id: "cycling", icon: "directions-bike", label: "Xe đạp" },
-  { id: "walking", icon: "directions-walk", label: "Đi bộ" },
+  { id: "motorcycle", icon: "motorcycle", labelKey: "travelMode.motorbike" },
+  { id: "driving", icon: "directions-car", labelKey: "travelMode.car" },
+  { id: "cycling", icon: "directions-bike", labelKey: "travelMode.bicycle" },
+  { id: "walking", icon: "directions-walk", labelKey: "travelMode.walking" },
 ];
 
 const TravelModeSelector = memo(function TravelModeSelector({
@@ -22,6 +23,7 @@ const TravelModeSelector = memo(function TravelModeSelector({
   onToggleExpand,
   style,
 }) {
+  const { t } = useTranslation();
   const activeModeItem = TRAVEL_MODES.find((m) => m.id === currentMode) || TRAVEL_MODES[0];
 
   // Nếu ở dạng compact và chưa được expand (dành cho Active Trip)
@@ -50,7 +52,7 @@ const TravelModeSelector = memo(function TravelModeSelector({
               className="text-[11px] font-semibold"
               style={{ color: "#FFFFFF", fontFamily: TOKENS.font.semibold }}
             >
-              {activeModeItem.label}
+              {t(activeModeItem.labelKey)}
             </Text>
             <MaterialIconsRounded name="keyboard-arrow-down" size={16} color="rgba(255,255,255,0.6)" />
           </Pressable>
@@ -128,7 +130,7 @@ const TravelModeSelector = memo(function TravelModeSelector({
               className="text-[11px] font-semibold"
               style={{ color: "#FFFFFF", fontFamily: TOKENS.font.semibold }}
             >
-              Phương thức di chuyển
+              {t("travelMode.title")}
             </Text>
             <MaterialIconsRounded name="keyboard-arrow-up" size={16} color="#FFFFFF" />
           </Pressable>
@@ -174,7 +176,7 @@ const TravelModeSelector = memo(function TravelModeSelector({
                     fontFamily: isSelected ? TOKENS.font.bold : TOKENS.font.medium,
                   }}
                 >
-                  {mode.label}
+                  {t(mode.labelKey)}
                 </Text>
               </Pressable>
             );
@@ -232,7 +234,7 @@ const TravelModeSelector = memo(function TravelModeSelector({
               fontWeight: avoidFerry ? "600" : undefined,
             }}
           >
-            {avoidFerry ? "Đang tránh đi phà" : "Tránh đi phà"}
+            {avoidFerry ? t("travelMode.avoidFerry") : t("travelMode.avoidFerryLabel")}
           </Text>
           <View
             className="justify-center rounded-full"

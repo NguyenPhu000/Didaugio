@@ -2,6 +2,7 @@
  * exploreHelpers.js — Pure helper functions for the Explore screen.
  * No React imports, no side effects. Easily testable.
  */
+import i18n from "@/i18n";
 
 export function normalizeText(value = "") {
   return value
@@ -26,14 +27,14 @@ export function getUserName(user) {
   }
 
   const emailName = user?.email?.split("@")?.[0];
-  return emailName || "Bạn";
+  return emailName || i18n.t("exploreHelpers.you");
 }
 
 export function getGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return "Chào buổi sáng";
-  if (hour < 18) return "Chào bạn";
-  return "Chào buổi tối";
+  if (hour < 12) return i18n.t("exploreHelpers.goodMorning");
+  if (hour < 18) return i18n.t("exploreHelpers.hello");
+  return i18n.t("exploreHelpers.goodEvening");
 }
 
 export function getCategoryIcon(name = "") {
@@ -65,16 +66,16 @@ export function getCategoryIcon(name = "") {
 }
 
 export function formatCount(value) {
-  if (!value) return "Mới";
+  if (!value) return i18n.t("exploreHelpers.new");
   if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
   return String(value);
 }
 
 export function formatRatingLabel(place) {
   const n = Number(place?.ratingCount ?? place?.reviewCount ?? place?._count?.reviews ?? 0);
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k đánh giá`;
-  if (n > 0) return `${n} đánh giá`;
-  return "Mới";
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k ${i18n.t("exploreHelpers.reviews")}`;
+  if (n > 0) return `${n} ${i18n.t("exploreHelpers.reviews")}`;
+  return i18n.t("exploreHelpers.new");
 }
 
 export function formatPriceLine(place) {
@@ -82,7 +83,7 @@ export function formatPriceLine(place) {
   if (from != null) {
     const n = Number(from);
     if (n === 0) {
-      return { main: "Miễn phí", suffix: "" };
+      return { main: i18n.t("exploreHelpers.free"), suffix: "" };
     }
     if (n > 0) {
       let main;
@@ -93,16 +94,16 @@ export function formatPriceLine(place) {
       } else {
         main = `${n}đ`;
       }
-      return { main, suffix: "/lượt" };
+      return { main, suffix: i18n.t("exploreHelpers.perTurn") };
     }
   }
 
   if (place?.priceRange) {
     const pr = String(place.priceRange).toUpperCase();
-    if (pr === "FREE") return { main: "Miễn phí", suffix: "" };
-    if (pr === "BUDGET") return { main: "Giá rẻ", suffix: "" };
-    if (pr === "MODERATE") return { main: "Bình dân", suffix: "" };
-    if (pr === "EXPENSIVE") return { main: "Cao cấp", suffix: "" };
+    if (pr === "FREE") return { main: i18n.t("exploreHelpers.free"), suffix: "" };
+    if (pr === "BUDGET") return { main: i18n.t("exploreHelpers.cheap"), suffix: "" };
+    if (pr === "MODERATE") return { main: i18n.t("exploreHelpers.budget"), suffix: "" };
+    if (pr === "EXPENSIVE") return { main: i18n.t("exploreHelpers.premium"), suffix: "" };
     return { main: pr, suffix: "" };
   }
   return null;
@@ -114,17 +115,15 @@ export function getPlaceLocation(place) {
     .slice(0, 2)
     .join(", ");
 
-  if (!location) return "Cần Thơ";
+  if (!location) return i18n.t("exploreHelpers.canTho");
   return location;
 }
 
-// Hoist the Intl formatter (per js-hoist-intl rule)
-const DATE_FORMATTER = new Intl.DateTimeFormat("vi-VN", {
-  weekday: "short",
-  day: "numeric",
-  month: "numeric",
-});
-
 export function getWeatherLabel() {
-  return DATE_FORMATTER.format(new Date()).toUpperCase();
+  const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
+  return new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    day: "numeric",
+    month: "numeric",
+  }).format(new Date()).toUpperCase();
 }

@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
 import { MODULE_DISPLAY_NAMES } from "@/constants/permissions";
+import { useTranslation } from "react-i18next";
 
 export function PermissionList({ permissions, modules }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
 
   const filteredData = useMemo(() => {
@@ -42,7 +44,7 @@ export function PermissionList({ permissions, modules }) {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Tìm kiếm quyền..."
+          placeholder={t("role.permissionList.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -53,7 +55,7 @@ export function PermissionList({ permissions, modules }) {
         <Card>
           <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">
-              Không tìm thấy quyền nào phù hợp
+              {t("role.permissionList.noResults")}
             </p>
           </CardContent>
         </Card>
@@ -68,7 +70,7 @@ export function PermissionList({ permissions, modules }) {
                       {MODULE_DISPLAY_NAMES[module] || module}
                     </CardTitle>
                     <CardDescription>
-                      {filteredData.permissions[module].length} quyền
+                      {t("role.permissionList.permissionCount", { count: filteredData.permissions[module].length })}
                     </CardDescription>
                   </div>
                   <Badge variant="secondary">{module}</Badge>

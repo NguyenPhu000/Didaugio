@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Alert, RefreshControl, ScrollView, Text, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import Animated, { 
   useSharedValue, 
   useAnimatedScrollHandler 
@@ -34,6 +35,7 @@ import {
 import { TAB_BAR_HEIGHT } from "./_layout";
 
 export default function SavedScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -102,7 +104,7 @@ export default function SavedScreen() {
       });
       handleCloseNoteEditor();
     } catch {
-      Alert.alert("Không lưu được ghi chú", "Vui lòng thử lại sau ít phút.");
+      Alert.alert(t("saved.alert.noteError"), t("common.tryAgain"));
     }
   }, [
     handleCloseNoteEditor,
@@ -115,12 +117,12 @@ export default function SavedScreen() {
     (placeId) => {
       if (!placeId || unsaveMutation.isPending) return;
       Alert.alert(
-        "Bỏ lưu địa điểm?",
-        "Địa điểm này sẽ được gỡ khỏi danh sách yêu thích.",
+        t("saved.alert.unsaveTitle"),
+        t("common.confirmDelete"),
         [
-          { text: "Hủy", style: "cancel" },
+          { text: t("common.cancel"), style: "cancel" },
           {
-            text: "Bỏ lưu",
+            text: t("common.delete"),
             style: "destructive",
             onPress: () => unsaveMutation.mutate(placeId),
           },
@@ -180,7 +182,7 @@ export default function SavedScreen() {
 
   // Build category items with counts
   const catItems = useMemo(() => {
-    const items = [{ key: ALL_CATEGORIES_KEY, name: "Tất cả", count: savedData.length }];
+    const items = [{ key: ALL_CATEGORIES_KEY, name: t("common.all"), count: savedData.length }];
     categoryOptions.forEach((opt) => {
       const count = savedData.filter((entry) => {
         const place = entry?.place || entry;
@@ -196,7 +198,7 @@ export default function SavedScreen() {
 
   // Build area items with counts
   const areaItems = useMemo(() => {
-    const items = [{ key: ALL_AREAS_KEY, name: "Tất cả", count: savedData.length }];
+    const items = [{ key: ALL_AREAS_KEY, name: t("common.all"), count: savedData.length }];
     areaOptions.forEach((opt) => {
       const count = savedData.filter((entry) => {
         const place = entry?.place || entry;
@@ -224,7 +226,7 @@ export default function SavedScreen() {
         {/* Tiêu đề + Badge */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <Text style={{ fontSize: 28, fontFamily: TOKENS.font.heading, color: "#0F172A", letterSpacing: -0.8 }}>
-            Yêu thích
+            {t("saved.title")}
           </Text>
           {filteredSavedData.length > 0 && (
             <View style={{ height: 26, borderRadius: 13, paddingHorizontal: 10, backgroundColor: "rgba(0,0,0,0.06)", alignItems: "center", justifyContent: "center" }}>
@@ -283,7 +285,7 @@ export default function SavedScreen() {
                         marginTop: 1,
                       }}
                     >
-                      {item.count} địa điểm
+                      {t("saved.countLabel", { count: item.count })}
                     </Text>
                   </Pressable>
                   {item.count > 0 && !active ? (
@@ -360,7 +362,7 @@ export default function SavedScreen() {
                         marginTop: 1,
                       }}
                     >
-                      {item.count} địa điểm
+                      {t("saved.countLabel", { count: item.count })}
                     </Text>
                   </Pressable>
                   {item.count > 0 && !active ? (
@@ -397,8 +399,8 @@ export default function SavedScreen() {
     return (
       <GuestGate
         icon="bookmark-border"
-        title="Đăng nhập để lưu địa điểm"
-        description="Danh sách yêu thích sẽ được đồng bộ với tài khoản của bạn trên mọi thiết bị."
+        title={t("guestGate.title")}
+        description={t("guestGate.description")}
       />
     );
   }

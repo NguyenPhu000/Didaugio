@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/stores/authStore";
 import { dashboardService } from "@/apis/dashboardService";
 import "@/lib/chartSetup";
@@ -38,7 +39,7 @@ import {
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
 
-const StatCard = ({ title, value, subtitle, icon: Icon, trend, trendValue, className }) => (
+const StatCard = ({ title, value, subtitle, icon: Icon, trend, trendValue, className, t }) => (
   <Card className={cn("relative overflow-hidden", className)}>
     <CardContent className="p-6">
       <div className="flex items-start justify-between">
@@ -58,7 +59,7 @@ const StatCard = ({ title, value, subtitle, icon: Icon, trend, trendValue, class
               ) : trend === "down" ? (
                 <ArrowDownRight className="h-3 w-3" />
               ) : null}
-              <span>{trendValue}% so với tuần trước</span>
+              <span>{trendValue}% {t("admin.analytics.vsLastWeek")}</span>
             </div>
           )}
         </div>
@@ -124,7 +125,7 @@ const FunnelChart = ({ data }) => {
 
 // ─── Conversion Rate Card ───────────────────────────────────────────────────────
 
-const ConversionCard = ({ title, fromStep, toStep, rate, count }) => (
+const ConversionCard = ({ title, fromStep, toStep, rate, count, t }) => (
   <Card className="bg-gradient-to-br from-primary/5 to-transparent">
     <CardContent className="p-4">
       <div className="flex items-center justify-between">
@@ -136,7 +137,7 @@ const ConversionCard = ({ title, fromStep, toStep, rate, count }) => (
           <p className="text-xs text-muted-foreground">
             {fromStep} → {toStep}
           </p>
-          <p className="text-sm font-semibold">{count} đơn</p>
+          <p className="text-sm font-semibold">{count} {t("admin.analytics.orders")}</p>
         </div>
       </div>
     </CardContent>
@@ -145,19 +146,19 @@ const ConversionCard = ({ title, fromStep, toStep, rate, count }) => (
 
 // ─── Product Analytics Chart Config ────────────────────────────────────────────
 
-const getProductFunnelData = (stats) => [
-  { label: "Lượt xem", value: stats?.totalViews || 0, color: "#3b82f6" },
-  { label: "Chi tiết", value: Math.round((stats?.totalViews || 0) * 0.35), color: "#8b5cf6" },
-  { label: "Đặt chỗ", value: stats?.totalBookings || 0, color: "#f59e0b" },
-  { label: "Xác nhận", value: Math.round((stats?.totalBookings || 0) * 0.78), color: "#10b981" },
-  { label: "Hoàn thành", value: Math.round((stats?.totalBookings || 0) * 0.65), color: "#06b6d4" },
+const getProductFunnelData = (stats, t) => [
+  { label: t("admin.analytics.funnelViews"), value: stats?.totalViews || 0, color: "#3b82f6" },
+  { label: t("admin.analytics.funnelDetails"), value: Math.round((stats?.totalViews || 0) * 0.35), color: "#8b5cf6" },
+  { label: t("admin.analytics.funnelBookings"), value: stats?.totalBookings || 0, color: "#f59e0b" },
+  { label: t("admin.analytics.funnelConfirmed"), value: Math.round((stats?.totalBookings || 0) * 0.78), color: "#10b981" },
+  { label: t("admin.analytics.funnelCompleted"), value: Math.round((stats?.totalBookings || 0) * 0.65), color: "#06b6d4" },
 ];
 
-const getActivityChartConfig = (data) => ({
+const getActivityChartConfig = (data, t) => ({
   labels: data?.map(d => d.date) || [],
   datasets: [
     {
-      label: "Lượt xem",
+      label: t("admin.analytics.chartViews"),
       data: data?.map(d => d.views) || [],
       borderColor: "#3b82f6",
       backgroundColor: "rgba(59, 130, 246, 0.1)",
@@ -165,7 +166,7 @@ const getActivityChartConfig = (data) => ({
       tension: 0.4,
     },
     {
-      label: "Đặt chỗ",
+      label: t("admin.analytics.chartBookings"),
       data: data?.map(d => d.bookings) || [],
       borderColor: "#10b981",
       backgroundColor: "rgba(16, 185, 129, 0.1)",
@@ -198,6 +199,7 @@ const activityChartOptions = {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const AdminAnalyticsPage = () => {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("7d");
@@ -228,35 +230,35 @@ const AdminAnalyticsPage = () => {
     loadData();
   }, [timeRange]);
 
-  const funnelData = getProductFunnelData(stats);
-  const activityConfig = getActivityChartConfig(activityData);
+  const funnelData = getProductFunnelData(stats, t);
+  const activityConfig = getActivityChartConfig(activityData, t);
 
   const conversionRates = [
     {
       title: "View → Detail",
-      fromStep: "Xem",
-      toStep: "Chi tiết",
+      fromStep: t("admin.analytics.viewToDetailView"),
+      toStep: t("admin.analytics.viewToDetailDetail"),
       rate: 35,
       count: Math.round((stats?.places?.totalViews || 0) * 0.35),
     },
     {
       title: "Detail → Booking",
-      fromStep: "Chi tiết",
-      toStep: "Đặt chỗ",
+      fromStep: t("admin.analytics.detailToBookingDetail"),
+      toStep: t("admin.analytics.detailToBookingBooking"),
       rate: 12,
       count: Math.round((stats?.places?.totalViews || 0) * 0.35 * 0.12),
     },
     {
       title: "Booking → Confirm",
-      fromStep: "Đặt",
-      toStep: "Xác nhận",
+      fromStep: t("admin.analytics.bookingToConfirmBooking"),
+      toStep: t("admin.analytics.bookingToConfirmConfirm"),
       rate: 78,
       count: Math.round((stats?.places?.totalViews || 0) * 0.35 * 0.12 * 0.78),
     },
     {
       title: "Confirm → Complete",
-      fromStep: "Xác nhận",
-      toStep: "Hoàn thành",
+      fromStep: t("admin.analytics.confirmToCompleteConfirm"),
+      toStep: t("admin.analytics.confirmToCompleteComplete"),
       rate: 85,
       count: Math.round((stats?.places?.totalViews || 0) * 0.35 * 0.12 * 0.78 * 0.85),
     },
@@ -290,9 +292,9 @@ const AdminAnalyticsPage = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Thống kê nâng cao</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t("admin.analytics.title")}</h1>
             <p className="text-muted-foreground mt-1">
-              Phân tích funnel conversion và hiệu suất sản phẩm
+              {t("admin.analytics.subtitle")}
             </p>
           </div>
           <Select value={timeRange} onValueChange={setTimeRange}>
@@ -300,9 +302,9 @@ const AdminAnalyticsPage = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="7d">7 ngày qua</SelectItem>
-              <SelectItem value="30d">30 ngày qua</SelectItem>
-              <SelectItem value="90d">90 ngày qua</SelectItem>
+              <SelectItem value="7d">{t("admin.analytics.last7Days")}</SelectItem>
+              <SelectItem value="30d">{t("admin.analytics.last30Days")}</SelectItem>
+              <SelectItem value="90d">{t("admin.analytics.last90Days")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -310,34 +312,38 @@ const AdminAnalyticsPage = () => {
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Tổng lượt xem"
+            title={t("admin.analytics.totalViews")}
             value={(stats?.places?.totalViews || 0).toLocaleString()}
-            subtitle={`Trung bình ${((stats?.places?.totalViews || 0) / 30).toFixed(0)}/ngày`}
+            subtitle={t("admin.analytics.avgPerDay", { value: ((stats?.places?.totalViews || 0) / 30).toFixed(0) })}
             icon={Eye}
             trend="up"
             trendValue={12}
+            t={t}
           />
           <StatCard
-            title="Tổng địa điểm"
+            title={t("admin.analytics.totalPlaces")}
             value={stats?.places?.total || 0}
-            subtitle={`${stats?.places?.approved || 0} đã duyệt`}
+            subtitle={`${stats?.places?.approved || 0} ${t("admin.analytics.approved")}`}
             icon={MapPin}
             trend="up"
             trendValue={5}
+            t={t}
           />
           <StatCard
-            title="Đánh giá TB"
+            title={t("admin.analytics.avgRating")}
             value={stats?.places?.averageRating || 0}
-            subtitle="Trên tất cả địa điểm"
+            subtitle={t("admin.analytics.allPlaces")}
             icon={Star}
+            t={t}
           />
           <StatCard
-            title="Người dùng"
+            title={t("admin.analytics.users")}
             value={stats?.users?.total || 0}
-            subtitle={`${stats?.users?.active || 0} hoạt động`}
+            subtitle={`${stats?.users?.active || 0} ${t("admin.analytics.active")}`}
             icon={Users}
             trend="up"
             trendValue={8}
+            t={t}
           />
         </div>
 
@@ -346,7 +352,7 @@ const AdminAnalyticsPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Layers className="h-5 w-5" />
-              Funnel Chuyển đổi sản phẩm
+              {t("admin.analytics.productFunnel")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -357,7 +363,7 @@ const AdminAnalyticsPage = () => {
         {/* Conversion Rates */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {conversionRates.map((rate, i) => (
-            <ConversionCard key={i} {...rate} />
+            <ConversionCard key={i} {...rate} t={t} />
           ))}
         </div>
 
@@ -368,7 +374,7 @@ const AdminAnalyticsPage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
-                Hoạt động theo thời gian
+                {t("admin.analytics.activityOverTime")}
               </CardTitle>
             </CardHeader>
             <CardContent className="h-80">
@@ -381,13 +387,13 @@ const AdminAnalyticsPage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <PieChart className="h-5 w-5" />
-                Phân bố trạng thái địa điểm
+                {t("admin.analytics.placeStatusDistribution")}
               </CardTitle>
             </CardHeader>
             <CardContent className="h-80 flex items-center justify-center">
               <Doughnut
                 data={{
-                  labels: ["Đã duyệt", "Chờ duyệt", "Bị từ chối", "Ẩn"],
+                  labels: [t("admin.analytics.statusApproved"), t("admin.analytics.statusPending"), t("admin.analytics.statusRejected"), t("admin.analytics.statusHidden")],
                   datasets: [{
                     data: [
                       stats?.places?.approved || 0,
@@ -423,7 +429,7 @@ const AdminAnalyticsPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              Top địa điểm xem nhiều nhất
+              {t("admin.analytics.topViewedPlaces")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -452,13 +458,13 @@ const AdminAnalyticsPage = () => {
                   </div>
                   <div className="text-right">
                     <p className="font-semibold">{(place.viewCount || 0).toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">lượt xem</p>
+                    <p className="text-xs text-muted-foreground">{t("admin.analytics.views")}</p>
                   </div>
                 </div>
               ))}
               {(!stats?.places?.topViewed || stats.places.topViewed.length === 0) && (
                 <p className="text-center text-muted-foreground py-8">
-                  Chưa có dữ liệu
+                  {t("admin.analytics.noData")}
                 </p>
               )}
             </div>

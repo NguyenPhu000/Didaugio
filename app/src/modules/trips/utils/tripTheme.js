@@ -2,6 +2,7 @@
  * tripTheme.js — shared design tokens for the Trips module.
  * Uses TAB_THEME colors for visual consistency across the app.
  */
+import i18n from "@/i18n";
 import {
   TAB_SCREEN_PADDING,
   TAB_CARD_RADIUS,
@@ -31,7 +32,7 @@ export const TRIP_THEME = {
 
 export const TRIP_STATUS_META = {
   upcoming: {
-    label: "Sắp tới",
+    label: i18n.t("tripTheme.upcoming"),
     bg: "#BAE6FD",
     color: "#075985",
     text: "#075985",
@@ -39,7 +40,7 @@ export const TRIP_STATUS_META = {
     icon: "schedule",
   },
   active: {
-    label: "Đang diễn ra",
+    label: i18n.t("tripTheme.ongoing"),
     bg: "#BFDBFE",
     color: "#1E3A8A",
     text: "#1E3A8A",
@@ -47,7 +48,7 @@ export const TRIP_STATUS_META = {
     icon: "flight-takeoff",
   },
   ongoing: {
-    label: "Đang diễn ra",
+    label: i18n.t("tripTheme.ongoing"),
     bg: "#BFDBFE",
     color: "#1E3A8A",
     text: "#1E3A8A",
@@ -55,7 +56,7 @@ export const TRIP_STATUS_META = {
     icon: "flight-takeoff",
   },
   completed: {
-    label: "Đã hoàn thành",
+    label: i18n.t("tripTheme.completed"),
     bg: "#BBF7D0",
     color: "#14532D",
     text: "#14532D",
@@ -63,7 +64,7 @@ export const TRIP_STATUS_META = {
     icon: "task-alt",
   },
   cancelled: {
-    label: "Đã hủy",
+    label: i18n.t("tripTheme.cancelled"),
     bg: "#FECACA",
     color: "#991B1B",
     text: "#991B1B",
@@ -73,13 +74,13 @@ export const TRIP_STATUS_META = {
 };
 
 export const BOOKING_STATUS_META = {
-  pending: { label: "Chờ xác nhận", color: "#D97706", bg: "#FFF9E6" },
-  confirmed: { label: "Đã xác nhận", color: "#15803D", bg: "#DCFCE7" },
-  completed: { label: "Hoàn thành", color: "#1D1D1F", bg: "#EFEFEF" },
-  cancelled: { label: "Đã hủy", color: "rgba(0,0,0,0.48)", bg: "#F5F5F7" },
-  rejected: { label: "Bị từ chối", color: "#8A4B12", bg: "#FFF5EB" },
-  expired: { label: "Đã đóng phiếu", color: "rgba(0,0,0,0.48)", bg: "#F5F5F7" },
-  no_show: { label: "Không đến", color: "rgba(0,0,0,0.48)", bg: "#F5F5F7" },
+  pending: { label: i18n.t("tripTheme.bookingPending"), color: "#D97706", bg: "#FFF9E6" },
+  confirmed: { label: i18n.t("tripTheme.bookingConfirmed"), color: "#15803D", bg: "#DCFCE7" },
+  completed: { label: i18n.t("tripTheme.bookingCompleted"), color: "#1D1D1F", bg: "#EFEFEF" },
+  cancelled: { label: i18n.t("tripTheme.bookingCancelled"), color: "rgba(0,0,0,0.48)", bg: "#F5F5F7" },
+  rejected: { label: i18n.t("tripTheme.bookingRejected"), color: "#8A4B12", bg: "#FFF5EB" },
+  expired: { label: i18n.t("tripTheme.bookingClosed"), color: "rgba(0,0,0,0.48)", bg: "#F5F5F7" },
+  no_show: { label: i18n.t("tripTheme.bookingNoShow"), color: "rgba(0,0,0,0.48)", bg: "#F5F5F7" },
 };
 
 export function shouldShowBookingBadge(status, destState) {
@@ -99,7 +100,7 @@ export function getBookingStatusMeta(status) {
   const normalized = String(status || "").toLowerCase();
   return (
     BOOKING_STATUS_META[normalized] || {
-      label: normalized || "Không rõ",
+      label: normalized || i18n.t("tripTheme.unknown"),
       color: "#1D1D1F",
       bg: "#F5F5F7",
     }

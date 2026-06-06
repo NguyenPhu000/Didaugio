@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
@@ -80,51 +81,51 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 // ─── Time Slot Config ───────────────────────────────────────────────────────────
 
-const TIME_SLOTS = {
-  morning: { id: "morning", label: "Buổi sáng", icon: Sunrise, range: "06:00 - 12:00", color: "amber" },
-  afternoon: { id: "afternoon", label: "Buổi chiều", icon: Sun, range: "12:00 - 18:00", color: "orange" },
-  evening: { id: "evening", label: "Buổi tối", icon: Sunset, range: "18:00 - 22:00", color: "indigo" },
-};
+const getTimeSlots = (t) => ({
+  morning: { id: "morning", label: t("business.bookings.timeSlots.morning"), icon: Sunrise, range: t("business.bookings.timeSlots.morningRange"), color: "amber" },
+  afternoon: { id: "afternoon", label: t("business.bookings.timeSlots.afternoon"), icon: Sun, range: t("business.bookings.timeSlots.afternoonRange"), color: "orange" },
+  evening: { id: "evening", label: t("business.bookings.timeSlots.evening"), icon: Sunset, range: t("business.bookings.timeSlots.eveningRange"), color: "indigo" },
+});
 
-const getTimeSlot = (time) => {
+const getTimeSlot = (time, timeSlots) => {
   if (!time) return null;
   const hour = parseInt(time.split(":")[0], 10);
-  if (hour >= 6 && hour < 12) return TIME_SLOTS.morning;
-  if (hour >= 12 && hour < 18) return TIME_SLOTS.afternoon;
-  if (hour >= 18 && hour < 22) return TIME_SLOTS.evening;
+  if (hour >= 6 && hour < 12) return timeSlots.morning;
+  if (hour >= 12 && hour < 18) return timeSlots.afternoon;
+  if (hour >= 18 && hour < 22) return timeSlots.evening;
   return null;
 };
 
 // ─── Preset Reasons ─────────────────────────────────────────────────────────────
 
-const PRESET_REJECTION_REASONS = [
-  { id: "full_slot", label: "Khung giờ này đã kín chỗ" },
-  { id: "closed", label: "Địa điểm đang đóng cửa" },
-  { id: "maintenance", label: "Đang bảo trì, không nhận khách" },
-  { id: "price_changed", label: "Giá dịch vụ đã thay đổi" },
-  { id: "holiday", label: "Không hoạt động vào ngày lễ" },
-  { id: "other", label: "Lý do khác" },
+const getRejectionReasons = (t) => [
+  { id: "full_slot", label: t("business.bookings.reasons.timeSlotFull") },
+  { id: "closed", label: t("business.bookings.reasons.placeClosed") },
+  { id: "maintenance", label: t("business.bookings.reasons.maintenance") },
+  { id: "price_changed", label: t("business.bookings.reasons.priceChanged") },
+  { id: "holiday", label: t("business.bookings.reasons.noHolidays") },
+  { id: "other", label: t("business.bookings.reasons.other") },
 ];
 
-const PRESET_CANCEL_REASONS = [
-  { id: "customer_request", label: "Khách hàng yêu cầu hủy" },
-  { id: "double_booking", label: "Trùng lịch đặt khác" },
-  { id: "service_unavailable", label: "Dịch vụ không khả dụng" },
-  { id: "weather", label: "Ảnh hưởng thời tiết" },
-  { id: "other", label: "Lý do khác" },
+const getCancelReasons = (t) => [
+  { id: "customer_request", label: t("business.bookings.reasons.customerRequest") },
+  { id: "double_booking", label: t("business.bookings.reasons.doubleBooking") },
+  { id: "service_unavailable", label: t("business.bookings.reasons.serviceUnavailable") },
+  { id: "weather", label: t("business.bookings.reasons.weather") },
+  { id: "other", label: t("business.bookings.reasons.other") },
 ];
 
 // ─── Status Config ───────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG = {
-  pending: { label: "Chờ xác nhận", bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500", border: "border-amber-200" },
-  confirmed: { label: "Đã xác nhận", bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500", border: "border-blue-200" },
-  completed: { label: "Hoàn thành", bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500", border: "border-emerald-200" },
-  cancelled: { label: "Đã hủy", bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400", border: "border-slate-200" },
-  rejected: { label: "Bị từ chối", bg: "bg-rose-50", text: "text-rose-700", dot: "bg-rose-500", border: "border-rose-200" },
-  expired: { label: "Hết hạn", bg: "bg-orange-50", text: "text-orange-700", dot: "bg-orange-500", border: "border-orange-200" },
-  no_show: { label: "Không đến", bg: "bg-purple-50", text: "text-purple-700", dot: "bg-purple-500", border: "border-purple-200" },
-};
+const getStatusConfig = (t) => ({
+  pending: { label: t("business.bookings.pending"), bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500", border: "border-amber-200" },
+  confirmed: { label: t("business.bookings.confirmed"), bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500", border: "border-blue-200" },
+  completed: { label: t("business.bookings.completed"), bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500", border: "border-emerald-200" },
+  cancelled: { label: t("business.bookings.cancelled"), bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400", border: "border-slate-200" },
+  rejected: { label: t("business.bookings.rejected"), bg: "bg-rose-50", text: "text-rose-700", dot: "bg-rose-500", border: "border-rose-200" },
+  expired: { label: t("business.bookings.expired"), bg: "bg-orange-50", text: "text-orange-700", dot: "bg-orange-500", border: "border-orange-200" },
+  no_show: { label: t("business.bookings.noShow"), bg: "bg-purple-50", text: "text-purple-700", dot: "bg-purple-500", border: "border-purple-200" },
+});
 
 const STATUS_COLORS = {
   pending: "amber",
@@ -149,7 +150,9 @@ const COLOR_MAP = {
 // ─── Status Badge ───────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }) {
-  const config = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+  const { t } = useTranslation();
+  const statusConfig = getStatusConfig(t);
+  const config = statusConfig[status] || statusConfig.pending;
   return (
     <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border", config.bg, config.text, config.border)}>
       <span className={cn("w-1.5 h-1.5 rounded-full", config.dot)} />
@@ -161,6 +164,7 @@ function StatusBadge({ status }) {
 // ─── Place Section Header ────────────────────────────────────────────────────────
 
 function PlaceSectionHeader({ place, count, isExpanded, onToggle }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
@@ -174,12 +178,12 @@ function PlaceSectionHeader({ place, count, isExpanded, onToggle }) {
         </div>
         <div className="text-left">
           <h3 className="text-sm font-semibold text-gray-900">{place.name}</h3>
-          <p className="text-xs text-gray-500">{place.address || "Chưa có địa chỉ"}</p>
+          <p className="text-xs text-gray-500">{place.address || t("business.bookings.noAddress")}</p>
         </div>
       </div>
       <div className="flex items-center gap-3">
         <span className="px-2.5 py-1 bg-gray-200 text-gray-700 rounded-full text-xs font-semibold tabular-nums">
-          {count} đặt chỗ
+          {count} {t("business.bookings.bookings")}
         </span>
         <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", isExpanded && "rotate-180")} aria-hidden="true" />
       </div>
@@ -190,6 +194,7 @@ function PlaceSectionHeader({ place, count, isExpanded, onToggle }) {
 // ─── Time Slot Header ───────────────────────────────────────────────────────────
 
 function TimeSlotHeader({ slot, count, isExpanded, onToggle }) {
+  const { t } = useTranslation();
   if (!slot) return null;
   const Icon = slot.icon || Clock;
   const colors = COLOR_MAP[slot.color] || COLOR_MAP.slate;
@@ -212,7 +217,7 @@ function TimeSlotHeader({ slot, count, isExpanded, onToggle }) {
       </div>
       <div className="flex items-center gap-3">
         <span className={cn("px-2.5 py-1 rounded-full text-xs font-bold tabular-nums", colors.bg, colors.text)}>
-          {count} đặt chỗ
+          {count} {t("business.bookings.bookings")}
         </span>
         <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", isExpanded && "rotate-180")} aria-hidden="true" />
       </div>
@@ -236,6 +241,7 @@ function BookingCard({
   actionLoading,
   compact = false,
 }) {
+  const { t } = useTranslation();
   const isPending = booking.status === BOOKING_STATUS.PENDING;
   const isConfirmed = booking.status === BOOKING_STATUS.CONFIRMED;
   const statusColor = STATUS_COLORS[booking.status] || "slate";
@@ -263,7 +269,7 @@ function BookingCard({
               checked={selected}
               onChange={() => onSelect(booking.id)}
               className="h-4 w-4 rounded border-gray-300 cursor-pointer accent-primary focus:ring-2 focus:ring-primary focus:ring-offset-2"
-              aria-label="Chọn đặt chỗ này"
+              aria-label={t("business.bookings.confirm")}
             />
           </div>
         )}
@@ -283,7 +289,7 @@ function BookingCard({
                 <StatusBadge status={booking.status} />
               </div>
               <p className="text-sm font-semibold text-gray-900 truncate">
-                {booking.user?.fullName || booking.guestName || "Khách vãng lai"}
+                {booking.user?.fullName || booking.guestName || t("business.bookings.walkIn")}
               </p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
@@ -316,7 +322,7 @@ function BookingCard({
             {booking.partySize && (
               <div className="flex items-center gap-1.5">
                 <Users className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span>{booking.partySize} khách</span>
+                <span>{booking.partySize} {t("business.bookings.guests")}</span>
               </div>
             )}
           </div>
@@ -359,7 +365,7 @@ function BookingCard({
                   ) : (
                     <Check className="h-3 w-3" />
                   )}
-                  Xác nhận
+                  {t("business.bookings.confirm")}
                 </Button>
                 <Button
                   size="sm"
@@ -369,7 +375,7 @@ function BookingCard({
                   className="h-8 text-xs gap-1.5"
                 >
                   <CalendarClock className="h-3 w-3" aria-hidden="true" />
-                  Đổi lịch
+                  {t("business.bookings.reschedule")}
                 </Button>
                 <Button
                   size="sm"
@@ -379,7 +385,7 @@ function BookingCard({
                   className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 gap-1.5"
                 >
                   <X className="h-3 w-3" aria-hidden="true" />
-                  Từ chối
+                  {t("business.bookings.reject")}
                 </Button>
               </>
             )}
@@ -397,7 +403,7 @@ function BookingCard({
                   ) : (
                     <CheckCircle2 className="h-3 w-3" />
                   )}
-                  Hoàn thành
+                  {t("business.bookings.complete")}
                 </Button>
                 <Button
                   size="sm"
@@ -407,7 +413,7 @@ function BookingCard({
                   className="h-8 text-xs gap-1.5"
                 >
                   <XCircle className="h-3 w-3" aria-hidden="true" />
-                  Hủy
+                  {t("business.bookings.cancel")}
                 </Button>
                 <Button
                   size="sm"
@@ -417,7 +423,7 @@ function BookingCard({
                   className="h-8 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 gap-1.5"
                 >
                   <UserX className="h-3 w-3" aria-hidden="true" />
-                  Không đến
+                  {t("business.bookings.noShowAction")}
                 </Button>
               </>
             )}
@@ -428,7 +434,7 @@ function BookingCard({
               className="h-8 text-xs gap-1.5 ml-auto"
             >
               <Eye className="h-3 w-3" aria-hidden="true" />
-              Chi tiết
+              {t("business.bookings.details")}
               <ChevronRight className="h-3 w-3" aria-hidden="true" />
             </Button>
           </div>
@@ -441,9 +447,12 @@ function BookingCard({
 // ─── Reject Modal ──────────────────────────────────────────────────────────────
 
 function QuickRejectModal({ open, onConfirm, onCancel, loading }) {
+  const { t } = useTranslation();
   const [selectedReason, setSelectedReason] = useState(null);
   const [customReason, setCustomReason] = useState("");
   const [businessNote, setBusinessNote] = useState("");
+
+  const reasons = getRejectionReasons(t);
 
   useEffect(() => {
     if (!open) {
@@ -455,16 +464,16 @@ function QuickRejectModal({ open, onConfirm, onCancel, loading }) {
 
   const handleConfirm = () => {
     if (!selectedReason) {
-      toast.error("Vui lòng chọn lý do từ chối");
+      toast.error(t("business.bookings.cannotReject"));
       return;
     }
     if (selectedReason === "other" && !customReason.trim()) {
-      toast.error("Vui lòng nhập lý do từ chối");
+      toast.error(t("business.bookings.enterRejectReason"));
       return;
     }
     const reason = selectedReason === "other"
       ? customReason.trim()
-      : PRESET_REJECTION_REASONS.find(r => r.id === selectedReason)?.label || "";
+      : reasons.find(r => r.id === selectedReason)?.label || "";
     onConfirm(reason, businessNote.trim() || null);
   };
 
@@ -474,17 +483,17 @@ function QuickRejectModal({ open, onConfirm, onCancel, loading }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <XCircle className="h-5 w-5" aria-hidden="true" />
-            Từ chối yêu cầu
+            {t("business.bookings.rejectRequest")}
           </DialogTitle>
           <DialogDescription>
-            Chọn nhanh lý do từ chối. Khách sẽ nhận thông báo.
+            {t("business.bookings.quickRejectReasons")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 py-2">
-          <Label>Lý do từ chối</Label>
+          <Label>{t("business.bookings.rejectReason")}</Label>
           <div className="grid grid-cols-2 gap-2">
-            {PRESET_REJECTION_REASONS.map((reason) => (
+            {reasons.map((reason) => (
               <button
                 key={reason.id}
                 type="button"
@@ -503,7 +512,7 @@ function QuickRejectModal({ open, onConfirm, onCancel, loading }) {
 
           {selectedReason === "other" && (
             <Textarea
-              placeholder="Nhập lý do từ chối…"
+              placeholder={t("business.bookings.enterRejectReason")}
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
               className="min-h-[80px]"
@@ -511,9 +520,9 @@ function QuickRejectModal({ open, onConfirm, onCancel, loading }) {
           )}
 
           <div className="space-y-1.5">
-            <Label className="text-muted-foreground">Ghi chú nội bộ (tuỳ chọn)</Label>
+            <Label className="text-muted-foreground">{t("business.bookings.internalNote")} ({t("common.optional")})</Label>
             <Textarea
-              placeholder="Ghi chú chỉ hiển thị cho bạn…"
+              placeholder={t("business.bookings.noteExample")}
               value={businessNote}
               onChange={(e) => setBusinessNote(e.target.value)}
               className="min-h-[60px]"
@@ -523,7 +532,7 @@ function QuickRejectModal({ open, onConfirm, onCancel, loading }) {
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onCancel}>
-            Hủy
+            {t("common.cancel")}
           </Button>
           <Button
             variant="destructive"
@@ -532,7 +541,7 @@ function QuickRejectModal({ open, onConfirm, onCancel, loading }) {
             className="gap-2"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Xác nhận từ chối
+            {t("business.bookings.reject")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -543,8 +552,11 @@ function QuickRejectModal({ open, onConfirm, onCancel, loading }) {
 // ─── Cancel Modal ──────────────────────────────────────────────────────────────
 
 function QuickCancelModal({ open, onConfirm, onCancel, loading }) {
+  const { t } = useTranslation();
   const [selectedReason, setSelectedReason] = useState(null);
   const [customReason, setCustomReason] = useState("");
+
+  const reasons = getCancelReasons(t);
 
   useEffect(() => {
     if (!open) {
@@ -555,16 +567,16 @@ function QuickCancelModal({ open, onConfirm, onCancel, loading }) {
 
   const handleConfirm = () => {
     if (!selectedReason) {
-      toast.error("Vui lòng chọn lý do hủy");
+      toast.error(t("business.bookings.cannotCancel"));
       return;
     }
     if (selectedReason === "other" && !customReason.trim()) {
-      toast.error("Vui lòng nhập lý do hủy");
+      toast.error(t("business.bookings.enterCancelReason"));
       return;
     }
     const reason = selectedReason === "other"
       ? customReason.trim()
-      : PRESET_CANCEL_REASONS.find(r => r.id === selectedReason)?.label || "";
+      : reasons.find(r => r.id === selectedReason)?.label || "";
     onConfirm(reason);
   };
 
@@ -574,17 +586,17 @@ function QuickCancelModal({ open, onConfirm, onCancel, loading }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <XCircle className="h-5 w-5" aria-hidden="true" />
-            Hủy đặt chỗ
+            {t("business.bookings.cancelBooking")}
           </DialogTitle>
           <DialogDescription>
-            Chọn nhanh lý do hủy để thông báo cho khách.
+            {t("business.bookings.quickCancelReasons")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 py-2">
-          <Label>Lý do hủy</Label>
+          <Label>{t("business.bookings.cancelReason")}</Label>
           <div className="grid grid-cols-2 gap-2">
-            {PRESET_CANCEL_REASONS.map((reason) => (
+            {reasons.map((reason) => (
               <button
                 key={reason.id}
                 type="button"
@@ -603,7 +615,7 @@ function QuickCancelModal({ open, onConfirm, onCancel, loading }) {
 
           {selectedReason === "other" && (
             <Textarea
-              placeholder="Nhập lý do hủy…"
+              placeholder={t("business.bookings.enterCancelReason")}
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
               className="min-h-[80px]"
@@ -613,7 +625,7 @@ function QuickCancelModal({ open, onConfirm, onCancel, loading }) {
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onCancel}>
-            Hủy
+            {t("common.cancel")}
           </Button>
           <Button
             variant="destructive"
@@ -621,7 +633,7 @@ function QuickCancelModal({ open, onConfirm, onCancel, loading }) {
             disabled={loading}
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Xác nhận hủy
+            {t("business.bookings.cancel")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -632,6 +644,7 @@ function QuickCancelModal({ open, onConfirm, onCancel, loading }) {
 // ─── Reschedule Modal ──────────────────────────────────────────────────────────
 
 function QuickRescheduleModal({ open, booking, onConfirm, onCancel, loading }) {
+  const { t } = useTranslation();
   const initialDate = String(booking?.useDate || booking?.bookingAt || "").slice(0, 10);
   const initialTime = booking?.useTime || "09:00";
   const [date, setDate] = useState(initialDate);
@@ -648,7 +661,7 @@ function QuickRescheduleModal({ open, booking, onConfirm, onCancel, loading }) {
 
   const handleConfirm = () => {
     if (!date || !time) {
-      toast.error("Vui lòng chọn ngày và giờ");
+      toast.error(t("business.bookings.cannotComplete"));
       return;
     }
     const bookingTime = new Date(`${date}T${time}:00`).toISOString();
@@ -661,29 +674,29 @@ function QuickRescheduleModal({ open, booking, onConfirm, onCancel, loading }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarClock className="h-5 w-5 text-primary" aria-hidden="true" />
-            Đổi lịch booking
+            {t("business.bookings.rescheduleBooking")}
           </DialogTitle>
           <DialogDescription>
-            Chọn ngày giờ mới. Hệ thống sẽ kiểm tra khả năng đặt trước khi xác nhận.
+            {t("business.bookings.confirmReschedule")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Ngày mới</Label>
+              <Label>{t("business.bookings.newDate")}</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Giờ mới</Label>
+              <Label>{t("business.bookings.newTime")}</Label>
               <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-muted-foreground">Ghi chú (tuỳ chọn)</Label>
+            <Label className="text-muted-foreground">{t("business.bookings.internalNote")} ({t("common.optional")})</Label>
             <Textarea
-              placeholder="VD: Đổi lịch theo yêu cầu khách…"
+              placeholder={t("business.bookings.noteExample")}
               value={businessNote}
               onChange={(e) => setBusinessNote(e.target.value)}
             />
@@ -692,11 +705,11 @@ function QuickRescheduleModal({ open, booking, onConfirm, onCancel, loading }) {
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onCancel}>
-            Hủy
+            {t("common.cancel")}
           </Button>
           <Button onClick={handleConfirm} disabled={loading} className="gap-2">
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Xác nhận đổi lịch
+            {t("business.bookings.reschedule")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -706,22 +719,22 @@ function QuickRescheduleModal({ open, booking, onConfirm, onCancel, loading }) {
 
 // ─── Stat Cards Config ─────────────────────────────────────────────────────────
 
-const STAT_CARDS_CONFIG = [
-  { key: BOOKING_STATUS.PENDING, label: "Chờ xác nhận", icon: Clock, color: "amber" },
-  { key: BOOKING_STATUS.CONFIRMED, label: "Đã xác nhận", icon: CheckCheck, color: "blue" },
-  { key: BOOKING_STATUS.COMPLETED, label: "Hoàn thành", icon: CheckCircle2, color: "emerald" },
-  { key: BOOKING_STATUS.CANCELLED, label: "Đã hủy", icon: XCircle, color: "slate" },
-  { key: BOOKING_STATUS.REJECTED, label: "Bị từ chối", icon: XCircle, color: "rose" },
-  { key: BOOKING_STATUS.EXPIRED, label: "Hết hạn", icon: AlertTriangle, color: "orange" },
-  { key: BOOKING_STATUS.NO_SHOW, label: "Không đến", icon: UserX, color: "purple" },
+const getStatCardsConfig = (t) => [
+  { key: BOOKING_STATUS.PENDING, label: t("business.bookings.pending"), icon: Clock, color: "amber" },
+  { key: BOOKING_STATUS.CONFIRMED, label: t("business.bookings.confirmed"), icon: CheckCheck, color: "blue" },
+  { key: BOOKING_STATUS.COMPLETED, label: t("business.bookings.completed"), icon: CheckCircle2, color: "emerald" },
+  { key: BOOKING_STATUS.CANCELLED, label: t("business.bookings.cancelled"), icon: XCircle, color: "slate" },
+  { key: BOOKING_STATUS.REJECTED, label: t("business.bookings.rejected"), icon: XCircle, color: "rose" },
+  { key: BOOKING_STATUS.EXPIRED, label: t("business.bookings.expired"), icon: AlertTriangle, color: "orange" },
+  { key: BOOKING_STATUS.NO_SHOW, label: t("business.bookings.noShow"), icon: UserX, color: "purple" },
 ];
 
-const STATUS_TABS = [
-  { value: "all", label: "Tất cả" },
-  { value: BOOKING_STATUS.PENDING, label: "Chờ xác nhận" },
-  { value: BOOKING_STATUS.CONFIRMED, label: "Đã xác nhận" },
-  { value: BOOKING_STATUS.COMPLETED, label: "Hoàn thành" },
-  { value: BOOKING_STATUS.CANCELLED, label: "Đã hủy" },
+const getStatusTabs = (t) => [
+  { value: "all", label: t("business.bookings.all") },
+  { value: BOOKING_STATUS.PENDING, label: t("business.bookings.pending") },
+  { value: BOOKING_STATUS.CONFIRMED, label: t("business.bookings.confirmed") },
+  { value: BOOKING_STATUS.COMPLETED, label: t("business.bookings.completed") },
+  { value: BOOKING_STATUS.CANCELLED, label: t("business.bookings.cancelled") },
 ];
 
 const PAGE_SIZE = 20;
@@ -729,6 +742,7 @@ const PAGE_SIZE = 20;
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const BookingListPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -796,7 +810,7 @@ const BookingListPage = () => {
         });
       }
     } catch {
-      toast.error("Không thể tải danh sách đặt chỗ");
+      toast.error(t("business.bookings.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -837,18 +851,18 @@ const BookingListPage = () => {
   // ─── CSV Export ───────────────────────────────────────────────────────────
 
   const STATUS_LABELS = {
-    pending: "Chờ xác nhận",
-    confirmed: "Đã xác nhận",
-    completed: "Hoàn thành",
-    cancelled: "Đã hủy",
-    rejected: "Từ chối",
-    no_show: "Không đến",
-    expired: "Hết hạn",
+    pending: t("business.bookings.pending"),
+    confirmed: t("business.bookings.confirmed"),
+    completed: t("business.bookings.completed"),
+    cancelled: t("business.bookings.cancelled"),
+    rejected: t("business.bookings.rejected"),
+    no_show: t("business.bookings.noShow"),
+    expired: t("business.bookings.expired"),
   };
 
   const handleExportCsv = async () => {
     try {
-      toast.loading("Đang xuất dữ liệu...", { id: "csv-export" });
+      toast.loading(t("common.processing"), { id: "csv-export" });
       const allData = await fetchAllPages(async (params) => {
         const res = await bookingApi.getAll({
           ...params,
@@ -864,25 +878,25 @@ const BookingListPage = () => {
       exportToCsv({
         columns: [
           { key: "id", label: "ID" },
-          { key: (row) => row.customerName || row.user?.profile?.fullName || "", label: "Khách hàng" },
+          { key: (row) => row.customerName || row.user?.profile?.fullName || "", label: t("business.bookings.walkIn") },
           { key: (row) => row.customerEmail || row.user?.email || "", label: "Email" },
-          { key: (row) => row.customerPhone || row.user?.profile?.phone || "", label: "Điện thoại" },
-          { key: (row) => row.place?.name || "", label: "Địa điểm" },
-          { key: (row) => row.service?.name || "", label: "Dịch vụ" },
-          { key: (row) => STATUS_LABELS[row.status] || row.status, label: "Trạng thái" },
-          { key: (row) => row.bookingDate || "", label: "Ngày đặt" },
-          { key: (row) => row.bookingTime || "", label: "Giờ đặt" },
-          { key: (row) => row.totalAmount || 0, label: "Tổng tiền" },
-          { key: (row) => row.quantity || 1, label: "Số lượng" },
-          { key: (row) => formatCsvDate(row.createdAt), label: "Tạo lúc" },
+          { key: (row) => row.customerPhone || row.user?.profile?.phone || "", label: "Phone" },
+          { key: (row) => row.place?.name || "", label: t("business.bookings.allPlaces") },
+          { key: (row) => row.service?.name || "", label: "Service" },
+          { key: (row) => STATUS_LABELS[row.status] || row.status, label: t("common.status") },
+          { key: (row) => row.bookingDate || "", label: t("business.bookings.newDate") },
+          { key: (row) => row.bookingTime || "", label: t("business.bookings.newTime") },
+          { key: (row) => row.totalAmount || 0, label: "Total" },
+          { key: (row) => row.quantity || 1, label: "Quantity" },
+          { key: (row) => formatCsvDate(row.createdAt), label: "Created" },
         ],
         data: allData,
         filename: slugifyFilename("danh_sach_dat_cho"),
       });
 
-      toast.success(`Đã xuất ${allData.length} bản ghi`, { id: "csv-export" });
+      toast.success(t("common.savedSuccessfully"), { id: "csv-export" });
     } catch {
-      toast.error("Lỗi khi xuất dữ liệu", { id: "csv-export" });
+      toast.error(t("common.operationFailed"), { id: "csv-export" });
     }
   };
 
@@ -892,10 +906,10 @@ const BookingListPage = () => {
     setActionLoading(`confirm-${id}`);
     try {
       await bookingApi.confirm(id);
-      toast.success("Đã xác nhận đặt chỗ");
+      toast.success(t("business.bookings.confirmedSuccess"));
       refresh();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể xác nhận");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotConfirm"));
     } finally {
       setActionLoading(null);
     }
@@ -905,11 +919,11 @@ const BookingListPage = () => {
     setActionLoading(`reject-${rejectModal}`);
     try {
       await bookingApi.quickReject(rejectModal, reason, { businessNote });
-      toast.success("Đã từ chối yêu cầu đặt chỗ");
+      toast.success(t("business.bookings.rejectedSuccess"));
       setRejectModal(null);
       refresh();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể từ chối");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotReject"));
     } finally {
       setActionLoading(null);
     }
@@ -919,11 +933,11 @@ const BookingListPage = () => {
     setActionLoading("reschedule");
     try {
       await bookingApi.reschedule(rescheduleModal.id, bookingTime, { businessNote });
-      toast.success("Đã đổi lịch booking");
+      toast.success(t("business.bookings.confirmedSuccess"));
       setRescheduleModal(null);
       refresh();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể đổi lịch");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotComplete"));
     } finally {
       setActionLoading(null);
     }
@@ -933,11 +947,11 @@ const BookingListPage = () => {
     setActionLoading(`cancel-${cancelModal}`);
     try {
       await bookingApi.cancel(cancelModal, reason);
-      toast.success("Đã hủy đặt chỗ");
+      toast.success(t("business.bookings.cancelledSuccess"));
       setCancelModal(null);
       refresh();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể hủy");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotCancel"));
     } finally {
       setActionLoading(null);
     }
@@ -947,10 +961,10 @@ const BookingListPage = () => {
     setActionLoading(`complete-${id}`);
     try {
       await bookingApi.complete(id);
-      toast.success("Đã hoàn thành đặt chỗ");
+      toast.success(t("business.bookings.completedSuccess"));
       refresh();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể hoàn thành");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotComplete"));
     } finally {
       setActionLoading(null);
     }
@@ -960,10 +974,10 @@ const BookingListPage = () => {
     setActionLoading(`noshow-${id}`);
     try {
       await bookingApi.markNoShow(id);
-      toast.success("Đã đánh dấu không đến");
+      toast.success(t("business.bookings.noShowMarked"));
       refresh();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể đánh dấu");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotMarkNoShow"));
     } finally {
       setActionLoading(null);
     }
@@ -974,11 +988,11 @@ const BookingListPage = () => {
     setBulkLoading(true);
     try {
       await bookingApi.bulkConfirm(pendingSelected);
-      toast.success(`Đã xác nhận ${pendingSelected.length} đặt chỗ`);
+      toast.success(t("business.bookings.bulkConfirm", { count: pendingSelected.length }));
       setSelected([]);
       refresh();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể xác nhận hàng loạt");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotConfirm"));
     } finally {
       setBulkLoading(false);
     }
@@ -992,11 +1006,11 @@ const BookingListPage = () => {
       const result = response?.data || {};
       const successCount = Array.isArray(result.success) ? result.success.length : pendingSelected.length;
       const failedCount = Array.isArray(result.failed) ? result.failed.length : 0;
-      toast.success(`Đã hủy ${successCount} đặt chỗ${failedCount > 0 ? `, thất bại ${failedCount}` : ""}`);
+      toast.success(t("business.bookings.cancelledSuccess"));
       setSelected([]);
       refresh();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể hủy hàng loạt");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotCancel"));
     } finally {
       setBulkLoading(false);
     }
@@ -1023,7 +1037,7 @@ const BookingListPage = () => {
     bookings.forEach((booking) => {
       const place = getPlaceFromBooking(booking);
       const placeId = place?.id || "no-place";
-      const placeName = place?.name || "Không xác định";
+      const placeName = place?.name || t("business.bookings.noAddress");
       if (!groups[placeId]) {
         groups[placeId] = {
           place: place || { id: placeId, name: placeName, address: null },
@@ -1037,9 +1051,10 @@ const BookingListPage = () => {
 
   // Group by time slot within each place
   const groupByTimeSlot = (placeBookings) => {
+    const timeSlots = getTimeSlots(t);
     const groups = { morning: [], afternoon: [], evening: [], other: [] };
     placeBookings.forEach((booking) => {
-      const slot = getTimeSlot(booking.useTime);
+      const slot = getTimeSlot(booking.useTime, timeSlots);
       if (slot) {
         groups[slot.id].push(booking);
       } else {
@@ -1059,8 +1074,8 @@ const BookingListPage = () => {
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Quản lý đặt chỗ</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Xử lý nhanh chóng các yêu cầu đặt chỗ</p>
+              <h1 className="text-2xl font-bold text-gray-900">{t("business.bookings.title")}</h1>
+              <p className="text-sm text-gray-500 mt-0.5">{t("business.bookings.subtitle")}</p>
             </div>
             <div className="flex gap-2">
               <Button
@@ -1074,7 +1089,7 @@ const BookingListPage = () => {
               {pendingSelected.length > 0 && (
                 <Button onClick={handleBulkConfirm} disabled={bulkLoading} className="gap-2">
                   {bulkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                  Xác nhận {pendingSelected.length} đặt chỗ
+                  {t("business.bookings.confirmMultiple", { count: pendingSelected.length })}
                 </Button>
               )}
             </div>
@@ -1082,7 +1097,7 @@ const BookingListPage = () => {
 
           {/* Stat Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mt-4">
-            {STAT_CARDS_CONFIG.map(({ key, label, icon: Icon, color }) => {
+            {getStatCardsConfig(t).map(({ key, label, icon: Icon, color }) => {
               const colors = COLOR_MAP[color];
               const count = stats?.byStatus?.[key] || 0;
               const isActive = status === key;
@@ -1119,7 +1134,7 @@ const BookingListPage = () => {
         <div className="px-6 border-t border-gray-100">
           <Tabs value={status} onValueChange={setStatus}>
             <TabsList className="h-10 bg-transparent gap-1 p-0 border-b-0 rounded-none w-auto">
-              {STATUS_TABS.map((tab) => (
+              {getStatusTabs(t).map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
@@ -1151,11 +1166,11 @@ const BookingListPage = () => {
             <SelectTrigger className="h-9 w-52 text-sm">
               <div className="flex items-center gap-2">
                 <Layers className="h-4 w-4 text-gray-400" aria-hidden="true" />
-                <SelectValue placeholder="Tất cả địa điểm" />
+                <SelectValue placeholder={t("business.bookings.allPlaces")} />
               </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả địa điểm</SelectItem>
+              <SelectItem value="all">{t("business.bookings.allPlaces")}</SelectItem>
               {places.map((place) => (
                 <SelectItem key={place.id} value={String(place.id)}>
                   {place.name}
@@ -1187,18 +1202,18 @@ const BookingListPage = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" aria-hidden="true" />
             <Input
               type="search"
-              placeholder="Tìm mã, tên khách…"
+              placeholder={t("business.bookings.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-9 text-sm"
-              aria-label="Tìm kiếm đặt chỗ"
+              aria-label={t("business.bookings.title")}
             />
           </div>
 
           {/* Total count */}
           <div className="flex items-center gap-2 text-sm text-gray-500 ml-auto">
             <span className="tabular-nums font-semibold text-gray-900">{total}</span>
-            <span>đặt chỗ</span>
+            <span>{t("business.bookings.bookings")}</span>
           </div>
         </div>
 
@@ -1218,7 +1233,7 @@ const BookingListPage = () => {
             ))}
           </div>
         ) : bookings.length === 0 ? (
-          <EmptyState icon={CalendarCheck} message="Không có đặt chỗ nào" />
+          <EmptyState icon={CalendarCheck} message={t("business.bookings.noBookings")} />
         ) : (
           <div className="space-y-4">
             <Tabs defaultValue={String(groupedByPlace[0]?.place?.id || "no-place")} className="w-full">
@@ -1245,7 +1260,7 @@ const BookingListPage = () => {
                 return (
                   <TabsContent key={place.id} value={String(place.id)} className="space-y-4 mt-0 outline-none">
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                      {Object.entries(TIME_SLOTS).map(([slotId, slot]) => {
+                      {Object.entries(getTimeSlots(t)).map(([slotId, slot]) => {
                         const slotBookings = slotGroups[slotId] || [];
                         if (slotBookings.length === 0) return null;
                         const isSlotExpanded = expandedSlots[`${place.id}-${slotId}`] !== false;
@@ -1298,7 +1313,7 @@ const BookingListPage = () => {
                       {slotGroups.other.length > 0 && (
                         <div className="border-b border-gray-100 last:border-b-0">
                           <TimeSlotHeader
-                            slot={{ id: "other", label: "Khung giờ khác", icon: Clock, range: "Không xác định", color: "slate" }}
+                            slot={{ id: "other", label: t("business.bookings.differentTimeSlot"), icon: Clock, range: t("business.bookings.noShow"), color: "slate" }}
                             count={slotGroups.other.length}
                             isExpanded={expandedSlots[`${place.id}-other`] !== false}
                             onToggle={() => toggleSlot(`${place.id}-other`)}

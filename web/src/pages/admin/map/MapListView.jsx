@@ -1,5 +1,5 @@
 import { MapPin, Star } from "lucide-react";
-import { PRICE_LABELS } from "@/modules/map";
+import { PRICE_LABELS, getPriceLabel } from "@/modules/map";
 
 const MapListView = ({ places, onPlaceClick }) => (
   <div className="flex-1 overflow-auto bg-gray-50 p-4">
@@ -62,7 +62,7 @@ const MapListView = ({ places, onPlaceClick }) => (
                   <span
                     className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${price.cls}`}
                   >
-                    {price.label}
+                    {getPriceLabel(place.priceRange)}
                   </span>
                 )}
               </div>

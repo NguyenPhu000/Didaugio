@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { useTranslation } from "react-i18next";
 import { cn } from "../../../lib/cn";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
@@ -13,22 +14,24 @@ import {
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 
 export function LoadingState() {
+  const { t } = useTranslation();
   return (
     <View className="items-center justify-center px-10 pt-14 pb-10 gap-2.5">
       <View className="w-14 h-14 rounded-[28px] bg-black/[0.04] items-center justify-center mb-2">
         <ActivityIndicator size="small" color="#1D1D1F" />
       </View>
       <Text className="text-[17px] font-semibold tracking-tight" style={{ color: APPLE_THEME.text }}>
-        Chuẩn bị hành trình
+        {t("trips.empty.preparing")}
       </Text>
       <Text className="text-sm font-body tracking-tight" style={{ color: APPLE_THEME.textMuted }}>
-        Đang đồng bộ dữ liệu chuyến đi...
+        {t("trips.empty.syncing")}
       </Text>
     </View>
   );
 }
 
 export function EmptyTrips({ onCreate, activeFilter, onClearFilter }) {
+  const { t } = useTranslation();
   const isFiltered = activeFilter !== "all";
 
   return (
@@ -48,15 +51,15 @@ export function EmptyTrips({ onCreate, activeFilter, onClearFilter }) {
         </View>
 
         <Text className="text-[22px] text-center font-heading tracking-tight" style={{ color: APPLE_THEME.text }}>
-          {isFiltered ? "Không có kết quả" : "Khám phá thế giới"}
+          {isFiltered ? t("trips.empty.noResults") : t("trips.empty.explore")}
         </Text>
         <Text
           className="mt-2.5 text-[15px] leading-[22px] text-center font-body max-w-[300px] tracking-tight"
           style={{ color: APPLE_THEME.textMuted }}
         >
           {isFiltered
-            ? "Thử đổi bộ lọc để xem lại các hành trình khác trong tài khoản của bạn."
-            : "Tạo hành trình đầu tiên để gom điểm đến, lịch trình và ghi chú vào cùng một nơi gọn gàng."}
+            ? t("common.noResults")
+            : t("trips.empty.createFirst")}
         </Text>
 
         {!isFiltered ? (
@@ -66,7 +69,7 @@ export function EmptyTrips({ onCreate, activeFilter, onClearFilter }) {
             style={({ pressed }) => pressed && { backgroundColor: "#000000", transform: [{ scale: 0.97 }] }}
           >
             <MaterialIconsRounded name="add" size={18} color="#FFFFFF" />
-            <Text className="text-[15px] font-semibold tracking-tight text-white">Tạo chuyến đi mới</Text>
+            <Text className="text-[15px] font-semibold tracking-tight text-white">{t("trips.empty.createTrip")}</Text>
           </Pressable>
         ) : null}
 
@@ -77,7 +80,7 @@ export function EmptyTrips({ onCreate, activeFilter, onClearFilter }) {
             style={({ pressed }) => pressed && { backgroundColor: "#000000", transform: [{ scale: 0.97 }] }}
           >
             <MaterialIconsRounded name="filter-alt-off" size={18} color="#FFFFFF" />
-            <Text className="text-[15px] font-semibold tracking-tight text-white">Xóa bộ lọc</Text>
+            <Text className="text-[15px] font-semibold tracking-tight text-white">{t("trips.empty.clearFilter")}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -86,6 +89,7 @@ export function EmptyTrips({ onCreate, activeFilter, onClearFilter }) {
 }
 
 export function ErrorState({ onRetry }) {
+  const { t } = useTranslation();
   return (
     <View style={{ paddingHorizontal: TAB_SCREEN_PADDING }} className="pt-4">
       <View className="rounded-3xl p-9 bg-white items-center border border-black/5">
@@ -93,13 +97,13 @@ export function ErrorState({ onRetry }) {
           <MaterialIconsRounded name="cloud-off" size={36} color="#FF3B30" />
         </View>
         <Text className="text-[22px] text-center font-heading tracking-tight" style={{ color: APPLE_THEME.text }}>
-          Không tải được dữ liệu
+          {t("trips.empty.loadError")}
         </Text>
         <Text
           className="mt-2.5 text-[15px] leading-[22px] text-center font-body max-w-[300px] tracking-tight"
           style={{ color: APPLE_THEME.textMuted }}
         >
-          Vui lòng kiểm tra lại kết nối mạng và thử lại để đồng bộ hành trình.
+          {t("common.networkError")}
         </Text>
         <Pressable
           onPress={() => onRetry?.()}
@@ -107,7 +111,7 @@ export function ErrorState({ onRetry }) {
           style={({ pressed }) => pressed && { backgroundColor: "rgba(255,59,48,0.12)", transform: [{ scale: 0.97 }] }}
         >
           <MaterialIconsRounded name="refresh" size={18} color="#FF3B30" />
-          <Text className="text-[15px] font-semibold tracking-tight text-red-500">Thử lại</Text>
+          <Text className="text-[15px] font-semibold tracking-tight text-red-500">{t("trips.empty.retry")}</Text>
         </Pressable>
       </View>
     </View>

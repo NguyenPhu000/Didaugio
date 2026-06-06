@@ -4,6 +4,7 @@ import { Tabs, usePathname, useRouter } from "expo-router";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 /** Nang thanh tab cao hon so voi mep day (cong them vao safe area). */
 const EXTRA_FLOAT_LIFT = 26;
@@ -25,28 +26,28 @@ const TAB_IDLE_ICON = "#54647A";
 const TABS = [
   {
     key: "map",
-    label: "Ban do",
+    labelKey: "tabs.map",
     icon: "location-on",
     route: "/(tabs)/map",
     color: TAB_ACTIVE_BLUE,
   },
   {
     key: "explore",
-    label: "Kham pha",
+    labelKey: "tabs.explore",
     icon: "explore",
     route: "/(tabs)/explore",
     color: TAB_ACTIVE_BLUE,
   },
   {
     key: "saved",
-    label: "Da luu",
+    labelKey: "tabs.saved",
     icon: "bookmark",
     route: "/(tabs)/saved",
     color: TAB_ACTIVE_SECONDARY,
   },
   {
     key: "trips",
-    label: "Chuyen di",
+    labelKey: "tabs.trips",
     icon: "luggage",
     route: "/(tabs)/trips",
     color: TAB_ACTIVE_SECONDARY,
@@ -69,6 +70,7 @@ function FloatingBottomTabBar() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useTranslation();
 
   const currentKey = useMemo(() => resolveTabKey(pathname), [pathname]);
 
@@ -97,7 +99,7 @@ function FloatingBottomTabBar() {
                   onPress={onNavigate}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: active }}
-                  accessibilityLabel={tab.label}
+                  accessibilityLabel={t(tab.labelKey)}
                   style={({ pressed }) => [
                     styles.tabPress,
                     pressed && { opacity: 0.88 },

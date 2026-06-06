@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { staffApi } from "@/apis/staffApi";
 import { staffInvitationApi } from "@/apis/staffInvitationApi";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,7 @@ function Tabs({ tabs, activeTab, onTabChange }) {
 }
 
 export default function StaffManagementPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("staff");
 
   // ─── Staff state ───────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { memo, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
@@ -14,6 +15,7 @@ export const TripHeader = memo(function TripHeader({
   onToggleSave,
   onAddPlace,
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -24,7 +26,7 @@ export const TripHeader = memo(function TripHeader({
     trip.startDate && trip.endDate
       ? `${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}`
       : trip.startDate
-        ? `Từ ${formatDate(trip.startDate)}`
+        ? t('tripHeader.from', { date: formatDate(trip.startDate) })
         : null;
 
   const totalDistanceLabel = formatDistance(trip.totalDistance);
@@ -91,7 +93,7 @@ export const TripHeader = memo(function TripHeader({
           className="flex-row items-center gap-1 bg-[#1D1D1F] px-3.5 py-2 rounded-lg flex-shrink-0"
         >
           <MaterialIconsRounded name="add" size={18} color={T.onPrimary} />
-          <Text className="text-white text-[13px] font-semibold tracking-tight">Thêm</Text>
+          <Text className="text-white text-[13px] font-semibold tracking-tight">{t('tripHeader.add')}</Text>
         </Pressable>
       </View>
 
@@ -137,7 +139,7 @@ export const TripHeader = memo(function TripHeader({
                       style={[isSaved && { color: "#FF9F0A", fontWeight: "600" }]}
                       numberOfLines={1}
                     >
-                      {isSaved ? "Bỏ lưu" : "Lưu chuyến đi"}
+                      {isSaved ? t('tripHeader.unsave') : t('tripHeader.saveTrip')}
                     </Text>
                   </View>
                 )}
@@ -160,7 +162,7 @@ export const TripHeader = memo(function TripHeader({
                     <MaterialIconsRounded name="edit" size={16} color={T.ink} />
                   </View>
                   <Text className="flex-1 text-[14px] font-medium text-[#1D1D1F] tracking-tight min-w-0" numberOfLines={1}>
-                    Sửa thông tin
+                    {t('tripHeader.editInfo')}
                   </Text>
                 </View>
               )}
@@ -187,7 +189,7 @@ export const TripHeader = memo(function TripHeader({
                     <MaterialIconsRounded name="delete-outline" size={16} color={T.danger} />
                   </View>
                   <Text className="flex-1 text-[14px] text-[#FF3B30] font-semibold tracking-tight min-w-0" numberOfLines={1}>
-                    Xóa chuyến đi
+                    {t('tripHeader.deleteTrip')}
                   </Text>
                 </View>
               )}

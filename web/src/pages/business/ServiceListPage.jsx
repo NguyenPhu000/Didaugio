@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
@@ -105,6 +106,7 @@ const ServiceFormModal = ({
   onSave,
   onClose,
 }) => {
+  const { t } = useTranslation();
   let initialFormPlaceId = "";
   if (service?.place?.id) {
     initialFormPlaceId = String(service.place.id);
@@ -182,7 +184,7 @@ const ServiceFormModal = ({
       await onSave(data);
       onClose();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Có lỗi xảy ra");
+      toastApiErrorIfNeeded(error, t("common.operationFailed"));
     } finally {
       setSaving(false);
     }
@@ -194,10 +196,10 @@ const ServiceFormModal = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Ticket className="h-5 w-5 text-primary" />
-            {service ? "Cập nhật dịch vụ" : "Tạo dịch vụ mới"}
+            {service ? t("business.services.updateSuccess") : t("business.services.createSuccess")}
           </DialogTitle>
           <DialogDescription>
-            Điền thông tin dịch vụ bên dưới và nhấn Lưu để hoàn tất.
+            {t("common.submit")}
           </DialogDescription>
         </DialogHeader>
 
@@ -208,7 +210,7 @@ const ServiceFormModal = ({
         >
           <div className="space-y-1.5">
             <Label htmlFor="svc-name">
-              Tên dịch vụ <span className="text-destructive">*</span>
+              {t("business.services.title")} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="svc-name"
@@ -216,31 +218,31 @@ const ServiceFormModal = ({
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
               minLength={2}
-              placeholder="Nhập tên dịch vụ..."
+              placeholder={t("business.services.title")}
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="svc-desc">Mô tả</Label>
+            <Label htmlFor="svc-desc">{t("common.edit")}</Label>
             <Textarea
               id="svc-desc"
               value={form.description}
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
               }
-              placeholder="Mô tả chi tiết về dịch vụ..."
+              placeholder={t("business.services.title")}
               className="min-h-[80px]"
             />
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="svc-place">
-              Địa điểm <span className="text-destructive">*</span>
+              {t("business.places.title")} <span className="text-destructive">*</span>
             </Label>
             {places.length === 0 ? (
               <div className="flex items-center gap-2 h-10 border border-destructive/50 rounded-md px-3 bg-destructive/5 text-sm text-destructive">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
-                Chưa có địa điểm — hãy tạo địa điểm trước
+                {t("business.places.noPlacesYet")}
               </div>
             ) : (
               <Select
@@ -249,7 +251,7 @@ const ServiceFormModal = ({
                 required
               >
                 <SelectTrigger id="svc-place">
-                  <SelectValue placeholder="-- Chọn địa điểm --" />
+                  <SelectValue placeholder={t("business.bookings.allPlaces")} />
                 </SelectTrigger>
                 <SelectContent>
                   {places.map((p) => (
@@ -264,7 +266,7 @@ const ServiceFormModal = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Loại dịch vụ</Label>
+              <Label>{t("business.services.title")}</Label>
               <Select
                 value={form.serviceType}
                 onValueChange={(v) => setForm({ ...form, serviceType: v })}
@@ -284,7 +286,7 @@ const ServiceFormModal = ({
 
             <div className="space-y-1.5">
               <Label htmlFor="svc-price">
-                Giá gốc (VND) <span className="text-destructive">*</span>
+                {t("business.revenue.totalRevenue")} (VND) <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="svc-price"
@@ -297,7 +299,7 @@ const ServiceFormModal = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="svc-discount">Giá khuyến mãi (VND)</Label>
+              <Label htmlFor="svc-discount">{t("business.revenue.totalRevenue")} (VND)</Label>
               <Input
                 id="svc-discount"
                 type="number"
@@ -306,12 +308,12 @@ const ServiceFormModal = ({
                   setForm({ ...form, discountPrice: e.target.value })
                 }
                 min="0"
-                placeholder="Để trống nếu không có"
+                placeholder={t("common.optional")}
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="svc-duration">Thời lượng (phút)</Label>
+              <Label htmlFor="svc-duration">{t("business.schedule.title")}</Label>
               <Input
                 id="svc-duration"
                 type="number"
@@ -322,7 +324,7 @@ const ServiceFormModal = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="svc-capacity">Sức chứa tối đa</Label>
+              <Label htmlFor="svc-capacity">{t("business.bookings.guests")}</Label>
               <Input
                 id="svc-capacity"
                 type="number"
@@ -331,7 +333,7 @@ const ServiceFormModal = ({
                   setForm({ ...form, maxCapacity: e.target.value })
                 }
                 min="1"
-                placeholder="Không giới hạn"
+                placeholder={t("common.optional")}
               />
             </div>
           </div>
@@ -340,10 +342,10 @@ const ServiceFormModal = ({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <Label htmlFor="svc-require-deposit" className="font-medium">
-                  Yêu cầu đặt cọc
+                  {t("business.services.title")}
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Bật để yêu cầu khách thanh toán cọc trước khi giữ chỗ.
+                  {t("common.optional")}
                 </p>
               </div>
               <Checkbox
@@ -358,7 +360,7 @@ const ServiceFormModal = ({
             {form.requireDeposit ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Loại cọc</Label>
+                  <Label>{t("business.services.title")}</Label>
                   <Select
                     value={form.depositType}
                     onValueChange={(v) => setForm({ ...form, depositType: v })}
@@ -368,10 +370,10 @@ const ServiceFormModal = ({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="PERCENT">
-                        Theo phần trăm (%)
+                        {t("business.services.title")}
                       </SelectItem>
                       <SelectItem value="FIXED">
-                        Số tiền cố định (VND)
+                        {t("business.services.title")}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -380,8 +382,8 @@ const ServiceFormModal = ({
                 <div className="space-y-1.5">
                   <Label htmlFor="svc-deposit-amount">
                     {form.depositType === "PERCENT"
-                      ? "Mức cọc (%)"
-                      : "Số tiền cọc (VND)"}
+                      ? t("business.services.title")
+                      : t("business.services.title")}
                   </Label>
                   <Input
                     id="svc-deposit-amount"
@@ -394,14 +396,14 @@ const ServiceFormModal = ({
                     }
                     placeholder={
                       form.depositType === "PERCENT"
-                        ? "Ví dụ: 30"
-                        : "Ví dụ: 200000"
+                        ? "30"
+                        : "200000"
                     }
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="svc-refundable">Cho phép hoàn cọc</Label>
+                  <Label htmlFor="svc-refundable">{t("business.services.title")}</Label>
                   <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2">
                     <Checkbox
                       id="svc-refundable"
@@ -411,13 +413,13 @@ const ServiceFormModal = ({
                       }
                     />
                     <Label htmlFor="svc-refundable" className="cursor-pointer">
-                      Hoàn cọc khi hủy booking theo chính sách
+                      {t("business.services.title")}
                     </Label>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="svc-refund-percent">Tỉ lệ hoàn cọc (%)</Label>
+                  <Label htmlFor="svc-refund-percent">{t("business.services.title")}</Label>
                   <Input
                     id="svc-refund-percent"
                     type="number"
@@ -428,7 +430,7 @@ const ServiceFormModal = ({
                     onChange={(e) =>
                       setForm({ ...form, depositRefundPercent: e.target.value })
                     }
-                    placeholder="Mặc định 50"
+                    placeholder="50"
                   />
                 </div>
               </div>
@@ -437,7 +439,7 @@ const ServiceFormModal = ({
             {form.requireDeposit && depositPreview != null ? (
               <div className="text-xs rounded-md bg-primary/10 border border-primary/20 px-3 py-2">
                 <span className="text-muted-foreground">
-                  Khach se thay tien coc:{" "}
+                  {t("business.services.title")}
                 </span>
                 <span className="font-semibold text-foreground">
                   {formatVND(depositPreview)}
@@ -448,8 +450,8 @@ const ServiceFormModal = ({
 
           <div className="space-y-3">
             <FileUploader
-              label="Ảnh đại diện dịch vụ"
-              hint="Tối đa 1 ảnh, định dạng JPG/PNG/WebP"
+              label={t("business.services.title")}
+              hint={t("common.optional")}
               maxFiles={1}
               maxFileSize={5 * 1024 * 1024}
               acceptTypes={["image/jpeg", "image/png", "image/webp"]}
@@ -460,7 +462,7 @@ const ServiceFormModal = ({
             {!thumbnailFiles.length && !!service?.thumbnail && (
               <div className="rounded-lg border border-border/60 p-2">
                 <p className="text-[11px] text-muted-foreground mb-1">
-                  Ảnh đại diện hiện tại
+                  {t("business.services.title")}
                 </p>
                 <img
                   src={service.thumbnail}
@@ -473,8 +475,8 @@ const ServiceFormModal = ({
 
           <div className="space-y-3">
             <FileUploader
-              label="Bộ sưu tập ảnh"
-              hint="Tối đa 6 ảnh. Chọn ảnh mới sẽ thay thế bộ sưu tập cũ"
+              label={t("business.services.title")}
+              hint={t("common.optional")}
               maxFiles={6}
               maxFileSize={5 * 1024 * 1024}
               acceptTypes={["image/jpeg", "image/png", "image/webp"]}
@@ -487,7 +489,7 @@ const ServiceFormModal = ({
               service.images.length > 0 && (
                 <div className="rounded-lg border border-border/60 p-2">
                   <p className="text-[11px] text-muted-foreground mb-2">
-                    Bộ sưu tập hiện tại ({service.images.length} ảnh)
+                    {t("business.services.title")} ({service.images.length})
                   </p>
                   <div className="grid grid-cols-3 gap-2">
                     {service.images.slice(0, 6).map((image, idx) => (
@@ -512,17 +514,17 @@ const ServiceFormModal = ({
               }
             />
             <Label htmlFor="svc-active" className="cursor-pointer font-medium">
-              Dịch vụ đang hoạt động
+              {t("common.active")}
             </Label>
           </div>
         </form>
 
         <DialogFooter className="shrink-0 gap-2 pt-2 border-t border-border">
           <Button variant="outline" onClick={onClose}>
-            Hủy bỏ
+            {t("common.cancel")}
           </Button>
           <Button type="submit" form="service-form" disabled={saving}>
-            {saving ? "Đang lưu..." : "Lưu dịch vụ"}
+            {saving ? t("common.processing") : t("common.save")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -532,165 +534,173 @@ const ServiceFormModal = ({
 
 // ─── Confirm Delete Modal ─────────────────────────────────────────────────────
 
-const ConfirmDeleteModal = ({ name, open, onConfirm, onCancel }) => (
-  <Dialog open={open} onOpenChange={onCancel}>
-    <DialogContent className="max-w-md">
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2 text-destructive">
-          <Trash2 className="h-5 w-5" />
-          Xác nhận xóa
-        </DialogTitle>
-        <DialogDescription>
-          Bạn có chắc chắn muốn xóa dịch vụ{" "}
-          <span className="font-semibold text-foreground">"{name}"</span>? Hành
-          động này không thể hoàn tác.
-        </DialogDescription>
-      </DialogHeader>
-      <DialogFooter className="gap-2">
-        <Button variant="outline" onClick={onCancel}>
-          Hủy bỏ
-        </Button>
-        <Button variant="destructive" onClick={onConfirm}>
-          Xóa dịch vụ
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-);
+const ConfirmDeleteModal = ({ name, open, onConfirm, onCancel }) => {
+  const { t } = useTranslation();
+  return (
+    <Dialog open={open} onOpenChange={onCancel}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-destructive">
+            <Trash2 className="h-5 w-5" />
+            {t("common.confirmDelete")}
+          </DialogTitle>
+          <DialogDescription>
+            {t("common.confirmDelete")}{" "}
+            <span className="font-semibold text-foreground">"{name}"</span>?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            {t("common.cancel")}
+          </Button>
+          <Button variant="destructive" onClick={onConfirm}>
+            {t("common.delete")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 // ─── Service Item ─────────────────────────────────────────────────────────────
 
-const ServiceItem = ({ svc, onEdit, onDelete }) => (
-  <div className="[content-visibility:auto] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4 border-b border-border/60 last:border-0 group hover:bg-muted/30 px-1 -mx-1 rounded-lg transition-colors">
-    <div className="flex-1 min-w-0 flex items-start gap-3">
-      <div className="h-14 w-14 rounded-lg border border-border/60 overflow-hidden bg-muted shrink-0 flex items-center justify-center">
-        {svc.thumbnail ? (
-          <img
-            src={svc.thumbnail}
-            alt={svc.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <ImageIcon className="h-4 w-4 text-muted-foreground" />
-        )}
-      </div>
-
-      <div className="min-w-0 space-y-1.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-semibold text-foreground text-sm leading-tight">
-            {svc.name}
-          </h3>
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-            {SERVICE_TYPE_LABELS[svc.serviceType] || svc.serviceType}
-          </span>
-          {!svc.isActive && (
-            <Badge
-              variant="outline"
-              className="text-[10px] text-destructive border-destructive/30"
-            >
-              Tạm dừng
-            </Badge>
-          )}
-          {svc.requireDeposit && (
-            <Badge variant="secondary" className="text-[10px]">
-              Có cọc
-            </Badge>
+const ServiceItem = ({ svc, onEdit, onDelete }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="[content-visibility:auto] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4 border-b border-border/60 last:border-0 group hover:bg-muted/30 px-1 -mx-1 rounded-lg transition-colors">
+      <div className="flex-1 min-w-0 flex items-start gap-3">
+        <div className="h-14 w-14 rounded-lg border border-border/60 overflow-hidden bg-muted shrink-0 flex items-center justify-center">
+          {svc.thumbnail ? (
+            <img
+              src={svc.thumbnail}
+              alt={svc.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <ImageIcon className="h-4 w-4 text-muted-foreground" />
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1 font-semibold">
-            {svc.discountPrice ? (
-              <>
-                <span className="line-through text-muted-foreground/60">
-                  {formatVND(svc.price)}
-                </span>
-                <span className="text-emerald-600">
-                  {formatVND(svc.discountPrice)}
-                </span>
-              </>
-            ) : (
-              <span className="text-foreground">{formatVND(svc.price)}</span>
+        <div className="min-w-0 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold text-foreground text-sm leading-tight">
+              {svc.name}
+            </h3>
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+              {SERVICE_TYPE_LABELS[svc.serviceType] || svc.serviceType}
+            </span>
+            {!svc.isActive && (
+              <Badge
+                variant="outline"
+                className="text-[10px] text-destructive border-destructive/30"
+              >
+                {t("common.inactive")}
+              </Badge>
+            )}
+            {svc.requireDeposit && (
+              <Badge variant="secondary" className="text-[10px]">
+                {t("business.services.title")}
+              </Badge>
             )}
           </div>
-          {svc.duration && (
-            <div className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {svc.duration} phút
+
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1 font-semibold">
+              {svc.discountPrice ? (
+                <>
+                  <span className="line-through text-muted-foreground/60">
+                    {formatVND(svc.price)}
+                  </span>
+                  <span className="text-emerald-600">
+                    {formatVND(svc.discountPrice)}
+                  </span>
+                </>
+              ) : (
+                <span className="text-foreground">{formatVND(svc.price)}</span>
+              )}
             </div>
-          )}
-          {svc.maxCapacity && (
-            <div className="flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              {svc.maxCapacity} người
-            </div>
-          )}
-          {svc._count?.bookings > 0 && (
-            <div className="flex items-center gap-1">
-              <CalendarCheck className="h-3 w-3" />
-              {svc._count.bookings} booking
-            </div>
-          )}
+            {svc.duration && (
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {svc.duration} {t("business.schedule.title")}
+              </div>
+            )}
+            {svc.maxCapacity && (
+              <div className="flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                {svc.maxCapacity} {t("business.bookings.guests")}
+              </div>
+            )}
+            {svc._count?.bookings > 0 && (
+              <div className="flex items-center gap-1">
+                <CalendarCheck className="h-3 w-3" />
+                {svc._count.bookings} {t("business.bookings.bookings")}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
 
-    <div className="flex items-center gap-1.5 shrink-0">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0"
-        aria-label={`Chỉnh sửa dịch vụ ${svc.name}`}
-        onClick={() => onEdit(svc)}
-      >
-        <Pencil className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-        aria-label={`Xóa dịch vụ ${svc.name}`}
-        onClick={() => onDelete(svc)}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          aria-label={`${t("common.edit")} ${svc.name}`}
+          onClick={() => onEdit(svc)}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+          aria-label={`${t("common.delete")} ${svc.name}`}
+          onClick={() => onDelete(svc)}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ─── Place Overview Card ─────────────────────────────────────────────────────
 
-const PlaceOverviewCard = ({ item, isSelected, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      DESIGN.card,
-      "p-4 text-left w-full transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
-      isSelected && "ring-2 ring-primary border-primary/50",
-    )}
-  >
-    <p className="font-semibold text-sm text-foreground truncate">
-      {item.placeName}
-    </p>
-    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-      <span>
-        Tổng: <strong className="text-foreground">{item.total}</strong>
-      </span>
-      <span>
-        Hoạt động:{" "}
-        <strong className="text-emerald-600">{item.activeCount}</strong>
-      </span>
-      <span>
-        Khuyến mãi:{" "}
-        <strong className="text-amber-600">{item.discountedCount}</strong>
-      </span>
-      <span>
-        Booking: <strong className="text-blue-600">{item.bookingCount}</strong>
-      </span>
-    </div>
-  </button>
-);
+const PlaceOverviewCard = ({ item, isSelected, onClick }) => {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        DESIGN.card,
+        "p-4 text-left w-full transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
+        isSelected && "ring-2 ring-primary border-primary/50",
+      )}
+    >
+      <p className="font-semibold text-sm text-foreground truncate">
+        {item.placeName}
+      </p>
+      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span>
+          {t("business.places.total")}: <strong className="text-foreground">{item.total}</strong>
+        </span>
+        <span>
+          {t("common.active")}:{" "}
+          <strong className="text-emerald-600">{item.activeCount}</strong>
+        </span>
+        <span>
+          {t("business.services.title")}:{" "}
+          <strong className="text-amber-600">{item.discountedCount}</strong>
+        </span>
+        <span>
+          {t("business.bookings.bookings")}: <strong className="text-blue-600">{item.bookingCount}</strong>
+        </span>
+      </div>
+    </button>
+  );
+};
 
 // ─── PAGE SIZE ───────────────────────────────────────────────────────────────
 
@@ -699,6 +709,7 @@ const PAGE_SIZE = 10;
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const ServiceListPage = () => {
+  const { t } = useTranslation();
   const [services, setServices] = useState([]);
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -726,11 +737,11 @@ const ServiceListPage = () => {
       setTotalPages(response.pagination?.totalPages || 1);
       setTotal(response.pagination?.total || 0);
     } catch {
-      toast.error("Không thể tải danh sách dịch vụ");
+      toast.error(t("business.services.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [search, page, selectedPlaceId]);
+  }, [search, page, selectedPlaceId, t]);
 
   useEffect(() => {
     loadServices();
@@ -747,12 +758,12 @@ const ServiceListPage = () => {
   const groupedServices = useMemo(() => {
     return services.reduce((acc, svc) => {
       const key = svc.place?.id || "none";
-      const label = svc.place?.name || "Chưa gán địa điểm";
+      const label = svc.place?.name || t("business.places.noPlacesYet");
       if (!acc[key]) acc[key] = { label, items: [] };
       acc[key].items.push(svc);
       return acc;
     }, {});
-  }, [services]);
+  }, [services, t]);
 
   const placeOverview = useMemo(() => {
     return Object.entries(groupedServices).map(([placeKey, group]) => {
@@ -775,13 +786,13 @@ const ServiceListPage = () => {
 
   const handleCreate = async (data) => {
     await businessOfferingApi.create(data);
-    toast.success("Tạo dịch vụ thành công");
+    toast.success(t("business.services.createSuccess"));
     loadServices();
   };
 
   const handleUpdate = async (data) => {
     await businessOfferingApi.update(editService.id, data);
-    toast.success("Cập nhật dịch vụ thành công");
+    toast.success(t("business.services.updateSuccess"));
     setEditService(null);
     loadServices();
   };
@@ -791,11 +802,11 @@ const ServiceListPage = () => {
     setConfirmDelete(null);
     try {
       await businessOfferingApi.remove(id);
-      toast.success("Xóa dịch vụ thành công");
+      toast.success(t("business.services.deleteSuccess"));
       if (services.length === 1 && page > 1) setPage((p) => p - 1);
       else loadServices();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể xóa");
+      toastApiErrorIfNeeded(error, t("common.operationFailed"));
     }
   };
 
@@ -825,13 +836,13 @@ const ServiceListPage = () => {
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
       {/* Header */}
       <PageHeader
-        title="Quản lý dịch vụ"
-        subtitle="Tạo, chỉnh sửa và quản lý các dịch vụ của địa điểm bạn"
+        title={t("business.services.title")}
+        subtitle={t("business.services.title")}
         badge={total > 0 ? total : undefined}
         action={
           <Button onClick={() => openCreate("")} className="gap-2">
             <Plus className="h-4 w-4" />
-            Tạo dịch vụ mới
+            {t("business.services.createSuccess")}
           </Button>
         }
       />
@@ -843,25 +854,25 @@ const ServiceListPage = () => {
         ) : (
           <>
             <StatCard
-              title="Tổng dịch vụ"
+              title={t("business.services.title")}
               value={total}
               icon={Ticket}
               iconColor="blue"
             />
             <StatCard
-              title="Đang hoạt động"
+              title={t("common.active")}
               value={totalActive}
               icon={CalendarCheck}
               iconColor="emerald"
             />
             <StatCard
-              title="Đang khuyến mãi"
+              title={t("business.services.title")}
               value={totalDiscounted}
               icon={Tag}
               iconColor="amber"
             />
             <StatCard
-              title="Địa điểm"
+              title={t("business.places.title")}
               value={places.length}
               icon={Users}
               iconColor="violet"
@@ -872,7 +883,7 @@ const ServiceListPage = () => {
 
       {/* Place Overview */}
       {!loading && placeOverview.length > 0 && (
-        <SectionCard title="Tổng quan theo địa điểm" titleIcon={Ticket}>
+        <SectionCard title={t("business.services.title")} titleIcon={Ticket}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {placeOverview.map((item) => (
               <PlaceOverviewCard
@@ -895,14 +906,14 @@ const ServiceListPage = () => {
 
       {/* Toolbar + List */}
       <SectionCard
-        title="Danh sách dịch vụ"
+        title={t("business.services.title")}
         titleIcon={Ticket}
         action={
           <div className="flex gap-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <Input
-                placeholder="Tìm tên dịch vụ..."
+                placeholder={t("common.search")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 h-8 text-sm w-52"
@@ -910,10 +921,10 @@ const ServiceListPage = () => {
             </div>
             <Select value={selectedPlaceId} onValueChange={setSelectedPlaceId}>
               <SelectTrigger className="h-8 text-sm w-44">
-                <SelectValue placeholder="Tất cả địa điểm" />
+                <SelectValue placeholder={t("business.bookings.allPlaces")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả địa điểm</SelectItem>
+                <SelectItem value="all">{t("business.bookings.allPlaces")}</SelectItem>
                 {places.map((place) => (
                   <SelectItem key={place.id} value={String(place.id)}>
                     {place.name}
@@ -948,14 +959,14 @@ const ServiceListPage = () => {
             return (
               <EmptyState
                 icon={Ticket}
-                message="Chưa có dịch vụ nào. Nhấn 'Tạo dịch vụ mới' để bắt đầu."
+                message={t("business.services.loadFailed")}
                 action={
                   <Button
                     size="sm"
                     onClick={() => openCreate("")}
                     className="gap-1.5"
                   >
-                    <Plus className="h-3.5 w-3.5" /> Tạo dịch vụ
+                    <Plus className="h-3.5 w-3.5" /> {t("common.create")}
                   </Button>
                 }
               />
@@ -981,7 +992,7 @@ const ServiceListPage = () => {
                         {group.label}
                       </span>
                       <span className="text-[10px] bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-medium">
-                        {group.items.length} dịch vụ
+                        {group.items.length} {t("business.services.title")}
                       </span>
                     </div>
                     <Button
@@ -994,7 +1005,7 @@ const ServiceListPage = () => {
                       }}
                     >
                       <Plus className="h-3 w-3" />
-                      Thêm vào đây
+                      {t("common.add")}
                     </Button>
                   </div>
 

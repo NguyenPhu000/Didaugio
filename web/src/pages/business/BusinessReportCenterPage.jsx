@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
   FileText,
@@ -198,6 +199,7 @@ const ReportTable = ({ data, columns, title }) => (
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const BusinessReportCenterPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [reportType, setReportType] = useState("bookings");
   const [dateRange, setDateRange] = useState("7d");

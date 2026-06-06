@@ -1,0 +1,1240 @@
+{
+  "common": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "close": "Đóng",
+    "confirm": "Xác nhận",
+    "delete": "Xóa",
+    "edit": "Chỉnh sửa",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "done": "Hoàn tất",
+    "loading": "Đang tải...",
+    "error": "Lỗi",
+    "success": "Thành công",
+    "warning": "Cảnh báo",
+    "retry": "Thử lại",
+    "skip": "Bỏ qua",
+    "search": "Tìm kiếm",
+    "filter": "Bộ lọc",
+    "all": "Tất cả",
+    "none": "Không",
+    "yes": "Có",
+    "no": "Không",
+    "ok": "OK",
+    "or": "HOẶC",
+    "and": "và",
+    "viewAll": "Xem tất cả",
+    "seeMore": "Xem thêm",
+    "noResults": "Không có kết quả",
+    "noData": "Chưa có dữ liệu",
+    "tryAgain": "Thử lại",
+    "required": "Bắt buộc",
+    "optional": "Tùy chọn",
+    "free": "Miễn phí",
+    "appName": "Đi Đâu Giờ?",
+    "offline": "Bạn đang offline — Hiển thị dữ liệu đã lưu",
+    "days": "ngày",
+    "people": "người",
+    "later": "Để sau",
+    "loginRequired": "Cần đăng nhập",
+    "login": "Đăng nhập",
+    "saving": "Đang lưu...",
+    "processing": "Đang xử lý..."
+  },
+  "tabs": {
+    "map": "Bản đồ",
+    "explore": "Khám phá",
+    "saved": "Đã lưu",
+    "trips": "Chuyến đi"
+  },
+  "auth": {
+    "login": {
+      "title": "ĐĂNG NHẬP",
+      "subtitle": "TRUY CẬP HỆ THỐNG",
+      "brandTagline": "Khám Pha Cần Thơ theo cách của bạn",
+      "emailOrUsername": "Email hoặc tên đăng nhập",
+      "password": "Mật khẩu",
+      "rememberMe": "GHI NHỚ ĐĂNG NHẬP",
+      "forgotPassword": "QUÊN MẬT KHẨU?",
+      "submit": "TRUY CẬP HỆ THỐNG",
+      "submitting": "ĐANG XÁC THỰC...",
+      "orContinueWith": "HOẶC TIẾP TỤC VỚI",
+      "googleLogin": "Đăng nhập Google",
+      "guestExperience": "Trải nghiệm khách",
+      "noAccount": "Chưa có tài khoản?",
+      "createAccount": "Tạo tài khoản mới",
+      "success": "Đăng nhập thành công!",
+      "googleSuccess": "Đăng nhập Google thành công!",
+      "noPermission": "Tài khoản không có quyền truy cập"
+    },
+    "register": {
+      "title": "ĐĂNG KÝ",
+      "subtitle": "TẠO TÀI KHOAN DU LỊCH THÔNG MINH",
+      "personalInfo": "THÔNG TIN CÁ NHÂN",
+      "fullName": "Họ và tên",
+      "username": "Username",
+      "email": "Địa chỉ Email",
+      "securityPassword": "MẬT KHẨU BẢO MẬT",
+      "password": "Mật khẩu",
+      "confirmPassword": "Xác nhận mật khẩu",
+      "submit": "Đăng ký tài kho��n",
+      "hasAccount": "Đã có tài khoản?",
+      "loginNow": "Đăng nhập ngay",
+      "success": "Đăng ký thành công!",
+      "failed": "Đăng ký thất bại"
+    },
+    "forgotPassword": {
+      "title": "QUÊN MẬT KHẨU",
+      "emailLabel": "ĐỊA CHỈ EMAIL",
+      "submit": "GỬI EMAIL KHÔI PHỤC",
+      "emailSent": "EMAIL ĐÃ ĐƯỢC GỬI",
+      "checkInbox": "Kiểm tra hộp thư của bạn",
+      "backToLogin": "QUAY LẠI ĐĂNG NHẬP",
+      "tryDifferentEmail": "Thử email khác"
+    },
+    "resetPassword": {
+      "title": "ĐẶT LẠI MẬT KHẨU",
+      "newPassword": "Mật khẩu mới",
+      "confirmPassword": "Xác nhận mật khẩu mới",
+      "submit": "ĐẶT LẠI MẬT KHẨU",
+      "success": "Đặt lại mật khẩu thành công!"
+    },
+    "verifyEmail": {
+      "title": "XÁC MINH EMAIL",
+      "verifying": "Đang xác minh email...",
+      "success": "Email đã được xác minh!",
+      "failed": "Xác minh email thất bại"
+    }
+  },
+  "onboarding": {
+    "travelStyleTitle": "Bạn thích du lịch kiểu gì? 🌴",
+    "travelStyleSubtitle": "Chọn những phong cách bạn yêu thích (có thể chọn nhiều)",
+    "groupTitle": "Đi du lịch với ai? 👥",
+    "groupSubtitle": "Giúp em Nhi gợi ý phù hợp hơn",
+    "budgetTitle": "Ngân sách của bạn? 💰",
+    "budgetSubtitle": "Để em Nhi gợi ý phù hợp túi tiền",
+    "next": "Tiếp theo",
+    "start": "Bắt đầu khám phá!",
+    "skip": "Bỏ qua"
+  },
+  "explore": {
+    "header": {
+      "greeting": "Bạn muốn khám phá gì hôm nay?",
+      "subtitle": "Chọn danh mục, xem địa điểm nổi bật và bắt đầu hành trình tại Cần Thơ.",
+      "searchPlaceholder": "Tìm địa điểm, món ăn, hoạt động...",
+      "location": "Cần Thơ"
+    },
+    "categories": {
+      "all": "Tất cả"
+    },
+    "recommended": "Địa điểm nên thử",
+    "results": "{count} kết quả",
+    "empty": {
+      "noPlaces": "Chưa có địa điểm nào",
+      "noResults": "Không tìm thấy kết quả",
+      "noPlacesDesc": "Hãy quay lại sau hoặc thử đổi danh mục khác.",
+      "noResultsDesc": "Thử danh mục khác hoặc tìm kiếm theo tên."
+    },
+    "search": {
+      "placeholder": "Tìm địa điểm, quán ăn, điểm vui chơi...",
+      "close": "Đóng",
+      "resetFilters": "Đặt lại bộ lọc",
+      "resultsMatch": "{count} kết quả phù hợp",
+      "searchNext": "Tìm điểm đến tiếp theo",
+      "noResults": "Không tìm thấy kết quả",
+      "tabs": {
+        "all": "Tất cả",
+        "categories": "Danh mục",
+        "areas": "Khu vực",
+        "price": "Giá",
+        "ratingSort": "Đánh giá & sắp xếp"
+      },
+      "price": {
+        "free": "Miễn phí",
+        "budget": "Bình dân",
+        "midRange": "Trung bình",
+        "premium": "Cao cấp"
+      },
+      "sort": {
+        "newest": "Mới nhất",
+        "rating": "Đánh giá",
+        "popular": "Phổ biến"
+      }
+    },
+    "toast": {
+      "saved": "Địa điểm đã được lưu vào danh sách yêu thích",
+      "unsaved": "Địa điểm đã không còn trong danh sách yêu thích",
+      "saveError": "Không thể lưu địa điểm",
+      "unsaveError": "Không thể bỏ lưu địa điểm",
+      "loginToSave": "Đăng nhập để lưu"
+    }
+  },
+  "saved": {
+    "title": "Yêu thích",
+    "countLabel": "{count} địa điểm",
+    "filterAll": "Tất cả",
+    "empty": {
+      "noResults": "Không có địa điểm",
+      "noSaved": "Chưa có địa điểm nào",
+      "noResultsDesc": "Thử đổi bộ lọc hoặc khu vực để xem các địa điểm khác bạn đã lưu.",
+      "noSavedDesc": "Hãy thử khám phá và lưu các địa điểm yêu thích để dễ truy cập.",
+      "explore": "Khám phá địa điểm"
+    },
+    "alert": {
+      "unsaveTitle": "Bỏ lưu địa điểm?",
+      "noteError": "Không lưu được ghi chú"
+    }
+  },
+  "trips": {
+    "guestTitle": "Đăng nhập để quản lý chuyến đi",
+    "guestDescription": "Theo dõi chuyến đi, lưu kỷ niệm và đồng bộ dữ liệu trên mọi thiết bị.",
+    "empty": {
+      "preparing": "Chuẩn bị hành trình",
+      "syncing": "Đang đồng bộ dữ liệu chuyến đi...",
+      "explore": "Khám phá thế giới",
+      "noResults": "Không có kết quả",
+      "createFirst": "Tạo hành trình đầu tiên để gom điểm đến, lịch trình và ghi chung vào cùng một nơi gọn gàng.",
+      "createTrip": "Tạo chuyến đi mới",
+      "clearFilter": "Xóa bộ lọc",
+      "loadError": "Không tải được dữ liệu",
+      "retry": "Thử lại"
+    }
+  },
+  "profile": {
+    "title": "HỒ SƠ",
+    "guestDefault": "Lữ khách",
+    "noAddress": "Chưa cập nhật địa chỉ",
+    "loadingAddress": "Đang tải địa chỉ...",
+    "stats": {
+      "trips": "CHUYẾN ĐI",
+      "reviews": "ĐÁNH GIÁ",
+      "saved": "ĐÃ LƯU"
+    },
+    "guest": {
+      "title": "Đăng nhập để mở khóa hồ sơ",
+      "description": "Theo dõi chuyến đi, lưu kỷ niệm và đồng bộ dữ liệu trên mọi thiết bi.",
+      "login": "Đăng nhập",
+      "register": "Đăng ký tài khoản mới",
+      "explore": "Khám phá bản đồ",
+      "freeNote": "Miễn phí · Không thẻ tín dụng"
+    },
+    "actions": {
+      "editProfile": "Chỉnh sửa hồ sơ",
+      "shareProfile": "Chia sẻ hồ sơ"
+    },
+    "upcomingTrips": "Chuyến đi sắp tới",
+    "noUpcomingTrips": "Chưa có chuyến đi nào sắp tới",
+    "memories": "Kỷ niệm",
+    "settingsItems": {
+      "myBookings": "Booking của tôi",
+      "savedPlaces": "Địa điểm đã lưu",
+      "paymentMethods": "Phương thức thanh toán",
+      "notifications": "Thông báo"
+    },
+    "settings": "Cài đặt",
+    "comingSoon": "{feature} sẽ có trong bản cập nhật tới!",
+    "shareMessage": "Xem hồ sơ {{name}} trên Đi Đâu Giờ?"
+  },
+  "settings": {
+    "title": "CÀI ĐẶT",
+    "account": "Tài khoản",
+    "editProfile": "Chỉnh sửa hồ sơ",
+    "editProfileSubtitle": "Cập nhật tên, ảnh đại diện và thông tin cá nhân",
+    "loginEmail": "Email đăng nhập",
+    "accountSecurity": "Bảo mật tài khoản",
+    "accountSecuritySubtitle": "Mật khẩu, 2FA và phiên đăng nhập",
+    "syncProfile": "Đồng bộ hồ sơ",
+    "syncProfileSubtitle": "Làm mới dữ liệu từ máy chủ",
+    "syncing": "Đang đồng bộ...",
+    "preferences": "Tùy chỉnh",
+    "darkMode": "Chế độ tối",
+    "darkModeOn": "Bật — Dễ chịu cho mắt",
+    "darkModeOff": "Tắt — Giao diện sáng",
+    "notifications": "Thông báo",
+    "notificationsUnread": "{{count}} chưa đọc",
+    "noNewNotifications": "Không có thông báo mới",
+    "pushNotifications": "Thông báo đẩy",
+    "pushOn": "Bật — Nhận thông báo đẩy",
+    "pushOff": "Tắt — Chế độ im lặng",
+    "hapticFeedback": "Rung phản hồi",
+    "hapticSubtitle": "Rung khi nhấn nút",
+    "autoSync": "Tự động đồng bộ",
+    "autoSyncing": "Đang đồng bộ dữ liệu...",
+    "autoSyncOn": "Bật — Luôn cập nhật",
+    "autoSyncOff": "Tắt — Làm mới thủ công",
+    "customize": {
+      "language": "Ngôn ngữ"
+    },
+    "features": "Tính năng",
+    "savedPlaces": "Địa điểm đã lưu",
+    "paymentMethods": "Phương thức thanh toán",
+    "support": "Hỗ trợ",
+    "helpCenter": "Trung tâm trợ giúp",
+    "helpCenterSubtitle": "Câu hỏi thường gặp và hướng dẫn",
+    "sendFeedback": "Gửi phản hồi",
+    "sendFeedbackSubtitle": "Giúp chúng tôi cải thiện ứng dụng",
+    "clearCache": "Xóa cache",
+    "clearCacheSubtitle": "Giải phóng bộ nhớ",
+    "clearCacheTitle": "Xóa cache?",
+    "clearCacheMessage": "Thao tác này sẽ xóa dữ liệu tạm thời. Tài khoản và địa điểm đã lưu sẽ không bị ảnh hưởng.",
+    "clearCacheConfirm": "Xóa",
+    "clearCacheSuccess": "Xong!",
+    "clearCacheSuccessMessage": "Cache đã được xóa thành công.",
+    "legal": "Pháp lý",
+    "privacyPolicy": "Chính sách bảo mật",
+    "termsOfService": "Điều khoản dịch vụ",
+    "appVersion": "Phiên bản ứng dụng",
+    "logout": "Đăng xuất",
+    "logoutConfirmTitle": "Đăng xuất?",
+    "logoutConfirmMessage": "Bạn sẽ cần đăng nhập lại để truy cập tài khoản.",
+    "emailNotSet": "Chưa đặt",
+    "syncError": "Đồng bộ thất bại. Vui lòng thử lại.",
+    "comingSoon": "{feature} sẽ có trong bản cập nhật tiếp theo!"
+  },
+  "notifications": {
+    "title": "Thông báo",
+    "unreadCount": "{count} chưa đọc",
+    "markAllRead": "Đọc hết",
+    "filterUnread": "Chưa đọc",
+    "filterAll": "Tất cả",
+    "empty": {
+      "noNew": "Không có thông báo mới",
+      "noNotifications": "Chưa có thông báo nào",
+      "allRead": "Tất cả thông báo đã được đọc.",
+      "description": "Thông báo từ booking, địa điểm và hệ thống sẽ xuất hiện ở đây."
+    },
+    "time": {
+      "justNow": "Vừa xong",
+      "minutes": "{count} phút",
+      "hours": "{count} giờ",
+      "days": "{count} ngày"
+    }
+  },
+  "bookings": {
+    "title": "Booking của tôi",
+    "subtitle": "Theo dõi xác nhận, QR và liên kết trip",
+    "status": {
+      "pending": "Chờ xác nhận",
+      "confirmed": "Đã xác nhận",
+      "completed": "Hoàn thành",
+      "cancelled": "Đã hủy",
+      "rejected": "Bị từ chối",
+      "expired": "Hết hạn",
+      "noShow": "Không đến"
+    },
+    "stats": {
+      "total": "Tổng",
+      "confirmed": "Đã xác nhận",
+      "pending": "Đang chờ"
+    },
+    "empty": {
+      "noBookings": "Bạn chưa có booking nào",
+      "explore": "Khám phá địa điểm"
+    },
+    "qrReady": "QR đã sẵn sàng, chạm để xem",
+    "viewDetail": "Xem chi tiết booking"
+  },
+  "bookingDetail": {
+    "title": "Chi tiết booking",
+    "bookingCode": "Mã booking",
+    "service": "Dịch vụ",
+    "place": "Địa điểm",
+    "usageTime": "Thời gian sử dụng",
+    "totalPayment": "Tổng thanh toán",
+    "qrTitle": "Mã QR check-in",
+    "qrDescription": "Quét mã này tại địa điểm để xác nhận booking.",
+    "qrLoading": "Đang tải mã QR...",
+    "qrNotLoaded": "Chưa tải được mã QR.",
+    "qrUnavailable": "QR không khả dụng cho booking này.",
+    "qrPending": "QR sẽ xuất hiện khi booking được xác nhận.",
+    "qrCheckin": "Mã QR check-in",
+    "qrInstructions": "Đưa mã này cho phía doanh nghiệp quét khi bạn đến sử dụng dịch vụ.",
+    "qrLoadFailed": "Chưa tải được mã QR.",
+    "qrPendingConfirm": "QR sẽ xuất hiện khi booking được xác nhận.",
+    "statusUsed": "Đã sử dụng",
+    "notDetermined": "Chưa xác định",
+    "linkTrip": "Liên kết Trip",
+    "currentTripDay": "Đang ở ngày {{day}} của trip.",
+    "openLinkedTrip": "Mở trip đã liên kết",
+    "noLinkedTripDesc": "Booking này chưa liên kết trip. Bạn có thể chọn trip có sẵn hoặc tạo trip mới để thêm địa điểm vào đúng ngày booking.",
+    "linkSelectedTrip": "Liên kết trip đã chọn",
+    "createTripAndLink": "Tạo trip và liên kết",
+    "viewPlace": "Xem địa điểm",
+    "savePlace": "Lưu địa điểm",
+    "saving": "Đang lưu...",
+    "tripFromBooking": "Trip từ booking {{date}}",
+    "daysCount": "{{count}} ngày",
+    "tripLink": {
+      "title": "Liên kết Trip",
+      "linkedTrip": "Liên kết trip đã chọn",
+      "createAndLink": "Tạo trip và liên kết"
+    },
+    "actions": {
+      "savePlace": "Lưu địa điểm",
+      "viewPlace": "Xem địa điểm",
+      "viewInTrip": "Xem trong trip"
+    }
+  },
+  "booking": {
+    "loginRequired": "Hãy đăng nhập để booking",
+    "notSelected": "Chưa chọn",
+    "contactForPrice": "Liên hệ",
+    "steps": {
+      "service": "Dịch vụ",
+      "confirm": "Xác nhận",
+      "submit": "Gửi yêu cầu"
+    },
+    "title": "Đặt dịch vụ",
+    "selectService": "Chọn dịch vụ bạn muốn đặt",
+    "confirmTitle": "Xác nhận thông tin đặt dịch vụ",
+    "fields": {
+      "place": "Địa điểm",
+      "service": "Dịch vụ",
+      "quantity": "Số lượng",
+      "usageDate": "Ngày sử dụng",
+      "selectTime": "Chọn giờ sử dụng"
+    },
+    "timeGroups": {
+      "morning": "Sáng",
+      "afternoon": "Chiều",
+      "evening": "Tối",
+      "all": "Tất cả"
+    },
+    "tripLink": {
+      "title": "Liên kết vào Trip",
+      "none": "Không liên kết",
+      "selectExisting": "Chọn trip có sẵn",
+      "createNew": "Tạo trip mới"
+    },
+    "pricing": {
+      "total": "Tổng tiền",
+      "deposit": "Tiền cọc"
+    },
+    "submitRequest": "Gửi yêu cầu đặt chỗ",
+    "payAtPlace": "Thanh toán tại địa điểm",
+    "contactInfo": "Thông tin liên hệ",
+    "buttons": {
+      "confirmBooking": "Xác nhận đặt chỗ",
+      "next": "Tiếp theo",
+      "confirm": "Xác nhận"
+    },
+    "success": {
+      "title": "Đặt thành công!",
+      "viewBookings": "Xem booking của tôi",
+      "backToPlace": "Quay lại địa điểm",
+      "viewInTrip": "Xem trong trip"
+    }
+  },
+  "place": {
+    "details": "Chi tiết",
+    "reviews": "Đánh giá",
+    "services": "Dịch vụ",
+    "directions": "Chỉ đường",
+    "save": "Lưu",
+    "saved": "Đã lưu",
+    "share": "Chia sẻ",
+    "report": "Báo cáo",
+    "openNow": "Đang mở cửa",
+    "closed": "Đã đóng cửa",
+    "openHours": "Giờ mở cửa",
+    "address": "Địa chỉ",
+    "phone": "Số điện thoại",
+    "website": "Website",
+    "rating": "Đánh giá",
+    "reviewCount": "{count} đánh giá",
+    "writeReview": "Viết đánh giá",
+    "noReviews": "Chưa có đánh giá nào",
+    "loading": "Đang tải thông tin địa điểm...",
+    "notFound": "Không tìm thấy địa điểm",
+    "priceRange": {
+      "free": "Miễn phí",
+      "budget": "Bình dân",
+      "moderate": "Trung bình",
+      "expensive": "Cao cấp",
+      "luxury": "Sang trọng"
+    },
+    "priceFrom": "Từ",
+    "defaultLocation": "Cần Thơ",
+    "dayNames": ["T2", "T3", "T4", "T5", "T6", "T7", "CN"],
+    "bookNow": "Đặt ngay",
+    "viewOnMap": "Xem trên bản đồ",
+    "detail": {
+      "updatedLater": "Cập nhật sau",
+      "closedToday": "Đóng cửa hôm nay",
+      "pendingUpdate": "Chờ cập nhật",
+      "openToday": "Mở cửa hôm nay",
+      "today": "Hôm nay",
+      "system": "Hệ thống",
+      "quickCall": "Gọi nhanh",
+      "easyToFind": "Dễ tìm",
+      "favorite": "Yêu thích",
+      "loginToSave": "Hãy đăng nhập để lưu địa điểm yêu thích.",
+      "loginToAddToTrip": "Hãy đăng nhập để thêm địa điểm vào chuyến đi.",
+      "loginToBook": "Hãy đăng nhập mới có thể đặt chỗ/booking.",
+      "loginToWriteReview": "Hãy đăng nhập để viết đánh giá địa điểm.",
+      "reviewSubmitted": "Đã gửi đánh giá",
+      "reviewSubmittedDesc": "Cảm ơn bạn đã chia sẻ trải nghiệm.",
+      "featuredPlace": "Điểm đến nổi bật",
+      "category": "Danh mục",
+      "area": "Khu vực",
+      "priceRange": "Mức giá",
+      "owner": "Người đăng",
+      "canTho": "Cần Thơ",
+      "loginToBookButton": "Đăng nhập để đặt",
+      "topRating": "Đánh giá nổi bật",
+      "new": "Mới",
+      "about": "Giới thiệu",
+      "tagLabel": "Tag",
+      "contactSection": "Liên hệ",
+      "addressLabel": "Địa chỉ",
+      "phoneLabel": "Điện thoại",
+      "emailLabel": "Email",
+      "facebookLabel": "Facebook",
+      "openingHoursLabel": "Giờ mở cửa",
+      "reviewsSection": "Đánh giá",
+      "seeAllReviews": "Xem tất cả {{count}} đánh giá",
+      "mapButton": "Bản đồ",
+      "addToTrip": "Thêm vào trip",
+      "closed": "Đóng cửa",
+      "notUpdated": "Chưa cập nhật",
+      "noReviewsShort": "Chưa có đánh giá",
+      "oneReview": "1 đánh giá",
+      "manyReviews": "{{count}} đánh giá",
+      "anonymous": "Ẩn danh",
+      "verified": "Đã xác thực",
+      "businessReply": "Phản hồi từ doanh nghiệp",
+      "allReviews": "Tất cả đánh giá",
+      "latest": "Mới nhất",
+      "withPhotos": "Có ảnh",
+      "noMatchingReviews": "Không có đánh giá phù hợp",
+      "yourRating": "Đánh giá của bạn",
+      "tripType": "Loại chuyến đi",
+      "visitType": {
+        "solo": "Một mình",
+        "couple": "Cặp đôi",
+        "family": "Gia đình",
+        "friends": "Bạn bè",
+        "business": "Công tác"
+      },
+      "shareExperience": "Chia sẻ trải nghiệm",
+      "whatDidYouLike": "Điều gì bạn thích nhất?",
+      "submitReview": "Gửi đánh giá",
+      "addedToTrip": "Đã thêm vào chuyến đi",
+      "addedToTripDesc": "Đã thêm \"{{placeName}}\" vào \"{{tripName}}\"",
+      "somethingWentWrong": "Có lỗi xảy ra",
+      "addToTripError": "Không thể thêm vào chuyến đi. Vui lòng thử lại.",
+      "noTripsYet": "Bạn chưa có chuyến đi nào. Tạo chuyến đi trước khi thêm địa điểm.",
+      "selectTrip": "Chọn chuyến đi",
+      "addPlaceToTrip": "Thêm địa điểm này vào chuyến đi của bạn",
+      "addToTripTitle": "Thêm vào chuyến đi",
+      "addPlaceConfirm": "Thêm \"{{placeName}}\" vào \"{{tripName}}\"?",
+      "toast": {
+        "saved": "Địa điểm đã được lưu vào danh sách yêu thích",
+        "unsaved": "Địa điểm đã không còn trong danh sách yêu thích",
+        "saveError": "Không thể lưu địa điểm",
+        "unsaveError": "Không thể bỏ lưu địa điểm"
+      }
+    }
+  },
+  "event": {
+    "loginRequired": "Yêu cầu đăng nhập",
+    "joinEvent": "Tham gia sự kiện",
+    "success": "Thành công",
+    "error": "Lỗi",
+    "communityEvent": "Sự kiện cộng đồng",
+    "location": "Cần Thơ",
+    "participants": "Người tham gia",
+    "onlineCount": "{{count}} đang trực tuyến",
+    "checkins": "Lượt Check-in",
+    "itinerary": "Lịch trình & Tiến trình",
+    "momentsCheckin": "Moments Check-in",
+    "personalProgress": "Tiến trình cá nhân",
+    "leg": "chặng",
+    "routeDetail": "Lộ trình chi tiết",
+    "noLegs": "Chưa có chặng đi nào.",
+    "pointDetail": "Chi tiết điểm",
+    "takePhoto": "Chụp ảnh check-in",
+    "checkedIn": "Đã check-in",
+    "momentsWall": "Bức tường khoảnh khắc",
+    "anonymous1v1": "ẨN DANH 1:1",
+    "noMoments": "Chưa có khoảnh khắc nào",
+    "anonymousCompanion": "Bạn đồng hành ẩn danh",
+    "checkinTime": "Thời gian check-in",
+    "joinJourney": "THAM GIA HÀNH TRÌNH",
+    "alreadyJoining": "BẠN ĐANG THAM GIA HÀNH TRÌNH"
+  },
+  "trip": {
+    "create": {
+      "title": "Chuyến đi mới",
+      "info": "Thông tin chuyến đi",
+      "time": "Thời gian",
+      "savedPlaces": "Địa điểm đã lưu",
+      "namePlaceholder": "Tên chuyến đi",
+      "descPlaceholder": "Mô tả ngắn về chuyến đi (tùy chọn)",
+      "startDate": "Ngày bắt đầu",
+      "endDate": "Ngày kết thúc",
+      "selectDate": "Chọn ngày",
+      "duration": "{count} ngày",
+      "selectEndDate": "Chọn ngày kết thúc",
+      "endDateError": "Ngày kết thúc phải sau ngày bắt đầu",
+      "cancelAlert": "Hủy tạo chuyến đi?",
+      "submit": "Tạo chuyến đi",
+      "addingPlaces": "Đang thêm địa điểm...",
+      "success": "Tạo chuyến đi thành công"
+    },
+    "detail": {
+      "deleteTitle": "Xóa lịch trình?",
+      "deleteMessage": "Lịch trình này sẽ bị xóa vĩnh viễn.",
+      "startTitle": "Bắt đầu hành trình?",
+      "startMessage": "Bắt đầu hành trình sẽ theo dõi vị trí của bạn để dẫn đường và cập nhật tiến trình.",
+      "startNotification": "Hành trình bắt đầu!",
+      "notFound": "Không tìm thấy chuyến đi",
+      "back": "Quay lại"
+    }
+  },
+  "editProfile": {
+    "cancel": "Hủy",
+    "title": "Chỉnh sửa hồ sơ",
+    "changeAvatar": "Chạm để đổi ảnh đại diện",
+    "fields": {
+      "displayName": "Tên hiển thị",
+      "username": "Username",
+      "nickname": "Nickname",
+      "phone": "Số điện thoại",
+      "gender": "Giới tính",
+      "region": "Khu vực",
+      "address": "Chi tiết địa chỉ",
+      "bio": "Giới thiệu"
+    },
+    "placeholders": {
+      "displayName": "Ví dụ: Nguyễn Văn A",
+      "username": "Tên hiển thị trên bản đồ",
+      "phone": "090...",
+      "address": "Số nhà, tên đường...",
+      "bio": "Giới thiệu ngắn về bạn"
+    },
+    "gender": {
+      "notSelected": "Không chọn",
+      "male": "Nam",
+      "female": "Nữ",
+      "other": "Khác"
+    },
+    "selectGender": "Chọn giới tính",
+    "saveChanges": "Lưu Thay Đổi"
+  },
+  "feedback": {
+    "title": "Góp ý & Hỗ trợ",
+    "subtitle": "Ý kiến của bạn giúp chúng tôi cải thiện",
+    "weListen": "Chúng tôi lắng nghe bạn",
+    "description": "Góp ý giúp Đi Đâu Giờ? ngày càng tốt hơn cho cộng đồng Cần Thơ",
+    "typeLabel": "Loại góp ý *",
+    "titleLabel": "Tiêu đề *",
+    "titlePlaceholder": "Mô tả ngắn gọn vấn đề...",
+    "contentLabel": "Nội dung chi tiết *",
+    "contentPlaceholder": "Mô tả chi tiết góp ý, lỗi gặp phải hoặc đề xuất của bạn...",
+    "faq": "Câu hỏi thường gặp",
+    "addPlace": "Cách thêm/chỉnh thông tin địa điểm",
+    "reviewGuide": "Hướng dẫn đánh giá địa điểm",
+    "privacyTerms": "Chính sách bảo mật & điều khoản",
+    "submitting": "Đang gửi...",
+    "submit": "Gửi góp ý",
+    "thankYou": "Cảm ơn bạn!",
+    "submitFailed": "Gửi thất bại"
+  },
+  "guestGate": {
+    "title": "Đăng nhập để tiếp tục",
+    "description": "Tính năng này yêu cầu tài khoản đăng nhập.",
+    "login": "Đăng nhập",
+    "register": "Đăng ký tài khoản mới",
+    "freeNote": "Miễn phí · Không thẻ tín dụng"
+  },
+  "preferences": {
+    "travelStyles": {
+      "food": "Ẩm thực",
+      "history": "Lịch sử",
+      "nature": "Thiên nhiên",
+      "shopping": "Mua sắm",
+      "nightlife": "Về đêm",
+      "budget": "Tiết kiệm"
+    },
+    "groupTypes": {
+      "solo": "Một mình",
+      "couple": "Đôi",
+      "family": "Gia đình",
+      "group": "Nhóm bạn"
+    },
+    "budgetLevels": {
+      "low": {
+        "label": "Tiết kiệm",
+        "description": "< 500.000 VND/ngày"
+      },
+      "medium": {
+        "label": "Vừa phải",
+        "description": "500k - 1.5 triệu/ngày"
+      },
+      "high": {
+        "label": "Cao cấp",
+        "description": "> 1.5 triệu/ngày"
+      }
+    }
+  },
+  "map": {
+    "common": {
+      "currentLocationName": "Vị trí hiện tại",
+      "destinationName": "Điểm đến",
+      "destinationMissingName": "Điểm đang thiếu",
+      "destinationNameLower": "điểm đến"
+    },
+    "layerSwitcher": {
+      "title": "Chọn kiểu bản đồ"
+    },
+    "loading": {
+      "map": "Đang tải bản đồ..."
+    },
+    "errors": {
+      "mapData": "Không tải được dữ liệu",
+      "retry": "Thử lại",
+      "routeBuild": "Không thể tính tuyến.",
+      "routeDirectionTitle": "Không thể lấy chỉ đường",
+      "routeDirectionMessage": "Kết nối định tuyến gặp lỗi. Vui lòng thử lại.",
+      "routeFallbackTitle": "Đang dùng tuyến ước tính",
+      "routeFallbackMessage": "Lộ trình có thể lệch nhẹ, vui lòng kiểm tra thực tế khi di chuyển."
+    },
+    "search": {
+      "placeholder": "Tìm kiếm địa điểm...",
+      "cancel": "Hủy"
+    },
+    "web": {
+      "noticeTitle": "Chế độ web đang sử dụng danh sách",
+      "noticeSubtext": "Bản đồ native không hỗ trợ trên web. Bạn vẫn có thể tìm, lọc và mở địa điểm trên Google Maps.",
+      "allCategories": "Tất cả",
+      "summaryFound": "Tìm thấy {count} địa điểm",
+      "loadingPlaces": "Đang tải dữ liệu...",
+      "placesLoadError": "Không tải được dữ liệu địa điểm",
+      "noPlacesForFilters": "Không có địa điểm phù hợp bộ lọc",
+      "openInGoogleMaps": "Mở trên Google Maps"
+    },
+    "mapConfig": {
+      "mapStyles": {
+        "osm": "Bản đồ",
+        "hybrid": "Vệ tinh"
+      },
+      "categoryLabels": {
+        "cuisine": "Ẩm thực",
+        "lodging": "Lưu trú",
+        "sightseeing": "Tham quan",
+        "shopping": "Mua sắm",
+        "ecotourism": "Sinh thái",
+        "cafe": "Cafe",
+        "homestay": "Homestay",
+        "ecoPark": "Khu sinh thái",
+        "place": "Địa điểm"
+      }
+    },
+    "routeFormatting": {
+      "minuteUnit": "phút",
+      "hourUnit": "h",
+      "minuteShortUnit": "p",
+      "meterUnit": "m",
+      "kilometerUnit": "km"
+    },
+    "routeBuilder": {
+      "panelTitle": "Xây dựng lộ trình của bạn",
+      "emptyDraftHint": "Nhấn giữ marker để thêm điểm dừng",
+      "readyToConfirmHint": "Sẵn sàng xác nhận",
+      "minimumStopsHint": "Cần tối thiểu {minimumStops} điểm",
+      "stopFallbackName": "Điểm dừng {index}",
+      "noStopNotice": "Chưa có điểm dừng. Nhấn giữ marker để thêm vào tuyến.",
+      "updateRoute": "Cập nhật tuyến",
+      "confirmRoute": "Xác nhận tuyến",
+      "clearAll": "Xóa hết",
+      "recoveryTitle": "Bạn đã đi huốt điểm đến",
+      "etaPrefix": "Dự kiến",
+      "stateCompleted": "Tất cả chặng đã hoàn thành",
+      "retryRoute": "Thử lại tuyến"
+    },
+    "arrivalModal": {
+      "title": "Đã đến điểm đến",
+      "body": "Bạn đã đến {{targetName}}. Xác nhận để hoàn thành chặng này.",
+      "cancel": "Hủy",
+      "confirm": "Xác nhận"
+    },
+    "navigationStatusBanner": {
+      "fallbackInfo": "Ước tính: thời gian và khoảng cách có thể thay đổi theo giao thông thực tế.",
+      "optimizedInfo": "Đã tối ưu theo thời gian di chuyển hiện tại.",
+      "retryingRoute": "Đang thử lại...",
+      "retryRoute": "Thử lại chỉ đường"
+    },
+    "filters": {
+      "quickOptions": {
+        "topRated": "Đánh giá cao",
+        "trending": "Trending",
+        "budget": "Giá rẻ",
+        "premium": "Cao cấp",
+        "openNow": "Mở cửa gần nhất"
+      },
+      "groupOptions": {
+        "category": "Mục",
+        "area": "Vùng",
+        "quick": "Nhanh"
+      },
+      "pickerTitle": "Chọn {{groupLabel}} để lọc",
+      "allCategories": "Tất cả danh mục",
+      "categoryFallback": "Danh mục",
+      "allAreas": "Tất cả khu vực",
+      "areaFallback": "Khu vực",
+      "noneApplied": "Chưa áp dụng",
+      "countApplied": "{count} bộ lọc",
+      "groupFallback": "bộ lọc"
+    }
+  },
+  "language": {
+    "deviceLanguage": "Ngôn ngữ thiết bị",
+    "english": "English",
+    "vietnamese": "Tiếng Việt"
+  },
+  "errorBoundary": {
+    "title": "Có lỗi xảy ra",
+    "message": "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.",
+    "retry": "Thử lại"
+  },
+  "errors": {
+    "network": "Không có kết nối mạng. Vui lòng kiểm tra lại.",
+    "server": "Máy chủ đang gặp sự cố. Vui lòng thử lại sau.",
+    "unauthorized": "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.",
+    "notFound": "Không tìm thấy thông tin yêu cầu.",
+    "validation": "Thông tin không hợp lệ. Vui lòng kiểm tra lại.",
+    "unknown": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+    "aiQuota": "AI đã chạm giới hạn quota. Vui lòng thử lại sau hoặc kiểm tra billing của Gemini API.",
+    "aiUnavailable": "Dịch vụ AI tạm thời không khả dụng.",
+    "locationDenied": "Cần quyền truy cập vị trí để sử dụng tính năng này.",
+    "imageCompress": "Không thể nén ảnh dưới {{size}}KB. Vui lòng chọn ảnh khác."
+  },
+  "stepIndicator": {
+    "service": "Dịch vụ",
+    "confirm": "Xác nhận",
+    "submit": "Gửi yêu cầu"
+  },
+  "districts": {
+    "title": "Theo quận",
+    "subtitle": "Chọn khu vực để xem các địa điểm nổi bật.",
+    "loading": "Đang tải...",
+    "viewPlaces": "Xem địa điểm theo khu vực",
+    "fallbackName": "Khu vực"
+  },
+  "ai": {
+    "typing": "em Nhi đang gõ...",
+    "suggestions": {
+      "restaurants": "Quán ăn ngon ở Cần Thơ",
+      "hotels": "Khách sạn gần đây",
+      "activities": "Hoạt động vui chơi"
+    }
+  },
+  "tripDashboard": {
+    "journey": "Hành trình",
+    "yourTrips": "{{count}} chuyến đi của bạn",
+    "createMemory": "Khởi tạo kỷ niệm mới",
+    "createTripAccessibility": "Tạo chuyến đi mới",
+    "upcoming": "Sắp tới",
+    "newTrip": "Chuyến đi mới",
+    "destinations": "{{count}} điểm đến",
+    "createFirst": "Tạo chuyến đi đầu tiên",
+    "startExploring": "Bắt đầu hành trình khám phá thế giới của bạn",
+    "listWithCount": "Danh sách ({{count}})",
+    "list": "Danh sách"
+  },
+  "tripCard": {
+    "noDate": "Chưa chọn ngày",
+    "tripAccessibility": "Chuyến đi {{name}}, {{status}}",
+    "unsaveAccessibility": "Bỏ lưu chuyến đi",
+    "saveAccessibility": "Lưu chuyến đi",
+    "newTrip": "Chuyến đi mới",
+    "days": "ngày",
+    "destinations": "điểm"
+  },
+  "tripHeader": {
+    "from": "Từ {{date}}",
+    "add": "Thêm",
+    "unsave": "Bỏ lưu",
+    "saveTrip": "Lưu chuyến đi",
+    "editInfo": "Sửa thông tin",
+    "deleteTrip": "Xóa chuyến đi"
+  },
+  "tripTabBar": {
+    "itinerary": "Lịch trình",
+    "services": "Dịch vụ",
+    "budget": "Ngân sách"
+  },
+  "editDestination": {
+    "invalidTime": "Thời gian không hợp lệ",
+    "endTimeError": "Thời gian kết thúc không được nhỏ hơn thời gian bắt đầu.",
+    "editPlace": "Chỉnh sửa địa điểm",
+    "detailTime": "Thời gian chi tiết",
+    "start": "Bắt đầu",
+    "end": "Kết thúc",
+    "stayDuration": "Lưu trú {{duration}}",
+    "moveToNext": "Di chuyển đến điểm tiếp theo",
+    "transport": "Phương tiện",
+    "distanceToNext": "Khoảng cách đến điểm tiếp theo",
+    "autoCalculated": "(Hệ thống tự động tính toán)",
+    "tripNotes": "Ghi chú hành trình",
+    "notesPlaceholder": "Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây...",
+    "save": "Lưu"
+  },
+  "moveDestination": {
+    "editItinerary": "Chỉnh sửa lịch trình",
+    "selectDay": "Chọn ngày hoạt động",
+    "dayLabel": "Ngày {{number}}",
+    "detailTime": "Thời gian chi tiết",
+    "start": "Bắt đầu",
+    "end": "Kết thúc",
+    "tripNotes": "Ghi chú hành trình",
+    "notesPlaceholder": "Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây...",
+    "saveChanges": "Lưu thay đổi"
+  },
+  "editTrip": {
+    "noPhotoAccess": "Chưa có quyền truy cập ảnh",
+    "noPhotoAccessDesc": "Vui lòng cấp quyền truy cập thư viện ảnh để chọn ảnh bìa.",
+    "error": "Lỗi",
+    "imageError": "Không thể xử lý ảnh. Vui lòng thử lại.",
+    "invalidDate": "Ngày không hợp lệ",
+    "endDateError": "Ngày kết thúc không được nhỏ hơn ngày bắt đầu.",
+    "editTrip": "Chỉnh sửa chuyến đi",
+    "coverPhoto": "Ảnh bìa",
+    "tapToSelect": "Chạm để chọn ảnh bìa",
+    "changePhoto": "Đổi ảnh",
+    "tripName": "Tên chuyến đi",
+    "tripNamePlaceholder": "Nhập tên chuyến đi",
+    "description": "Mô tả",
+    "descPlaceholder": "Thêm mô tả ngắn...",
+    "startDate": "Ngày bắt đầu",
+    "selectDate": "Chọn ngày",
+    "endDate": "Ngày kết thúc",
+    "avoidFerry": "Tránh đi phà",
+    "avoidFerryDesc": "Tìm đường không qua bến phà",
+    "save": "Lưu"
+  },
+  "inlineAddPlace": {
+    "backToSearch": "Quay lại tìm kiếm",
+    "addPlaceToTrip": "Thêm địa điểm vào chuyến đi",
+    "addToItinerary": "Lên lịch trình",
+    "closeModal": "Đóng modal",
+    "searchPlaceholder": "Tìm theo tên địa điểm...",
+    "clearSearch": "Xóa nội dung tìm kiếm",
+    "enterKeyword": "Nhập từ khóa",
+    "searchDesc": "Tìm kiếm địa điểm du lịch tại Cần Thơ",
+    "noResults": "Không tìm thấy kết quả",
+    "tryDifferentKeyword": "Vui lòng thử từ khóa khác",
+    "searchingSystem": "Đang tìm thêm trên hệ thống...",
+    "yourSavedPlaces": "Địa điểm đã lưu của bạn",
+    "canTho": "Cần Thơ",
+    "selectDay": "Chọn ngày",
+    "dayLabel": "Ngày {{number}}",
+    "startTime": "Thời gian bắt đầu",
+    "endTime": "Thời gian kết thúc",
+    "moveToPlace": "Di chuyển đến địa điểm này",
+    "transport": "Phương tiện",
+    "tripNotes": "Ghi chú hành trình",
+    "notesPlaceholder": "Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây...",
+    "addError": "Có lỗi xảy ra khi thêm địa điểm.",
+    "addToItineraryAccessibility": "Thêm vào lịch trình chuyến đi",
+    "create": "Tạo"
+  },
+  "savedDashboard": {
+    "allWithCount": "Tất cả ({{count}})",
+    "allAreasWithCount": "Mọi khu vực ({{count}})",
+    "cancel": "Hủy",
+    "manageCollection": "Quản lý bộ sưu tập",
+    "collectionLabel": "Bộ sưu tập: {{name}}",
+    "renameCollection": "Đổi tên bộ sưu tập",
+    "renamePrompt": "Nhập tên mới cho \"{{name}}\"",
+    "deleteCollection": "Xóa bộ sưu tập",
+    "deleteConfirm": "Bạn có chắc muốn xóa \"{{name}}\"? Các địa điểm sẽ không bị xóa.",
+    "saved": "Đã lưu",
+    "collections": "Bộ sưu tập",
+    "areas": "Khu vực"
+  },
+  "savedCard": {
+    "favoritePlace": "Địa điểm yêu thích",
+    "canThoVietnam": "Cần Thơ, Việt Nam",
+    "rating": "Đánh giá"
+  },
+  "collectionSelector": {
+    "favorite": "Yêu thích",
+    "unsaved": "Đã bỏ lưu",
+    "unsavedDesc": "Đã xóa địa điểm khỏi bộ sưu tập.",
+    "saveSuccess": "Lưu thành công",
+    "saveSuccessDesc": "Đã lưu vào {{name}}",
+    "error": "Có lỗi xảy ra",
+    "errorDesc": "Vui lòng thử lại sau.",
+    "duplicateName": "Trùng tên",
+    "duplicateNameDesc": "Tên bộ sưu tập đã tồn tại.",
+    "saveSuccessNew": "Lưu thành công",
+    "saveSuccessNewDesc": "Đã lưu vào {{name}}",
+    "createError": "Có lỗi xảy ra",
+    "createErrorDesc": "Không thể tạo bộ sưu tập.",
+    "saveToCollection": "Lưu vào bộ sưu tập",
+    "createNew": "Tạo bộ sưu tập mới",
+    "namePlaceholder": "Tên bộ sưu tập...",
+    "create": "Tạo mới",
+    "placeCount": "{{count}} địa điểm"
+  },
+  "noteEditor": {
+    "title": "Ghi chú cá nhân",
+    "subtitle": "Địa điểm đã lưu",
+    "placeholder": "VD: Đi buổi chiều, thử món đặc trưng, phù hợp đi nhóm...",
+    "cancel": "Hủy",
+    "saving": "Đang lưu...",
+    "saveNote": "Lưu ghi chú"
+  },
+  "aiPlanner": {
+    "confirmDelete": "Xóa lịch sử Planner?",
+    "confirmDeleteDesc": "Toàn bộ hội thoại, kế hoạch lịch trình đề xuất và lựa chọn địa điểm sẽ bị xóa trên thiết bị này.",
+    "delete": "Xóa",
+    "cancel": "Hủy",
+    "close": "Đóng",
+    "travelAssistant": "Trợ lý du lịch Nhi",
+    "readyToHelp": "Sẵn sàng trợ giúp",
+    "planTravel": "Lên kế hoạch du lịch",
+    "intro": "Mình có thể giúp bạn tìm địa điểm ăn uống, vui chơi và sắp xếp lịch trình Cần Thơ tự động!",
+    "selectPlaces": "Chọn địa điểm bạn muốn",
+    "selectingCount": "Đang chọn {{selected}}/{{total}} địa điểm",
+    "selectAll": "Chọn hết",
+    "deselect": "Bỏ chọn",
+    "selected": "Đã chọn",
+    "selectPlace": "Chọn địa điểm",
+    "added": "Đã thêm",
+    "addTrip": "Thêm chuyến đi",
+    "details": "Chi tiết",
+    "createFromSelection": "Tạo lịch trình từ lựa chọn",
+    "creatingTrip": "Đang tạo chuyến đi...",
+    "suggestingPlaces": "Đang gợi ý địa điểm...",
+    "processing": "Đang xử lý...",
+    "inputPlaceholder": "Mô tả kế hoạch bạn muốn..."
+  },
+  "chatPanel": {
+    "confirmDelete": "Xóa lịch sử chat?",
+    "confirmDeleteDesc": "Toàn bộ hội thoại với em Nhi sẽ bị xóa trên thiết bị này.",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "deleteHistory": "Xóa lịch sử",
+    "greeting": "Chào, mình là em Nhi",
+    "intro": "Mình có thể giúp bạn tìm địa điểm, gợi ý quán ăn, hoặc lên lịch trình du lịch Cần Thơ.",
+    "inputPlaceholder": "Hỏi em Nhi điều gì đó...",
+    "noTrips": "Chưa có chuyến đi",
+    "noTripsDesc": "Bạn cần tạo một chuyến đi trước để thêm địa điểm này vào lịch trình.",
+    "close": "Đóng",
+    "addSuccess": "Thành công",
+    "addSuccessDesc": "Đã thêm {{name}} vào chuyến đi \"{{trip}}\"",
+    "addFailed": "Thất bại",
+    "addFailedDesc": "Không thể thêm vào chuyến đi",
+    "selectTrip": "Chọn chuyến đi",
+    "selectTripPrompt": "Bạn muốn thêm \"{{name}}\" vào chuyến đi nào?"
+  },
+  "exploreNearby": {
+    "sortByDistance": "Sắp xếp theo khoảng cách từ vị trí hiện tại của bạn.",
+    "enableLocation": "Bật vị trí để xem các địa điểm gần bạn hơn.",
+    "nearYou": "Gần bạn",
+    "locate": "Định vị",
+    "enableLocationBtn": "Bật vị trí",
+    "currentLocation": "Vị trí hiện tại...",
+    "noPlaces": "Chưa có địa điểm phù hợp",
+    "tryAgain": "Hãy thử lại hoặc bật vị trí để sắp xếp theo khoảng cách."
+  },
+  "exploreTopRated": {
+    "title": "Top đánh giá",
+    "subtitle": "Những điểm đến được đánh giá cao nhất.",
+    "noData": "Chưa có dữ liệu đánh giá",
+    "noDataDesc": "Hãy quay lại sau khi có thêm đánh giá từ cộng đồng."
+  },
+  "exploreNewest": {
+    "title": "Mới nhất",
+    "subtitle": "Các địa điểm vừa được cập nhật gần đây.",
+    "noData": "Chưa có dữ liệu mới",
+    "noDataDesc": "Hãy quay lại sau để xem các địa điểm mới cập nhật."
+  },
+  "exploreCategories": {
+    "viewAll": "Xem tất cả",
+    "title": "Khám phá theo danh mục",
+    "subtitle": "Tìm điểm đến hoàn hảo cho bạn.",
+    "loading": "Đang tải danh mục..."
+  },
+  "exploreCategory": {
+    "all": "Tất cả",
+    "category": "Danh mục",
+    "subtitle": "Những địa điểm phù hợp để bạn bắt đầu khám phá.",
+    "noPlaces": "Chưa có địa điểm trong danh mục này",
+    "noPlacesDesc": "Hãy thử danh mục khác hoặc quay lại sau."
+  },
+  "exploreDistrict": {
+    "area": "Khu vực",
+    "subtitle": "Địa điểm nổi bật trong khu vực bạn chọn.",
+    "noPlaces": "Chưa có địa điểm trong khu vực này",
+    "noPlacesDesc": "Hãy thử khu vực khác hoặc quay lại sau."
+  },
+  "authValidation": {
+    "nameMin": "Họ tên phải có ít nhất 2 ký tự.",
+    "emailRequired": "Vui lòng nhập email.",
+    "usernameRequired": "Vui lòng nhập username.",
+    "usernameFormat": "Username phải từ 3-30 ký tự và chỉ gồm chữ, số, dấu gạch dưới.",
+    "emailInvalid": "Email không hợp lệ.",
+    "passwordMin": "Mật khẩu phải có ít nhất 6 ký tự.",
+    "passwordComplexity": "Mật khẩu cần có chữ hoa, chữ thường và số.",
+    "passwordMismatch": "Mật khẩu xác nhận không khớp.",
+    "registerSuccess": "Đăng ký thành công. Vui lòng kiểm tra email để xác thực.",
+    "registerFailed": "Đăng ký thất bại. Vui lòng thử lại.",
+    "loginRequired": "Vui lòng nhập email hoặc username.",
+    "loginEmailInvalid": "Email không hợp lệ.",
+    "loginUsernameFormat": "Username phải từ 3 ký tự và chỉ gồm chữ, số, dấu gạch dưới.",
+    "passwordRequired": "Vui lòng nhập mật khẩu.",
+    "noSessionData": "Không nhận được dữ liệu phiên đăng nhập hợp lệ.",
+    "emailNotVerified": "Email chưa xác thực. Vui lòng đăng nhập bằng email để nhận lại liên kết xác thực.",
+    "loginFailed": "Đăng nhập thất bại. Vui lòng thử lại.",
+    "googleNoResponse": "Không nhận được phản hồi đăng nhập Google. Vui lòng thử lại.",
+    "googleInvalidSession": "Phiên đăng nhập Google không hợp lệ.",
+    "googleFailed": "Đăng nhập Google thất bại.",
+    "googleFailedRetry": "Đăng nhập Google thất bại. Vui lòng thử lại.",
+    "googleNoIdToken": "Không nhận được id_token từ Google.",
+    "googleMissingConfig": "Thiếu EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID trong app/.env.",
+    "googleMissingOwner": "Thiếu EXPO_PUBLIC_EXPO_OWNER hoặc EXPO_PUBLIC_EXPO_SLUG trong app/.env.",
+    "googleNotReady": "Google OAuth chưa sẵn sàng. Vui lòng thử lại sau vài giây."
+  },
+  "tripHelpers": {
+    "all": "Tất cả",
+    "upcoming": "Sắp tới",
+    "completed": "Hoàn thành",
+    "from": "Từ {{date}}",
+    "noDate": "Chưa chọn ngày",
+    "ended": "Đã kết thúc",
+    "noLongerValid": "Không còn hiệu lực",
+    "inJourney": "Đang trong hành trình",
+    "startToday": "Bắt đầu hôm nay",
+    "startTomorrow": "Bắt đầu ngày mai",
+    "daysUntil": "Còn {{count}} ngày",
+    "canAddLater": "Có thể bổ sung sau",
+    "trip": "Chuyến đi",
+    "processing": "Đang xử lý",
+    "destination": "Điểm đến",
+    "done": "Đã xong",
+    "bookingNoDate": "Booking chưa gắn ngày rõ ràng",
+    "minutes": "phút",
+    "hours": "giờ",
+    "nextDay": "(qua hôm sau)",
+    "startAt": "Bắt đầu {{time}}",
+    "endAt": "Kết thúc {{time}}",
+    "noTime": "Chưa xếp giờ",
+    "transportWalk": "Đi bộ",
+    "transportMotorbike": "Xe máy",
+    "transportCar": "Xe hơi",
+    "transportBus": "Xe buýt",
+    "transportOther": "Khác"
+  },
+  "tripTheme": {
+    "upcoming": "Sắp tới",
+    "ongoing": "Đang diễn ra",
+    "completed": "Đã hoàn thành",
+    "cancelled": "Đã hủy",
+    "bookingPending": "Chờ xác nhận",
+    "bookingConfirmed": "Đã xác nhận",
+    "bookingCompleted": "Hoàn thành",
+    "bookingCancelled": "Đã hủy",
+    "bookingRejected": "Bị từ chối",
+    "bookingClosed": "Đã đóng phiếu",
+    "bookingNoShow": "Không đến",
+    "unknown": "Không rõ"
+  },
+  "exploreHelpers": {
+    "you": "Bạn",
+    "goodMorning": "Chào buổi sáng",
+    "hello": "Chào bạn",
+    "goodEvening": "Chào buổi tối",
+    "new": "Mới",
+    "reviews": "đánh giá",
+    "free": "Miễn phí",
+    "perTurn": "/lượt",
+    "cheap": "Giá rẻ",
+    "budget": "Bình dân",
+    "premium": "Cao cấp",
+    "canTho": "Cần Thơ"
+  },
+  "savedHelpers": {
+    "all": "Tất cả",
+    "hasNotes": "Có ghi chú",
+    "collections": "Bộ sưu tập",
+    "area": "Khu vực {{id}}",
+    "category": "Danh mục {{id}}",
+    "new": "Mới",
+    "reviews": "đánh giá",
+    "saved": "Đã lưu",
+    "collectionsLabel": "Bộ sưu tập",
+    "areas": "Khu vực",
+    "hasNotesLabel": "Có ghi chú"
+  },
+  "maneuver": {
+    "left": "trái",
+    "right": "phải",
+    "slightLeft": "chếch trái",
+    "slightRight": "chếch phải",
+    "sharpLeft": "gắt sang trái",
+    "sharpRight": "gắt sang phải",
+    "straight": "đi thẳng",
+    "uturn": "quay đầu",
+    "depart": "Xuất phát trên {{road}}",
+    "startMoving": "Bắt đầu di chuyển",
+    "arrived": "Đã đến nơi",
+    "roundabout": "Đi vào vòng xuyến{{road}}",
+    "merge": "Nhập làn{{road}}",
+    "fork": "Đi theo nhánh {{road}}",
+    "continueStraight": "Tiếp tục đi thẳng{{road}}",
+    "goStraight": "Đi thẳng{{road}}",
+    "makeUturn": "Quay đầu{{road}}",
+    "turn": "Rẽ {{dir}}{{road}}",
+    "continue": "Tiếp tục{{road}}",
+    "continueMoving": "Tiếp tục di chuyển"
+  },
+  "mapScreen": {
+    "accessRequired": "Quyền truy cập",
+    "cameraRequired": "Bạn cần cấp quyền camera để chụp ảnh check-in.",
+    "checkinSuccess": "Thành công",
+    "checkinSuccessDesc": "Đăng khoảnh khắc check-in ẩn danh thành công!",
+    "checkinFailed": "Lỗi",
+    "checkinFailedDesc": "Đăng khoảnh khắc thất bại.",
+    "imageError": "Lỗi",
+    "imageErrorDesc": "Không thể xử lý ảnh.",
+    "journeyComplete": "Hoàn thành hành trình!",
+    "journeyCompleteDesc": "Chúc mừng bạn đã hoàn thành chuyến đi!",
+    "dayComplete": "Hoàn thành Ngày {{day}}!",
+    "dayCompleteDesc": "Tất cả các địa điểm của ngày hôm nay đã được khám phá.",
+    "checkedIn": "Đã điểm danh!",
+    "checkedInDesc": "Bạn đã đến {{name}}.",
+    "broadcastFrom": "THÔNG BÁO TỪ BTC: {{notice}}",
+    "journeyPaused": "Hành trình đang tạm nghỉ",
+    "journeyPausedDesc": "Dẫn đường và theo dõi GPS đã dừng để tiết kiệm pin.",
+    "resume": "Tiếp tục",
+    "noFerryRoute": "Không tìm thấy đường tránh phà. Đã chấp nhận tuyến có phà.",
+    "map": "Bản đồ",
+    "satellite": "Vệ tinh",
+    "complete": "Hoàn tất",
+    "paused": "Tạm nghỉ"
+  },
+  "travelMode": {
+    "motorbike": "Xe máy",
+    "car": "Ô tô",
+    "bicycle": "Xe đạp",
+    "walking": "Đi bộ",
+    "title": "Phương thức di chuyển",
+    "avoidFerry": "Đang tránh đi phà",
+    "avoidFerryLabel": "Tránh đi phà"
+  },
+  "datePicker": {
+    "cancel": "Hủy",
+    "confirm": "Xác nhận",
+    "select": "Chọn"
+  },
+  "bottomSheetPicker": {
+    "searchPlaceholder": "Tìm kiếm {{title}}...",
+    "loading": "Đang tải danh sách...",
+    "noResults": "Không tìm thấy kết quả phù hợp"
+  }
+}

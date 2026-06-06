@@ -1,11 +1,13 @@
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Check,
   MapPin,
 } from "lucide-react";
 import usePlaceStore from "@/stores/placeStore";
+import { usePlaceDetail } from "@/hooks/queries/usePlaceQueries";
 import { Button } from "@/components/ui/Button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
@@ -22,12 +24,11 @@ const PlaceWizardPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const {
     currentStep,
     totalSteps,
-    loading,
-    fetchPlaceById,
     loadPlaceIntoWizard,
     resetWizard,
     setCurrentStep,
@@ -35,50 +36,50 @@ const PlaceWizardPage = () => {
 
   const isEditMode = !!id;
 
+  // Fetch place detail via TanStack Query when editing
+  const { data: placeRes, isLoading: placeLoading, error: placeError } = usePlaceDetail(
+    isEditMode ? parseInt(id) : null
+  );
+
+  // Load place into wizard when data arrives
   useEffect(() => {
-    if (isEditMode) {
-      fetchPlaceById(parseInt(id))
-        .then((place) => {
-          loadPlaceIntoWizard(place);
-        })
-        .catch((error) => {
-          toast({
-            variant: "destructive",
-            title: "Lỗi",
-            description: error.message || "Không thể tải thông tin địa điểm",
-          });
-          navigate("/admin/places");
-        });
-    } else {
+    if (isEditMode && placeRes) {
+      const place = placeRes?.data || placeRes;
+      loadPlaceIntoWizard(place);
+    } else if (!isEditMode) {
       resetWizard();
     }
-  }, [
-    id,
-    isEditMode,
-    fetchPlaceById,
-    loadPlaceIntoWizard,
-    navigate,
-    resetWizard,
-    toast,
-  ]);
+  }, [isEditMode, placeRes, loadPlaceIntoWizard, resetWizard]);
+
+  // Handle error when editing
+  useEffect(() => {
+    if (placeError) {
+      toast({
+        variant: "destructive",
+        title: t("admin.placeWizard.error"),
+        description: placeError.message || t("admin.placeWizard.loadFailed"),
+      });
+      navigate("/admin/places");
+    }
+  }, [placeError, toast, navigate]);
 
   const steps = [
     {
       number: 1,
-      title: "Cơ bản",
-      description: "Tên & Danh mục",
+      title: t("admin.placeWizard.steps.basic"),
+      description: t("admin.placeWizard.steps.nameAndCategory"),
       component: StepBasicInfo,
     },
     {
       number: 2,
-      title: "Chi tiết",
-      description: "Mô tả & Hình ảnh",
+      title: t("admin.placeWizard.steps.details"),
+      description: t("admin.placeWizard.steps.descriptionAndImages"),
       component: StepDetails,
     },
     {
       number: 3,
-      title: "Xem trước",
-      description: "Kiểm tra & Lưu",
+      title: t("admin.placeWizard.steps.preview"),
+      description: t("admin.placeWizard.steps.reviewAndSave"),
       component: StepPreview,
     },
   ];
@@ -106,13 +107,13 @@ const PlaceWizardPage = () => {
             </Button>
             <div>
               <h1 className="text-lg font-semibold flex items-center gap-2">
-                {isEditMode ? "Chỉnh sửa địa điểm" : "Thêm địa điểm mới"}
+                {isEditMode ? t("admin.placeWizard.editPlace") : t("admin.placeWizard.addPlace")}
               </h1>
             </div>
           </div>
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Bước {currentStep}</span>
+            <span>{t("admin.placeWizard.step", { n: currentStep })}</span>
             <span className="text-muted-foreground/50">/</span>
             <span>{totalSteps}</span>
           </div>
@@ -143,7 +144,7 @@ const PlaceWizardPage = () => {
                   key={step.number}
                   className="flex flex-col items-center bg-background gap-2 cursor-pointer group"
                   onClick={() =>
-                    !loading &&
+                    !placeLoading &&
                     step.number < currentStep &&
                     setCurrentStep(step.number)
                   }

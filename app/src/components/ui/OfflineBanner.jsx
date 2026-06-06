@@ -3,8 +3,10 @@ import { View, Text } from "react-native";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import NetInfo from "@react-native-community/netinfo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 export function OfflineBanner({ onNetworkChange } = {}) {
+  const { t } = useTranslation();
   const [isConnected, setIsConnected] = useState(true);
   const insets = useSafeAreaInsets();
 
@@ -28,7 +30,7 @@ export function OfflineBanner({ onNetworkChange } = {}) {
       style={{ paddingTop: insets.top + 4 }}
     >
       <MaterialIconsRounded name="wifi-off" size={16} color="#FFFFFF" />
-      <Text className="text-white font-medium text-[13px]">Bạn đang offline — Hiển thị dữ liệu đã lưu</Text>
+      <Text className="text-white font-medium text-[13px]">{t("common.offline")}</Text>
     </View>
   );
 }

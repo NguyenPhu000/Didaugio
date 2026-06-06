@@ -12,11 +12,11 @@ import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRound
 import { PALETTE, TOKENS } from "../constants/placeSheetConstants";
 
 const VISIT_TYPES = [
-  { key: "solo", vi: "Một mình", en: "Solo" },
-  { key: "couple", vi: "Cặp đôi", en: "Couple" },
-  { key: "family", vi: "Gia đình", en: "Family" },
-  { key: "friends", vi: "Bạn bè", en: "Friends" },
-  { key: "business", vi: "Công tác", en: "Business" },
+  { key: "solo" },
+  { key: "couple" },
+  { key: "family" },
+  { key: "friends" },
+  { key: "business" },
 ];
 
 function StarSelector({ value, onChange }) {
@@ -67,7 +67,7 @@ export const ReviewComposerSheetContent = memo(function ReviewComposerSheetConte
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>
-            {t("Viết đánh giá", "Write a review")}
+            {t("place.writeReview")}
           </Text>
           {placeName ? (
             <Text style={styles.subtitle} numberOfLines={1}>
@@ -82,14 +82,14 @@ export const ReviewComposerSheetContent = memo(function ReviewComposerSheetConte
 
       <View style={styles.section}>
         <Text style={styles.label}>
-          {t("Đánh giá của bạn", "Your rating")}
+          {t("place.detail.yourRating")}
         </Text>
         <StarSelector value={rating} onChange={setRating} />
       </View>
 
       <View style={styles.section}>
         <Text style={styles.label}>
-          {t("Loại chuyến đi", "Trip type")}
+          {t("place.detail.tripType")}
         </Text>
         <View style={styles.chipRow}>
           {VISIT_TYPES.map((vt) => (
@@ -109,7 +109,7 @@ export const ReviewComposerSheetContent = memo(function ReviewComposerSheetConte
                   visitType === vt.key && styles.chipTextActive,
                 ]}
               >
-                {t(vt.vi, vt.en)}
+                {t(`place.detail.visitType.${vt.key}`)}
               </Text>
             </Pressable>
           ))}
@@ -118,14 +118,11 @@ export const ReviewComposerSheetContent = memo(function ReviewComposerSheetConte
 
       <View style={styles.section}>
         <Text style={styles.label}>
-          {t("Chia sẻ trải nghiệm", "Share your experience")}
+          {t("place.detail.shareExperience")}
         </Text>
         <TextInput
           style={styles.textInput}
-          placeholder={t(
-            "Điều gì bạn thích nhất?",
-            "What did you like the most?",
-          )}
+          placeholder={t("place.detail.whatDidYouLike")}
           placeholderTextColor={PALETTE.textSoft}
           value={content}
           onChangeText={setContent}
@@ -144,7 +141,7 @@ export const ReviewComposerSheetContent = memo(function ReviewComposerSheetConte
           <ActivityIndicator size="small" color="#FFF" />
         ) : (
           <Text style={styles.submitText}>
-            {t("Gửi đánh giá", "Submit review")}
+            {t("place.detail.submitReview")}
           </Text>
         )}
       </Pressable>

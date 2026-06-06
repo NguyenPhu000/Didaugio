@@ -30,6 +30,8 @@ import {
   useTrips,
 } from "../../../src/modules/trips/hooks/useTrips";
 import { useOffline } from "../../../src/hooks/useOffline";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 
 
 const QR_CACHE_KEY = "@booking_qr_cache";
@@ -44,47 +46,26 @@ const TerminalStatuses = new Set([
   "no_show",
 ]);
 
-const STATUS_META = {
-  pending: {
-    label: "Chờ xác nhận",
-    color: "#1D1D1F",
-    bg: "#EDEDF2",
-  },
-  confirmed: {
-    label: "Đã xác nhận",
-    color: "#FFFFFF",
-    bg: "#1D1D1F",
-  },
-  completed: {
-    label: "Hoàn thành",
-    color: "#1D1D1F",
-    bg: "#DFDFE4",
-  },
-  cancelled: {
-    label: "Đã hủy",
-    color: "#5A5A5E",
-    bg: "#ECECEF",
-  },
-  rejected: {
-    label: "Bị từ chối",
-    color: "#5A5A5E",
-    bg: "#F2E8DF",
-  },
-  expired: {
-    label: "Hết hạn",
-    color: "#5A5A5E",
-    bg: "#ECECEF",
-  },
-  no_show: {
-    label: "Không đến",
-    color: "#5A5A5E",
-    bg: "#ECECEF",
-  },
+const STATUS_META_KEYS = {
+  pending: { color: "#1D1D1F", bg: "#EDEDF2" },
+  confirmed: { color: "#FFFFFF", bg: "#1D1D1F" },
+  completed: { color: "#1D1D1F", bg: "#DFDFE4" },
+  cancelled: { color: "#5A5A5E", bg: "#ECECEF" },
+  rejected: { color: "#5A5A5E", bg: "#F2E8DF" },
+  expired: { color: "#5A5A5E", bg: "#ECECEF" },
+  no_show: { color: "#5A5A5E", bg: "#ECECEF" },
+};
+
+const getStatusMeta = (status, t) => {
+  const meta = STATUS_META_KEYS[status];
+  if (!meta) return { label: status || t("bookingDetail.status.unknown"), color: "#1D1D1F", bg: "#ECECEF" };
+  return { ...meta, label: t(`bookingDetail.status.${status}`) };
 };
 
 const formatCurrency = (value) => {
   const amount = Number(value || 0);
-  return `${amount.toLocaleString("vi-VN")}đ`;
+  const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
+  return `${amount.toLocaleString(locale)}đ`;
 };
 
 const formatDateVN = (dateStr) => {
@@ -97,7 +78,7 @@ const formatDateVN = (dateStr) => {
   return `${day}/${month}/${year}`;
 };
 
-const formatDateTime = (booking) => {
+const formatDateTime = (booking, notDeterminedLabel) => {
   if (booking?.useDate || booking?.useTime) {
     const date = formatDateVN(booking?.useDate);
     return `${date} • ${booking?.useTime || "--:--"}`;
@@ -115,10 +96,11 @@ const formatDateTime = (booking) => {
     }
   }
 
-  return "Chưa xác định";
+  return notDeterminedLabel || "Not determined";
 };
 
 export default function BookingDetailScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams();
@@ -201,11 +183,11 @@ export default function BookingDetailScreen() {
 
     try {
       await savePlaceMutation.mutateAsync({ placeId });
-      Alert.alert("Đã lưu", "Địa điểm đã được thêm vào danh sách đã lưu.");
+      Alert.alert(t("bookingDetail.alerts.saved.title"), t("bookingDetail.alerts.saved.message"));
     } catch (error) {
       Alert.alert(
-        "Không thể lưu địa điểm",
-        error?.message || "Vui lòng thử lại sau.",
+        t("bookingDetail.alerts.saveFailed.title"),
+        error?.message || t("bookingDetail.alerts.saveFailed.message"),
       );
     }
   };
@@ -213,7 +195,7 @@ export default function BookingDetailScreen() {
   const handleLinkBookingToTrip = async (tripId) => {
     const normalizedTripId = Number(tripId);
     if (!Number.isInteger(normalizedTripId) || normalizedTripId <= 0) {
-      Alert.alert("Chọn Trip", "Vui lòng chọn một trip hợp lệ để liên kết.");
+      Alert.alert(t("bookingDetail.alerts.selectTrip.title"), t("bookingDetail.alerts.selectTrip.message"));
       return;
     }
 
@@ -223,11 +205,11 @@ export default function BookingDetailScreen() {
         tripId: normalizedTripId,
       });
       await refetch();
-      Alert.alert("Thành công", "Booking đã được liên kết vào trip.");
+      Alert.alert(t("bookingDetail.alerts.linkSuccess.title"), t("bookingDetail.alerts.linkSuccess.message"));
     } catch (error) {
       Alert.alert(
-        "Không thể liên kết trip",
-        error?.message || "Vui lòng thử lại sau.",
+        t("bookingDetail.alerts.linkFailed.title"),
+        error?.message || t("bookingDetail.alerts.linkFailed.message"),
       );
     }
   };
@@ -236,13 +218,13 @@ export default function BookingDetailScreen() {
     try {
       const title = booking?.service?.place?.name
         ? `Trip ${booking.service.place.name} ${bookingDateYmd}`
-        : `Trip từ booking ${bookingDateYmd}`;
+        : t("bookingDetail.tripFromBooking", { date: bookingDateYmd });
 
       const createdTripRes = await createTripMutation.mutateAsync({
         title,
         description: booking?.service?.name
-          ? `Tạo từ booking dịch vụ ${booking.service.name}`
-          : "Tạo từ booking dịch vụ",
+          ? t("bookingDetail.tripDescription.withService", { service: booking.service.name })
+          : t("bookingDetail.tripDescription.default"),
         startDate: bookingDateYmd,
         endDate: bookingDateYmd,
         totalDays: 1,
@@ -252,7 +234,7 @@ export default function BookingDetailScreen() {
       const tripId = Number(createdTripRes?.data?.id || createdTripRes?.id);
       if (!Number.isInteger(tripId) || tripId <= 0) {
         throw {
-          message: "Không thể tạo trip mới",
+          message: t("bookingDetail.errors.tripCreateFailed"),
           code: "TRIP_CREATE_FAILED",
         };
       }
@@ -260,8 +242,8 @@ export default function BookingDetailScreen() {
       await handleLinkBookingToTrip(tripId);
     } catch (error) {
       Alert.alert(
-        "Không thể tạo trip",
-        error?.message || "Vui lòng thử lại sau.",
+        t("bookingDetail.errors.tripCreateTitle"),
+        error?.message || t("bookingDetail.errors.generic"),
       );
     }
   };
@@ -284,22 +266,18 @@ export default function BookingDetailScreen() {
           <Pressable onPress={() => router.back()} className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]">
             <MaterialIconsRounded name="arrow-back" size={22} color={THEME.text} />
           </Pressable>
-          <Text className="text-[19px] text-[#1D1D1F] font-semibold">Chi tiết booking</Text>
+          <Text className="text-[19px] text-[#1D1D1F] font-semibold">{t("bookingDetail.title")}</Text>
           <View className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]" />
         </View>
 
         <View className="flex-1 items-center justify-center">
-          <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-medium">Không tìm thấy booking.</Text>
+          <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-medium">{t("bookingDetail.notFound")}</Text>
         </View>
       </View>
     );
   }
 
-  const statusMeta = STATUS_META[booking.status] || {
-    label: booking.status || "Không xác định",
-    color: THEME.text,
-    bg: "#ECECEF",
-  };
+  const statusMeta = getStatusMeta(booking.status, t);
   const placeId = booking?.service?.place?.id;
 
   return (
@@ -308,7 +286,7 @@ export default function BookingDetailScreen() {
         <Pressable onPress={() => router.back()} className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]">
           <MaterialIconsRounded name="arrow-back" size={22} color={THEME.text} />
         </Pressable>
-        <Text className="text-[19px] text-[#1D1D1F] font-semibold">Chi tiết booking</Text>
+        <Text className="text-[19px] text-[#1D1D1F] font-semibold">{t("bookingDetail.title")}</Text>
         <Pressable onPress={() => refetch()} className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]">
           <MaterialIconsRounded name="refresh" size={20} color={THEME.text} />
         </Pressable>
@@ -332,7 +310,7 @@ export default function BookingDetailScreen() {
         <View className="bg-white rounded-[20px] border border-[#D2D2D7] p-[15px]">
           <View className="flex-row items-center justify-between gap-2">
             <View className="flex-1">
-              <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium">Mã booking</Text>
+              <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium">{t("bookingDetail.bookingCode")}</Text>
               <Text className="text-[15px] text-[#1D1D1F] font-semibold">{booking.bookingCode}</Text>
             </View>
 
@@ -346,18 +324,18 @@ export default function BookingDetailScreen() {
             </View>
           </View>
 
-          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">Dịch vụ</Text>
+          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">{t("bookingDetail.service")}</Text>
           <Text className="text-[14px] text-[#1D1D1F] font-sans">{booking?.service?.name || "--"}</Text>
 
-          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">Địa điểm</Text>
+          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">{t("bookingDetail.place")}</Text>
           <Text className="text-[14px] text-[#1D1D1F] font-sans">
             {booking?.service?.place?.name || "--"}
           </Text>
 
-          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">Thời gian sử dụng</Text>
-          <Text className="text-[14px] text-[#1D1D1F] font-sans">{formatDateTime(booking)}</Text>
+          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">{t("bookingDetail.usageTime")}</Text>
+          <Text className="text-[14px] text-[#1D1D1F] font-sans">{formatDateTime(booking, t("bookingDetail.notDetermined"))}</Text>
 
-          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">Tổng thanh toán</Text>
+          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">{t("bookingDetail.totalPayment")}</Text>
           <Text className="text-[15px] text-[#1D1D1F] font-semibold">
             {formatCurrency(booking?.finalPrice)}
           </Text>
@@ -379,16 +357,16 @@ export default function BookingDetailScreen() {
           >
             <View className="flex-row items-center gap-2">
               <Ionicons name="qr-code" size={18} color={THEME.primary} />
-              <Text className="text-[16px] text-[#1D1D1F] font-semibold">Mã QR check-in</Text>
+              <Text className="text-[16px] text-[#1D1D1F] font-semibold">{t("bookingDetail.qrCheckin")}</Text>
             </View>
             <Text className="mt-[6px] text-[13px] leading-5 text-[rgba(0,0,0,0.8)] font-sans">
-              Đưa mã này cho phía doanh nghiệp quét khi bạn đến sử dụng dịch vụ.
+              {t("bookingDetail.qrInstructions")}
             </Text>
 
             {qrLoading && !activeQrCode ? (
               <View className="mt-5 h-[200px] rounded-2xl bg-[#EDEDF2] items-center justify-center gap-[10px]">
                 <ActivityIndicator size="small" color={THEME.primary} />
-                <Text className="text-[13px] text-[rgba(0,0,0,0.48)] font-medium">Đang tải mã QR...</Text>
+                <Text className="text-[13px] text-[rgba(0,0,0,0.48)] font-medium">{t("bookingDetail.loadingQR")}</Text>
               </View>
             ) : activeQrCode ? (
               <View className="mt-4 items-center relative">
@@ -413,10 +391,10 @@ export default function BookingDetailScreen() {
                   color={THEME.danger}
                 />
                 <Text className="text-[#FF3B30] text-[13px] font-medium text-center px-4">
-                  {qrError?.message || "Chưa tải được mã QR."}
+                  {qrError?.message || t("bookingDetail.qrLoadFailed")}
                 </Text>
                 <Pressable className="mt-1 bg-[#1D1D1F] rounded-full px-4 py-2" onPress={() => refetchQr()}>
-                  <Text className="text-white text-[12px] font-semibold">Thử lại</Text>
+                  <Text className="text-white text-[12px] font-semibold">{t("common.retry")}</Text>
                 </Pressable>
               </View>
             )}
@@ -448,7 +426,7 @@ export default function BookingDetailScreen() {
                   />
                   <Text className="text-white text-[14px] font-semibold">
                     {booking.status === "completed"
-                      ? "Đã sử dụng"
+                      ? t("bookingDetail.statusUsed")
                       : statusMeta.label}
                   </Text>
                 </View>
@@ -471,7 +449,7 @@ export default function BookingDetailScreen() {
             <View className="flex-row items-center gap-2">
               <Ionicons name="qr-code" size={18} color={THEME.textMuted} />
               <Text className="text-[16px] font-semibold" style={{ color: THEME.textMuted }}>
-                Mã QR check-in
+                {t("bookingDetail.qrCheckin")}
               </Text>
             </View>
             <View className="mt-4 h-[120px] rounded-2xl bg-[#EDEDF2] items-center justify-center gap-2">
@@ -482,34 +460,33 @@ export default function BookingDetailScreen() {
               />
               <Text className="text-[13px] text-[rgba(0,0,0,0.48)] font-sans text-center px-5">
                 {isTerminal
-                  ? "QR không khả dụng cho booking này."
-                  : "QR sẽ xuất hiện khi booking được xác nhận."}
+                  ? t("bookingDetail.qrUnavailable")
+                  : t("bookingDetail.qrPendingConfirm")}
               </Text>
             </View>
           </View>
         )}
 
         <View className="bg-white rounded-[20px] border border-[#D2D2D7] p-[15px]">
-          <Text className="text-[16px] text-[#1D1D1F] font-semibold">Liên kết Trip</Text>
+          <Text className="text-[16px] text-[#1D1D1F] font-semibold">{t("bookingDetail.linkTrip")}</Text>
           {booking?.linkedTrip ? (
             <View className="mt-2 gap-[6px]">
               <Text className="text-[15px] text-[#1D1D1F] font-semibold">
                 {booking.linkedTrip.title || `Trip #${booking.linkedTrip.id}`}
               </Text>
               <Text className="mt-[6px] text-[13px] leading-5 text-[rgba(0,0,0,0.8)] font-sans">
-                Đang ở ngày {booking.linkedTrip.dayNumber || 1} của trip.
+                {t("bookingDetail.currentTripDay", { day: booking.linkedTrip.dayNumber || 1 })}
               </Text>
               <Pressable
                 className="mt-[6px] flex-1 border border-[#D2D2D7] rounded-full py-3 items-center bg-[#EDEDF2]"
                 onPress={() => router.push(`/trip/${booking.linkedTrip.id}`)}
               >
-                <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-semibold">Mở trip đã liên kết</Text>
+                <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-semibold">{t("bookingDetail.openLinkedTrip")}</Text>
               </Pressable>
             </View>
           ) : (
             <Text className="mt-[6px] text-[13px] leading-5 text-[rgba(0,0,0,0.8)] font-sans">
-              Booking này chưa liên kết trip. Bạn có thể chọn trip có sẵn hoặc
-              tạo trip mới để thêm địa điểm vào đúng ngày booking.
+              {t("bookingDetail.noLinkedTripDesc")}
             </Text>
           )}
 
@@ -548,7 +525,7 @@ export default function BookingDetailScreen() {
                       className="mt-0.5 text-[11px] font-sans"
                       style={{ color: THEME.textMuted }}
                     >
-                      {trip.totalDays || 1} ngày
+                      {t("bookingDetail.daysCount", { count: trip.totalDays || 1 })}
                     </Text>
                   </Pressable>
                 );
@@ -562,7 +539,7 @@ export default function BookingDetailScreen() {
               onPress={() => handleLinkBookingToTrip(selectedTripId)}
               disabled={linkBookingToTripMutation.isPending || !selectedTripId}
             >
-              <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-semibold">Liên kết trip đã chọn</Text>
+              <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-semibold">{t("bookingDetail.linkSelectedTrip")}</Text>
             </Pressable>
 
             <Pressable
@@ -576,8 +553,8 @@ export default function BookingDetailScreen() {
               <Text className="text-white text-[14px] font-semibold">
                 {createTripMutation.isPending ||
                 linkBookingToTripMutation.isPending
-                  ? "Đang xử lý..."
-                  : "Tạo trip và liên kết"}
+                  ? t("common.processing")
+                  : t("bookingDetail.createTripAndLink")}
               </Text>
             </Pressable>
           </View>
@@ -589,7 +566,7 @@ export default function BookingDetailScreen() {
               className="flex-1 border border-[#D2D2D7] rounded-full py-3 items-center bg-[#EDEDF2]"
               onPress={() => router.push(`/place/${placeId}`)}
             >
-              <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-semibold">Xem địa điểm</Text>
+              <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-semibold">{t("bookingDetail.viewPlace")}</Text>
             </Pressable>
           ) : null}
 
@@ -600,7 +577,7 @@ export default function BookingDetailScreen() {
               disabled={savePlaceMutation.isPending}
             >
               <Text className="text-white text-[14px] font-semibold">
-                {savePlaceMutation.isPending ? "Đang lưu..." : "Lưu địa điểm"}
+                {savePlaceMutation.isPending ? t("common.saving") : t("bookingDetail.savePlace")}
               </Text>
             </Pressable>
           ) : null}

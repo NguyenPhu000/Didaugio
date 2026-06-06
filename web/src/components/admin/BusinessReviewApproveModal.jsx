@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import {
@@ -68,7 +70,7 @@ function DocumentPreviewCard({ title, raw }) {
         />
         <p className="text-sm font-semibold text-foreground">{title}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Chưa có tệp đính kèm
+          {t("common.noData")}
         </p>
       </div>
     );
@@ -86,7 +88,7 @@ function DocumentPreviewCard({ title, raw }) {
           rel="noopener noreferrer"
           className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-background/80 px-3 py-1.5 text-xs font-medium text-primary shadow-sm ring-1 ring-border/60 transition hover:bg-muted"
         >
-          Toàn màn hình
+          {t("common.viewAll")}
           <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
         </a>
       </div>
@@ -102,8 +104,7 @@ function DocumentPreviewCard({ title, raw }) {
                   className="h-[min(42vh,300px)] w-full rounded-xl border border-border/50 bg-background shadow-inner"
                 />
                 <p className="text-center text-[11px] leading-snug text-muted-foreground">
-                  Nếu khung PDF trống hoặc bị chặn, dùng &quot;Toàn màn
-                  hình&quot; để mở trong tab mới.
+                  {t("common.noData")}
                 </p>
               </div>
             );
@@ -127,9 +128,7 @@ function DocumentPreviewCard({ title, raw }) {
                   <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
                     <ImageIcon className="h-10 w-10 text-muted-foreground/70" />
                     <p className="text-xs text-muted-foreground">
-                      Không tải được ảnh (link hết hạn, chặn hotlink, hoặc định
-                      dạng không hỗ trợ). Hãy mở &quot;Toàn màn hình&quot; để
-                      đối chiếu.
+                      {t("common.noData")}
                     </p>
                     <Button variant="outline" size="sm" asChild>
                       <a
@@ -137,7 +136,7 @@ function DocumentPreviewCard({ title, raw }) {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Mở tệp gốc
+                        {t("common.download")}
                       </a>
                     </Button>
                   </div>
@@ -150,11 +149,11 @@ function DocumentPreviewCard({ title, raw }) {
             <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
               <FileText className="h-10 w-10 text-muted-foreground/70" />
               <p className="text-xs text-muted-foreground">
-                Xem nhanh không khả dụng. Mở tab mới để đối chiếu.
+                {t("common.noData")}
               </p>
               <Button variant="outline" size="sm" asChild>
                 <a href={resolved} target="_blank" rel="noopener noreferrer">
-                  Mở tệp
+                  {t("common.download")}
                 </a>
               </Button>
             </div>
@@ -175,6 +174,7 @@ const BusinessReviewApproveModal = ({
   onApproved,
   onRejected,
 }) => {
+  const { t } = useTranslation();
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -204,7 +204,7 @@ const BusinessReviewApproveModal = ({
         }
       } catch (e) {
         if (!cancelled) {
-          toast.error(e.message || "Không tải được hồ sơ");
+          toast.error(e.message || t("common.operationFailed"));
           onOpenChange?.(false);
         }
       } finally {
@@ -218,21 +218,21 @@ const BusinessReviewApproveModal = ({
 
   const handleApprove = async () => {
     if (!acknowledged) {
-      toast.error("Vui lòng xác nhận đã đối chiếu giấy tờ");
+      toast.error(t("business.approveModal.confirmApprove"));
       return;
     }
     const rate = Number(commissionRate);
     if (Number.isNaN(rate) || rate < 0 || rate > 100) {
-      toast.error("Tỷ lệ hoa hồng phải từ 0 đến 100");
+      toast.error(t("business.approveModal.actionFailed"));
       return;
     }
     setSubmitting(true);
     try {
       await onApproved?.(businessId, { commissionRate: rate });
-      toast.success("Đã duyệt doanh nghiệp");
+      toast.success(t("business.approveModal.approveSuccess"));
       onOpenChange?.(false);
     } catch (e) {
-      toast.error(e.message || "Không thể duyệt");
+      toast.error(e.message || t("business.approveModal.actionFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -240,16 +240,16 @@ const BusinessReviewApproveModal = ({
 
   const handleReject = async () => {
     if (rejectReason.trim().length < 10) {
-      toast.error("Lý do từ chối phải có ít nhất 10 ký tự");
+      toast.error(t("business.approveModal.rejectReason"));
       return;
     }
     setSubmitting(true);
     try {
       await onRejected?.(businessId, rejectReason.trim());
-      toast.success("Đã từ chối hồ sơ");
+      toast.success(t("business.approveModal.rejectSuccess"));
       onOpenChange?.(false);
     } catch (e) {
-      toast.error(e.message || "Không thể từ chối");
+      toast.error(e.message || t("business.approveModal.actionFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -273,11 +273,10 @@ const BusinessReviewApproveModal = ({
               <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <FileText className="h-5 w-5 shrink-0" aria-hidden="true" />
               </span>
-              Đối chiếu hồ sơ doanh nghiệp
+              {t("business.approveModal.title")}
             </DialogTitle>
             <DialogDescription className="text-[13px] leading-relaxed">
-              Xem ảnh/PDF trực tiếp bên dưới; dùng &quot;Toàn màn hình&quot; nếu
-              cần phóng to. Chỉ duyệt sau khi đối chiếu thực tế với bản gốc.
+              {t("business.approveModal.confirmApprove")}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -302,34 +301,34 @@ const BusinessReviewApproveModal = ({
                 <div className="grid gap-4 lg:grid-cols-2">
                   <div className="rounded-2xl border border-border/50 bg-muted/30 p-5 shadow-sm">
                     <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Doanh nghiệp
+                      {t("business.detailModal.businessName")}
                     </p>
                     <div className="space-y-0">
                       <FieldRow
-                        label="Tên hiển thị"
+                        label={t("business.detailModal.businessName")}
                         value={detail.businessName}
                       />
-                      <FieldRow label="Loại hình" value={typeLabel} />
+                      <FieldRow label={t("business.detailModal.businessName")} value={typeLabel} />
                       <FieldRow
-                        label="Mã số thuế"
+                        label={t("business.detailModal.taxCode")}
                         value={detail.taxCode}
                         mono
                       />
                       <FieldRow
-                        label="Số CCCD/CMND"
+                        label={t("business.detailModal.idNumber")}
                         value={detail.idCardNumberMasked || detail.idCardNumber}
                         mono
                       />
                       <FieldRow
-                        label="Ngày gửi hồ sơ"
+                        label={t("business.detailModal.createdAt")}
                         value={
                           detail.createdAt
-                            ? new Date(detail.createdAt).toLocaleString("vi-VN")
+                            ? new Date(detail.createdAt).toLocaleString(i18n.language === "vi" ? "vi-VN" : "en-US")
                             : null
                         }
                       />
                       <FieldRow
-                        label="Vận hành (địa điểm · DV · voucher · đặt chỗ)"
+                        label={`${t("business.detailModal.places")} · ${t("business.detailModal.services")} · ${t("business.detailModal.vouchers")} · ${t("business.detailModal.bookings")}`}
                         value={`${detail._count?.places ?? 0} · ${detail._count?.services ?? 0} · ${detail._count?.vouchers ?? 0} · ${detail._count?.bookings ?? 0}`}
                       />
                     </div>
@@ -340,14 +339,14 @@ const BusinessReviewApproveModal = ({
                       <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-background shadow-sm">
                         <User className="h-3.5 w-3.5" aria-hidden="true" />
                       </span>
-                      Chủ tài khoản & thanh toán
+                      {t("business.detailModal.accountHolder")}
                     </p>
                     <div className="space-y-0">
-                      <FieldRow label="Email" value={detail.owner?.email} />
-                      <FieldRow label="Họ tên" value={detail.owner?.fullName} />
-                      <FieldRow label="Ngân hàng" value={detail.bankName} />
+                      <FieldRow label={t("business.detailModal.email")} value={detail.owner?.email} />
+                      <FieldRow label={t("business.detailModal.ownerName")} value={detail.owner?.fullName} />
+                      <FieldRow label={t("business.detailModal.bankName")} value={detail.bankName} />
                       <FieldRow
-                        label="Số tài khoản"
+                        label={t("business.detailModal.bankAccount")}
                         value={
                           detail.bankAccountNumberMasked ||
                           detail.bankAccountNumber
@@ -355,7 +354,7 @@ const BusinessReviewApproveModal = ({
                         mono
                       />
                       <FieldRow
-                        label="Chủ TK"
+                        label={t("business.detailModal.accountHolder")}
                         value={
                           detail.bankAccountOwnerMasked ||
                           detail.bankAccountOwner
@@ -368,13 +367,12 @@ const BusinessReviewApproveModal = ({
                 <div className="rounded-2xl border border-border/50 bg-muted/20 p-5 shadow-sm">
                   <p className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     <MapPin className="h-3.5 w-3.5" aria-hidden />
-                    Địa điểm thuộc doanh nghiệp
+                    {t("business.detailModal.places")}
                   </p>
                   {!Array.isArray(detail.places) ||
                   detail.places.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                      Chưa có địa điểm nào được gắn với hồ sơ này (có thể bổ
-                      sung sau khi duyệt).
+                      {t("common.noData")}
                     </p>
                   ) : (
                     <ul className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
@@ -389,7 +387,7 @@ const BusinessReviewApproveModal = ({
                             className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline shrink-0"
                             onClick={() => onOpenChange?.(false)}
                           >
-                            Sửa
+                            {t("common.edit")}
                             <ExternalLink className="h-3 w-3" />
                           </Link>
                         </li>
@@ -402,24 +400,24 @@ const BusinessReviewApproveModal = ({
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                       <p className="text-base font-semibold text-foreground">
-                        Giấy tờ đính kèm
+                        {t("business.detailModal.documents")}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Thứ tự đối chiếu gợi ý: CCCD trước → sau → GPKD.
+                        {t("business.approveModal.confirmApprove")}
                       </p>
                     </div>
                   </div>
                   <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                     <DocumentPreviewCard
-                      title="CCCD / CMND mặt trước"
+                      title={t("business.detailModal.idFront")}
                       raw={detail.idCardFront}
                     />
                     <DocumentPreviewCard
-                      title="CCCD / CMND mặt sau"
+                      title={t("business.detailModal.idBack")}
                       raw={detail.idCardBack}
                     />
                     <DocumentPreviewCard
-                      title="Giấy phép kinh doanh"
+                      title={t("business.detailModal.businessLicense")}
                       raw={detail.businessLicense}
                     />
                   </div>
@@ -432,7 +430,7 @@ const BusinessReviewApproveModal = ({
                         htmlFor="commission-rate"
                         className="text-sm font-medium"
                       >
-                        Tỷ lệ hoa hồng nền tảng (%) sau khi duyệt
+                        {t("business.approveModal.title")}
                       </Label>
                       <Input
                         id="commission-rate"
@@ -446,8 +444,7 @@ const BusinessReviewApproveModal = ({
                         autoComplete="off"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Áp dụng cho giao dịch trên nền tảng; có thể điều chỉnh
-                        sau nếu cần.
+                        {t("business.approveModal.confirmApprove")}
                       </p>
                     </div>
 
@@ -460,11 +457,9 @@ const BusinessReviewApproveModal = ({
                       />
                       <span className="text-sm leading-relaxed">
                         <span className="font-medium text-foreground">
-                          Tôi đã đối chiếu
+                          {t("business.approveModal.confirmApprove")}
                         </span>{" "}
-                        đủ 3 loại giấy tờ ở trên (ảnh hoặc PDF) với bản gốc hoặc
-                        bản sao công chứng và <strong>xác nhận khớp</strong>{" "}
-                        trước khi duyệt.
+                        {t("business.approveModal.confirmApprove")}
                       </span>
                     </label>
                   </>
@@ -474,11 +469,11 @@ const BusinessReviewApproveModal = ({
                       htmlFor="reject-reason-admin"
                       className="font-medium"
                     >
-                      Lý do từ chối
+                      {t("business.approveModal.rejectReason")}
                     </Label>
                     <Textarea
                       id="reject-reason-admin"
-                      placeholder="Nêu rõ phần không khớp hoặc thiếu (tối thiểu 10 ký tự)…"
+                      placeholder={t("business.approveModal.rejectReasonPlaceholder")}
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
                       className="min-h-[120px] rounded-xl border-border/60"
@@ -499,7 +494,7 @@ const BusinessReviewApproveModal = ({
                 onClick={() => onOpenChange?.(false)}
                 disabled={submitting}
               >
-                Đóng
+                {t("common.close")}
               </Button>
               <Button
                 type="button"
@@ -507,7 +502,7 @@ const BusinessReviewApproveModal = ({
                 onClick={() => setRejectMode(true)}
                 disabled={submitting || loading}
               >
-                Từ chối hồ sơ
+                {t("business.approveModal.reject")}
               </Button>
               <Button
                 type="button"
@@ -518,7 +513,7 @@ const BusinessReviewApproveModal = ({
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : null}
-                Xác nhận duyệt
+                {t("business.approveModal.approve")}
               </Button>
             </>
           ) : (
@@ -532,7 +527,7 @@ const BusinessReviewApproveModal = ({
                 }}
                 disabled={submitting}
               >
-                Quay lại đối chiếu
+                {t("common.back")}
               </Button>
               <Button
                 type="button"
@@ -543,7 +538,7 @@ const BusinessReviewApproveModal = ({
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : null}
-                Gửi từ chối
+                {t("business.approveModal.reject")}
               </Button>
             </>
           )}

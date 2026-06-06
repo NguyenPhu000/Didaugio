@@ -8,49 +8,52 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useTranslation } from "react-i18next";
 
 /**
  * SectionCards - Modern stats cards following shadcn admin dashboard pattern.
  * Uses real data from dashboard API.
  */
 export default function SectionCards({ stats, userCount }) {
+  const { t } = useTranslation();
+
   const cards = [
     {
-      description: "Tổng địa điểm",
+      description: t("admin.sections.totalPlaces"),
       value: (stats.total || 0).toLocaleString(),
       trend: stats.total > 0 ? "+12.5%" : "0%",
       trendUp: true,
-      footerMain: "Đang hoạt động trong hệ thống",
-      footerSub: `${stats.approved || 0} đã duyệt, ${stats.pending || 0} chờ duyệt`,
+      footerMain: t("admin.sections.activeInSystem"),
+      footerSub: t("admin.sections.approvedPending", { approved: stats.approved || 0, pending: stats.pending || 0 }),
     },
     {
-      description: "Lượt xem (ước lượng)",
+      description: t("admin.sections.viewsEstimate"),
       value: stats.totalViews
         ? `${(stats.totalViews / 1000).toFixed(1)}K`
         : "0",
       trend: stats.totalViews > 0 ? "+8.2%" : "0%",
       trendUp: true,
-      footerMain: "Tăng trưởng ổn định",
-      footerSub: "Lượt xem trong 30 ngày qua",
+      footerMain: t("admin.sections.stableGrowth"),
+      footerSub: t("admin.sections.last30Days"),
     },
     {
-      description: "Đánh giá trung bình",
+      description: t("admin.sections.avgRating"),
       value: stats.avgRating ? Number(stats.avgRating).toFixed(1) : "0.0",
       trend: stats.avgRating >= 4 ? "+0.3" : "-0.1",
       trendUp: stats.avgRating >= 4,
       footerMain:
         stats.avgRating >= 4
-          ? "Chất lượng cao"
-          : "Cần cải thiện",
-      footerSub: "Điểm đánh giá trung bình",
+          ? t("admin.sections.highQuality")
+          : t("admin.sections.needsImprovement"),
+      footerSub: t("admin.sections.avgRatingScore"),
     },
     {
-      description: "Người dùng",
+      description: t("admin.sections.users"),
       value: (userCount || 0).toLocaleString(),
       trend: userCount > 0 ? "+15.3%" : "0%",
       trendUp: true,
-      footerMain: "Người dùng đã đăng ký",
-      footerSub: "Tổng số tài khoản hệ thống",
+      footerMain: t("admin.sections.registeredUsers"),
+      footerSub: t("admin.sections.totalAccounts"),
     },
   ];
 

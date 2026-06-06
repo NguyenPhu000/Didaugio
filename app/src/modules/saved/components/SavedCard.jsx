@@ -1,5 +1,6 @@
 import { memo, useCallback } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -76,6 +77,7 @@ export const SavedCard = memo(function SavedCard({
   onOpenNote,
   onUnsave,
 }) {
+  const { t } = useTranslation();
   const place = entry?.place || entry;
   const imageUri = resolvePlaceImageUri(place);
   const ratingValue = Number(place?.ratingAvg ?? place?.averageRating ?? 0);
@@ -233,7 +235,7 @@ export const SavedCard = memo(function SavedCard({
           className="text-[19px] text-white font-bold tracking-tight leading-6"
           numberOfLines={2}
         >
-          {place?.name || "Địa điểm yêu thích"}
+          {place?.name || t('savedCard.favoritePlace')}
         </Text>
 
         {/* Hàng địa chỉ + Rating */}
@@ -246,7 +248,7 @@ export const SavedCard = memo(function SavedCard({
               className="text-[12px] text-white/65 flex-1"
               numberOfLines={2}
             >
-              {place?.address || "Cần Thơ, Việt Nam"}
+              {place?.address || t('savedCard.canThoVietnam')}
             </Text>
           </View>
 
@@ -265,7 +267,7 @@ export const SavedCard = memo(function SavedCard({
               style={{ fontFamily: TOKENS.font.body }}
               className="text-white/40 text-[9px] mt-0.5"
             >
-              Đánh giá
+              {t('savedCard.rating')}
             </Text>
           </View>
         </View>

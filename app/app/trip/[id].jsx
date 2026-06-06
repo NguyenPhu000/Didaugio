@@ -39,10 +39,12 @@ import { ServicesTab } from "../../src/modules/trips/components/trip-detail/Serv
 import { BudgetTab } from "../../src/modules/trips/components/trip-detail/BudgetTab";
 import EditTripModal from "../../src/modules/trips/components/trip-detail/EditTripModal";
 import s, { T } from "../../src/modules/trips/utils/tripDetailTokens";
+import { useTranslation } from "react-i18next";
 
 const BOOKINGS_FILTERS = { limit: 500 };
 
 export default function TripDetailScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams();
   const tripId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
@@ -104,18 +106,18 @@ export default function TripDetailScreen() {
     if (!trip?.id || deleteTripMutation.isPending) return;
 
     Alert.alert(
-      "Xóa lịch trình?",
-      "Lịch trình này sẽ bị xóa vĩnh viễn.",
+      t("trip.detail.deleteTitle"),
+      t("trip.detail.deleteMessage"),
       [
-        { text: "Hủy", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Xóa",
+          text: t("common.delete"),
           style: "destructive",
           onPress: () => {
             deleteTripMutation.mutate(trip.id, {
               onSuccess: () => router.replace("/(tabs)/trips"),
               onError: (error) => {
-                Alert.alert("Lỗi", error?.message || "Không thể xóa chuyến đi. Vui lòng thử lại.");
+                Alert.alert(t("common.error"), error?.message || t("trip.detail.deleteError"));
               },
             });
           },
@@ -129,7 +131,7 @@ export default function TripDetailScreen() {
       updateTripMutation.mutate(payload, {
         onSuccess: () => setIsEditTripOpen(false),
         onError: (error) => {
-          Alert.alert("Lỗi", error?.message || "Không thể cập nhật chuyến đi. Vui lòng thử lại.");
+          Alert.alert(t("common.error"), error?.message || t("trip.detail.updateError"));
         },
       });
     },
@@ -145,12 +147,12 @@ export default function TripDetailScreen() {
     if (!trip?.id || updateTripMutation.isPending) return;
 
     Alert.alert(
-      "Bắt đầu hành trình?",
-      "Ứng dụng sẽ theo dõi vị trí của bạn và dẫn đường đến các điểm đến trong chuyến đi.",
+      t("trip.detail.startTitle"),
+      t("trip.detail.startMessage"),
       [
-        { text: "Để sau", style: "cancel" },
+        { text: t("common.later"), style: "cancel" },
         {
-          text: "Bắt đầu",
+          text: t("common.start"),
           onPress: () => {
             updateTripMutation.mutate(
               { status: "in-progress" },
@@ -159,14 +161,14 @@ export default function TripDetailScreen() {
                   await setActiveTripId(trip.id);
                   await resetVisitedDestinations(trip.id);
                   await sendLocalNotification({
-                    title: "Hành trình bắt đầu!",
-                    body: `Chúc bạn có chuyến đi "${trip.title || "của mình"}" thật tuyệt vời. Hãy để chúng tôi dẫn đường nhé!`,
+                    title: t("trip.detail.startNotification"),
+                    body: t("trip.detail.startNotificationBody", { title: trip.title || t("trip.detail.defaultTitle") }),
                     data: { tripId: trip.id },
                   });
                   router.push({ pathname: "/(tabs)/map", params: { startNav: "true" } });
                 },
                 onError: (error) => {
-                  Alert.alert("Lỗi", error?.message || "Không thể bắt đầu hành trình. Vui lòng thử lại.");
+                  Alert.alert(t("common.error"), error?.message || t("trip.detail.startError"));
                 },
               },
             );
@@ -181,13 +183,13 @@ export default function TripDetailScreen() {
     if (trip.isSaved) {
       unsaveTripMutation.mutate(trip.id, {
         onError: (error) => {
-          Alert.alert("Lỗi", error?.message || "Không thể bỏ lưu chuyến đi. Vui lòng thử lại.");
+          Alert.alert(t("common.error"), error?.message || t("trip.detail.unsaveError"));
         },
       });
     } else {
       saveTripMutation.mutate(trip.id, {
         onError: (error) => {
-          Alert.alert("Lỗi", error?.message || "Không thể lưu chuyến đi. Vui lòng thử lại.");
+          Alert.alert(t("common.error"), error?.message || t("trip.detail.saveError"));
         },
       });
     }
@@ -206,9 +208,9 @@ export default function TripDetailScreen() {
   if (isError || !trip) {
     return (
       <View style={[s.screen, s.centered, { paddingTop: insets.top }]}>
-        <Text style={s.emptyTitle}>Không tìm thấy chuyến đi</Text>
+        <Text style={s.emptyTitle}>{t("trip.detail.notFound")}</Text>
         <Pressable onPress={() => router.back()} style={s.linkBtn}>
-          <Text style={s.linkBtnText}>Quay lại</Text>
+          <Text style={s.linkBtnText}>{t("trip.detail.back")}</Text>
         </Pressable>
       </View>
     );

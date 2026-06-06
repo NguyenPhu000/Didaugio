@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -62,6 +63,7 @@ function GlassPanel({ style, children, compact = false, tint }) {
 }
 
 function TripDateLine({ dateDisplay }) {
+  const { t } = useTranslation();
   if (dateDisplay.kind === "range") {
     return (
       <View className="flex-row items-center gap-[5px]">
@@ -96,13 +98,14 @@ function TripDateLine({ dateDisplay }) {
     <View className="flex-row items-center gap-[5px]">
       <MaterialIconsRounded name="event-busy" size={13} color="rgba(255,255,255,0.4)" />
       <Text className="flex-1 text-[12px] text-white/40 font-sans">
-        Chưa chọn ngày
+        {t('tripCard.noDate')}
       </Text>
     </View>
   );
 }
 
 export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved }) {
+  const { t } = useTranslation();
   const displayStatus = getDisplayStatus(trip);
   const status = STATUS_THEME[displayStatus] || STATUS_THEME.upcoming;
   const coverUri = resolveTripCoverUri(trip, COVER_WIDTH);
@@ -154,7 +157,7 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
         onPressOut={handlePressOut}
         onLayout={handleLayout}
         accessibilityRole="button"
-        accessibilityLabel={`Chuyến đi ${trip.title || "mới"}, ${status.label}`}
+        accessibilityLabel={t('tripCard.tripAccessibility', { name: trip.title || t('tripCard.newTrip'), status: status.label })}
         className="min-h-[240px] rounded-[22px] overflow-hidden bg-neutral-900"
         style={[
           cardAnimStyle,
@@ -246,7 +249,7 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
               onPress={handleSavePress}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel={isSaved ? "Bỏ lưu chuyến đi" : "Lưu chuyến đi"}
+              accessibilityLabel={isSaved ? t('tripCard.unsaveAccessibility') : t('tripCard.saveAccessibility')}
             >
               <GlassPanel 
                 style={{
@@ -281,7 +284,7 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
             }}
             numberOfLines={2}
           >
-            {trip.title || "Chuyến đi mới"}
+            {trip.title || t('tripCard.newTrip')}
           </Text>
 
           {/* Row: ngày tháng bên trái | stats bên phải */}
@@ -298,7 +301,7 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
                   {trip.totalDays ?? 1}
                 </Text>
                 <Text className="text-[9px] font-sans text-white/50 tracking-[0.2px]">
-                  ngày
+                  {t('tripCard.days')}
                 </Text>
               </View>
 
@@ -309,7 +312,7 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
                   {destinationCount === 0 ? "—" : destinationCount}
                 </Text>
                 <Text className="text-[9px] font-sans text-white/50 tracking-[0.2px]">
-                  điểm
+                  {t('tripCard.destinations')}
                 </Text>
               </View>
 

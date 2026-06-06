@@ -1,32 +1,33 @@
 import { z } from "zod";
+import i18n from "@/i18n";
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 
 export const loginSchema = z.object({
-  identifier: z.string().min(1, "Email hoặc username không được để trống"),
+  identifier: z.string().min(1, () => i18n.t("validation.emailRequired")),
   password: z
     .string()
-    .min(1, "Mật khẩu không được để trống")
-    .min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
+    .min(1, () => i18n.t("validation.passwordRequired"))
+    .min(6, () => i18n.t("validation.passwordMin", { min: 6 })),
 });
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().email("Email không hợp lệ").toLowerCase(),
+  email: z.string().email(() => i18n.t("validation.emailInvalid")).toLowerCase(),
 });
 
 export const registerSchema = z
   .object({
-    fullName: z.string().min(2, "Họ tên phải có ít nhất 2 ký tự"),
+    fullName: z.string().min(2, () => i18n.t("validation.fullNameMin", { min: 2 })),
     username: z
       .string()
-      .min(3, "Username phải có ít nhất 3 ký tự")
-      .max(30, "Username tối đa 30 ký tự")
-      .regex(USERNAME_REGEX, "Username chỉ gồm chữ, số và dấu gạch dưới"),
-    email: z.string().email("Email không hợp lệ"),
-    password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
-    confirmPassword: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
+      .min(3, () => i18n.t("validation.usernameMin", { min: 3 }))
+      .max(30, () => i18n.t("validation.usernameMax", { max: 30 }))
+      .regex(USERNAME_REGEX, () => i18n.t("validation.usernamePattern")),
+    email: z.string().email(() => i18n.t("validation.emailInvalid")),
+    password: z.string().min(6, () => i18n.t("validation.passwordMin", { min: 6 })),
+    confirmPassword: z.string().min(6, () => i18n.t("validation.passwordMin", { min: 6 })),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Mật khẩu không khớp",
+    message: () => i18n.t("validation.passwordMismatch"),
     path: ["confirmPassword"],
   });

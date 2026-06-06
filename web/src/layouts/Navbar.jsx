@@ -29,8 +29,10 @@ import { ROLE_NAMES } from "@/constants/constants";
 import { cn } from "@/lib/utils";
 import { useLogout } from "@/hooks/useLogout";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
+import { useTranslation } from "react-i18next";
 
 const Navbar = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
@@ -40,14 +42,14 @@ const Navbar = () => {
   });
 
   const menuItems = [
-    { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    { label: "Dia diem", path: "/places", icon: MapPin },
-    { label: "Nguoi dung", path: "/users", icon: Users },
-    { label: "Email Verif.", path: "/email-verifications", icon: Mail },
-    { label: "Password Reset", path: "/password-resets", icon: Key },
-    { label: "Audit Logs", path: "/audit-logs", icon: FileText },
-    { label: "Login History", path: "/login-history", icon: Monitor },
-    { label: "Cai dat", path: "/settings", icon: Settings, type: "rotate" },
+    { label: t("navbar.dashboard"), path: "/dashboard", icon: LayoutDashboard },
+    { label: t("navbar.places"), path: "/places", icon: MapPin },
+    { label: t("navbar.users"), path: "/users", icon: Users },
+    { label: t("navbar.emailVerif"), path: "/email-verifications", icon: Mail },
+    { label: t("navbar.passwordReset"), path: "/password-resets", icon: Key },
+    { label: t("navbar.auditLogs"), path: "/audit-logs", icon: FileText },
+    { label: t("navbar.loginHistory"), path: "/login-history", icon: Monitor },
+    { label: t("navbar.settings"), path: "/settings", icon: Settings, type: "rotate" },
   ];
 
   const getInitials = (displayName, email) => {
@@ -92,10 +94,10 @@ const Navbar = () => {
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-black tracking-tight leading-none text-white group-hover:text-[#F3E600] transition-colors uppercase">
-                Di Dau Gio?
+                {t("common.appName")}
               </span>
               <span className="text-[10px] text-gray-400 tracking-[0.2em] leading-none uppercase mt-0.5">
-                Admin // Terminal
+                {t("navbar.adminTerminal")}
               </span>
             </div>
           </Link>
@@ -174,7 +176,7 @@ const Navbar = () => {
                   onClick={() => navigate("/settings")}
                 >
                   <Settings className="mr-2 h-3.5 w-3.5" />
-                  <span>Cai dat</span>
+                  <span>{t("navbar.settings")}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="focus:bg-red-900/20 focus:text-red-400 text-red-400 cursor-pointer font-mono text-xs uppercase"
@@ -186,7 +188,7 @@ const Navbar = () => {
                     className="mr-2 h-3.5 w-3.5"
                     type="tap"
                   />
-                  <span>Dang xuat</span>
+                  <span>{t("navbar.logout")}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -196,7 +198,7 @@ const Navbar = () => {
           <button
             className="md:hidden p-2 text-gray-400 hover:text-white"
             aria-label={
-              isMenuOpen ? "Dong menu dieu huong" : "Mo menu dieu huong"
+              isMenuOpen ? t("navbar.closeMenu") : t("navbar.openMenu")
             }
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import { ProtectedRoute } from "@/layouts";
@@ -11,54 +12,61 @@ import {
   BUSINESS_ROUTES,
   PLACES_ALIAS,
 } from "@/constants/routes";
-import DashboardPage from "@/pages/DashboardPage";
-import LoginPage from "@/pages/auth/LoginPage";
-import RegisterPage from "@/pages/auth/RegisterPage";
-import ProfilePage from "@/pages/ProfilePage";
-import NotificationsPage from "@/pages/NotificationsPage";
-import SettingsPage from "@/pages/admin/SettingsPage";
-import UserManagePage from "@/pages/UserManagePage";
-import EmailVerificationPage from "@/pages/EmailVerificationPage";
-import PasswordResetPage from "@/pages/PasswordResetPage";
-import AuditLogsPage from "@/pages/AuditLogsPage";
-import LoginHistoryPage from "@/pages/LoginHistoryPage";
-import NotFoundPage from "@/pages/NotFoundPage";
-import PlaceWizardPage from "@/pages/admin/PlaceWizardPage";
-import PlaceListPage from "@/pages/admin/PlaceListPage";
-import PlacePendingPage from "@/pages/admin/PlacePendingPage";
-import MapPage from "@/pages/admin/MapPage";
-import CategoryManagementPage from "@/pages/admin/CategoryManagementPage";
-import TagManagementPage from "@/pages/admin/TagManagementPage";
-import DistrictListPage from "@/pages/admin/DistrictListPage";
-import BusinessListPage from "@/pages/admin/BusinessListPage";
-import BusinessPendingPage from "@/pages/admin/BusinessPendingPage";
-import AdminReviewModerationPage from "@/pages/admin/AdminReviewModerationPage";
-import BusinessProfilePage from "@/pages/business/BusinessProfilePage";
-import BusinessRegisterPage from "@/pages/business/BusinessRegisterPage";
-import ServiceListPage from "@/pages/business/ServiceListPage";
-import BookingListPage from "@/pages/business/BookingListPage";
-import BookingDetailPage from "@/pages/business/BookingDetailPage";
-import BookingSchedulePage from "@/pages/business/BookingSchedulePage";
-import BookingQuickProcessPage from "@/pages/business/BookingQuickProcessPage";
-import VoucherListPage from "@/pages/business/VoucherListPage";
-import BusinessDashboardPage from "@/pages/business/BusinessDashboardPage";
-import RevenuePage from "@/pages/business/RevenuePage";
-import BusinessReportCenterPage from "@/pages/business/BusinessReportCenterPage";
-import ReviewListPage from "@/pages/business/ReviewListPage";
-import BusinessPlacePage from "@/pages/business/BusinessPlacePage";
-import StaffManagementPage from "@/pages/business/StaffManagementPage";
-import EarningsPage from "@/pages/business/EarningsPage";
-import BusinessSettingsPage from "@/pages/business/BusinessSettingsPage";
-import AdminPayoutManagementPage from "@/pages/admin/AdminPayoutManagementPage";
-import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
-import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
-import VerifyEmailPublicPage from "@/pages/auth/VerifyEmailPublicPage";
-import ResendVerificationPage from "@/pages/auth/ResendVerificationPage";
-import StaffInvitePage from "@/pages/auth/StaffInvitePage";
-import RoleManagePage from "@/pages/RoleManagePage";
-import PermissionManagePage from "@/pages/PermissionManagePage";
-import AdminAnalyticsPage from "@/pages/admin/AdminAnalyticsPage";
-import CMSContentPage from "@/pages/admin/CMSContentPage";
+
+// Auth pages - lazy loaded for faster initial load
+const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
+const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("@/pages/auth/ResetPasswordPage"));
+const VerifyEmailPublicPage = lazy(() => import("@/pages/auth/VerifyEmailPublicPage"));
+const ResendVerificationPage = lazy(() => import("@/pages/auth/ResendVerificationPage"));
+const StaffInvitePage = lazy(() => import("@/pages/auth/StaffInvitePage"));
+
+// Admin pages - lazy loaded
+const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
+const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
+const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
+const SettingsPage = lazy(() => import("@/pages/admin/SettingsPage"));
+const UserManagePage = lazy(() => import("@/pages/UserManagePage"));
+const EmailVerificationPage = lazy(() => import("@/pages/EmailVerificationPage"));
+const PasswordResetPage = lazy(() => import("@/pages/PasswordResetPage"));
+const AuditLogsPage = lazy(() => import("@/pages/AuditLogsPage"));
+const LoginHistoryPage = lazy(() => import("@/pages/LoginHistoryPage"));
+const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
+const PlaceWizardPage = lazy(() => import("@/pages/admin/PlaceWizardPage"));
+const PlaceListPage = lazy(() => import("@/pages/admin/PlaceListPage"));
+const PlacePendingPage = lazy(() => import("@/pages/admin/PlacePendingPage"));
+const MapPage = lazy(() => import("@/pages/admin/MapPage"));
+const CategoryManagementPage = lazy(() => import("@/pages/admin/CategoryManagementPage"));
+const TagManagementPage = lazy(() => import("@/pages/admin/TagManagementPage"));
+const DistrictListPage = lazy(() => import("@/pages/admin/DistrictListPage"));
+const BusinessListPage = lazy(() => import("@/pages/admin/BusinessListPage"));
+const BusinessPendingPage = lazy(() => import("@/pages/admin/BusinessPendingPage"));
+const AdminReviewModerationPage = lazy(() => import("@/pages/admin/AdminReviewModerationPage"));
+const AdminPayoutManagementPage = lazy(() => import("@/pages/admin/AdminPayoutManagementPage"));
+const AdminAnalyticsPage = lazy(() => import("@/pages/admin/AdminAnalyticsPage"));
+const CMSContentPage = lazy(() => import("@/pages/admin/CMSContentPage"));
+const RoleManagePage = lazy(() => import("@/pages/RoleManagePage"));
+const PermissionManagePage = lazy(() => import("@/pages/PermissionManagePage"));
+
+// Business pages - lazy loaded
+const BusinessProfilePage = lazy(() => import("@/pages/business/BusinessProfilePage"));
+const BusinessRegisterPage = lazy(() => import("@/pages/business/BusinessRegisterPage"));
+const ServiceListPage = lazy(() => import("@/pages/business/ServiceListPage"));
+const BookingListPage = lazy(() => import("@/pages/business/BookingListPage"));
+const BookingDetailPage = lazy(() => import("@/pages/business/BookingDetailPage"));
+const BookingSchedulePage = lazy(() => import("@/pages/business/BookingSchedulePage"));
+const BookingQuickProcessPage = lazy(() => import("@/pages/business/BookingQuickProcessPage"));
+const VoucherListPage = lazy(() => import("@/pages/business/VoucherListPage"));
+const BusinessDashboardPage = lazy(() => import("@/pages/business/BusinessDashboardPage"));
+const RevenuePage = lazy(() => import("@/pages/business/RevenuePage"));
+const BusinessReportCenterPage = lazy(() => import("@/pages/business/BusinessReportCenterPage"));
+const ReviewListPage = lazy(() => import("@/pages/business/ReviewListPage"));
+const BusinessPlacePage = lazy(() => import("@/pages/business/BusinessPlacePage"));
+const StaffManagementPage = lazy(() => import("@/pages/business/StaffManagementPage"));
+const EarningsPage = lazy(() => import("@/pages/business/EarningsPage"));
+const BusinessSettingsPage = lazy(() => import("@/pages/business/BusinessSettingsPage"));
+
 import BusinessGuard from "@/components/business/BusinessGuard";
 import { resolvePostLoginRoute, resolveRoleId } from "@/utils/authRouting";
 

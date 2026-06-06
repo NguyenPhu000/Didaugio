@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -31,6 +32,7 @@ function calcTotalDays(start, end) {
 }
 
 function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState(null);
@@ -66,8 +68,8 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
       if (!permission.granted) {
         setAlertConfig({
           visible: true,
-          title: "Chưa có quyền truy cập ảnh",
-          message: "Vui lòng cấp quyền truy cập thư viện ảnh để chọn ảnh bìa.",
+          title: t('editTrip.noPhotoAccess'),
+          message: t('editTrip.noPhotoAccessDesc'),
           type: "warning",
         });
         return;
@@ -92,8 +94,8 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
     } catch (error) {
       setAlertConfig({
         visible: true,
-        title: "Lỗi",
-        message: error?.message || "Không thể xử lý ảnh. Vui lòng thử lại.",
+        title: t('editTrip.error'),
+        message: error?.message || t('editTrip.imageError'),
         type: "error",
       });
     } finally {
@@ -123,8 +125,8 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
     if (startDate && endDate && endDate < startDate) {
       setAlertConfig({
         visible: true,
-        title: "Ngày không hợp lệ",
-        message: "Ngày kết thúc không được nhỏ hơn ngày bắt đầu.",
+        title: t('editTrip.invalidDate'),
+        message: t('editTrip.endDateError'),
         type: "error",
       });
       return;
@@ -172,7 +174,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
             <View className="flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]">
               <View className="flex-row items-center gap-2">
                 <MaterialIconsRounded name="edit-calendar" size={18} color="#1D1D1F" />
-                <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">Chỉnh sửa chuyến đi</Text>
+                <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">{t('editTrip.editTrip')}</Text>
               </View>
               <Pressable
                 onPress={onCancel}
@@ -195,7 +197,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
               nestedScrollEnabled
             >
               <View className="gap-1.5">
-                <Text className="text-[11px] text-black/40 font-semibold uppercase tracking-widest">Ảnh bìa</Text>
+                <Text className="text-[11px] text-black/40 font-semibold uppercase tracking-widest">{t('editTrip.coverPhoto')}</Text>
                 <Pressable
                   onPress={handlePickThumbnail}
                   disabled={isProcessingThumbnail}
@@ -211,7 +213,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                   ) : (
                     <View className="items-center gap-2">
                       <MaterialIconsRounded name="add-photo-alternate" size={32} color="rgba(0,0,0,0.3)" />
-                      <Text className="text-[13px] text-black/40 font-medium">Chạm để chọn ảnh bìa</Text>
+                      <Text className="text-[13px] text-black/40 font-medium">{t('editTrip.tapToSelect')}</Text>
                     </View>
                   )}
 
@@ -225,7 +227,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                     <View className="absolute top-2.5 right-2.5 flex-row gap-2">
                       <View className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-full bg-black/55">
                         <MaterialIconsRounded name="edit" size={13} color="#FFFFFF" />
-                        <Text className="text-white text-[11px] font-semibold">Đổi ảnh</Text>
+                        <Text className="text-white text-[11px] font-semibold">{t('editTrip.changePhoto')}</Text>
                       </View>
                       <Pressable
                         onPress={handleRemoveThumbnail}
@@ -240,11 +242,11 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
               </View>
 
               <View className="gap-1.5">
-                <Text className="text-[11px] text-black/40 font-semibold uppercase tracking-widest">Tên chuyến đi</Text>
+                <Text className="text-[11px] text-black/40 font-semibold uppercase tracking-widest">{t('editTrip.tripName')}</Text>
                 <TextInput
                   value={title}
                   onChangeText={setTitle}
-                  placeholder="Nhập tên chuyến đi"
+                  placeholder={t('editTrip.tripNamePlaceholder')}
                   placeholderTextColor="rgba(0,0,0,0.3)"
                   className="bg-[#F5F5F7] rounded-xl px-3 py-3 text-[15px] color-[#1D1D1F] font-normal border border-black/[0.06]"
                   returnKeyType="next"
@@ -252,11 +254,11 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
               </View>
 
               <View className="gap-1.5">
-                <Text className="text-[11px] text-black/40 font-semibold uppercase tracking-widest">Mô tả</Text>
+                <Text className="text-[11px] text-black/40 font-semibold uppercase tracking-widest">{t('editTrip.description')}</Text>
                 <TextInput
                   value={description}
                   onChangeText={setDescription}
-                  placeholder="Thêm mô tả ngắn..."
+                  placeholder={t('editTrip.descPlaceholder')}
                   placeholderTextColor="rgba(0,0,0,0.3)"
                   className="bg-[#F5F5F7] rounded-xl px-3 py-3 text-[15px] color-[#1D1D1F] font-normal border border-black/[0.06] min-h-[84px]"
                   multiline
@@ -266,18 +268,18 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
 
               <View className="rounded-2xl bg-[#F5F5F7] px-3 py-1 border border-black/[0.06]">
                 <CustomDatePicker
-                  label="Ngày bắt đầu"
+                  label={t('editTrip.startDate')}
                   value={startDate}
                   onChange={handleStartDateChange}
-                  placeholder="Chọn ngày"
+                  placeholder={t('editTrip.selectDate')}
                 />
                 <View className="h-[0.5px] bg-black/[0.08]" />
                 <CustomDatePicker
-                  label="Ngày kết thúc"
+                  label={t('editTrip.endDate')}
                   value={endDate}
                   onChange={setEndDate}
                   minimumDate={startDate ?? undefined}
-                  placeholder="Chọn ngày"
+                  placeholder={t('editTrip.selectDate')}
                 />
               </View>
 
@@ -288,8 +290,8 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                     <MaterialIconsRounded name="directions-boat" size={18} color={avoidFerry ? "#FF9500" : "rgba(0,0,0,0.35)"} />
                   </View>
                   <View className="flex-1 gap-0.5">
-                    <Text className="text-[15px] font-semibold text-[#1D1D1F] tracking-tight">Tránh đi phà</Text>
-                    <Text className="text-[12px] text-black/40 tracking-tight">Tìm đường không qua bến phà</Text>
+                    <Text className="text-[15px] font-semibold text-[#1D1D1F] tracking-tight">{t('editTrip.avoidFerry')}</Text>
+                    <Text className="text-[12px] text-black/40 tracking-tight">{t('editTrip.avoidFerryDesc')}</Text>
                   </View>
                 </View>
                 <Switch
@@ -314,7 +316,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                 {isSaving ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text className="text-white text-[16px] font-semibold tracking-tight text-center">Lưu</Text>
+                  <Text className="text-white text-[16px] font-semibold tracking-tight text-center">{t('editTrip.save')}</Text>
                 )}
               </TouchableOpacity>
             </View>

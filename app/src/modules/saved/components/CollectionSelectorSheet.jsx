@@ -8,6 +8,7 @@ import React, {
   useImperativeHandle,
   useCallback,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -39,6 +40,7 @@ export const CollectionSelectorSheet = memo(
     { placeId, onSuccess, onClose },
     ref,
   ) {
+    const { t } = useTranslation();
     const bottomSheetModalRef = useRef(null);
     const snapPoints = useMemo(() => ["60%", "85%"], []);
     const user = useAuthStore((s) => s.user);
@@ -89,7 +91,7 @@ export const CollectionSelectorSheet = memo(
 
     const currentCollectionName = useMemo(() => {
       if (!savedEntry) return null;
-      return savedEntry.collectionName || "Yêu thích";
+      return savedEntry.collectionName || t('collectionSelector.favorite');
     }, [savedEntry]);
 
     // Gom dữ liệu để lấy ảnh đại diện và đếm số lượng items cho từng folder
@@ -98,7 +100,7 @@ export const CollectionSelectorSheet = memo(
 
       // Mặc định luôn có Yêu thích
       map.set("yêu thích", {
-        name: "Yêu thích",
+        name: t('collectionSelector.favorite'),
         count: 0,
         thumbnail: null,
       });
@@ -130,7 +132,7 @@ export const CollectionSelectorSheet = memo(
 
         if (!map.has(key)) {
           map.set(key, {
-            name: colName || "Yêu thích",
+            name: colName || t('collectionSelector.favorite'),
             count: 0,
             thumbnail: null,
           });
@@ -183,18 +185,18 @@ export const CollectionSelectorSheet = memo(
 
           if (currentCollectionName === collectionName) {
             await unsaveMutation.mutateAsync(placeId);
-            Alert.alert("Đã bỏ lưu", "Đã xóa địa điểm khỏi bộ sưu tập.");
+            Alert.alert(t('collectionSelector.unsaved'), t('collectionSelector.unsavedDesc'));
           } else {
             await saveMutation.mutateAsync({
               placeId,
               collectionName: targetCollectionName || undefined,
             });
-            Alert.alert("Lưu thành công", `Đã lưu vào ${collectionName}`);
+            Alert.alert(t('collectionSelector.saveSuccess'), t('collectionSelector.saveSuccessDesc', { name: collectionName }));
           }
           onSuccess?.();
           bottomSheetModalRef.current?.dismiss();
         } catch (err) {
-          Alert.alert("Có lỗi xảy ra", "Vui lòng thử lại sau.");
+          Alert.alert(t('collectionSelector.error'), t('collectionSelector.errorDesc'));
         }
       },
       [placeId, currentCollectionName, saveMutation, unsaveMutation, onSuccess],
@@ -204,7 +206,7 @@ export const CollectionSelectorSheet = memo(
       const name = newCollectionName.trim();
       if (!name) return;
       if (name.toLowerCase() === "yêu thích") {
-        Alert.alert("Trùng tên", "Tên bộ sưu tập đã tồn tại.");
+        Alert.alert(t('collectionSelector.duplicateName'), t('collectionSelector.duplicateNameDesc'));
         return;
       }
 
@@ -230,13 +232,13 @@ export const CollectionSelectorSheet = memo(
           // Lỗi lưu offline âm thầm
         }
 
-        Alert.alert("Lưu thành công", `Đã lưu vào ${name}`);
+        Alert.alert(t('collectionSelector.saveSuccessNew'), t('collectionSelector.saveSuccessNewDesc', { name }));
         setNewCollectionName("");
         setShowCreateInput(false);
         onSuccess?.();
         bottomSheetModalRef.current?.dismiss();
       } catch (err) {
-        Alert.alert("Có lỗi xảy ra", "Không thể tạo bộ sưu tập.");
+        Alert.alert(t('collectionSelector.createError'), t('collectionSelector.createErrorDesc'));
       } finally {
         setIsCreating(false);
       }
@@ -262,7 +264,7 @@ export const CollectionSelectorSheet = memo(
         <View className="px-5 pb-4 pt-2">
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-[#1D1D1F] text-lg font-extrabold tracking-[-0.3px]">
-              Lưu vào bộ sưu tập
+              {t('collectionSelector.saveToCollection')}
             </Text>
             <Pressable
               onPress={() => bottomSheetModalRef.current?.dismiss()}
@@ -286,13 +288,13 @@ export const CollectionSelectorSheet = memo(
                 <MaterialIconsRounded name="add" size={18} color="#FF9500" />
               </View>
               <Text className="text-[#FF9500] text-[14px] font-bold">
-                Tạo bộ sưu tập mới
+                {t('collectionSelector.createNew')}
               </Text>
             </Pressable>
           ) : (
             <View className="flex-row items-center gap-2.5 bg-[#F2F2F7] px-3.5 py-2.5 rounded-2xl border border-black/[0.01]">
               <TextInput
-                placeholder="Tên bộ sưu tập..."
+                placeholder={t('collectionSelector.namePlaceholder')}
                 value={newCollectionName}
                 onChangeText={setNewCollectionName}
                 className="flex-1 text-[#1D1D1F] text-[14px] p-0 font-bold"
@@ -307,7 +309,7 @@ export const CollectionSelectorSheet = memo(
                 {isCreating ? (
                   <ActivityIndicator size="small" color="#FFF" />
                 ) : (
-                  <Text className="text-white text-xs font-bold">Tạo mới</Text>
+                  <Text className="text-white text-xs font-bold">{t('collectionSelector.create')}</Text>
                 )}
               </Pressable>
               <Pressable
@@ -379,7 +381,7 @@ export const CollectionSelectorSheet = memo(
                         {folder.name}
                       </Text>
                       <Text className="text-[#8E8E93] text-xs mt-0.5 font-semibold">
-                        {folder.count} địa điểm
+                        {t('collectionSelector.placeCount', { count: folder.count })}
                       </Text>
                     </View>
                   </View>

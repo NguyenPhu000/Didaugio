@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import api from "@/constants/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,14 +33,16 @@ import {
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 
-const STATUS_MAP = {
-  pending: { label: "Chờ duyệt", color: "text-yellow-700 bg-yellow-50 border-yellow-200" },
-  approved: { label: "Đã duyệt", color: "text-blue-700 bg-blue-50 border-blue-200" },
-  transferred: { label: "Đã chuyển", color: "text-green-700 bg-green-50 border-green-200" },
-  rejected: { label: "Từ chối", color: "text-red-700 bg-red-50 border-red-200" },
-};
-
 export default function EarningsPage() {
+  const { t } = useTranslation();
+
+  const STATUS_MAP = {
+    pending: { label: t("business.earnings.statusPending"), color: "text-yellow-700 bg-yellow-50 border-yellow-200" },
+    approved: { label: t("business.earnings.statusApproved"), color: "text-blue-700 bg-blue-50 border-blue-200" },
+    transferred: { label: t("business.earnings.statusTransferred"), color: "text-green-700 bg-green-50 border-green-200" },
+    rejected: { label: t("business.earnings.statusRejected"), color: "text-red-700 bg-red-50 border-red-200" },
+  };
+
   const [summary, setSummary] = useState(null);
   const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,11 +67,11 @@ export default function EarningsPage() {
       if (payoutsRes?.data?.payouts) setPayouts(payoutsRes.data.payouts);
     } catch (err) {
       console.error("Failed to load earnings:", err);
-      toast.error("Không thể tải thông tin thu nhập");
+      toast.error(t("business.earnings.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchData();
@@ -76,7 +79,7 @@ export default function EarningsPage() {
 
   const handleRequestPayout = async () => {
     if (!form.amount || parseInt(form.amount) <= 0) {
-      toast.error("Vui lòng nhập số tiền hợp lệ");
+      toast.error(t("business.earnings.invalidAmount"));
       return;
     }
     try {
@@ -85,12 +88,12 @@ export default function EarningsPage() {
         ...form,
         amount: parseInt(form.amount),
       });
-      toast.success("Yêu cầu rút tiền đã được gửi");
+      toast.success(t("business.earnings.requestSent"));
       setPayoutOpen(false);
       setForm({ amount: "", bankName: "", bankAccount: "", bankOwner: "", note: "" });
       fetchData();
     } catch (err) {
-      toast.error(err.message || "Lỗi gửi yêu cầu rút tiền");
+      toast.error(err.message || t("business.earnings.requestFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -118,10 +121,10 @@ export default function EarningsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
-            Thu nhập & Rút tiền
+            {t("business.earnings.title")}
           </h2>
           <p className="text-muted-foreground">
-            Theo dõi thu nhập và yêu cầu rút tiền
+            {t("business.earnings.title")}
           </p>
         </div>
         <Button
@@ -129,7 +132,7 @@ export default function EarningsPage() {
           disabled={!summary?.availableBalance || summary.availableBalance <= 0}
         >
           <IconArrowUpRight className="mr-2 h-4 w-4" />
-          Yêu cầu rút tiền
+          {t("business.earnings.title")}
         </Button>
       </div>
 
@@ -138,7 +141,7 @@ export default function EarningsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Tổng doanh thu
+              {t("business.revenue.totalRevenue")}
             </CardTitle>
             <IconTrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -147,14 +150,14 @@ export default function EarningsPage() {
               {formatMoney(summary?.totalRevenue)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {summary?.completedBookings || 0} booking hoàn thành
+              {summary?.completedBookings || 0} {t("business.revenue.completed")}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Hoa hồng hệ thống
+              {t("business.revenue.systemCommission")}
             </CardTitle>
             <IconTrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -163,14 +166,14 @@ export default function EarningsPage() {
               -{formatMoney(summary?.totalCommission)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Phí dịch vụ nền tảng
+              {t("business.revenue.systemCommission")}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Số dư khả dụng
+              {t("business.revenue.netRevenue")}
             </CardTitle>
             <IconWallet className="h-4 w-4 text-green-500" />
           </CardHeader>
@@ -179,14 +182,14 @@ export default function EarningsPage() {
               {formatMoney(summary?.availableBalance)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Có thể rút ngay
+              {t("business.earnings.statusApproved")}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Đã rút
+              {t("business.earnings.statusTransferred")}
             </CardTitle>
             <IconCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -195,7 +198,7 @@ export default function EarningsPage() {
               {formatMoney(summary?.totalPaidOut)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Tổng đã chuyển khoản
+              {t("business.earnings.statusTransferred")}
             </p>
           </CardContent>
         </Card>
@@ -205,17 +208,17 @@ export default function EarningsPage() {
       {summary?.monthlyEarnings?.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Thu nhập theo tháng</CardTitle>
+            <CardTitle>{t("business.earnings.title")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tháng</TableHead>
-                  <TableHead>Doanh thu</TableHead>
-                  <TableHead>Hoa hồng</TableHead>
-                  <TableHead>Thực nhận</TableHead>
-                  <TableHead>Booking</TableHead>
+                  <TableHead>{t("business.revenue.status")}</TableHead>
+                  <TableHead>{t("business.revenue.totalRevenue")}</TableHead>
+                  <TableHead>{t("business.revenue.systemCommission")}</TableHead>
+                  <TableHead>{t("business.revenue.netRevenue")}</TableHead>
+                  <TableHead>{t("business.revenue.totalBookings")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -241,23 +244,23 @@ export default function EarningsPage() {
       {/* Payout History */}
       <Card>
         <CardHeader>
-          <CardTitle>Lịch sử rút tiền</CardTitle>
+          <CardTitle>{t("business.earnings.title")}</CardTitle>
         </CardHeader>
         <CardContent>
           {payouts.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-8">
               <IconWallet className="h-8 w-8 text-muted-foreground" />
-              <p className="text-muted-foreground">Chưa có yêu cầu rút tiền</p>
+              <p className="text-muted-foreground">{t("business.earnings.loadFailed")}</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Ngày yêu cầu</TableHead>
-                  <TableHead>Số tiền</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Ngân hàng</TableHead>
-                  <TableHead>Ghi chú</TableHead>
+                  <TableHead>{t("business.revenue.status")}</TableHead>
+                  <TableHead>{t("business.revenue.totalRevenue")}</TableHead>
+                  <TableHead>{t("business.revenue.status")}</TableHead>
+                  <TableHead>{t("business.revenue.status")}</TableHead>
+                  <TableHead>{t("business.revenue.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -297,18 +300,18 @@ export default function EarningsPage() {
       <Dialog open={payoutOpen} onOpenChange={setPayoutOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Yêu cầu rút tiền</DialogTitle>
+            <DialogTitle>{t("business.earnings.title")}</DialogTitle>
             <DialogDescription>
-              Số dư khả dụng: {formatMoney(summary?.availableBalance)}
+              {t("business.revenue.netRevenue")}: {formatMoney(summary?.availableBalance)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="payout-amount">Số tiền muốn rút *</Label>
+              <Label htmlFor="payout-amount">{t("business.earnings.invalidAmount")} *</Label>
               <Input
                 id="payout-amount"
                 type="number"
-                placeholder="Nhập số tiền"
+                placeholder={t("business.earnings.invalidAmount")}
                 value={form.amount}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, amount: e.target.value }))
@@ -316,10 +319,10 @@ export default function EarningsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="payout-bank">Ngân hàng</Label>
+              <Label htmlFor="payout-bank">{t("business.revenue.status")}</Label>
               <Input
                 id="payout-bank"
-                placeholder="VD: Vietcombank, Techcombank..."
+                placeholder={t("business.revenue.status")}
                 value={form.bankName}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, bankName: e.target.value }))
@@ -327,10 +330,10 @@ export default function EarningsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="payout-account">Số tài khoản</Label>
+              <Label htmlFor="payout-account">{t("business.revenue.status")}</Label>
               <Input
                 id="payout-account"
-                placeholder="Số tài khoản ngân hàng"
+                placeholder={t("business.revenue.status")}
                 value={form.bankAccount}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, bankAccount: e.target.value }))
@@ -338,10 +341,10 @@ export default function EarningsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="payout-owner">Chủ tài khoản</Label>
+              <Label htmlFor="payout-owner">{t("business.revenue.status")}</Label>
               <Input
                 id="payout-owner"
-                placeholder="Tên chủ tài khoản"
+                placeholder={t("business.revenue.status")}
                 value={form.bankOwner}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, bankOwner: e.target.value }))
@@ -349,10 +352,10 @@ export default function EarningsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="payout-note">Ghi chú</Label>
+              <Label htmlFor="payout-note">{t("business.revenue.status")}</Label>
               <Input
                 id="payout-note"
-                placeholder="Ghi chú (tùy chọn)"
+                placeholder={t("common.optional")}
                 value={form.note}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, note: e.target.value }))
@@ -366,10 +369,10 @@ export default function EarningsPage() {
               onClick={() => setPayoutOpen(false)}
               disabled={submitting}
             >
-              Hủy
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleRequestPayout} disabled={submitting}>
-              {submitting ? "Đang gửi..." : "Gửi yêu cầu"}
+              {submitting ? t("common.processing") : t("common.submit")}
             </Button>
           </DialogFooter>
         </DialogContent>

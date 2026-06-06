@@ -8,6 +8,7 @@ import {
   Input,
 } from "@/components/ui";
 import { Textarea } from "@/components/ui/textarea";
+import { useTranslation } from "react-i18next";
 import SettingSelectField from "./SettingSelectField";
 import {
   CURRENCY_OPTIONS,
@@ -17,15 +18,15 @@ import {
 } from "../settingsSelectOptions";
 
 const GeneralSettingsCard = ({ value, onChange }) => {
+  const { t } = useTranslation();
   return (
     <Card className="rounded-none border-black bg-white">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-black uppercase tracking-wide">
-          1) Cài Đặt Chung
+          {t("settings.general.title")}
         </CardTitle>
         <CardDescription className="font-mono text-xs uppercase tracking-wider text-gray-500">
-          Tên hệ thống, logo/favicon, ngôn ngữ, múi giờ, domain và maintenance
-          mode
+          {t("settings.general.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -34,7 +35,7 @@ const GeneralSettingsCard = ({ value, onChange }) => {
             className="rounded-none border-black"
             value={value.siteName}
             onChange={(e) => onChange("siteName", e.target.value)}
-            placeholder="Tên website"
+            placeholder={t("settings.general.siteName")}
           />
           <Input
             className="rounded-none border-black"
@@ -50,28 +51,28 @@ const GeneralSettingsCard = ({ value, onChange }) => {
           />
           <SettingSelectField
             id="settings-currency"
-            label="Đơn vị tiền tệ"
+            label={t("settings.general.currency")}
             value={value.currency}
             onChange={(v) => onChange("currency", v)}
             options={CURRENCY_OPTIONS}
           />
           <SettingSelectField
             id="settings-language"
-            label="Ngôn ngữ"
+            label={t("settings.general.defaultLanguage")}
             value={value.language}
             onChange={(v) => onChange("language", v)}
             options={LANGUAGE_OPTIONS}
           />
           <SettingSelectField
             id="settings-timezone"
-            label="Múi giờ"
+            label={t("settings.general.timezone")}
             value={value.timezone}
             onChange={(v) => onChange("timezone", v)}
             options={TIMEZONE_OPTIONS}
           />
           <SettingSelectField
             id="settings-date-format"
-            label="Định dạng ngày"
+            label={t("settings.general.dateFormat")}
             value={value.dateFormat}
             onChange={(v) => onChange("dateFormat", v)}
             options={DATE_FORMAT_OPTIONS}
@@ -95,12 +96,12 @@ const GeneralSettingsCard = ({ value, onChange }) => {
           className="rounded-none border-black focus-visible:ring-0"
           value={value.siteDescription}
           onChange={(e) => onChange("siteDescription", e.target.value)}
-          placeholder="Mô tả website"
+          placeholder={t("settings.general.siteDescription")}
         />
 
         <div className="flex items-center justify-between border border-black px-3 py-2">
           <span className="font-mono text-xs font-bold uppercase tracking-wider">
-            Maintenance mode
+            {t("settings.general.maintenanceMode")}
           </span>
           <Checkbox
             checked={!!value.maintenanceMode}

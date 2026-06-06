@@ -1,12 +1,13 @@
 import { memo } from "react";
 import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
 
 const TABS = [
-  { key: "itinerary", label: "Lịch trình", icon: "route" },
-  { key: "services", label: "Dịch vụ", icon: "room-service" },
-  { key: "budget", label: "Ngân sách", icon: "account-balance-wallet" },
+  { key: "itinerary", icon: "route" },
+  { key: "services", icon: "room-service" },
+  { key: "budget", icon: "account-balance-wallet" },
 ];
 
 export const TripTabBar = memo(function TripTabBar({
@@ -14,6 +15,7 @@ export const TripTabBar = memo(function TripTabBar({
   onTabChange,
   serviceCount = 0,
 }) {
+  const { t } = useTranslation();
   return (
     <View className={STYLES.tabBar}>
       {TABS.map((tab) => {
@@ -34,7 +36,7 @@ export const TripTabBar = memo(function TripTabBar({
               color={isActive ? T.ink : ALPHA.iconStrong}
             />
             <Text className={`${STYLES.tabLabel} ${isActive ? STYLES.tabLabelActive : ""}`}>
-              {tab.label}
+              {t(`tripTabBar.${tab.key}`)}
             </Text>
             {showBadge ? (
               <View className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#1D1D1F] items-center justify-center">

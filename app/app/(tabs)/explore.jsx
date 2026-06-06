@@ -20,6 +20,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 
 import {
   useCategories,
@@ -63,6 +64,7 @@ const FOOD_HINTS = ["ẩm thực", "food", "restaurant", "ăn", "quán", "bánh"
 const FLOATING_TAB_CLEARANCE = TAB_BAR_HEIGHT + 84;
 
 export default function ExploreScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
@@ -116,9 +118,9 @@ export default function ExploreScreen() {
 
   const handleSavePlace = useCallback(async (place) => {
     if (!isLoggedIn) {
-      Alert.alert("Đăng nhập để lưu", "Bạn cần đăng nhập để lưu địa điểm.", [
-        { text: "Để sau", style: "cancel" },
-        { text: "Đăng nhập", onPress: () => router.push("/(auth)/login") },
+      Alert.alert(t("explore.toast.loginToSave"), t("explore.toast.loginToSaveDesc"), [
+        { text: t("common.later"), style: "cancel" },
+        { text: t("common.login"), onPress: () => router.push("/(auth)/login") },
       ]);
       return;
     }
@@ -131,19 +133,19 @@ export default function ExploreScreen() {
         await unsaveMutation.mutateAsync(placeId);
         useUIStore.getState().addToast({
           type: "success",
-          message: "Địa điểm đã không còn trong danh sách yêu thích",
+          message: t("explore.toast.unsaved"),
         });
       } else {
         await saveMutation.mutateAsync({ placeId });
         useUIStore.getState().addToast({
           type: "success",
-          message: "Địa điểm đã được lưu vào danh sách yêu thích",
+          message: t("explore.toast.saved"),
         });
       }
     } catch {
       useUIStore.getState().addToast({
         type: "error",
-        message: isCurrentlySaved ? "Không thể bỏ lưu địa điểm" : "Không thể lưu địa điểm",
+        message: isCurrentlySaved ? t("explore.toast.unsaveFailed") : t("explore.toast.saveFailed"),
       });
     }
   }, [isLoggedIn, savedPlaceIds, saveMutation, unsaveMutation, router]);
@@ -159,7 +161,7 @@ export default function ExploreScreen() {
       {
         key: "all",
         categoryId: null,
-        label: "Tất cả",
+        label: t("explore.categories.all"),
         icon: "travel-explore",
       },
       ...normalizedCategories
@@ -329,7 +331,7 @@ export default function ExploreScreen() {
             <View className="flex-row items-center mx-5 mt-2.5 px-3.5 h-9 rounded-full bg-[#0071E3]/[0.06] border border-[#0071E3]/[0.12] gap-2">
               <View className="w-1.5 h-1.5 rounded-full bg-[#0071E3]" />
               <Text className="flex-1 text-[#0071E3] text-[13px] font-semibold">
-                {selectedCategoryName} · {allPlaces.length} kết quả
+                {selectedCategoryName} · {t("explore.results", { count: allPlaces.length })}
               </Text>
               <Pressable
                 onPress={() => handleSelectCategory(null)}
@@ -384,8 +386,8 @@ export default function ExploreScreen() {
                 onPressPlace={handlePressPlace}
                 title={
                   selectedCategory == null
-                    ? "Địa điểm nên thử"
-                    : `Địa điểm ${selectedCategoryName}`
+                    ? t("explore.recommended")
+                    : t("explore.placesInCategory", { category: selectedCategoryName })
                 }
               />
             ) : null}
@@ -403,20 +405,20 @@ export default function ExploreScreen() {
               </View>
               <Text className="text-[#1D1D1F] text-[18px] font-semibold tracking-tight text-center">
                 {selectedCategory == null
-                  ? "Chưa có địa điểm nào"
-                  : "Không tìm thấy kết quả"}
+                  ? t("explore.empty.noPlaces")
+                  : t("explore.empty.noResults")}
               </Text>
               <Text className="text-black/48 text-[14px] text-center leading-[22px]">
                 {selectedCategory == null
-                  ? "Hãy quay lại sau hoặc thử đổi danh mục khác."
-                  : "Thử danh mục khác hoặc tìm kiếm theo tên."}
+                  ? t("explore.empty.noPlacesDesc")
+                  : t("explore.empty.noResultsDesc")}
               </Text>
               {selectedCategory != null ? (
                 <Pressable
                   onPress={() => handleSelectCategory(null)}
                   className="mt-1 h-9 px-5 rounded-full items-center justify-center bg-[#1D1D1F]"
                 >
-                  <Text className="text-white text-[14px] font-semibold">Xem tất cả</Text>
+                  <Text className="text-white text-[14px] font-semibold">{t("common.viewAll")}</Text>
                 </Pressable>
               ) : null}
             </Animated.View>

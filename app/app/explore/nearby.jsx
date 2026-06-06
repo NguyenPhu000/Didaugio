@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
@@ -13,6 +14,7 @@ import { distanceMeters, formatDistance } from "../../src/modules/explore/utils/
 
 
 export default function ExploreNearbyScreen() {
+  const { t } = useTranslation();
   const [watchEnabled, setWatchEnabled] = useState(false);
   const { currentLocation, permission, locateNow } = useExploreLocation({
     watchEnabled,
@@ -35,12 +37,12 @@ export default function ExploreNearbyScreen() {
   }, [data, currentLocation]);
 
   const subtitle = currentLocation
-    ? "Sắp xếp theo khoảng cách từ vị trí hiện tại của bạn."
-    : "Bật vị trí để xem các địa điểm gần bạn hơn.";
+    ? t("exploreNearby.sortByDistance")
+    : t("exploreNearby.enableLocation");
 
   return (
     <ExploreListScaffold
-      title="Gần bạn"
+      title={t("exploreNearby.nearYou")}
       subtitle={subtitle}
       rightAction={
         <View className="flex-row items-center">
@@ -61,7 +63,7 @@ export default function ExploreNearbyScreen() {
               color={APPLE_THEME.white}
             />
             <Text className="text-white text-[12px] font-semibold tracking-[0.2px]">
-              {permission === "granted" ? "Định vị" : "Bật vị trí"}
+              {permission === "granted" ? t("exploreNearby.locate") : t("exploreNearby.enableLocationBtn")}
             </Text>
           </Pressable>
         </View>
@@ -75,7 +77,7 @@ export default function ExploreNearbyScreen() {
             color={APPLE_THEME.textSecondary}
           />
           <Text className="text-[rgba(0,0,0,0.8)] text-[12px] font-medium flex-1 min-w-0" numberOfLines={1}>
-            {`Vị trí hiện tại • ${currentLocation.latitude.toFixed(3)}, ${currentLocation.longitude.toFixed(3)}`}
+            {`${t("exploreNearby.currentLocation")} • ${currentLocation.latitude.toFixed(3)}, ${currentLocation.longitude.toFixed(3)}`}
           </Text>
         </View>
       ) : null}
@@ -83,8 +85,8 @@ export default function ExploreNearbyScreen() {
       <ExplorePlaceList
         data={places}
         loading={isLoading}
-        emptyTitle="Chưa có địa điểm phù hợp"
-        emptyCopy="Hãy thử lại hoặc bật vị trí để sắp xếp theo khoảng cách."
+        emptyTitle={t("exploreNearby.noPlaces")}
+        emptyCopy={t("exploreNearby.tryAgain")}
         onEndReached={refetch}
       />
     </ExploreListScaffold>

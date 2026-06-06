@@ -1,4 +1,5 @@
 import { memo, useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -26,6 +27,7 @@ import TimeField from "./TimeField";
 import CustomAlertModal from "../../../../components/composed/CustomAlertModal";
 
 function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLast }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [startTime, setStartTime] = useState(dest?.startTime || "");
   const [endTime, setEndTime] = useState(dest?.endTime || "");
@@ -51,8 +53,8 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
     if (startTime && endTime && toTimeSortValue(endTime) < toTimeSortValue(startTime)) {
       setAlertConfig({
         visible: true,
-        title: "Thời gian không hợp lệ",
-        message: "Thời gian kết thúc không được nhỏ hơn thời gian bắt đầu.",
+        title: t('editDestination.invalidTime'),
+        message: t('editDestination.endTimeError'),
       });
       return;
     }
@@ -100,7 +102,7 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
             <View className="flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]">
               <View className="flex-row items-center gap-2 flex-1 mr-2">
                 <MaterialIconsRounded name="edit-location" size={18} color="#1D1D1F" />
-                <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">Chỉnh sửa địa điểm</Text>
+                <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">{t('editDestination.editPlace')}</Text>
               </View>
               <Pressable
                 onPress={onCancel}
@@ -127,17 +129,17 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
               showsVerticalScrollIndicator={false}
             >
               {/* THỜI GIAN CHI TIẾT */}
-              <Text className={STYLES.sectionLabel}>Thời gian chi tiết</Text>
+              <Text className={STYLES.sectionLabel}>{t('editDestination.detailTime')}</Text>
               <View className="flex-row gap-3">
                 <TimeField
-                  label="Bắt đầu"
+                  label={t('editDestination.start')}
                   value={startTime}
                   onChange={setStartTime}
                   placeholder="--:--"
                   icon="play-circle-outline"
                 />
                 <TimeField
-                  label="Kết thúc"
+                  label={t('editDestination.end')}
                   value={endTime}
                   onChange={setEndTime}
                   placeholder="--:--"
@@ -149,17 +151,17 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
                 <View className="flex-row items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#F5F5F7]">
                   <MaterialIconsRounded name="schedule" size={16} color="#1D1D1F" />
                   <Text className="text-[13px] font-medium text-[#1D1D1F] tracking-tight">
-                    Lưu trú {durationLabel}
+                    {t('editDestination.stayDuration', { duration: durationLabel })}
                   </Text>
                 </View>
               ) : null}
 
               {!isLast ? (
                 <View className="pt-4 mt-1 border-t border-black/[0.08]">
-                  <Text className={STYLES.sectionLabel}>Di chuyển đến điểm tiếp theo</Text>
+                  <Text className={STYLES.sectionLabel}>{t('editDestination.moveToNext')}</Text>
 
                   <View className="gap-1.5">
-                    <Text className={STYLES.fieldLabel}>Phương tiện</Text>
+                    <Text className={STYLES.fieldLabel}>{t('editDestination.transport')}</Text>
                     <View className="flex-row gap-2 flex-wrap mt-1">
                       {TRANSPORT_OPTIONS.map((opt) => {
                         const isSelected = isTransportSelected(transportToNext, opt.value);
@@ -187,11 +189,11 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
 
                   {dest?.distanceToNext ? (
                     <View className="gap-1.5 mt-2.5">
-                      <Text className={STYLES.fieldLabel}>Khoảng cách đến điểm tiếp theo</Text>
+                      <Text className={STYLES.fieldLabel}>{t('editDestination.distanceToNext')}</Text>
                       <View className="flex-row items-center gap-1.5 bg-[#F5F5F7] rounded-xl px-3 py-3 border border-black/[0.06]">
                         <MaterialIconsRounded name="navigation" size={14} color={ALPHA.iconStrong} style={{ transform: [{ rotate: "45deg" }] }} />
                         <Text className="text-[14px] text-black/50 font-normal">
-                          {formatDistance(dest.distanceToNext)} (Hệ thống tự động tính toán)
+                          {formatDistance(dest.distanceToNext)} {t('editDestination.autoCalculated')}
                         </Text>
                       </View>
                     </View>
@@ -201,13 +203,13 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
 
               {/* GHI CHÚ HÀNH TRÌNH */}
               <View className="pt-4 mt-1 border-t border-black/[0.08]">
-                <Text className={STYLES.sectionLabel}>Ghi chú hành trình</Text>
+                <Text className={STYLES.sectionLabel}>{t('editDestination.tripNotes')}</Text>
                 <View className="gap-1.5">
                   <TextInput
                     className={`${STYLES.field} min-h-[72px]`}
                     value={note}
                     onChangeText={setNote}
-                    placeholder="Nhập lưu ý hoặc kế hoạch ăn uống, chụp ảnh tại đây..."
+                    placeholder={t('editDestination.notesPlaceholder')}
                     placeholderTextColor={ALPHA.placeholder}
                     multiline
                     numberOfLines={3}
@@ -228,7 +230,7 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
                 {isLoading ? (
                   <ActivityIndicator size="small" color={T.onPrimary} />
                 ) : (
-                  <Text className={STYLES.submitBtnText}>Lưu</Text>
+                  <Text className={STYLES.submitBtnText}>{t('editDestination.save')}</Text>
                 )}
               </Pressable>
             </View>

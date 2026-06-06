@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
@@ -31,6 +32,7 @@ const QUICK_SUGGESTIONS = [
 const ACCENT = TOKENS.color.travel.ocean;
 
 export function ChatPanel() {
+  const { t } = useTranslation();
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState(null);
@@ -104,11 +106,10 @@ export function ChatPanel() {
 
       if (activeTrips.length === 0) {
         showAlert({
-          title: "Chưa có chuyến đi",
-          message:
-            "Bạn cần tạo một chuyến đi trước để thêm địa điểm này vào lịch trình.",
+          title: t('chatPanel.noTrips'),
+          message: t('chatPanel.noTripsDesc'),
           type: "warning",
-          buttons: [{ text: "Đóng", style: "cancel" }],
+          buttons: [{ text: t('chatPanel.close'), style: "cancel" }],
         });
         return;
       }
@@ -118,14 +119,14 @@ export function ChatPanel() {
         try {
           await addDestinationApi(trip.id, { placeId, dayNumber: 1 });
           showAlert({
-            title: "Thành công",
-            message: `Đã thêm ${place.name} vào chuyến đi "${trip.title}"`,
+            title: t('chatPanel.addSuccess'),
+            message: t('chatPanel.addSuccessDesc', { name: place.name, trip: trip.title }),
             type: "success",
           });
         } catch (err) {
           showAlert({
-            title: "Thất bại",
-            message: err.message || "Không thể thêm vào chuyến đi",
+            title: t('chatPanel.addFailed'),
+            message: err.message || t('chatPanel.addFailedDesc'),
             type: "error",
           });
         }
@@ -138,14 +139,14 @@ export function ChatPanel() {
           try {
             await addDestinationApi(trip.id, { placeId, dayNumber: 1 });
             showAlert({
-              title: "Thành công",
-              message: `Đã thêm ${place.name} vào chuyến đi "${trip.title}"`,
+              title: t('chatPanel.addSuccess'),
+              message: t('chatPanel.addSuccessDesc', { name: place.name, trip: trip.title }),
               type: "success",
             });
           } catch (err) {
             showAlert({
-              title: "Thất bại",
-              message: err.message || "Không thể thêm vào chuyến đi",
+              title: t('chatPanel.addFailed'),
+              message: err.message || t('chatPanel.addFailedDesc'),
               type: "error",
             });
           }
@@ -153,10 +154,10 @@ export function ChatPanel() {
       }));
 
       showAlert({
-        title: "Chọn chuyến đi",
-        message: `Bạn muốn thêm "${place.name}" vào chuyến đi nào?`,
+        title: t('chatPanel.selectTrip'),
+        message: t('chatPanel.selectTripPrompt', { name: place.name }),
         type: "confirm",
-        buttons: [...buttons, { text: "Hủy", style: "cancel" }],
+        buttons: [...buttons, { text: t('chatPanel.cancel'), style: "cancel" }],
       });
     },
     [myTrips, refetchTrips, showAlert],
@@ -192,13 +193,13 @@ export function ChatPanel() {
     if (!hasMessages || isSending) return;
 
     showAlert({
-      title: "Xóa lịch sử chat?",
-      message: "Toàn bộ hội thoại với em Nhi sẽ bị xóa trên thiết bị này.",
+      title: t('chatPanel.confirmDelete'),
+      message: t('chatPanel.confirmDeleteDesc'),
       type: "confirm",
       buttons: [
-        { text: "Hủy", style: "cancel" },
+        { text: t('chatPanel.cancel'), style: "cancel" },
         {
-          text: "Xóa",
+          text: t('chatPanel.delete'),
           style: "destructive",
           onPress: () => {
             clearConversation();
@@ -258,7 +259,7 @@ export function ChatPanel() {
                   isSending ? "text-slate-400" : "text-red-500"
                 }`}
               >
-                Xóa lịch sử
+                {t('chatPanel.deleteHistory')}
               </Text>
             </Pressable>
           </View>
@@ -280,11 +281,10 @@ export function ChatPanel() {
               <MaterialIconsRounded name="smart-toy" size={36} color={ACCENT} />
             </View>
             <Text className="text-6xl leading-[30px] font-heading text-slate-900 text-center mb-2">
-              Chào, mình là em Nhi
+              {t('chatPanel.greeting')}
             </Text>
             <Text className="text-sm leading-[21px] font-body text-slate-600 text-center max-w-[290px] mb-6">
-              Mình có thể giúp bạn tìm địa điểm, gợi ý quán ăn, hoặc lên lịch
-              trình du lịch Cần Thơ.
+              {t('chatPanel.intro')}
             </Text>
 
             <View className="w-full gap-2">
@@ -378,7 +378,7 @@ export function ChatPanel() {
         >
           <TextInput
             ref={inputRef}
-            placeholder="Hỏi em Nhi điều gì đó..."
+            placeholder={t('chatPanel.inputPlaceholder')}
             placeholderTextColor={TOKENS.color.neutral[400]}
             value={inputText}
             onChangeText={setInputText}
