@@ -13,7 +13,9 @@ export function useEvents(params = {}) {
   return useQuery({
     queryKey: ["events", params],
     queryFn: () => getEventsApi(params).then((res) => res?.data || res || []),
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 

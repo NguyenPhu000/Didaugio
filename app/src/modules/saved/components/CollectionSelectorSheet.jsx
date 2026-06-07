@@ -14,6 +14,7 @@ import {
   Alert,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -21,6 +22,11 @@ import {
 import { Image } from "expo-image";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  LinearTransition,
+} from "react-native-reanimated";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../../constants/design-tokens";
 import {
@@ -262,7 +268,10 @@ export const CollectionSelectorSheet = memo(
         }}
       >
         <View className="px-5 pb-4 pt-2">
-          <View className="flex-row items-center justify-between mb-4">
+          <Animated.View
+            entering={FadeInUp.springify().damping(16)}
+            className="flex-row items-center justify-between mb-4"
+          >
             <Text className="text-[#1D1D1F] text-lg font-extrabold tracking-[-0.3px]">
               {t('collectionSelector.saveToCollection')}
             </Text>
@@ -276,7 +285,7 @@ export const CollectionSelectorSheet = memo(
                 color={APPLE_THEME.textMuted}
               />
             </Pressable>
-          </View>
+          </Animated.View>
 
           {/* Dòng kích hoạt tạo mới nhanh dạng nét vẽ đứt quãng sang xịn */}
           {!showCreateInput ? (
@@ -334,11 +343,15 @@ export const CollectionSelectorSheet = memo(
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 40 }}
           >
-            {folderDataList.map((folder) => {
+            {folderDataList.map((folder, idx) => {
               const isSelected = currentCollectionName === folder.name;
               return (
-                <Pressable
+                <Animated.View
                   key={folder.name}
+                  entering={FadeInDown.delay(idx * 40).springify().damping(16).stiffness(160)}
+                  layout={LinearTransition.springify().damping(16)}
+                >
+                <Pressable
                   onPress={() => handleSelectCollection(folder.name)}
                   className="flex-row items-center justify-between px-5 py-4 border-b border-black/[0.03] active:bg-black/[0.01]"
                   style={
@@ -403,6 +416,7 @@ export const CollectionSelectorSheet = memo(
                     )}
                   </View>
                 </Pressable>
+                </Animated.View>
               );
             })}
           </ScrollView>

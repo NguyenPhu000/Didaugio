@@ -60,6 +60,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import * as eventService from "@/apis/eventService";
+import * as bannerService from "@/apis/bannerService";
+import * as announcementService from "@/apis/announcementService";
 import * as placeService from "@/apis/placeService";
 import * as categoryService from "@/apis/categoryService";
 import * as districtService from "@/apis/districtService";
@@ -440,10 +442,10 @@ const ContentCard = ({ item, onEdit, onToggle, onDelete }) => {
     <Card className="group hover:shadow-md transition-all">
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
-          {item.image || item.thumbnail ? (
+          {item.image || item.thumbnail || item.imageUrl || item.imageData ? (
             <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted shrink-0">
               <img
-                src={item.image || item.thumbnail}
+                src={item.image || item.thumbnail || item.imageUrl || item.imageData}
                 alt={item.title}
                 className="w-full h-full object-cover"
               />
@@ -467,7 +469,7 @@ const ContentCard = ({ item, onEdit, onToggle, onDelete }) => {
                   </p>
                 )}
               </div>
-              <StatusBadge active={item.active || item.status === "active"} />
+              <StatusBadge active={item.active ?? item.isActive ?? item.status === "active"} />
             </div>
 
             {item.description && (
@@ -485,15 +487,15 @@ const ContentCard = ({ item, onEdit, onToggle, onDelete }) => {
                     : new Date(item.startDate).toLocaleDateString("vi-VN")}
                 </span>
               )}
-              {item.views !== undefined && (
+              {(item.views ?? item.viewCount) !== undefined && (
                 <span className="flex items-center gap-1">
                   <Eye className="h-3.5 w-3.5" />
-                  {item.views}
+                  {item.views ?? item.viewCount}
                 </span>
               )}
-              {item.order !== undefined && (
+              {(item.order ?? item.priority) !== undefined && (
                 <span className="flex items-center gap-1">
-                  #{item.order}
+                  #{item.order ?? item.priority}
                 </span>
               )}
             </div>
@@ -514,7 +516,7 @@ const ContentCard = ({ item, onEdit, onToggle, onDelete }) => {
               className="h-8 w-8"
               onClick={() => onToggle(item)}
             >
-              {item.active ? (
+              {(item.active ?? item.isActive) ? (
                 <EyeOff className="h-4 w-4" />
               ) : (
                 <Eye className="h-4 w-4" />
@@ -2212,7 +2214,16 @@ const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
   useEffect(() => {
     if (open) {
       if (item) {
-        setForm({ ...item });
+        // Map API fields → form fields (banner + announcement)
+        const mapped = {
+          ...item,
+          description: item.description || item.body || "",
+          image: item.image || item.imageUrl || "",
+          link: item.link || item.linkValue || "",
+          order: item.order ?? item.priority ?? 1,
+          active: item.active ?? item.isActive ?? true,
+        };
+        setForm(mapped);
       } else {
         setForm({
           title: "",
@@ -2558,8 +2569,47 @@ const CMSContentPage = () => {
   const user = useAuthStore((state) => state.user);
   const userRole = user?.roleId || 5;
 
+  const CONTENT_TYPES = [
+    {
+      id: "events",
+      label: t("admin.cms.tabLabels.events", "Sự kiện"),
+      icon: Calendar,
+      color: "bg-rose-500",
+    },
+    {
+      id: "trips",
+      label: t("admin.cms.tabLabels.sampleTrips", "Chuyến đi mẫu"),
+      icon: Compass,
+      color: "bg-purple-500",
+    },
+    {
+      id: "banners",
+      label: t("admin.cms.tabLabels.banners", "Banner"),
+      icon: ImageIcon,
+      color: "bg-blue-500",
+    },
+    {
+      id: "announcements",
+      label: t("admin.cms.tabLabels.notifications", "Thông báo"),
+      icon: Bell,
+      color: "bg-amber-500",
+    },
+    {
+      id: "featured",
+      label: t("admin.cms.tabLabels.featured", "Nổi bật"),
+      icon: Star,
+      color: "bg-yellow-500",
+    },
+    {
+      id: "pages",
+      label: t("admin.cms.tabLabels.staticPages", "Trang tĩnh"),
+      icon: FileText,
+      color: "bg-emerald-500",
+    },
+  ];
+
   const allowedContentTypes = CONTENT_TYPES.filter((type) => {
-    if (type.id === "trips" || type.id === "events") {
+    if (type.id === "trips" || type.id === "events" || type.id === "banners" || type.id === "announcements") {
       // Chỉ cho phép admin (2), super admin (1) và staff hệ thống (4)
       return userRole === 1 || userRole === 2 || userRole === 4;
     }
@@ -2576,6 +2626,12 @@ const CMSContentPage = () => {
         setItems(res.data || []);
       } else if (activeTab === "trips") {
         const res = await eventService.getAdminTrips();
+        setItems(res.data || []);
+      } else if (activeTab === "banners") {
+        const res = await bannerService.getBanners({ limit: 50 });
+        setItems(res.data || []);
+      } else if (activeTab === "announcements") {
+        const res = await announcementService.getAnnouncements({ limit: 50 });
         setItems(res.data || []);
       } else {
         await new Promise((resolve) => setTimeout(resolve, 200));
@@ -2598,7 +2654,7 @@ const CMSContentPage = () => {
       return;
     }
 
-    if (activeTab === "events" || activeTab === "trips") {
+    if (activeTab === "events" || activeTab === "trips" || activeTab === "banners" || activeTab === "announcements") {
       fetchItems();
     } else if (!initialized) {
       setItems(getMockData(t)[activeTab] || []);
@@ -2622,9 +2678,10 @@ const CMSContentPage = () => {
         // trips lọc theo status nếu cần (planned, upcoming...)
         matchesStatus = statusFilter === item.status;
       } else {
+        const isActive = item.active ?? item.isActive;
         matchesStatus =
-          (statusFilter === "active" && item.active) ||
-          (statusFilter === "inactive" && !item.active);
+          (statusFilter === "active" && isActive) ||
+          (statusFilter === "inactive" && !isActive);
       }
     }
     return matchesSearch && matchesStatus;
@@ -2650,6 +2707,21 @@ const CMSContentPage = () => {
       } finally {
         setIsLoading(false);
       }
+    } else if (activeTab === "banners") {
+      setIsLoading(true);
+      try {
+        const newIsActive = !item.isActive;
+        await bannerService.updateBanner(item.id, { isActive: newIsActive });
+        setItems((prev) =>
+          prev.map((i) => (i.id === item.id ? { ...i, isActive: newIsActive } : i))
+        );
+        toast.success(t(newIsActive ? "admin.cms.activated" : "admin.cms.hiddenItem", { title: item.title }));
+      } catch (err) {
+        console.error("Lỗi thay đổi trạng thái banner:", err);
+        toast.error(t("common.operationFailed"));
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, active: !i.active } : i))
@@ -2659,7 +2731,7 @@ const CMSContentPage = () => {
   };
 
   const handleDelete = async (item) => {
-    const itemType = activeTab === "events" ? t("admin.cms.events") : activeTab === "trips" ? t("admin.cms.sampleTrips") : t("admin.cms.events");
+    const itemType = activeTab === "events" ? t("admin.cms.events") : activeTab === "trips" ? t("admin.cms.sampleTrips") : activeTab === "banners" ? "banner" : activeTab === "announcements" ? "thông báo" : t("admin.cms.events");
     if (!window.confirm(t("admin.cms.deleteConfirmItem", { type: itemType, title: item.title }))) return;
 
     setIsLoading(true);
@@ -2670,6 +2742,14 @@ const CMSContentPage = () => {
         toast.success(t("common.deletedSuccessfully"));
       } else if (activeTab === "trips") {
         await eventService.deleteTrip(item.id);
+        setItems((prev) => prev.filter((i) => i.id !== item.id));
+        toast.success(t("common.deletedSuccessfully"));
+      } else if (activeTab === "banners") {
+        await bannerService.deleteBanner(item.id);
+        setItems((prev) => prev.filter((i) => i.id !== item.id));
+        toast.success(t("common.deletedSuccessfully"));
+      } else if (activeTab === "announcements") {
+        await announcementService.deleteAnnouncement(item.id);
         setItems((prev) => prev.filter((i) => i.id !== item.id));
         toast.success(t("common.deletedSuccessfully"));
       } else {
@@ -2715,6 +2795,62 @@ const CMSContentPage = () => {
         }
         setEditModal({ open: false, item: null });
         setTimeout(() => fetchItems(), 500);
+      } else if (activeTab === "banners") {
+        // Banner modal không có field ngày → set default: now → 1 năm sau
+        const now = new Date();
+        const oneYearLater = new Date(now);
+        oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+
+        const payload = {
+          title: form.title,
+          description: form.description || null,
+          image: form.image || undefined,
+          linkType: form.linkType || "none",
+          linkValue: form.link || null,
+          position: form.position || "home",
+          priority: form.order || 0,
+          startDate: form.startDate
+            ? new Date(form.startDate).toISOString()
+            : now.toISOString(),
+          endDate: form.endDate
+            ? new Date(form.endDate).toISOString()
+            : oneYearLater.toISOString(),
+          isActive: form.active !== false,
+        };
+
+        if (editModal.item?.id) {
+          const res = await bannerService.updateBanner(editModal.item.id, payload);
+          setItems((prev) =>
+            prev.map((i) => (i.id === editModal.item.id ? res.data : i))
+          );
+          toast.success(t("common.updatedSuccessfully"));
+        } else {
+          const res = await bannerService.createBanner(payload);
+          setItems((prev) => [res.data, ...prev]);
+          toast.success(t("common.createdSuccessfully"));
+        }
+        setEditModal({ open: false, item: null });
+        setTimeout(() => fetchItems(), 500);
+      } else if (activeTab === "announcements") {
+        const payload = {
+          title: form.title,
+          body: form.description || form.subtitle || form.title,
+          imageUrl: form.image || null,
+        };
+
+        if (editModal.item?.id) {
+          const res = await announcementService.updateAnnouncement(editModal.item.id, payload);
+          setItems((prev) =>
+            prev.map((i) => (i.id === editModal.item.id ? res.data : i))
+          );
+          toast.success("Đã cập nhật thông báo");
+        } else {
+          const res = await announcementService.createAnnouncement(payload);
+          setItems((prev) => [res.data, ...prev]);
+          toast.success("Đã gửi thông báo đến tất cả người dùng");
+        }
+        setEditModal({ open: false, item: null });
+        setTimeout(() => fetchItems(), 500);
       } else {
         if (editModal.item?.id) {
           setItems((prev) =>
@@ -2742,7 +2878,7 @@ const CMSContentPage = () => {
   };
 
   const getContentCount = (typeId) => {
-    if (typeId === "events" || typeId === "trips") {
+    if (typeId === "events" || typeId === "trips" || typeId === "banners" || typeId === "announcements") {
       return activeTab === typeId ? items.length : "...";
     }
     return getMockData(t)[typeId]?.length || 0;

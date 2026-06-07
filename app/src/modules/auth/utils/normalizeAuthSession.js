@@ -1,3 +1,5 @@
+import i18n from "@/i18n";
+
 const pickFirstString = (...values) => {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) {
@@ -27,7 +29,7 @@ const parsePayloadErrorMessage = (payload) => {
     const expoLike = /expo-router\/entry\.bundle|id="expo-reset"/i.test(text);
 
     if (htmlLike || expoLike) {
-      return "API đăng nhập đang trỏ vào Expo/Metro thay vì backend. Kiểm tra lại EXPO_PUBLIC_API_URL và cổng chạy app/server.";
+      return i18n.t("authValidation.apiPointingToExpo");
     }
 
     return null;

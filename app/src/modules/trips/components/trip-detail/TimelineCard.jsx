@@ -1,5 +1,6 @@
 import { memo, useCallback } from "react";
 import { View, Text, Pressable } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
@@ -31,6 +32,7 @@ function TimelineCard({
   tripStatus,
   isVisited = false,
 }) {
+  const { t } = useTranslation();
   const statusMeta = TRIP_STATUS_META[tripStatus] || TRIP_STATUS_META.upcoming;
 
   const handleEditPress = useCallback(() => {
@@ -50,7 +52,7 @@ function TimelineCard({
     }
   }, [dest, router]);
 
-  const placeName = dest.place?.name || "Chưa có tên";
+  const placeName = dest.place?.name || t("trip.timeline.noName");
   const placeAddress = dest.place?.address || "";
   const thumbnail = resolvePlaceImageUri(dest.place);
 
@@ -95,7 +97,7 @@ function TimelineCard({
             onLongPress={drag}
             disabled={isActive}
             className="p-1 rounded-lg"
-            accessibilityLabel="Kéo để sắp xếp"
+            accessibilityLabel={t("trip.timeline.dragToReorder")}
           >
             <MaterialIconsRounded name="drag-indicator" size={20} color="#C7C7CC" />
           </Pressable>
@@ -125,7 +127,7 @@ function TimelineCard({
                 {isVisited ? (
                   <View className="flex-row items-center gap-1 px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(52,199,89,0.12)" }}>
                     <MaterialIconsRounded name="check-circle" size={13} color={T.success} />
-                    <Text className="text-[11px] font-semibold" style={{ color: T.success }}>Đã đến</Text>
+                    <Text className="text-[11px] font-semibold" style={{ color: T.success }}>{t("trip.timeline.visited")}</Text>
                   </View>
                 ) : null}
               </View>
@@ -185,7 +187,7 @@ function TimelineCard({
               style={({ pressed }) => [pressed && { backgroundColor: "#F2F2F7" }]}
               className="w-9 h-9 rounded-full items-center justify-center bg-white border border-black/[0.12]"
               accessibilityRole="button"
-              accessibilityLabel="Xem chi tiết địa điểm"
+              accessibilityLabel={t("trip.timeline.viewDetail")}
             >
               <MaterialIconsRounded name="visibility" size={17} color={T.ink} />
             </Pressable>
@@ -195,7 +197,7 @@ function TimelineCard({
               style={({ pressed }) => [pressed && { backgroundColor: "#F2F2F7" }]}
               className="w-9 h-9 rounded-full items-center justify-center bg-white border border-black/[0.12]"
               accessibilityRole="button"
-              accessibilityLabel="Chuyển sang ngày khác"
+              accessibilityLabel={t("trip.timeline.moveToDay")}
             >
               <MaterialIconsRounded name="swap-horiz" size={17} color={T.ink} />
             </Pressable>
@@ -208,10 +210,10 @@ function TimelineCard({
               style={({ pressed }) => [pressed && { backgroundColor: T.inkPressed }]}
               className="flex-row items-center justify-center gap-1 h-9 px-4 rounded-full bg-[#1D1D1F]"
               accessibilityRole="button"
-              accessibilityLabel="Chỉnh sửa lịch trình điểm đến"
+              accessibilityLabel={t("trip.timeline.editItinerary")}
             >
               <MaterialIconsRounded name="edit" size={15} color={T.onPrimary} />
-              <Text className="text-[13px] text-white font-semibold">Sửa</Text>
+              <Text className="text-[13px] text-white font-semibold">{t("trip.timeline.edit")}</Text>
             </Pressable>
             <Pressable
               onPress={onRemove}
@@ -222,7 +224,7 @@ function TimelineCard({
                 pressed && { opacity: 0.6 },
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Bỏ địa điểm khỏi lịch trình"
+              accessibilityLabel={t("trip.timeline.removeFromItinerary")}
             >
               <MaterialIconsRounded name="delete-outline" size={17} color={T.danger} />
             </Pressable>

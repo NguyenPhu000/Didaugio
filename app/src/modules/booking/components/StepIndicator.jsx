@@ -23,7 +23,7 @@ const BOOKING_THEME = {
 
 export function StepIndicator({ currentStep }) {
   const { t } = useTranslation();
-  const STEP_LABELS = [t("stepIndicator.service"), t("stepIndicator.confirm"), t("stepIndicator.submit")];
+  const STEP_LABELS = [t("booking.steps.service"), t("booking.steps.confirm"), t("booking.steps.submit")];
   return (
     <View
       style={{

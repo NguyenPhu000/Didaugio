@@ -1,10 +1,10 @@
 import { memo, useCallback, useEffect } from "react";
 import {
-  Dimensions,
   Platform,
   Pressable,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
@@ -20,7 +20,7 @@ import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../../constants/design-tokens";
-import { resolvePlaceImageUri } from "../../../lib/media-url";
+import { resolvePlaceImageUri, getOptimizedCloudinaryUrl } from "../../../lib/media-url";
 import {
   getPlaceLocation,
   formatRatingLabel,
@@ -29,16 +29,19 @@ import {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const SCREEN_W = Dimensions.get("window").width;
 const PAD = 24;
-const CARD_W = Math.min(300, SCREEN_W - PAD * 2 - 16);
 const CARD_H = 400;
 
 const SPRING_CONFIG = TOKENS.spring.press;
 
 function FeaturedCardInner({ place, onPress, onSave, isSaved, index = 0 }) {
+  const { width: SCREEN_W } = useWindowDimensions();
+  const CARD_W = Math.min(300, SCREEN_W - PAD * 2 - 16);
   const scale = useSharedValue(1);
-  const imageUri = resolvePlaceImageUri(place);
+  const rawImageUri = resolvePlaceImageUri(place);
+  const imageUri = rawImageUri?.includes("res.cloudinary.com")
+    ? getOptimizedCloudinaryUrl(rawImageUri, 600)
+    : rawImageUri;
   const location = getPlaceLocation(place);
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
   const hasRating = Number.isFinite(rating) && rating > 0;
@@ -67,12 +70,6 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved, index = 0 }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onSave?.(place);
   }, [onSave, place]);
-
-  const shadowStyle = {
-    textShadowColor: "rgba(0, 0, 0, 0.55)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
-  };
 
   return (
     <AnimatedPressable
@@ -217,4 +214,4 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved, index = 0 }) {
 }
 
 export const FeaturedCard = memo(FeaturedCardInner);
-export { CARD_W as FEATURED_CARD_W, CARD_H as FEATURED_CARD_H };
+export { CARD_H as FEATURED_CARD_H };

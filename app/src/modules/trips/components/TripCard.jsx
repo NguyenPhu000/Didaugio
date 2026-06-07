@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, Dimensions } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -158,6 +158,15 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
         onLayout={handleLayout}
         accessibilityRole="button"
         accessibilityLabel={t('tripCard.tripAccessibility', { name: trip.title || t('tripCard.newTrip'), status: status.label })}
+        accessibilityHint={t('tripCard.tripHint')}
+        accessibilityActions={[
+          { name: "save", label: isSaved ? t('tripCard.unsaveAccessibility') : t('tripCard.saveAccessibility') },
+        ]}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === "save") {
+            handleSavePress();
+          }
+        }}
         className="min-h-[240px] rounded-[22px] overflow-hidden bg-neutral-900"
         style={[
           cardAnimStyle,

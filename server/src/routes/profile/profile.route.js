@@ -86,6 +86,7 @@ router.post("/trips", authenticate, validateBody(createTripSchema), profileContr
 router.get("/trips/:id", authenticate, profileController.getTripDetail);
 router.patch("/trips/:id", authenticate, validateBody(updateTripSchema), profileController.updateTrip);
 router.delete("/trips/:id", authenticate, profileController.deleteTrip);
+router.post("/trips/:id/duplicate", authenticate, profileController.duplicateTrip);
 router.post(
   "/trips/:id/destinations",
   authenticate,

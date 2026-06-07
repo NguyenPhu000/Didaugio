@@ -5,27 +5,29 @@ import ServiceError from "../../utils/serviceError.js";
  * Get earnings summary for a business
  */
 export const getEarningsSummary = async (businessId) => {
-  // Get total commission earned (from completed bookings)
-  const completedBookings = await prisma.booking.findMany({
+  // Get total revenue and commission from completed bookings
+  const revenueAgg = await prisma.booking.aggregate({
     where: {
       businessId,
       status: "completed",
     },
-    select: {
-      finalPrice: true,
-      commissionAmount: true,
-      completedAt: true,
-    },
+    _sum: { finalPrice: true, commissionAmount: true },
+    _count: true,
   });
 
-  const totalRevenue = completedBookings.reduce(
-    (sum, b) => sum + b.finalPrice,
-    0,
-  );
-  const totalCommission = completedBookings.reduce(
-    (sum, b) => sum + b.commissionAmount,
-    0,
-  );
+  // Get total refunds from payments of completed bookings
+  const refundAgg = await prisma.payment.aggregate({
+    where: {
+      booking: { businessId, status: "completed" },
+      refundAmount: { gt: 0 },
+    },
+    _sum: { refundAmount: true },
+  });
+
+  const grossRevenue = revenueAgg._sum.finalPrice || 0;
+  const totalRefunds = refundAgg._sum.refundAmount || 0;
+  const totalRevenue = grossRevenue - totalRefunds;
+  const totalCommission = revenueAgg._sum.commissionAmount || 0;
   const netEarnings = totalRevenue - totalCommission;
 
   // Get payout history

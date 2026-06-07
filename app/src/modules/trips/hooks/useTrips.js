@@ -6,6 +6,10 @@ import {
   saveTripApi,
   unsaveTripApi,
   getSavedTripsApi,
+  duplicateTripApi,
+  createTripShareApi,
+  getTripSharesApi,
+  deleteTripShareApi,
 } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 import { TRIP_OFFLINE_GC_MS } from "../../../constants/trip-offline-cache";
@@ -88,6 +92,45 @@ export function useUnsaveTrip() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
+    },
+  });
+}
+
+export function useDuplicateTrip() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (tripId) => duplicateTripApi(tripId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
+    },
+  });
+}
+
+export function useTripShares(tripId) {
+  return useQuery({
+    queryKey: QUERY_KEYS.trips.shares(tripId),
+    queryFn: () => getTripSharesApi(tripId),
+    enabled: !!tripId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCreateTripShare() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, data }) => createTripShareApi(tripId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trips", "shares"] });
+    },
+  });
+}
+
+export function useDeleteTripShare() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ shareId }) => deleteTripShareApi(shareId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.shares() });
     },
   });
 }

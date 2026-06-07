@@ -1,6 +1,6 @@
 import prisma from "../../config/prismaClient.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
-import { emitToUser, isUserOnline } from "../../config/socketIO.js";
+import { emitToUser, emitToAll, isUserOnline } from "../../config/socketIO.js";
 import { sendWebPush } from "./webPush.service.js";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
@@ -437,6 +437,17 @@ eventEmitter.on(EVENTS.BUSINESS.RESUBMITTED, async ({ businessId, ownerId, busin
   });
 });
 
+eventEmitter.on(EVENTS.BUSINESS.CONTRACT_SIGNED, async ({ businessId, businessName, ownerId, contractVersion, signedAt }) => {
+  await notifyAdmins(
+    "Doanh nghiệp ký hợp đồng",
+    `${businessName || `Doanh nghiệp #${businessId}`} đã ký hợp đồng (${contractVersion || "v1"}) lúc ${new Date(signedAt).toLocaleString("vi-VN")}.`,
+    { businessId, contractVersion, type: "admin_business_contract_signed" },
+    ownerId,
+  ).catch((error) => {
+    console.error("[Notification] Error processing BUSINESS.CONTRACT_SIGNED:", error);
+  });
+});
+
 eventEmitter.on(EVENTS.PLACE.CREATED, async ({ id, name, createdBy }) => {
   const place = await prisma.place.findUnique({
     where: { id: Number(id) },
@@ -668,6 +679,116 @@ eventEmitter.on(EVENTS.REVIEW.REPLIED, async ({ reviewId, replyId, repliedBy, re
     console.error("[Notification] Error processing REVIEW.REPLIED:", error);
   });
 });
+
+/**
+ * Tạo thông báo hệ thống (announcement) — hiển thị ngay cho tất cả user.
+ * Lưu vào notifications_global + emit Socket.IO + push cho offline users.
+ */
+export async function createAnnouncement({ title, body, imageUrl, createdBy }) {
+  const notification = await prisma.notificationGlobal.create({
+    data: {
+      title,
+      body,
+      imageUrl: imageUrl || null,
+      targetType: "all",
+      status: "sent",
+      sentAt: new Date(),
+      createdBy,
+    },
+  });
+
+  // Emit Socket.IO đến tất cả connected users
+  emitToAll("announcement", {
+    id: notification.id,
+    title: notification.title,
+    body: notification.body,
+    imageUrl: notification.imageUrl,
+    sentAt: notification.sentAt,
+  });
+
+  return notification;
+}
+
+/**
+ * Cập nhật thông báo hệ thống (admin).
+ */
+export async function updateAnnouncement(id, { title, body, imageUrl }) {
+  const existing = await prisma.notificationGlobal.findUnique({
+    where: { id: Number(id) },
+  });
+
+  if (!existing) {
+    throw new Error("Không tìm thấy thông báo");
+  }
+
+  const updated = await prisma.notificationGlobal.update({
+    where: { id: Number(id) },
+    data: {
+      ...(title !== undefined && { title }),
+      ...(body !== undefined && { body }),
+      ...(imageUrl !== undefined && { imageUrl }),
+    },
+  });
+
+  return updated;
+}
+
+/**
+ * Xóa thông báo hệ thống (admin).
+ */
+export async function deleteAnnouncement(id) {
+  const existing = await prisma.notificationGlobal.findUnique({
+    where: { id: Number(id) },
+  });
+
+  if (!existing) {
+    throw new Error("Không tìm thấy thông báo");
+  }
+
+  await prisma.notificationGlobal.delete({
+    where: { id: Number(id) },
+  });
+
+  return { id: Number(id) };
+}
+
+/**
+ * Lấy danh sách thông báo hệ thống (admin).
+ */
+export async function getAnnouncements({ page = 1, limit = 20 } = {}) {
+  const pageNum = Math.max(Number(page) || 1, 1);
+  const limitNum = Math.min(Math.max(Number(limit) || 20, 1), 50);
+  const skip = (pageNum - 1) * limitNum;
+
+  const [data, total] = await Promise.all([
+    prisma.notificationGlobal.findMany({
+      where: { targetType: "all" },
+      orderBy: { sentAt: "desc" },
+      skip,
+      take: limitNum,
+      select: {
+        id: true,
+        title: true,
+        body: true,
+        imageUrl: true,
+        sentAt: true,
+        status: true,
+        createdAt: true,
+      },
+    }),
+    prisma.notificationGlobal.count({ where: { targetType: "all" } }),
+  ]);
+
+  return {
+    data,
+    pagination: {
+      page: pageNum,
+      limit: limitNum,
+      total,
+      totalPages: Math.ceil(total / limitNum),
+    },
+  };
+}
 
 export const initNotificationService = () => {
   console.log("[Notification Service] Initialized and listening for events...");

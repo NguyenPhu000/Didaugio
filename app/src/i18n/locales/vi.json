@@ -354,6 +354,17 @@
     "qrPendingConfirm": "QR sẽ xuất hiện khi booking được xác nhận.",
     "statusUsed": "Đã sử dụng",
     "notDetermined": "Chưa xác định",
+    "notFound": "Không tìm thấy booking",
+    "status": {
+      "unknown": "Không rõ",
+      "pending": "Chờ xác nhận",
+      "confirmed": "Đã xác nhận",
+      "completed": "Hoàn thành",
+      "cancelled": "Đã hủy",
+      "rejected": "Bị từ chối",
+      "expired": "Hết hạn",
+      "noShow": "Không đến"
+    },
     "linkTrip": "Liên kết Trip",
     "currentTripDay": "Đang ở ngày {{day}} của trip.",
     "openLinkedTrip": "Mở trip đã liên kết",
@@ -378,8 +389,11 @@
   },
   "booking": {
     "loginRequired": "Hãy đăng nhập để booking",
+    "loginDescription": "Bạn cần đăng nhập để đặt dịch vụ tại địa điểm này.",
+    "loginNow": "Đăng nhập ngay",
     "notSelected": "Chưa chọn",
     "contactForPrice": "Liên hệ",
+    "noServices": "Địa điểm này chưa có dịch vụ nào.",
     "steps": {
       "service": "Dịch vụ",
       "confirm": "Xác nhận",
@@ -393,7 +407,9 @@
       "service": "Dịch vụ",
       "quantity": "Số lượng",
       "usageDate": "Ngày sử dụng",
-      "selectTime": "Chọn giờ sử dụng"
+      "selectTime": "Chọn giờ sử dụng",
+      "selected": "Đã chọn",
+      "notSelected": "Chưa chọn"
     },
     "timeGroups": {
       "morning": "Sáng",
@@ -405,22 +421,72 @@
       "title": "Liên kết vào Trip",
       "none": "Không liên kết",
       "selectExisting": "Chọn trip có sẵn",
-      "createNew": "Tạo trip mới"
+      "createNew": "Tạo trip mới",
+      "noTrips": "Bạn chưa có trip nào.",
+      "newTripPlaceholder": "Tên trip (tùy chọn)",
+      "tripCreateInfo": "Một trip mới sẽ được tạo cho ngày {{date}}.",
+      "summaryPrefix": "Liên kết trip",
+      "linkedTripId": "Trip #{{id}}",
+      "notSelected": "Chưa chọn",
+      "createOnConfirm": "Sẽ tạo khi xác nhận"
     },
+    "tripDays": "{{count}} ngày",
     "pricing": {
       "total": "Tổng tiền",
-      "deposit": "Tiền cọc"
+      "deposit": "Tiền cọc",
+      "contact": "Liên hệ",
+      "depositLabel": "Tiền cọc: {{amount}}",
+      "refundable": "Hoàn được {{percent}}%",
+      "nonRefundable": "Không hoàn tiền"
     },
     "submitRequest": "Gửi yêu cầu đặt chỗ",
     "payAtPlace": "Thanh toán tại địa điểm",
+    "payAtPlaceDescription": "Vui lòng thanh toán trực tiếp tại địa điểm sau khi sử dụng dịch vụ.",
     "contactInfo": "Thông tin liên hệ",
+    "contactValidation": "Vui lòng nhập họ tên và số điện thoại hợp lệ.",
+    "placeholders": {
+      "name": "Họ và tên",
+      "phone": "Số điện thoại",
+      "email": "Email (tùy chọn)",
+      "note": "Yêu cầu đặc biệt (tùy chọn)"
+    },
+    "timeSlotsCount": "{{count}} khung giờ khả dụng",
+    "slotUnavailableWarning": "Khung giờ này đã qua. Vui lòng chọn khung giờ khác.",
+    "tripDescription": {
+      "withService": "Đã đặt dịch vụ: {{service}}",
+      "default": "Tạo từ booking"
+    },
     "buttons": {
       "confirmBooking": "Xác nhận đặt chỗ",
       "next": "Tiếp theo",
       "confirm": "Xác nhận"
     },
+    "alerts": {
+      "slotUnavailable": {
+        "title": "Khung giờ không khả dụng",
+        "message": "Khung giờ này đã qua. Vui lòng chọn khung giờ khác.",
+        "ok": "OK",
+        "expired": "Khung giờ này đã qua. Vui lòng quay lại và chọn khung giờ khác."
+      },
+      "missingContact": {
+        "title": "Cần thông tin liên hệ",
+        "message": "Vui lòng nhập họ tên và số điện thoại hợp lệ."
+      },
+      "selectTrip": {
+        "title": "Chọn một trip",
+        "message": "Vui lòng chọn trip để liên kết booking này."
+      }
+    },
+    "errors": {
+      "tripCreateFailed": "Tạo trip thất bại. Vui lòng thử lại.",
+      "bookingFailed": "Đặt chỗ thất bại. Vui lòng thử lại.",
+      "generic": "Có lỗi xảy ra. Vui lòng thử lại."
+    },
     "success": {
       "title": "Đặt thành công!",
+      "description": "Yêu cầu đặt chỗ của bạn đã được gửi. Doanh nghiệp sẽ xác nhận trong giây lát.",
+      "descriptionWithService": "Yêu cầu đặt dịch vụ \"{{service}}\" đã được gửi. Doanh nghiệp sẽ xác nhận trong giây lát.",
+      "linkedTrip": "Đã thêm vào trip: {{title}} (Ngày {{day}})",
       "viewBookings": "Xem booking của tôi",
       "backToPlace": "Quay lại địa điểm",
       "viewInTrip": "Xem trong trip"
@@ -590,7 +656,118 @@
       "startMessage": "Bắt đầu hành trình sẽ theo dõi vị trí của bạn để dẫn đường và cập nhật tiến trình.",
       "startNotification": "Hành trình bắt đầu!",
       "notFound": "Không tìm thấy chuyến đi",
-      "back": "Quay lại"
+      "back": "Quay lại",
+      "duplicateSuccess": "Nhân bản thành công",
+      "duplicateSuccessMsg": "Đã tạo bản sao \"{{name}}\"",
+      "openNewTrip": "Mở chuyến mới",
+      "stayHere": "Ở lại",
+      "duplicateError": "Không thể nhân bản chuyến đi",
+      "completeTitle": "Hoàn thành chuyến đi?",
+      "completeMessage": "Đánh dấu \"{{name}}\" là đã hoàn thành?",
+      "complete": "Hoàn thành",
+      "completeError": "Không thể đánh dấu hoàn thành",
+      "duplicating": "Đang nhân bản...",
+      "duplicateTrip": "Nhân bản chuyến đi",
+      "markComplete": "Đánh dấu hoàn thành"
+    },
+    "itinerary": {
+      "close": "Đóng",
+      "error": "Lỗi",
+      "reorderError": "Không thể sắp xếp lại các điểm đến. Vui lòng thử lại.",
+      "removeTitle": "Bỏ địa điểm",
+      "removeMessage": "Bỏ \"{{name}}\" khỏi lịch trình?",
+      "remove": "Bỏ",
+      "removeError": "Không thể bỏ địa điểm này. Vui lòng thử lại.",
+      "moveError": "Không thể dời địa điểm này. Vui lòng thử lại.",
+      "updateError": "Không thể cập nhật địa điểm. Vui lòng thử lại.",
+      "saveError": "Không thể lưu thay đổi. Vui lòng thử lại.",
+      "continueTrip": "Tiếp tục hành trình",
+      "viewMap": "Xem bản đồ hành trình",
+      "startTrip": "Bắt đầu hành trình",
+      "resumeSubtitle": "Khôi phục chỉ đường và theo dõi vị trí",
+      "mapSubtitle": "Xem bản đồ dẫn đường thời gian thực",
+      "starting": "Đang khởi động…",
+      "destinationCount": "{{count}} địa điểm",
+      "addDestination": "Thêm địa điểm",
+      "noDestinations": "Chưa có địa điểm",
+      "noDestinationsDesc": "Thêm địa điểm yêu thích vào ngày này"
+    },
+    "budget": {
+      "loading": "Đang tải ngân sách...",
+      "noData": "Chưa có dữ liệu",
+      "noDataDesc": "Tab ngân sách sẽ tổng hợp chi phí khi có booking liên kết.",
+      "exploreServices": "Khám phá dịch vụ",
+      "totalEstimate": "Tổng dự kiến",
+      "pendingConfirm": "Chờ xác nhận",
+      "upcomingReminder": "Nhắc nhở lịch hẹn sắp tới",
+      "daysLeft": "còn {{count}} ngày",
+      "hoursLeft": "còn {{count}} giờ",
+      "appointmentSoon": "Sắp đến giờ hẹn!",
+      "reminderBody": "Lịch đặt dịch vụ \"{{service}}\" tại \"{{place}}\" của bạn sẽ diễn ra lúc {{time}}.",
+      "defaultPlace": "địa điểm",
+      "bookingDetail": "Chi tiết đặt dịch vụ",
+      "unknownPlace": "Địa điểm chưa xác định",
+      "defaultService": "Dịch vụ"
+    },
+    "services": {
+      "loading": "Đang tải dịch vụ...",
+      "noBookings": "Chưa có booking",
+      "noBookingsDesc": "Các booking liên kết với chuyến đi sẽ hiển thị tại đây.",
+      "defaultService": "Dịch vụ",
+      "defaultPlace": "Địa điểm"
+    },
+    "timeline": {
+      "noName": "Chưa có tên",
+      "dragToReorder": "Kéo để sắp xếp",
+      "visited": "Đã đến",
+      "viewDetail": "Xem chi tiết địa điểm",
+      "moveToDay": "Chuyển sang ngày khác",
+      "editItinerary": "Chỉnh sửa lịch trình điểm đến",
+      "edit": "Sửa",
+      "removeFromItinerary": "Bỏ địa điểm khỏi lịch trình"
+    },
+    "share": {
+      "viewOnly": "Chỉ xem",
+      "allowEdit": "Cho phép chỉnh sửa",
+      "editLabel": "Chỉnh sửa",
+      "createLink": "Tạo link chia sẻ",
+      "createLinkError": "Không thể tạo link chia sẻ",
+      "createdLinks": "Link đã tạo",
+      "noLinks": "Chưa có link chia sẻ nào",
+      "accessCount": "{{count}} lượt truy cập",
+      "newLink": "Tạo link chia sẻ mới"
+    },
+    "celebration": {
+      "title": "Chuyến đi hoàn tất!",
+      "hint": "Kéo xuống để xem chi tiết"
+    },
+    "timeField": {
+      "done": "Xong"
+    },
+    "createHero": {
+      "time": "Thời gian",
+      "saved": "Đã lưu",
+      "itinerary": "Lộ trình",
+      "newTrip": "Chuyến đi mới"
+    },
+    "savedGrid": {
+      "place": "Địa điểm",
+      "selected": "đã chọn",
+      "loadError": "Không thể tải dữ liệu",
+      "noSaved": "Chưa có địa điểm đã lưu",
+      "retrySubtitle": "Kiểm tra kết nối mạng và thử lại sau",
+      "emptySubtitle": "Lưu địa điểm yêu thích từ bản đồ hoặc Khám phá để thêm nhanh vào chuyến đi",
+      "tapHint": "Chạm để chọn địa điểm",
+      "savedCount": "{{count}} đã lưu"
+    },
+    "sync": {
+      "syncing": "Đang đồng bộ {{count}} thay đổi...",
+      "pendingOffline": "{{count}} thay đổi chờ đồng bộ"
+    },
+    "departureAlerts": {
+      "nextPlace": "địa điểm tiếp theo",
+      "title": "Sắp đến giờ di chuyển",
+      "body": "Đã sắp đến giờ di chuyển sang địa điểm tiếp theo {{name}}. Hãy chuẩn bị xuất phát nhé!"
     }
   },
   "editProfile": {
@@ -842,7 +1019,10 @@
     "createFirst": "Tạo chuyến đi đầu tiên",
     "startExploring": "Bắt đầu hành trình khám phá thế giới của bạn",
     "listWithCount": "Danh sách ({{count}})",
-    "list": "Danh sách"
+    "list": "Danh sách",
+    "startToday": "Bắt đầu hôm nay",
+    "startTomorrow": "Bắt đầu ngày mai",
+    "daysUntil": "Còn {{count}} ngày"
   },
   "tripCard": {
     "noDate": "Chưa chọn ngày",
@@ -1098,7 +1278,8 @@
     "googleNoIdToken": "Không nhận được id_token từ Google.",
     "googleMissingConfig": "Thiếu EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID trong app/.env.",
     "googleMissingOwner": "Thiếu EXPO_PUBLIC_EXPO_OWNER hoặc EXPO_PUBLIC_EXPO_SLUG trong app/.env.",
-    "googleNotReady": "Google OAuth chưa sẵn sàng. Vui lòng thử lại sau vài giây."
+    "googleNotReady": "Google OAuth chưa sẵn sàng. Vui lòng thử lại sau vài giây.",
+    "apiPointingToExpo": "API đăng nhập đang trỏ vào Expo/Metro thay vì backend. Kiểm tra lại EXPO_PUBLIC_API_URL và cổng chạy app/server."
   },
   "tripHelpers": {
     "all": "Tất cả",
@@ -1128,7 +1309,10 @@
     "transportMotorbike": "Xe máy",
     "transportCar": "Xe hơi",
     "transportBus": "Xe buýt",
-    "transportOther": "Khác"
+    "transportOther": "Khác",
+    "sectionTracking": "{{count}} hành trình đang được theo dõi sát sao.",
+    "sectionCompleted": "{{count}} hành trình đã đóng lại để bạn xem nhanh hồ sơ cũ.",
+    "sectionAll": "{{count}} hành trình trong một bảng điều khiển gọn gàng."
   },
   "tripTheme": {
     "upcoming": "Sắp tới",

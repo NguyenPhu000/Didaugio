@@ -17,6 +17,7 @@ import {
   usePlaceServices,
   useCreateBooking,
 } from "../../src/modules/booking/hooks/useBooking";
+import { useServiceAvailability } from "../../src/modules/booking/hooks/useServiceAvailability";
 import { usePlaceDetail } from "../../src/modules/place/hooks/usePlaceDetail";
 import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../src/constants/design-tokens";
 import {
@@ -120,7 +121,7 @@ const formatMonthYearLabel = (monthDate) =>
   });
 
 const formatBookingDateTime = (dateYmd, timeValue, notSelectedLabel) => {
-  if (!dateYmd) return notSelectedLabel || "Not selected";
+  if (!dateYmd) return notSelectedLabel || "—";
   const dateObj = new Date(`${dateYmd}T00:00:00`);
   const dateLabel = Number.isNaN(dateObj.getTime())
     ? dateYmd
@@ -135,7 +136,7 @@ const formatBookingDateTime = (dateYmd, timeValue, notSelectedLabel) => {
 };
 
 const formatPrice = (price, contactLabel) => {
-  if (!price && price !== 0) return contactLabel || "Contact";
+  if (!price && price !== 0) return contactLabel || "—";
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
@@ -207,6 +208,11 @@ export default function BookingScreen() {
   const bookingMutation = useCreateBooking();
   const createTripMutation = useCreateTrip();
 
+  const { data: availabilityData } = useServiceAvailability(
+    selectedService?.id,
+    selectedDate,
+  );
+
   useEffect(() => {
     const timer = setInterval(() => setNowTs(Date.now()), 30_000);
     return () => clearInterval(timer);
@@ -253,13 +259,35 @@ export default function BookingScreen() {
   const isSlotAvailable = (dateValue, timeValue) => {
     const slot = new Date(`${dateValue}T${timeValue}:00`);
     if (Number.isNaN(slot.getTime())) return false;
-    return slot.getTime() > nowTs + 5 * 60 * 1000;
+    if (slot.getTime() <= nowTs + 5 * 60 * 1000) return false;
+
+    if (availabilityData?.bookingModel === "capacity" && availabilityData?.slots) {
+      const slotData = availabilityData.slots.find(
+        (s) => s.time?.startsWith(`${dateValue}T${timeValue}`) || s.time?.includes(`T${timeValue}:`),
+      );
+      if (slotData && !slotData.available) return false;
+    }
+
+    if (availabilityData?.bookingModel === "resource" && availabilityData?.bookedSlots?.length > 0) {
+      const slotStart = new Date(`${dateValue}T${timeValue}:00`);
+      const slotDurationMs = (selectedService?.slotDurationMinutes || 60) * 60_000;
+      const slotEnd = new Date(slotStart.getTime() + slotDurationMs);
+
+      const isBooked = availabilityData.bookedSlots.some((booked) => {
+        const bookedStart = new Date(booked.startTime);
+        const bookedEnd = new Date(booked.endTime);
+        return bookedStart < slotEnd && bookedEnd > slotStart;
+      });
+      if (isBooked) return false;
+    }
+
+    return true;
   };
 
   const createdTripDefaultTitle = useMemo(() => {
     const placeLabel = place?.name ? ` - ${place.name}` : "";
-    return `Trip booking ${selectedDate}${placeLabel}`;
-  }, [place?.name, selectedDate]);
+    return `${t("booking.title")} ${selectedDate}${placeLabel}`;
+  }, [place?.name, selectedDate, t]);
 
   useEffect(() => {
     if (isSlotAvailable(selectedDate, selectedTime)) return;
@@ -1201,6 +1229,16 @@ export default function BookingScreen() {
                       );
                       const isSelected = selectedTime === slot.value;
 
+                      let remaining = null;
+                      if (availabilityData?.bookingModel === "capacity" && availabilityData?.slots) {
+                        const slotData = availabilityData.slots.find(
+                          (s) => s.time?.startsWith(`${selectedDate}T${slot.value}`) || s.time?.includes(`T${slot.value}:`),
+                        );
+                        if (slotData) {
+                          remaining = slotData.remaining;
+                        }
+                      }
+
                       return (
                         <Pressable
                           key={slot.value}
@@ -1238,6 +1276,19 @@ export default function BookingScreen() {
                           >
                             {slot.label}
                           </Text>
+                          {remaining !== null ? (
+                            <Text
+                              style={{
+                                color: remaining > 0
+                                  ? "#22C55E"
+                                  : "#EF4444",
+                                fontSize: 10,
+                                fontWeight: "600",
+                              }}
+                            >
+                              {remaining > 0 ? `${remaining}` : "Full"}
+                            </Text>
+                          ) : null}
                         </Pressable>
                       );
                     })}

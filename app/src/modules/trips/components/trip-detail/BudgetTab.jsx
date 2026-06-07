@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { StatusBadge } from "./StatusBadge";
 import { formatBookingDateTime, formatPrice } from "../../utils/tripHelpers";
@@ -13,6 +14,7 @@ export const BudgetTab = memo(function BudgetTab({
   onOpenBooking,
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const upcomingReminders = useMemo(() => {
     const now = new Date();
@@ -39,7 +41,7 @@ export const BudgetTab = memo(function BudgetTab({
         <View className="w-12 h-12 rounded-full bg-black/[0.04] items-center justify-center">
           <ActivityIndicator size="small" color="#1D1D1F" />
         </View>
-        <Text className={STYLES.centeredBody}>Đang tải ngân sách...</Text>
+        <Text className={STYLES.centeredBody}>{t("trip.budget.loading")}</Text>
       </View>
     );
   }
@@ -54,9 +56,9 @@ export const BudgetTab = memo(function BudgetTab({
             color="rgba(0,0,0,0.2)"
           />
         </View>
-        <Text className={STYLES.emptyTitle}>Chưa có dữ liệu</Text>
+        <Text className={STYLES.emptyTitle}>{t("trip.budget.noData")}</Text>
         <Text className={STYLES.emptyBody}>
-          Tab ngân sách sẽ tổng hợp chi phí khi có booking liên kết.
+          {t("trip.budget.noDataDesc")}
         </Text>
         <Pressable
           style={({ pressed }) => [
@@ -66,7 +68,7 @@ export const BudgetTab = memo(function BudgetTab({
           className="flex-row items-center gap-1.5 bg-[#1D1D1F] px-4.5 py-2.5 rounded-full mt-3"
         >
           <MaterialIconsRounded name="explore" size={16} color="#FFFFFF" />
-          <Text className="text-white text-[13px] font-semibold tracking-tight">Khám phá dịch vụ</Text>
+          <Text className="text-white text-[13px] font-semibold tracking-tight">{t("trip.budget.exploreServices")}</Text>
         </Pressable>
       </View>
     );
@@ -87,7 +89,7 @@ export const BudgetTab = memo(function BudgetTab({
     >
       {/* Total card */}
       <View className="bg-[#1D1D1F] rounded-[24px] p-6 gap-2">
-        <Text className="text-[13px] font-normal text-white/50 tracking-tight">Tổng dự kiến</Text>
+        <Text className="text-[13px] font-normal text-white/50 tracking-tight">{t("trip.budget.totalEstimate")}</Text>
         <Text className="text-[34px] font-semibold text-white tracking-tighter">
           {formatPrice(totalAmount)}
         </Text>
@@ -132,7 +134,7 @@ export const BudgetTab = memo(function BudgetTab({
             {formatPrice(pendingAmount)}
           </Text>
           <Text className="text-[12px] font-normal text-black/45 tracking-tight text-center mt-0.5 z-10">
-            Chờ xác nhận
+            {t("trip.budget.pendingConfirm")}
           </Text>
         </View>
       </View>
@@ -140,13 +142,13 @@ export const BudgetTab = memo(function BudgetTab({
       {/* Reminder Banner */}
       {upcomingReminders.length > 0 && (
         <View className="gap-2.5 mt-1">
-          <Text className={STYLES.groupLabel}>Nhắc nhở lịch hẹn sắp tới</Text>
+          <Text className={STYLES.groupLabel}>{t("trip.budget.upcomingReminder")}</Text>
           {upcomingReminders.map(({ booking, diffMs }) => {
             const hoursLeft = Math.ceil(diffMs / (1000 * 60 * 60));
             const timeLeftLabel =
               hoursLeft > 24
-                ? `còn ${Math.ceil(hoursLeft / 24)} ngày`
-                : `còn ${hoursLeft} giờ`;
+                ? t("trip.budget.daysLeft", { count: Math.ceil(hoursLeft / 24) })
+                : t("trip.budget.hoursLeft", { count: hoursLeft });
 
             return (
               <Pressable
@@ -160,10 +162,10 @@ export const BudgetTab = memo(function BudgetTab({
                 </View>
                 <View className="flex-1 gap-1">
                   <Text className="text-[14px] font-bold text-[#D97706] tracking-tight">
-                    Sắp đến giờ hẹn! ({timeLeftLabel})
+                    {t("trip.budget.appointmentSoon")} ({timeLeftLabel})
                   </Text>
                   <Text className="text-[13px] text-black/75 font-medium leading-[18px]">
-                    Lịch đặt dịch vụ <Text className="font-bold text-[#1D1D1F]">{booking?.service?.name}</Text> tại <Text className="font-bold text-[#1D1D1F]">{booking?.service?.place?.name || "địa điểm"}</Text> của bạn sẽ diễn ra lúc <Text className="font-semibold text-[#1D1D1F]">{formatBookingDateTime(booking)}</Text>.
+                    {t("trip.budget.reminderBody", { service: <Text className="font-bold text-[#1D1D1F]">{booking?.service?.name}</Text>, place: <Text className="font-bold text-[#1D1D1F]">{booking?.service?.place?.name || t("trip.budget.defaultPlace")}</Text>, time: <Text className="font-semibold text-[#1D1D1F]">{formatBookingDateTime(booking)}</Text> })}
                   </Text>
                 </View>
               </Pressable>
@@ -174,7 +176,7 @@ export const BudgetTab = memo(function BudgetTab({
 
       {/* Detail list */}
       <View className="gap-2.5 mt-1">
-        <Text className={STYLES.groupLabel}>Chi tiết đặt dịch vụ</Text>
+        <Text className={STYLES.groupLabel}>{t("trip.budget.bookingDetail")}</Text>
 
         {bookings.map((booking) => (
           <Pressable
@@ -187,10 +189,10 @@ export const BudgetTab = memo(function BudgetTab({
           >
             <View className={STYLES.bookingRowInfo}>
               <Text className="text-[15px] font-bold text-[#1D1D1F] tracking-tight" numberOfLines={1}>
-                {booking?.service?.place?.name || "Địa điểm chưa xác định"}
+                {booking?.service?.place?.name || t("trip.budget.unknownPlace")}
               </Text>
               <Text className="text-[13px] font-medium text-black/60 mt-0.5" numberOfLines={1}>
-                {booking?.service?.name || "Dịch vụ"}
+                {booking?.service?.name || t("trip.budget.defaultService")}
               </Text>
               <Text className={`${STYLES.bookingRowMeta} mt-1`} numberOfLines={1}>
                 #{booking.bookingCode || booking.id} ·{" "}

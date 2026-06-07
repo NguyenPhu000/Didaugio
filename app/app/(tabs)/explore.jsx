@@ -52,6 +52,12 @@ import { useEvents } from "../../src/modules/explore/hooks/useEvents";
 import { EventBannerCarousel } from "../../src/modules/explore/components/EventBannerCarousel";
 import { EventSection } from "../../src/modules/explore/components/EventSection";
 
+// CMS components
+import { useExploreCms } from "../../src/modules/explore/hooks/useExploreCms";
+import { CmsBannerCarousel } from "../../src/modules/explore/components/CmsBannerCarousel";
+import { SampleTripSection } from "../../src/modules/explore/components/SampleTripSection";
+import { AnnouncementBanner } from "../../src/modules/explore/components/AnnouncementBanner";
+
 // Save/favorite hooks
 import { useSavePlace, useUnsavePlace, useSavedPlaces } from "../../src/modules/saved/hooks/useSaved";
 
@@ -86,6 +92,19 @@ export default function ExploreScreen() {
   } = useExplore({ categoryId: selectedCategory });
 
   const { data: events = [], refetch: refetchEvents } = useEvents();
+
+  // CMS aggregate — 1 request cho toàn bộ nội dung CMS
+  const {
+    data: cmsData,
+    isRefetching: isCmsRefetching,
+    refetch: refetchCms,
+  } = useExploreCms();
+  const {
+    banners = [],
+    featuredPlaces = [],
+    sampleTrips = [],
+    announcement = null,
+  } = cmsData ?? {};
 
   const featuredEvents = useMemo(() => {
     return Array.isArray(events) ? events.filter((e) => e?.isFeaturedBanner) : [];
@@ -183,15 +202,7 @@ export default function ExploreScreen() {
     return matched?.name || null;
   }, [categories, selectedCategory]);
 
-  const featuredPlaces = useMemo(
-    () => allPlaces.slice(0, FEATURED_COUNT),
-    [allPlaces],
-  );
-
-  const popularPlaces = useMemo(
-    () => allPlaces.slice(selectedCategory == null ? FEATURED_COUNT : 0),
-    [allPlaces, selectedCategory],
-  );
+  const popularPlaces = allPlaces;
 
   const culinaryPlaces = useMemo(() => {
     const matched = allPlaces.filter((place) => {
@@ -226,7 +237,8 @@ export default function ExploreScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     refetch();
     refetchEvents();
-  }, [refetch, refetchEvents]);
+    refetchCms(); // Đồng bộ CMS data
+  }, [refetch, refetchEvents, refetchCms]);
 
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -253,6 +265,17 @@ export default function ExploreScreen() {
   );
 
   const showEmpty = allPlaces.length === 0 && !isLoading;
+
+  const handleScrollEvent = useCallback((e) => {
+    scrollY.value = e.nativeEvent.contentOffset.y;
+    handleScroll(e);
+  }, [scrollY, handleScroll]);
+
+  const handlePressTrip = useCallback((trip) => {
+    if (trip?.id) {
+      router.push({ pathname: "/trip/[id]", params: { id: trip.id } });
+    }
+  }, [router]);
 
   // Removed laggy section transition animation for instant rendering performance
 
@@ -290,16 +313,13 @@ export default function ExploreScreen() {
           contentContainerStyle={{ paddingTop: 4, paddingBottom: FLOATING_TAB_CLEARANCE }}
           refreshControl={
             <RefreshControl
-              refreshing={isRefetching}
+              refreshing={isRefetching || isCmsRefetching}
               onRefresh={handleRefresh}
               tintColor={APPLE_THEME.focusBlue}
               colors={[APPLE_THEME.focusBlue]}
             />
           }
-          onScroll={(e) => {
-            scrollY.value = e.nativeEvent.contentOffset.y;
-            handleScroll(e);
-          }}
+          onScroll={handleScrollEvent}
           scrollEventThrottle={16}
         >
           {/* Header */}
@@ -316,6 +336,14 @@ export default function ExploreScreen() {
               selectedCategory={selectedCategory}
               onSelectCategory={handleSelectCategory}
             />
+          ) : null}
+
+          {/* Announcement Banner — hệ thống */}
+          <AnnouncementBanner announcement={announcement} />
+
+          {/* CMS Banner Carousel — với fallback khi rỗng */}
+          {selectedCategory === null ? (
+            <CmsBannerCarousel banners={banners} />
           ) : null}
 
           {/* Event Banner Carousel */}
@@ -352,16 +380,21 @@ export default function ExploreScreen() {
               onOpenSearch={handleOpenSearch}
             />
 
-            {/* Featured carousel */}
+            {/* Featured carousel — dùng isFeatured=true data từ CMS */}
             {featuredPlaces.length > 0 ? (
               <FeaturedSection
                 places={featuredPlaces}
                 onPressPlace={handlePressPlace}
-                onPressViewAll={() => handleSelectCategory(null)}
                 onSavePlace={handleSavePlace}
                 savedPlaceIds={savedPlaceIds}
               />
             ) : null}
+
+            {/* Sample Trips Section */}
+            <SampleTripSection
+              sampleTrips={sampleTrips}
+              onPressTrip={handlePressTrip}
+            />
 
             {/* Event Section */}
             {selectedCategory === null && regularEvents.length > 0 ? (

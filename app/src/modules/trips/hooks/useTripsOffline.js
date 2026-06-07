@@ -15,17 +15,31 @@ const getCacheKey = (key) => `${CACHE_VERSION}:${key}`;
 // ─── Storage Helpers ─────────────────────────────────────────────────────────────
 
 export const persistTripsToStorage = async (trips) => {
+  const cacheData = {
+    data: trips,
+    timestamp: Date.now(),
+    version: CACHE_VERSION,
+  };
   try {
-    const cacheData = {
-      data: trips,
-      timestamp: Date.now(),
-      version: CACHE_VERSION,
-    };
     await AsyncStorage.setItem(
       getCacheKey(TRIPS_CACHE_KEY),
       JSON.stringify(cacheData),
     );
   } catch (error) {
+    // If storage is full, clear stale cache and retry once
+    if (error?.message?.includes("SQLITE_FULL") || error?.code === 13) {
+      try {
+        await clearTripsCache();
+        await AsyncStorage.setItem(
+          getCacheKey(TRIPS_CACHE_KEY),
+          JSON.stringify(cacheData),
+        );
+        return;
+      } catch (retryError) {
+        console.warn("[TripsOffline] Storage full, retry after cleanup also failed:", retryError);
+        return;
+      }
+    }
     console.warn("[TripsOffline] Failed to persist trips:", error);
   }
 };

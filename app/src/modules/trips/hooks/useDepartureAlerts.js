@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { buildTripDays } from "../utils/tripHelpers";
 import {
   scheduleLocalNotificationAt,
@@ -36,6 +37,7 @@ export function useDepartureAlerts({
   nextDestination,
   enabled = true,
 }) {
+  const { t } = useTranslation();
   const scheduledRef = useRef({ key: null, identifier: null });
 
   const dayDateMap = useMemo(() => {
@@ -67,7 +69,7 @@ export function useDepartureAlerts({
     if (!endAt) return;
 
     const fireAt = new Date(endAt.getTime() - LEAD_MINUTES * 60 * 1000);
-    const nextName = nextDestination.place?.name || "địa điểm tiếp theo";
+    const nextName = nextDestination.place?.name || t("trip.departureAlerts.nextPlace");
     const key = `${currentDestination.id}->${nextDestination.id}@${fireAt.getTime()}`;
 
     if (scheduledRef.current.key === key) return;
@@ -79,8 +81,8 @@ export function useDepartureAlerts({
         await cancelScheduledNotification(scheduledRef.current.identifier);
       }
       const identifier = await scheduleLocalNotificationAt({
-        title: "Sắp đến giờ di chuyển",
-        body: `Đã sắp đến giờ di chuyển sang địa điểm tiếp theo ${nextName}. Hãy chuẩn bị xuất phát nhé!`,
+        title: t("trip.departureAlerts.title"),
+        body: t("trip.departureAlerts.body", { name: nextName }),
         date: fireAt,
         data: { tripId: activeTrip?.id, destId: nextDestination.id },
       });

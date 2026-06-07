@@ -496,6 +496,20 @@ export const deleteTrip = async (req, res, next) => {
   }
 };
 
+export const duplicateTrip = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id)
+      return res
+        .status(400)
+        .json({ success: false, data: null, message: "ID không hợp lệ" });
+    const trip = await tripService.duplicateTrip(id, getUserId(req));
+    res.status(201).json({ success: true, data: trip, message: "Nhân bản chuyến đi thành công" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const addDestination = async (req, res, next) => {
   try {
     const tripId = parseId(req.params.id);
@@ -703,6 +717,7 @@ export default {
   getTripDetail,
   updateTrip,
   deleteTrip,
+  duplicateTrip,
   addDestination,
   removeDestination,
   reorderDestinations,

@@ -94,7 +94,7 @@ const ForgotPasswordPage = () => {
                   DIDAUGIO
                 </h2>
                 <p className="text-[#F3E600] text-xs font-mono uppercase tracking-wider">
-                  PASSWORD RECOVERY
+                  {t("auth.forgotPassword.subtitle")}
                 </p>
               </div>
             </div>
@@ -104,11 +104,11 @@ const ForgotPasswordPage = () => {
           <div className="space-y-8">
             <div>
               <h1 className="text-5xl font-black text-white uppercase leading-tight mb-4">
-                ACCOUNT
+                {t("auth.forgotPassword.heroTitle1")}
                 <br />
-                RECOVERY
+                {t("auth.forgotPassword.heroTitle2")}
                 <br />
-                SYSTEM
+                {t("auth.forgotPassword.heroTitle3")}
               </h1>
               <div className="w-24 h-1 bg-[#F3E600]"></div>
             </div>
@@ -129,7 +129,7 @@ const ForgotPasswordPage = () => {
                   <KeyRound className="h-3 w-3 text-[#F3E600]" />
                 </div>
                 <p className="text-xs text-gray-400 uppercase font-mono">
-                  SECURE TOKEN GENERATION
+                  {t("auth.forgotPassword.featureSecure")}
                 </p>
               </div>
               <div className="flex items-start gap-3">
@@ -137,7 +137,7 @@ const ForgotPasswordPage = () => {
                   <Mail className="h-3 w-3 text-[#F3E600]" />
                 </div>
                 <p className="text-xs text-gray-400 uppercase font-mono">
-                  EMAIL VERIFICATION
+                  {t("auth.forgotPassword.featureEmail")}
                 </p>
               </div>
               <div className="flex items-start gap-3">
@@ -145,7 +145,7 @@ const ForgotPasswordPage = () => {
                   <Shield className="h-3 w-3 text-[#F3E600]" />
                 </div>
                 <p className="text-xs text-gray-400 uppercase font-mono">
-                  1 HOUR EXPIRATION TIME
+                  {t("auth.forgotPassword.featureExpiry")}
                 </p>
               </div>
             </div>
@@ -167,7 +167,7 @@ const ForgotPasswordPage = () => {
             className="inline-flex items-center gap-2 text-gray-600 hover:text-black mb-8 transition-colors uppercase font-mono text-xs"
           >
             <ArrowLeft className="h-4 w-4" />
-            BACK TO LOGIN
+            {t("auth.forgotPassword.backToLogin")}
           </Link>
 
           {/* Mobile Logo */}
@@ -178,7 +178,7 @@ const ForgotPasswordPage = () => {
             <div>
               <h2 className="text-xl font-black uppercase">DIDAUGIO</h2>
               <p className="text-[#F3E600] text-xs font-mono uppercase">
-                SYSTEM
+                {t("auth.forgotPassword.mobileSubtitle")}
               </p>
             </div>
           </div>
@@ -197,7 +197,7 @@ const ForgotPasswordPage = () => {
                   <div className="flex items-center gap-3 mb-2 justify-center">
                     <div className="w-1 h-8 bg-[#F3E600]"></div>
                     <h1 className="text-3xl font-black uppercase tracking-tight">
-                      FORGOT PASSWORD
+                      {t("auth.forgotPassword.title")}
                     </h1>
                   </div>
                   <p className="text-xs text-gray-500 uppercase font-mono text-center">
@@ -212,12 +212,12 @@ const ForgotPasswordPage = () => {
                       className="tim-meta flex items-center gap-2"
                     >
                       <Mail className="h-4 w-4" />
-                      EMAIL ADDRESS
+                      {t("auth.forgotPassword.emailLabel")}
                     </Label>
                     <Input
                       id="email"
                       type="email"
-                      placeholder="YOUR@EMAIL.COM"
+                      placeholder={t("auth.forgotPassword.emailPlaceholder")}
                       autoComplete="email"
                       autoFocus
                       className="rounded-none border-2 border-black h-12 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
@@ -237,11 +237,11 @@ const ForgotPasswordPage = () => {
                     className="w-full rounded-none border-2 border-black bg-[#F3E600] text-black hover:bg-black hover:text-[#F3E600] h-12 uppercase font-black text-sm transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
                   >
                     {isLoading ? (
-                      "SENDING..."
+                      t("auth.forgotPassword.submitting")
                     ) : (
                       <>
                         <Send className="mr-2 h-4 w-4" />
-                        SEND RECOVERY EMAIL
+                        {t("auth.forgotPassword.submit")}
                       </>
                     )}
                   </Button>
@@ -306,7 +306,7 @@ const ForgotPasswordPage = () => {
                 href="mailto:support@didaugio.com"
                 className="text-black underline hover:text-[#F3E600]"
               >
-                SUPPORT@DIDAUGIO.COM
+                support@didaugio.com
               </a>
             </p>
           </div>

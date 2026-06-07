@@ -4,7 +4,7 @@ import { FlashList } from "@shopify/flash-list";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { useTripsCached } from "../../src/modules/trips/hooks/useTripsOffline";
+import { useTripsCached, useOfflineSync } from "../../src/modules/trips/hooks/useTripsOffline";
 import {
   useSaveTrip,
   useUnsaveTrip,
@@ -15,6 +15,7 @@ import { OfflineBanner } from "../../src/components/ui/OfflineBanner";
 import { TAB_BAR_HEIGHT } from "./_layout";
 import { TripsDashboard } from "../../src/modules/trips/components/TripsDashboard";
 import { TripCard } from "../../src/modules/trips/components/TripCard";
+import { TripSyncIndicator } from "../../src/modules/trips/components/TripSyncIndicator";
 import {
   getDisplayStatus,
   getSafeDateTime,
@@ -46,6 +47,8 @@ export default function TripsScreen() {
     refetch,
     isRefetching,
   } = useTripsCached(isLoggedIn);
+
+  useOfflineSync();
 
   const trips = useMemo(
     () => (Array.isArray(tripsRaw) ? tripsRaw : []),
@@ -157,14 +160,17 @@ export default function TripsScreen() {
         }
         ListHeaderComponent={
           !isLoading && !isError ? (
-            <TripsDashboard
-              trips={trips}
-              filteredCount={filteredTrips.length}
-              activeFilter={activeFilter}
-              onSelectFilter={setActiveFilter}
-              onOpenHero={handlePressTrip}
-              onCreate={handleCreate}
-            />
+            <>
+              <TripSyncIndicator />
+              <TripsDashboard
+                trips={trips}
+                filteredCount={filteredTrips.length}
+                activeFilter={activeFilter}
+                onSelectFilter={setActiveFilter}
+                onOpenHero={handlePressTrip}
+                onCreate={handleCreate}
+              />
+            </>
           ) : null
         }
         ItemSeparatorComponent={ItemSeparator}

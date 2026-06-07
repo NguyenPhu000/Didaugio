@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
 import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../../constants/design-tokens";
+import { useTranslation } from "react-i18next";
 
 const BOOKING_THEME = {
   ...APPLE_THEME,
@@ -21,7 +22,7 @@ const BOOKING_THEME = {
 };
 
 const formatPrice = (price) => {
-  if (!price && price !== 0) return "Liên hệ";
+  if (!price && price !== 0) return "—";
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
@@ -29,6 +30,7 @@ const formatPrice = (price) => {
 };
 
 export function ServiceCard({ service, isSelected, onSelect }) {
+  const { t } = useTranslation();
   return (
     <Pressable
       onPress={() => onSelect(service)}

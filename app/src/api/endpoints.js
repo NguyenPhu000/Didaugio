@@ -36,12 +36,17 @@ export const ENDPOINTS = {
     tripDetail: (id) => `/profile/trips/${id}`,
     updateTrip: (id) => `/profile/trips/${id}`,
     deleteTrip: (id) => `/profile/trips/${id}`,
+    duplicateTrip: (id) => `/profile/trips/${id}/duplicate`,
     addDestination: (tripId) => `/profile/trips/${tripId}/destinations`,
     removeDestination: (tripId, destId) =>
       `/profile/trips/${tripId}/destinations/${destId}`,
     reorderDestinations: (tripId) => `/profile/trips/${tripId}/destinations/reorder`,
     updateDestination: (tripId, destId) => `/profile/trips/${tripId}/destinations/${destId}`,
     moveDestination: (tripId, destId) => `/profile/trips/${tripId}/destinations/${destId}/move`,
+    tripShare: (id) => `/profile/trips/${id}/share`,
+    tripShareById: (tripId, shareId) => `/profile/trips/${tripId}/share/${shareId}`,
+    accessTripShare: (shareCode) => `/profile/shared-trip/${shareCode}`,
+    deleteTripShare: (shareId) => `/profile/trips/share/${shareId}`,
     bookings: "/profile/bookings",
     bookingDetail: (id) => `/profile/bookings/${id}`,
     bookingQr: (id) => `/profile/bookings/${id}/qr`,
@@ -59,6 +64,7 @@ export const ENDPOINTS = {
     create: "/business/bookings",
     list: "/business/bookings",
     detail: (id) => `/business/bookings/${id}`,
+    publicAvailability: (serviceId) => `/bookings/availability/${serviceId}`,
   },
   ai: {
     placeSummary: "/ai/place-summary",
@@ -86,5 +92,12 @@ export const ENDPOINTS = {
     ping: (id) => `/events/${id}/ping`,
     moments: (id) => `/events/${id}/moments`,
     deleteMoment: (momentId) => `/events/moments/${momentId}`,
+  },
+  cms: {
+    exploreLanding: "/cms/explore-landing",
+    banners: "/cms/banners",
+    featuredPlaces: "/cms/featured-places",
+    sampleTrips: "/cms/sample-trips",
+    announcements: "/cms/announcements",
   },
 };

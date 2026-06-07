@@ -253,14 +253,14 @@ export function buildSummary(trips) {
 
 export function getSectionCopy(activeFilter, count) {
   if (activeFilter === "active") {
-    return `${count} hành trình đang được theo dõi sát sao.`;
+    return i18n.t("tripHelpers.sectionTracking", { count });
   }
 
   if (activeFilter === "done") {
-    return `${count} hành trình đã đóng lại để bạn xem nhanh hồ sơ cũ.`;
+    return i18n.t("tripHelpers.sectionCompleted", { count });
   }
 
-  return `${count} hành trình trong một bảng điều khiển gọn gàng.`;
+  return i18n.t("tripHelpers.sectionAll", { count });
 }
 
 // ─── Trip Detail Helpers (shared with [id].jsx) ──────────────────────────────────

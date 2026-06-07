@@ -355,6 +355,17 @@
     "qrPendingConfirm": "QR will appear when the booking is confirmed.",
     "statusUsed": "Used",
     "notDetermined": "Not determined",
+    "notFound": "Booking not found",
+    "status": {
+      "unknown": "Unknown",
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "rejected": "Rejected",
+      "expired": "Expired",
+      "noShow": "No show"
+    },
     "linkTrip": "Link Trip",
     "currentTripDay": "Currently on day {{day}} of the trip.",
     "openLinkedTrip": "Open linked trip",
@@ -379,8 +390,11 @@
   },
   "booking": {
     "loginRequired": "Please log in to book",
+    "loginDescription": "You need to be logged in to book services at this place.",
+    "loginNow": "Log in now",
     "notSelected": "Not selected",
     "contactForPrice": "Contact",
+    "noServices": "No services available at this place yet.",
     "steps": {
       "service": "Service",
       "confirm": "Confirm",
@@ -394,7 +408,9 @@
       "service": "Service",
       "quantity": "Quantity",
       "usageDate": "Usage date",
-      "selectTime": "Select time"
+      "selectTime": "Select time",
+      "selected": "Selected",
+      "notSelected": "Not selected"
     },
     "timeGroups": {
       "morning": "Morning",
@@ -406,22 +422,72 @@
       "title": "Link to Trip",
       "none": "No link",
       "selectExisting": "Select existing trip",
-      "createNew": "Create new trip"
+      "createNew": "Create new trip",
+      "noTrips": "You have no trips yet.",
+      "newTripPlaceholder": "Trip name (optional)",
+      "tripCreateInfo": "A new trip will be created for {{date}}.",
+      "summaryPrefix": "Trip link",
+      "linkedTripId": "Trip #{{id}}",
+      "notSelected": "Not selected",
+      "createOnConfirm": "Will be created on confirm"
     },
+    "tripDays": "{{count}} days",
     "pricing": {
       "total": "Total",
-      "deposit": "Deposit"
+      "deposit": "Deposit",
+      "contact": "Contact",
+      "depositLabel": "Deposit: {{amount}}",
+      "refundable": "Refundable {{percent}}%",
+      "nonRefundable": "Non-refundable"
     },
     "submitRequest": "Submit booking request",
     "payAtPlace": "Pay at venue",
+    "payAtPlaceDescription": "Please pay directly at the venue after using the service.",
     "contactInfo": "Contact information",
+    "contactValidation": "Please fill in your name and a valid phone number.",
+    "placeholders": {
+      "name": "Full name",
+      "phone": "Phone number",
+      "email": "Email (optional)",
+      "note": "Special requests (optional)"
+    },
+    "timeSlotsCount": "{{count}} time slots available",
+    "slotUnavailableWarning": "This time slot has passed. Please select another.",
+    "tripDescription": {
+      "withService": "Booked service: {{service}}",
+      "default": "Created from booking"
+    },
     "buttons": {
       "confirmBooking": "Confirm booking",
       "next": "Next",
       "confirm": "Confirm"
     },
+    "alerts": {
+      "slotUnavailable": {
+        "title": "Time slot unavailable",
+        "message": "This time slot has passed. Please select another time.",
+        "ok": "OK",
+        "expired": "This time slot has passed. Please go back and select another."
+      },
+      "missingContact": {
+        "title": "Contact required",
+        "message": "Please fill in your name and a valid phone number."
+      },
+      "selectTrip": {
+        "title": "Select a trip",
+        "message": "Please select a trip to link this booking to."
+      }
+    },
+    "errors": {
+      "tripCreateFailed": "Failed to create trip. Please try again.",
+      "bookingFailed": "Booking failed. Please try again.",
+      "generic": "An error occurred. Please try again."
+    },
     "success": {
       "title": "Booking successful!",
+      "description": "Your booking request has been sent. The business will confirm shortly.",
+      "descriptionWithService": "Your booking for \"{{service}}\" has been sent. The business will confirm shortly.",
+      "linkedTrip": "Added to trip: {{title}} (Day {{day}})",
       "viewBookings": "View my bookings",
       "backToPlace": "Back to place",
       "viewInTrip": "View in trip"
@@ -591,7 +657,118 @@
       "startMessage": "Starting the journey will track your location for navigation and progress updates.",
       "startNotification": "Journey started!",
       "notFound": "Trip not found",
-      "back": "Back"
+      "back": "Back",
+      "duplicateSuccess": "Duplicated successfully",
+      "duplicateSuccessMsg": "Created a copy of \"{{name}}\"",
+      "openNewTrip": "Open new trip",
+      "stayHere": "Stay here",
+      "duplicateError": "Could not duplicate trip",
+      "completeTitle": "Complete trip?",
+      "completeMessage": "Mark \"{{name}}\" as completed?",
+      "complete": "Complete",
+      "completeError": "Could not mark as completed",
+      "duplicating": "Duplicating...",
+      "duplicateTrip": "Duplicate trip",
+      "markComplete": "Mark as completed"
+    },
+    "itinerary": {
+      "close": "Close",
+      "error": "Error",
+      "reorderError": "Could not reorder destinations. Please try again.",
+      "removeTitle": "Remove destination",
+      "removeMessage": "Remove \"{{name}}\" from itinerary?",
+      "remove": "Remove",
+      "removeError": "Could not remove this destination. Please try again.",
+      "moveError": "Could not move this destination. Please try again.",
+      "updateError": "Could not update destination. Please try again.",
+      "saveError": "Could not save changes. Please try again.",
+      "continueTrip": "Continue trip",
+      "viewMap": "View trip map",
+      "startTrip": "Start trip",
+      "resumeSubtitle": "Resume navigation and location tracking",
+      "mapSubtitle": "View real-time navigation map",
+      "starting": "Starting…",
+      "destinationCount": "{{count}} destinations",
+      "addDestination": "Add destination",
+      "noDestinations": "No destinations yet",
+      "noDestinationsDesc": "Add your favorite places to this day"
+    },
+    "budget": {
+      "loading": "Loading budget...",
+      "noData": "No data yet",
+      "noDataDesc": "The budget tab will summarize costs when linked bookings are available.",
+      "exploreServices": "Explore services",
+      "totalEstimate": "Estimated total",
+      "pendingConfirm": "Pending confirmation",
+      "upcomingReminder": "Upcoming appointment reminder",
+      "daysLeft": "{{count}} days left",
+      "hoursLeft": "{{count}} hours left",
+      "appointmentSoon": "Appointment coming up!",
+      "reminderBody": "Your \"{{service}}\" booking at \"{{place}}\" is scheduled at {{time}}.",
+      "defaultPlace": "place",
+      "bookingDetail": "Booking details",
+      "unknownPlace": "Unknown place",
+      "defaultService": "Service"
+    },
+    "services": {
+      "loading": "Loading services...",
+      "noBookings": "No bookings yet",
+      "noBookingsDesc": "Bookings linked to this trip will appear here.",
+      "defaultService": "Service",
+      "defaultPlace": "Place"
+    },
+    "timeline": {
+      "noName": "Untitled",
+      "dragToReorder": "Drag to reorder",
+      "visited": "Visited",
+      "viewDetail": "View place details",
+      "moveToDay": "Move to another day",
+      "editItinerary": "Edit destination itinerary",
+      "edit": "Edit",
+      "removeFromItinerary": "Remove destination from itinerary"
+    },
+    "share": {
+      "viewOnly": "View only",
+      "allowEdit": "Allow editing",
+      "editLabel": "Edit",
+      "createLink": "Create share link",
+      "createLinkError": "Could not create share link",
+      "createdLinks": "Created links",
+      "noLinks": "No share links yet",
+      "accessCount": "{{count}} accesses",
+      "newLink": "Create new share link"
+    },
+    "celebration": {
+      "title": "Trip completed!",
+      "hint": "Pull down to see details"
+    },
+    "timeField": {
+      "done": "Done"
+    },
+    "createHero": {
+      "time": "Time",
+      "saved": "Saved",
+      "itinerary": "Itinerary",
+      "newTrip": "New trip"
+    },
+    "savedGrid": {
+      "place": "Place",
+      "selected": "selected",
+      "loadError": "Could not load data",
+      "noSaved": "No saved places yet",
+      "retrySubtitle": "Check your network connection and try again",
+      "emptySubtitle": "Save your favorite places from the map or Explore to quickly add them to trips",
+      "tapHint": "Tap to select a place",
+      "savedCount": "{{count}} saved"
+    },
+    "sync": {
+      "syncing": "Syncing {{count}} changes...",
+      "pendingOffline": "{{count}} changes pending sync"
+    },
+    "departureAlerts": {
+      "nextPlace": "next destination",
+      "title": "Time to move",
+      "body": "It's almost time to move to the next destination {{name}}. Get ready to depart!"
     }
   },
   "editProfile": {
@@ -843,7 +1020,10 @@
     "createFirst": "Create your first trip",
     "startExploring": "Start your journey exploring the world",
     "listWithCount": "List ({{count}})",
-    "list": "List"
+    "list": "List",
+    "startToday": "Starting today",
+    "startTomorrow": "Starting tomorrow",
+    "daysUntil": "{{count}} days left"
   },
   "tripCard": {
     "noDate": "No date selected",
@@ -1099,7 +1279,8 @@
     "googleNoIdToken": "No id_token received from Google.",
     "googleMissingConfig": "Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in app/.env.",
     "googleMissingOwner": "Missing EXPO_PUBLIC_EXPO_OWNER or EXPO_PUBLIC_EXPO_SLUG in app/.env.",
-    "googleNotReady": "Google OAuth not ready. Please try again in a few seconds."
+    "googleNotReady": "Google OAuth not ready. Please try again in a few seconds.",
+    "apiPointingToExpo": "Login API is pointing to Expo/Metro instead of backend. Check EXPO_PUBLIC_API_URL and app/server port."
   },
   "tripHelpers": {
     "all": "All",
@@ -1129,7 +1310,10 @@
     "transportMotorbike": "Motorbike",
     "transportCar": "Car",
     "transportBus": "Bus",
-    "transportOther": "Other"
+    "transportOther": "Other",
+    "sectionTracking": "{{count}} trips are being closely tracked.",
+    "sectionCompleted": "{{count}} trips closed for quick review.",
+    "sectionAll": "{{count}} trips in one tidy dashboard."
   },
   "tripTheme": {
     "upcoming": "Upcoming",

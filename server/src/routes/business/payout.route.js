@@ -7,7 +7,7 @@ import * as payoutController from "../../controllers/business/payout.controller.
 const router = Router();
 
 router.use(authenticate);
-router.use(requireActiveBusiness());
+router.use(requireActiveBusiness({ requireContractSigned: true }));
 
 // GET /api/business/earnings - Earnings summary
 router.get("/earnings", payoutController.getEarnings);

@@ -1,5 +1,6 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import { Modal, Platform, Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { parseTimeToDate, formatHHMM } from "../../utils/tripHelpers";
@@ -10,6 +11,7 @@ import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
  * Trên iOS hiển thị picker dạng spinner trong bottom-sheet; Android dùng dialog mặc định.
  */
 function TimeField({ label, value, onChange, placeholder = "--:--", icon = "schedule" }) {
+  const { t } = useTranslation();
   const [show, setShow] = useState(false);
   const dateValue = useMemo(() => parseTimeToDate(value) || new Date(), [value]);
 
@@ -50,7 +52,7 @@ function TimeField({ label, value, onChange, placeholder = "--:--", icon = "sche
               <View className="flex-row justify-between items-center px-5 py-3.5 border-b border-black/[0.06]">
                 <Text className="text-[16px] font-semibold text-[#1D1D1F]">{label}</Text>
                 <Pressable onPress={() => setShow(false)} hitSlop={10}>
-                  <Text className="text-[16px] color-[#1D1D1F] font-semibold">Xong</Text>
+                  <Text className="text-[16px] color-[#1D1D1F] font-semibold">{t("trip.timeField.done")}</Text>
                 </Pressable>
               </View>
               <DateTimePicker

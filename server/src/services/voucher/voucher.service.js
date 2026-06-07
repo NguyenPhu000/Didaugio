@@ -3,6 +3,95 @@ import { PAGINATION, ROLES } from "../../config/constants.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
 
+/**
+ * Validates a voucher for a given booking context and returns the discount amount.
+ * Throws ServiceError if voucher is invalid.
+ * @param {import("@prisma/client").Prisma.TransactionClient} tx
+ * @param {{ voucherId: number, serviceId: number, businessId: number, userId: number, originalPrice: number }} params
+ * @returns {{ voucherId: number, discountAmount: number, voucher: object }} discount result
+ */
+export async function validateAndApplyVoucher(tx, params) {
+  const { voucherId, serviceId, businessId, userId, originalPrice } = params;
+
+  const voucher = await tx.voucher.findFirst({
+    where: {
+      id: voucherId,
+      isActive: true,
+    },
+  });
+
+  if (!voucher) {
+    throw new ServiceError("Mã voucher không hợp lệ hoặc đã bị vô hiệu hóa", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  if (voucher.businessId !== null && voucher.businessId !== businessId) {
+    throw new ServiceError("Mã voucher không áp dụng cho dịch vụ này", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  const now = new Date();
+  if (voucher.startDate && now < voucher.startDate) {
+    throw new ServiceError("Mã voucher chưa có hiệu lực", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+  if (voucher.endDate && now > voucher.endDate) {
+    throw new ServiceError("Mã voucher đã hết hạn", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  if (voucher.usageLimit !== null && voucher.usageLimit > 0 && voucher.usageCount >= voucher.usageLimit) {
+    throw new ServiceError("Mã voucher đã hết lượt sử dụng", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  if (voucher.minOrderValue && originalPrice < voucher.minOrderValue) {
+    throw new ServiceError(
+      `Giá trị đơn hàng tối thiểu là ${voucher.minOrderValue.toLocaleString("vi-VN")}đ`,
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+
+  if (voucher.applicableServices && Array.isArray(voucher.applicableServices) && voucher.applicableServices.length > 0) {
+    if (!voucher.applicableServices.includes(serviceId)) {
+      throw new ServiceError("Mã voucher không áp dụng cho dịch vụ này", 400, ERROR_CODES.VALIDATION_ERROR);
+    }
+  }
+
+  const userUsageCount = await tx.booking.count({
+    where: {
+      voucherId: voucher.id,
+      userId,
+      status: { notIn: ["cancelled", "rejected", "expired"] },
+    },
+  });
+
+  const perUserLimit = voucher.perUserLimit ?? 1;
+  if (userUsageCount >= perUserLimit) {
+    throw new ServiceError("Bạn đã sử dụng mã voucher này rồi", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  let discountAmount = 0;
+  if (voucher.discountType === "PERCENT") {
+    discountAmount = Math.floor((originalPrice * voucher.discountValue) / 100);
+    if (voucher.maxDiscount && discountAmount > voucher.maxDiscount) {
+      discountAmount = voucher.maxDiscount;
+    }
+  } else {
+    discountAmount = Math.min(voucher.discountValue, originalPrice);
+  }
+
+  return { voucherId: voucher.id, discountAmount, voucher };
+}
+
+/**
+ * Increment voucher usage count after a booking is created.
+ * @param {import("@prisma/client").Prisma.TransactionClient} tx
+ * @param {number} voucherId
+ */
+export async function incrementVoucherUsage(tx, voucherId) {
+  await tx.voucher.update({
+    where: { id: voucherId },
+    data: { usageCount: { increment: 1 } },
+  });
+}
+
 const defaultInclude = {
   _count: { select: { bookings: true } },
 };

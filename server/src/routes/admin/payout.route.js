@@ -3,6 +3,7 @@ import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
 import * as payoutController from "../../controllers/business/payout.controller.js";
+import { getPlatformCommissionSummary } from "../../services/booking/bookingTransaction.service.js";
 
 const router = Router();
 
@@ -13,6 +14,20 @@ router.get(
   "/",
   hasPermission("payouts.view"),
   payoutController.adminGetAll,
+);
+
+// GET /api/admin/payouts/commission - Platform commission summary
+router.get(
+  "/commission",
+  hasPermission("payouts.view"),
+  async (req, res, next) => {
+    try {
+      const summary = await getPlatformCommissionSummary(req.query);
+      res.json({ success: true, data: summary, message: "OK" });
+    } catch (error) {
+      next(error);
+    }
+  },
 );
 
 // POST /api/admin/payouts/:id/approve - Approve payout

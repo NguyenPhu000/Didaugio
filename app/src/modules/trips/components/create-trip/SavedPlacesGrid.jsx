@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
@@ -52,6 +53,7 @@ const SavedPlaceCard = memo(function SavedPlaceCard({
   onToggle,
   index,
 }) {
+  const { t } = useTranslation();
   const scale = useSharedValue(1);
   const rawUri = resolvePlaceImageUri(place);
   const imageUri =
@@ -84,7 +86,7 @@ const SavedPlaceCard = memo(function SavedPlaceCard({
         onPressOut={handlePressOut}
         accessibilityRole="button"
         accessibilityState={{ selected }}
-        accessibilityLabel={`${place?.name || "Địa điểm"}${selected ? ", đã chọn" : ""}`}
+        accessibilityLabel={`${place?.name || t("trip.savedGrid.place")}${selected ? `, ${t("trip.savedGrid.selected")}` : ""}`}
         style={[styles.card, selected && styles.cardSelected, animStyle]}
       >
         <View style={styles.imageWrap}>
@@ -120,7 +122,7 @@ const SavedPlaceCard = memo(function SavedPlaceCard({
 
         <View style={styles.cardBody}>
           <Text style={[styles.placeName, selected && styles.placeNameSelected]} numberOfLines={2}>
-            {place?.name || "Địa điểm"}
+            {place?.name || t("trip.savedGrid.place")}
           </Text>
           {getPlaceSubtitle(place) ? (
             <Text style={styles.placeMeta} numberOfLines={1}>
@@ -153,6 +155,7 @@ function SavedPlacesGridInner({
   isError,
   onToggle,
 }) {
+  const { t } = useTranslation();
   const selectedSet = useMemo(
     () => new Set(selectedIds.map(String)),
     [selectedIds],
@@ -196,12 +199,12 @@ function SavedPlacesGridInner({
           />
         </View>
         <Text style={styles.emptyTitle}>
-          {isError ? "Không thể tải dữ liệu" : "Chưa có địa điểm đã lưu"}
+          {isError ? t("trip.savedGrid.loadError") : t("trip.savedGrid.noSaved")}
         </Text>
         <Text style={styles.emptySubtitle}>
           {isError
-            ? "Kiểm tra kết nối mạng và thử lại sau"
-            : "Lưu địa điểm yêu thích từ bản đồ hoặc Khám phá để thêm nhanh vào chuyến đi"}
+            ? t("trip.savedGrid.retrySubtitle")
+            : t("trip.savedGrid.emptySubtitle")}
         </Text>
       </View>
     );
@@ -210,9 +213,9 @@ function SavedPlacesGridInner({
   return (
     <View style={styles.root}>
       <View style={styles.listHeader}>
-        <Text style={styles.listHint}>Chạm để chọn địa điểm</Text>
+        <Text style={styles.listHint}>{t("trip.savedGrid.tapHint")}</Text>
         <View style={styles.countPill}>
-          <Text style={styles.countText}>{entries.length} đã lưu</Text>
+          <Text style={styles.countText}>{t("trip.savedGrid.savedCount", { count: entries.length })}</Text>
         </View>
       </View>
 

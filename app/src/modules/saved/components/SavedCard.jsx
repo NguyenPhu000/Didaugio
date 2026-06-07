@@ -7,6 +7,9 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  FadeIn,
+  FadeOut,
+  Layout,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import {
@@ -71,8 +74,6 @@ const CategoryIcon = ({ iconKey, color }) => {
 
 export const SavedCard = memo(function SavedCard({
   entry,
-  index = 0,
-  scrollY,
   onPress,
   onOpenNote,
   onUnsave,
@@ -90,11 +91,11 @@ export const SavedCard = memo(function SavedCard({
   const scale = useSharedValue(1);
 
   const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.975, { damping: 15, stiffness: 200 });
+    scale.value = withSpring(0.97, { damping: 14, stiffness: 180 });
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 150 });
+    scale.value = withSpring(1, { damping: 14, stiffness: 160 });
   }, [scale]);
 
   const handlePress = useCallback(() => {
@@ -124,23 +125,12 @@ export const SavedCard = memo(function SavedCard({
     transform: [{ scale: scale.value }],
   }));
 
-  // Tọa độ Y thực tế cho Parallax dựa vào hàng trong FlatList 2 cột
-  // Mỗi hàng cao 252px (240 card + 12 gap), cột lẻ có offset 24px
-  const rowIndex = Math.floor(index / 2);
-  const cardY = rowIndex * 252 + (index % 2 === 0 ? 0 : 24);
-
-  // Hiệu ứng Parallax ảnh nền mượt mà theo tọa độ Y thực tế
-  const animatedImageStyle = useAnimatedStyle(() => {
-    if (!scrollY) return { transform: [{ translateY: 0 }, { scale: 1.12 }] };
-    const translateY = (scrollY.value - cardY) * 0.08;
-    const clampedTranslateY = Math.max(-14, Math.min(14, translateY));
-    return {
-      transform: [{ translateY: clampedTranslateY }, { scale: 1.12 }],
-    };
-  });
-
   return (
-    <View className="w-full relative mb-6">
+    <Animated.View
+      entering={FadeIn.duration(250)}
+      exiting={FadeOut.duration(180)}
+      layout={Layout.springify().damping(16).stiffness(160)}
+    >
     <AnimatedPressable
       onPress={handlePress}
       onPressIn={handlePressIn}
@@ -148,18 +138,14 @@ export const SavedCard = memo(function SavedCard({
       style={[
         animatedStyle,
         {
-          shadowColor: "#000",
-          shadowOpacity: 0.08,
-          shadowRadius: 20,
-          shadowOffset: { width: 0, height: 12 },
-          elevation: 6,
+          boxShadow: "0 8px 24px rgba(0, 0, 0, 0.10)",
         },
       ]}
       className="w-full h-[245px] rounded-[30px] overflow-hidden bg-zinc-950 relative"
     >
-      {/* 1. Ảnh nền toàn màn hình với hiệu ứng Parallax */}
+      {/* 1. Ảnh nền toàn màn hình */}
       <Animated.View
-        style={[StyleSheet.absoluteFillObject, animatedImageStyle, { overflow: "hidden" }]}
+        style={StyleSheet.absoluteFillObject}
       >
         {imageUri ? (
           <Image
@@ -278,7 +264,8 @@ export const SavedCard = memo(function SavedCard({
 
       {/* Note Badge nổi ra ngoài góc dưới bên phải của card */}
       {note ? (
-        <View
+        <Animated.View
+          entering={FadeIn.delay(100)}
           style={{
             position: "absolute",
             bottom: -10,
@@ -304,9 +291,9 @@ export const SavedCard = memo(function SavedCard({
               {note}
             </Text>
           </View>
-        </View>
+        </Animated.View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 });
 

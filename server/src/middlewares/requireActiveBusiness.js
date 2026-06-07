@@ -1,6 +1,9 @@
 import prisma from "../config/prismaClient.js";
 import { ROLES, BUSINESS_STATUS } from "../config/constants.js";
 
+/** Current contract version — bump to force re-signing */
+const CURRENT_CONTRACT_VERSION = "v1";
+
 /**
  * Gate business-owner operations by profile existence, status, and contract state.
  * Admin roles bypass this check. Staff users resolved via businessId.
@@ -47,6 +50,7 @@ export const requireActiveBusiness = (options = {}) => {
             status: true,
             contractSigned: true,
             contractSignedAt: true,
+            contractVersion: true,
           },
         });
       } else {
@@ -57,6 +61,7 @@ export const requireActiveBusiness = (options = {}) => {
             status: true,
             contractSigned: true,
             contractSignedAt: true,
+            contractVersion: true,
           },
         });
       }
@@ -122,6 +127,20 @@ export const requireActiveBusiness = (options = {}) => {
           data: null,
           message: "Vui lòng ký hợp đồng trước khi sử dụng tính năng này",
           errorCode: "CONTRACT_REQUIRED",
+        });
+      }
+
+      // Check if contract needs renewal (version mismatch)
+      if (
+        requireContractSigned &&
+        business.contractSigned &&
+        business.contractVersion !== CURRENT_CONTRACT_VERSION
+      ) {
+        return res.status(403).json({
+          success: false,
+          data: null,
+          message: "Hợp đồng đã có phiên bản mới. Vui lòng ký lại để tiếp tục.",
+          errorCode: "CONTRACT_RENEWAL_REQUIRED",
         });
       }
 

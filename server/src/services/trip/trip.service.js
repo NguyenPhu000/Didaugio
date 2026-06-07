@@ -845,6 +845,64 @@ export const deleteTrip = async (id, userId) => {
   await prisma.trip.delete({ where: { id } });
 };
 
+export const duplicateTrip = async (id, userId) => {
+  const trip = await prisma.trip.findFirst({
+    where: { id, userId },
+    include: { destinations: true },
+  });
+  if (!trip) {
+    const err = new Error("Không tìm thấy chuyến đi");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const newTrip = await tx.trip.create({
+      data: {
+        userId,
+        title: `${trip.title} (Bản sao)`,
+        description: trip.description,
+        startDate: null,
+        endDate: null,
+        totalDays: trip.totalDays,
+        travelStyle: trip.travelStyle,
+        groupSize: trip.groupSize,
+        status: "upcoming",
+        thumbnail: trip.thumbnail,
+      },
+    });
+
+    if (trip.destinations?.length > 0) {
+      await tx.tripDestination.createMany({
+        data: trip.destinations.map((dest) => ({
+          tripId: newTrip.id,
+          placeId: dest.placeId,
+          dayNumber: dest.dayNumber,
+          order: dest.order,
+          startTime: null,
+          endTime: null,
+          durationMinutes: null,
+          note: dest.note,
+          transportToNext: null,
+          distanceToNext: null,
+          estimatedCost: null,
+          status: "planned",
+        })),
+      });
+    }
+
+    return tx.trip.findUnique({
+      where: { id: newTrip.id },
+      include: {
+        destinations: {
+          orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+          include: { place: { select: TRIP_PLACE_SELECT } },
+        },
+      },
+    });
+  });
+};
+
 export const addDestination = async (
   tripId,
   userId,
@@ -1154,6 +1212,7 @@ export default {
   getTripDetail,
   updateTrip,
   deleteTrip,
+  duplicateTrip,
   addDestination,
   removeDestination,
   reorderDestinations,

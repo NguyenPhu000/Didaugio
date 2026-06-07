@@ -494,7 +494,9 @@ export const signContract = async (userId, payload = {}) => {
     throw error;
   }
 
-  if (business.contractSigned) {
+  // Allow re-signing if contract version is outdated
+  const CURRENT_CONTRACT_VERSION = "v1";
+  if (business.contractSigned && business.contractVersion === CURRENT_CONTRACT_VERSION) {
     return mapProfileResponse(business);
   }
 
@@ -520,6 +522,14 @@ export const signContract = async (userId, payload = {}) => {
       signerMetadata,
     },
     include: defaultInclude,
+  });
+
+  eventEmitter.emit(EVENTS.BUSINESS.CONTRACT_SIGNED, {
+    businessId: updated.id,
+    businessName: updated.businessName,
+    ownerId: userId,
+    contractVersion: updated.contractVersion,
+    signedAt: updated.contractSignedAt,
   });
 
   return mapProfileResponse(updated);

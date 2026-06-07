@@ -11,9 +11,12 @@ export const TripHeader = memo(function TripHeader({
   trip,
   onEditTrip,
   onDeleteTrip,
+  onShareTrip,
+  onDuplicateTrip,
   isSaved,
   onToggleSave,
   onAddPlace,
+  isDuplicating = false,
 }) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -105,10 +108,64 @@ export const TripHeader = memo(function TripHeader({
       >
         <Pressable className="flex-1 bg-transparent" onPress={() => setIsMenuOpen(false)}>
           <View
-            className="absolute right-4 w-[170px] bg-white rounded-2xl py-1 px-1 border-[0.5px] border-black/10 shadow-lg elevation-4"
+            className="absolute right-4 w-[200px] bg-white rounded-2xl py-1 px-1 border-[0.5px] border-black/10 shadow-lg elevation-4"
             style={{ top: insets.top + 10 }}
             onStartShouldSetResponder={() => true}
           >
+            {onShareTrip ? (
+              <Pressable
+                className="rounded-xl overflow-hidden"
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  onShareTrip();
+                }}
+              >
+                {({ pressed }) => (
+                  <View
+                    className="flex-row items-center gap-2 py-2.25 px-2 rounded-xl"
+                    style={[pressed && { backgroundColor: "rgba(0,0,0,0.04)" }]}
+                  >
+                    <View className="w-7 h-7 rounded-lg bg-black/[0.04] items-center justify-center flex-shrink-0">
+                      <MaterialIconsRounded name="share" size={16} color={T.ink} />
+                    </View>
+                    <Text
+                      className="flex-1 text-[14px] font-medium text-[#1D1D1F] tracking-tight min-w-0"
+                      numberOfLines={1}
+                    >
+                      Chia sẻ
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            ) : null}
+
+            {onDuplicateTrip ? (
+              <Pressable
+                className="rounded-xl overflow-hidden"
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  onDuplicateTrip();
+                }}
+              >
+                {({ pressed }) => (
+                  <View
+                    className="flex-row items-center gap-2 py-2.25 px-2 rounded-xl"
+                    style={[pressed && { backgroundColor: "rgba(0,0,0,0.04)" }]}
+                  >
+                    <View className="w-7 h-7 rounded-lg bg-black/[0.04] items-center justify-center flex-shrink-0">
+                      <MaterialIconsRounded name="content-copy" size={16} color={T.ink} />
+                    </View>
+                    <Text
+                      className="flex-1 text-[14px] font-medium text-[#1D1D1F] tracking-tight min-w-0"
+                      numberOfLines={1}
+                    >
+                      {isDuplicating ? t("trip.detail.duplicating") : t("trip.detail.duplicateTrip")}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            ) : null}
+
             {onToggleSave ? (
               <Pressable
                 className="rounded-xl overflow-hidden"

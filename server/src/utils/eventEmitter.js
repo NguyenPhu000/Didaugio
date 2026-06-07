@@ -39,6 +39,7 @@ export const EVENTS = {
     REACTIVATED: "business:reactivated",
     TERMINATED: "business:terminated",
     DOCUMENT_UPDATED: "business:document_updated",
+    CONTRACT_SIGNED: "business:contract_signed",
   },
 };
 

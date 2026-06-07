@@ -20,7 +20,7 @@ export const createBookingApi = (data) => {
   const serviceId = Number(data?.serviceId);
   if (!Number.isInteger(serviceId) || serviceId <= 0) {
     throw {
-      message: "Thiếu serviceId hợp lệ để tạo booking",
+      message: "Missing or invalid serviceId to create booking",
       status: 400,
       code: "VALIDATION_ERROR",
     };

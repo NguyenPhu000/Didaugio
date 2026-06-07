@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { StatusBadge } from "./StatusBadge";
 import { formatBookingDateTime, formatPrice } from "../../utils/tripHelpers";
@@ -10,13 +11,14 @@ export const ServicesTab = memo(function ServicesTab({
   isLoading,
   onOpenBooking,
 }) {
+  const { t } = useTranslation();
   if (isLoading) {
     return (
       <View className={STYLES.centeredState}>
         <View className="w-12 h-12 rounded-full bg-black/[0.04] items-center justify-center">
           <ActivityIndicator size="small" color="#1D1D1F" />
         </View>
-        <Text className={STYLES.centeredBody}>Đang tải dịch vụ...</Text>
+        <Text className={STYLES.centeredBody}>{t("trip.services.loading")}</Text>
       </View>
     );
   }
@@ -27,9 +29,9 @@ export const ServicesTab = memo(function ServicesTab({
         <View className="w-14 h-14 rounded-[20px] bg-black/[0.04] items-center justify-center mb-2">
           <MaterialIconsRounded name="receipt-long" size={28} color="rgba(0,0,0,0.2)" />
         </View>
-        <Text className={STYLES.emptyTitle}>Chưa có booking</Text>
+        <Text className={STYLES.emptyTitle}>{t("trip.services.noBookings")}</Text>
         <Text className={STYLES.emptyBody}>
-          Các booking liên kết với chuyến đi sẽ hiển thị tại đây.
+          {t("trip.services.noBookingsDesc")}
         </Text>
       </View>
     );
@@ -64,10 +66,10 @@ export const ServicesTab = memo(function ServicesTab({
             >
               <View className={STYLES.bookingRowInfo}>
                 <Text className="text-[15px] font-semibold text-[#1D1D1F] tracking-tight" numberOfLines={1}>
-                  {booking?.service?.name || "Dịch vụ"}
+                  {booking?.service?.name || t("trip.services.defaultService")}
                 </Text>
                 <Text className={STYLES.bookingRowPlace} numberOfLines={1}>
-                  {booking?.service?.place?.name || "Địa điểm"}
+                  {booking?.service?.place?.name || t("trip.services.defaultPlace")}
                 </Text>
                 <Text className={STYLES.bookingRowMeta} numberOfLines={1}>
                   #{booking.bookingCode || booking.id} ·{" "}

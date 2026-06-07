@@ -11,6 +11,7 @@ import { initSocketIO } from "./config/socketIO.js";
 import { validateEnv } from "./config/validateEnv.js";
 import { registerApiRoutes, registerRateLimiters } from "./routes/index.js";
 import { startPendingBookingExpireScheduler } from "./schedulers/pendingBookingExpire.scheduler.js";
+import { startTripAutoCompleteScheduler } from "./schedulers/tripAutoComplete.scheduler.js";
 
 dotenv.config({ override: true });
 validateEnv();
@@ -161,6 +162,7 @@ httpServer.listen(PORT, () => {
   logger.info(`Server is running on http://localhost:${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
   startPendingBookingExpireScheduler();
+  startTripAutoCompleteScheduler();
 });
 
 export default app;

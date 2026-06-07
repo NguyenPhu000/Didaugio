@@ -87,12 +87,29 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+// Retry logic cho GET requests trên mobile network
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1000;
+
 client.interceptors.response.use(
   (response) => response.data,
   async (error) => {
     const originalRequest = error.config;
     if (!originalRequest) {
       return Promise.reject(buildError(error));
+    }
+
+    // Retry cho GET requests bị network error hoặc 5xx
+    const retryCount = originalRequest._retryCount || 0;
+    const shouldRetry =
+      originalRequest.method === "get" &&
+      retryCount < MAX_RETRIES &&
+      (!error.response || error.response.status >= 500);
+
+    if (shouldRetry) {
+      originalRequest._retryCount = retryCount + 1;
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * retryCount));
+      return client(originalRequest);
     }
 
     const requestUrl = originalRequest?.url || "";

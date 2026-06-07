@@ -1,4 +1,4 @@
-import { memo, useEffect } from "react";
+import { memo, useCallback, useEffect } from "react";
 import { Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -15,6 +15,20 @@ import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { PopularCard } from "./PopularCard";
 
 
+function PopularCardWrapper({ place, onPressPlace, index }) {
+  const handlePress = useCallback(() => {
+    onPressPlace(place);
+  }, [place, onPressPlace]);
+
+  return (
+    <PopularCard
+      place={place}
+      onPress={handlePress}
+      index={index}
+    />
+  );
+}
+
 function PopularSectionInner({ places, onPressPlace, title = "Phổ biến" }) {
   if (!places?.length) return null;
 
@@ -26,10 +40,10 @@ function PopularSectionInner({ places, onPressPlace, title = "Phổ biến" }) {
 
       <View className="gap-3">
         {places.map((item, index) => (
-          <PopularCard
+          <PopularCardWrapper
             key={item?.id != null ? String(item.id) : `popular-${index}`}
             place={item}
-            onPress={() => onPressPlace(item)}
+            onPressPlace={onPressPlace}
             index={index}
           />
         ))}

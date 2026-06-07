@@ -142,6 +142,7 @@ export const getDashboard = async (userId, options = {}) => {
     bookingsCount,
     bookingsByStatus,
     revenue,
+    refundAggregate,
     pendingBookingsToday,
     newBookingsThisWeek,
     avgRating,
@@ -161,6 +162,14 @@ export const getDashboard = async (userId, options = {}) => {
     prisma.booking.aggregate({
       where: completedBookingWhere,
       _sum: { finalPrice: true, commissionAmount: true },
+    }),
+    // Sum refund amounts from payments of completed bookings
+    prisma.payment.aggregate({
+      where: {
+        booking: completedBookingWhere,
+        refundAmount: { gt: 0 },
+      },
+      _sum: { refundAmount: true },
     }),
     prisma.booking.count({
       where: {
@@ -246,7 +255,9 @@ export const getDashboard = async (userId, options = {}) => {
       ? Number(((completedCount / conversionRateBase) * 100).toFixed(1))
       : 0;
 
-  const totalRevenue = revenue._sum.finalPrice || 0;
+  const grossRevenue = revenue._sum.finalPrice || 0;
+  const totalRefunds = refundAggregate._sum.refundAmount || 0;
+  const totalRevenue = grossRevenue - totalRefunds;
   const totalCommission = revenue._sum.commissionAmount || 0;
   const netRevenue = totalRevenue - totalCommission;
 

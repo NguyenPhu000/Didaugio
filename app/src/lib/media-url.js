@@ -1,4 +1,4 @@
-import { API_BASE_CANDIDATES } from "../constants/api";
+import { API_BASE_CANDIDATES, API_BASE_URL } from "../constants/api";
 
 const PROD_ORIGIN = "https://api.didaugio.vn";
 
@@ -9,6 +9,16 @@ const MEDIA_ORIGINS = API_BASE_CANDIDATES.map((base) =>
 )
   .filter((value, index, array) => value && array.indexOf(value) === index)
   .sort((a, b) => {
+    // 1. Ưu tiên API_BASE_URL hiện tại của ứng dụng
+    const currentOrigin = API_BASE_URL
+      ? String(API_BASE_URL).replace(/\/+$/, "").replace(/\/api$/i, "")
+      : "";
+    const aCurrent = a === currentOrigin;
+    const bCurrent = b === currentOrigin;
+    if (aCurrent && !bCurrent) return -1;
+    if (!aCurrent && bCurrent) return 1;
+
+    // 2. Dự phòng (các quy tắc cũ)
     const aScore =
       Number(a === PROD_ORIGIN) * 3 + Number(a.startsWith("https://")) * 2;
     const bScore =

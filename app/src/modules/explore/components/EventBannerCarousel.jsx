@@ -1,5 +1,5 @@
 import { memo, useCallback, useState, useMemo } from "react";
-import { Dimensions, FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, Text, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
@@ -17,14 +17,10 @@ import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../../lib/media-u
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const SCREEN_W = Dimensions.get("window").width;
-const BANNER_W = SCREEN_W - 32; // margin 16 mỗi bên
 const BANNER_H = 170;
-const ITEM_LENGTH = BANNER_W + 12; // banner + separator
-
 const SPRING_CONFIG = TOKENS.spring.press;
 
-function BannerItem({ event, onPress }) {
+function BannerItem({ event, onPress, bannerWidth }) {
   const scale = useSharedValue(1);
 
   const rawImage = event?.thumbnail || event?.imageUrl;
@@ -48,25 +44,23 @@ function BannerItem({ event, onPress }) {
   }, [onPress]);
 
   // Trạng thái thời gian
-  const now = new Date();
-  const start = event?.startDate ? new Date(event.startDate) : null;
-  const end = event?.endDate ? new Date(event.endDate) : null;
-
-  let statusText = "Sắp diễn ra";
-  if (start && end) {
-    if (now >= start && now <= end) {
-      statusText = "Đang diễn ra";
-    } else if (now > end) {
-      statusText = "Đã kết thúc";
+  const statusText = useMemo(() => {
+    const now = Date.now();
+    const start = event?.startDate ? new Date(event.startDate).getTime() : null;
+    const end = event?.endDate ? new Date(event.endDate).getTime() : null;
+    if (start && end) {
+      if (now >= start && now <= end) return "Đang diễn ra";
+      if (now > end) return "Đã kết thúc";
     }
-  }
+    return "Sắp diễn ra";
+  }, [event?.startDate, event?.endDate]);
 
   return (
     <AnimatedPressable
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={[animatedStyle, { width: BANNER_W, height: BANNER_H }]}
+      style={[animatedStyle, { width: bannerWidth, height: BANNER_H }]}
       className="rounded-[24px] overflow-hidden bg-[#EDEDF2] shadow-sm relative border border-black/5"
     >
       {/* Background Image */}
@@ -152,25 +146,28 @@ function BannerItem({ event, onPress }) {
   );
 }
 
-const getItemLayout = (_, index) => ({
-  length: ITEM_LENGTH,
-  offset: ITEM_LENGTH * index,
-  index,
-});
-
 const keyExtractor = (item, index) =>
   item?.id != null ? String(item.id) : `banner-${index}`;
 
 function EventBannerCarouselInner({ events, onPressEvent }) {
+  const { width: SCREEN_W } = useWindowDimensions();
+  const BANNER_W = SCREEN_W - 32;
+  const ITEM_LENGTH = BANNER_W + 12;
+
+  const getItemLayout = (_, index) => ({
+    length: ITEM_LENGTH,
+    offset: ITEM_LENGTH * index,
+    index,
+  });
   const [activeIndex, setActiveIndex] = useState(0);
   const dotCount = useMemo(() => Math.min(events?.length || 0, 5), [events]);
 
   const renderItem = useCallback(
     ({ item }) => {
       const handlePress = () => onPressEvent(item);
-      return <BannerItem event={item} onPress={handlePress} />;
+      return <BannerItem event={item} onPress={handlePress} bannerWidth={BANNER_W} />;
     },
-    [onPressEvent],
+    [onPressEvent, BANNER_W],
   );
 
   if (!events?.length) return null;

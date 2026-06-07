@@ -287,7 +287,7 @@ export function useGoogleLogin() {
 
         if (result.type === "error") {
           clearCallbackTimeout();
-          setError(result.error?.message || "Đăng nhập Google thất bại.");
+          setError(result.error?.message || i18n.t("authValidation.googleFailed"));
           setIsLoading(false);
           return;
         }

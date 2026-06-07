@@ -15,6 +15,9 @@ import {
   getHeroTrip,
   getDateRangeLabel,
   getTimelineLabel,
+  getDaysUntil,
+  calcDayCount,
+  toValidDate,
 } from "../utils/tripHelpers";
 import {
   resolveTripCoverUri,
@@ -171,6 +174,26 @@ export function TripsDashboard({
                 </Text>
               </View>
             </View>
+
+            {/* Countdown badge for upcoming trips */}
+            {(() => {
+              const daysUntil = getDaysUntil(heroTrip?.startDate);
+              if (daysUntil === null || daysUntil > 30) return null;
+              return (
+                <View style={{ alignSelf: "flex-start", marginTop: 4 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(0,122,255,0.25)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 }}>
+                    <MaterialIconsRounded name="schedule" size={14} color="#FFFFFF" />
+                    <Text style={{ color: "#FFFFFF", fontSize: 13, fontFamily: TOKENS.font.semibold, letterSpacing: -0.1 }}>
+                      {daysUntil === 0
+                        ? t('tripDashboard.startToday')
+                        : daysUntil === 1
+                          ? t('tripDashboard.startTomorrow')
+                          : t('tripDashboard.daysUntil', { count: daysUntil })}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })()}
           </View>
         </Pressable>
       ) : (

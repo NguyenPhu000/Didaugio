@@ -16,6 +16,7 @@ import {
   useDeleteTrip,
   useSaveTrip,
   useUnsaveTrip,
+  useDuplicateTrip,
 } from "../../src/modules/trips/hooks/useTrips";
 import { useMyBookings } from "../../src/modules/booking/hooks/useBooking";
 import {
@@ -38,8 +39,11 @@ import ItineraryTab from "../../src/modules/trips/components/trip-detail/Itinera
 import { ServicesTab } from "../../src/modules/trips/components/trip-detail/ServicesTab";
 import { BudgetTab } from "../../src/modules/trips/components/trip-detail/BudgetTab";
 import EditTripModal from "../../src/modules/trips/components/trip-detail/EditTripModal";
+import { ShareTripModal } from "../../src/modules/trips/components/trip-detail/ShareTripModal";
+import { TripCompleteCelebration } from "../../src/modules/trips/components/trip-detail/TripCompleteCelebration";
 import s, { T } from "../../src/modules/trips/utils/tripDetailTokens";
 import { useTranslation } from "react-i18next";
+import * as Haptics from "expo-haptics";
 
 const BOOKINGS_FILTERS = { limit: 500 };
 
@@ -52,6 +56,8 @@ export default function TripDetailScreen() {
   const [activeTab, setActiveTab] = useState("itinerary");
   const [isEditTripOpen, setIsEditTripOpen] = useState(false);
   const [isAddPlaceOpen, setIsAddPlaceOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const activeTripState = useActiveTrip();
   const isCurrentActiveTrip = activeTripState.isActive && String(activeTripState.activeTripId) === String(tripId);
@@ -68,6 +74,7 @@ export default function TripDetailScreen() {
   const deleteTripMutation = useDeleteTrip();
   const saveTripMutation = useSaveTrip();
   const unsaveTripMutation = useUnsaveTrip();
+  const duplicateMutation = useDuplicateTrip();
   const { data: bookingsPayload, isLoading: isBookingsLoading } =
     useMyBookings(BOOKINGS_FILTERS);
 
@@ -195,6 +202,55 @@ export default function TripDetailScreen() {
     }
   }, [trip?.id, trip?.isSaved, saveTripMutation, unsaveTripMutation]);
 
+  const handleDuplicateTrip = useCallback(() => {
+    if (!trip?.id || duplicateMutation.isPending) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    duplicateMutation.mutate(trip.id, {
+      onSuccess: (result) => {
+        const newId = result?.data?.id;
+        Alert.alert(
+          t("trip.detail.duplicateSuccess"),
+          t("trip.detail.duplicateSuccessMsg", { name: `${trip.title} (${t("trip.detail.duplicateTrip")})` }),
+          [
+            { text: t("trip.detail.openNewTrip"), onPress: () => router.replace(`/trip/${newId}`) },
+            { text: t("trip.detail.stayHere"), style: "cancel" },
+          ],
+        );
+      },
+      onError: (error) => {
+        Alert.alert(t("common.error"), error?.message || t("trip.detail.duplicateError"));
+      },
+    });
+  }, [trip?.id, trip?.title, duplicateMutation, router]);
+
+  const handleMarkComplete = useCallback(() => {
+    if (!trip?.id || updateTripMutation.isPending) return;
+    Alert.alert(
+      t("trip.detail.completeTitle"),
+      t("trip.detail.completeMessage", { name: trip.title }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("trip.detail.complete"),
+          onPress: () => {
+            setIsEditTripOpen(false);
+            updateTripMutation.mutate(
+              { status: "completed" },
+              {
+                onSuccess: () => {
+                  setShowCelebration(true);
+                },
+                onError: (error) => {
+                  Alert.alert(t("common.error"), error?.message || t("trip.detail.completeError"));
+                },
+              },
+            );
+          },
+        },
+      ],
+    );
+  }, [trip?.id, trip?.title, updateTripMutation]);
+
   /* ─── Loading ─── */
   if (isLoading) {
     return (
@@ -227,6 +283,9 @@ export default function TripDetailScreen() {
         isSaved={trip.isSaved}
         onToggleSave={handleToggleSave}
         onAddPlace={() => setIsAddPlaceOpen(true)}
+        onShareTrip={() => setIsShareOpen(true)}
+        onDuplicateTrip={handleDuplicateTrip}
+        isDuplicating={duplicateMutation.isPending}
       />
 
       <TripTabBar
@@ -270,6 +329,20 @@ export default function TripDetailScreen() {
         isSaving={updateTripMutation.isPending}
         onCancel={() => setIsEditTripOpen(false)}
         onSave={handleSaveTrip}
+        onComplete={handleMarkComplete}
+      />
+
+      <ShareTripModal
+        visible={isShareOpen}
+        tripId={tripId}
+        tripTitle={trip?.title}
+        onClose={() => setIsShareOpen(false)}
+      />
+
+      <TripCompleteCelebration
+        visible={showCelebration}
+        tripTitle={trip?.title}
+        onDismiss={() => setShowCelebration(false)}
       />
     </View>
   );

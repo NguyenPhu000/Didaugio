@@ -1,6 +1,7 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Compass, Bookmark, CloudOff, RefreshCw, FolderX } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
+import Animated, { FadeInUp, FadeIn } from "react-native-reanimated";
 import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 
@@ -8,13 +9,13 @@ export function LoadingState() {
   return (
     <View style={{ flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 6, paddingTop: 16 }}>
       {[1, 2, 3, 4].map((i, index) => (
-        <View 
-          key={i} 
+        <Animated.View
+          key={i}
+          entering={FadeInUp.delay(index * 60).springify().damping(16)}
           style={{
             width: "50%",
             paddingHorizontal: 6,
             marginBottom: 12,
-            paddingTop: index % 2 === 0 ? 0 : 24,
           }}
         >
           <View style={styles.skeletonCard}>
@@ -26,14 +27,14 @@ export function LoadingState() {
                 <View style={styles.skeletonRoundBtn} />
               </View>
             </View>
-            
+
             {/* Bottom Panel */}
             <View style={styles.skeletonMetaPanel}>
               <View style={styles.skeletonLineTitle} />
               <View style={styles.skeletonLineText} />
             </View>
           </View>
-        </View>
+        </Animated.View>
       ))}
     </View>
   );
@@ -43,14 +44,19 @@ export function EmptyState({ onExplore, activeFilter }) {
   const { t } = useTranslation();
   const isFiltered = Boolean(activeFilter);
   return (
-    <View style={styles.stateCard}>
-      <View style={[styles.stateIconWrap, isFiltered && styles.stateIconWrapMuted]}>
-        {isFiltered ? (
-          <FolderX size={32} color="#64748B" strokeWidth={1.5} />
-        ) : (
-          <Bookmark size={32} color="#0F172A" strokeWidth={1.5} />
-        )}
-      </View>
+    <Animated.View
+      entering={FadeInUp.springify().damping(16).stiffness(160)}
+      style={styles.stateCard}
+    >
+      <Animated.View entering={FadeInUp.delay(100).springify().damping(16)}>
+        <View style={[styles.stateIconWrap, isFiltered && styles.stateIconWrapMuted]}>
+          {isFiltered ? (
+            <FolderX size={32} color="#64748B" strokeWidth={1.5} />
+          ) : (
+            <Bookmark size={32} color="#0F172A" strokeWidth={1.5} />
+          )}
+        </View>
+      </Animated.View>
       <Text style={styles.stateTitle}>
         {isFiltered ? t("saved.empty.noResults") : t("saved.empty.noSaved")}
       </Text>
@@ -68,17 +74,22 @@ export function EmptyState({ onExplore, activeFilter }) {
           <Text style={styles.stateCtaText}>{t("saved.empty.explore")}</Text>
         </Pressable>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 
 export function ErrorState({ onRetry }) {
   const { t } = useTranslation();
   return (
-    <View style={styles.stateCard}>
-      <View style={[styles.stateIconWrap, styles.stateIconError]}>
-        <CloudOff size={32} color="#FF3B30" strokeWidth={1.5} />
-      </View>
+    <Animated.View
+      entering={FadeInUp.springify().damping(16).stiffness(160)}
+      style={styles.stateCard}
+    >
+      <Animated.View entering={FadeInUp.delay(80).springify().damping(16)}>
+        <View style={[styles.stateIconWrap, styles.stateIconError]}>
+          <CloudOff size={32} color="#FF3B30" strokeWidth={1.5} />
+        </View>
+      </Animated.View>
       <Text style={styles.stateTitle}>{t("common.error")}</Text>
       <Text style={styles.stateDesc}>
         {t("common.networkError")}
@@ -92,7 +103,7 @@ export function ErrorState({ onRetry }) {
           <Text style={styles.stateRetryText}>{t("common.retry")}</Text>
         </Pressable>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -106,10 +117,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "rgba(15, 23, 42, 0.05)",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.03,
-    shadowRadius: 16,
+    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)",
     elevation: 1,
   },
   stateIconWrap: {

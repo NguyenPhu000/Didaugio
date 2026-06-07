@@ -31,7 +31,7 @@ function calcTotalDays(start, end) {
   return days > 0 ? days : 1;
 }
 
-function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
+function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }) {
   const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -302,6 +302,17 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                   ios_backgroundColor="rgba(0,0,0,0.12)"
                 />
               </View>
+
+              {onComplete && (
+                <Pressable
+                  onPress={onComplete}
+                  disabled={isSaving}
+                  className="flex-row items-center justify-center gap-2.5 py-3.5 rounded-2xl border-2 border-[#34C759]/30 bg-[#34C759]/5"
+                >
+                  <MaterialIconsRounded name="task-alt" size={18} color="#34C759" />
+                  <Text className="text-[15px] font-semibold text-[#34C759] tracking-tight">{t('editTrip.markComplete') || t('trip.detail.markComplete')}</Text>
+                </Pressable>
+              )}
             </ScrollView>
 
             <View className="px-5 pt-4 pb-2 border-t border-black/[0.07] bg-white flex-shrink-0">

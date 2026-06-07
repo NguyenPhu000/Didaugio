@@ -39,3 +39,22 @@ export const unsaveTripApi = (tripId) =>
 
 export const getSavedTripsApi = () =>
   client.get(ENDPOINTS.profile.savedTrips);
+
+// ─── Trip Share ──────────────────────────────────────────────────────────────
+
+export const createTripShareApi = (tripId, data) =>
+  client.post(ENDPOINTS.profile.tripShare(tripId), data);
+
+export const getTripSharesApi = (tripId) =>
+  client.get(ENDPOINTS.profile.tripShare(tripId));
+
+export const deleteTripShareApi = (tripId, shareId) =>
+  client.delete(ENDPOINTS.profile.tripShareById(tripId, shareId));
+
+export const accessTripShareApi = (shareCode, data) =>
+  client.post(ENDPOINTS.profile.accessTripShare(shareCode), data);
+
+// ─── Trip Duplicate ──────────────────────────────────────────────────────────
+
+export const duplicateTripApi = (tripId) =>
+  client.post(ENDPOINTS.profile.duplicateTrip(tripId));

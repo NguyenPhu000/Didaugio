@@ -3,13 +3,8 @@ import { StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../../../constants/design-tokens";
-
-const HERO_FEATURES = [
-  { icon: "event", label: "Thời gian" },
-  { icon: "bookmark", label: "Đã lưu" },
-  { icon: "route", label: "Lộ trình" },
-];
 
 const FeaturePill = memo(function FeaturePill({ icon, label, delay }) {
   return (
@@ -21,6 +16,12 @@ const FeaturePill = memo(function FeaturePill({ icon, label, delay }) {
 });
 
 function HeroSectionInner() {
+  const { t } = useTranslation();
+  const HERO_FEATURES = [
+    { icon: "event", label: t("trip.createHero.time") },
+    { icon: "bookmark", label: t("trip.createHero.saved") },
+    { icon: "route", label: t("trip.createHero.itinerary") },
+  ];
   return (
     <Animated.View entering={FadeInDown.delay(60).duration(480)} style={styles.wrap}>
       <LinearGradient
@@ -63,7 +64,7 @@ function HeroSectionInner() {
         <View style={styles.content}>
           <Animated.View entering={FadeInDown.delay(120).duration(400)} style={styles.badge}>
             <View style={styles.badgeDot} />
-            <Text style={styles.badgeText}>Chuyến đi mới</Text>
+            <Text style={styles.badgeText}>{t("trip.createHero.newTrip")}</Text>
           </Animated.View>
 
           <Animated.Text

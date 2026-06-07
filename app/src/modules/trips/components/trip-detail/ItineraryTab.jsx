@@ -1,9 +1,15 @@
-import { memo, useState, useCallback, useMemo, useEffect } from "react";
+import { memo, useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { useFocusEffect } from "expo-router";
+import { useTranslation } from "react-i18next";
 import DraggableFlatList from "react-native-draggable-flatlist";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { buildDestinationBookings, buildDayList, parseTimeToDate } from "../../utils/tripHelpers";
+import {
+  buildDestinationBookings,
+  buildDayList,
+  parseTimeToDate,
+  toValidDate,
+} from "../../utils/tripHelpers";
 import { useReorderDestinations, useUpdateDestination, useMoveDestination, useRemoveDestination } from "../../hooks/useTripDetail";
 import { getActiveTripId, getVisitedDestinations } from "../../hooks/useActiveTrip";
 import TimelineCard from "./TimelineCard";
@@ -26,6 +32,7 @@ function ItineraryTab({
   isCurrentActiveTrip = false,
   isPaused = false,
 }) {
+  const { t } = useTranslation();
   const tripId = trip?.id;
   const destinations = trip?.destinations || [];
 
@@ -35,8 +42,8 @@ function ItineraryTab({
     title: "",
     message: "",
     type: "error",
-    confirmText: "Đóng",
-    cancelText: "Hủy",
+    confirmText: t("trip.itinerary.close"),
+    cancelText: t("common.cancel"),
     onConfirm: null,
     onCancel: null,
     isDestructive: false,
@@ -85,14 +92,40 @@ function ItineraryTab({
   const days = useMemo(() => buildDayList(trip), [trip]);
   const totalDays = days.length;
 
+  // Xác định ngày nào là "hôm nay" trong trip
+  const currentDayNumber = useMemo(() => {
+    if (!trip?.startDate) return null;
+    const startDate = toValidDate(trip.startDate);
+    if (!startDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const diffMs = today.getTime() - start.getTime();
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
+    if (diffDays < 1 || diffDays > totalDays) return null;
+    return diffDays;
+  }, [trip?.startDate, totalDays]);
+
   const [selectedDay, setSelectedDay] = useState(1);
   const [movingDest, setMovingDest] = useState(null);
   const [editingDest, setEditingDest] = useState(null);
+  const initializedRef = useRef(false);
 
-  // Giữ ngày đang chọn luôn nằm trong khoảng hợp lệ khi tổng số ngày thay đổi
+  // Set initial selected day to current trip day on first render
+  useEffect(() => {
+    if (!initializedRef.current && currentDayNumber != null) {
+      initializedRef.current = true;
+      setSelectedDay(currentDayNumber);
+    }
+  }, [currentDayNumber]);
+
+  // Keep selected day in valid range when totalDays changes
   useEffect(() => {
     if (selectedDay > totalDays) setSelectedDay(totalDays);
   }, [selectedDay, totalDays]);
+
+  const isToday = (dayNumber) => currentDayNumber === dayNumber;
 
   const formatChipDate = useCallback((date) => {
     if (!date) return null;
@@ -128,8 +161,8 @@ function ItineraryTab({
         {
           onError: (error) => {
             showAlert({
-              title: "Lỗi",
-              message: error?.message || "Không thể sắp xếp lại các điểm đến. Vui lòng thử lại."
+              title: t("trip.itinerary.error"),
+              message: error?.message || t("trip.itinerary.reorderError")
             });
           },
         }
@@ -142,18 +175,18 @@ function ItineraryTab({
   const handleRemove = useCallback(
     (dest) => {
       showAlert({
-        title: "Bỏ địa điểm",
-        message: `Bỏ "${dest.place?.name}" khỏi lịch trình?`,
+        title: t("trip.itinerary.removeTitle"),
+        message: t("trip.itinerary.removeMessage", { name: dest.place?.name }),
         type: "confirm",
-        confirmText: "Bỏ",
-        cancelText: "Hủy",
+        confirmText: t("trip.itinerary.remove"),
+        cancelText: t("common.cancel"),
         isDestructive: true,
         onConfirm: () => {
           removeMutation.mutate(dest.id, {
             onError: (error) => {
               showAlert({
-                title: "Lỗi",
-                message: error?.message || "Không thể bỏ địa điểm này. Vui lòng thử lại."
+                title: t("trip.itinerary.error"),
+                message: error?.message || t("trip.itinerary.removeError")
               });
             },
           });
@@ -186,8 +219,8 @@ function ItineraryTab({
         setSelectedDay(newDayNumber);
       } catch (error) {
         showAlert({
-          title: "Lỗi",
-          message: error?.message || "Không thể dời địa điểm này. Vui lòng thử lại."
+          title: t("trip.itinerary.error"),
+          message: error?.message || t("trip.itinerary.moveError")
         });
       }
     },
@@ -202,8 +235,8 @@ function ItineraryTab({
           onSuccess: () => setMovingDest(null),
           onError: (error) => {
             showAlert({
-              title: "Lỗi",
-              message: error?.message || "Không thể cập nhật địa điểm. Vui lòng thử lại."
+              title: t("trip.itinerary.error"),
+              message: error?.message || t("trip.itinerary.updateError")
             });
           },
         },
@@ -254,8 +287,8 @@ function ItineraryTab({
           },
           onError: (error) => {
             showAlert({
-              title: "Lỗi",
-              message: error?.message || "Không thể lưu thay đổi. Vui lòng thử lại."
+              title: t("trip.itinerary.error"),
+              message: error?.message || t("trip.itinerary.saveError")
             });
           },
         },
@@ -303,14 +336,14 @@ function ItineraryTab({
 
   const startTripTitle = isCurrentActiveTrip
     ? isPaused
-      ? "Tiếp tục hành trình"
-      : "Xem bản đồ hành trình"
-    : "Bắt đầu hành trình";
+      ? t("trip.itinerary.continueTrip")
+      : t("trip.itinerary.viewMap")
+    : t("trip.itinerary.startTrip");
 
   const startTripSubtitle = isCurrentActiveTrip
     ? isPaused
-      ? "Khôi phục chỉ đường và theo dõi vị trí"
-      : "Xem bản đồ dẫn đường thời gian thực"
+      ? t("trip.itinerary.resumeSubtitle")
+      : t("trip.itinerary.mapSubtitle")
     : "";
 
   return (
@@ -333,18 +366,21 @@ function ItineraryTab({
                 style={({ pressed }) => [
                   pressed && { opacity: 0.9 },
                 ]}
-                className={`px-3 rounded-2xl items-center justify-center gap-0.5 h-14 min-w-[64px] max-w-[88px] ${isActive ? "bg-[#1D1D1F]" : "bg-black/[0.04]"}`}
+                className={`px-3 rounded-2xl items-center justify-center gap-0.5 h-14 min-w-[64px] max-w-[88px] ${isActive ? "bg-[#1D1D1F]" : "bg-black/[0.04]"} ${isToday(dayNumber) && !isActive ? "border-2 border-[#007AFF]" : ""}`}
                 onPress={() => setSelectedDay(dayNumber)}
               >
+                {isToday(dayNumber) && !isActive ? (
+                  <View className="absolute -top-1 right-1 w-2 h-2 rounded-full bg-[#007AFF]" />
+                ) : null}
                 <Text
-                  className={`text-[13px] font-semibold tracking-tight ${isActive ? "text-white" : "text-[#1D1D1F]"}`}
+                  className={`text-[13px] font-semibold tracking-tight ${isActive ? "text-white" : isToday(dayNumber) ? "text-[#007AFF]" : "text-[#1D1D1F]"}`}
                   numberOfLines={1}
                 >
-                  Ngày {dayNumber}
+                  {isToday(dayNumber) ? `Hôm nay` : `Ngày ${dayNumber}`}
                 </Text>
                 {date ? (
                   <Text
-                    className={`text-[10px] font-normal tracking-tight ${isActive ? "text-white" : "text-[#1D1D1F]/50"}`}
+                    className={`text-[10px] font-normal tracking-tight ${isActive ? "text-white" : isToday(dayNumber) ? "text-[#007AFF]/70" : "text-[#1D1D1F]/50"}`}
                     numberOfLines={1}
                   >
                     {formatChipDate(date)}
@@ -359,10 +395,10 @@ function ItineraryTab({
                     alignSelf: "center",
                     zIndex: 1,
                   }}
-                  className={`min-w-[18px] h-[18px] rounded-full items-center justify-center px-1.25 ${isActive ? "bg-[#1D1D1F]" : "bg-black/[0.12]"}`}
+                  className={`min-w-[18px] h-[18px] rounded-full items-center justify-center px-1.25 ${isActive ? "bg-white" : isToday(dayNumber) ? "bg-[#007AFF]" : "bg-black/[0.12]"}`}
                 >
                   <Text
-                    className={`text-[10px] font-semibold ${isActive ? "text-white" : "text-[#1D1D1F]"}`}
+                    className={`text-[10px] font-semibold ${isActive ? "text-[#1D1D1F]" : "text-white"}`}
                   >
                     {dayDests.length}
                   </Text>
@@ -390,7 +426,7 @@ function ItineraryTab({
             {isStartingTrip ? (
               <View className="flex-row items-center justify-center gap-2.5">
                 <ActivityIndicator size="small" color="#FFFFFF" />
-                <Text className="text-[14px] font-medium text-white/60 tracking-tight">Đang khởi động…</Text>
+                <Text className="text-[14px] font-medium text-white/60 tracking-tight">{t("trip.itinerary.starting")}</Text>
               </View>
             ) : (
               <View className="flex-row items-center justify-center px-6 gap-3.5">
@@ -425,7 +461,7 @@ function ItineraryTab({
       {/* Action Header */}
       <View className="flex-row items-center justify-between px-5 py-2.5 bg-[#F8FAFC]">
         <Text className="text-[13px] font-semibold text-black/[0.45] tracking-tight">
-          {dayDestinations.length} địa điểm
+          {t("trip.itinerary.destinationCount", { count: dayDestinations.length })}
         </Text>
         <Pressable
           style={({ pressed }) => [
@@ -436,7 +472,7 @@ function ItineraryTab({
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Text className="text-white text-[12px] font-semibold tracking-tight">
-            <MaterialIconsRounded name="add" size={16} color="#FFFFFF" /> Thêm địa điểm
+            <MaterialIconsRounded name="add" size={16} color="#FFFFFF" /> {t("trip.itinerary.addDestination")}
           </Text>
         </Pressable>
       </View>
@@ -460,9 +496,9 @@ function ItineraryTab({
                 color="rgba(0,0,0,0.2)"
               />
             </View>
-            <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">Chưa có địa điểm</Text>
+            <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">{t("trip.itinerary.noDestinations")}</Text>
             <Text className="text-[14px] text-black/40 font-normal tracking-tight">
-              Thêm địa điểm yêu thích vào ngày này
+              {t("trip.itinerary.noDestinationsDesc")}
             </Text>
             <Pressable
               style={({ pressed }) => [
@@ -473,7 +509,7 @@ function ItineraryTab({
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Text className="text-white text-[13px] font-semibold tracking-tight">
-                <MaterialIconsRounded name="add" size={16} color="#FFFFFF" /> Thêm địa điểm
+                <MaterialIconsRounded name="add" size={16} color="#FFFFFF" /> {t("trip.itinerary.addDestination")}
               </Text>
             </Pressable>
           </View>

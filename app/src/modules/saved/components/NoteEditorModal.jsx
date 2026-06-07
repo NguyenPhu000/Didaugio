@@ -9,6 +9,15 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  SlideInDown,
+  SlideOutDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
@@ -25,56 +34,93 @@ export function NoteEditorModal({
   onSubmit,
 }) {
   const { t } = useTranslation();
+  const cardScale = useSharedValue(1);
+
+  const animatedCardStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: cardScale.value }],
+  }));
+
+  const handlePressIn = () => {
+    cardScale.value = withSpring(0.97, { damping: 14, stiffness: 180 });
+  };
+  const handlePressOut = () => {
+    cardScale.value = withSpring(1, { damping: 14, stiffness: 160 });
+  };
+
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1 justify-center px-5 bg-black/50"
+      <Animated.View
+        entering={FadeIn.duration(200)}
+        exiting={FadeOut.duration(150)}
+        style={styles.backdrop}
       >
-        <View className="rounded-[28px] p-6 gap-3 bg-white shadow-lg elevation-8">
-          <Text className="text-[#1D1D1F] text-[22px] font-bold tracking-[-0.4px]">{t('noteEditor.title')}</Text>
-          <Text className="text-[#54647A] text-[14px] leading-5 tracking-[-0.1px]" numberOfLines={2}>
-            {placeName || t('noteEditor.subtitle')}
-          </Text>
-
-          <TextInput
-            value={value}
-            onChangeText={onChangeText}
-            placeholder={t('noteEditor.placeholder')}
-            placeholderTextColor="rgba(29, 29, 31, 0.42)"
-            multiline
-            maxLength={500}
-            className="min-h-[120px] rounded-[18px] px-3.5 py-3 text-[#1D1D1F] text-sm leading-5 bg-[#F5F5F7] border border-black/[0.06]"
-            textAlignVertical="top"
-          />
-
-          <View className="flex-row gap-2.5 mt-1">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          className="flex-1 justify-center px-5"
+        >
+          <Animated.View
+            entering={SlideInDown.springify().damping(16).stiffness(160)}
+            exiting={SlideOutDown.duration(180)}
+            style={animatedCardStyle}
+          >
             <Pressable
-              onPress={onClose}
-              disabled={saving}
-              className="flex-1 items-center justify-center rounded-full py-3 bg-[#F2F2F7] active:scale-[0.97]"
+              onPressIn={handlePressIn}
+              onPressOut={handlePressOut}
+              className="rounded-[28px] p-6 gap-3 bg-white"
+              style={{ boxShadow: "0 20px 48px rgba(0,0,0,0.18)" }}
             >
-              <Text className="text-[#1D1D1F] text-[15px] font-semibold tracking-[-0.2px]">{t('noteEditor.cancel')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={onSubmit}
-              disabled={saving}
-              className={`flex-1 items-center justify-center rounded-full py-3 bg-[#1D1D1F] active:scale-[0.97] ${
-                saving ? "opacity-60" : ""
-              }`}
-            >
-              <Text className="text-white text-[15px] font-semibold tracking-[-0.2px]">
-                {saving ? t('noteEditor.saving') : t('noteEditor.saveNote')}
+              <Text className="text-[#1D1D1F] text-[22px] font-bold tracking-[-0.4px]">{t('noteEditor.title')}</Text>
+              <Text className="text-[#54647A] text-[14px] leading-5 tracking-[-0.1px]" numberOfLines={2}>
+                {placeName || t('noteEditor.subtitle')}
               </Text>
+
+              <TextInput
+                value={value}
+                onChangeText={onChangeText}
+                placeholder={t('noteEditor.placeholder')}
+                placeholderTextColor="rgba(29, 29, 31, 0.42)"
+                multiline
+                maxLength={500}
+                className="min-h-[120px] rounded-[18px] px-3.5 py-3 text-[#1D1D1F] text-sm leading-5 bg-[#F5F5F7] border border-black/[0.06]"
+                textAlignVertical="top"
+              />
+
+              <View className="flex-row gap-2.5 mt-1">
+                <Pressable
+                  onPress={onClose}
+                  disabled={saving}
+                  className="flex-1 items-center justify-center rounded-full py-3 bg-[#F2F2F7] active:scale-[0.97]"
+                >
+                  <Text className="text-[#1D1D1F] text-[15px] font-semibold tracking-[-0.2px]">{t('noteEditor.cancel')}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={onSubmit}
+                  disabled={saving}
+                  className={`flex-1 items-center justify-center rounded-full py-3 bg-[#1D1D1F] active:scale-[0.97] ${
+                    saving ? "opacity-60" : ""
+                  }`}
+                >
+                  <Text className="text-white text-[15px] font-semibold tracking-[-0.2px]">
+                    {saving ? t('noteEditor.saving') : t('noteEditor.saveNote')}
+                  </Text>
+                </Pressable>
+              </View>
             </Pressable>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </Animated.View>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+});

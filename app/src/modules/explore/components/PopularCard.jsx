@@ -14,7 +14,7 @@ import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../../constants/design-tokens";
-import { resolvePlaceImageUri } from "../../../lib/media-url";
+import { resolvePlaceImageUri, getOptimizedCloudinaryUrl } from "../../../lib/media-url";
 import {
   getPlaceLocation,
   formatPriceLine,
@@ -27,7 +27,10 @@ const SPRING_CONFIG = TOKENS.spring.press;
 
 function PopularCardInner({ place, onPress, index = 0 }) {
   const scale = useSharedValue(1);
-  const imageUri = resolvePlaceImageUri(place);
+  const rawImageUri = resolvePlaceImageUri(place);
+  const imageUri = rawImageUri?.includes("res.cloudinary.com")
+    ? getOptimizedCloudinaryUrl(rawImageUri, 250)
+    : rawImageUri;
   const location = getPlaceLocation(place) || "Cần Thơ";
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
   const hasRating = Number.isFinite(rating) && rating > 0;

@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, Text, View, useWindowDimensions } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -12,20 +12,24 @@ import {
   TOKENS,
 } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
-import { FeaturedCard, FEATURED_CARD_W } from "./FeaturedCard";
+import { FeaturedCard } from "./FeaturedCard";
 
-const ITEM_LENGTH = FEATURED_CARD_W + 14; // card + separator
-
-const getItemLayout = (_, index) => ({
-  length: ITEM_LENGTH,
-  offset: ITEM_LENGTH * index,
-  index,
-});
+const PAD = 24;
+const CARD_SEP = 14;
 
 const keyExtractor = (item, index) =>
   item?.id != null ? String(item.id) : `featured-${index}`;
 
 function FeaturedSectionInner({ places, onPressPlace, onPressViewAll, onSavePlace, savedPlaceIds }) {
+  const { width: SCREEN_W } = useWindowDimensions();
+  const CARD_W = Math.min(300, SCREEN_W - PAD * 2 - 16);
+  const ITEM_LENGTH = CARD_W + CARD_SEP;
+  const getItemLayout = (_, index) => ({
+    length: ITEM_LENGTH,
+    offset: ITEM_LENGTH * index,
+    index,
+  });
+
   const [activeIndex, setActiveIndex] = useState(0);
   const dotCount = useMemo(() => Math.min(places?.length || 0, 4), [places]);
 
@@ -47,6 +51,7 @@ function FeaturedSectionInner({ places, onPressPlace, onPressViewAll, onSavePlac
     [onPressPlace, onSavePlace, savedPlaceIds],
   );
 
+  // Ẩn toàn bộ section (kể cả header) khi không có dữ liệu
   if (!places?.length) return null;
 
   return (

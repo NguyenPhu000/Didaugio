@@ -182,6 +182,17 @@ export const emitToAdmins = (event, data) => {
 };
 
 /**
+ * Emit an event to ALL connected users.
+ * @param {string} event
+ * @param {object} data
+ */
+export const emitToAll = (event, data) => {
+  const io = ioInstance;
+  if (!io) return;
+  io.emit(event, data);
+};
+
+/**
  * Emit a notification to all sockets for a business.
  * @param {number} businessId
  * @param {string} event

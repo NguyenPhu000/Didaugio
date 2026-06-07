@@ -266,6 +266,8 @@ model BannerMarketing {
   title         String
   description   String?
   imageData     String   @map("image_data")
+  imageUrl      String?  @map("image_url")
+  imagePublicId String?  @map("image_public_id")
   linkType      String   @default("none") @map("link_type")
   linkValue     String?  @map("link_value")
   position      String   @default("home")
@@ -279,6 +281,7 @@ model BannerMarketing {
   createdAt     DateTime @default(now()) @map("created_at")
   createdByUser User     @relation(fields: [createdBy], references: [id])
 
+  @@index([isActive, startDate, endDate, priority])
   @@map("banners_marketing")
 }
 
@@ -301,6 +304,7 @@ model NotificationGlobal {
   createdByUser User                    @relation(fields: [createdBy], references: [id])
   recipients    NotificationRecipient[]
 
+  @@index([status, targetType, sentAt(sort: Desc)])
   @@map("notifications_global")
 }
 
@@ -486,6 +490,7 @@ model Place {
   @@index([ratingAvg(sort: Desc)])
   @@index([slug])
   @@index([deletedAt])
+  @@index([isFeatured, status, ratingAvg(sort: Desc)])
   @@map("places")
 }
 
@@ -704,6 +709,7 @@ model Trip {
 
   @@index([userId])
   @@index([status])
+  @@index([isPublic, cloneCount(sort: Desc)])
   @@map("trips")
 }
 
@@ -1029,6 +1035,7 @@ model Booking {
   voucher          Voucher?           @relation(fields: [voucherId], references: [id])
   resource         PlaceResource?     @relation(fields: [resourceId], references: [id])
   payment          Payment?
+  transaction      BookingTransaction?
   reviews          Review[]
 
   @@index([userId])
@@ -1046,6 +1053,27 @@ model Booking {
   @@index([serviceId, startTime, endTime])
   @@index([deletedAt])
   @@map("bookings")
+}
+
+// Ledger entry for platform commission tracking.
+// Each completed booking creates one record here so the platform admin
+// can reconcile commission without depending on stale payout calculations.
+model BookingTransaction {
+  id            Int      @id @default(autoincrement())
+  bookingId     Int      @unique @map("booking_id")
+  businessId    Int      @map("business_id")
+  originalPrice Int      @map("original_price")
+  finalPrice    Int      @map("final_price")
+  discountAmount Int      @default(0) @map("discount_amount")
+  commissionRate Int      @map("commission_rate")
+  commissionAmount Int    @map("commission_amount")
+  netAmount     Int      @map("net_amount") // finalPrice - commissionAmount (what business earns)
+  completedAt   DateTime @default(now()) @map("completed_at")
+  source        String   @default("qr_checkin") // "complete", "qr_checkin"
+  booking       Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, completedAt])
+  @@map("booking_transactions")
 }
 
 model Payment {
@@ -1108,6 +1136,9 @@ enum BookingStatus {
 enum BookingAction {
   approve
   reject
+  cancel
+  complete
+  no_show
   reschedule
   quick_approve
   quick_reject

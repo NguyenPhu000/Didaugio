@@ -1,15 +1,24 @@
 import { useCallback, useMemo, useState } from "react";
-import { Alert, RefreshControl, ScrollView, Text, Pressable, View } from "react-native";
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import Animated, { 
-  useSharedValue, 
-  useAnimatedScrollHandler 
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
 } from "react-native-reanimated";
 import { GuestGate } from "../../src/components/ui/GuestGate";
 import { OfflineBanner } from "../../src/components/ui/OfflineBanner";
-import { Map, MapPin, Utensils, Coffee, Hotel, Compass, Sparkles, Grid3x3 } from "lucide-react-native";
+import {
+  Utensils,
+  Coffee,
+  Hotel,
+  Compass,
+  Sparkles,
+  Grid3x3,
+  MapPin,
+} from "lucide-react-native";
 import {
   useSavePlace,
   useUnsavePlace,
@@ -41,12 +50,6 @@ export default function SavedScreen() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const isGuest = useAuthStore((s) => s.isGuest);
   const isLoggedIn = !!accessToken && !isGuest;
-
-  const scrollY = useSharedValue(0);
-
-  const handleScroll = useAnimatedScrollHandler((event) => {
-    scrollY.value = event.contentOffset.y;
-  });
 
   const {
     savedData = [],
@@ -143,24 +146,25 @@ export default function SavedScreen() {
   const handleExplore = useCallback(() => router.push("/explore"), [router]);
 
   const renderItem = useCallback(
-    ({ item, index }) => {
+    ({ item }) => {
       const place = item?.place || item;
       return (
-        <View 
-          className={`flex-1 px-1.5 mb-3 ${index % 2 === 0 ? "pt-0" : "pt-6"}`}
+        <Animated.View
+          entering={FadeIn.delay(40).duration(200)}
+          exiting={FadeOut.duration(150)}
+          layout={LinearTransition.duration(200)}
+          className="flex-1 px-1.5 mb-3"
         >
           <SavedCard
             entry={item}
-            index={index}
-            scrollY={scrollY}
             onPress={() => handleOpenPlace(place?.id)}
             onOpenNote={handleOpenNoteEditor}
             onUnsave={handleUnsave}
           />
-        </View>
+        </Animated.View>
       );
     },
-    [handleOpenNoteEditor, handleOpenPlace, handleUnsave, scrollY],
+    [handleOpenNoteEditor, handleOpenPlace, handleUnsave],
   );
 
   const keyExtractor = useCallback((item) => String(item.id), []);
@@ -222,176 +226,150 @@ export default function SavedScreen() {
     const showAreas = areaItems.length > 1;
 
     return (
-      <View style={{ paddingTop: 16, paddingBottom: 14, paddingHorizontal: 16 }}>
+      <Animated.View
+        entering={FadeIn.duration(300)}
+        style={{ paddingTop: 16, paddingBottom: 14, paddingHorizontal: 16 }}
+      >
         {/* Tiêu đề + Badge */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <Text style={{ fontSize: 28, fontFamily: TOKENS.font.heading, color: "#0F172A", letterSpacing: -0.8 }}>
             {t("saved.title")}
           </Text>
           {filteredSavedData.length > 0 && (
-            <View style={{ height: 26, borderRadius: 13, paddingHorizontal: 10, backgroundColor: "rgba(0,0,0,0.06)", alignItems: "center", justifyContent: "center" }}>
+            <Animated.View
+              entering={FadeIn.delay(200).duration(250)}
+              style={{ height: 26, borderRadius: 13, paddingHorizontal: 10, backgroundColor: "rgba(0,0,0,0.06)", alignItems: "center", justifyContent: "center" }}
+            >
               <Text style={{ fontSize: 13, fontFamily: TOKENS.font.semibold, color: "#6B7280" }}>
                 {filteredSavedData.length}
               </Text>
-            </View>
+            </Animated.View>
           )}
         </View>
 
         {/* Category pills */}
         {showCategories && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, paddingRight: 4, alignItems: "center" }}
-            style={{ marginBottom: showAreas ? 8 : 0 }}
-          >
-            {catItems.map((item) => {
-              const active = activeCategory === item.key;
-              return (
-                <View key={item.key} style={{ overflow: "visible" }}>
-                  <Pressable
-                    onPress={() => setActiveCategory(item.key)}
-                    style={({ pressed }) => [
-                      pressed && { opacity: 0.9 },
-                      {
-                        paddingHorizontal: 12,
-                        borderRadius: 16,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        height: 56,
-                        minWidth: 64,
-                        maxWidth: 88,
-                        backgroundColor: active ? "#1D1D1F" : "rgba(0,0,0,0.04)",
-                      },
-                    ]}
-                  >
-                    <Text
-                      numberOfLines={1}
-                      style={{
-                        fontSize: 13,
-                        fontFamily: TOKENS.font.semibold,
-                        color: active ? "#FFFFFF" : "#1D1D1F",
-                        letterSpacing: -0.2,
-                      }}
+          <View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerClassName="gap-2.5 pr-1 items-center"
+              className={showAreas ? "mb-2" : ""}
+            >
+              {catItems.map((item) => {
+                const active = activeCategory === item.key;
+                const isAll = item.key === ALL_CATEGORIES_KEY;
+                const { Icon, color: iconColor } = isAll
+                  ? { Icon: Grid3x3, color: "#6B7280" }
+                  : getCategoryIcon(item.name);
+                return (
+                  <View key={item.key}>
+                    <Pressable
+                      onPress={() => setActiveCategory(item.key)}
+                      className={`flex-row items-center gap-1.5 px-4 py-2.5 rounded-full ${
+                        active
+                          ? "bg-slate-900 border-0"
+                          : "bg-white border-[1.5px] border-black/[0.08]"
+                      }`}
+                      style={({ pressed }) => ({
+                        opacity: pressed ? 0.85 : 1,
+                        ...(active && {
+                          shadowColor: "#0F172A",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.2,
+                          shadowRadius: 6,
+                          elevation: 3,
+                        }),
+                      })}
                     >
-                      {item.name}
-                    </Text>
-                    <Text
-                      numberOfLines={1}
-                      style={{
-                        fontSize: 10,
-                        fontFamily: TOKENS.font.body,
-                        color: active ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.35)",
-                        marginTop: 1,
-                      }}
-                    >
-                      {t("saved.countLabel", { count: item.count })}
-                    </Text>
-                  </Pressable>
-                  {item.count > 0 && !active ? (
-                    <View
-                      style={{
-                        position: "absolute",
-                        top: -7,
-                        alignSelf: "center",
-                        zIndex: 1,
-                        minWidth: 18,
-                        height: 18,
-                        borderRadius: 9,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        paddingHorizontal: 5,
-                        backgroundColor: active ? "#1D1D1F" : "rgba(0,0,0,0.12)",
-                      }}
-                    >
-                      <Text style={{ fontSize: 10, fontFamily: TOKENS.font.semibold, color: active ? "#FFFFFF" : "#1D1D1F" }}>
-                        {item.count}
+                      <Icon size={15} color={active ? "#FFFFFF" : iconColor} strokeWidth={2.2} />
+                      <Text
+                        numberOfLines={1}
+                        className={`text-[13px] tracking-tight ${
+                          active ? "text-white font-semibold" : "text-slate-900 font-medium"
+                        }`}
+                      >
+                        {item.name}
                       </Text>
-                    </View>
-                  ) : null}
-                </View>
-              );
-            })}
-          </ScrollView>
+                      <View className={`rounded-full px-1.5 py-px min-w-[22px] items-center ${
+                        active ? "bg-white/20" : "bg-black/[0.06]"
+                      }`}>
+                        <Text
+                          numberOfLines={1}
+                          className={`text-[11px] font-semibold ${
+                            active ? "text-white/85" : "text-black/45"
+                          }`}
+                        >
+                          {item.count}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
         )}
 
         {/* Area pills */}
         {showAreas && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, paddingRight: 4, alignItems: "center" }}
-          >
-            {areaItems.map((item) => {
-              const active = activeArea === item.key;
-              return (
-                <View key={item.key} style={{ overflow: "visible" }}>
-                  <Pressable
-                    onPress={() => setActiveArea(item.key)}
-                    style={({ pressed }) => [
-                      pressed && { opacity: 0.9 },
-                      {
-                        paddingHorizontal: 12,
-                        borderRadius: 16,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        height: 56,
-                        minWidth: 64,
-                        maxWidth: 88,
-                        backgroundColor: active ? "#1D1D1F" : "rgba(0,0,0,0.04)",
-                      },
-                    ]}
-                  >
-                    <Text
-                      numberOfLines={1}
-                      style={{
-                        fontSize: 13,
-                        fontFamily: TOKENS.font.semibold,
-                        color: active ? "#FFFFFF" : "#1D1D1F",
-                        letterSpacing: -0.2,
-                      }}
+          <View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerClassName="gap-2.5 pr-1 items-center"
+            >
+              {areaItems.map((item) => {
+                const active = activeArea === item.key;
+                return (
+                  <View key={item.key}>
+                    <Pressable
+                      onPress={() => setActiveArea(item.key)}
+                      className={`flex-row items-center gap-1.5 px-4 py-2.5 rounded-full ${
+                        active
+                          ? "bg-slate-900 border-0"
+                          : "bg-white border-[1.5px] border-black/[0.08]"
+                      }`}
+                      style={({ pressed }) => ({
+                        opacity: pressed ? 0.85 : 1,
+                        ...(active && {
+                          shadowColor: "#0F172A",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.2,
+                          shadowRadius: 6,
+                          elevation: 3,
+                        }),
+                      })}
                     >
-                      {item.name}
-                    </Text>
-                    <Text
-                      numberOfLines={1}
-                      style={{
-                        fontSize: 10,
-                        fontFamily: TOKENS.font.body,
-                        color: active ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.35)",
-                        marginTop: 1,
-                      }}
-                    >
-                      {t("saved.countLabel", { count: item.count })}
-                    </Text>
-                  </Pressable>
-                  {item.count > 0 && !active ? (
-                    <View
-                      style={{
-                        position: "absolute",
-                        top: -7,
-                        alignSelf: "center",
-                        zIndex: 1,
-                        minWidth: 18,
-                        height: 18,
-                        borderRadius: 9,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        paddingHorizontal: 5,
-                        backgroundColor: active ? "#1D1D1F" : "rgba(0,0,0,0.12)",
-                      }}
-                    >
-                      <Text style={{ fontSize: 10, fontFamily: TOKENS.font.semibold, color: active ? "#FFFFFF" : "#1D1D1F" }}>
-                        {item.count}
+                      <MapPin size={15} color={active ? "#FFFFFF" : "#0EA5E9"} strokeWidth={2.2} />
+                      <Text
+                        numberOfLines={1}
+                        className={`text-[13px] tracking-tight ${
+                          active ? "text-white font-semibold" : "text-slate-900 font-medium"
+                        }`}
+                      >
+                        {item.name}
                       </Text>
-                    </View>
-                  ) : null}
-                </View>
-              );
-            })}
-          </ScrollView>
+                      <View className={`rounded-full px-1.5 py-px min-w-[22px] items-center ${
+                        active ? "bg-white/20" : "bg-black/[0.06]"
+                      }`}>
+                        <Text
+                          numberOfLines={1}
+                          className={`text-[11px] font-semibold ${
+                            active ? "text-white/85" : "text-black/45"
+                          }`}
+                        >
+                          {item.count}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
         )}
-      </View>
+      </Animated.View>
     );
   }, [isLoading, isError, catItems, areaItems, activeArea, activeCategory, filteredSavedData.length]);
 
@@ -427,11 +405,11 @@ export default function SavedScreen() {
         showsVerticalScrollIndicator={false}
         numColumns={2}
         columnWrapperStyle={{ paddingHorizontal: 6 }}
-        onScroll={handleScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ 
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{
           paddingHorizontal: 6,
-          paddingBottom: TAB_BAR_HEIGHT + 24 
+          paddingBottom: TAB_BAR_HEIGHT + 24,
         }}
         refreshControl={
           <RefreshControl
