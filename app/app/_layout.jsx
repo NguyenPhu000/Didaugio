@@ -1,8 +1,10 @@
 import "../global.css";
 import i18n, { resolveLanguage } from "../src/i18n";
-import { useEffect, useState } from "react";
-import { View, Alert } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { View, Alert, AppState } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter, useSegments } from "expo-router";
+import { PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY } from "../src/modules/booking/hooks/usePayment";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -41,6 +43,45 @@ import { useAlertStore } from "../src/stores/alertStore";
 import { GlobalAlert } from "../src/components/composed/GlobalAlert";
 
 SplashScreen.preventAutoHideAsync();
+
+function PaymentRecoveryListener() {
+  const router = useRouter();
+  const isProcessingRef = useRef(false);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", async (nextState) => {
+      if (nextState !== "active") return;
+      if (isProcessingRef.current) return;
+
+      try {
+        const pendingRef = await AsyncStorage.getItem(PENDING_PAYMENT_REF_KEY);
+        const pendingBookingId = await AsyncStorage.getItem(PENDING_PAYMENT_BOOKING_KEY);
+
+        // Validate: non-empty and valid bookingId (positive integer string)
+        if (
+          pendingRef &&
+          pendingRef.length > 0 &&
+          pendingBookingId &&
+          /^\d+$/.test(pendingBookingId) &&
+          Number(pendingBookingId) > 0
+        ) {
+          isProcessingRef.current = true;
+          await AsyncStorage.multiRemove([PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY]);
+          router.replace(
+            `/payment/result?status=pending_verify&bookingId=${pendingBookingId}`
+          );
+        }
+      } catch {
+        // silent
+      } finally {
+        isProcessingRef.current = false;
+      }
+    });
+    return () => subscription.remove();
+  }, [router]);
+
+  return null;
+}
 
 function OfflineSyncManager() {
   useOfflineSync();
@@ -243,6 +284,7 @@ export default function RootLayout() {
               {isReady ? (
                 <>
                   <OfflineSyncManager />
+                  <PaymentRecoveryListener />
                   <View style={{ flex: 1 }}>
                     <BottomSheetModalProvider>
                       <Stack screenOptions={{ headerShown: false }}>
@@ -270,7 +312,15 @@ export default function RootLayout() {
                         />
                         <Stack.Screen
                           name="profile/booking/[id]"
+                          options={{ animation: "slide_from_right", gestureEnabled: false }}
+                        />
+                        <Stack.Screen
+                          name="payment/checkout"
                           options={{ animation: "slide_from_right" }}
+                        />
+                        <Stack.Screen
+                          name="payment/result"
+                          options={{ animation: "fade" }}
                         />
                         <Stack.Screen
                           name="onboarding"
