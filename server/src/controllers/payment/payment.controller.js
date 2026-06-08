@@ -224,7 +224,11 @@ export async function refund(req, res, next) {
 
 export async function rejectRefund(req, res, next) {
   try {
-    const { reason } = rejectRefundSchema.parse(req.body || {});
+    const validation = rejectRefundSchema.safeParse(req.body || {});
+    if (!validation.success) {
+      return errorResponse(res, 400, "Dữ liệu không hợp lệ", ERROR_CODES.VALIDATION_ERROR);
+    }
+    const { reason } = validation.data;
     const result = await paymentService.rejectRefund(req.params.id, reason);
 
     return successResponse(

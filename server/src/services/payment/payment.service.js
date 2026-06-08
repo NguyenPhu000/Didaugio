@@ -608,9 +608,37 @@ export async function getAdminPayments({
 
   if (search) {
     where.OR = [
-      { booking: { guestName: { contains: search, mode: "insensitive" } } },
-      { booking: { service: { place: { name: { contains: search, mode: "insensitive" } } } } },
-      { booking: { service: { place: { business: { name: { contains: search, mode: "insensitive" } } } } } },
+      {
+        booking: {
+          is: {
+            guestName: { contains: search, mode: "insensitive" },
+          },
+        },
+      },
+      {
+        booking: {
+          is: {
+            service: {
+              place: {
+                name: { contains: search, mode: "insensitive" },
+              },
+            },
+          },
+        },
+      },
+      {
+        booking: {
+          is: {
+            service: {
+              place: {
+                business: {
+                  businessName: { contains: search, mode: "insensitive" },
+                },
+              },
+            },
+          },
+        },
+      },
     ];
   }
 
@@ -650,7 +678,7 @@ export async function getAdminPayments({
               include: {
                 place: {
                   include: {
-                    business: { select: { id: true, name: true } },
+                    business: { select: { id: true, businessName: true } },
                   },
                 },
               },
@@ -733,7 +761,7 @@ export async function getPaymentById(paymentId, { userId, roleId }) {
                   business: {
                     select: {
                       id: true,
-                      name: true,
+                      businessName: true,
                     },
                   },
                 },
