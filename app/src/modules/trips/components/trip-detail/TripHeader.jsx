@@ -132,7 +132,7 @@ export const TripHeader = memo(function TripHeader({
                       className="flex-1 text-[14px] font-medium text-[#1D1D1F] tracking-tight min-w-0"
                       numberOfLines={1}
                     >
-                      Chia sẻ
+                      {t('tripHeader.share')}
                     </Text>
                   </View>
                 )}

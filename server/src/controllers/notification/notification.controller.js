@@ -336,3 +336,29 @@ export const deleteAnnouncement = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * POST /api/notifications/test-push — Gửi test push đến thiết bị hiện tại
+ * Chỉ dùng trong development / testing.
+ */
+export const testPush = async (req, res, next) => {
+  try {
+    const userId = Number(req.user.userId);
+    const { title, body } = req.body;
+
+    await notificationService.notifyUser(
+      userId,
+      title || "🔔 Test Push Notification",
+      body || "Đây là thông báo test từ server. Nếu bạn thấy tức là push đã hoạt động!",
+      { type: "test" },
+      userId,
+    );
+
+    return res.json({
+      success: true,
+      message: "Đã gửi test push. Kiểm tra điện thoại của bạn.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};

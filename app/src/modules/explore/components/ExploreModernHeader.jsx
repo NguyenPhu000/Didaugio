@@ -1,12 +1,12 @@
 import { memo, useCallback } from "react";
 import {
-  Image,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
@@ -21,6 +21,7 @@ import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../../constants/design-tokens";
+import { TAB_THEME } from "../../../../app/(tabs)/tabTheme";
 import { getGreeting, getUserName } from "../utils/exploreHelpers";
 import { resolveMediaUrl } from "../../../lib/media-url";
 import { NotificationBell } from "../../../components/composed/NotificationBell";
@@ -51,7 +52,6 @@ function ExploreModernHeaderInner({ user, onPressSearch, scrollY }) {
     onPressSearch?.();
   }, [onPressSearch]);
 
-  // Title fades out and shrinks as user scrolls
   const titleAnimStyle = useAnimatedStyle(() => {
     if (!scrollY) return {};
     const y = scrollY.value;
@@ -70,7 +70,6 @@ function ExploreModernHeaderInner({ user, onPressSearch, scrollY }) {
     };
   });
 
-  // Subtitle hides faster
   const subtitleAnimStyle = useAnimatedStyle(() => {
     if (!scrollY) return {};
     const y = scrollY.value;
@@ -86,85 +85,132 @@ function ExploreModernHeaderInner({ user, onPressSearch, scrollY }) {
     };
   });
 
-  // Search bar press scale
   const searchAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: searchScale.value }],
   }));
 
   return (
-    <View className="px-5 pt-3 pb-4" style={{ backgroundColor: APPLE_THEME.background }}>
-      {/* Top Row: User & Notification */}
-      <View className="flex-row justify-between items-center mb-5">
+    <View
+      className="px-5 pt-3 pb-4"
+      style={{ backgroundColor: APPLE_THEME.background }}
+    >
+      <View className="flex-row justify-between items-center mb-4">
         <View className="flex-row items-center gap-3">
-          <View className="w-12 h-12 rounded-full p-[2px] bg-[#007AFF] shadow-sm elevation-2">
-            <View className="w-11 h-11 rounded-full bg-[#F1F5F9] items-center justify-center overflow-hidden">
+          <View
+            className="w-12 h-12 rounded-full p-[2px]"
+            style={{ backgroundColor: APPLE_THEME.focusBlue, ...TOKENS.shadow.sm }}
+          >
+            <View
+              className="w-11 h-11 rounded-full items-center justify-center overflow-hidden"
+              style={{ backgroundColor: APPLE_THEME.surfaceElevated }}
+            >
               {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                <Image
+                  source={{ uri: avatarUri }}
+                  contentFit="cover"
+                  style={{ width: 44, height: 44, borderRadius: 22 }}
+                />
               ) : (
                 <MaterialIconsRounded
                   name="person"
                   size={24}
-                  color={APPLE_THEME.textSoft}
+                  color={TAB_THEME.textSoft}
                 />
               )}
             </View>
           </View>
           <View>
-            <Text className="text-xs text-[#54647A] font-medium">{getGreeting()},</Text>
-            <Text className="text-[16px] text-[#1D1D1F] font-semibold">{userName}</Text>
+            <Text
+              className="text-xs font-medium"
+              style={{ color: TAB_THEME.textMuted }}
+            >
+              {getGreeting()},
+            </Text>
+            <Text
+              className="text-base font-semibold"
+              style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.semibold }}
+            >
+              {userName}
+            </Text>
           </View>
         </View>
 
         <NotificationBell size={44} />
       </View>
 
-      {/* Title - animated */}
-      <Animated.View style={[{ marginBottom: 22, overflow: "hidden" }, titleAnimStyle]}>
-        <Text className="text-[26px] text-[#1D1D1F] font-bold tracking-[-0.45px] leading-[32px]">{t("explore.header.greeting")}</Text>
+      <Animated.View style={[{ marginBottom: 20, overflow: "hidden" }, titleAnimStyle]}>
+        <Text
+          className="text-[26px] font-bold tracking-[-0.45px] leading-[32px]"
+          style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.heading }}
+        >
+          {t("explore.header.greeting")}
+        </Text>
         <Animated.Text
-          className="mt-2 text-[#54647A] text-sm leading-[20px] font-medium"
-          style={subtitleAnimStyle}
+          className="mt-2 text-sm leading-5 font-medium"
+          style={[
+            subtitleAnimStyle,
+            { color: TAB_THEME.textMuted, fontFamily: TOKENS.font.medium },
+          ]}
         >
           {t("explore.header.subtitle")}
         </Animated.Text>
       </Animated.View>
 
-      {/* Search Bar - Pill Shape with Glass Effect */}
       <AnimatedPressable
         onPress={handleSearchPress}
         onPressIn={handleSearchPressIn}
         onPressOut={handleSearchPressOut}
-        style={[searchAnimStyle]}
-        className="rounded-full shadow-sm elevation-1"
+        style={[searchAnimStyle, TOKENS.shadow.sm]}
+        className="rounded-full"
       >
-        <View className="rounded-full overflow-hidden border border-black/[0.06] relative">
+        <View
+          className="rounded-full overflow-hidden relative"
+          style={{ borderWidth: 1, borderColor: APPLE_THEME.borderSoft }}
+        >
           <BlurView
-            intensity={Platform.OS === "ios" ? 40 : 20}
+            intensity={Platform.OS === "ios" ? 48 : 24}
             tint="light"
             style={StyleSheet.absoluteFill}
           />
           <View
-            className="flex-row items-center h-[54px] pl-3.5 pr-1.5"
+            className="flex-row items-center h-[52px] pl-3.5 pr-1.5"
             style={{
-              backgroundColor: Platform.OS === "ios" ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.92)",
+              backgroundColor:
+                Platform.OS === "ios"
+                  ? "rgba(255,255,255,0.72)"
+                  : APPLE_THEME.surface,
             }}
           >
             <View className="w-8 items-center justify-center">
               <MaterialIconsRounded
                 name="search"
                 size={20}
-                color={APPLE_THEME.textMuted}
+                color={TAB_THEME.textMuted}
               />
             </View>
-            <Text className="flex-1 ml-1 text-[15px] text-[#54647A] font-medium">
+            <Text
+              className="flex-1 ml-1 text-[15px] font-medium"
+              style={{ color: TAB_THEME.textMuted, fontFamily: TOKENS.font.medium }}
+            >
               {t("explore.header.searchPlaceholder")}
             </Text>
 
-            {/* Location Button */}
-            <View className="flex-row items-center bg-[#007AFF] h-[42px] pl-3 pr-2.5 rounded-full gap-0.75 shadow-sm elevation-1">
-              <MaterialIconsRounded name="place" size={14} color="#FFF" />
-              <Text className="text-white text-[13px] font-semibold">{t("explore.header.location")}</Text>
-              <MaterialIconsRounded name="keyboard-arrow-down" size={14} color="#FFF" />
+            <View
+              className="flex-row items-center h-10 pl-3 pr-2 rounded-full gap-0.5"
+              style={{ backgroundColor: APPLE_THEME.focusBlue, ...TOKENS.shadow.sm }}
+            >
+              <MaterialIconsRounded name="place" size={14} color={APPLE_THEME.white} />
+              <Text
+                className="text-white text-[13px] font-semibold"
+                style={{ fontFamily: TOKENS.font.semibold }}
+              >
+                {t("explore.header.location")}
+              </Text>
+              <MaterialIconsRounded
+                name="keyboard-arrow-down"
+                size={14}
+                color={APPLE_THEME.white}
+              />
             </View>
           </View>
         </View>

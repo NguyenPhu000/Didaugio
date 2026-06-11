@@ -1,10 +1,9 @@
-import { memo, useCallback, useEffect } from "react";
+import { memo, useCallback } from "react";
 import {
   FlatList,
   Platform,
   Pressable,
   Text,
-  StyleSheet,
 } from "react-native";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
@@ -30,16 +29,9 @@ const PillItem = memo(function PillItem({
   onPressCategory,
 }) {
   const scale = useSharedValue(1);
-  const bgProgress = useSharedValue(isActive ? 1 : 0);
-
-  useEffect(() => {
-    bgProgress.value = withSpring(isActive ? 1 : 0, SPRING_CONFIG);
-  }, [isActive, bgProgress]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-    backgroundColor: isActive ? APPLE_THEME.primary : APPLE_THEME.surface,
-    borderColor: isActive ? APPLE_THEME.primary : APPLE_THEME.border,
   }));
 
   const handlePressIn = useCallback(() => {
@@ -60,28 +52,33 @@ const PillItem = memo(function PillItem({
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      className="flex-row items-center gap-2 min-h-[42px] px-4 py-2.5 rounded-full border"
+      className="flex-row items-center gap-2 min-h-[40px] px-4 py-2 rounded-full border"
       style={[
         animatedStyle,
-        isActive ? Platform.select({
-          ios: {
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.15,
-            shadowRadius: 2,
-          },
-          android: { elevation: 1 },
-        }) : null,
+        {
+          backgroundColor: isActive ? APPLE_THEME.focusBlue : APPLE_THEME.surface,
+          borderColor: isActive ? APPLE_THEME.focusBlue : APPLE_THEME.border,
+          borderCurve: "continuous",
+        },
+        isActive
+          ? Platform.select({
+              ios: TOKENS.shadow.sm,
+              android: { elevation: 2 },
+            })
+          : null,
       ]}
     >
       <MaterialIconsRounded
         name={icon}
-        size={17}
+        size={16}
         color={isActive ? APPLE_THEME.white : APPLE_THEME.text}
       />
       <Text
         className="text-sm font-semibold"
-        style={{ color: isActive ? "#FFFFFF" : "#1D1D1F" }}
+        style={{
+          color: isActive ? APPLE_THEME.white : APPLE_THEME.text,
+          fontFamily: TOKENS.font.semibold,
+        }}
         numberOfLines={1}
       >
         {label}
@@ -121,7 +118,12 @@ function CategoryPillsInner({
       keyExtractor={keyExtractor}
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 10, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 6 }}
+      contentContainerStyle={{
+        gap: 8,
+        paddingHorizontal: 20,
+        paddingTop: 4,
+        paddingBottom: 8,
+      }}
       keyboardShouldPersistTaps="handled"
     />
   );
@@ -152,4 +154,3 @@ export const CategoryPills = memo(
   CategoryPillsInner,
   areCategoryPillsPropsEqual,
 );
-

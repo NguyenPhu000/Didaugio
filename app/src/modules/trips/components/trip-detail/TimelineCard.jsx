@@ -174,7 +174,7 @@ function TimelineCard({
               ))}
               {bookings.length > 2 && (
                 <Text className="text-[12px] text-black/40 font-normal pl-3 tracking-tight">
-                  +{bookings.length - 2} booking khác
+                  {t("trip.timeline.moreBookings", { count: bookings.length - 2 })}
                 </Text>
               )}
             </View>

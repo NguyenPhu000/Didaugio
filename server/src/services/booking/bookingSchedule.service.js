@@ -168,17 +168,40 @@ export async function getScheduleByDate(businessId, dateStr) {
     slotBuckets[slot]?.push(item);
   }
 
-  // Build capacity summary per slot
+  // Build capacity summary per slot (aggregate across all services in the slot)
   const slotCapacities = {};
   for (const slotKey of Object.keys(slotBuckets)) {
     const slotBookings = slotBuckets[slotKey];
+
+    // Group by service to calculate per-service capacity
+    const serviceMap = new Map();
+    for (const b of slotBookings) {
+      const svcId = b.serviceId;
+      if (!serviceMap.has(svcId)) {
+        serviceMap.set(svcId, {
+          capacity: b.service?.maxCapacity ?? 999_999,
+          used: 0,
+        });
+      }
+      serviceMap.get(svcId).used += b.quantity;
+    }
+
     const totalUsed = slotBookings.reduce((sum, b) => sum + b.quantity, 0);
-    const maxCap = slotBookings[0]?.service?.maxCapacity || null;
+    const totalCapacity = Array.from(serviceMap.values()).reduce(
+      (sum, s) => sum + s.capacity,
+      0,
+    );
+
     slotCapacities[slotKey] = {
       used: totalUsed,
-      capacity: maxCap,
-      remaining: maxCap ? Math.max(0, maxCap - totalUsed) : null,
-      isFull: maxCap ? totalUsed >= maxCap : false,
+      capacity: totalCapacity,
+      remaining: Math.max(0, totalCapacity - totalUsed),
+      isFull: totalUsed >= totalCapacity,
+      services: Array.from(serviceMap.entries()).map(([serviceId, data]) => ({
+        serviceId,
+        ...data,
+        remaining: Math.max(0, data.capacity - data.used),
+      })),
     };
   }
 
@@ -208,7 +231,7 @@ export async function rescheduleBooking(
     );
   }
 
-  await prisma.$transaction(async (tx) => {
+  const booking = await prisma.$transaction(async (tx) => {
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
       where: { id: parseInt(bookingId, 10) },
@@ -245,12 +268,14 @@ export async function rescheduleBooking(
     const useTime = toUseTimeString(newAt);
 
     // Update startTime/endTime for RESOURCE model
-    const startTime = existing.service?.bookingModel === "resource" ? newAt : null;
-    const endTime = startTime && existing.service?.durationMinutes
-      ? new Date(newAt.getTime() + existing.service.durationMinutes * 60_000)
-      : null;
+    const startTime =
+      existing.service?.bookingModel === "resource" ? newAt : null;
+    const endTime =
+      startTime && existing.service?.durationMinutes
+        ? new Date(newAt.getTime() + existing.service.durationMinutes * 60_000)
+        : null;
 
-    await tx.booking.update({
+    const updated = await tx.booking.update({
       where: { id: existing.id },
       data: {
         bookingAt: newAt,
@@ -259,6 +284,51 @@ export async function rescheduleBooking(
         startTime,
         endTime,
         ...(businessNote !== undefined && { businessNote }),
+      },
+      include: {
+        service: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            maxCapacity: true,
+            durationMinutes: true,
+            bookingModel: true,
+            slotDurationMinutes: true,
+            allowOverbooking: true,
+            businessId: true,
+            business: {
+              select: {
+                id: true,
+                businessName: true,
+                status: true,
+                commissionRate: true,
+              },
+            },
+            place: { select: { id: true, name: true, address: true } },
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                fullName: true,
+                phone: true,
+              },
+            },
+          },
+        },
+        resource: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            resourceType: true,
+            capacity: true,
+          },
+        },
       },
     });
 
@@ -271,11 +341,12 @@ export async function rescheduleBooking(
         businessNote: businessNote || null,
       },
     });
+
+    return updated;
   });
 
   logger.info("Booking rescheduled", { bookingId, bookingTimeIso });
 
-  const booking = await getById(bookingId);
   eventEmitter.emit(EVENTS.BOOKING.RESCHEDULED, {
     bookingId: booking.id,
     bookingCode: booking.bookingCode,

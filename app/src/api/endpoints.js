@@ -51,13 +51,16 @@ export const ENDPOINTS = {
     bookingDetail: (id) => `/profile/bookings/${id}`,
     bookingQr: (id) => `/profile/bookings/${id}/qr`,
     bookingLinkTrip: (id) => `/profile/bookings/${id}/link-trip`,
+    bookingCancel: (id) => `/profile/bookings/${id}/cancel`,
     pushToken: "/profile/push-token",
+    notifications: "/profile/notifications",
   },
   notifications: {
     list: "/notifications",
     unreadCount: "/notifications/unread-count",
     markRead: (id) => `/notifications/${id}/read`,
     markAllRead: "/notifications/mark-all-read",
+    testPush: "/notifications/test-push",
   },
   booking: {
     createByService: (serviceId) => `/services/${serviceId}/book`,
@@ -66,10 +69,16 @@ export const ENDPOINTS = {
     detail: (id) => `/business/bookings/${id}`,
     publicAvailability: (serviceId) => `/bookings/availability/${serviceId}`,
   },
+  payments: {
+    checkout: "/payments/checkout",
+    detail: (id) => `/payments/${id}`,
+    byBooking: (bookingId) => `/payments/by-booking/${bookingId}`,
+  },
   ai: {
     placeSummary: "/ai/place-summary",
     chat: "/ai/chat",
     navigate: "/ai/navigate",
+    groqChat: "/ai/groq-chat",
   },
   routing: {
     health: "/routes/health",

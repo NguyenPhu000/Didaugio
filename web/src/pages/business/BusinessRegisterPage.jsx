@@ -20,9 +20,9 @@ import {
 import { useRegisterBusiness } from "@/hooks/queries/useBusinessQueries";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import {
-  PageHeader,
-  SectionCard,
-} from "@/components/business/DashboardWidgets";
+  BusinessPageHeader,
+  BusinessSectionCard,
+} from "@/components/business/ui";
 import DocumentImageUploadField from "@/components/business/DocumentImageUploadField";
 import { DOCUMENT_SAMPLE_IMAGES } from "@/components/business/documentImageConstants";
 
@@ -115,12 +115,12 @@ const BusinessRegisterPage = () => {
 
   return (
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
-      <PageHeader
+      <BusinessPageHeader
         title={t("business.register.title")}
-        subtitle={t("business.register.title")}
+        description={t("business.register.title")}
       />
 
-      <SectionCard title="Thông tin đăng ký" titleIcon={Store}>
+      <BusinessSectionCard title="Thông tin đăng ký" titleIcon={Store}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <input type="hidden" {...register("businessType")} />
 
@@ -180,7 +180,7 @@ const BusinessRegisterPage = () => {
             </FormField>
           </div>
 
-          <SectionCard title="Giấy tờ xác minh" bodyClassName="space-y-4">
+          <BusinessSectionCard title="Giấy tờ xác minh" bodyClassName="space-y-4">
             <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
               <h4 className="text-sm font-semibold text-foreground">
                 Upload hình ảnh giấy tờ
@@ -246,14 +246,14 @@ const BusinessRegisterPage = () => {
                 />
               </div>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
           <Button type="submit" disabled={isLoading} className="w-full gap-2">
             {isLoading ? "Đang gửi..." : "Đăng ký"}
             {!isLoading && <ArrowRight className="h-4 w-4" />}
           </Button>
         </form>
-      </SectionCard>
+      </BusinessSectionCard>
     </div>
   );
 };

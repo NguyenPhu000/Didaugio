@@ -1069,7 +1069,8 @@ export default function MapScreen() {
   const handleSelectPlace = useCallback((place) => {
     setSelectedPlace(place);
     if (place.longitude && place.latitude) {
-      mapRef.current?.flyTo([place.longitude, place.latitude], 15);
+      const latOffset = 0.0022;
+      mapRef.current?.flyTo([Number(place.longitude), Number(place.latitude) - latOffset], 15);
     }
   }, []);
 
@@ -1232,7 +1233,8 @@ export default function MapScreen() {
     if (lastAppliedFocusRef.current === key) return;
     lastAppliedFocusRef.current = key;
 
-    mapRef.current?.flyTo([lng, lat], 15);
+    const latOffset = focusPlaceId ? 0.0022 : 0;
+    mapRef.current?.flyTo([lng, lat - latOffset], 15);
 
     if (!focusPlaceId) return;
     const matchedPlace = (mapPlaces || []).find(

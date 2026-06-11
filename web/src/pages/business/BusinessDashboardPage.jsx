@@ -20,12 +20,14 @@ import { BOOKING_STATUS } from "@/constants/constants";
 import { useAuthStore } from "@/stores/authStore";
 import {
   WelcomeBanner,
-  StatCard,
-  SectionCard,
-  StatCardSkeleton,
-  SectionCardSkeleton,
   StatusProgressRow,
 } from "@/components/business/DashboardWidgets";
+import {
+  BusinessStatCard,
+  BusinessStatCardSkeleton,
+  BusinessSectionCard,
+  BusinessSectionCardSkeleton,
+} from "@/components/business/ui";
 import { formatVND } from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/Button";
 
@@ -122,10 +124,10 @@ const BusinessDashboardPage = () => {
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+          Array.from({ length: 4 }).map((_, i) => <BusinessStatCardSkeleton key={i} />)
         ) : (
           <>
-            <StatCard
+            <BusinessStatCard
               title={t("business.dashboard.stat.places")}
               value={overview?.placesCount ?? stats?.placesCount ?? 0}
               icon={MapPin}
@@ -134,7 +136,7 @@ const BusinessDashboardPage = () => {
               miniChart={statMiniCharts.places}
               description={t("business.dashboard.stat.placesDesc")}
             />
-            <StatCard
+            <BusinessStatCard
               title={t("business.dashboard.stat.services")}
               value={overview?.servicesCount ?? stats?.servicesCount ?? 0}
               icon={Ticket}
@@ -144,7 +146,7 @@ const BusinessDashboardPage = () => {
               description={t("business.dashboard.stat.servicesDesc")}
               href={BUSINESS_ROUTES.SERVICES}
             />
-            <StatCard
+            <BusinessStatCard
               title={t("business.dashboard.stat.totalBookings")}
               value={overview?.bookingsTotal ?? stats?.bookingsCount ?? 0}
               icon={CalendarCheck}
@@ -154,7 +156,7 @@ const BusinessDashboardPage = () => {
               description={t("business.dashboard.stat.totalBookingsDesc")}
               href={BUSINESS_ROUTES.BOOKINGS}
             />
-            <StatCard
+            <BusinessStatCard
               title={t("business.dashboard.stat.netRevenue")}
               value={formatVND(overview?.netRevenue ?? stats?.netRevenue)}
               icon={DollarSign}
@@ -172,9 +174,9 @@ const BusinessDashboardPage = () => {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {/* Booking by status */}
         {isLoading ? (
-          <SectionCardSkeleton rows={5} />
+          <BusinessSectionCardSkeleton rows={5} />
         ) : (
-          <SectionCard
+          <BusinessSectionCard
             title={t("business.dashboard.section.bookingsByStatus")}
             titleIcon={CalendarCheck}
           >
@@ -189,14 +191,14 @@ const BusinessDashboardPage = () => {
                 />
               ))}
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
         )}
 
         {/* Revenue Summary */}
         {isLoading ? (
-          <SectionCardSkeleton rows={3} />
+          <BusinessSectionCardSkeleton rows={3} />
         ) : (
-          <SectionCard title={t("business.dashboard.section.revenueSummary")} titleIcon={BarChart3}>
+          <BusinessSectionCard title={t("business.dashboard.section.revenueSummary")} titleIcon={BarChart3}>
             <div className="space-y-4">
               <div className="flex items-start justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted/80 transition-colors">
                 <div className="flex items-center gap-3">
@@ -264,13 +266,13 @@ const BusinessDashboardPage = () => {
                 </div>
               </div>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
         )}
 
         {isLoading ? (
-          <SectionCardSkeleton rows={3} />
+          <BusinessSectionCardSkeleton rows={3} />
         ) : (
-          <SectionCard title={t("business.dashboard.section.legalCompliance")} titleIcon={FileSignature}>
+          <BusinessSectionCard title={t("business.dashboard.section.legalCompliance")} titleIcon={FileSignature}>
             <div className="space-y-4">
               <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/30 p-4">
                 <div className={`rounded-lg p-2 ${contractStatus.className}`}>
@@ -305,12 +307,12 @@ const BusinessDashboardPage = () => {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
         )}
       </div>
 
       {!isLoading && (
-        <SectionCard title={t("business.dashboard.section.p2Operations")} titleIcon={BarChart3}>
+        <BusinessSectionCard title={t("business.dashboard.section.p2Operations")} titleIcon={BarChart3}>
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl border border-border/60 p-3">
               <p className="text-xs text-muted-foreground">{t("business.dashboard.operations.pendingToday")}</p>
@@ -358,7 +360,7 @@ const BusinessDashboardPage = () => {
               </div>
             )}
           </div>
-        </SectionCard>
+        </BusinessSectionCard>
       )}
     </div>
   );

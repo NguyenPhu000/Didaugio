@@ -1,18 +1,13 @@
 /**
- * geminiService.js — Google Gemini integration for AI trip planning.
- * Uses @google/generative-ai SDK.
+ * itinerary.service.js — AI trip itinerary generation (Groq backend).
+ * Uses Groq Cloud AI Gateway via the OpenAI-compatible SDK.
  */
 import crypto from "crypto";
 import prisma from "../../config/prismaClient.js";
-import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
 import { ERROR_CODES } from "../../config/messages.js";
-import { mapGeminiError } from "../../lib/geminiErrorHandler.js";
 import ServiceError from "../../utils/serviceError.js";
-import {
-  geminiModel,
-  geminiStructuredModel,
-} from "../../config/geminiClient.js";
+import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
 import { kMeansClustering, solveNearestNeighborTSP } from "../../utils/clustering.js";
 import { validateAndCorrectItinerary } from "../../utils/itineraryFormatter.js";
 
@@ -102,7 +97,7 @@ function buildDayTheme(dayNumber, travelStyle) {
 }
 
 /**
- * Create a deterministic fallback itinerary when Gemini is unavailable/quota exceeded.
+ * Create a deterministic fallback itinerary when AI is unavailable/quota exceeded.
  * @param {Object} preferences
  * @param {Array} places
  */
@@ -230,20 +225,41 @@ ${JSON.stringify(minifiedClustered)}
 **YÊU CẦU NGHIÊM NGẶT:**
 1. Bạn CHỈ ĐƯỢC phép xếp địa điểm của cụm Ngày N vào đúng ngày ("dayNumber": N) trong lịch trình đầu ra. Không được hoán đổi địa điểm giữa các ngày.
 2. Dùng đúng ID ("i") của địa điểm cho trường "placeId" của đầu ra.
-3. Trả về JSON hợp lệ khớp với schema yêu cầu, không giải thích gì thêm.`;
+3. Trả về JSON hợp lệ khớp với schema yêu cầu, không giải thích gì thêm.
+
+**JSON Schema yêu cầu:**
+${JSON.stringify({
+    title: "string",
+    description: "string",
+    totalDays: "number",
+    estimatedCost: "number",
+    days: [{
+      dayNumber: "number",
+      theme: "string",
+      destinations: [{
+        placeId: "number",
+        order: "number",
+        startTime: "string (HH:mm)",
+        endTime: "string (HH:mm)",
+        durationMinutes: "number",
+        note: "string",
+        transportToNext: "string",
+        estimatedCost: "number"
+      }]
+    }]
+  }, null, 2)}
+
+Chỉ trả về JSON thuần, không markdown, không giải thích.`;
 }
 
 /**
- * Generate a trip itinerary via Gemini structured output.
+ * Generate a trip itinerary via Groq chat completion with structured JSON output.
  * @param {Object} preferences
  * @param {Array}  places
  * @returns {{ parsed: Object, raw: string, tokensUsed: number, responseTimeMs: number }}
  */
 export async function generateItinerary(preferences, places) {
-  const jsonSchema = zodToJsonSchema(ItinerarySchema, { target: "openApi3" });
-  const model = geminiStructuredModel(jsonSchema);
-
-  // Phân cụm địa điểm bằng K-Means trước khi gọi Gemini AI
+  // Phân cụm địa điểm bằng K-Means trước khi gọi AI
   const totalDays = toPositiveInt(preferences.totalDays, 1);
   const clusteredPlaces = kMeansClustering(places, totalDays);
 
@@ -266,38 +282,79 @@ export async function generateItinerary(preferences, places) {
         responseTimeMs: 0,
       };
     }
-  } catch (err) {
-    // Bỏ qua lỗi đọc cache và gọi trực tiếp Gemini
+  } catch {
+    // Bỏ qua lỗi đọc cache và gọi trực tiếp AI
   }
 
   const prompt = buildItineraryPrompt(preferences, clusteredPlaces);
   const start = Date.now();
 
-  let result;
+  let rawText;
+  let tokensUsed = null;
   try {
-    result = await model.generateContent(prompt);
+    const client = createGroqClient();
+    const completion = await client.chat.completions.create({
+      model: GROQ_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.5,
+      max_tokens: 2000,
+      response_format: { type: "json_object" },
+    });
+    rawText = completion.choices[0]?.message?.content || "";
+    tokensUsed = completion.usage?.total_tokens ?? null;
   } catch (err) {
-    const mapped = mapGeminiError(err);
+    const isQuotaError =
+      err?.status === 429 || /quota|rate.?limit|too many requests/i.test(err?.message || "");
+    const isUnavailable =
+      err?.status === 503 || /service unavailable|overloaded/i.test(err?.message || "");
+
+    if (isQuotaError) {
+      throw new ServiceError(
+        "AI đã chạm giới hạn tần suất. Vui lòng thử lại sau.",
+        429,
+        "QUOTA_EXCEEDED",
+      );
+    }
+
+    if (isUnavailable) {
+      throw new ServiceError(
+        "Dịch vụ AI tạm thời không khả dụng.",
+        503,
+        "AI_UNAVAILABLE",
+      );
+    }
+
     throw new ServiceError(
-      mapped?.body?.message || "Loi khi goi Gemini API",
-      mapped?.status || 503,
-      mapped?.body?.errorCode || "AI_ERROR",
+      err?.message || "Lỗi khi gọi AI API",
+      err?.status || 503,
+      "AI_ERROR",
     );
   }
 
   const responseTimeMs = Date.now() - start;
-  const tokensUsed = result.response.usageMetadata?.totalTokenCount ?? null;
-  const rawText = result.response.text();
 
   let parsed;
   try {
     parsed = JSON.parse(rawText);
   } catch {
-    throw new ServiceError(
-      "Gemini trả về JSON không hợp lệ",
-      502,
-      ERROR_CODES.VALIDATION_ERROR,
-    );
+    const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/) || rawText.match(/(\{[\s\S]*\})/);
+    if (jsonMatch?.[1]) {
+      try {
+        parsed = JSON.parse(jsonMatch[1].trim());
+      } catch {
+        throw new ServiceError(
+          "AI trả về JSON không hợp lệ",
+          502,
+          ERROR_CODES.VALIDATION_ERROR,
+        );
+      }
+    } else {
+      throw new ServiceError(
+        "AI trả về JSON không hợp lệ",
+        502,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
   }
 
   // 1. Validate và co kéo thời gian khớp giờ mở cửa thực tế
@@ -308,7 +365,6 @@ export async function generateItinerary(preferences, places) {
     const destinations = day.destinations || [];
     if (destinations.length <= 2) return day;
 
-    // Lấy tọa độ địa lý của các điểm trong ngày này để giải TSP
     const dayPlaces = destinations.map((d) => {
       const p = places.find((pl) => pl.id === d.placeId);
       return {
@@ -320,7 +376,6 @@ export async function generateItinerary(preferences, places) {
 
     const optimizedDayPlaces = solveNearestNeighborTSP(dayPlaces);
 
-    // Sắp xếp lại khung giờ theo thứ tự tăng dần ban đầu để giữ cấu trúc logic (sáng, trưa, tối) của AI
     const sortedTimes = destinations
       .map((d) => ({ start: d.startTime, end: d.endTime, duration: d.durationMinutes }))
       .sort((a, b) => (a.start || "").localeCompare(b.start || ""));
@@ -353,10 +408,8 @@ export async function generateItinerary(preferences, places) {
       update: { itineraryData: parsed },
     });
   } catch {
-    // Bỏ qua lỗi ghi cache — vẫn trả kết quả Gemini cho client
+    // Bỏ qua lỗi ghi cache — vẫn trả kết quả cho client
   }
 
   return { parsed, raw: rawText, tokensUsed, responseTimeMs };
 }
-
-export { geminiModel };

@@ -298,7 +298,7 @@ export function TripsDashboard({
 
 const styles = StyleSheet.create({
   heroCard: {
-    height: 280,
+    height: 220,
     borderRadius: 24,
     overflow: "hidden",
     marginBottom: 24,

@@ -15,12 +15,12 @@
     "test:mvp-api": "npm run test:booking-state && npm run test:booking-db && npm run test:saved-db",
     "seed:cold-start": "node scripts/seedColdStart.js",
     "studio": "prisma studio --schema=prisma/schema.prisma --port 5555",
+    "migrate:push": "prisma migrate push --schema=prisma/schema.prisma",
     "migrate:dev": "prisma migrate dev --schema=prisma/schema.prisma",
     "migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
     "generate": "prisma generate --schema=prisma/schema.prisma"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.22.0",
     "@turf/boolean-point-in-polygon": "^7.3.2",
     "@turf/helpers": "^7.3.2",
@@ -38,6 +38,7 @@
     "multer-storage-cloudinary": "^4.0.0",
     "node-cache": "^5.1.2",
     "node-fetch": "^2.7.0",
+    "groq-sdk": "^0.18.0",
     "nodemailer": "^7.0.12",
     "pg": "^8.16.3",
     "qrcode": "^1.5.4",

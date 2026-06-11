@@ -1364,6 +1364,10 @@ const TripEditModal = ({ open, onClose, item, onSave, loading }) => {
       toast.error(t("admin.cms.tripName") + " " + t("common.required"));
       return;
     }
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+      toast.error(t("admin.cms.endDateError") || "End date cannot be before start date");
+      return;
+    }
     const payload = {
       ...form,
       totalDays: parseInt(form.totalDays, 10) || 1,

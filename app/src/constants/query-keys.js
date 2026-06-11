@@ -36,4 +36,8 @@ export const QUERY_KEYS = {
     all: () => ["notifications"],
     list: (filters) => ["notifications", "list", filters],
   },
+  payments: {
+    detail: (id) => ["payments", "detail", id],
+    byBooking: (bookingId) => ["payments", "booking", bookingId],
+  },
 };

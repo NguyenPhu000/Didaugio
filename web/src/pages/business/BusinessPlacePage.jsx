@@ -77,13 +77,13 @@ const getImageSrc = (place) => {
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
 
 const StatCard = ({ label, value, color, icon: Icon }) => (
-  <div className="flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200">
+  <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl border border-zinc-200/80">
     <div className={cn("p-2 rounded-lg", color)}>
       <Icon className="h-4 w-4 text-white" aria-hidden="true" />
     </div>
     <div>
-      <p className="text-xl font-bold text-gray-900 tabular-nums">{value}</p>
-      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-xl font-bold text-zinc-950 tabular-nums">{value}</p>
+      <p className="text-xs text-zinc-500">{label}</p>
     </div>
   </div>
 );

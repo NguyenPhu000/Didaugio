@@ -113,3 +113,10 @@ export const changePasswordLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
   message: "Qua nhieu yeu cau doi mat khau, vui long thu lai sau 15 phut",
 });
+
+export const groqChatLimiter = createLimiter({
+  envKey: "GROQ_CHAT_RATE_LIMIT_MAX",
+  devDefault: 300,
+  prodDefault: 60,
+  message: "Qua nhieu yeu cau tro ly AI, vui long thu lai sau",
+});

@@ -169,7 +169,7 @@ function BookingCard({ booking, onClick, compact = false, t }) {
     >
       <div className="flex items-start justify-between gap-1">
         <span className="font-semibold text-xs text-gray-900 truncate line-clamp-1">
-          {booking.user?.fullName || booking.guestName || t("business.schedule.guest")}
+          {booking.user?.profile?.fullName || booking.guestName || t("business.schedule.guest")}
         </span>
         <span className={cn("w-1.5 h-1.5 rounded-full shrink-0 mt-1", colors.dot)} />
       </div>
@@ -190,10 +190,10 @@ function BookingCard({ booking, onClick, compact = false, t }) {
               {booking.partySize} {t("business.schedule.guests")}
             </p>
           )}
-          {booking.user?.phone && (
+          {booking.user?.profile?.phone && (
             <p className="text-[10px] text-gray-400 flex items-center gap-0.5 mt-0.5">
               <Phone className="h-2.5 w-2.5" />
-              {booking.user.phone}
+              {booking.user.profile.phone}
             </p>
           )}
         </>
@@ -225,7 +225,7 @@ function ResourceTimelineCard({ booking, onClick, t }) {
       style={{ width: `${Math.max(widthPercent, 25)}%` }}
     >
       <p className="text-[10px] font-semibold text-gray-900 truncate">
-        {booking.user?.fullName || booking.guestName || t("business.schedule.guest")}
+        {booking.user?.profile?.fullName || booking.guestName || t("business.schedule.guest")}
       </p>
       <p className="text-[9px] text-gray-500 truncate">
         {booking.useTime} {booking.endTimeStr && `- ${booking.endTimeStr}`}

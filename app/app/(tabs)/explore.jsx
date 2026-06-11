@@ -4,7 +4,6 @@ import {
   Alert,
   Pressable,
   RefreshControl,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -46,6 +45,7 @@ import { SearchOverlay } from "../../src/modules/explore/components/SearchOverla
 import { ExploreModernHeader } from "../../src/modules/explore/components/ExploreModernHeader";
 import { ExploreQuickActions } from "../../src/modules/explore/components/ExploreQuickActions";
 import { CategoryPills } from "../../src/modules/explore/components/CategoryPills";
+import { HeroBanner } from "../../src/modules/explore/components/HeroBanner";
 
 // Event components
 import { useEvents } from "../../src/modules/explore/hooks/useEvents";
@@ -310,6 +310,7 @@ export default function ExploreScreen() {
       ) : (
         <Animated.ScrollView
           showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={{ paddingTop: 4, paddingBottom: FLOATING_TAB_CLEARANCE }}
           refreshControl={
             <RefreshControl
@@ -346,6 +347,15 @@ export default function ExploreScreen() {
             <CmsBannerCarousel banners={banners} />
           ) : null}
 
+          {/* Hero Banner — premium promotional */}
+          {selectedCategory === null ? (
+            <View className="mx-5 mt-3">
+              <HeroBanner
+                onPress={() => router.push("/(tabs)/explore")}
+              />
+            </View>
+          ) : null}
+
           {/* Event Banner Carousel */}
           {selectedCategory === null && featuredEvents.length > 0 ? (
             <EventBannerCarousel
@@ -356,15 +366,29 @@ export default function ExploreScreen() {
 
           {/* Inline filter indicator — only when a category is selected */}
           {selectedCategoryName ? (
-            <View className="flex-row items-center mx-5 mt-2.5 px-3.5 h-9 rounded-full bg-[#0071E3]/[0.06] border border-[#0071E3]/[0.12] gap-2">
-              <View className="w-1.5 h-1.5 rounded-full bg-[#0071E3]" />
-              <Text className="flex-1 text-[#0071E3] text-[13px] font-semibold">
+            <View
+              className="flex-row items-center mx-5 mt-2.5 px-3.5 h-9 rounded-full gap-2"
+              style={{
+                backgroundColor: TOKENS.color.overlay.blue,
+                borderWidth: 1,
+                borderColor: TOKENS.color.border.soft,
+              }}
+            >
+              <View
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: APPLE_THEME.focusBlue }}
+              />
+              <Text
+                className="flex-1 text-[13px] font-semibold"
+                style={{ color: APPLE_THEME.focusBlue, fontFamily: TOKENS.font.semibold }}
+              >
                 {selectedCategoryName} · {t("explore.results", { count: allPlaces.length })}
               </Text>
               <Pressable
                 onPress={() => handleSelectCategory(null)}
                 hitSlop={8}
-                className="w-5.5 h-5.5 rounded-full items-center justify-center bg-black/[0.06]"
+                className="w-5.5 h-5.5 rounded-full items-center justify-center"
+                style={{ backgroundColor: APPLE_THEME.primaryTint }}
               >
                 <MaterialIconsRounded name="close" size={14} color={APPLE_THEME.textMuted} />
               </Pressable>
@@ -429,19 +453,28 @@ export default function ExploreScreen() {
           {/* Empty state — animated */}
           {showEmpty ? (
             <Animated.View style={emptyAnimStyle} className="items-center justify-center py-15 px-10 gap-3">
-              <View className="w-18 h-18 rounded-full bg-black/[0.04] items-center justify-center mb-1">
+              <View
+                className="w-18 h-18 rounded-full items-center justify-center mb-1"
+                style={{ backgroundColor: APPLE_THEME.primaryTint }}
+              >
                 <MaterialIconsRounded
                   name="explore-off"
                   size={40}
                   color={APPLE_THEME.textMuted}
                 />
               </View>
-              <Text className="text-[#1D1D1F] text-[18px] font-semibold tracking-tight text-center">
+              <Text
+                className="text-[18px] font-semibold tracking-tight text-center"
+                style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.semibold }}
+              >
                 {selectedCategory == null
                   ? t("explore.empty.noPlaces")
                   : t("explore.empty.noResults")}
               </Text>
-              <Text className="text-black/48 text-[14px] text-center leading-[22px]">
+              <Text
+                className="text-[14px] text-center leading-[22px]"
+                style={{ color: APPLE_THEME.textMuted, fontFamily: TOKENS.font.body }}
+              >
                 {selectedCategory == null
                   ? t("explore.empty.noPlacesDesc")
                   : t("explore.empty.noResultsDesc")}
@@ -449,9 +482,15 @@ export default function ExploreScreen() {
               {selectedCategory != null ? (
                 <Pressable
                   onPress={() => handleSelectCategory(null)}
-                  className="mt-1 h-9 px-5 rounded-full items-center justify-center bg-[#1D1D1F]"
+                  className="mt-1 h-9 px-5 rounded-full items-center justify-center"
+                  style={{ backgroundColor: APPLE_THEME.text }}
                 >
-                  <Text className="text-white text-[14px] font-semibold">{t("common.viewAll")}</Text>
+                  <Text
+                    className="text-white text-[14px] font-semibold"
+                    style={{ fontFamily: TOKENS.font.semibold }}
+                  >
+                    {t("common.viewAll")}
+                  </Text>
                 </Pressable>
               ) : null}
             </Animated.View>

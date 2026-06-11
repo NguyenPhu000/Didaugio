@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -20,10 +21,9 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const SPRING_CONFIG = TOKENS.spring.press;
 
-const ACTIONS = Object.freeze([
+const ACTION_CONFIG = Object.freeze([
   {
     key: "restaurants",
-    title: "Ẩm thực",
     icon: "silverware-fork-knife",
     keywords: ["ẩm thực", "food", "nhà hàng", "quán ăn"],
     gradient: ["#FFF5F0", "#FFE8D6"],
@@ -31,15 +31,13 @@ const ACTIONS = Object.freeze([
   },
   {
     key: "hotel",
-    title: "Khách sạn",
     icon: "bed-outline",
     keywords: ["khách sạn", "lưu trú", "hotel", "resort", "homestay"],
     gradient: ["#F0F4FF", "#D6E4FF"],
-    iconColor: "#3B82F6",
+    iconColor: TOKENS.color.primary[500],
   },
   {
     key: "cafe",
-    title: "Cafe",
     icon: "coffee-outline",
     keywords: ["cafe", "cà phê", "coffee", "quán nước"],
     gradient: ["#FFF8F0", "#FFE4C4"],
@@ -47,7 +45,6 @@ const ACTIONS = Object.freeze([
   },
   {
     key: "shopping",
-    title: "Mua sắm",
     icon: "shopping-outline",
     keywords: ["mua sắm", "shopping", "chợ", "siêu thị", "cửa hàng"],
     gradient: ["#FFF0F5", "#FFD6E8"],
@@ -55,7 +52,6 @@ const ACTIONS = Object.freeze([
   },
   {
     key: "culture",
-    title: "Văn hóa",
     icon: "bank-outline",
     keywords: ["văn hóa", "bảo tàng", "di tích", "lịch sử", "chùa"],
     gradient: ["#F5F0FF", "#E4D6FF"],
@@ -63,15 +59,13 @@ const ACTIONS = Object.freeze([
   },
   {
     key: "events",
-    title: "Sự kiện",
     icon: "calendar-blank-outline",
     keywords: ["sự kiện", "lễ hội", "festival"],
     gradient: ["#F0FFF5", "#D6FFE4"],
-    iconColor: "#22C55E",
+    iconColor: TOKENS.color.success,
   },
   {
     key: "nature",
-    title: "Thiên nhiên",
     icon: "leaf",
     keywords: ["thiên nhiên", "sinh thái", "nature", "khu du lịch"],
     gradient: ["#F0FFF8", "#D6FFE8"],
@@ -79,27 +73,22 @@ const ACTIONS = Object.freeze([
   },
   {
     key: "more",
-    title: "Tất cả",
     icon: "dots-horizontal",
     keywords: [],
-    gradient: ["#F5F5F5", "#E8E8E8"],
-    iconColor: "#71717A",
+    gradient: [APPLE_THEME.surfaceElevated, APPLE_THEME.surfaceMuted],
+    iconColor: APPLE_THEME.textMuted,
   },
 ]);
 
-function QuickActionItem({ item, index, onPress }) {
+function QuickActionItem({ item, index, title, onPress }) {
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(16);
 
-  // Staggered entrance animation
   useEffect(() => {
     const delay = index * 60;
     opacity.value = withDelay(delay, withTiming(1, { duration: 350 }));
-    translateY.value = withDelay(
-      delay,
-      withSpring(0, TOKENS.spring.entrance),
-    );
+    translateY.value = withDelay(delay, withSpring(0, TOKENS.spring.entrance));
   }, [index, opacity, translateY]);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -126,24 +115,24 @@ function QuickActionItem({ item, index, onPress }) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={[animatedStyle]}
-      className="w-[25%] items-center gap-2.5"
+      className="w-[25%] items-center gap-2"
     >
-      <View className="shadow-sm elevation-1 rounded-[20px] overflow-hidden">
+      <View style={{ borderCurve: "continuous", ...TOKENS.shadow.sm }} className="rounded-[18px] overflow-hidden">
         <LinearGradient
           colors={item.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          className="w-16 h-16 rounded-[20px] items-center justify-center border border-black/[0.04]"
+          className="w-[60px] h-[60px] rounded-[18px] items-center justify-center border border-black/[0.04]"
         >
-          <MaterialCommunityIcons
-            name={item.icon}
-            size={26}
-            color={item.iconColor}
-          />
+          <MaterialCommunityIcons name={item.icon} size={24} color={item.iconColor} />
         </LinearGradient>
       </View>
-      <Text className="text-[#1D1D1F] text-[12.5px] font-semibold text-center tracking-[-0.1px]" numberOfLines={1}>
-        {item.title}
+      <Text
+        className="text-[12px] font-semibold text-center tracking-[-0.1px]"
+        style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.semibold }}
+        numberOfLines={1}
+      >
+        {title}
       </Text>
     </AnimatedPressable>
   );
@@ -154,7 +143,8 @@ function ExploreQuickActionsInner({
   onSelectCategory,
   onOpenSearch,
 }) {
-  const items = useMemo(() => ACTIONS, []);
+  const { t } = useTranslation();
+  const items = useMemo(() => ACTION_CONFIG, []);
 
   const handlePress = useCallback(
     (item) => {
@@ -178,12 +168,13 @@ function ExploreQuickActionsInner({
   );
 
   return (
-    <View className="flex-row flex-wrap px-4 gap-y-5 mt-5 mb-2.5 justify-start">
+    <View className="flex-row flex-wrap px-4 gap-y-4 mt-4 mb-1 justify-start">
       {items.map((item, index) => (
         <QuickActionItem
           key={item.key}
           item={item}
           index={index}
+          title={t(`explore.quickActions.${item.key}`)}
           onPress={handlePress}
         />
       ))}

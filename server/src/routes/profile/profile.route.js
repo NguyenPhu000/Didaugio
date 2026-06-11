@@ -14,6 +14,7 @@ import {
   createTripShareSchema,
   accessTripShareSchema,
   updateProfileSchema,
+  cancelBookingSchema,
 } from "../../models/index.js";
 
 const router = express.Router();
@@ -76,6 +77,12 @@ router.get("/trips", authenticate, profileController.getMyTrips);
 router.get("/bookings", authenticate, profileController.getMyBookings);
 router.get("/bookings/:id", authenticate, profileController.getMyBookingDetail);
 router.get("/bookings/:id/qr", authenticate, profileController.getMyBookingQR);
+router.put(
+  "/bookings/:id/cancel",
+  authenticate,
+  validateBody(cancelBookingSchema),
+  profileController.cancelMyBooking,
+);
 router.post(
   "/bookings/:id/link-trip",
   authenticate,

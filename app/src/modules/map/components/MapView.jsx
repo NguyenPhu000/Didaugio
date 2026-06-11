@@ -18,6 +18,8 @@ import {
 } from "../config/mapConfig";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 
+const LABEL_ZOOM_THRESHOLD = 13;
+
 const CLEAN_NATIVE_MAP_STYLE = [
   { featureType: "poi", stylers: [{ visibility: "off" }] },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
@@ -101,7 +103,7 @@ const getClusterVisual = (pointCount) => {
  * Custom view markers don't work on Fabric, so we use image + pinColor.
  */
 const PlaceMarker = memo(
-  ({ place, isActive, onSelectPlace, onLongPressPlace }) => {
+  ({ place, isActive, onSelectPlace, onLongPressPlace, showLabel }) => {
     const handlePress = useCallback(() => {
       onSelectPlace?.(place);
     }, [onSelectPlace, place]);
@@ -116,6 +118,34 @@ const PlaceMarker = memo(
         ? "#f59e0b"
         : CATEGORY_MARKER_STYLES[place?.categoryId]?.color || "#ef4444";
 
+    const labelColor = CATEGORY_MARKER_STYLES[place?.categoryId]?.color || "#374151";
+
+    if (showLabel && place?.name) {
+      return (
+        <Marker
+          coordinate={{ latitude: place.latitude, longitude: place.longitude }}
+          onPress={handlePress}
+          onLongPress={handleLongPress}
+          anchor={{ x: 0.5, y: 1 }}
+          image={place.markerImageUri ? { uri: place.markerImageUri } : undefined}
+          pinColor={markerColor}
+          tracksViewChanges={false}
+        >
+          <View style={styles.placeLabelWrap} pointerEvents="none">
+            <View style={styles.placeLabelBubble}>
+              <Text
+                style={[styles.placeLabelText, { color: labelColor }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {place.name}
+              </Text>
+            </View>
+          </View>
+        </Marker>
+      );
+    }
+
     return (
       <Marker
         coordinate={{ latitude: place.latitude, longitude: place.longitude }}
@@ -129,6 +159,12 @@ const PlaceMarker = memo(
       />
     );
   },
+  (prev, next) =>
+    prev.place?.id === next.place?.id &&
+    prev.place?.name === next.place?.name &&
+    prev.place?.categoryId === next.place?.categoryId &&
+    prev.isActive === next.isActive &&
+    prev.showLabel === next.showLabel,
 );
 
 const MapView = memo(
@@ -141,6 +177,7 @@ const MapView = memo(
         onLongPressPlace,
         onPressMap,
         onLongPressMap,
+        onZoomChange,
         style,
         tileUrls,
         mapType = "standard",
@@ -152,6 +189,9 @@ const MapView = memo(
       const mapRef = useRef(null);
       const regionRef = useRef(INITIAL_REGION);
       const [tileError, setTileError] = useState(false);
+      const [currentZoom, setCurrentZoom] = useState(() =>
+        Math.round(Math.log2(360 / INITIAL_REGION.latitudeDelta)),
+      );
       const tileErrorTimerRef = useRef(null);
 
       useImperativeHandle(ref, () => ({
@@ -296,17 +336,25 @@ const MapView = memo(
                 >
                   {pointLabel}
                 </Text>
-                {pointCount >= 100 ? (
-                  <Text style={styles.clusterHotspots}>hotspots</Text>
-                ) : null}
               </View>
             </View>
           </Marker>
         );
       }, []);
-      const handleRegionChangeComplete = useCallback((region) => {
-        regionRef.current = region;
-      }, []);
+      const handleRegionChangeComplete = useCallback(
+        (region) => {
+          regionRef.current = region;
+          const zoom = Math.round(Math.log2(360 / region.latitudeDelta));
+          setCurrentZoom((prev) => {
+            if (prev !== zoom) {
+              onZoomChange?.(zoom);
+              return zoom;
+            }
+            return prev;
+          });
+        },
+        [onZoomChange],
+      );
 
       const handleTileError = useCallback(() => {
         if (tileError || tileErrorTimerRef.current) return;
@@ -343,10 +391,10 @@ const MapView = memo(
           initialRegion={INITIAL_REGION}
           clusteringEnabled={preparedPlaces.length > 1}
           minPoints={2}
-          radius={52}
-          extent={512}
-          nodeSize={64}
-          maxZoom={17}
+          radius={60}
+          extent={256}
+          nodeSize={32}
+          maxZoom={16}
           spiralEnabled
           spiderLineColor="rgba(148,163,184,0.65)"
           animationEnabled
@@ -388,6 +436,7 @@ const MapView = memo(
               isActive={place.id === selectedPlaceId}
               onSelectPlace={onSelectPlace}
               onLongPressPlace={onLongPressPlace}
+              showLabel={currentZoom >= LABEL_ZOOM_THRESHOLD}
             />
           ))}
 
@@ -437,17 +486,31 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   clusterText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "bold",
     letterSpacing: -0.2,
   },
-  clusterHotspots: {
-    marginTop: 2,
-    fontSize: 8,
+  placeLabelWrap: {
+    alignItems: "center",
+  },
+  placeLabelBubble: {
+    marginTop: 3,
+    maxWidth: 130,
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  placeLabelText: {
+    fontSize: 10,
     fontWeight: "600",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    color: "rgba(15, 23, 42, 0.6)",
+    color: "#1e293b",
+    letterSpacing: 0.1,
   },
 });
 

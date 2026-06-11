@@ -1,19 +1,22 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
-  Dimensions,
   FlatList,
+  Platform,
   Pressable,
   Text,
   View,
   useWindowDimensions,
 } from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -22,8 +25,14 @@ import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { resolveMediaUrl } from "../../../lib/media-url";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-const BANNER_H = 180;
+const BANNER_H = 200;
 const AUTO_SCROLL_INTERVAL = 10000;
+
+const GRADIENT_COLORS = {
+  background: ["#1B4332", "#0F1419"],
+  overlay: ["rgba(15,23,42,0)", "rgba(15,23,42,0.85)"],
+  imageFade: ["rgba(15,20,25,1)", "rgba(15,20,25,0.5)", "rgba(15,20,25,0)"],
+};
 
 // Fallback banner khi admin chưa tạo banner nào
 const FALLBACK_BANNER = {
@@ -37,6 +46,7 @@ const FALLBACK_BANNER = {
 };
 
 function BannerSlide({ banner, width, onPress }) {
+  const { t } = useTranslation();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -59,75 +69,169 @@ function BannerSlide({ banner, width, onPress }) {
 
   const rawImage = banner.imageUrl || banner.imageData;
   const imageUri = resolveMediaUrl(rawImage);
-  const imageSource = imageUri ? { uri: imageUri } : null;
+  const hasImage = !!imageUri;
 
   return (
     <AnimatedPressable
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}
-      style={[animatedStyle, { width, height: BANNER_H }]}
-      className="rounded-[22px] overflow-hidden bg-[#1D1D1F] relative"
+      style={[
+        animatedStyle,
+        {
+          width,
+          height: BANNER_H,
+          borderRadius: TOKENS.radius.xl,
+          borderCurve: "continuous",
+          overflow: "hidden",
+          backgroundColor: GRADIENT_COLORS.background[0],
+          ...(Platform.OS === "ios" ? TOKENS.shadow.lg : null),
+        },
+      ]}
     >
-      {imageSource ? (
-        <Image
-          source={imageSource}
-          contentFit="cover"
-          transition={300}
-          cachePolicy="memory-disk"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-        />
-      ) : (
-        // Fallback gradient background khi không có ảnh
-        <View
-          className="absolute inset-0 w-full h-full"
-          style={{ backgroundColor: APPLE_THEME.focusBlue }}
-        />
-      )}
+      {/* Deep forest green → black gradient background */}
+      <LinearGradient
+        colors={GRADIENT_COLORS.background}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ position: "absolute", inset: 0 }}
+      />
 
-      {/* Dark overlay */}
-      <View className="absolute inset-0 bg-black/30" pointerEvents="none" />
-      <View
-        className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/80 via-black/30 to-transparent"
+      {/* Right-side image blended into dark background */}
+      {hasImage ? (
+        <>
+          <Image
+            source={{ uri: imageUri }}
+            contentFit="cover"
+            transition={300}
+            cachePolicy="memory-disk"
+            style={{
+              position: "absolute",
+              right: 0,
+              top: 0,
+              width: "55%",
+              height: "100%",
+            }}
+          />
+          {/* Image fade — blends image into dark background from right to left */}
+          <LinearGradient
+            colors={GRADIENT_COLORS.imageFade}
+            locations={[0, 0.45, 1]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ position: "absolute", inset: 0 }}
+            pointerEvents="none"
+          />
+        </>
+      ) : null}
+
+      {/* Bottom-up shadow overlay for text readability */}
+      <LinearGradient
+        colors={GRADIENT_COLORS.overlay}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={{ position: "absolute", inset: 0 }}
         pointerEvents="none"
       />
 
-      {/* Nội dung */}
-      <View className="absolute bottom-4 left-4 right-4">
-        {banner.isFallback && (
-          <View className="mb-1.5 self-start px-2.5 py-0.5 rounded-full bg-white/20 border border-white/30">
-            <Text
-              className="text-white text-[10px] font-bold tracking-widest"
-              style={{ fontFamily: TOKENS.font.bold }}
-            >
-              DU LICH CAN THO
-            </Text>
-          </View>
-        )}
+      {/* Fallback badge */}
+      {banner.isFallback ? (
+        <View
+          style={{
+            position: "absolute",
+            top: TOKENS.space[4],
+            left: TOKENS.space[4],
+            paddingHorizontal: TOKENS.space[3],
+            paddingVertical: TOKENS.space[1],
+            borderRadius: TOKENS.radius.full,
+            backgroundColor: "rgba(255,255,255,0.15)",
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.25)",
+          }}
+        >
+          <Text
+            style={{
+              color: APPLE_THEME.white,
+              fontSize: TOKENS.fontSize.xs,
+              fontFamily: TOKENS.font.semibold,
+              letterSpacing: 1.5,
+            }}
+          >
+            ĐI ĐÂU GIỜ
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Content — left-aligned */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: TOKENS.space[5],
+          left: TOKENS.space[5],
+          right: hasImage ? "50%" : TOKENS.space[5],
+        }}
+      >
         <Text
-          className="text-white text-[19px] leading-[24px] font-bold tracking-tight"
-          style={{ fontFamily: TOKENS.font.heading }}
+          style={{
+            color: APPLE_THEME.white,
+            fontSize: TOKENS.fontSize["2xl"],
+            lineHeight: 28,
+            fontFamily: TOKENS.font.heading,
+            letterSpacing: -0.3,
+          }}
           numberOfLines={2}
         >
           {banner.title}
         </Text>
+
         {banner.description ? (
           <Text
-            className="text-white/75 text-[12px] mt-1 font-medium"
-            style={{ fontFamily: TOKENS.font.medium }}
-            numberOfLines={1}
+            style={{
+              color: "rgba(255,255,255,0.75)",
+              fontSize: TOKENS.fontSize.sm,
+              lineHeight: 18,
+              fontFamily: TOKENS.font.medium,
+              marginTop: TOKENS.space[1.5] || 6,
+            }}
+            numberOfLines={2}
           >
             {banner.description}
           </Text>
         ) : null}
-      </View>
 
-      {/* CTA arrow nếu có link */}
-      {banner.linkType && banner.linkType !== "none" ? (
-        <View className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-white/20 border border-white/30 items-center justify-center">
-          <Text className="text-white text-[14px]">›</Text>
-        </View>
-      ) : null}
+        {/* CTA Button — beige rounded with dark text + arrow */}
+        {banner.linkType && banner.linkType !== "none" ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              alignSelf: "flex-start",
+              marginTop: TOKENS.space[3],
+              paddingHorizontal: TOKENS.space[4],
+              paddingVertical: TOKENS.space[2],
+              borderRadius: TOKENS.radius.button,
+              borderCurve: "continuous",
+              backgroundColor: "#F5F0E8",
+              gap: TOKENS.space[1.5] || 6,
+            }}
+          >
+            <Text
+              style={{
+                color: APPLE_THEME.primary,
+                fontSize: TOKENS.fontSize.sm,
+                fontFamily: TOKENS.font.semibold,
+              }}
+            >
+              {t("explore.heroBanner.cta")}
+            </Text>
+            <MaterialIconsRounded
+              name="arrow-forward"
+              size={14}
+              color={APPLE_THEME.primary}
+            />
+          </View>
+        ) : null}
+      </View>
     </AnimatedPressable>
   );
 }
@@ -204,15 +308,18 @@ function CmsBannerCarouselInner({ banners: rawBanners, onPressBanner }) {
 
       {/* Dot indicator */}
       {banners.length > 1 ? (
-        <View className="mt-2.5 flex-row items-center justify-center gap-1.5">
+        <View style={{ marginTop: TOKENS.space[2.5] || 10, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
           {banners.map((_, index) => {
             const active = index === activeIndex;
             return (
               <View
                 key={`dot-${index}`}
-                className={`h-1.5 rounded-full ${
-                  active ? "w-5 bg-[#0071E3]" : "w-1.5 bg-black/12"
-                }`}
+                style={{
+                  height: 6,
+                  borderRadius: TOKENS.radius.full,
+                  width: active ? 20 : 6,
+                  backgroundColor: active ? APPLE_THEME.focusBlue : "rgba(0,0,0,0.12)",
+                }}
               />
             );
           })}

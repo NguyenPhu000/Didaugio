@@ -15,11 +15,11 @@ import AnimatedIcon from "@/components/ui/animated-icon";
 import { APP_META } from "@/constants/brand";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { useTranslation } from "react-i18next";
-import { AdminHeader, CustomSidebarRail, NavMain, getMenuData } from "./sidebar";
+import { CustomSidebarRail, BusinessHeader, NavMain, getMenuData } from "./sidebar";
 
 /**
- * Layout riêng cho `/business/*`.
- * Không render các nhóm menu admin để tránh business user lẫn vào admin surface.
+ * BusinessLayout — dedicated layout for `/business/*`.
+ * Uses standard admin sidebar layout styling and configuration for cohesive UI.
  */
 const BusinessLayout = ({ children }) => {
   const { t } = useTranslation();
@@ -39,7 +39,10 @@ const BusinessLayout = ({ children }) => {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon" className="bg-sidebar border-r">
+      <Sidebar
+        collapsible="icon"
+        className="bg-sidebar border-r"
+      >
         <SidebarHeader className="bg-sidebar px-4 py-4">
           <SidebarMenu>
             <SidebarMenuItem>
@@ -69,14 +72,20 @@ const BusinessLayout = ({ children }) => {
         </SidebarHeader>
 
         <SidebarContent className="px-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <NavMain items={businessMainMenu} label={t("nav.section.main")} />
-          <NavMain items={menuData.business || []} label={t("nav.section.operations")} />
+          <NavMain
+            items={businessMainMenu}
+            label={t("nav.section.main")}
+          />
+          <NavMain
+            items={menuData.business || []}
+            label={t("nav.section.operations")}
+          />
         </SidebarContent>
       </Sidebar>
       <CustomSidebarRail />
       <SidebarInset>
-        <AdminHeader />
-        <main className="flex-1 overflow-auto bg-muted/20 p-4 md:p-6">
+        <BusinessHeader />
+        <main className="flex-1 overflow-auto bg-zinc-50/50 p-4 md:p-6 dark:bg-zinc-950/50">
           {children}
         </main>
       </SidebarInset>

@@ -8,6 +8,7 @@ import {
   Keyboard,
   ActivityIndicator,
   useWindowDimensions,
+  StyleSheet,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -32,6 +33,348 @@ const QUICK_SUGGESTIONS = [
 ];
 
 const ACCENT = "#3478F6";
+
+const s = StyleSheet.create({
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderColor: "#F1F5F9",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  headerIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 9999,
+    backgroundColor: "#EFF6FF",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#DBEAFE",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 0,
+  },
+  headerTitle: {
+    fontSize: 15.5,
+    color: "#1E293B",
+    lineHeight: 20,
+  },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 9999,
+    backgroundColor: "#10B981",
+  },
+  statusText: {
+    fontSize: 10,
+    color: "#94A3B8",
+  },
+  deleteBtnBase: {
+    width: 36,
+    height: 36,
+    borderRadius: 9999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  deleteBtnDisabled: {
+    opacity: 0.4,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    lineHeight: 32,
+    color: "#0F172A",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 13.5,
+    lineHeight: 20,
+    color: "#64748B",
+    textAlign: "center",
+    maxWidth: 280,
+    marginBottom: 32,
+  },
+  suggestionsWrap: {
+    width: "100%",
+    gap: 10,
+  },
+  suggestionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  suggestionIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  suggestionText: {
+    flex: 1,
+    fontSize: 13.5,
+    color: "#334155",
+  },
+  messagesWrap: {
+    gap: 16,
+  },
+  messageRow: {
+    gap: 6,
+  },
+  messageRowUser: {
+    alignItems: "flex-end",
+  },
+  messageRowBot: {
+    alignItems: "flex-start",
+  },
+  botLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginLeft: 4,
+  },
+  botLabelDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 9999,
+    backgroundColor: "#3B82F6",
+  },
+  botLabelText: {
+    color: "#94A3B8",
+    fontSize: 10,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  bubbleBase: {
+    maxWidth: "85%",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  bubbleUser: {
+    backgroundColor: "#3478F6",
+    borderTopRightRadius: 0,
+  },
+  bubbleBot: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    borderTopLeftRadius: 0,
+  },
+  bubbleTextBase: {
+    fontSize: 14.5,
+    lineHeight: 22,
+  },
+  bubbleTextUser: {
+    color: "#FFFFFF",
+  },
+  bubbleTextBot: {
+    color: "#1E293B",
+  },
+  draftCard: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.03,
+    shadowRadius: 30,
+    elevation: 4,
+    gap: 16,
+  },
+  draftHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  draftHeaderTextWrap: {
+    flex: 1,
+  },
+  draftTitle: {
+    fontSize: 14.5,
+    color: "#0F172A",
+  },
+  draftSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    color: "#94A3B8",
+  },
+  draftActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  draftActionBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    backgroundColor: "#F8FAFC",
+  },
+  draftSelectAllText: {
+    fontSize: 11,
+    color: "#2563EB",
+  },
+  draftDeselectText: {
+    fontSize: 11,
+    color: "#64748B",
+  },
+  draftPlacesWrap: {
+    gap: 12,
+  },
+  confirmBtn: {
+    marginTop: 4,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  confirmBtnDisabled: {
+    opacity: 0.6,
+  },
+  confirmTextDisabled: {
+    color: "#94A3B8",
+  },
+  confirmTextEnabled: {
+    color: "#FFFFFF",
+  },
+  confirmTextBase: {
+    fontSize: 14.5,
+  },
+  typingBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    alignSelf: "flex-start",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 8,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    borderTopLeftRadius: 0,
+  },
+  typingText: {
+    color: "#475569",
+    fontSize: 13.5,
+  },
+  errorBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "center",
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FEE2E2",
+  },
+  errorText: {
+    flex: 1,
+    color: "#EF4444",
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  inputBar: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    backgroundColor: "transparent",
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 26,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 20,
+    elevation: 3,
+  },
+  textInput: {
+    flex: 1,
+    minHeight: 38,
+    maxHeight: 100,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    fontSize: 14.5,
+    color: "#1E293B",
+  },
+  sendBtnBase: {
+    width: 36,
+    height: 36,
+    borderRadius: 9999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sendBtnActive: {
+    backgroundColor: "#3478F6",
+  },
+  sendBtnInactive: {
+    backgroundColor: "#F8FAFC",
+  },
+});
 
 export function AIPlanner() {
   const { t } = useTranslation();
@@ -181,31 +524,27 @@ export function AIPlanner() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-slate-50"
+      style={{ flex: 1, backgroundColor: "#F8FAFC" }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
     >
-      {/* Premium Header */}
       <View
-        className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-slate-100 shadow-sm"
-        style={{ paddingTop: Math.max(insets.top, 8) }}
+        style={[s.header, { paddingTop: Math.max(insets.top, 8) }]}
       >
-        <View className="flex-row items-center gap-3">
-          <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center border border-blue-100 shadow-inner">
+        <View style={s.headerLeft}>
+          <View style={s.headerIconWrap}>
             <MaterialIconsRounded name="assistant" size={22} color="#3478F6" />
           </View>
           <View>
             <Text
-              style={{ fontFamily: TOKENS.font.semibold }}
-              className="text-[15.5px] text-slate-800 leading-tight"
+              style={[s.headerTitle, { fontFamily: TOKENS.font.semibold }]}
             >
               {t('aiPlanner.travelAssistant')}
             </Text>
-            <View className="flex-row items-center gap-1 mt-1">
-              <View className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <View style={s.statusRow}>
+              <View style={s.statusDot} />
               <Text
-                style={{ fontFamily: TOKENS.font.medium }}
-                className="text-[10px] text-slate-400"
+                style={[s.statusText, { fontFamily: TOKENS.font.medium }]}
               >
                 {t('aiPlanner.readyToHelp')}
               </Text>
@@ -217,19 +556,16 @@ export function AIPlanner() {
           <Pressable
             onPress={handleClearPlannerHistory}
             disabled={isLoading}
-            className={`w-9 h-9 rounded-full items-center justify-center active:bg-slate-100 ${
-              isLoading ? "opacity-40" : ""
-            }`}
+            style={[s.deleteBtnBase, isLoading && s.deleteBtnDisabled]}
           >
             <MaterialIconsRounded name="delete-sweep" size={22} color="#64748B" />
           </Pressable>
         )}
       </View>
 
-      {/* ── Messages area ── */}
       <ScrollView
         ref={scrollRef}
-        className="flex-1"
+        style={s.scrollView}
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 16,
@@ -245,43 +581,38 @@ export function AIPlanner() {
         }
       >
         {!hasMessages ? (
-          /* ── Empty state ── */
-          <View className="items-center px-6 py-8">
+          <View style={s.emptyContainer}>
             <LinearGradient
               colors={["#EFF6FF", "#DBEAFE"]}
-              className="w-16 h-16 rounded-3xl items-center justify-center shadow-inner mb-5 rotate-3"
+              style={{ width: 64, height: 64, borderRadius: 24, alignItems: "center", justifyContent: "center", marginBottom: 20, transform: [{ rotate: "3deg" }] }}
             >
               <MaterialIconsRounded name="auto-awesome" size={28} color="#3478F6" />
             </LinearGradient>
             <Text
-              style={{ fontFamily: TOKENS.font.heading }}
-              className="text-2xl text-slate-900 text-center mb-2"
+              style={[s.emptyTitle, { fontFamily: TOKENS.font.heading }]}
             >
               {t('aiPlanner.planTravel')}
             </Text>
             <Text
-              style={{ fontFamily: TOKENS.font.body }}
-              className="text-[13.5px] leading-5 text-slate-505 text-slate-500 text-center max-w-[280px] mb-8"
+              style={[s.emptySubtitle, { fontFamily: TOKENS.font.body }]}
             >
               {t('aiPlanner.intro')}
             </Text>
 
-            <View className="w-full gap-2.5">
+            <View style={s.suggestionsWrap}>
               {QUICK_SUGGESTIONS.map((item) => (
                 <Pressable
                   key={item.text}
                   onPress={() => handleSend(item.text)}
-                  className="flex-row items-center gap-3.5 px-4 py-4 rounded-2xl bg-white border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] active:bg-slate-50"
+                  style={s.suggestionBtn}
                 >
                   <View
-                    className="w-8 h-8 rounded-xl items-center justify-center"
-                    style={{ backgroundColor: item.color + "15" }}
+                    style={[s.suggestionIconWrap, { backgroundColor: item.color + "15" }]}
                   >
                     <MaterialIconsRounded name={item.icon} size={16} color={item.color} />
                   </View>
                   <Text
-                    style={{ fontFamily: TOKENS.font.medium }}
-                    className="flex-1 text-[13.5px] text-slate-700"
+                    style={[s.suggestionText, { fontFamily: TOKENS.font.medium }]}
                   >
                     {item.text}
                   </Text>
@@ -291,21 +622,19 @@ export function AIPlanner() {
             </View>
           </View>
         ) : (
-          /* ── Conversation ── */
-          <View className="gap-4">
+          <View style={s.messagesWrap}>
             {messages.map((message, index) => {
               const isUser = message.role === "user";
               return (
                 <View
                   key={message.id ?? index}
-                  className={`gap-1.5 ${isUser ? "items-end" : "items-start"}`}
+                  style={[s.messageRow, isUser ? s.messageRowUser : s.messageRowBot]}
                 >
                   {!isUser ? (
-                    <View className="flex-row items-center gap-1.5 ml-1">
-                      <View className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    <View style={s.botLabelRow}>
+                      <View style={s.botLabelDot} />
                       <Text
-                        style={{ fontFamily: TOKENS.font.semibold }}
-                        className="text-slate-400 text-[10px] tracking-wider uppercase"
+                        style={[s.botLabelText, { fontFamily: TOKENS.font.semibold }]}
                       >
                         Nhi (AI)
                       </Text>
@@ -313,19 +642,17 @@ export function AIPlanner() {
                   ) : null}
 
                   <View
-                    className={`max-w-[85%] px-4 py-3.5 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] ${
-                      isUser
-                        ? "bg-[#3478F6] rounded-tr-none"
-                        : "bg-white border border-slate-100 rounded-tl-none"
-                    }`}
+                    style={[
+                      s.bubbleBase,
+                      isUser ? s.bubbleUser : s.bubbleBot,
+                    ]}
                   >
                     <Text
-                      style={{
-                        fontFamily: isUser ? TOKENS.font.medium : TOKENS.font.body,
-                      }}
-                      className={`text-[14.5px] leading-[22px] ${
-                        isUser ? "text-white" : "text-slate-800"
-                      }`}
+                      style={[
+                        s.bubbleTextBase,
+                        isUser ? s.bubbleTextUser : s.bubbleTextBot,
+                        { fontFamily: isUser ? TOKENS.font.medium : TOKENS.font.body },
+                      ]}
                     >
                       {message.text ?? message.content}
                     </Text>
@@ -337,42 +664,38 @@ export function AIPlanner() {
         )}
 
         {draftPlan?.suggestedPlaces?.length ? (
-          <View className="mt-4 p-4 rounded-3xl bg-white border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.03)] gap-4">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1">
+          <View style={s.draftCard}>
+            <View style={s.draftHeader}>
+              <View style={s.draftHeaderTextWrap}>
                 <Text
-                  style={{ fontFamily: TOKENS.font.semibold }}
-                  className="text-[14.5px] text-slate-900"
+                  style={[s.draftTitle, { fontFamily: TOKENS.font.semibold }]}
                 >
                   {t('aiPlanner.selectPlaces')}
                 </Text>
                 <Text
-                  style={{ fontFamily: TOKENS.font.body }}
-                  className="mt-0.5 text-xs text-slate-400"
+                  style={[s.draftSubtitle, { fontFamily: TOKENS.font.body }]}
                 >
                   {t('aiPlanner.selectingCount', { selected: selectedPlaceIds.length, total: draftPlan.suggestedPlaces.length })}
                 </Text>
               </View>
 
-              <View className="flex-row items-center gap-1.5">
+              <View style={s.draftActions}>
                 <Pressable
                   onPress={selectAllPlaces}
-                  className="px-3 py-1.5 rounded-full border border-slate-100 bg-slate-50 active:bg-slate-100"
+                  style={s.draftActionBtn}
                 >
                   <Text
-                    style={{ fontFamily: TOKENS.font.semibold }}
-                    className="text-[11px] text-blue-600"
+                    style={[s.draftSelectAllText, { fontFamily: TOKENS.font.semibold }]}
                   >
                     {t('aiPlanner.selectAll')}
                   </Text>
                 </Pressable>
                 <Pressable
                   onPress={clearSelectedPlaces}
-                  className="px-3 py-1.5 rounded-full border border-slate-100 bg-slate-50 active:bg-slate-100"
+                  style={s.draftActionBtn}
                 >
                   <Text
-                    style={{ fontFamily: TOKENS.font.semibold }}
-                    className="text-[11px] text-slate-500"
+                    style={[s.draftDeselectText, { fontFamily: TOKENS.font.semibold }]}
                   >
                     {t('aiPlanner.deselect')}
                   </Text>
@@ -380,7 +703,7 @@ export function AIPlanner() {
               </View>
             </View>
 
-            <View className="gap-3">
+            <View style={s.draftPlacesWrap}>
               {draftPlan.suggestedPlaces.map((place, index) => {
                 const placeId = Number(place?.id);
                 const isSelected = selectedPlaceIds.includes(placeId);
@@ -409,7 +732,7 @@ export function AIPlanner() {
             <Pressable
               onPress={handleConfirmSelection}
               disabled={!canConfirmSelection || isConfirming}
-              className="mt-1 rounded-2xl overflow-hidden active:opacity-95"
+              style={[s.confirmBtn, (!canConfirmSelection || isConfirming) && s.confirmBtnDisabled]}
             >
               <LinearGradient
                 colors={
@@ -419,7 +742,7 @@ export function AIPlanner() {
                 }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                className="h-[52px] flex-row items-center justify-center gap-2 px-4"
+                style={{ height: 52, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 16 }}
               >
                 {isConfirming ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
@@ -435,12 +758,11 @@ export function AIPlanner() {
                   />
                 )}
                 <Text
-                  style={{ fontFamily: TOKENS.font.semibold }}
-                  className={`text-[14.5px] ${
-                    !canConfirmSelection || isConfirming
-                      ? "text-slate-400"
-                      : "text-white"
-                  }`}
+                  style={[
+                    s.confirmTextBase,
+                    (!canConfirmSelection || isConfirming) ? s.confirmTextDisabled : s.confirmTextEnabled,
+                    { fontFamily: TOKENS.font.semibold },
+                  ]}
                 >
                   {t('aiPlanner.createFromSelection')}
                 </Text>
@@ -450,11 +772,10 @@ export function AIPlanner() {
         ) : null}
 
         {isLoading ? (
-          <View className="flex-row items-center gap-2.5 self-start px-4 py-3 mt-2 rounded-2xl bg-white border border-slate-100 shadow-sm rounded-tl-none">
+          <View style={s.typingBubble}>
             <ActivityIndicator size="small" color={ACCENT} />
             <Text
-              style={{ fontFamily: TOKENS.font.medium }}
-              className="text-slate-600 text-[13.5px]"
+              style={[s.typingText, { fontFamily: TOKENS.font.medium }]}
             >
               {isConfirming
                 ? t('aiPlanner.creatingTrip')
@@ -466,11 +787,10 @@ export function AIPlanner() {
         ) : null}
 
         {error ? (
-          <View className="flex-row items-center gap-2 self-center mt-2 px-4 py-2.5 rounded-xl bg-red-50 border border-red-150">
+          <View style={s.errorBubble}>
             <MaterialIconsRounded name="error-outline" size={14} color="#EF4444" />
             <Text
-              style={{ fontFamily: TOKENS.font.medium }}
-              className="flex-1 text-red-500 text-xs ml-1"
+              style={[s.errorText, { fontFamily: TOKENS.font.medium }]}
             >
               {error}
             </Text>
@@ -478,16 +798,17 @@ export function AIPlanner() {
         ) : null}
       </ScrollView>
 
-      {/* ── Input bar ── */}
       <View
-        className="px-4 pt-2 bg-transparent"
-        style={{
-          paddingBottom: keyboardVisible
-            ? 8
-            : Math.max(insets.bottom, 8) + TAB_BAR_HEIGHT,
-        }}
+        style={[
+          s.inputBar,
+          {
+            paddingBottom: keyboardVisible
+              ? 8
+              : Math.max(insets.bottom, 8) + TAB_BAR_HEIGHT,
+          },
+        ]}
       >
-        <View className="flex-row items-end gap-2.5 px-3 py-2.5 rounded-[26px] bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+        <View style={s.inputContainer}>
           <TextInput
             ref={inputRef}
             placeholder={t('aiPlanner.inputPlaceholder')}
@@ -496,18 +817,18 @@ export function AIPlanner() {
             onChangeText={setInputText}
             multiline
             maxLength={500}
-            className="flex-1 min-h-[38px] max-h-[100px] px-2 py-1 text-[14.5px] text-slate-800"
-            style={{
-              fontFamily: TOKENS.font.body,
-              textAlignVertical: "center",
-            }}
+            style={[
+              s.textInput,
+              {
+                fontFamily: TOKENS.font.body,
+                textAlignVertical: "center",
+              },
+            ]}
           />
           <Pressable
             onPress={() => handleSend()}
             disabled={!canSend}
-            className={`w-[36px] h-[36px] rounded-full items-center justify-center ${
-              canSend ? "bg-[#3478F6] active:opacity-80 active:scale-95" : "bg-slate-50"
-            }`}
+            style={[s.sendBtnBase, canSend ? s.sendBtnActive : s.sendBtnInactive]}
           >
             {isLoading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />

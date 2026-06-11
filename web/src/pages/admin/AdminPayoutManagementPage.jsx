@@ -63,7 +63,7 @@ export default function AdminPayoutManagementPage() {
       const params = { page, limit: 20 };
       if (statusFilter !== "all") params.status = statusFilter;
       const res = await api.get("/admin/payouts", { params });
-      const data = res.data;
+      const data = res.data?.data;
       setPayouts(data?.payouts || []);
       setPagination(
         data?.pagination || { page: 1, totalPages: 1, total: 0 },

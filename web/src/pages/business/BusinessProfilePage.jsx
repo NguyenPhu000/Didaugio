@@ -32,10 +32,10 @@ import useBusinessStore from "@/stores/businessStore";
 import * as businessApi from "@/apis/businessApi";
 import { BUSINESS_STATUS } from "@/constants/businessConstants";
 import {
-  SectionCard,
-  PageHeader,
-} from "@/components/business/DashboardWidgets";
-import { DESIGN } from "@/components/business/dashboardWidgetHelpers";
+  BusinessSectionCard,
+  BusinessPageHeader,
+} from "@/components/business/ui";
+import { BUSINESS_TOKENS } from "@/components/business/tokens";
 import { cn } from "@/lib/utils";
 import ContractSignModal from "@/components/business/ContractSignModal";
 import DocumentImageUploadField from "@/components/business/DocumentImageUploadField";
@@ -359,9 +359,9 @@ const BusinessProfilePage = () => {
   return (
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
       {/* Header */}
-      <PageHeader
+      <BusinessPageHeader
         title={t("business.profile.title")}
-        subtitle={t("business.profile.title")}
+        description={t("business.profile.title")}
         action={headerAction}
       />
 
@@ -374,7 +374,7 @@ const BusinessProfilePage = () => {
       {!isEditing ? (
         /* View Mode */
         <div className="grid lg:grid-cols-2 gap-4">
-          <SectionCard title="Thông tin cơ bản" titleIcon={Building2}>
+          <BusinessSectionCard title="Thông tin cơ bản" titleIcon={Building2}>
             <div className="space-y-0">
               {basicInfoRows.map(({ label, value }) => (
                 <div
@@ -394,9 +394,9 @@ const BusinessProfilePage = () => {
                 </div>
               ))}
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
-          <SectionCard title="Thông tin ngân hàng" titleIcon={CreditCard}>
+          <BusinessSectionCard title="Thông tin ngân hàng" titleIcon={CreditCard}>
             <div className="space-y-0">
               {bankInfoRows.map(({ label, value }) => (
                 <div
@@ -416,9 +416,9 @@ const BusinessProfilePage = () => {
                 </div>
               ))}
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
-          <SectionCard
+          <BusinessSectionCard
             title="Giấy tờ xác minh"
             titleIcon={CheckCircle2}
             className="lg:col-span-2"
@@ -449,14 +449,14 @@ const BusinessProfilePage = () => {
                 />
               </div>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
           <div
             ref={contractSectionRef}
             id="business-contract-section"
             className="scroll-mt-24 lg:col-span-2"
           >
-            <SectionCard title="Hợp đồng pháp lý" titleIcon={FileSignature}>
+            <BusinessSectionCard title="Hợp đồng pháp lý" titleIcon={FileSignature}>
               <div className="space-y-3">
                 <div className="rounded-lg border border-border/60 p-3">
                   <p className="text-xs text-muted-foreground">
@@ -491,7 +491,7 @@ const BusinessProfilePage = () => {
                     : "Ký hợp đồng ngay"}
                 </Button>
               </div>
-            </SectionCard>
+            </BusinessSectionCard>
           </div>
         </div>
       ) : (
@@ -499,7 +499,7 @@ const BusinessProfilePage = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid lg:grid-cols-2 gap-4">
             {/* Basic Info */}
-            <SectionCard title="Thông tin cơ bản" titleIcon={Building2}>
+            <BusinessSectionCard title="Thông tin cơ bản" titleIcon={Building2}>
               <div className="space-y-4">
                 <FormField
                   label="Tên doanh nghiệp / Cửa hàng"
@@ -548,10 +548,10 @@ const BusinessProfilePage = () => {
                   </FormField>
                 </div>
               </div>
-            </SectionCard>
+            </BusinessSectionCard>
 
             {/* Bank Info */}
-            <SectionCard title="Thông tin ngân hàng" titleIcon={CreditCard}>
+            <BusinessSectionCard title="Thông tin ngân hàng" titleIcon={CreditCard}>
               <div className="space-y-4">
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 border border-blue-100 text-blue-700 text-xs">
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
@@ -583,9 +583,9 @@ const BusinessProfilePage = () => {
                   />
                 </FormField>
               </div>
-            </SectionCard>
+            </BusinessSectionCard>
 
-            <SectionCard
+            <BusinessSectionCard
               title="Cập nhật giấy tờ xác minh"
               titleIcon={CheckCircle2}
               className="lg:col-span-2"
@@ -663,14 +663,14 @@ const BusinessProfilePage = () => {
                   </div>
                 </div>
               </div>
-            </SectionCard>
+            </BusinessSectionCard>
           </div>
 
           {/* Sticky Footer */}
           <div className="sticky bottom-6 z-50">
             <div
               className={cn(
-                DESIGN.card,
+                BUSINESS_TOKENS.card,
                 "p-3 flex items-center justify-between gap-3",
               )}
             >

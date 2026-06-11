@@ -73,10 +73,21 @@ export function ServiceCard({ service, isSelected, onSelect }) {
           ) : null}
         </View>
         <View style={{ alignItems: "flex-end", gap: 4 }}>
+          {service.salePrice != null && service.salePrice !== service.price ? (
+            <Text
+              style={{
+                color: BOOKING_THEME.textMuted,
+                fontSize: 12,
+                textDecorationLine: "line-through",
+              }}
+            >
+              {formatPrice(service.price)}
+            </Text>
+          ) : null}
           <Text
             style={{ color: BOOKING_THEME.neon, fontSize: 15, fontWeight: "800" }}
           >
-            {formatPrice(service.price)}
+            {formatPrice(service.salePrice ?? service.price)}
           </Text>
           <View
             style={{

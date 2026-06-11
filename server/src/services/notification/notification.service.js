@@ -682,22 +682,55 @@ eventEmitter.on(EVENTS.REVIEW.REPLIED, async ({ reviewId, replyId, repliedBy, re
 
 /**
  * Tạo thông báo hệ thống (announcement) — hiển thị ngay cho tất cả user.
- * Lưu vào notifications_global + emit Socket.IO + push cho offline users.
+ * Lưu vào notifications_global + tạo NotificationRecipient cho từng user
+ * + emit Socket.IO + push cho offline users.
  */
 export async function createAnnouncement({ title, body, imageUrl, createdBy }) {
+  // 1. Lấy toàn bộ user active
+  const users = await prisma.user.findMany({
+    where: { status: "active" },
+    select: { id: true },
+  });
+
+  if (users.length === 0) return null;
+
+  const createdById = toPositiveInt(createdBy) || users[0].id;
+
+  // 2. Tạo NotificationGlobal + NotificationRecipient cho từng user
   const notification = await prisma.notificationGlobal.create({
     data: {
       title,
       body,
       imageUrl: imageUrl || null,
       targetType: "all",
+      targetValue: { userIds: users.map((u) => u.id) },
+      data: { type: "announcement" },
       status: "sent",
       sentAt: new Date(),
-      createdBy,
+      createdBy: createdById,
+      successCount: users.length,
+      recipients: {
+        create: users.map((u) => ({
+          userId: u.id,
+        })),
+      },
     },
+    include: { recipients: true },
   });
 
-  // Emit Socket.IO đến tất cả connected users
+  // 3. Emit Socket.IO per-user (notification event) + push cho offline users
+  for (const recipient of notification.recipients) {
+    const payload = toPayload(notification, recipient);
+    emitToUser(recipient.userId, "notification", payload);
+    sendPushIfOffline(
+      recipient.userId,
+      title,
+      body,
+      { type: "announcement", announcementId: notification.id },
+    ).catch(() => {});
+  }
+
+  // 4. Emit announcement event (cho UI realtime, backwards-compatible)
   emitToAll("announcement", {
     id: notification.id,
     title: notification.title,

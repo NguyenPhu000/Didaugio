@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import prisma from "../../config/prismaClient.js";
 import logger from "../../config/logger.js";
 import {
@@ -24,7 +25,10 @@ import {
   assertBookingTransition,
   BOOKING_TRANSITION,
 } from "./bookingStateMachine.js";
-import { validateAndApplyVoucher, incrementVoucherUsage } from "../voucher/index.js";
+import {
+  validateAndApplyVoucher,
+  incrementVoucherUsage,
+} from "../voucher/index.js";
 import { createBookingTransaction } from "./bookingTransaction.service.js";
 
 let expirePendingBookingsEnumWarned = false;
@@ -49,7 +53,14 @@ const defaultInclude = {
       slotDurationMinutes: true,
       allowOverbooking: true,
       businessId: true,
-      business: { select: { id: true, businessName: true, status: true, commissionRate: true } },
+      business: {
+        select: {
+          id: true,
+          businessName: true,
+          status: true,
+          commissionRate: true,
+        },
+      },
       place: { select: { id: true, name: true, address: true } },
     },
   },
@@ -95,7 +106,7 @@ export const serializeBookingUser = (booking) => {
 const generateBookingCode = () => {
   const prefix = "BK";
   const timestamp = Date.now().toString(36).toUpperCase();
-  const random = Math.random().toString(36).substring(2, 10).toUpperCase();
+  const random = crypto.randomBytes(5).toString("hex").toUpperCase().slice(0, 10);
   return `${prefix}-${timestamp}-${random}`;
 };
 
@@ -221,7 +232,10 @@ const toUtcDateOnly = (value) => {
 };
 
 const resolvePendingExpiryGraceMinutes = () => {
-  const minutes = parseInt(process.env.BOOKING_PENDING_EXPIRY_GRACE_MINUTES, 10);
+  const minutes = parseInt(
+    process.env.BOOKING_PENDING_EXPIRY_GRACE_MINUTES,
+    10,
+  );
   if (Number.isFinite(minutes) && minutes >= 0) return minutes;
   return DEFAULT_PENDING_EXPIRY_GRACE_MINUTES;
 };
@@ -238,6 +252,11 @@ const resolvePendingExpiryCutoff = (referenceDate = new Date()) => {
 const buildExpiredPendingWhere = (cutoff) => ({
   status: BOOKING_STATUS.PENDING,
   deletedAt: null,
+  payment: {
+    status: {
+      notIn: [PAYMENT_STATUS.PAID, PAYMENT_STATUS.FULLY_REFUNDED],
+    },
+  },
   OR: [
     { bookingAt: { lt: cutoff } },
     {
@@ -711,7 +730,6 @@ export const getMyBookingQR = async (bookingId, userId) => {
   return { bookingCode: booking.bookingCode, qrCode };
 };
 
-
 export const linkMyBookingToTrip = async (bookingId, userId, payload = {}) => {
   const parsedBookingId = parseInt(bookingId, 10);
   const parsedTripId = parseInt(payload.tripId, 10);
@@ -946,6 +964,14 @@ export const create = async (payload = {}, userId) => {
     );
   }
 
+  if (service.business?.status && service.business.status !== "approved") {
+    throw new ServiceError(
+      "Doanh nghiệp chưa sẵn sàng nhận booking",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+
   let bookingAt = null;
   if (payload.bookingAt) {
     bookingAt = new Date(payload.bookingAt);
@@ -959,6 +985,17 @@ export const create = async (payload = {}, userId) => {
     bookingAt = new Date();
   }
 
+  // Validate booking time is in the future (allow 5-minute grace for clock skew)
+  const now = new Date();
+  const graceMs = 5 * 60 * 1000;
+  if (bookingAt.getTime() < now.getTime() - graceMs) {
+    throw new ServiceError(
+      "Thời gian đặt chỗ phải ở tương lai",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+
   const unitPrice = service.salePrice ?? service.price;
   const originalPrice = unitPrice * quantity;
   let discountAmount = 0;
@@ -968,9 +1005,10 @@ export const create = async (payload = {}, userId) => {
 
   // Tính startTime/endTime cho RESOURCE model
   const startTime = service.bookingModel === "resource" ? bookingAt : null;
-  const endTime = startTime && service.durationMinutes
-    ? new Date(bookingAt.getTime() + service.durationMinutes * 60_000)
-    : null;
+  const endTime =
+    startTime && service.durationMinutes
+      ? new Date(bookingAt.getTime() + service.durationMinutes * 60_000)
+      : null;
 
   const guestName =
     payload.guestName || user.profile?.fullName || user.email || "Khách";
@@ -1153,7 +1191,7 @@ export const confirm = async (bookingId, userId, businessNote = undefined) => {
   return serializeBookingUser(booking);
 };
 
-export const cancel = async (bookingId, cancelReason, userId) => {
+export const cancel = async (bookingId, cancelReason, userId, actorType = "user") => {
   const booking = await prisma.$transaction(async (tx) => {
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
@@ -1167,9 +1205,23 @@ export const cancel = async (bookingId, cancelReason, userId) => {
         ERROR_CODES.NOT_FOUND,
       );
     }
+
+    // Use appropriate transition based on who is cancelling
+    const transition =
+      actorType === "business"
+        ? BOOKING_TRANSITION.BUSINESS_CANCEL
+        : BOOKING_TRANSITION.USER_CANCEL;
+
+    // BUSINESS_CANCEL only works from CONFIRMED; fall back to USER_CANCEL for PENDING
+    const effectiveTransition =
+      transition === BOOKING_TRANSITION.BUSINESS_CANCEL &&
+      existing.status === BOOKING_STATUS.PENDING
+        ? BOOKING_TRANSITION.USER_CANCEL
+        : transition;
+
     assertBookingTransition(
       existing.status,
-      BOOKING_TRANSITION.USER_CANCEL,
+      effectiveTransition,
       "Chỉ có thể hủy booking đang chờ hoặc đã xác nhận",
     );
 
@@ -1186,10 +1238,16 @@ export const cancel = async (bookingId, cancelReason, userId) => {
 
     // Decrement voucher usage count if this booking used a voucher
     if (existing.voucherId) {
-      await tx.voucher.update({
+      const voucher = await tx.voucher.findUnique({
         where: { id: existing.voucherId },
-        data: { usageCount: { decrement: 1 } },
+        select: { usageCount: true },
       });
+      if (voucher && voucher.usageCount > 0) {
+        await tx.voucher.update({
+          where: { id: existing.voucherId },
+          data: { usageCount: { decrement: 1 } },
+        });
+      }
     }
 
     await appendBookingActionLog(tx, {
@@ -1213,12 +1271,136 @@ export const cancel = async (bookingId, cancelReason, userId) => {
   return serializeBookingUser(booking);
 };
 
+export const cancelMyBooking = async (bookingId, userId, cancelReason) => {
+  const normalizedBookingId = parseInt(bookingId, 10);
+  const normalizedUserId = parseInt(userId, 10);
+
+  if (Number.isNaN(normalizedBookingId) || normalizedBookingId <= 0) {
+    throw new ServiceError(
+      "ID booking không hợp lệ",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+
+  if (Number.isNaN(normalizedUserId) || normalizedUserId <= 0) {
+    throw new ServiceError(
+      "Người dùng không hợp lệ",
+      401,
+      ERROR_CODES.UNAUTHORIZED,
+    );
+  }
+
+  const booking = await prisma.$transaction(async (tx) => {
+    await lockBookingRow(tx, normalizedBookingId);
+
+    const existing = await tx.booking.findUnique({
+      where: { id: normalizedBookingId },
+      include: {
+        payment: true,
+        user: true,
+        service: {
+          include: {
+            place: true,
+            business: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new ServiceError(
+        "Đơn đặt chỗ không tồn tại",
+        404,
+        ERROR_CODES.NOT_FOUND,
+      );
+    }
+
+    if (existing.userId !== normalizedUserId) {
+      throw new ServiceError(
+        "Không có quyền truy cập đơn đặt chỗ này",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
+
+    assertBookingTransition(
+      existing.status,
+      BOOKING_TRANSITION.USER_CANCEL,
+      "Đơn đặt chỗ không ở trạng thái có thể hủy",
+    );
+
+    const cancelledAt = new Date();
+
+    const updated = await tx.booking.update({
+      where: { id: normalizedBookingId },
+      data: {
+        status: BOOKING_STATUS.CANCELLED,
+        cancelReason,
+        cancelledBy: String(normalizedUserId),
+        cancelledAt,
+      },
+      include: {
+        ...defaultInclude,
+        payment: true,
+      },
+    });
+
+    if (existing.payment && existing.payment.status === PAYMENT_STATUS.UNPAID) {
+      await tx.payment.update({
+        where: { id: existing.payment.id },
+        data: { status: PAYMENT_STATUS.UNPAID },
+      });
+    }
+
+    if (existing.voucherId) {
+      const voucher = await tx.voucher.findUnique({
+        where: { id: existing.voucherId },
+        select: { usageCount: true },
+      });
+      if (voucher && voucher.usageCount > 0) {
+        await tx.voucher.update({
+          where: { id: existing.voucherId },
+          data: { usageCount: { decrement: 1 } },
+        });
+      }
+    }
+
+    await appendBookingActionLog(tx, {
+      bookingId: updated.id,
+      action: BOOKING_ACTION.CANCEL,
+      actorUserId: normalizedUserId,
+      metadata: {
+        cancelReason,
+        source: "profile_user_cancel",
+        paymentStatus: existing.payment?.status || null,
+      },
+    });
+
+    return updated;
+  });
+
+  eventEmitter.emit(EVENTS.BOOKING.CANCELLED, {
+    bookingId: booking.id,
+    bookingCode: booking.bookingCode,
+    cancelledBy: normalizedUserId,
+    cancelReason,
+    userId: booking.userId,
+  });
+
+  return serializeBookingUser(booking);
+};
+
 export const complete = async (bookingId, userId, businessNote = undefined) => {
   const booking = await prisma.$transaction(async (tx) => {
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
       where: { id: parseInt(bookingId) },
-      include: { service: { include: { business: true } }, user: true, payment: true },
+      include: {
+        service: { include: { business: true } },
+        user: true,
+        payment: true,
+      },
     });
 
     if (!existing) {
@@ -1234,8 +1416,11 @@ export const complete = async (bookingId, userId, businessNote = undefined) => {
       "Chỉ có thể hoàn thành booking đã xác nhận",
     );
 
-    const commissionRate = Number(existing.service?.business?.commissionRate) || 10;
-    const commissionAmount = Math.floor((existing.finalPrice * commissionRate) / 100);
+    const commissionRate =
+      Number(existing.service?.business?.commissionRate) || 10;
+    const commissionAmount = Math.floor(
+      (existing.finalPrice * commissionRate) / 100,
+    );
 
     // Only mark as paid if there's an actual payment record
     const hasPayment = existing.payment && existing.payment.status === "paid";
@@ -1297,7 +1482,11 @@ export const markNoShow = async (bookingId, userId) => {
       select: { status: true },
     });
     if (!existing) {
-      throw new ServiceError("Booking không tồn tại", 404, ERROR_CODES.NOT_FOUND);
+      throw new ServiceError(
+        "Booking không tồn tại",
+        404,
+        ERROR_CODES.NOT_FOUND,
+      );
     }
     assertBookingTransition(
       existing.status,
@@ -1305,11 +1494,19 @@ export const markNoShow = async (bookingId, userId) => {
       `Chỉ có thể đánh dấu không đến với booking đã xác nhận (hiện tại: ${existing.status})`,
     );
 
-    return tx.booking.update({
+    const updated = await tx.booking.update({
       where: { id: parseInt(bookingId) },
       data: { status: BOOKING_STATUS.NO_SHOW },
       include: defaultInclude,
     });
+
+    await appendBookingActionLog(tx, {
+      bookingId: updated.id,
+      action: BOOKING_ACTION.NO_SHOW,
+      actorUserId: userId,
+    });
+
+    return updated;
   });
 
   eventEmitter.emit(EVENTS.BOOKING.NO_SHOW, {
@@ -1339,7 +1536,7 @@ export const bulkCancel = async (bookingIds, cancelReason, userId) => {
   const results = [];
   for (const id of bookingIds) {
     try {
-      const booking = await cancel(id, cancelReason, userId);
+      const booking = await cancel(id, cancelReason, userId, "business");
       results.push({ id, success: true, booking });
     } catch (error) {
       results.push({ id, success: false, error: error.message });
@@ -1485,8 +1682,11 @@ export const verifyQR = async (payload = {}, actorUserId, actorRoleId) => {
       };
     }
 
-    const commissionRate = Number(booking.service?.business?.commissionRate) || 10;
-    const commissionAmount = Math.floor((booking.finalPrice * commissionRate) / 100);
+    const commissionRate =
+      Number(booking.service?.business?.commissionRate) || 10;
+    const commissionAmount = Math.floor(
+      (booking.finalPrice * commissionRate) / 100,
+    );
 
     const updated = await tx.booking.update({
       where: { id: booking.id },
@@ -1701,10 +1901,9 @@ export const refund = async (bookingId, payload = {}, userId) => {
     }
 
     if (
-      ![
-        PAYMENT_STATUS.PAID,
-        PAYMENT_STATUS.PARTIALLY_REFUNDED,
-      ].includes(existing.paymentStatus)
+      ![PAYMENT_STATUS.PAID, PAYMENT_STATUS.PARTIALLY_REFUNDED].includes(
+        existing.paymentStatus,
+      )
     ) {
       throw new ServiceError(
         "Booking chưa ở trạng thái có thể hoàn tiền",
@@ -1758,8 +1957,13 @@ export const refund = async (bookingId, payload = {}, userId) => {
     };
 
     const refundRatio = paidAmount > 0 ? refundAmount / paidAmount : 0;
-    const commissionPortionRefunded = Math.floor(existing.commissionAmount * refundRatio);
-    const nextCommissionAmount = Math.max(0, existing.commissionAmount - commissionPortionRefunded);
+    const commissionPortionRefunded = Math.floor(
+      existing.commissionAmount * refundRatio,
+    );
+    const nextCommissionAmount = Math.max(
+      0,
+      existing.commissionAmount - commissionPortionRefunded,
+    );
 
     await tx.payment.update({
       where: { bookingId: id },

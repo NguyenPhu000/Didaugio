@@ -11,7 +11,8 @@
     "web": "expo start --web --port 8083",
     "test": "vitest run",
     "test:routing-contract": "vitest run src/api/__tests__/routingApi.contract.test.js src/modules/map/hooks/__tests__/useMapRouting.mapping.contract.test.js",
-    "maestro:explore": "maestro test maestro/explore-smoke.yaml"
+    "maestro:explore": "maestro test maestro/explore-smoke.yaml",
+    "lint": "expo lint"
   },
   "dependencies": {
     "@expo-google-fonts/afacad": "^0.4.1",
@@ -28,6 +29,7 @@
     "@tanstack/react-query": "^5.100.11",
     "@tanstack/react-query-persist-client": "^5.100.11",
     "axios": "^1.13.5",
+    "call-bind": "^1.0.9",
     "expo": "~54.0.35",
     "expo-auth-session": "~7.0.11",
     "expo-blur": "~15.0.8",
@@ -76,6 +78,8 @@
   },
   "devDependencies": {
     "babel-preset-expo": "^54.0.10",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~10.0.0",
     "react-refresh": "^0.18.0",
     "tailwindcss": "^3.4.19",
     "vitest": "^3.2.4"

@@ -10,7 +10,7 @@ export const useServiceAvailability = (serviceId, date) => {
         ENDPOINTS.booking.publicAvailability(serviceId),
         { params: { date } },
       );
-      return res.data?.data;
+      return res.data?.data ?? null;
     },
     enabled: Boolean(serviceId) && Boolean(date),
     staleTime: 30_000,

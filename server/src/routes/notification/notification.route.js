@@ -24,6 +24,7 @@ router.get("/", controller.getNotifications);
 router.get("/unread-count", controller.getUnreadCount);
 router.put("/mark-all-read", controller.markAllAsRead);
 router.put("/read-all", controller.markAllAsRead);
+router.post("/test-push", controller.testPush);
 router.put("/:id/read", controller.markAsRead);
 
 export default router;

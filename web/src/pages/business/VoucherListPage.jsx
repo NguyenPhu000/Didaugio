@@ -37,12 +37,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import * as voucherApi from "@/apis/voucherService";
 import { getMyPlaces } from "@/apis/businessApi";
 import {
-  SectionCard,
-  PageHeader,
-  EmptyState,
-} from "@/components/business/DashboardWidgets";
+  BusinessSectionCard,
+  BusinessPageHeader,
+  BusinessEmptyState,
+} from "@/components/business/ui";
+import { BUSINESS_TOKENS } from "@/components/business/tokens";
 import {
-  DESIGN,
   formatDate,
   formatVND,
 } from "@/components/business/dashboardWidgetHelpers";
@@ -334,7 +334,7 @@ const VoucherCard = ({
       : "Tất cả địa điểm";
 
   return (
-    <div className={cn(DESIGN.card, "[content-visibility:auto] p-4 space-y-3")}>
+    <div className={cn(BUSINESS_TOKENS.card, "[content-visibility:auto] p-4 space-y-3")}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <Checkbox
@@ -558,9 +558,9 @@ const VoucherListPage = () => {
   return (
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
       {/* Header */}
-      <PageHeader
+      <BusinessPageHeader
         title={t("business.vouchers.title")}
-        subtitle={t("business.vouchers.title")}
+        description={t("business.vouchers.title")}
         badge={
           filteredVouchers.length > 0 ? filteredVouchers.length : undefined
         }
@@ -616,7 +616,7 @@ const VoucherListPage = () => {
       )}
 
       {/* List */}
-      <SectionCard
+      <BusinessSectionCard
         title="Danh sách voucher"
         titleIcon={Tag}
         action={
@@ -659,7 +659,7 @@ const VoucherListPage = () => {
 
           if (filteredVouchers.length === 0) {
             return (
-              <EmptyState
+              <BusinessEmptyState
                 icon={Tag}
                 message="Chưa có voucher nào. Nhấn 'Tạo voucher' để bắt đầu."
                 action={
@@ -695,7 +695,7 @@ const VoucherListPage = () => {
             </div>
           );
         })()}
-      </SectionCard>
+      </BusinessSectionCard>
 
       <VoucherFormModal
         open={showForm}

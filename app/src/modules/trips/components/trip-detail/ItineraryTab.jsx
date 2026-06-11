@@ -111,6 +111,8 @@ function ItineraryTab({
   const [movingDest, setMovingDest] = useState(null);
   const [editingDest, setEditingDest] = useState(null);
   const initializedRef = useRef(false);
+  const dayScrollRef = useRef(null);
+  const dayPositionsRef = useRef({});
 
   // Set initial selected day to current trip day on first render
   useEffect(() => {
@@ -124,6 +126,14 @@ function ItineraryTab({
   useEffect(() => {
     if (selectedDay > totalDays) setSelectedDay(totalDays);
   }, [selectedDay, totalDays]);
+
+  // Auto-scroll day chips to selected day
+  useEffect(() => {
+    const x = dayPositionsRef.current[selectedDay];
+    if (x != null && dayScrollRef.current) {
+      dayScrollRef.current.scrollTo({ x: Math.max(0, x - 20), animated: true });
+    }
+  }, [selectedDay]);
 
   const isToday = (dayNumber) => currentDayNumber === dayNumber;
 
@@ -350,6 +360,7 @@ function ItineraryTab({
     <View className="flex-1">
       {/* Day chips */}
       <ScrollView
+        ref={dayScrollRef}
         horizontal
         className="flex-grow-0"
         showsHorizontalScrollIndicator={false}
@@ -361,7 +372,7 @@ function ItineraryTab({
             (d) => d.dayNumber === dayNumber,
           );
           return (
-            <View key={dayNumber} style={{ overflow: "visible" }}>
+            <View key={dayNumber} style={{ overflow: "visible" }} onLayout={(e) => { dayPositionsRef.current[dayNumber] = e.nativeEvent.layout.x; }}>
               <Pressable
                 style={({ pressed }) => [
                   pressed && { opacity: 0.9 },
@@ -376,7 +387,7 @@ function ItineraryTab({
                   className={`text-[13px] font-semibold tracking-tight ${isActive ? "text-white" : isToday(dayNumber) ? "text-[#007AFF]" : "text-[#1D1D1F]"}`}
                   numberOfLines={1}
                 >
-                  {isToday(dayNumber) ? `Hôm nay` : `Ngày ${dayNumber}`}
+                  {isToday(dayNumber) ? t("trip.itinerary.today") : t("trip.itinerary.dayLabel", { number: dayNumber })}
                 </Text>
                 {date ? (
                   <Text

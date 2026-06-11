@@ -1,9 +1,11 @@
 import { memo } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, Platform, ActivityIndicator, StyleSheet } from "react-native";
+import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { cn } from "../../lib/cn";
 import { resolvePlaceImageUri } from "../../lib/media-url";
+import { TOKENS, CATEGORY_COLORS } from "../../constants/design-tokens";
 
 const PRICE_RANGE_LABELS = {
   FREE: "Miễn phí",
@@ -68,7 +70,7 @@ export const PlacePreviewCard = memo(
     detailLabel = "Xem chi tiết",
     selectedLabel = "Đã chọn",
     unselectedLabel = "Chọn",
-    addToTripLabel = "Thêm vào chuyến đi",
+    addToTripLabel = "Thêm chặng",
     routeActionLabel = "Chỉ đường",
     showCloseButton = true,
     showDetailAction = true,
@@ -85,8 +87,15 @@ export const PlacePreviewCard = memo(
       place?.address ||
       [place?.ward?.name, place?.district?.name].filter(Boolean).join(", ") ||
       "Cần Thơ";
+    
+    // Rút gọn địa chỉ để không bị tràn
+    const shortLocationLabel = locationLabel.length > 30 
+      ? locationLabel.substring(0, 28) + "..." 
+      : locationLabel;
+
     const reviewLabel = formatReviewCount(reviewCount);
     const priceLabel = getPreviewPriceLabel(place);
+    
     const canShowDetailAction =
       showDetailAction && typeof onViewDetail === "function";
     const canShowSelectionAction =
@@ -95,32 +104,41 @@ export const PlacePreviewCard = memo(
       showAddToTripAction && typeof onAddToTrip === "function";
     const canShowRouteAction =
       showRouteAction && typeof onStartRoute === "function";
+      
     const selectionLabel = selected ? selectedLabel : unselectedLabel;
     const hasTravelInfo = Boolean(travelEtaLabel || travelDistanceLabel);
+    
     const travelLabel = travelLoading
       ? "Đang tính..."
       : [travelEtaLabel, travelDistanceLabel].filter(Boolean).join(" · ");
 
+    const categorySlug = place?.category?.slug || "";
+    const categoryName = place?.category?.name || "";
+    const categoryColor = CATEGORY_COLORS[categorySlug] || CATEGORY_COLORS.default;
+
     return (
       <View
         className={cn(
-          "flex-row items-center gap-[11px] p-[10px] rounded-[20px] border",
-          "bg-white border-ink/6",
-          compact && "rounded-2xl p-2 gap-[9px]",
-          selected && "border-primary-400/30 bg-primary-50",
+          "flex-row items-center p-3 rounded-[24px] border border-white/50 overflow-hidden relative",
+          selected ? "bg-primary-50/92 border-blue-400/50" : "bg-white/85",
+          compact && "rounded-2xl p-2.5"
         )}
-        style={{
-          shadowColor: "#0F172A",
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.06,
-          shadowRadius: 20,
-          elevation: 8,
-        }}
+        style={TOKENS.shadow.lg}
       >
+        {/* Native Glassmorphism background for Mobile */}
+        {Platform.OS !== "web" && (
+          <BlurView
+            intensity={Platform.OS === "ios" ? 90 : 96}
+            tint="light"
+            style={StyleSheet.absoluteFillObject}
+          />
+        )}
+
+        {/* Left Side: Thumbnail Image */}
         <View
           className={cn(
-            "w-20 h-20 rounded-[14px] overflow-hidden bg-slate-200",
-            compact && "w-[68px] h-[68px] rounded-xl",
+            "w-[90px] h-[90px] rounded-[18px] overflow-hidden bg-slate-100 relative shadow-sm",
+            compact && "w-[76px] h-[76px] rounded-[14px]"
           )}
         >
           {previewImg ? (
@@ -128,22 +146,24 @@ export const PlacePreviewCard = memo(
               source={{ uri: previewImg }}
               style={{ width: "100%", height: "100%" }}
               contentFit="cover"
-              transition={160}
+              transition={200}
             />
           ) : (
-            <View className="flex-1 items-center justify-center">
-              <MaterialIconsRounded name="place" size={22} color="#94A3B8" />
+            <View className="flex-1 items-center justify-center bg-slate-100">
+              <MaterialIconsRounded name="place" size={24} color="#94A3B8" />
             </View>
           )}
         </View>
 
-        <View className={cn("flex-1 min-w-0 gap-1", compact && "gap-[3px]")}>
-          <View className="flex-row items-center gap-1.5">
+        {/* Right Side: Place details */}
+        <View className="flex-1 min-w-0 ml-3 justify-between">
+          {/* Header Row: Title & Close Button */}
+          <View className="flex-row items-start justify-between gap-1">
             <Text
               numberOfLines={1}
               className={cn(
-                "flex-1 text-ink font-heading tracking-tight text-[15px] leading-[19px]",
-                compact && "text-sm leading-[18px]",
+                "flex-1 text-base leading-[20px] font-bold text-ink-secondary",
+                compact && "text-sm leading-[18px]"
               )}
             >
               {place?.name || "Địa điểm"}
@@ -151,125 +171,145 @@ export const PlacePreviewCard = memo(
             {showCloseButton ? (
               <Pressable
                 onPress={onClose}
-                hitSlop={8}
-                className="w-[22px] h-[22px] rounded-full items-center justify-center bg-slate-100"
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                className="w-5 h-5 rounded-full items-center justify-center bg-slate-200/50 active:bg-slate-300/60"
               >
-                <MaterialIconsRounded name="close" size={14} color="#94A3B8" />
+                <MaterialIconsRounded name="close" size={13} color="#475569" />
               </Pressable>
             ) : null}
           </View>
 
-          <View className="flex-row items-center gap-[3px]">
-            <MaterialIconsRounded name="place" size={12} color="#64748B" />
-            <Text
-              numberOfLines={1}
-              className={cn(
-                "flex-shrink text-slate-500 font-medium text-[11px]",
-                compact && "text-[10px]",
-              )}
-            >
-              {locationLabel}
-            </Text>
-            {hasTravelInfo || travelLoading ? (
-              <>
-                <Text className="text-slate-300 font-medium text-[10px] mx-[1px]">·</Text>
-                <MaterialIconsRounded name="directions-car" size={11} color="#0A84FF" />
-                <Text numberOfLines={1} className="flex-shrink text-blue-500 font-semibold text-[11px]">
-                  {travelLabel}
+          {/* Secondary Row: Rating, Reviews, Category Badge */}
+          <View className="flex-row items-center gap-1.5 flex-wrap mt-0.5">
+            {rating > 0 ? (
+              <View className="flex-row items-center gap-0.5">
+                <MaterialIconsRounded name="star" size={13} color="#FF9F0A" />
+                <Text className="text-ink font-semibold text-xs compact:text-[11px]">
+                  {rating.toFixed(1)}
                 </Text>
-              </>
+              </View>
+            ) : null}
+            <Text className="text-ink-muted font-medium text-xs compact:text-[10px]">
+              ({reviewLabel})
+            </Text>
+            <Text className="text-slate-300 text-xs compact:text-[10px]">·</Text>
+            
+            {categoryName ? (
+              <View
+                style={{ backgroundColor: `${categoryColor}12` }}
+                className="px-1.5 py-0.5 rounded-[6px]"
+              >
+                <Text
+                  style={{ color: categoryColor }}
+                  className="font-semibold text-[9.5px] compact:text-[8.5px] uppercase tracking-wider"
+                >
+                  {categoryName}
+                </Text>
+              </View>
             ) : null}
           </View>
 
-          <View className="flex-row items-center gap-1">
-            {rating > 0 ? (
-              <>
-                <MaterialIconsRounded name="star" size={12} color="#F59E0B" />
-                <Text className="text-slate-500 font-medium text-[11px]">{rating.toFixed(1)}</Text>
-                <Text className="text-slate-300 font-medium text-[10px] mx-[1px]">·</Text>
-              </>
-            ) : null}
-            <Text numberOfLines={1} className="text-slate-500 font-medium text-[11px]">
-              {reviewLabel}
+          {/* Location & Travel Status Info */}
+          <View className="flex-row items-center gap-1 mt-1 flex-wrap">
+            <MaterialIconsRounded name="place" size={12} color="#64748B" />
+            <Text
+              numberOfLines={1}
+              className="text-ink-muted font-medium text-xs compact:text-[10.5px] flex-1"
+            >
+              {shortLocationLabel}
             </Text>
+            
             {priceLabel ? (
               <>
-                <Text className="text-slate-300 font-medium text-[10px] mx-[1px]">·</Text>
-                <Text numberOfLines={1} className="text-slate-500 font-medium text-[11px]">
+                <Text className="text-slate-300 text-[10px] mx-[1px]">·</Text>
+                <Text
+                  numberOfLines={1}
+                  className="text-ink-secondary font-semibold text-xs compact:text-[10.5px]"
+                >
                   {priceLabel}
                 </Text>
               </>
             ) : null}
           </View>
 
-          <View className="flex-row items-center gap-1.5 mt-0.5">
+          {/* Travel Route Info Banner (if navigating) */}
+          {(hasTravelInfo || travelLoading) && (
+            <View className="flex-row items-center gap-1 px-2 py-1 rounded-sm mt-1.5 self-start bg-primary-50/90">
+              {travelLoading ? (
+                <ActivityIndicator size="small" color={TOKENS.color.primary[500]} style={{ marginRight: 2 }} />
+              ) : (
+                <MaterialIconsRounded name="directions-car" size={13} color={TOKENS.color.primary[500]} />
+              )}
+              <Text className="text-primary-600 font-semibold text-xs compact:text-[10px] font-bold">
+                {travelLabel}
+              </Text>
+            </View>
+          )}
+
+          {/* Bottom Row: CTA Action Buttons */}
+          <View className="flex-row items-center gap-2 mt-2">
             {canShowRouteAction ? (
               <Pressable
                 onPress={() => onStartRoute(place)}
-                className="flex-row items-center gap-1 rounded-full px-2.5 h-7 bg-blue-500"
-                style={{
-                  shadowColor: "#0A84FF",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 8,
-                  elevation: 4,
-                }}
+                style={TOKENS.shadow.accent}
+                className="flex-row items-center gap-1 rounded-full px-3.5 h-8 bg-brand active:scale-95 transition-all"
               >
-                <MaterialIconsRounded name="directions" size={14} color="#FFFFFF" />
-                <Text className="text-white font-semibold text-[11px]">{routeActionLabel}</Text>
+                <MaterialIconsRounded name="navigation" size={13} color="#FFFFFF" />
+                <Text className="text-white font-semibold text-xs">
+                  {routeActionLabel}
+                </Text>
               </Pressable>
             ) : null}
+
             {canShowDetailAction ? (
               <Pressable
                 onPress={() => onViewDetail(place)}
-                className="flex-row items-center gap-1 rounded-full px-2.5 h-7 bg-ink"
+                className="flex-row items-center gap-1 rounded-full px-3.5 h-8 bg-ink/5 active:scale-95 transition-all"
               >
-                <MaterialIconsRounded name="arrow-forward" size={13} color="#FFFFFF" />
-                <Text className="text-white font-semibold text-[11px]">{detailLabel}</Text>
+                <MaterialIconsRounded name="arrow-forward" size={13} color="#334155" />
+                <Text className="font-semibold text-slate-700 text-xs font-bold">
+                  {detailLabel}
+                </Text>
               </Pressable>
             ) : null}
+
             {canShowSelectionAction ? (
               <Pressable
                 onPress={() => onToggleSelection(place)}
                 className={cn(
-                  "flex-row items-center gap-1 rounded-full px-2.5 h-7 border",
-                  selected
-                    ? "bg-ink border-ink"
-                    : "bg-white border-ink/14",
+                  "flex-row items-center gap-1 rounded-full px-3.5 h-8 border active:scale-95 transition-all",
+                  selected ? "bg-slate-800 border-slate-800" : "bg-white/70 border-ink/12"
                 )}
               >
                 <MaterialIconsRounded
                   name={selected ? "check-circle" : "radio-button-unchecked"}
                   size={13}
-                  color={selected ? "#FFFFFF" : "#0F172A"}
+                  color={selected ? "#FFFFFF" : "#334155"}
                 />
-                <Text
-                  className={cn(
-                    "font-semibold text-[11px]",
-                    selected ? "text-white" : "text-ink",
-                  )}
-                >
+                <Text className={cn("font-semibold text-xs font-bold", selected ? "text-white" : "text-slate-700")}>
                   {selectionLabel}
                 </Text>
               </Pressable>
             ) : null}
+
             {canShowAddToTripAction ? (
               <Pressable
                 onPress={() => onAddToTrip(place)}
-                className="flex-row items-center gap-1 rounded-full px-2.5 h-7 border border-ink/12 bg-slate-50"
+                className="flex-row items-center gap-1 rounded-full px-3.5 h-8 bg-ink/4 border border-ink/8 active:scale-95 transition-all"
               >
                 <MaterialIconsRounded
-                  name="playlist-add-check-circle"
-                  size={13}
-                  color="#0F172A"
+                  name="add"
+                  size={14}
+                  color="#334155"
                 />
-                <Text className="text-ink font-semibold text-[11px]">{addToTripLabel}</Text>
+                <Text className="font-semibold text-slate-700 text-xs font-bold">
+                  {addToTripLabel}
+                </Text>
               </Pressable>
             ) : null}
           </View>
         </View>
       </View>
     );
-  },
+  }
 );
-

@@ -19,19 +19,17 @@ import * as businessOfferingApi from "@/apis/businessOfferingApi";
 import { getMyPlaces } from "@/apis/businessApi";
 import { SERVICE_TYPE_LABELS } from "@/constants/businessConstants";
 import {
-  SectionCard,
-  PageHeader,
-  EmptyState,
   PageNav,
-  StatCard,
-  StatCardSkeleton,
-  SectionCardSkeleton,
-  TableRowSkeleton,
 } from "@/components/business/DashboardWidgets";
 import {
-  DESIGN,
-  formatVND,
-} from "@/components/business/dashboardWidgetHelpers";
+  BusinessSectionCard,
+  BusinessPageHeader,
+  BusinessEmptyState,
+  BusinessStatCard,
+  BusinessStatCardSkeleton,
+  BusinessFilterBar,
+} from "@/components/business/ui";
+import { formatVND } from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/badge";
@@ -674,9 +672,8 @@ const PlaceOverviewCard = ({ item, isSelected, onClick }) => {
       type="button"
       onClick={onClick}
       className={cn(
-        DESIGN.card,
-        "p-4 text-left w-full transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
-        isSelected && "ring-2 ring-primary border-primary/50",
+        "rounded-xl border border-zinc-200/80 bg-white p-4 text-left w-full transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
+        isSelected && "ring-2 ring-zinc-950 border-zinc-950/50",
       )}
     >
       <p className="font-semibold text-sm text-foreground truncate">
@@ -833,14 +830,17 @@ const ServiceListPage = () => {
   const totalDiscounted = services.filter((s) => s.discountPrice).length;
 
   return (
-    <div className="space-y-6 p-6 lg:p-8 min-h-screen">
+    <div className="space-y-6">
       {/* Header */}
-      <PageHeader
+      <BusinessPageHeader
         title={t("business.services.title")}
-        subtitle={t("business.services.title")}
+        description={t("business.services.subtitle")}
         badge={total > 0 ? total : undefined}
         action={
-          <Button onClick={() => openCreate("")} className="gap-2">
+          <Button
+            onClick={() => openCreate("")}
+            className="gap-2 bg-zinc-950 text-white hover:bg-zinc-900"
+          >
             <Plus className="h-4 w-4" />
             {t("business.services.createSuccess")}
           </Button>
@@ -850,28 +850,28 @@ const ServiceListPage = () => {
       {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+          Array.from({ length: 4 }).map((_, i) => <BusinessStatCardSkeleton key={i} />)
         ) : (
           <>
-            <StatCard
+            <BusinessStatCard
               title={t("business.services.title")}
               value={total}
               icon={Ticket}
               iconColor="blue"
             />
-            <StatCard
+            <BusinessStatCard
               title={t("common.active")}
               value={totalActive}
               icon={CalendarCheck}
               iconColor="emerald"
             />
-            <StatCard
+            <BusinessStatCard
               title={t("business.services.title")}
               value={totalDiscounted}
               icon={Tag}
               iconColor="amber"
             />
-            <StatCard
+            <BusinessStatCard
               title={t("business.places.title")}
               value={places.length}
               icon={Users}
@@ -883,7 +883,7 @@ const ServiceListPage = () => {
 
       {/* Place Overview */}
       {!loading && placeOverview.length > 0 && (
-        <SectionCard title={t("business.services.title")} titleIcon={Ticket}>
+        <BusinessSectionCard title={t("business.services.title")} titleIcon={Ticket}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {placeOverview.map((item) => (
               <PlaceOverviewCard
@@ -901,40 +901,31 @@ const ServiceListPage = () => {
               />
             ))}
           </div>
-        </SectionCard>
+        </BusinessSectionCard>
       )}
 
       {/* Toolbar + List */}
-      <SectionCard
-        title={t("business.services.title")}
-        titleIcon={Ticket}
-        action={
-          <div className="flex gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder={t("common.search")}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-8 text-sm w-52"
-              />
-            </div>
-            <Select value={selectedPlaceId} onValueChange={setSelectedPlaceId}>
-              <SelectTrigger className="h-8 text-sm w-44">
-                <SelectValue placeholder={t("business.bookings.allPlaces")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("business.bookings.allPlaces")}</SelectItem>
-                {places.map((place) => (
-                  <SelectItem key={place.id} value={String(place.id)}>
-                    {place.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        }
+      <BusinessFilterBar
+        searchPlaceholder={t("common.search")}
+        onSearch={setSearch}
+        value={search}
       >
+        <Select value={selectedPlaceId} onValueChange={setSelectedPlaceId}>
+          <SelectTrigger className="h-9 text-xs w-44 border-zinc-200">
+            <SelectValue placeholder={t("business.bookings.allPlaces")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("business.bookings.allPlaces")}</SelectItem>
+            {places.map((place) => (
+              <SelectItem key={place.id} value={String(place.id)}>
+                {place.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </BusinessFilterBar>
+
+      <BusinessSectionCard title={t("business.services.list")} titleIcon={Ticket}>
         {(() => {
           if (loading) {
             return (
@@ -957,7 +948,7 @@ const ServiceListPage = () => {
 
           if (services.length === 0) {
             return (
-              <EmptyState
+              <BusinessEmptyState
                 icon={Ticket}
                 message={t("business.services.loadFailed")}
                 action={
@@ -1041,7 +1032,7 @@ const ServiceListPage = () => {
             </div>
           </>
         )}
-      </SectionCard>
+      </BusinessSectionCard>
 
       {/* Modals */}
       <ServiceFormModal

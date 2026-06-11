@@ -97,7 +97,7 @@ export const BudgetTab = memo(function BudgetTab({
           <View className="flex-row items-center gap-1.5">
             <View className="w-1.5 h-1.5 rounded-full bg-[#34C759]" />
             <Text className="text-[13px] font-normal text-white/55 tracking-tight">
-              {totalCount} booking
+              {t("trip.budget.bookingCount", { count: totalCount })}
             </Text>
           </View>
         </View>
@@ -118,7 +118,7 @@ export const BudgetTab = memo(function BudgetTab({
             {formatPrice(confirmedAmount + completedAmount)}
           </Text>
           <Text className="text-[12px] font-normal text-black/45 tracking-tight text-center mt-0.5 z-10">
-            Đã xác nhận
+            {t("trip.budget.confirmedAmount")}
           </Text>
         </View>
         <View className="flex-1 bg-white rounded-[20px] py-4.5 px-3 items-center justify-center border border-black/[0.05] relative overflow-hidden min-h-[82px]">

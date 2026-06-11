@@ -5,13 +5,15 @@ import { useBusinessDashboard } from "@/hooks/queries/useBusinessQueries";
 import { BOOKING_STATUS } from "@/constants/constants";
 import { exportToCsv, slugifyFilename } from "@/utils/csvExport";
 import {
-  PageHeader,
-  StatCard,
-  SectionCard,
-  StatCardSkeleton,
-  SectionCardSkeleton,
   StatusProgressRow,
 } from "@/components/business/DashboardWidgets";
+import {
+  BusinessPageHeader,
+  BusinessStatCard,
+  BusinessStatCardSkeleton,
+  BusinessSectionCard,
+  BusinessSectionCardSkeleton,
+} from "@/components/business/ui";
 import { formatVND } from "@/components/business/dashboardWidgetHelpers";
 
 const RevenuePage = () => {
@@ -78,16 +80,16 @@ const RevenuePage = () => {
   };
 
   return (
-    <div className="space-y-6 p-6 lg:p-8 min-h-screen">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <PageHeader
+        <BusinessPageHeader
           title={t("business.revenue.title")}
-          subtitle={t("business.revenue.subtitle")}
+          description={t("business.revenue.subtitle")}
         />
         <button
           onClick={handleExportCsv}
-          className="h-9 px-3 flex items-center gap-1.5 border border-black bg-white hover:bg-black hover:text-white transition-colors font-mono text-xs uppercase font-bold shrink-0"
+          className="h-9 px-3 flex items-center gap-1.5 bg-zinc-950 text-white hover:bg-zinc-900 transition-colors font-mono text-xs uppercase font-bold shrink-0 rounded-lg"
         >
           <Download className="h-4 w-4" />
           CSV
@@ -97,17 +99,17 @@ const RevenuePage = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => <StatCardSkeleton key={i} />)
+          Array.from({ length: 3 }).map((_, i) => <BusinessStatCardSkeleton key={i} />)
         ) : (
           <>
-            <StatCard
+            <BusinessStatCard
               title={t("business.revenue.totalRevenue")}
               value={formatVND(overview?.totalRevenue ?? stats?.totalRevenue)}
               icon={TrendingUp}
               iconColor="emerald"
               description={t("business.revenue.totalRevenue")}
             />
-            <StatCard
+            <BusinessStatCard
               title={t("business.revenue.systemCommission")}
               value={`-${formatVND(
                 overview?.totalCommission ?? stats?.totalCommission
@@ -116,7 +118,7 @@ const RevenuePage = () => {
               iconColor="rose"
               description={t("business.revenue.systemCommission")}
             />
-            <StatCard
+            <BusinessStatCard
               title={t("business.revenue.netRevenue")}
               value={formatVND(overview?.netRevenue ?? stats?.netRevenue)}
               icon={DollarSign}
@@ -129,9 +131,9 @@ const RevenuePage = () => {
 
       {/* Breakdown Table */}
       {isLoading ? (
-        <SectionCardSkeleton rows={5} />
+        <BusinessSectionCardSkeleton rows={5} />
       ) : (
-        <SectionCard
+        <BusinessSectionCard
           title={t("business.revenue.title")}
           titleIcon={BarChart3}
         >
@@ -152,7 +154,7 @@ const RevenuePage = () => {
               {overview?.bookingsTotal ?? stats?.bookingsCount ?? 0} {t("business.bookings.bookings")}
             </span>
           </div>
-        </SectionCard>
+        </BusinessSectionCard>
       )}
     </div>
   );

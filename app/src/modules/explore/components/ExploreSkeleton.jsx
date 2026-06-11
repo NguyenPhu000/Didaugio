@@ -7,7 +7,6 @@ import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 const SCREEN_W = Dimensions.get("window").width;
 const PAD = TAB_SCREEN_PADDING;
 const CARD_W = Math.min(260, SCREEN_W - PAD * 2 - 60);
-const POP_IMAGE_SIZE = 110;
 
 function ExploreSkeletonInner() {
   return (
@@ -84,8 +83,8 @@ function ExploreSkeletonInner() {
 
       {/* Featured cards skeleton */}
       <View className="flex-row gap-3.5">
-        <Skeleton width={CARD_W} height={400} borderRadius={32} />
-        <Skeleton width={CARD_W} height={400} borderRadius={32} />
+        <Skeleton width={CARD_W} height={380} borderRadius={28} />
+        <Skeleton width={CARD_W} height={380} borderRadius={28} />
       </View>
 
       {/* Bento section header skeleton */}
@@ -113,8 +112,8 @@ function ExploreSkeletonInner() {
       {Array.from({ length: 3 }).map((_, i) => (
         <View key={`pop-${i}`} className="flex-row gap-3.5 p-2.5 rounded-[28px] bg-white mb-3">
           <Skeleton
-            width={POP_IMAGE_SIZE}
-            height={POP_IMAGE_SIZE}
+            width={108}
+            height={120}
             borderRadius={22}
           />
           <View className="flex-1 gap-0.75 justify-center">

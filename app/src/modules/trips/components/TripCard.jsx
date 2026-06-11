@@ -18,9 +18,7 @@ import {
   getTripCardDateDisplay,
   getDisplayStatus,
 } from "../utils/tripHelpers";
-import {
-  resolveTripCoverUri,
-} from "../../../lib/media-url";
+import { resolveTripCoverUri } from "../../../lib/media-url";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -38,10 +36,7 @@ function GlassPanel({ style, children, compact = false, tint }) {
   const radius = flat.borderRadius ?? (compact ? 999 : 14);
 
   return (
-    <View 
-      className="overflow-hidden"
-      style={{ borderRadius: radius }}
-    >
+    <View className="overflow-hidden" style={{ borderRadius: radius }}>
       <BlurView
         intensity={GLASS.blur}
         tint="dark"
@@ -52,10 +47,7 @@ function GlassPanel({ style, children, compact = false, tint }) {
         style={tint ? { backgroundColor: tint } : null}
         pointerEvents="none"
       />
-      <View 
-        className="z-[1]"
-        style={[style, { borderRadius: radius }]}
-      >
+      <View className="z-[1]" style={[style, { borderRadius: radius }]}>
         {children}
       </View>
     </View>
@@ -67,8 +59,12 @@ function TripDateLine({ dateDisplay }) {
   if (dateDisplay.kind === "range") {
     return (
       <View className="flex-row items-center gap-[5px]">
-        <MaterialIconsRounded name="event" size={13} color="rgba(255,255,255,0.76)" />
-        <Text 
+        <MaterialIconsRounded
+          name="event"
+          size={13}
+          color="rgba(255,255,255,0.76)"
+        />
+        <Text
           className="flex-1 text-[12px] font-medium text-white tracking-[0.05px]"
           style={{ fontVariant: ["tabular-nums"] }}
         >
@@ -80,11 +76,19 @@ function TripDateLine({ dateDisplay }) {
     );
   }
 
-  if (dateDisplay.kind === "single" || dateDisplay.kind === "from" || dateDisplay.kind === "to") {
+  if (
+    dateDisplay.kind === "single" ||
+    dateDisplay.kind === "from" ||
+    dateDisplay.kind === "to"
+  ) {
     return (
       <View className="flex-row items-center gap-[5px]">
-        <MaterialIconsRounded name="event" size={13} color="rgba(255,255,255,0.76)" />
-        <Text 
+        <MaterialIconsRounded
+          name="event"
+          size={13}
+          color="rgba(255,255,255,0.76)"
+        />
+        <Text
           className="flex-1 text-[12px] font-medium text-white tracking-[0.05px]"
           style={{ fontVariant: ["tabular-nums"] }}
         >
@@ -96,15 +100,24 @@ function TripDateLine({ dateDisplay }) {
 
   return (
     <View className="flex-row items-center gap-[5px]">
-      <MaterialIconsRounded name="event-busy" size={13} color="rgba(255,255,255,0.4)" />
+      <MaterialIconsRounded
+        name="event-busy"
+        size={13}
+        color="rgba(255,255,255,0.4)"
+      />
       <Text className="flex-1 text-[12px] text-white/40 font-sans">
-        {t('tripCard.noDate')}
+        {t("tripCard.noDate")}
       </Text>
     </View>
   );
 }
 
-export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved }) {
+export const TripCard = memo(function TripCard({
+  trip,
+  onPress,
+  onSave,
+  isSaved,
+}) {
   const { t } = useTranslation();
   const displayStatus = getDisplayStatus(trip);
   const status = STATUS_THEME[displayStatus] || STATUS_THEME.upcoming;
@@ -157,10 +170,18 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
         onPressOut={handlePressOut}
         onLayout={handleLayout}
         accessibilityRole="button"
-        accessibilityLabel={t('tripCard.tripAccessibility', { name: trip.title || t('tripCard.newTrip'), status: status.label })}
-        accessibilityHint={t('tripCard.tripHint')}
+        accessibilityLabel={t("tripCard.tripAccessibility", {
+          name: trip.title || t("tripCard.newTrip"),
+          status: status.label,
+        })}
+        accessibilityHint={t("tripCard.tripHint")}
         accessibilityActions={[
-          { name: "save", label: isSaved ? t('tripCard.unsaveAccessibility') : t('tripCard.saveAccessibility') },
+          {
+            name: "save",
+            label: isSaved
+              ? t("tripCard.unsaveAccessibility")
+              : t("tripCard.saveAccessibility"),
+          },
         ]}
         onAccessibilityAction={(event) => {
           if (event.nativeEvent.actionName === "save") {
@@ -172,11 +193,11 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
           cardAnimStyle,
           {
             shadowColor: "#000",
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.18,
-            shadowRadius: 20,
-            elevation: 6,
-          }
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.1,
+            shadowRadius: 12,
+            elevation: 3,
+          },
         ]}
       >
         {/* ── LAYER 1: Ảnh gốc nét căng phía sau ── */}
@@ -217,19 +238,15 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
 
         {/* ── LAYER 3: Gradient Vignette tối ── */}
         <LinearGradient
-          colors={[
-            "transparent",
-            "rgba(9,15,26,0.28)",
-            "rgba(9,15,26,0.88)",
-          ]}
-          locations={[0, 0.40, 1]}
+          colors={["transparent", "rgba(9,15,26,0.28)", "rgba(9,15,26,0.88)"]}
+          locations={[0, 0.4, 1]}
           style={StyleSheet.absoluteFillObject}
           pointerEvents="none"
         />
 
         {/* ── LAYER 4: Badge trạng thái + Bookmark (góc trên) ── */}
         <View className="absolute top-3.5 left-3.5 right-3.5 flex-row items-center justify-between z-20">
-          <GlassPanel 
+          <GlassPanel
             style={{
               flexDirection: "row",
               alignItems: "center",
@@ -237,15 +254,15 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
               paddingHorizontal: 11,
               paddingVertical: 6,
               borderRadius: 999,
-            }} 
-            compact 
+            }}
+            compact
             tint={status.bg}
           >
-            <View 
+            <View
               className="w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: status.text }} 
+              style={{ backgroundColor: status.text }}
             />
-            <Text 
+            <Text
               className="text-[11px] font-semibold tracking-[0.2px]"
               style={{ color: status.text }}
             >
@@ -258,16 +275,20 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
               onPress={handleSavePress}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel={isSaved ? t('tripCard.unsaveAccessibility') : t('tripCard.saveAccessibility')}
+              accessibilityLabel={
+                isSaved
+                  ? t("tripCard.unsaveAccessibility")
+                  : t("tripCard.saveAccessibility")
+              }
             >
-              <GlassPanel 
+              <GlassPanel
                 style={{
                   width: 34,
                   height: 34,
                   alignItems: "center",
                   justifyContent: "center",
                   borderRadius: 17,
-                }} 
+                }}
                 compact
               >
                 <MaterialIconsRounded
@@ -283,17 +304,17 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
         {/* ── LAYER 5: Nội dung đáy - Naked Typography ── */}
         <View className="absolute bottom-0 left-0 right-0 px-3.5 pb-3.5 pt-2.5 gap-2">
           {/* Tiêu đề */}
-          <Text 
+          <Text
             className="text-[18px] font-bold text-white tracking-[-0.4px]"
-            style={{ 
-              lineHeight: 23, 
+            style={{
+              lineHeight: 23,
               textShadowColor: "rgba(0,0,0,0.35)",
               textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 4 
+              textShadowRadius: 4,
             }}
             numberOfLines={2}
           >
-            {trip.title || t('tripCard.newTrip')}
+            {trip.title || t("tripCard.newTrip")}
           </Text>
 
           {/* Row: ngày tháng bên trái | stats bên phải */}
@@ -310,18 +331,21 @@ export const TripCard = memo(function TripCard({ trip, onPress, onSave, isSaved 
                   {trip.totalDays ?? 1}
                 </Text>
                 <Text className="text-[9px] font-sans text-white/50 tracking-[0.2px]">
-                  {t('tripCard.days')}
+                  {t("tripCard.days")}
                 </Text>
               </View>
 
-              <View className="h-5 bg-white/12" style={{ width: StyleSheet.hairlineWidth }} />
+              <View
+                className="h-5 bg-white/12"
+                style={{ width: StyleSheet.hairlineWidth }}
+              />
 
               <View className="items-center px-2 gap-[1px]">
                 <Text className="text-[14px] font-semibold text-white tracking-[-0.2px]">
                   {destinationCount === 0 ? "—" : destinationCount}
                 </Text>
                 <Text className="text-[9px] font-sans text-white/50 tracking-[0.2px]">
-                  {t('tripCard.destinations')}
+                  {t("tripCard.destinations")}
                 </Text>
               </View>
 

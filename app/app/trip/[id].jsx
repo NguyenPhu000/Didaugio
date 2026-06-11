@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   useTripDetail,
   useUpdateTrip,
@@ -254,8 +255,27 @@ export default function TripDetailScreen() {
   /* ─── Loading ─── */
   if (isLoading) {
     return (
-      <View style={[s.screen, s.centered, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="small" color={T.primary} />
+      <View style={[s.screen, { paddingTop: insets.top }]}>
+        {/* Skeleton header */}
+        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, gap: 12 }}>
+          <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(0,0,0,0.04)" }} />
+          <View style={{ flex: 1, gap: 6 }}>
+            <View style={{ width: "60%", height: 16, borderRadius: 8, backgroundColor: "rgba(0,0,0,0.06)" }} />
+            <View style={{ width: "40%", height: 10, borderRadius: 5, backgroundColor: "rgba(0,0,0,0.04)" }} />
+          </View>
+        </View>
+        {/* Skeleton tabs */}
+        <View style={{ flexDirection: "row", paddingHorizontal: 16, gap: 8, marginBottom: 16 }}>
+          {[80, 70, 60].map((w, i) => (
+            <View key={i} style={{ width: w, height: 32, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.04)" }} />
+          ))}
+        </View>
+        {/* Skeleton content */}
+        <View style={{ paddingHorizontal: 16, gap: 12 }}>
+          {[1, 2, 3].map((i) => (
+            <View key={i} style={{ height: 80, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.04)" }} />
+          ))}
+        </View>
       </View>
     );
   }
@@ -264,10 +284,21 @@ export default function TripDetailScreen() {
   if (isError || !trip) {
     return (
       <View style={[s.screen, s.centered, { paddingTop: insets.top }]}>
+        <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: "rgba(255,59,48,0.08)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+          <MaterialIconsRounded name="error-outline" size={32} color={T.danger} />
+        </View>
         <Text style={s.emptyTitle}>{t("trip.detail.notFound")}</Text>
-        <Pressable onPress={() => router.back()} style={s.linkBtn}>
-          <Text style={s.linkBtnText}>{t("trip.detail.back")}</Text>
-        </Pressable>
+        <Text style={[s.emptyBody, { textAlign: "center", marginHorizontal: 40, marginBottom: 20 }]}>
+          {t("trip.detail.notFoundDesc")}
+        </Text>
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <Pressable onPress={() => refetch()} style={[s.linkBtn, { backgroundColor: T.primary }]}>
+            <Text style={[s.linkBtnText, { color: T.onPrimary }]}>{t("common.retry")}</Text>
+          </Pressable>
+          <Pressable onPress={() => router.back()} style={s.linkBtn}>
+            <Text style={s.linkBtnText}>{t("trip.detail.back")}</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }

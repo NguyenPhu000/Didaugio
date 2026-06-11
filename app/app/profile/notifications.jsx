@@ -11,6 +11,7 @@ import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRound
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown, Layout } from "react-native-reanimated";
+import Constants from "expo-constants";
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -20,6 +21,19 @@ import { TOKENS } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "../(tabs)/_layout";
 import { cn } from "../../src/lib/cn";
 import { useTranslation } from "react-i18next";
+
+const isExpoGo =
+  Constants?.executionEnvironment === "storeClient" ||
+  Constants?.appOwnership === "expo";
+
+let ExpoNotifications = null;
+if (!isExpoGo) {
+  try {
+    ExpoNotifications = require("expo-notifications");
+  } catch {
+    // expo-notifications không khả dụng
+  }
+}
 
 /* ─── Helpers ─────────────────────────────────────── */
 function formatTime(value) {
@@ -350,13 +364,19 @@ export default function NotificationsScreen() {
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
 
-  // Sync server data into local state
+  // Sync server data into local state + update badge
   useEffect(() => {
     if (data?.items) {
       const serverItems = data.items;
       setAllItems(serverItems);
-      setLocalUnreadCount(data.unreadCount ?? 0);
+      const count = data.unreadCount ?? 0;
+      setLocalUnreadCount(count);
       setHasMore(serverItems.length >= 40);
+
+      // Đồng bộ badge count trên app icon
+      if (ExpoNotifications) {
+        ExpoNotifications.setBadgeCountAsync(count).catch(() => {});
+      }
     }
   }, [data]);
 
@@ -376,6 +396,14 @@ export default function NotificationsScreen() {
         markRead.mutate(item.id, {
           onSuccess: () => {
             setAllItems((prev) => prev.filter((n) => n.id !== item.id));
+            setLocalUnreadCount((prev) => {
+              const next = Math.max(0, prev - 1);
+              // Cập nhật badge mỗi khi mark 1 item
+              if (ExpoNotifications) {
+                ExpoNotifications.setBadgeCountAsync(next).catch(() => {});
+              }
+              return next;
+            });
           },
         });
       }
@@ -395,6 +423,10 @@ export default function NotificationsScreen() {
           })),
         );
         setLocalUnreadCount(0);
+        // Clear badge khi mark all read
+        if (ExpoNotifications) {
+          ExpoNotifications.setBadgeCountAsync(0).catch(() => {});
+        }
       },
     });
   }, [markAll]);

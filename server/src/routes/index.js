@@ -41,6 +41,7 @@ import notificationRoutes from "./notification/notification.route.js";
 import eventRoutes from "./event/event.route.js";
 import cmsRoutes from "./cms/cms.route.js";
 import bannerRoutes from "./banner/banner.route.js";
+import paymentRoutes from "./payment/payment.route.js";
 import {
   authLimiter,
   apiLimiter,
@@ -52,6 +53,7 @@ import {
   navigationLimiter,
   navigationTelemetryLimiter,
   changePasswordLimiter,
+  groqChatLimiter,
 } from "../middlewares/rateLimitMiddleware.js";
 
 export const registerRateLimiters = (app) => {
@@ -66,6 +68,7 @@ export const registerRateLimiters = (app) => {
   app.use("/api/auth/change-password", changePasswordLimiter);
   app.use("/api/routes", routingLimiter);
   app.use("/api/ai/navigate", aiNavigateLimiter);
+  app.use("/api/ai/groq-chat", groqChatLimiter);
   app.use("/api/navigation/navigate", navigationLimiter);
   app.use("/api/navigation/telemetry", navigationTelemetryLimiter);
   // Business routes have stricter limits due to sensitive operations
@@ -73,6 +76,7 @@ export const registerRateLimiters = (app) => {
   app.use("/api/business/services", businessApiLimiter);
   app.use("/api/business/staff", businessApiLimiter);
   app.use("/api/business/bookings", businessApiLimiter);
+  app.use("/api/payments/checkout", businessApiLimiter);
   app.use("/api", apiLimiter);
 };
 
@@ -116,6 +120,7 @@ export const registerApiRoutes = (app) => {
   app.use("/api/notifications", notificationRoutes);
   app.use("/api/events", eventRoutes);
   app.use("/api/banners", bannerRoutes);
+  app.use("/api/payments", paymentRoutes);
   app.use("/api/cms", cmsRoutes);
   app.use("/api/ai", aiRoutes);
   app.use("/api/routes", routingRoutes);

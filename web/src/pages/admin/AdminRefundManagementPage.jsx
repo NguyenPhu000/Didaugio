@@ -520,6 +520,7 @@ export default function AdminRefundManagementPage() {
   // -- filter state --
   const [gateway, setGateway] = useState("all");
   const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -532,6 +533,14 @@ export default function AdminRefundManagementPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerPayment, setDrawerPayment] = useState(null);
+
+  // -- debounce search --
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // -- fetch --
   const fetchPayments = useCallback(async () => {
@@ -551,7 +560,7 @@ export default function AdminRefundManagementPage() {
       };
 
       // Smart search: exact bookingCode if starts with DDG_BKG_
-      const trimmedSearch = searchInput.trim();
+      const trimmedSearch = debouncedSearch.trim();
       if (trimmedSearch) {
         if (trimmedSearch.toUpperCase().startsWith("DDG_BKG_")) {
           params.bookingCode = trimmedSearch;
@@ -579,7 +588,7 @@ export default function AdminRefundManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, gateway, searchInput, startDate, endDate]);
+  }, [activeTab, gateway, debouncedSearch, startDate, endDate]);
 
   useEffect(() => {
     fetchPayments();
@@ -592,6 +601,11 @@ export default function AdminRefundManagementPage() {
     }
     return { pending: 0, refunded: payments.length };
   }, [payments, activeTab]);
+
+  // -- reset refundReason when dialogTab changes --
+  useEffect(() => {
+    setRefundReason("");
+  }, [dialogTab]);
 
   // -- dialog handlers --
   const openActionDialog = useCallback((payment, nextTab = "approve") => {
@@ -624,6 +638,23 @@ export default function AdminRefundManagementPage() {
 
   const handleApproveRefund = useCallback(async () => {
     if (!selectedPayment?.id) return;
+
+    const amount = Number(refundAmount);
+    const paymentAmount = selectedPayment?.amount || 0;
+    const alreadyRefunded = selectedPayment?.refundAmount || 0;
+    const refundableAmount = Math.max(paymentAmount - alreadyRefunded, 0);
+
+    if (refundAmount && (Number.isNaN(amount) || amount <= 0)) {
+      toast.error("Số tiền hoàn phải lớn hơn 0");
+      return;
+    }
+    if (refundAmount && amount > refundableAmount) {
+      toast.error(
+        `Số tiền hoàn không được vượt quá ${formatCurrency(refundableAmount)}`,
+      );
+      return;
+    }
+
     try {
       setActionLoading(true);
       const payload = {

@@ -72,7 +72,6 @@ export async function checkAvailability(tx, payload) {
       maxCapacity: true,
       businessId: true,
       bookingModel: true,
-      resourceId: true,
       slotDurationMinutes: true,
       bufferMinutes: true,
       allowOverbooking: true,

@@ -130,6 +130,29 @@
     },
     "recommended": "Địa điểm nên thử",
     "results": "{count} kết quả",
+    "sections": {
+      "featured": "Điểm đến nổi bật",
+      "culinary": "Ẩm thực nổi bật",
+      "popular": "Phổ biến"
+    },
+    "card": {
+      "featuredBadge": "Nổi bật",
+      "recommended": "Đề xuất",
+      "contact": "Liên hệ",
+      "view": "Xem",
+      "defaultExperience": "Trải nghiệm đặc sắc",
+      "defaultCategory": "Ẩm thực"
+    },
+    "quickActions": {
+      "restaurants": "Ẩm thực",
+      "hotel": "Khách sạn",
+      "cafe": "Cafe",
+      "shopping": "Mua sắm",
+      "culture": "Văn hóa",
+      "events": "Sự kiện",
+      "nature": "Thiên nhiên",
+      "more": "Tất cả"
+    },
     "empty": {
       "noPlaces": "Chưa có địa điểm nào",
       "noResults": "Không tìm thấy kết quả",
@@ -161,6 +184,11 @@
         "rating": "Đánh giá",
         "popular": "Phổ biến"
       }
+    },
+    "heroBanner": {
+      "title": "Dịch vụ chất lượng, đơn giản hơn bao giờ hết.",
+      "description": "Chuyên gia đáng tin cậy. Kết quả vượt trội.",
+      "cta": "Đặt dịch vụ"
     },
     "toast": {
       "saved": "Địa điểm đã được lưu vào danh sách yêu thích",
@@ -385,7 +413,30 @@
       "savePlace": "Lưu địa điểm",
       "viewPlace": "Xem địa điểm",
       "viewInTrip": "Xem trong trip"
-    }
+    },
+    "payment": {
+      "unpaid": "Chưa thanh toán",
+      "unpaidDesc": "Thanh toán online để xác nhận đặt chỗ",
+      "paid": "Đã thanh toán",
+      "paidDesc": "Giao dịch đã được ghi nhận. Nếu bạn hủy booking, yêu cầu hoàn tiền sẽ được gửi cho admin xử lý.",
+      "partialRefund": "Đang hoàn một phần",
+      "partialRefundDesc": "Admin đã xử lý hoàn tiền một phần cho booking này.",
+      "refunded": "Đã hoàn tiền",
+      "refundedDesc": "Khoản thanh toán của bạn đã được hoàn tất.",
+      "refundRejected": "Yêu cầu hoàn tiền bị từ chối",
+      "refundRejectedDesc": "Admin đã từ chối yêu cầu hoàn tiền cho booking này.",
+      "refundAmount": "Số tiền đã hoàn",
+      "redirecting": "Đang chuyển...",
+      "payNow": "Thanh toán ngay"
+    },
+    "cancel": {
+      "cta": "Hủy booking & gửi yêu cầu hoàn tiền",
+      "alertSuccessTitle": "Đã gửi yêu cầu",
+      "alertSuccessMessage": "Booking đã được hủy. Yêu cầu hoàn tiền của bạn sẽ được admin xem xét.",
+      "alertErrorTitle": "Không thể hủy booking",
+      "alertErrorMessage": "Vui lòng thử lại sau."
+    },
+    "offline": "Offline"
   },
   "booking": {
     "loginRequired": "Hãy đăng nhập để booking",
@@ -468,6 +519,7 @@
         "ok": "OK",
         "expired": "Khung giờ này đã qua. Vui lòng quay lại và chọn khung giờ khác."
       },
+      "slotFull": "Hết chỗ",
       "missingContact": {
         "title": "Cần thông tin liên hệ",
         "message": "Vui lòng nhập họ tên và số điện thoại hợp lệ."
@@ -656,6 +708,7 @@
       "startMessage": "Bắt đầu hành trình sẽ theo dõi vị trí của bạn để dẫn đường và cập nhật tiến trình.",
       "startNotification": "Hành trình bắt đầu!",
       "notFound": "Không tìm thấy chuyến đi",
+      "notFoundDesc": "Chuyến đi có thể đã bị xóa hoặc bạn không có quyền truy cập.",
       "back": "Quay lại",
       "duplicateSuccess": "Nhân bản thành công",
       "duplicateSuccessMsg": "Đã tạo bản sao \"{{name}}\"",
@@ -687,6 +740,8 @@
       "resumeSubtitle": "Khôi phục chỉ đường và theo dõi vị trí",
       "mapSubtitle": "Xem bản đồ dẫn đường thời gian thực",
       "starting": "Đang khởi động…",
+      "today": "Hôm nay",
+      "dayLabel": "Ngày {{number}}",
       "destinationCount": "{{count}} địa điểm",
       "addDestination": "Thêm địa điểm",
       "noDestinations": "Chưa có địa điểm",
@@ -698,7 +753,9 @@
       "noDataDesc": "Tab ngân sách sẽ tổng hợp chi phí khi có booking liên kết.",
       "exploreServices": "Khám phá dịch vụ",
       "totalEstimate": "Tổng dự kiến",
+      "confirmedAmount": "Đã xác nhận",
       "pendingConfirm": "Chờ xác nhận",
+      "bookingCount": "{{count}} booking",
       "upcomingReminder": "Nhắc nhở lịch hẹn sắp tới",
       "daysLeft": "còn {{count}} ngày",
       "hoursLeft": "còn {{count}} giờ",
@@ -724,7 +781,8 @@
       "moveToDay": "Chuyển sang ngày khác",
       "editItinerary": "Chỉnh sửa lịch trình điểm đến",
       "edit": "Sửa",
-      "removeFromItinerary": "Bỏ địa điểm khỏi lịch trình"
+      "removeFromItinerary": "Bỏ địa điểm khỏi lịch trình",
+      "moreBookings": "+{{count}} booking khác"
     },
     "share": {
       "viewOnly": "Chỉ xem",
@@ -983,7 +1041,7 @@
     "notFound": "Không tìm thấy thông tin yêu cầu.",
     "validation": "Thông tin không hợp lệ. Vui lòng kiểm tra lại.",
     "unknown": "Đã có lỗi xảy ra. Vui lòng thử lại.",
-    "aiQuota": "AI đã chạm giới hạn quota. Vui lòng thử lại sau hoặc kiểm tra billing của Gemini API.",
+    "aiQuota": "AI đã chạm giới hạn quota. Vui lòng thử lại sau.",
     "aiUnavailable": "Dịch vụ AI tạm thời không khả dụng.",
     "locationDenied": "Cần quyền truy cập vị trí để sử dụng tính năng này.",
     "imageCompress": "Không thể nén ảnh dưới {{size}}KB. Vui lòng chọn ảnh khác."
@@ -1036,6 +1094,7 @@
   "tripHeader": {
     "from": "Từ {{date}}",
     "add": "Thêm",
+    "share": "Chia sẻ",
     "unsave": "Bỏ lưu",
     "saveTrip": "Lưu chuyến đi",
     "editInfo": "Sửa thông tin",

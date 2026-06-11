@@ -354,6 +354,34 @@ export const getMyBookingQR = async (req, res, next) => {
   }
 };
 
+export const cancelMyBooking = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID booking không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    const booking = await bookingService.cancelMyBooking(
+      id,
+      getUserId(req),
+      req.body?.cancelReason,
+    );
+
+    res.json({
+      success: true,
+      data: booking,
+      message: "Hủy booking thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const linkMyBookingToTrip = async (req, res, next) => {
   try {
     const id = parseId(req.params.id);
@@ -711,6 +739,7 @@ export default {
   getMyBookings,
   getMyBookingDetail,
   getMyBookingQR,
+  cancelMyBooking,
   linkMyBookingToTrip,
   generateTrip,
   createTrip,

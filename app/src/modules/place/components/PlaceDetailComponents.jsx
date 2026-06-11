@@ -1,17 +1,25 @@
-import React from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import React, { memo } from "react";
+import { View, Text, Pressable } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
 import { PALETTE } from "../constants/placeSheetConstants";
 import { TOKENS } from "../../../constants/design-tokens";
+import { cn } from "../../../lib/cn";
 
 const DAY_NAMES_DEFAULT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export function OpeningHours({ hours, t }) {
+const SECTION_CARD_SHADOW = TOKENS.shadow.sm;
+
+export const OpeningHours = memo(function OpeningHours({ hours, t }) {
   const today = new Date().getDay();
   const dayNames = t("place.dayNames", { returnObjects: true }) || DAY_NAMES_DEFAULT;
 
   return (
-    <View style={styles.openingHoursList}>
+    <View className="gap-2">
       {dayNames.map((day, index) => {
         const dayNumber = index === 6 ? 0 : index + 1;
         const item = hours?.find((entry) => entry.dayOfWeek === dayNumber);
@@ -25,18 +33,26 @@ export function OpeningHours({ hours, t }) {
         return (
           <View
             key={day}
-            style={[styles.openingRow, isToday && styles.openingRowActive]}
+            className={cn(
+              "flex-row items-center justify-between gap-3 rounded-[16px] px-[14px] py-3",
+              isToday ? "bg-[rgba(0,0,0,0.06)]" : "bg-[#F5F5F7]"
+            )}
           >
             <Text
-              style={[styles.openingDay, isToday && styles.openingDayActive]}
+              className="text-[13px]"
+              style={{
+                color: isToday ? PALETTE.primaryDark : PALETTE.textMuted,
+                fontFamily: isToday ? TOKENS.font.semibold : TOKENS.font.medium,
+              }}
             >
               {day}
             </Text>
             <Text
-              style={[
-                styles.openingLabel,
-                isToday && styles.openingLabelActive,
-              ]}
+              className="text-[13px]"
+              style={{
+                color: isToday ? PALETTE.primaryDark : PALETTE.textMuted,
+                fontFamily: isToday ? TOKENS.font.semibold : TOKENS.font.medium,
+              }}
             >
               {label}
             </Text>
@@ -45,48 +61,74 @@ export function OpeningHours({ hours, t }) {
       })}
     </View>
   );
-}
+});
 
-export function SectionCard({ title, actionLabel, onActionPress, children }) {
+export const SectionCard = memo(function SectionCard({ title, actionLabel, onActionPress, children }) {
   return (
-    <View style={styles.sectionCard}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
+    <View
+      className="mt-[14px] rounded-[26px] p-[18px] bg-white"
+      style={SECTION_CARD_SHADOW}
+    >
+      <View className="flex-row items-center justify-between mb-[14px]">
+        <Text
+          className="text-xl"
+          style={{ color: PALETTE.text, fontFamily: TOKENS.font.heading }}
+        >
+          {title}
+        </Text>
         {actionLabel ? (
           <Pressable onPress={onActionPress} hitSlop={8}>
-            <Text style={styles.sectionAction}>{actionLabel}</Text>
+            <Text
+              className="text-[13px]"
+              style={{ color: PALETTE.primary, fontFamily: TOKENS.font.semibold }}
+            >
+              {actionLabel}
+            </Text>
           </Pressable>
         ) : null}
       </View>
       {children}
     </View>
   );
-}
+});
 
-export function StatPill({ icon, label }) {
+export const StatPill = memo(function StatPill({ icon, label }) {
   return (
-    <View style={styles.statPill}>
+    <View className="flex-row items-center gap-1.5 px-[14px] py-2.5 rounded-full bg-[#F5F5F7] border border-[rgba(0,0,0,0.06)]">
       <MaterialIconsRounded name={icon} size={15} color={PALETTE.textMuted} />
-      <Text style={styles.statPillText} numberOfLines={1}>
+      <Text
+        className="max-w-[120px] text-xs"
+        style={{ color: PALETTE.textMuted, fontFamily: TOKENS.font.medium }}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </View>
   );
-}
+});
 
 export function FactCard({ icon, label, value }) {
   return (
-    <View style={styles.factCard}>
-      <View style={styles.factIconWrap}>
+    <View className="flex-row items-center gap-3.5 min-h-[78px] rounded-[22px] px-[14px] py-3 bg-white border border-[rgba(0,0,0,0.06)]">
+      <View className="w-[46px] h-[46px] rounded-[16px] items-center justify-center bg-[rgba(0,0,0,0.06)]">
         <MaterialIconsRounded
           name={icon}
           size={18}
           color={PALETTE.primaryDark}
         />
       </View>
-      <View style={styles.factContent}>
-        <Text style={styles.factLabel}>{label}</Text>
-        <Text style={styles.factValue} numberOfLines={2}>
+      <View className="flex-1 min-w-0">
+        <Text
+          className="text-[11px] mb-1 tracking-[0.3px] uppercase"
+          style={{ color: PALETTE.textSoft, fontFamily: TOKENS.font.semibold }}
+        >
+          {label}
+        </Text>
+        <Text
+          className="text-sm leading-[19px]"
+          style={{ color: PALETTE.text, fontFamily: TOKENS.font.semibold }}
+          numberOfLines={2}
+        >
           {value}
         </Text>
       </View>
@@ -99,42 +141,93 @@ export function FactCard({ icon, label, value }) {
   );
 }
 
-export function AmenityCard({ icon, label, tag, onPress }) {
+export const AmenityCard = memo(function AmenityCard({ icon, label, tag, onPress }) {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95, TOKENS.spring.press);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, TOKENS.spring.entrance);
+  };
+
   return (
-    <Pressable onPress={onPress} style={styles.amenityCard}>
-      <View style={styles.amenityIconWrap}>
-        <MaterialIconsRounded
-          name={icon}
-          size={22}
-          color={PALETTE.primaryDark}
-        />
-      </View>
-      <Text style={styles.amenityLabel} numberOfLines={1}>
-        {label}
-      </Text>
-      {tag ? (
-        <Text style={styles.amenityTagText} numberOfLines={1}>
-          {tag}
+    <Pressable
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      <Animated.View className="flex-1 items-center justify-start" style={animatedStyle}>
+        <View className="w-[52px] h-[52px] rounded-[26px] items-center justify-center mb-2 bg-[#F5F5F7] border border-[rgba(0,0,0,0.06)]">
+          <MaterialIconsRounded
+            name={icon}
+            size={22}
+            color={PALETTE.primaryDark}
+          />
+        </View>
+        <Text
+          className="text-[13px] text-center"
+          style={{ color: PALETTE.text, fontFamily: TOKENS.font.semibold }}
+          numberOfLines={1}
+        >
+          {label}
         </Text>
-      ) : null}
+        {tag ? (
+          <Text
+            className="text-[11px] text-center mt-0.5"
+            style={{ color: PALETTE.textSoft, fontFamily: TOKENS.font.medium }}
+            numberOfLines={1}
+          >
+            {tag}
+          </Text>
+        ) : null}
+      </Animated.View>
     </Pressable>
   );
-}
+});
 
-export function DetailRow({ icon, label, value, onPress, highlight = false }) {
+export const DetailRow = memo(function DetailRow({ icon, label, value, onPress, highlight = false }) {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.98, TOKENS.spring.press);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, TOKENS.spring.entrance);
+  };
+
   const content = (
-    <View style={styles.detailRow}>
-      <View style={styles.detailIconWrap}>
+    <View className="flex-row items-center gap-2.5 rounded-[16px] border border-[rgba(0,0,0,0.06)] bg-[#F5F5F7] px-3 py-[11px]">
+      <View className="w-[34px] h-[34px] rounded-[10px] items-center justify-center bg-white">
         <MaterialIconsRounded
           name={icon}
           size={17}
           color={highlight ? PALETTE.primaryDark : PALETTE.textMuted}
         />
       </View>
-      <View style={styles.detailContent}>
-        <Text style={styles.detailLabel}>{label}</Text>
+      <View className="flex-1 min-w-0">
         <Text
-          style={[styles.detailValue, highlight && styles.detailValueHighlight]}
+          className="text-[11px] mb-0.5"
+          style={{ color: PALETTE.textSoft, fontFamily: TOKENS.font.medium }}
+        >
+          {label}
+        </Text>
+        <Text
+          className="text-[13px] leading-[19px]"
+          style={{
+            color: highlight ? PALETTE.primaryDark : PALETTE.text,
+            fontFamily: TOKENS.font.semibold,
+          }}
           numberOfLines={3}
         >
           {value}
@@ -152,196 +245,17 @@ export function DetailRow({ icon, label, value, onPress, highlight = false }) {
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={styles.detailRowPressable}>
-        {content}
+      <Pressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        <Animated.View className="rounded-[16px]" style={animatedStyle}>
+          {content}
+        </Animated.View>
       </Pressable>
     );
   }
 
   return content;
-}
-
-const styles = StyleSheet.create({
-  sectionCard: {
-    marginTop: 14,
-    borderRadius: 26,
-    padding: 18,
-    backgroundColor: PALETTE.surface,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 18,
-    elevation: 4,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    color: PALETTE.text,
-    fontSize: 18,
-    fontFamily: TOKENS.font.heading,
-  },
-  sectionAction: {
-    color: PALETTE.primary,
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-  },
-  statPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: PALETTE.surfaceAlt,
-    borderWidth: 1,
-    borderColor: PALETTE.borderSoft,
-  },
-  statPillText: {
-    maxWidth: 120,
-    color: PALETTE.textMuted,
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-  },
-  amenityCard: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "flex-start",
-  },
-  amenityIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.surfaceAlt,
-    borderWidth: 1,
-    borderColor: PALETTE.borderSoft,
-    marginBottom: 8,
-  },
-  amenityLabel: {
-    color: PALETTE.text,
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    textAlign: "center",
-  },
-  amenityTagText: {
-    color: PALETTE.textSoft,
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-    textAlign: "center",
-    marginTop: 2,
-  },
-  factCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    minHeight: 78,
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: PALETTE.surface,
-    borderWidth: 1,
-    borderColor: PALETTE.borderSoft,
-  },
-  factIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.primarySoft,
-  },
-  factContent: {
-    flex: 1,
-    minWidth: 0,
-  },
-  factLabel: {
-    color: PALETTE.textSoft,
-    fontSize: 11,
-    marginBottom: 4,
-    letterSpacing: 0.3,
-    textTransform: "uppercase",
-    fontFamily: TOKENS.font.semibold,
-  },
-  factValue: {
-    color: PALETTE.text,
-    fontSize: 14,
-    lineHeight: 19,
-    fontFamily: TOKENS.font.semibold,
-  },
-  detailRowPressable: {
-    borderRadius: 16,
-  },
-  detailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: PALETTE.borderSoft,
-    backgroundColor: PALETTE.surfaceAlt,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-  },
-  detailIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-  },
-  detailContent: {
-    flex: 1,
-    minWidth: 0,
-  },
-  detailLabel: {
-    color: PALETTE.textSoft,
-    fontSize: 11,
-    marginBottom: 2,
-    fontFamily: TOKENS.font.medium,
-  },
-  detailValue: {
-    color: PALETTE.text,
-    fontSize: 13,
-    lineHeight: 19,
-    fontFamily: TOKENS.font.semibold,
-  },
-  detailValueHighlight: {
-    color: PALETTE.primaryDark,
-  },
-  openingHoursList: { gap: 8 },
-  openingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: PALETTE.surfaceAlt,
-  },
-  openingRowActive: { backgroundColor: PALETTE.primarySoft },
-  openingDay: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-  },
-  openingDayActive: {
-    color: PALETTE.primaryDark,
-    fontFamily: TOKENS.font.semibold,
-  },
-  openingLabel: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-  },
-  openingLabelActive: {
-    color: PALETTE.primaryDark,
-    fontFamily: TOKENS.font.semibold,
-  },
 });

@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
   useAnimatedStyle,
@@ -22,25 +23,18 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const SPRING_CONFIG = TOKENS.spring.press;
 
-function BentoTile({ place, large = false, onPress, index = 0 }) {
+function BentoTile({ place, large = false, onPress, index = 0, defaultCategoryLabel, defaultExperienceLabel }) {
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0);
   const tileScale = useSharedValue(0.92);
   const imageUri = resolvePlaceImageUri(place);
-  const category = place?.category?.name || "Ẩm thực";
+  const category = place?.category?.name || defaultCategoryLabel;
   const location = getPlaceLocation(place);
 
-  // Staggered entrance
   useEffect(() => {
     const delay = 150 + index * 80;
-    opacity.value = withDelay(
-      delay,
-      withTiming(1, { duration: 350 }),
-    );
-    tileScale.value = withDelay(
-      delay,
-      withSpring(1, TOKENS.spring.entrance),
-    );
+    opacity.value = withDelay(delay, withTiming(1, { duration: 350 }));
+    tileScale.value = withDelay(delay, withSpring(1, TOKENS.spring.entrance));
   }, [index, opacity, tileScale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -66,8 +60,8 @@ function BentoTile({ place, large = false, onPress, index = 0 }) {
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={[animatedStyle]}
-      className={`overflow-hidden rounded-[20px] bg-[#EDEDF2] relative ${
+      style={[animatedStyle, { borderCurve: "continuous" }]}
+      className={`overflow-hidden rounded-[20px] relative ${
         large ? "flex-[1.2]" : "flex-1"
       }`}
     >
@@ -77,30 +71,38 @@ function BentoTile({ place, large = false, onPress, index = 0 }) {
           contentFit="cover"
           transition={220}
           cachePolicy="memory-disk"
-          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
+          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
         />
       ) : (
-        <View className="absolute inset-0 items-center justify-center bg-[#EDEDF2]">
+        <View
+          className="absolute inset-0 items-center justify-center"
+          style={{ backgroundColor: APPLE_THEME.surfaceMuted }}
+        >
           <MaterialIconsRounded
             name="restaurant"
             size={large ? 34 : 26}
-            color="rgba(0,0,0,0.15)"
+            color={APPLE_THEME.textMuted}
           />
         </View>
       )}
 
-      {/* Cinematic overlay */}
       <View
         pointerEvents="none"
         style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
         className={large ? "bg-black/45" : "bg-black/30"}
       />
 
-      {/* Content */}
       <View className="absolute left-2.5 right-2.5 bottom-2.5">
         {!large ? (
-          <View className="self-start px-2 h-5 rounded-full justify-center mb-1.5 bg-white/85">
-            <Text className="text-[#1D1D1F] text-[10px] font-semibold tracking-[0.2px]" style={{ fontFamily: TOKENS.font.semibold }} numberOfLines={1}>
+          <View
+            className="self-start px-2 h-5 rounded-full justify-center mb-1.5"
+            style={{ backgroundColor: "rgba(255,255,255,0.88)" }}
+          >
+            <Text
+              className="text-[10px] font-semibold tracking-[0.2px]"
+              style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.semibold }}
+              numberOfLines={1}
+            >
               {category}
             </Text>
           </View>
@@ -113,11 +115,15 @@ function BentoTile({ place, large = false, onPress, index = 0 }) {
           style={{ fontFamily: TOKENS.font.heading }}
           numberOfLines={2}
         >
-          {place?.name || "Trải nghiệm đặc sắc"}
+          {place?.name || defaultExperienceLabel}
         </Text>
 
         {large && location ? (
-          <Text className="mt-0.5 text-white/75 text-[11px] font-medium" style={{ fontFamily: TOKENS.font.medium }} numberOfLines={1}>
+          <Text
+            className="mt-0.5 text-[11px] font-medium"
+            style={{ color: "rgba(255,255,255,0.75)", fontFamily: TOKENS.font.medium }}
+            numberOfLines={1}
+          >
             {location}
           </Text>
         ) : null}
@@ -127,18 +133,13 @@ function BentoTile({ place, large = false, onPress, index = 0 }) {
 }
 
 function ExperienceBentoSectionInner({ places, onPressPlace }) {
+  const { t } = useTranslation();
   const sectionOpacity = useSharedValue(0);
   const sectionY = useSharedValue(24);
 
   useEffect(() => {
-    sectionOpacity.value = withDelay(
-      200,
-      withTiming(1, { duration: 400 }),
-    );
-    sectionY.value = withDelay(
-      200,
-      withSpring(0, { damping: 18, stiffness: 160 }),
-    );
+    sectionOpacity.value = withDelay(200, withTiming(1, { duration: 400 }));
+    sectionY.value = withDelay(200, withSpring(0, TOKENS.spring.entrance));
   }, [sectionOpacity, sectionY]);
 
   const sectionAnimStyle = useAnimatedStyle(() => ({
@@ -149,17 +150,38 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
   if (!Array.isArray(places) || places.length < 3) return null;
 
   const [hero, topRight, bottomRight] = places;
+  const defaultCategoryLabel = t("explore.card.defaultCategory");
+  const defaultExperienceLabel = t("explore.card.defaultExperience");
 
   return (
-    <Animated.View style={[sectionAnimStyle, { paddingHorizontal: TAB_SCREEN_PADDING }]} className="mt-7">
-      <Text className="text-[#1D1D1F] text-[22px] leading-7 tracking-[-0.5px] font-bold mb-3.5" style={{ fontFamily: TOKENS.font.heading }}>Ẩm thực nổi bật</Text>
+    <Animated.View
+      style={[sectionAnimStyle, { paddingHorizontal: TAB_SCREEN_PADDING }]}
+      className="mt-7"
+    >
+      <View className="flex-row items-center gap-2.5 mb-3.5">
+        <View
+          className="w-1 h-6 rounded-full"
+          style={{ backgroundColor: APPLE_THEME.focusBlue }}
+        />
+        <Text
+          className="text-[22px] leading-7 tracking-[-0.5px] font-bold"
+          style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.heading }}
+        >
+          {t("explore.sections.culinary")}
+        </Text>
+      </View>
 
-      <View className="rounded-[28px] p-2.5 bg-white border-[0.5px] border-[#D2D2D7] shadow-sm elevation-2">
+      <View
+        className="rounded-[28px] p-2.5 bg-white border-[0.5px]"
+        style={{ borderColor: APPLE_THEME.border, ...TOKENS.shadow.sm }}
+      >
         <View className="flex-row gap-2 h-[300px]">
           <BentoTile
             place={hero}
             large
             index={0}
+            defaultCategoryLabel={defaultCategoryLabel}
+            defaultExperienceLabel={defaultExperienceLabel}
             onPress={() => onPressPlace(hero)}
           />
 
@@ -167,11 +189,15 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
             <BentoTile
               place={topRight}
               index={1}
+              defaultCategoryLabel={defaultCategoryLabel}
+              defaultExperienceLabel={defaultExperienceLabel}
               onPress={() => onPressPlace(topRight)}
             />
             <BentoTile
               place={bottomRight}
               index={2}
+              defaultCategoryLabel={defaultCategoryLabel}
+              defaultExperienceLabel={defaultExperienceLabel}
               onPress={() => onPressPlace(bottomRight)}
             />
           </View>

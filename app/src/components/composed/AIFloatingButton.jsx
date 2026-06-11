@@ -6,7 +6,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { useRouter, usePathname } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AIEntryButton } from "./AIEntryButton";
 
@@ -20,9 +19,10 @@ const HIDE_PATHS = new Set([
   "/onboarding",
 ]);
 
-export function AIFloatingButton() {
-  const router = useRouter();
-  const pathname = usePathname();
+/**
+ * @param {{ router: import('expo-router').Router, pathname: string }} props
+ */
+export function AIFloatingButton({ router, pathname }) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 

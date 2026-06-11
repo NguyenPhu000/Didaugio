@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import * as businessApi from "@/apis/businessApi";
-import * as auditLogService from "@/apis/auditLogService";
+import auditLogService from "@/apis/auditLogService";
 import { ADMIN_ROUTES } from "@/constants/routes";
 import {
   BUSINESS_STATUS,

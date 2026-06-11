@@ -44,6 +44,7 @@ const BusinessListPage = lazy(() => import("@/pages/admin/BusinessListPage"));
 const BusinessPendingPage = lazy(() => import("@/pages/admin/BusinessPendingPage"));
 const AdminReviewModerationPage = lazy(() => import("@/pages/admin/AdminReviewModerationPage"));
 const AdminPayoutManagementPage = lazy(() => import("@/pages/admin/AdminPayoutManagementPage"));
+const AdminRefundManagementPage = lazy(() => import("@/pages/admin/AdminRefundManagementPage"));
 const AdminAnalyticsPage = lazy(() => import("@/pages/admin/AdminAnalyticsPage"));
 const CMSContentPage = lazy(() => import("@/pages/admin/CMSContentPage"));
 const RoleManagePage = lazy(() => import("@/pages/RoleManagePage"));
@@ -375,6 +376,16 @@ const AppRoutes = () => {
         element={
           <ProtectedAdmin roles={adminRoles}>
             <AdminReviewModerationPage />
+          </ProtectedAdmin>
+        }
+      />
+
+      {/* Admin Refund Management */}
+      <Route
+        path={ADMIN_ROUTES.REFUNDS}
+        element={
+          <ProtectedAdmin roles={adminRoles}>
+            <AdminRefundManagementPage />
           </ProtectedAdmin>
         }
       />

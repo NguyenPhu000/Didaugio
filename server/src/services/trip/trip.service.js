@@ -1,11 +1,10 @@
 import bcrypt from "bcrypt";
 import prisma from "../../config/prismaClient.js";
-import { PRIMARY_GEMINI_MODEL } from "../../config/geminiClient.js";
-import { mapGeminiError } from "../../lib/geminiErrorHandler.js";
+import { GROQ_MODEL } from "../ai/groq.service.js";
 import {
   generateFallbackItinerary,
   generateItinerary,
-} from "../ai/gemini.service.js";
+} from "../ai/itinerary.service.js";
 import routingService from "../routing/routing.service.js";
 import { normalizeItinerary } from "../../utils/itineraryFormatter.js";
 import { uploadPlaceImage } from "../media/media.service.js";
@@ -516,27 +515,26 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
 
   if (!rawItinerary) {
     const startTime = Date.now();
-    let geminiResult;
+    let aiResult;
     let isSuccessful = true;
     let errorMessage = null;
 
     try {
-      geminiResult = await generateItinerary(preferences, places);
+      aiResult = await generateItinerary(preferences, places);
     } catch (err) {
-      const mappedGemini = mapGeminiError(err);
-      const mappedCode = mappedGemini?.body?.errorCode;
+      const errorCode = err?.errorCode || err?.code || "AI_ERROR";
       const allowFallback =
-        mappedCode === "QUOTA_EXCEEDED" || mappedCode === "AI_UNAVAILABLE";
+        errorCode === "QUOTA_EXCEEDED" || errorCode === "AI_UNAVAILABLE";
 
       if (allowFallback) {
-        geminiResult = {
+        aiResult = {
           parsed: generateFallbackItinerary(preferences, places),
           raw: null,
           tokensUsed: null,
           responseTimeMs: Date.now() - startTime,
         };
         isSuccessful = false;
-        errorMessage = `${mappedCode}: ${mappedGemini?.body?.message || err?.message}`;
+        errorMessage = `${errorCode}: ${err?.message}`;
       } else {
         isSuccessful = false;
         errorMessage = err?.message;
@@ -555,12 +553,12 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
               totalDays,
               previewOnly: !!previewOnly,
             },
-            responseText: geminiResult?.raw ?? null,
-            responseParsed: geminiResult?.parsed ?? null,
-            modelUsed: geminiResult?.raw
-              ? PRIMARY_GEMINI_MODEL
+            responseText: aiResult?.raw ?? null,
+            responseParsed: aiResult?.parsed ?? null,
+            modelUsed: aiResult?.raw
+              ? GROQ_MODEL
               : "fallback-local",
-            tokensUsed: geminiResult?.tokensUsed ?? null,
+            tokensUsed: aiResult?.tokensUsed ?? null,
             responseTimeMs: Date.now() - startTime,
             isSuccessful,
             errorMessage,
@@ -569,7 +567,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
         .catch(() => {});
     }
 
-    rawItinerary = geminiResult?.parsed ?? null;
+    rawItinerary = aiResult?.parsed ?? null;
   }
 
   let itinerary = normalizeItinerary(rawItinerary, totalDays);

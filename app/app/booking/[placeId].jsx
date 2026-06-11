@@ -290,6 +290,7 @@ export default function BookingScreen() {
   }, [place?.name, selectedDate, t]);
 
   useEffect(() => {
+    if (!selectedDate || !selectedService) return;
     if (isSlotAvailable(selectedDate, selectedTime)) return;
     const next = TIME_SLOTS.find((slot) =>
       isSlotAvailable(selectedDate, slot.value),
@@ -298,7 +299,7 @@ export default function BookingScreen() {
       setSelectedTime(next.value);
       setActiveTimeGroup(resolveTimeGroup(next.value));
     }
-  }, [selectedDate, selectedTime, nowTs]);
+  }, [selectedDate, selectedTime, nowTs, availabilityData, selectedService]);
 
   useEffect(() => {
     if (tripLinkMode !== "create") return;
@@ -519,16 +520,15 @@ export default function BookingScreen() {
         tripIdPayload = Number(createdTripRes?.data?.id || createdTripRes?.id);
 
         if (!Number.isInteger(tripIdPayload) || tripIdPayload <= 0) {
-          throw {
-            message: t("booking.errors.tripCreateFailed"),
-            status: 500,
-            code: "TRIP_CREATE_FAILED",
-          };
+          const err = new Error(t("booking.errors.tripCreateFailed"));
+          err.status = 500;
+          err.code = "TRIP_CREATE_FAILED";
+          throw err;
         }
       }
 
       const bookingRes = await bookingMutation.mutateAsync({
-        placeId: parseInt(placeId),
+        placeId: parseInt(placeId, 10),
         serviceId: selectedService?.id,
         tripId: tripIdPayload || undefined,
         quantity,
@@ -547,7 +547,20 @@ export default function BookingScreen() {
         setLinkedTripSummary(null);
       }
 
-      setBookingDone(true);
+      // Navigation separated from booking logic
+      const newBookingId = bookingRes?.data?.id || bookingRes?.id;
+      if (newBookingId) {
+        try {
+          router.replace(`/payment/checkout?bookingId=${newBookingId}`);
+        } catch (navErr) {
+          // Fallback: show success screen if navigation fails
+          console.warn("[booking] Navigation to checkout failed:", navErr);
+          setBookingDone(true);
+        }
+      } else {
+        // No ID returned — show success screen as fallback
+        setBookingDone(true);
+      }
     } catch (error) {
       Alert.alert(
         t("booking.errors.bookingFailed"),
@@ -957,7 +970,14 @@ export default function BookingScreen() {
                     {quantity}
                   </Text>
                   <Pressable
-                    onPress={() => setQuantity(quantity + 1)}
+                    onPress={() => {
+                      const maxQty = availabilityData?.slots
+                        ? availabilityData.slots.find((s) => s.time?.startsWith(`${selectedDate}T${selectedTime}`))?.remaining ?? 20
+                        : 20;
+                      if (quantity < Math.min(maxQty, 20)) {
+                        setQuantity(quantity + 1);
+                      }
+                    }}
                     style={{
                       width: 32,
                       height: 32,
@@ -1286,7 +1306,7 @@ export default function BookingScreen() {
                                 fontWeight: "600",
                               }}
                             >
-                              {remaining > 0 ? `${remaining}` : "Full"}
+                              {remaining > 0 ? `${remaining}` : t("booking.slotFull")}
                             </Text>
                           ) : null}
                         </Pressable>

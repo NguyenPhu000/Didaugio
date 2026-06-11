@@ -20,7 +20,7 @@ export const getStats = async (req, res, next) => {
     res.json({
       success: true,
       data: stats,
-      message: "Lấy thống kê moderation đánh giá thành công",
+      message: "Lấy thống kê đánh giá thành công",
     });
   } catch (error) {
     next(error);

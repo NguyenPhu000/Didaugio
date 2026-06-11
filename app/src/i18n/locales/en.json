@@ -130,6 +130,29 @@
     },
     "recommended": "Must-try places",
     "results": "{count} results",
+    "sections": {
+      "featured": "Featured destinations",
+      "culinary": "Culinary highlights",
+      "popular": "Popular"
+    },
+    "card": {
+      "featuredBadge": "Featured",
+      "recommended": "Recommended",
+      "contact": "Contact",
+      "view": "View",
+      "defaultExperience": "Unique experience",
+      "defaultCategory": "Food & drink"
+    },
+    "quickActions": {
+      "restaurants": "Food",
+      "hotel": "Hotels",
+      "cafe": "Cafés",
+      "shopping": "Shopping",
+      "culture": "Culture",
+      "events": "Events",
+      "nature": "Nature",
+      "more": "All"
+    },
     "empty": {
       "noPlaces": "No places yet",
       "noResults": "No results found",
@@ -161,6 +184,11 @@
         "rating": "Rating",
         "popular": "Popular"
       }
+    },
+    "heroBanner": {
+      "title": "Quality services, simpler than ever.",
+      "description": "Trusted experts. Exceptional results.",
+      "cta": "Book a service"
     },
     "toast": {
       "saved": "Place added to favorites",
@@ -386,7 +414,30 @@
       "savePlace": "Save place",
       "viewPlace": "View place",
       "viewInTrip": "View in trip"
-    }
+    },
+    "payment": {
+      "unpaid": "Unpaid",
+      "unpaidDesc": "Pay online to confirm your booking",
+      "paid": "Paid",
+      "paidDesc": "Your transaction has been recorded. If you cancel this booking, a refund request will be sent to admin for manual review.",
+      "partialRefund": "Partially refunded",
+      "partialRefundDesc": "Admin has processed a partial refund for this booking.",
+      "refunded": "Refunded",
+      "refundedDesc": "Your payment has been refunded successfully.",
+      "refundRejected": "Refund request rejected",
+      "refundRejectedDesc": "Admin rejected the refund request for this booking.",
+      "refundAmount": "Refunded amount",
+      "redirecting": "Redirecting...",
+      "payNow": "Pay now"
+    },
+    "cancel": {
+      "cta": "Cancel booking & request refund",
+      "alertSuccessTitle": "Request sent",
+      "alertSuccessMessage": "Your booking was cancelled. The refund request will be reviewed by admin.",
+      "alertErrorTitle": "Could not cancel booking",
+      "alertErrorMessage": "Please try again later."
+    },
+    "offline": "Offline"
   },
   "booking": {
     "loginRequired": "Please log in to book",
@@ -469,6 +520,7 @@
         "ok": "OK",
         "expired": "This time slot has passed. Please go back and select another."
       },
+      "slotFull": "Full",
       "missingContact": {
         "title": "Contact required",
         "message": "Please fill in your name and a valid phone number."
@@ -657,6 +709,7 @@
       "startMessage": "Starting the journey will track your location for navigation and progress updates.",
       "startNotification": "Journey started!",
       "notFound": "Trip not found",
+      "notFoundDesc": "The trip may have been deleted or you don't have access.",
       "back": "Back",
       "duplicateSuccess": "Duplicated successfully",
       "duplicateSuccessMsg": "Created a copy of \"{{name}}\"",
@@ -688,6 +741,8 @@
       "resumeSubtitle": "Resume navigation and location tracking",
       "mapSubtitle": "View real-time navigation map",
       "starting": "Starting…",
+      "today": "Today",
+      "dayLabel": "Day {{number}}",
       "destinationCount": "{{count}} destinations",
       "addDestination": "Add destination",
       "noDestinations": "No destinations yet",
@@ -699,7 +754,9 @@
       "noDataDesc": "The budget tab will summarize costs when linked bookings are available.",
       "exploreServices": "Explore services",
       "totalEstimate": "Estimated total",
+      "confirmedAmount": "Confirmed",
       "pendingConfirm": "Pending confirmation",
+      "bookingCount": "{{count}} bookings",
       "upcomingReminder": "Upcoming appointment reminder",
       "daysLeft": "{{count}} days left",
       "hoursLeft": "{{count}} hours left",
@@ -725,7 +782,8 @@
       "moveToDay": "Move to another day",
       "editItinerary": "Edit destination itinerary",
       "edit": "Edit",
-      "removeFromItinerary": "Remove destination from itinerary"
+      "removeFromItinerary": "Remove destination from itinerary",
+      "moreBookings": "+{{count}} more bookings"
     },
     "share": {
       "viewOnly": "View only",
@@ -984,7 +1042,7 @@
     "notFound": "Requested information not found.",
     "validation": "Invalid information. Please check and try again.",
     "unknown": "An error occurred. Please try again.",
-    "aiQuota": "AI has reached its quota limit. Please try again later or check Gemini API billing.",
+    "aiQuota": "AI has reached its quota limit. Please try again later.",
     "aiUnavailable": "AI service is temporarily unavailable.",
     "locationDenied": "Location permission is required to use this feature.",
     "imageCompress": "Cannot compress image under {{size}}KB. Please choose another image."
@@ -1037,6 +1095,7 @@
   "tripHeader": {
     "from": "From {{date}}",
     "add": "Add",
+    "share": "Share",
     "unsave": "Unsave",
     "saveTrip": "Save trip",
     "editInfo": "Edit info",

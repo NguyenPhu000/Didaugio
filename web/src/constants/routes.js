@@ -48,6 +48,7 @@ export const ADMIN_ROUTES = {
   ANALYTICS: "/admin/analytics",
   CMS: "/admin/cms",
   PAYOUTS: "/admin/payouts",
+  REFUNDS: "/admin/refunds",
 };
 
 export const BUSINESS_ROUTES = {

@@ -36,7 +36,7 @@ export const getById = async (req, res, next) => {
 
 export const reply = async (req, res, next) => {
   try {
-    const businessId =
+    const businessId =  
       req.user.roleId > ROLES.ADMIN ? req.activeBusiness?.id : undefined;
     const replyData = await reviewService.reply(
       req.params.id,

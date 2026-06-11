@@ -1084,10 +1084,11 @@ model Payment {
   currency       String    @default("VND")
   paymentMethod  String    @map("payment_method")
   transactionId  String?   @map("transaction_id")
-  transactionRef String?   @map("transaction_ref")
+  transactionRef String    @unique @map("transaction_ref")
+  idempotencyKey String    @unique @map("idempotency_key")
   bankCode       String?   @map("bank_code")
   paymentData    Json?     @map("payment_data")
-  status         String    @default("pending")
+  status         String    @default("unpaid")
   paidAt         DateTime? @map("paid_at")
   refundAmount   Int?      @map("refund_amount")
   refundedAt     DateTime? @map("refunded_at")
@@ -1096,8 +1097,25 @@ model Payment {
   updatedAt      DateTime  @updatedAt @map("updated_at")
   booking        Booking   @relation(fields: [bookingId], references: [id])
   user           User      @relation(fields: [userId], references: [id])
+  webhookLogs    PaymentWebhookLog[]
 
   @@map("payments")
+}
+
+model PaymentWebhookLog {
+  id         Int      @id @default(autoincrement())
+  paymentId  Int?     @map("payment_id")
+  gateway    String
+  payload    Json
+  signature  String?
+  verified   Boolean  @default(false)
+  processed  Boolean  @default(false)
+  error      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  payment    Payment? @relation(fields: [paymentId], references: [id])
+
+  @@index([gateway, createdAt])
+  @@map("payment_webhook_logs")
 }
 
 model Payout {

@@ -6,6 +6,7 @@ import {
   getMyBookingDetailApi,
   getMyBookingQRApi,
   linkMyBookingToTripApi,
+  cancelBookingApi,
 } from "../api/bookingApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 
@@ -48,10 +49,13 @@ export function useMyBookings(filters = {}) {
   return useQuery({
     queryKey: [...QUERY_KEYS.bookings.list(), filters],
     queryFn: () => getMyBookingsApi(filters),
-    select: (res) => ({
-      data: res?.data || [],
-      pagination: res?.pagination || null,
-    }),
+    select: (res) => {
+      const raw = res?.data;
+      return {
+        data: Array.isArray(raw) ? raw : [],
+        pagination: res?.pagination || null,
+      };
+    },
   });
 }
 
@@ -74,7 +78,7 @@ export function useMyBookingQR(bookingId, options = {}) {
     queryFn: () => getMyBookingQRApi(normalizedId),
     enabled:
       enabledByCaller && Number.isInteger(normalizedId) && normalizedId > 0,
-    retry: false,
+    retry: 1,
     select: (res) => res?.data || null,
   });
 }
@@ -89,6 +93,25 @@ export function useLinkBookingToTrip() {
       const id = Number(variables?.bookingId);
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all() });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
+
+      if (Number.isInteger(id) && id > 0) {
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.bookings.detail(id),
+        });
+      }
+    },
+  });
+}
+
+export function useCancelBooking() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ bookingId, cancelReason }) =>
+      cancelBookingApi(bookingId, { cancelReason }),
+    onSuccess: (_, variables) => {
+      const id = Number(variables?.bookingId);
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all() });
 
       if (Number.isInteger(id) && id > 0) {
         queryClient.invalidateQueries({

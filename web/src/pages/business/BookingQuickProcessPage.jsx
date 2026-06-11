@@ -29,10 +29,10 @@ import { BOOKING_STATUS } from "@/constants/constants";
 import { TIME_SLOT_KEYS, TIME_SLOT_LABELS } from "@/constants/bookingSchedule";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
-  PageHeader,
-  SectionCard,
-  EmptyState,
-} from "@/components/business/DashboardWidgets";
+  BusinessPageHeader,
+  BusinessSectionCard,
+  BusinessEmptyState,
+} from "@/components/business/ui";
 import {
   formatDate,
   formatVND,
@@ -297,9 +297,9 @@ const BookingQuickProcessPage = () => {
         {t("common.back")}
       </Link>
 
-      <PageHeader
+      <BusinessPageHeader
         title={t("business.quickProcess.title")}
-        subtitle={t("business.quickProcess.title")}
+        description={t("business.quickProcess.title")}
       />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">

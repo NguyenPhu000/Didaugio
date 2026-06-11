@@ -3,7 +3,7 @@ import i18n, { resolveLanguage } from "../src/i18n";
 import { useEffect, useRef, useState } from "react";
 import { View, Alert, AppState } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, useRouter, useSegments, usePathname } from "expo-router";
 import { PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY } from "../src/modules/booking/hooks/usePayment";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -91,6 +91,7 @@ function OfflineSyncManager() {
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
+  const pathname = usePathname();
   
   // Trạng thái Hydration từ cả 2 store
   const isAuthHydrated = useAuthStore((s) => s.isHydrated);
@@ -326,8 +327,12 @@ export default function RootLayout() {
                           name="onboarding"
                           options={{ animation: "fade" }}
                         />
+                        <Stack.Screen
+                          name="ai/chat"
+                          options={{ animation: "slide_from_right" }}
+                        />
                       </Stack>
-                      {segments[0] !== "(auth)" && <AIFloatingButton />}
+                      {segments[0] !== "(auth)" && <AIFloatingButton router={router} pathname={pathname} />}
                       <OfflineToast />
                       <GlobalAlert />
                       <ToastContainer />

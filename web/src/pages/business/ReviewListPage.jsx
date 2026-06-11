@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
   Star,
-  Search,
   MessageSquare,
   Send,
   X,
@@ -29,15 +28,16 @@ import { exportToCsv, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 import api from "@/constants/api";
 import { getMyPlaces } from "@/apis/businessApi";
 import {
-  SectionCard,
-  PageHeader,
-  EmptyState,
-} from "@/components/business/DashboardWidgets";
+  BusinessSectionCard,
+  BusinessPageHeader,
+  BusinessEmptyState,
+} from "@/components/business/ui";
 import { DESIGN } from "@/components/business/dashboardWidgetHelpers";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import {
   Select,
@@ -117,15 +117,15 @@ const ReviewCard = ({
   };
 
   return (
-    <div className={cn(DESIGN.card, "[content-visibility:auto] p-5 space-y-3")}>
+    <div className={cn(DESIGN.card, "[content-visibility:auto] p-5 gap-3 flex flex-col")}>
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 font-semibold text-sm text-muted-foreground">
+        <div className="h-9 w-9 rounded-full bg-zinc-100 flex items-center justify-center shrink-0 font-semibold text-sm text-zinc-600">
           {(review.user?.profile?.fullName || "?")?.[0]?.toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-sm text-foreground">
+            <span className="font-semibold text-sm text-zinc-950">
               {review.user?.profile?.fullName || t("admin.reviewModeration.anonymous")}
             </span>
             <StarRating rating={review.rating} />
@@ -146,7 +146,7 @@ const ReviewCard = ({
               </Badge>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-zinc-500 mt-0.5">
             {review.place?.name} · {formatDate(review.createdAt)}
           </p>
         </div>
@@ -154,10 +154,10 @@ const ReviewCard = ({
 
       {/* Content */}
       {review.title && (
-        <p className="font-medium text-sm text-foreground">{review.title}</p>
+        <p className="font-medium text-sm text-zinc-950">{review.title}</p>
       )}
       {review.content && (
-        <p className="text-sm text-muted-foreground leading-relaxed">
+        <p className="text-sm text-zinc-500 leading-relaxed">
           {review.content}
         </p>
       )}
@@ -169,7 +169,7 @@ const ReviewCard = ({
               href={media.src}
               target="_blank"
               rel="noreferrer"
-              className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-muted"
+              className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50"
               title={media.caption || t("business.reviews.title")}
             >
               <img
@@ -185,15 +185,15 @@ const ReviewCard = ({
 
       {/* Existing replies */}
       {hasReplied && (
-        <div className="ml-6 pl-4 border-l-2 border-primary/30 space-y-3">
+        <div className="ml-6 pl-4 border-l-2 border-zinc-200 gap-3 flex flex-col">
           {review.replies.map((reply) => (
             <div key={reply.id}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-primary">
+                  <span className="text-xs font-semibold text-zinc-950">
                     {review.place?.name}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[10px] text-zinc-500">
                     {formatDate(reply.createdAt)}
                   </span>
                   {reply.status === "hidden" && (
@@ -255,7 +255,7 @@ const ReviewCard = ({
                   <div className="flex flex-col gap-1">
                     <Button
                       size="sm"
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 p-0 bg-zinc-950 text-white hover:bg-zinc-900"
                       onClick={() => onSaveEditReply(reply.id)}
                       disabled={!!actionLoadingByReply[reply.id]}
                     >
@@ -276,7 +276,7 @@ const ReviewCard = ({
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">
                   {reply.content}
                 </p>
               )}
@@ -287,7 +287,7 @@ const ReviewCard = ({
 
       {/* Reply UI */}
       {isReplying ? (
-        <div className="space-y-2">
+        <div className="gap-2 flex flex-col">
           <div className="flex flex-wrap gap-1.5">
             {quickReplyTemplates.map((template) => (
               <Button
@@ -314,7 +314,7 @@ const ReviewCard = ({
             <div className="flex flex-col gap-1">
               <Button
                 size="sm"
-                className="h-9 w-9 p-0"
+                className="h-9 w-9 p-0 bg-zinc-950 text-white hover:bg-zinc-900"
                 onClick={onSendReply}
                 disabled={sending}
               >
@@ -606,9 +606,9 @@ const ReviewListPage = () => {
     <div className="space-y-6 p-6 lg:p-8 min-h-screen">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <PageHeader
+        <BusinessPageHeader
           title={t("business.reviews.title")}
-          subtitle={t("business.reviews.title")}
+          description={t("business.reviews.title")}
           badge={stats?.total || undefined}
         />
         <button
@@ -624,7 +624,7 @@ const ReviewListPage = () => {
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Average rating */}
-          <SectionCard>
+          <BusinessSectionCard>
             <div className="flex flex-col items-center justify-center py-4 gap-2">
               <p className="text-5xl font-bold text-foreground">
                 {Number(stats.avgRating || 0).toFixed(1)}
@@ -634,9 +634,9 @@ const ReviewListPage = () => {
                 {t("admin.analytics.avgRating")} {stats.total}
               </p>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
-          <SectionCard>
+          <BusinessSectionCard>
             <div className="flex flex-col items-center justify-center py-4 gap-2">
               <MessageSquare className="h-6 w-6 text-primary" />
               <p className="text-3xl font-bold text-foreground">
@@ -646,9 +646,9 @@ const ReviewListPage = () => {
                 {t("admin.analytics.avgRating")}
               </p>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
-          <SectionCard>
+          <BusinessSectionCard>
             <div className="flex flex-col items-center justify-center py-4 gap-2">
               <Clock className="h-6 w-6 text-primary" />
               <p className="text-3xl font-bold text-foreground">
@@ -658,9 +658,9 @@ const ReviewListPage = () => {
                 {t("admin.analytics.avgRating")}
               </p>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
-          <SectionCard>
+          <BusinessSectionCard>
             <div className="flex flex-col items-center justify-center py-4 gap-2">
               <AlertTriangle className="h-6 w-6 text-amber-500" />
               <p className="text-3xl font-bold text-foreground">
@@ -668,10 +668,10 @@ const ReviewListPage = () => {
               </p>
               <p className="text-xs text-muted-foreground">{t("admin.reviewModeration.pending")}</p>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
           {/* Rating distribution */}
-          <SectionCard title={t("admin.analytics.avgRating")} className="md:col-span-4">
+          <BusinessSectionCard title={t("admin.analytics.avgRating")} className="md:col-span-4">
             <div className="space-y-2.5">
               {[5, 4, 3, 2, 1].map((r) => (
                 <RatingBar
@@ -682,12 +682,12 @@ const ReviewListPage = () => {
                 />
               ))}
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
         </div>
       )}
 
       {/* Main List */}
-      <SectionCard
+      <BusinessSectionCard
         title={t("business.reviews.title")}
         titleIcon={MessagesSquare}
         bodyClassName="p-0"
@@ -806,7 +806,7 @@ const ReviewListPage = () => {
 
                   if (filteredReviews.length === 0) {
                     return (
-                      <EmptyState
+                      <BusinessEmptyState
                         icon={Star}
                         message={t("admin.reviewModeration.noReviews")}
                       />
@@ -857,7 +857,7 @@ const ReviewListPage = () => {
             </TabsContent>
           ))}
         </Tabs>
-      </SectionCard>
+      </BusinessSectionCard>
     </div>
   );
 };

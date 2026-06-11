@@ -17,7 +17,11 @@ import {
   Wallet,
   RotateCcw,
   Clock3,
+  CreditCard,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -34,16 +38,142 @@ import * as bookingApi from "@/apis/bookingService";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BOOKING_STATUS } from "@/constants/constants";
 import {
-  SectionCard,
   StatusBadge,
 } from "@/components/business/DashboardWidgets";
+import {
+  BusinessSectionCard,
+} from "@/components/business/ui";
 import {
   formatDate,
   formatDateTime,
   formatVND,
 } from "@/components/business/dashboardWidgetHelpers";
 
-// ─── Info Row ─────────────────────────────────────────────────────────────────
+// ─── OnlinePaymentInfo ─────────────────────────────────────────────────────────
+
+const formatPaymentDateTime = (isoString) => {
+  if (!isoString) return "—";
+  try {
+    const date = new Date(isoString);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  } catch {
+    return "—";
+  }
+};
+
+const PAYMENT_STATUS_CONFIG = {
+  paid: {
+    label: "Đã thanh toán",
+    bg: "bg-green-50",
+    text: "text-green-700",
+    border: "border-green-200",
+    dot: "bg-green-500",
+  },
+  unpaid: {
+    label: "Chưa thanh toán",
+    bg: "bg-yellow-50",
+    text: "text-yellow-700",
+    border: "border-yellow-200",
+    dot: "bg-yellow-500",
+  },
+  fully_refunded: {
+    label: "Đã hoàn tiền",
+    bg: "bg-red-50",
+    text: "text-red-700",
+    border: "border-red-200",
+    dot: "bg-red-500",
+  },
+  partially_refunded: {
+    label: "Hoàn tiền một phần",
+    bg: "bg-orange-50",
+    text: "text-orange-700",
+    border: "border-orange-200",
+    dot: "bg-orange-500",
+  },
+};
+
+const OnlinePaymentInfo = ({ payment }) => {
+  const status = payment?.status || "unpaid";
+  const config = PAYMENT_STATUS_CONFIG[status] || PAYMENT_STATUS_CONFIG.unpaid;
+  const isPaid = status === "paid";
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <div className="flex items-center gap-2 pb-2 border-b border-border/60">
+        <CreditCard className="h-4 w-4 text-primary" />
+        <span className="text-sm font-semibold">Thanh toán trực tuyến</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+        <div className="flex items-start justify-between gap-3 py-1.5">
+          <span className="text-xs text-muted-foreground shrink-0">Phương thức</span>
+          <div className="flex items-center gap-1.5">
+            {payment?.paymentMethod === "VNPAY" && (
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs font-medium px-2 py-0.5">
+                VNPAY
+              </Badge>
+            )}
+            {payment?.paymentMethod === "MOMO" && (
+              <Badge variant="outline" className="bg-pink-50 text-pink-700 border-pink-200 text-xs font-medium px-2 py-0.5">
+                MOMO
+              </Badge>
+            )}
+            {!payment?.paymentMethod && (
+              <span className="text-sm text-muted-foreground">—</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-start justify-between gap-3 py-1.5">
+          <span className="text-xs text-muted-foreground shrink-0">Mã giao dịch</span>
+          <span className="text-xs font-mono font-medium text-foreground">
+            {payment?.transactionRef || "—"}
+          </span>
+        </div>
+
+        {isPaid && payment?.transactionId && (
+          <div className="flex items-start justify-between gap-3 py-1.5">
+            <span className="text-xs text-muted-foreground shrink-0">Mã cổng TT</span>
+            <span className="text-xs font-mono text-foreground">
+              {payment.transactionId}
+            </span>
+          </div>
+        )}
+
+        {isPaid && payment?.bankCode && (
+          <div className="flex items-start justify-between gap-3 py-1.5">
+            <span className="text-xs text-muted-foreground shrink-0">Ngân hàng</span>
+            <span className="text-xs font-medium text-foreground uppercase">
+              {payment.bankCode}
+            </span>
+          </div>
+        )}
+
+        <div className="flex items-start justify-between gap-3 py-1.5">
+          <span className="text-xs text-muted-foreground shrink-0">Thời gian</span>
+          <span className="text-xs text-foreground">
+            {formatPaymentDateTime(payment?.paidAt)}
+          </span>
+        </div>
+
+        <div className="flex items-start justify-between gap-3 py-1.5 col-span-2">
+          <span className="text-xs text-muted-foreground shrink-0">Trạng thái</span>
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${config.bg} ${config.text} ${config.border}`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
+            {config.label}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const InfoRow = ({ label, value, className }) => (
   <div className="flex items-start justify-between gap-4 py-2.5 border-b border-border/50 last:border-0">
@@ -542,7 +672,7 @@ const BookingDetailPage = () => {
         {/* Left: info columns */}
         <div className="lg:col-span-2 space-y-4">
           {/* Customer Info */}
-          <SectionCard title="Thông tin khách hàng" titleIcon={User}>
+          <BusinessSectionCard title="Thông tin khách hàng" titleIcon={User}>
             <InfoRow
               label="Họ tên"
               value={booking.user?.fullName || booking.guestName}
@@ -555,10 +685,10 @@ const BookingDetailPage = () => {
               label="Số điện thoại"
               value={booking.user?.phone || booking.guestPhone}
             />
-          </SectionCard>
+          </BusinessSectionCard>
 
           {/* Service & Booking Info */}
-          <SectionCard title="Chi tiết đặt chỗ" titleIcon={Ticket}>
+          <BusinessSectionCard title="Chi tiết đặt chỗ" titleIcon={Ticket}>
             <InfoRow label="Dịch vụ" value={booking.service?.name} />
             <InfoRow label="Địa điểm" value={booking.service?.place?.name} />
             <InfoRow
@@ -567,43 +697,47 @@ const BookingDetailPage = () => {
             />
             <InfoRow label="Số lượng" value={booking.quantity || 1} />
             {booking.note && <InfoRow label="Ghi chú" value={booking.note} />}
-          </SectionCard>
+          </BusinessSectionCard>
 
           {/* Payment */}
-          <SectionCard title="Thanh toán" titleIcon={DollarSign}>
-            <InfoRow label="Giá gốc" value={formatVND(booking.originalPrice)} />
-            {booking.discountAmount > 0 && (
+          {booking.payment ? (
+            <OnlinePaymentInfo payment={booking.payment} />
+          ) : (
+            <BusinessSectionCard title="Thanh toán" titleIcon={DollarSign}>
+              <InfoRow label="Giá gốc" value={formatVND(booking.originalPrice)} />
+              {booking.discountAmount > 0 && (
+                <InfoRow
+                  label="Giảm giá"
+                  value={`-${formatVND(booking.discountAmount)}`}
+                  className="text-emerald-600"
+                />
+              )}
               <InfoRow
-                label="Giảm giá"
-                value={`-${formatVND(booking.discountAmount)}`}
-                className="text-emerald-600"
+                label="Thành tiền"
+                value={formatVND(booking.finalPrice)}
+                className="text-lg font-bold"
               />
-            )}
-            <InfoRow
-              label="Thành tiền"
-              value={formatVND(booking.finalPrice)}
-              className="text-lg font-bold"
-            />
-            {booking.commissionAmount > 0 && (
-              <InfoRow
-                label="Hoa hồng hệ thống"
-                value={`-${formatVND(booking.commissionAmount)}`}
-                className="text-rose-600"
-              />
-            )}
-            {booking.cancelReason && (
-              <InfoRow
-                label="Lý do hủy"
-                value={booking.cancelReason}
-                className="text-destructive"
-              />
-            )}
-          </SectionCard>
+              {booking.commissionAmount > 0 && (
+                <InfoRow
+                  label="Hoa hồng hệ thống"
+                  value={`-${formatVND(booking.commissionAmount)}`}
+                  className="text-rose-600"
+                />
+              )}
+              {booking.cancelReason && (
+                <InfoRow
+                  label="Lý do hủy"
+                  value={booking.cancelReason}
+                  className="text-destructive"
+                />
+              )}
+            </BusinessSectionCard>
+          )}
         </div>
 
         {/* Right: Action panel + QR + Voucher */}
         <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-          <SectionCard title="Thanh toán thủ công" titleIcon={Wallet}>
+          <BusinessSectionCard title="Thanh toán thủ công" titleIcon={Wallet}>
             <div className="space-y-3">
               <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
                 <p className="text-xs text-muted-foreground">
@@ -637,15 +771,15 @@ const BookingDetailPage = () => {
                 </Button>
               </div>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
-          <SectionCard title="Timeline thanh toán" titleIcon={Clock3}>
+          <BusinessSectionCard title="Timeline thanh toán" titleIcon={Clock3}>
             <PaymentTimeline booking={booking} />
-          </SectionCard>
+          </BusinessSectionCard>
 
           {/* QR Code */}
           {qrCode && (
-            <SectionCard title="Mã QR xác nhận" titleIcon={QrCode}>
+            <BusinessSectionCard title="Mã QR xác nhận" titleIcon={QrCode}>
               <div className="flex justify-center p-2">
                 <img
                   src={qrCode}
@@ -656,12 +790,12 @@ const BookingDetailPage = () => {
               <p className="text-xs text-center text-muted-foreground mt-2">
                 Khách hàng xuất trình mã này khi đến
               </p>
-            </SectionCard>
+            </BusinessSectionCard>
           )}
 
           {/* Voucher */}
           {booking.voucher && (
-            <SectionCard title="Voucher áp dụng" titleIcon={Tag}>
+            <BusinessSectionCard title="Voucher áp dụng" titleIcon={Tag}>
               <div className="text-center py-2">
                 <span className="font-mono font-bold text-lg tracking-widest bg-muted px-3 py-1 rounded-md">
                   {booking.voucher.code}
@@ -675,7 +809,7 @@ const BookingDetailPage = () => {
                   </span>
                 </p>
               </div>
-            </SectionCard>
+            </BusinessSectionCard>
           )}
         </div>
       </div>

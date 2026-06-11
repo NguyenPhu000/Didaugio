@@ -94,8 +94,24 @@ export const useNotifications = () => {
     socket.off("notification", handleNotification);
     socket.on("notification", handleNotification);
 
+    // Announcement cũng tạo NotificationRecipient + emit "notification" per-user
+    // nên handleNotification ở trên sẽ bắt được. Tuy nhiên nếu UI cần
+    // phân biệt announcement (ví dụ hiển thị khác), có thể listen thêm event này.
+    const handleAnnouncement = (rawAnnouncement) => {
+      // Refetch để đồng bộ danh sách (bao gồm announcement vừa tạo)
+      fetchNotifications();
+      sonnerToast(rawAnnouncement.title || "📢 Thông báo hệ thống", {
+        description: rawAnnouncement.body || "",
+        duration: 8000,
+      });
+    };
+
+    socket.off("announcement", handleAnnouncement);
+    socket.on("announcement", handleAnnouncement);
+
     return () => {
       socket.off("notification", handleNotification);
+      socket.off("announcement", handleAnnouncement);
     };
   }, [accessToken, enabled, userId]);
 

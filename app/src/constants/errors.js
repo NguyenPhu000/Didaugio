@@ -28,7 +28,7 @@ export const ERROR_MESSAGES = {
   VALIDATION: "Invalid information. Please check and try again.",
   UNKNOWN: "An error occurred. Please try again.",
   AI_QUOTA:
-    "AI has reached its quota limit. Please try again later or check Gemini API billing.",
+    "AI has reached its quota limit. Please try again later.",
   AI_UNAVAILABLE: "AI service is temporarily unavailable.",
   LOCATION_DENIED: "Location permission is required to use this feature.",
 };

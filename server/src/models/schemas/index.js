@@ -50,3 +50,4 @@ export * from "./profile/notificationSettings.schema.js";
 export * from "./trip/trip.schema.js";
 export * from "./event/event.schema.js";
 export * from "./banner/banner.schema.js";
+export * from "./payment/payment.schema.js";

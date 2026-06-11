@@ -86,7 +86,7 @@ export function AIEntryButton({
           <View style={[styles.iconWrap, compact && styles.iconWrapCompact]}>
             {/* Sử dụng LinearGradient công nghệ AI đa sắc thay cho màu xanh trơn */}
             <LinearGradient
-              colors={["#2563EB", "#7C3AED", "#DB2777"]} // Siri/Gemini style gradient
+              colors={["#2563EB", "#7C3AED", "#DB2777"]} // AI assistant style gradient
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}

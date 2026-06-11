@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Wallet,
   Settings,
+  Coins,
 } from "lucide-react";
 import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/constants";
@@ -235,6 +236,14 @@ export function getMenuData() {
       url: ADMIN_ROUTES.PAYOUTS,
       roles: [R.SUPER_ADMIN, R.ADMIN],
       permission: PERMISSIONS.PAYOUTS.VIEW,
+    },
+    {
+      key: "refunds",
+      title: "Quản lý hoàn tiền",
+      icon: Coins,
+      url: ADMIN_ROUTES.REFUNDS,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.PAYMENTS.REFUND,
     },
   ],
   users: [
