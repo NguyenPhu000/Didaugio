@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import NetInfo from "@react-native-community/netinfo";
 import { getMyTripsApi, createTripApi, deleteTripApi, getTripDetailApi } from "../api/tripsApi";
@@ -21,7 +21,7 @@ export const persistTripsToStorage = async (trips) => {
     version: CACHE_VERSION,
   };
   try {
-    await AsyncStorage.setItem(
+    await safeAsyncStorage.setItem(
       getCacheKey(TRIPS_CACHE_KEY),
       JSON.stringify(cacheData),
     );
@@ -30,7 +30,7 @@ export const persistTripsToStorage = async (trips) => {
     if (error?.message?.includes("SQLITE_FULL") || error?.code === 13) {
       try {
         await clearTripsCache();
-        await AsyncStorage.setItem(
+        await safeAsyncStorage.setItem(
           getCacheKey(TRIPS_CACHE_KEY),
           JSON.stringify(cacheData),
         );
@@ -46,7 +46,7 @@ export const persistTripsToStorage = async (trips) => {
 
 export const loadTripsFromStorage = async () => {
   try {
-    const raw = await AsyncStorage.getItem(getCacheKey(TRIPS_CACHE_KEY));
+    const raw = await safeAsyncStorage.getItem(getCacheKey(TRIPS_CACHE_KEY));
     if (!raw) return null;
 
     const cacheData = JSON.parse(raw);
@@ -70,7 +70,7 @@ export const loadTripsFromStorage = async () => {
 
 export const clearTripsCache = async () => {
   try {
-    await AsyncStorage.removeItem(getCacheKey(TRIPS_CACHE_KEY));
+    await safeAsyncStorage.removeItem(getCacheKey(TRIPS_CACHE_KEY));
   } catch (error) {
     console.warn("[TripsOffline] Failed to clear trips cache:", error);
   }
@@ -205,14 +205,18 @@ export function useTripDetailCached(tripId, enabled = true) {
       const trip = tripResponse?.data || null;
 
       if (trip) {
-        await AsyncStorage.setItem(
-          getCacheKey(storageKey),
-          JSON.stringify({
-            data: trip,
-            timestamp: Date.now(),
-            version: CACHE_VERSION,
-          }),
-        );
+        try {
+          await safeAsyncStorage.setItem(
+            getCacheKey(storageKey),
+            JSON.stringify({
+              data: trip,
+              timestamp: Date.now(),
+              version: CACHE_VERSION,
+            }),
+          );
+        } catch (storageError) {
+          console.warn("[TripsOffline] Failed to cache trip detail:", storageError);
+        }
       }
 
       return trip;
@@ -236,12 +240,17 @@ export function useCreateTripCached() {
       const pendingActionsKey = "@pending_trip_actions";
 
       const queuePending = async (type, data) => {
-        const raw = await AsyncStorage.getItem(pendingActionsKey);
-        const actions = raw ? JSON.parse(raw) : [];
-        const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        actions.push({ type, data, tempId, timestamp: Date.now() });
-        await AsyncStorage.setItem(pendingActionsKey, JSON.stringify(actions));
-        return tempId;
+        try {
+          const raw = await safeAsyncStorage.getItem(pendingActionsKey);
+          const actions = raw ? JSON.parse(raw) : [];
+          const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+          actions.push({ type, data, tempId, timestamp: Date.now() });
+          await safeAsyncStorage.setItem(pendingActionsKey, JSON.stringify(actions));
+          return tempId;
+        } catch (storageError) {
+          console.warn("[TripsOffline] Failed to queue pending create action:", storageError);
+          return `temp_${Date.now()}`;
+        }
       };
 
       if (!isConnected) {
@@ -273,10 +282,14 @@ export function useDeleteTripCached() {
       const pendingActionsKey = "@pending_trip_actions";
 
       const queuePending = async (type, id) => {
-        const raw = await AsyncStorage.getItem(pendingActionsKey);
-        const actions = raw ? JSON.parse(raw) : [];
-        actions.push({ type, data: { id }, tempId: String(id), timestamp: Date.now() });
-        await AsyncStorage.setItem(pendingActionsKey, JSON.stringify(actions));
+        try {
+          const raw = await safeAsyncStorage.getItem(pendingActionsKey);
+          const actions = raw ? JSON.parse(raw) : [];
+          actions.push({ type, data: { id }, tempId: String(id), timestamp: Date.now() });
+          await safeAsyncStorage.setItem(pendingActionsKey, JSON.stringify(actions));
+        } catch (storageError) {
+          console.warn("[TripsOffline] Failed to queue pending delete action:", storageError);
+        }
       };
 
       if (!isConnected) {
@@ -339,7 +352,7 @@ export function useOfflineSync() {
       isSyncingRef.current = true;
       try {
         const pendingActionsKey = "@pending_trip_actions";
-        const raw = await AsyncStorage.getItem(pendingActionsKey);
+        const raw = await safeAsyncStorage.getItem(pendingActionsKey);
         if (!raw) {
           isSyncingRef.current = false;
           return;
@@ -355,7 +368,7 @@ export function useOfflineSync() {
         actions = dedupOfflineActions(actions);
 
         if (actions.length === 0) {
-          await AsyncStorage.removeItem(pendingActionsKey);
+          await safeAsyncStorage.removeItem(pendingActionsKey);
           isSyncingRef.current = false;
           return;
         }
@@ -379,9 +392,9 @@ export function useOfflineSync() {
         }
 
         if (remainingActions.length > 0) {
-          await AsyncStorage.setItem(pendingActionsKey, JSON.stringify(remainingActions));
+          await safeAsyncStorage.setItem(pendingActionsKey, JSON.stringify(remainingActions));
         } else {
-          await AsyncStorage.removeItem(pendingActionsKey);
+          await safeAsyncStorage.removeItem(pendingActionsKey);
         }
 
         await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });

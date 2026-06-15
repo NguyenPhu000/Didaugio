@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import * as Location from "expo-location";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../../utils/safeAsyncStorage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
@@ -341,7 +341,7 @@ export default function MapScreen() {
     (async () => {
       try {
         const key = `trip_avoidFerry_${activeTrip.activeTripId}`;
-        const val = await AsyncStorage.getItem(key);
+        const val = await safeAsyncStorage.getItem(key);
         if (!cancelled) setActiveTripAvoidFerry(val === "true");
       } catch {}
     })();
@@ -532,7 +532,7 @@ export default function MapScreen() {
     const checkActiveEvent = async () => {
       try {
         if (isActiveTripMode && activeTrip.activeTripId) {
-          const evId = await AsyncStorage.getItem(
+          const evId = await safeAsyncStorage.getItem(
             `didaugio:active_event_trip:${activeTrip.activeTripId}`
           );
           setActiveEventId(evId ? parseInt(evId, 10) : null);
@@ -645,7 +645,7 @@ export default function MapScreen() {
 
           // Lưu AsyncStorage đánh dấu hoàn thành chặng đi này
           const key = `didaugio:event:${activeEventId}:checkedin:${activeNextDestination.placeId}`;
-          await AsyncStorage.setItem(key, "true");
+          await safeAsyncStorage.setItem(key, "true");
 
           Alert.alert(t("mapScreen.checkinSuccess"), t("mapScreen.checkinSuccessDesc"));
         } catch (err) {

@@ -7,7 +7,7 @@
  * - Sync với server khi online
  */
 
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../../utils/safeAsyncStorage";
 import NetInfo from "@react-native-community/netinfo";
 import { create } from "zustand";
 import { savePlaceApi, unsavePlaceApi } from "../saved/api/savedApi";
@@ -42,7 +42,7 @@ export const useRetryQueueStore = create((set, get) => ({
   // Initialize - load pending actions from storage
   init: async () => {
     try {
-      const stored = await AsyncStorage.getItem(PENDING_ACTIONS_KEY);
+      const stored = await safeAsyncStorage.getItem(PENDING_ACTIONS_KEY);
       if (stored) {
         const actions = JSON.parse(stored);
         set({ pendingActions: actions });
@@ -75,7 +75,7 @@ export const useRetryQueueStore = create((set, get) => ({
 
     const updatedActions = [...get().pendingActions, pendingAction];
     set({ pendingActions: updatedActions });
-    await AsyncStorage.setItem(PENDING_ACTIONS_KEY, JSON.stringify(updatedActions));
+    await safeAsyncStorage.setItem(PENDING_ACTIONS_KEY, JSON.stringify(updatedActions));
 
     // Try to process immediately if online
     if (get().isOnline) {
@@ -89,7 +89,7 @@ export const useRetryQueueStore = create((set, get) => ({
   removeAction: async (actionId) => {
     const updatedActions = get().pendingActions.filter((a) => a.id !== actionId);
     set({ pendingActions: updatedActions });
-    await AsyncStorage.setItem(PENDING_ACTIONS_KEY, JSON.stringify(updatedActions));
+    await safeAsyncStorage.setItem(PENDING_ACTIONS_KEY, JSON.stringify(updatedActions));
   },
 
   // Mark action as failed
@@ -110,7 +110,7 @@ export const useRetryQueueStore = create((set, get) => ({
           : a
       );
       set({ pendingActions: updatedActions, errorCount: get().errorCount + 1 });
-      await AsyncStorage.setItem(PENDING_ACTIONS_KEY, JSON.stringify(updatedActions));
+      await safeAsyncStorage.setItem(PENDING_ACTIONS_KEY, JSON.stringify(updatedActions));
     } else {
       // Schedule retry
       const updatedActions = actions.map((a) =>
@@ -119,7 +119,7 @@ export const useRetryQueueStore = create((set, get) => ({
           : a
       );
       set({ pendingActions: updatedActions });
-      await AsyncStorage.setItem(PENDING_ACTIONS_KEY, JSON.stringify(updatedActions));
+      await safeAsyncStorage.setItem(PENDING_ACTIONS_KEY, JSON.stringify(updatedActions));
 
       // Schedule retry after delay
       setTimeout(() => {
@@ -178,7 +178,7 @@ export const useRetryQueueStore = create((set, get) => ({
   // Clear all pending actions
   clearAll: async () => {
     set({ pendingActions: [], errorCount: 0 });
-    await AsyncStorage.removeItem(PENDING_ACTIONS_KEY);
+    await safeAsyncStorage.removeItem(PENDING_ACTIONS_KEY);
   },
 
   // Get pending count

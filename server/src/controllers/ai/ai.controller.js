@@ -8,25 +8,12 @@ import {
   buildVoiceIntroPrompt,
   buildChatSystemPrompt,
 } from "../../lib/promptBuilder.js";
-import NodeCache from "node-cache";
-import prisma from "../../config/prismaClient.js";
+import { findRelatedPlacesByKeywords } from "../../utils/spatialQuery.js";
 
-const appCache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
-
-function extractKeywords(text) {
-  if (!text) return [];
-  const stopWords = new Set([
-    "cho", "mình", "tôi", "ở", "tại", "đi", "đâu", "giờ", "có", "nào", "gợi", "ý", "với",
-    "nhé", "nha", "được", "không", "cần", "thơ", "là", "thì", "mà", "lên", "xuống", "cái", "chi",
-    "gì", "này", "kia", "đó", "nọ", "chút", "ít", "nhiều", "cực", "quá", "lắm", "hộ", "giúp", "quán", "chỗ", "địa", "điểm"
-  ]);
-  return text
-    .toLowerCase()
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "")
-    .split(/\s+/)
-    .filter(word => word.length > 1 && !stopWords.has(word));
-}
-
+/**
+ * POST /api/ai/place-summary
+ * SSE streaming place voice intro
+ */
 export const handlePlaceSummaryStream = async (req, res) => {
   try {
     const { placeId, context } = req.body;
@@ -66,6 +53,10 @@ export const handlePlaceSummaryStream = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/ai/chat
+ * Chat with RAG + optional SSE
+ */
 export const handleChat = async (req, res) => {
   try {
     const { messages, context, stream = false } = req.body;
@@ -79,67 +70,9 @@ export const handleChat = async (req, res) => {
       });
     }
 
+    // RAG: tìm kiếm địa điểm liên quan qua từ khóa hoặc featured places từ spatialQuery
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-    let relatedPlaces = [];
-
-    if (lastUserMessage.trim().length > 1) {
-      const keywords = extractKeywords(lastUserMessage);
-      if (keywords.length > 0) {
-        relatedPlaces = await prisma.place.findMany({
-          where: {
-            status: "approved",
-            deletedAt: null,
-            OR: keywords.flatMap((kw) => [
-              { name: { contains: kw, mode: "insensitive" } },
-              { description: { contains: kw, mode: "insensitive" } },
-            ]),
-          },
-          take: 6,
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            description: true,
-            priceFrom: true,
-            priceTo: true,
-            ratingAvg: true,
-            category: { select: { name: true } },
-          },
-        });
-      }
-    }
-
-    if (relatedPlaces.length === 0) {
-      const cacheKey = "featured_places_rag";
-      let cached = appCache.get(cacheKey);
-      if (cached) {
-        relatedPlaces = cached;
-      } else {
-        relatedPlaces = await prisma.place.findMany({
-          where: {
-            status: "approved",
-            deletedAt: null,
-          },
-          orderBy: [
-            { isFeatured: "desc" },
-            { ratingAvg: "desc" },
-            { viewCount: "desc" },
-          ],
-          take: 15,
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            description: true,
-            priceFrom: true,
-            priceTo: true,
-            ratingAvg: true,
-            category: { select: { name: true } },
-          },
-        });
-        appCache.set(cacheKey, relatedPlaces);
-      }
-    }
+    const relatedPlaces = await findRelatedPlacesByKeywords(lastUserMessage);
 
     const enrichedContext = {
       ...context,
@@ -163,7 +96,7 @@ export const handleChat = async (req, res) => {
       );
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         reply,

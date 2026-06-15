@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { router } from "expo-router";
 import {
   checkoutApi,
@@ -35,7 +35,7 @@ export function usePollPaymentStatus() {
 
   const clearPendingKeys = useCallback(async () => {
     try {
-      await AsyncStorage.multiRemove([
+      await safeAsyncStorage.multiRemove([
         PENDING_PAYMENT_REF_KEY,
         PENDING_PAYMENT_BOOKING_KEY,
       ]);
@@ -59,12 +59,12 @@ export function usePollPaymentStatus() {
       pollCountRef.current = 0;
       isActiveRef.current = true;
 
-      // Save to AsyncStorage for app-resume recovery
+      // Save to safeAsyncStorage for app-resume recovery
       try {
-        await AsyncStorage.setItem(PENDING_PAYMENT_REF_KEY, transactionRef || "");
-        await AsyncStorage.setItem(PENDING_PAYMENT_BOOKING_KEY, String(bookingId));
+        await safeAsyncStorage.setItem(PENDING_PAYMENT_REF_KEY, transactionRef || "");
+        await safeAsyncStorage.setItem(PENDING_PAYMENT_BOOKING_KEY, String(bookingId));
       } catch (err) {
-        console.warn("[usePayment] AsyncStorage write failed:", err);
+        console.warn("[usePayment] safeAsyncStorage write failed:", err);
         // Continue polling even if storage fails
       }
 

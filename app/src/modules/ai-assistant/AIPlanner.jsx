@@ -9,9 +9,10 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   StyleSheet,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from "react-native-reanimated";
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useRouter } from "expo-router";
@@ -19,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAIPlanner } from "../ai/hooks/useAIPlanner";
+import { useGroqChat } from "./hooks/useGroqChat";
 import { TOKENS } from "../../constants/design-tokens";
 import { PlacePreviewCard } from "../../components/composed/PlacePreviewCard";
 import { TAB_BAR_HEIGHT } from "../../../app/(tabs)/_layout";
@@ -34,6 +36,12 @@ const QUICK_SUGGESTIONS = [
 
 const ACCENT = "#3478F6";
 
+const ITINERARY_PATTERN = /(lịch trình|lên lịch|kế hoạch|itinerary|plan|lộ trình|chặng đi|tạo chuyến|tạo tour)/i;
+
+function detectIntent(text) {
+  return ITINERARY_PATTERN.test(text) ? "itinerary" : "chat";
+}
+
 const s = StyleSheet.create({
   header: {
     flexDirection: "row",
@@ -44,11 +52,7 @@ const s = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderColor: "#F1F5F9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
   },
   headerLeft: {
     flexDirection: "row",
@@ -64,11 +68,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#DBEAFE",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 0,
+    boxShadow: "0 -1px 2px rgba(0, 0, 0, 0.05)",
   },
   headerTitle: {
     fontSize: 15.5,
@@ -138,11 +138,7 @@ const s = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#F1F5F9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 2,
+    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.02)",
   },
   suggestionIconWrap: {
     width: 32,
@@ -178,44 +174,39 @@ const s = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 9999,
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#10B981",
   },
   botLabelText: {
-    color: "#94A3B8",
+    color: "#71717A",
     fontSize: 10,
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   bubbleBase: {
     maxWidth: "85%",
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 3,
-    elevation: 1,
+    borderRadius: 20,
   },
   bubbleUser: {
-    backgroundColor: "#3478F6",
-    borderTopRightRadius: 0,
+    backgroundColor: "#F4F4F5",
+    borderTopRightRadius: 2,
   },
   bubbleBot: {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#F1F5F9",
-    borderTopLeftRadius: 0,
+    borderColor: "#E4E4E7",
+    borderTopLeftRadius: 2,
   },
   bubbleTextBase: {
     fontSize: 14.5,
     lineHeight: 22,
   },
   bubbleTextUser: {
-    color: "#FFFFFF",
+    color: "#18181B",
   },
   bubbleTextBot: {
-    color: "#1E293B",
+    color: "#27272A",
   },
   draftCard: {
     marginTop: 16,
@@ -224,11 +215,7 @@ const s = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#F1F5F9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.03,
-    shadowRadius: 30,
-    elevation: 4,
+    boxShadow: "0 8px 30px rgba(0, 0, 0, 0.03)",
     gap: 16,
   },
   draftHeader: {
@@ -289,6 +276,40 @@ const s = StyleSheet.create({
   confirmTextBase: {
     fontSize: 14.5,
   },
+  gradientIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+    transform: [{ rotate: "3deg" }],
+  },
+  scrollContentEmpty: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+    flexGrow: 1,
+    justifyContent: "center",
+  },
+  scrollContentMessages: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  chatPlacesWrap: {
+    gap: 8,
+    marginTop: 8,
+    width: "100%",
+  },
+  confirmGradientInner: {
+    height: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+  },
   typingBubble: {
     flexDirection: "row",
     alignItems: "center",
@@ -301,11 +322,7 @@ const s = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#F1F5F9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
     borderTopLeftRadius: 0,
   },
   typingText: {
@@ -340,26 +357,27 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 26,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 20,
-    elevation: 3,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 28,
+    backgroundColor: "#F1F5F9",
   },
   textInput: {
     flex: 1,
     minHeight: 38,
-    maxHeight: 100,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    fontSize: 14.5,
+    maxHeight: 120,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
+    fontSize: 15,
     color: "#1E293B",
+  },
+  inputIconBtn: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    marginBottom: 2,
   },
   sendBtnBase: {
     width: 36,
@@ -385,6 +403,31 @@ export function AIPlanner() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
+
+  const paddingAnim = useSharedValue(Math.max(insets.bottom, 12) + TAB_BAR_HEIGHT);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      const duration = e.duration || 250;
+      paddingAnim.value = withTiming(8, { duration, easing: Easing.out(Easing.ease) });
+    });
+    const hideSub = Keyboard.addListener(hideEvent, (e) => {
+      const duration = e.duration || 250;
+      paddingAnim.value = withTiming(Math.max(insets.bottom, 12) + TAB_BAR_HEIGHT, { duration, easing: Easing.out(Easing.ease) });
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [insets.bottom]);
+
+  const animatedInputBarStyle = useAnimatedStyle(() => {
+    return {
+      paddingBottom: paddingAnim.value,
+    };
+  });
 
   const [alertConfig, setAlertConfig] = useState({
     visible: false,
@@ -437,10 +480,10 @@ export function AIPlanner() {
 
   const {
     messages,
-    isLoading,
+    isLoading: isPlannerLoading,
     isPreviewLoading,
     isConfirming,
-    error,
+    error: plannerError,
     sendMessage,
     draftPlan,
     selectedPlaceIds,
@@ -452,6 +495,52 @@ export function AIPlanner() {
     reset,
   } = useAIPlanner();
 
+  const {
+    sendMessage: sendChatMessage,
+    clearConversation: clearChatConversation,
+  } = useGroqChat();
+
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [chatError, setChatError] = useState(null);
+
+  const isLoading = isPlannerLoading || isChatLoading;
+  const error = plannerError || chatError;
+
+  const [loadingStep, setLoadingStep] = useState(0);
+
+  useEffect(() => {
+    let interval = null;
+    if (isLoading) {
+      setLoadingStep(0);
+      interval = setInterval(() => {
+        setLoadingStep((step) => step + 1);
+      }, 2500);
+    } else {
+      setLoadingStep(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isLoading]);
+
+  const allMessages = messages;
+
+  const getLoadingMessage = () => {
+    if (isConfirming) return t('aiPlanner.creatingTrip') || "Nhi đang khởi tạo chuyến đi...";
+    if (isChatLoading) return "Nhi đang suy nghĩ...";
+    
+    switch (loadingStep) {
+      case 0:
+        return "Nhi đang quét các địa điểm quanh bạn...";
+      case 1:
+        return "Nhi đang tính toán tuyến đường tối ưu...";
+      case 2:
+        return "Nhi đang lập bảng dự toán chi phí...";
+      default:
+        return "Chờ Nhi một chút xíu nữa nghen...";
+    }
+  };
+
   const isCompactCard = width <= 380 || height <= 720;
 
   const handleSend = useCallback(
@@ -459,10 +548,26 @@ export function AIPlanner() {
       const message = (text ?? inputText).trim();
       if (!message || isLoading) return;
       setInputText("");
-      await sendMessage(message);
+
+      const intent = detectIntent(message);
+
+      if (intent === "itinerary") {
+        await sendMessage(message);
+      } else {
+        setIsChatLoading(true);
+        setChatError(null);
+        try {
+          await sendChatMessage(message);
+        } catch (err) {
+          setChatError(err?.message || "Đã xảy ra lỗi, bạn thử lại nhé.");
+        } finally {
+          setIsChatLoading(false);
+        }
+      }
+
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
     },
-    [inputText, isLoading, sendMessage],
+    [inputText, isLoading, sendMessage, sendChatMessage],
   );
 
   const handleConfirmSelection = useCallback(async () => {
@@ -487,16 +592,7 @@ export function AIPlanner() {
     [togglePlaceSelection],
   );
 
-  const handleAddPlaceToTrip = useCallback(
-    (place) => {
-      const normalizedId = Number(place?.id);
-      if (!normalizedId || selectedPlaceIds.includes(normalizedId)) return;
-      togglePlaceSelection(normalizedId);
-    },
-    [selectedPlaceIds, togglePlaceSelection],
-  );
-
-  const hasMessages = messages.length > 0;
+  const hasMessages = allMessages.length > 0;
   const canSend = inputText.trim().length > 0 && !isLoading;
   const hasPlannerHistory = hasMessages || !!draftPlan;
 
@@ -512,6 +608,7 @@ export function AIPlanner() {
       isDestructive: true,
       onConfirm: () => {
         reset();
+        clearChatConversation();
         setInputText("");
         setTimeout(
           () => scrollRef.current?.scrollTo({ y: 0, animated: true }),
@@ -520,13 +617,13 @@ export function AIPlanner() {
       },
       onCancel: () => {},
     });
-  }, [hasPlannerHistory, isLoading, reset, showAlert]);
+  }, [hasPlannerHistory, isLoading, reset, clearChatConversation, showAlert]);
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: "#F8FAFC" }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       <View
         style={[s.header, { paddingTop: Math.max(insets.top, 8) }]}
@@ -565,14 +662,9 @@ export function AIPlanner() {
 
       <ScrollView
         ref={scrollRef}
+        contentInsetAdjustmentBehavior="automatic"
         style={s.scrollView}
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 16,
-          paddingBottom: 24,
-          flexGrow: !hasMessages ? 1 : undefined,
-          justifyContent: !hasMessages ? "center" : undefined,
-        }}
+        contentContainerStyle={hasMessages ? s.scrollContentMessages : s.scrollContentEmpty}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
@@ -584,7 +676,7 @@ export function AIPlanner() {
           <View style={s.emptyContainer}>
             <LinearGradient
               colors={["#EFF6FF", "#DBEAFE"]}
-              style={{ width: 64, height: 64, borderRadius: 24, alignItems: "center", justifyContent: "center", marginBottom: 20, transform: [{ rotate: "3deg" }] }}
+              style={s.gradientIconWrap}
             >
               <MaterialIconsRounded name="auto-awesome" size={28} color="#3478F6" />
             </LinearGradient>
@@ -623,7 +715,7 @@ export function AIPlanner() {
           </View>
         ) : (
           <View style={s.messagesWrap}>
-            {messages.map((message, index) => {
+            {allMessages.map((message, index) => {
               const isUser = message.role === "user";
               return (
                 <View
@@ -657,13 +749,27 @@ export function AIPlanner() {
                       {message.text ?? message.content}
                     </Text>
                   </View>
+
+                  {!isUser && message.source === "chat" && (message.suggestedPlaces?.length ?? 0) > 0 ? (
+                    <View style={s.chatPlacesWrap}>
+                      {message.suggestedPlaces.map((place, i) => (
+                        <PlacePreviewCard
+                          key={place.id || `chat-place-${i}`}
+                          place={place}
+                          compact={isCompactCard}
+                          showCloseButton={false}
+                          onViewDetail={handleOpenPlace}
+                        />
+                      ))}
+                    </View>
+                  ) : null}
                 </View>
               );
             })}
           </View>
         )}
 
-        {draftPlan?.suggestedPlaces?.length ? (
+        {(draftPlan?.suggestedPlaces?.length ?? 0) > 0 ? (
           <View style={s.draftCard}>
             <View style={s.draftHeader}>
               <View style={s.draftHeaderTextWrap}>
@@ -716,14 +822,11 @@ export function AIPlanner() {
                     selected={isSelected}
                     showCloseButton={false}
                     showSelectionAction
-                    showAddToTripAction
                     selectedLabel={t('aiPlanner.selected')}
                     unselectedLabel={t('aiPlanner.selectPlace')}
-                    addToTripLabel={isSelected ? t('aiPlanner.added') : t('aiPlanner.addTrip')}
                     detailLabel={t('aiPlanner.details')}
                     onViewDetail={handleOpenPlace}
                     onToggleSelection={handleTogglePlace}
-                    onAddToTrip={handleAddPlaceToTrip}
                   />
                 );
               })}
@@ -742,7 +845,7 @@ export function AIPlanner() {
                 }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={{ height: 52, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 16 }}
+                style={s.confirmGradientInner}
               >
                 {isConfirming ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
@@ -777,11 +880,7 @@ export function AIPlanner() {
             <Text
               style={[s.typingText, { fontFamily: TOKENS.font.medium }]}
             >
-              {isConfirming
-                ? t('aiPlanner.creatingTrip')
-                : isPreviewLoading
-                  ? t('aiPlanner.suggestingPlaces')
-                  : t('aiPlanner.processing')}
+              {getLoadingMessage()}
             </Text>
           </View>
         ) : null}
@@ -798,17 +897,13 @@ export function AIPlanner() {
         ) : null}
       </ScrollView>
 
-      <View
+      <Animated.View
         style={[
-          s.inputBar,
-          {
-            paddingBottom: keyboardVisible
-              ? 8
-              : Math.max(insets.bottom, 8) + TAB_BAR_HEIGHT,
-          },
+          animatedInputBarStyle,
         ]}
+        className="bg-transparent px-4 w-full"
       >
-        <View style={s.inputContainer}>
+        <View className="flex-row items-end gap-2.5 px-4 py-1.5 rounded-full bg-slate-100 shadow-sm mb-2">
           <TextInput
             ref={inputRef}
             placeholder={t('aiPlanner.inputPlaceholder')}
@@ -817,18 +912,16 @@ export function AIPlanner() {
             onChangeText={setInputText}
             multiline
             maxLength={500}
-            style={[
-              s.textInput,
-              {
-                fontFamily: TOKENS.font.body,
-                textAlignVertical: "center",
-              },
-            ]}
+            className="flex-1 min-h-[38px] max-h-[120px] px-1 py-1.5 text-[15px] text-slate-800"
+            style={{ fontFamily: TOKENS.font.body, textAlignVertical: "center" }}
           />
+
           <Pressable
             onPress={() => handleSend()}
             disabled={!canSend}
-            style={[s.sendBtnBase, canSend ? s.sendBtnActive : s.sendBtnInactive]}
+            className={`w-9 h-9 items-center justify-center rounded-full ${
+              canSend ? "bg-blue-500" : "bg-slate-200"
+            }`}
           >
             {isLoading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
@@ -836,12 +929,12 @@ export function AIPlanner() {
               <MaterialIconsRounded
                 name="arrow-upward"
                 size={18}
-                color={canSend ? "#FFFFFF" : "#CBD5E1"}
+                color={canSend ? "#FFFFFF" : "#94A3B8"}
               />
             )}
           </Pressable>
         </View>
-      </View>
+      </Animated.View>
 
       <CustomAlertModal
         visible={alertConfig.visible}

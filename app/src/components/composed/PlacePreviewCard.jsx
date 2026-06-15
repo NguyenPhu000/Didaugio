@@ -38,17 +38,17 @@ const formatCompactPrice = (value) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) return null;
   if (parsed >= 1_000_000) {
-    return `${(parsed / 1_000_000).toFixed(1).replace(/\.0$/, "")}tr`;
+    return `${(parsed / 1_000_000).toFixed(1).replace(/\.0$/, "")} triệu`;
   }
   if (parsed >= 1000) {
     return `${Math.round(parsed / 1000)}k`;
   }
-  return String(parsed);
+  return `${parsed}đ`;
 };
 
 const getPreviewPriceLabel = (place) => {
   const compactFrom = formatCompactPrice(place?.priceFrom ?? place?.price_from);
-  if (compactFrom) return `Từ ${compactFrom}đ`;
+  if (compactFrom) return `Từ ${compactFrom}`;
 
   const priceRangeKey = String(place?.priceRange || "").toUpperCase();
   return PRICE_RANGE_LABELS[priceRangeKey] || "Liên hệ";
@@ -119,11 +119,11 @@ export const PlacePreviewCard = memo(
     return (
       <View
         className={cn(
-          "flex-row items-center p-3 rounded-[24px] border border-white/50 overflow-hidden relative",
-          selected ? "bg-primary-50/92 border-blue-400/50" : "bg-white/85",
+          "flex-row items-center p-3 rounded-[24px] overflow-hidden relative",
+          selected ? "bg-blue-50/90 border border-blue-200/60" : "bg-white/95",
           compact && "rounded-2xl p-2.5"
         )}
-        style={TOKENS.shadow.lg}
+        style={TOKENS.shadow.sm}
       >
         {/* Native Glassmorphism background for Mobile */}
         {Platform.OS !== "web" && (

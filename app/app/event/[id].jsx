@@ -15,7 +15,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../../src/utils/safeAsyncStorage";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
@@ -59,19 +59,19 @@ export default function EventDetailScreen() {
     return momentsData?.data || momentsData || [];
   }, [momentsData]);
 
-  // Load progress từ AsyncStorage
+  // Load progress từ safeAsyncStorage
   useEffect(() => {
     const loadProgress = async () => {
       try {
         if (!id) return;
-        const keys = await AsyncStorage.getAllKeys();
+        const keys = await safeAsyncStorage.getAllKeys();
         const eventPrefix = `didaugio:event:${id}:checkedin:`;
         const eventKeys = keys.filter(key => key.startsWith(eventPrefix));
         if (eventKeys.length === 0) {
           setPersonalCheckedIn({});
           return;
         }
-        const pairs = await AsyncStorage.multiGet(eventKeys);
+        const pairs = await safeAsyncStorage.multiGet(eventKeys);
         const progress = {};
         pairs.forEach(([key, val]) => {
           const placeId = key.replace(eventPrefix, "");
@@ -123,7 +123,7 @@ export default function EventDetailScreen() {
               // Best-effort: lưu mapping event→trip, không crash nếu storage đầy
               if (res?.clonedTrip?.id) {
                 try {
-                  await AsyncStorage.setItem(
+                  await safeAsyncStorage.setItem(
                     `didaugio:active_event_trip:${res.clonedTrip.id}`,
                     String(id)
                   );
@@ -205,13 +205,13 @@ export default function EventDetailScreen() {
         }
       });
 
-      // Cập nhật UI ngay — không phụ thuộc AsyncStorage
+      // Cập nhật UI ngay — không phụ thuộc safeAsyncStorage
       setPersonalCheckedIn(prev => ({ ...prev, [dest.placeId]: true }));
 
       // Lưu trạng thái check-in cục bộ — best-effort
       try {
         const key = `didaugio:event:${id}:checkedin:${dest.placeId}`;
-        await AsyncStorage.setItem(key, "true");
+        await safeAsyncStorage.setItem(key, "true");
       } catch (storageErr) {
         console.warn("Không thể lưu trạng thái check-in cục bộ:", storageErr?.message);
       }

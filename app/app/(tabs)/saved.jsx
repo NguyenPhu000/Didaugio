@@ -10,7 +10,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import Animated, { FadeIn } from "react-native-reanimated";
 import { GuestGate } from "../../src/components/ui/GuestGate";
 import { OfflineBanner } from "../../src/components/ui/OfflineBanner";
 import {
@@ -257,8 +256,7 @@ export default function SavedScreen() {
     const showAreas = areaItems.length > 1;
 
     return (
-      <Animated.View
-        entering={FadeIn.duration(300)}
+      <View
         style={{ paddingTop: 16, paddingBottom: 14, paddingHorizontal: 16 }}
       >
         {/* Tiêu đề + Badge */}
@@ -281,8 +279,7 @@ export default function SavedScreen() {
             {t("saved.title")}
           </Text>
           {filteredSavedData.length > 0 && (
-            <Animated.View
-              entering={FadeIn.delay(200).duration(250)}
+            <View
               style={{
                 height: 26,
                 borderRadius: 13,
@@ -301,7 +298,7 @@ export default function SavedScreen() {
               >
                 {filteredSavedData.length}
               </Text>
-            </Animated.View>
+            </View>
           )}
         </View>
 
@@ -473,7 +470,7 @@ export default function SavedScreen() {
             </ScrollView>
           </View>
         )}
-      </Animated.View>
+      </View>
     );
   }, [
     isLoading,

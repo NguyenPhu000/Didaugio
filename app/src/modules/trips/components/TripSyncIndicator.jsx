@@ -2,14 +2,14 @@ import React, { memo, useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { useNetworkStatus } from "../hooks/useTripsOffline";
 
 const PENDING_KEY = "@pending_trip_actions";
 
 async function getPendingCount() {
   try {
-    const raw = await AsyncStorage.getItem(PENDING_KEY);
+    const raw = await safeAsyncStorage.getItem(PENDING_KEY);
     if (!raw) return 0;
     const actions = JSON.parse(raw);
     return Array.isArray(actions) ? actions.length : 0;

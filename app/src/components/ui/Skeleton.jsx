@@ -1,5 +1,12 @@
-import { useEffect, useRef } from "react";
-import { Animated, View } from "react-native";
+import { useEffect } from "react";
+import { View } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  cancelAnimation,
+} from "react-native-reanimated";
 import { cn } from "../../lib/cn";
 import { TOKENS } from "../../constants/design-tokens";
 
@@ -10,29 +17,25 @@ export function Skeleton({
   style,
   className,
 }) {
-  const opacity = useRef(new Animated.Value(0.35)).current;
+  const opacity = useSharedValue(0.35);
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 0.85,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.35,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
+    opacity.value = withRepeat(
+      withTiming(0.85, { duration: 700 }),
+      -1,
+      true,
+    );
+    return () => cancelAnimation(opacity);
   }, [opacity]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
 
   return (
     <Animated.View
       className={cn("bg-primary-100", className)}
-      style={[{ width, height, borderRadius, opacity }, style]}
+      style={[{ width, height, borderRadius }, animStyle, style]}
     />
   );
 }

@@ -1,12 +1,12 @@
 import { create } from "zustand";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../utils/safeAsyncStorage";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { PREFERENCES_DEFAULT } from "../constants/preferences";
 import i18n, { resolveLanguage } from "../i18n";
 
 const storageProvider = typeof window !== "undefined" && window.localStorage
   ? window.localStorage
-  : AsyncStorage;
+  : safeAsyncStorage;
 
 export const useUIStore = create(
   persist(

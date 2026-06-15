@@ -2,20 +2,11 @@ import { memo, useCallback, useMemo } from "react";
 import { View, Text, Pressable } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  FadeIn,
-  FadeOut,
-  Layout,
-} from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, Layout } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { MapPin, Star, Pencil, Heart } from "lucide-react-native";
 import { TOKENS } from "../../../constants/design-tokens";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // Tạo aspect ratio khác nhau cho mỗi card dựa trên placeId
 // để tạo cảm giác masonry staggered như Pinterest
@@ -51,16 +42,6 @@ export const SavedCard = memo(function SavedCard({
     [place?.id],
   );
 
-  const scale = useSharedValue(1);
-
-  const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.98, TOKENS.spring.press);
-  }, [scale]);
-
-  const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, TOKENS.spring.entrance);
-  }, [scale]);
-
   const handlePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress?.();
@@ -84,21 +65,15 @@ export const SavedCard = memo(function SavedCard({
     [place?.id, onUnsave],
   );
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
   return (
     <Animated.View
-      entering={FadeIn.duration(250)}
-      exiting={FadeOut.duration(180)}
-      layout={Layout.springify().damping(16).stiffness(160)}
+      entering={FadeIn.duration(200)}
+      exiting={FadeOut.duration(150)}
+      layout={Layout.duration(200)}
     >
-      <AnimatedPressable
+      <Pressable
         onPress={handlePress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={[animatedStyle, TOKENS.shadow.sm]}
+        style={TOKENS.shadow.sm}
       >
         {/* Ảnh với aspect ratio khác nhau */}
         <View
@@ -177,8 +152,7 @@ export const SavedCard = memo(function SavedCard({
 
           {/* Note indicator - góc dưới trái */}
           {note ? (
-            <Animated.View
-              entering={FadeIn.delay(100)}
+            <View
               style={{
                 position: "absolute",
                 bottom: 8,
@@ -205,7 +179,7 @@ export const SavedCard = memo(function SavedCard({
                   {note}
                 </Text>
               </View>
-            </Animated.View>
+            </View>
           ) : null}
         </View>
 
@@ -267,7 +241,7 @@ export const SavedCard = memo(function SavedCard({
             </View>
           )}
         </View>
-      </AnimatedPressable>
+      </Pressable>
     </Animated.View>
   );
 });

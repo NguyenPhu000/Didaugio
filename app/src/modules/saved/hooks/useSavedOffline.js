@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useRef, useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import NetInfo from "@react-native-community/netinfo";
 import {
@@ -15,7 +15,7 @@ const CACHE_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 const getCacheKey = (key) => `${CACHE_VERSION}:${key}`;
 
 /**
- * Lưu data vào AsyncStorage với metadata
+ * Lưu data vào safeAsyncStorage với metadata
  */
 const persistToStorage = async (key, data) => {
   try {
@@ -24,19 +24,19 @@ const persistToStorage = async (key, data) => {
       timestamp: Date.now(),
       version: CACHE_VERSION,
     };
-    await AsyncStorage.setItem(getCacheKey(key), JSON.stringify(payload));
+    await safeAsyncStorage.setItem(getCacheKey(key), JSON.stringify(payload));
   } catch {
     // Silently fail - offline cache is best-effort
   }
 };
 
 /**
- * Đọc data từ AsyncStorage
+ * Đọc data từ safeAsyncStorage
  * @returns {data, isStale, age} hoặc null nếu không có cache
  */
 const loadFromStorage = async (key) => {
   try {
-    const raw = await AsyncStorage.getItem(getCacheKey(key));
+    const raw = await safeAsyncStorage.getItem(getCacheKey(key));
     if (!raw) return null;
 
     const parsed = JSON.parse(raw);
@@ -59,7 +59,7 @@ const loadFromStorage = async (key) => {
  */
 export const clearSavedCache = async () => {
   try {
-    await AsyncStorage.multiRemove([
+    await safeAsyncStorage.multiRemove([
       getCacheKey(SAVED_PLACES_CACHE_KEY),
       getCacheKey(SAVED_COLLECTIONS_CACHE_KEY),
     ]);

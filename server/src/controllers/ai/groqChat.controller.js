@@ -1,76 +1,11 @@
 import { chatWithGroq } from "../../services/ai/groq.service.js";
-import { buildChatSystemPrompt } from "../../lib/promptBuilder.js";
 import prisma from "../../config/prismaClient.js";
-import NodeCache from "node-cache";
-
-const placeCache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
-
-const STOP_WORDS = new Set([
-  "cho", "mình", "tôi", "ở", "tại", "đi", "đâu", "giờ", "có", "nào", "gợi", "ý", "với",
-  "nhé", "nha", "được", "không", "cần", "thơ", "là", "thì", "mà", "lên", "xuống", "cái", "chi",
-  "gì", "này", "kia", "đó", "nọ", "chút", "ít", "nhiều", "cực", "quá", "lắm", "hộ", "giúp",
-  "quán", "chỗ", "địa", "điểm",
-]);
-
-function extractKeywords(text) {
-  if (!text) return [];
-  return text
-    .toLowerCase()
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "")
-    .split(/\s+/)
-    .filter((word) => word.length > 1 && !STOP_WORDS.has(word));
-}
-
-async function findRelatedPlaces(userMessage) {
-  const keywords = extractKeywords(userMessage);
-  if (keywords.length > 0) {
-    const results = await prisma.place.findMany({
-      where: {
-        status: "approved",
-        deletedAt: null,
-        OR: keywords.flatMap((kw) => [
-          { name: { contains: kw, mode: "insensitive" } },
-          { description: { contains: kw, mode: "insensitive" } },
-        ]),
-      },
-      take: 6,
-      select: {
-        id: true,
-        name: true,
-        address: true,
-        description: true,
-        priceFrom: true,
-        priceTo: true,
-        ratingAvg: true,
-        category: { select: { name: true } },
-      },
-    });
-    if (results.length > 0) return results;
-  }
-
-  // Fallback: featured places
-  const cacheKey = "groq_featured_places";
-  let cached = placeCache.get(cacheKey);
-  if (cached) return cached;
-
-  const featured = await prisma.place.findMany({
-    where: { status: "approved", deletedAt: null },
-    orderBy: [{ isFeatured: "desc" }, { ratingAvg: "desc" }, { viewCount: "desc" }],
-    take: 15,
-    select: {
-      id: true,
-      name: true,
-      address: true,
-      description: true,
-      priceFrom: true,
-      priceTo: true,
-      ratingAvg: true,
-      category: { select: { name: true } },
-    },
-  });
-  placeCache.set(cacheKey, featured);
-  return featured;
-}
+import { 
+  findPlacesNearby, 
+  findNearestDistrict, 
+  findNearestWard, 
+  findRelatedPlacesByKeywords 
+} from "../../utils/spatialQuery.js";
 
 /**
  * POST /api/ai/groq-chat
@@ -89,23 +24,69 @@ export const handleGroqChat = async (req, res) => {
       });
     }
 
-    // Find related places for RAG context
-    const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-    const systemPlaces = await findRelatedPlaces(lastUserMessage);
+    // 1. Lấy thông tin travelPreferences từ Profile của user
+    const userId = req.user?.id;
+    let travelPreferences = null;
+    if (userId) {
+      const profile = await prisma.userProfile.findUnique({
+        where: { userId },
+        select: { travelPreferences: true },
+      });
+      travelPreferences = profile?.travelPreferences;
+    }
 
+    // 2. Tìm địa điểm lân cận bằng Spatial Query nếu client gửi tọa độ
+    let systemPlaces = [];
+    let locationContext = null;
+    const currentCoords = context.currentCoords || context.coords;
+
+    if (currentCoords && currentCoords.latitude && currentCoords.longitude) {
+      const lat = parseFloat(currentCoords.latitude);
+      const lng = parseFloat(currentCoords.longitude);
+      
+      if (!isNaN(lat) && !isNaN(lng)) {
+        // Spatial query với Bounding Box pre-filter
+        systemPlaces = await findPlacesNearby(lat, lng, 10, 10);
+        
+        // Reverse geocoding tại server
+        const district = await findNearestDistrict(lat, lng);
+        const ward = await findNearestWard(lat, lng);
+        if (district) {
+          locationContext = {
+            district: district.name,
+            ward: ward ? ward.name : null,
+            coords: { latitude: lat, longitude: lng },
+          };
+        }
+      }
+    }
+
+    // 3. Fallback tìm theo từ khóa tin nhắn cuối nếu không có tọa độ hoặc không tìm thấy điểm lân cận
+    if (systemPlaces.length === 0) {
+      const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+      systemPlaces = await findRelatedPlacesByKeywords(lastUserMessage);
+    }
+
+    // 4. Đóng gói Enriched Context gửi cho Groq Service
     const enrichedContext = {
       ...context,
       systemPlaces,
+      travelPreferences,
+      locationContext,
     };
 
     const { reply, suggestedPlaceIds } = await chatWithGroq(messages, enrichedContext);
 
-    // Resolve suggested places
+    console.log("[GroqChat] Reply length:", reply?.length, "Reply preview:", reply?.substring(0, 100));
+    console.log("[GroqChat] suggestedPlaceIds:", suggestedPlaceIds);
+    console.log("[GroqChat] Messages sent:", messages.length, "System places:", systemPlaces.length);
+
+    // 5. Khớp các địa điểm được AI gợi ý
     let responsePlaces = [];
     if (suggestedPlaceIds.length > 0) {
       responsePlaces = systemPlaces.filter((p) => suggestedPlaceIds.includes(p.id));
     } else {
-      // Fallback: match by name in reply text
+      // Fallback: khớp theo tên địa điểm xuất hiện trong văn bản trả về
       responsePlaces = systemPlaces.filter((p) =>
         reply.toLowerCase().includes(p.name.toLowerCase()),
       );

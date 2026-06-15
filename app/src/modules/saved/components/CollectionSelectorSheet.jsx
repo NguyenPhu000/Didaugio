@@ -20,13 +20,9 @@ import {
   View,
 } from "react-native";
 import { Image } from "expo-image";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
-import Animated, {
-  FadeInDown,
-  FadeInUp,
-  LinearTransition,
-} from "react-native-reanimated";
+import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../../constants/design-tokens";
 import {
@@ -64,14 +60,14 @@ export const CollectionSelectorSheet = memo(
     const [showCreateInput, setShowCreateInput] = useState(false);
     const [localCollections, setLocalCollections] = useState([]);
 
-    // Tải localCollections từ AsyncStorage để hiển thị các folder trống đồng bộ với màn Saved
+    // Tải localCollections từ safeAsyncStorage để hiển thị các folder trống đồng bộ với màn Saved
     useEffect(() => {
       const loadLocalCollections = async () => {
         try {
           const key = user?.id
             ? `local_collections_${user.id}`
             : "local_collections_guest";
-          const stored = await AsyncStorage.getItem(key);
+          const stored = await safeAsyncStorage.getItem(key);
           if (stored) {
             setLocalCollections(JSON.parse(stored));
           } else {
@@ -223,16 +219,16 @@ export const CollectionSelectorSheet = memo(
           collectionName: name,
         });
 
-        // Đồng bộ lưu tên collection mới vào AsyncStorage để màn hình Saved nạp được
+        // Đồng bộ lưu tên collection mới vào safeAsyncStorage để màn hình Saved nạp được
         try {
           const key = user?.id
             ? `local_collections_${user.id}`
             : "local_collections_guest";
-          const stored = await AsyncStorage.getItem(key);
+          const stored = await safeAsyncStorage.getItem(key);
           let currentLocal = stored ? JSON.parse(stored) : [];
           if (!currentLocal.includes(name)) {
             currentLocal.push(name);
-            await AsyncStorage.setItem(key, JSON.stringify(currentLocal));
+            await safeAsyncStorage.setItem(key, JSON.stringify(currentLocal));
           }
         } catch (e) {
           // Lỗi lưu offline âm thầm
@@ -268,8 +264,7 @@ export const CollectionSelectorSheet = memo(
         }}
       >
         <View className="px-5 pb-4 pt-2">
-          <Animated.View
-            entering={FadeInUp.springify().damping(16)}
+          <View
             className="flex-row items-center justify-between mb-4"
           >
             <Text className="text-[#1D1D1F] text-lg font-extrabold tracking-[-0.3px]">
@@ -285,7 +280,7 @@ export const CollectionSelectorSheet = memo(
                 color={APPLE_THEME.textMuted}
               />
             </Pressable>
-          </Animated.View>
+          </View>
 
           {/* Dòng kích hoạt tạo mới nhanh dạng nét vẽ đứt quãng sang xịn */}
           {!showCreateInput ? (
@@ -348,8 +343,8 @@ export const CollectionSelectorSheet = memo(
               return (
                 <Animated.View
                   key={folder.name}
-                  entering={FadeInDown.delay(idx * 40).springify().damping(16).stiffness(160)}
-                  layout={LinearTransition.springify().damping(16)}
+                  entering={FadeIn.duration(180)}
+                  layout={LinearTransition.duration(180)}
                 >
                 <Pressable
                   onPress={() => handleSelectCollection(folder.name)}

@@ -4,13 +4,15 @@ import {
   Text,
   ActivityIndicator,
   useWindowDimensions,
+  FlatList,
+  StyleSheet,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { Sparkles } from "lucide-react-native";
 import { cn } from "../../lib/cn";
 import { TOKENS } from "../../constants/design-tokens";
-import { PlacePreviewCard } from "../composed/PlacePreviewCard";
-import { MaterialIconsRounded } from "../primitives/MaterialIconsRounded";
+import { HorizontalPlaceCard } from "../composed/HorizontalPlaceCard";
 
 export function AIBubble({
   role = "assistant",
@@ -18,12 +20,10 @@ export function AIBubble({
   isTyping = false,
   style,
   places = [],
-  onAddToTrip,
 }) {
   const isUser = role === "user";
   const { t } = useTranslation();
   const router = useRouter();
-  const { width, height } = useWindowDimensions();
   const [dismissedPlaceIds, setDismissedPlaceIds] = useState([]);
 
   const suggestedPlaces = !isUser && Array.isArray(places) ? places : [];
@@ -40,7 +40,6 @@ export function AIBubble({
     [suggestedPlaces, dismissedPlaceIdSet],
   );
   const hasSuggestionCards = !isTyping && visibleSuggestedPlaces.length > 0;
-  const isCompactCard = width <= 360 || height <= 700;
   const suggestionResetKey = useMemo(
     () =>
       suggestedPlaces
@@ -62,14 +61,6 @@ export function AIBubble({
     [router],
   );
 
-  const handleDismissPlaceCard = useCallback((placeId) => {
-    const normalizedId = Number(placeId);
-    if (!normalizedId) return;
-    setDismissedPlaceIds((prev) =>
-      prev.includes(normalizedId) ? prev : [...prev, normalizedId],
-    );
-  }, []);
-
   return (
     <View
       className={cn(
@@ -78,48 +69,55 @@ export function AIBubble({
         !isUser && hasSuggestionCards && "w-full max-w-full",
       )}
     >
-      {/* Avatar tròn nhỏ cho Trợ lý AI (em Nhi) */}
+      {/* Avatar tròn nhỏ cho Trợ lý AI (Nhi) */}
       {!isUser && (
         <View 
-          className="w-8 h-8 rounded-full items-center justify-center border border-slate-100 shadow-sm z-[2]"
-          style={{ backgroundColor: "#F8FAFC" }}
+          className="w-8 h-8 rounded-full items-center justify-center border border-zinc-100 shadow-sm z-[2] bg-zinc-50"
         >
-          <MaterialIconsRounded name="smart-toy" size={16} color="#4F46E5" />
+          <Sparkles size={14} color="#10B981" />
         </View>
       )}
 
       <View className={cn("flex-1", !isUser && hasSuggestionCards && "w-full")}>
+        {!isUser && (
+          <View className="flex-row items-center gap-1 mb-1 ml-1">
+            <Text className="text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
+              Nhi (AI)
+            </Text>
+          </View>
+        )}
+
         <View
           className={cn(
             "rounded-[20px] px-4 py-3",
             isUser
-              ? "rounded-br-sm bg-[#007AFF]" // Màu xanh Apple mượt mà
-              : "rounded-bl-sm bg-white border border-slate-100/80",
+              ? "rounded-br-sm bg-zinc-100" // Bong bóng chat user màu xám nhẹ
+              : "rounded-bl-sm bg-white border border-zinc-200/80",
           )}
           style={
             !isUser
               ? {
-                  shadowColor: "#0F172A",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.04,
-                  shadowRadius: 6,
-                  elevation: 2,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.02,
+                  shadowRadius: 3,
+                  elevation: 1,
                 }
               : style
           }
         >
           {isTyping ? (
             <View className="flex-row items-center gap-2 py-0.5">
-              <ActivityIndicator size="small" color="#4F46E5" />
-              <Text className="text-slate-400 text-[12.5px] font-medium" style={{ fontFamily: TOKENS.font.body }}>
-                {t("ai.typing")}
+              <ActivityIndicator size="small" color="#10B981" />
+              <Text className="text-zinc-400 text-[12.5px] font-medium" style={{ fontFamily: TOKENS.font.body }}>
+                {t("ai.typing") || "Đang suy nghĩ..."}
               </Text>
             </View>
           ) : (
             <Text
-              className="text-[14px] leading-[22px]"
+              className="text-[14.5px] leading-[22px]"
               style={{ 
-                color: isUser ? "#FFFFFF" : TOKENS.color.neutral[900], 
+                color: isUser ? "#18181B" : "#27272A", 
                 fontFamily: TOKENS.font.body 
               }}
             >
@@ -128,27 +126,27 @@ export function AIBubble({
           )}
         </View>
 
+        {/* Carousel địa điểm nằm ngoài bong bóng chat để dễ cuộn ngang */}
         {hasSuggestionCards ? (
-          <View className="mt-2.5 gap-2.5">
-            {visibleSuggestedPlaces.map((place, index) => {
-              const placeId = Number(place?.id);
-
-              return (
-                <PlacePreviewCard
-                  key={placeId || `${place?.name || "place"}-${index}`}
-                  place={place}
-                  compact={isCompactCard}
-                  onClose={() => handleDismissPlaceCard(placeId)}
-                  onViewDetail={handleOpenPlace}
-                  showAddToTripAction={typeof onAddToTrip === "function"}
-                  onAddToTrip={onAddToTrip}
+          <View className="mt-2.5 w-full">
+            <FlatList
+              data={visibleSuggestedPlaces}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item, index) => String(item?.id || index)}
+              renderItem={({ item }) => (
+                <HorizontalPlaceCard
+                  place={item}
+                  onPressDetail={() => handleOpenPlace(item)}
                 />
-              );
-            })}
+              )}
+              contentContainerStyle={{ paddingLeft: 4, paddingRight: 16 }}
+            />
           </View>
         ) : null}
       </View>
     </View>
   );
 }
+
 export default AIBubble;

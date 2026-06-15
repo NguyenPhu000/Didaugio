@@ -8,3 +8,4 @@ export {
 } from "./itinerary.service.js";
 export { streamPlaceSummary, streamChat } from "./aiStreaming.service.js";
 export { chatWithGroq, buildGroqSystemPrompt } from "./groq.service.js";
+export { generateHybridPlan } from "./hybridPlanner.service.js";

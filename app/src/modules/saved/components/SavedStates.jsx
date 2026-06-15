@@ -1,17 +1,17 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Compass, Bookmark, CloudOff, RefreshCw, FolderX } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import Animated, { FadeInUp, FadeIn } from "react-native-reanimated";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 
 export function LoadingState() {
   return (
     <View style={{ flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 6, paddingTop: 16 }}>
-      {[1, 2, 3, 4].map((i, index) => (
+      {[1, 2, 3, 4].map((i) => (
         <Animated.View
           key={i}
-          entering={FadeInUp.delay(index * 60).springify().damping(16)}
+          entering={FadeIn.duration(200)}
           style={{
             width: "50%",
             paddingHorizontal: 6,
@@ -45,10 +45,10 @@ export function EmptyState({ onExplore, activeFilter }) {
   const isFiltered = Boolean(activeFilter);
   return (
     <Animated.View
-      entering={FadeInUp.springify().damping(16).stiffness(160)}
+      entering={FadeIn.duration(250)}
       style={styles.stateCard}
     >
-      <Animated.View entering={FadeInUp.delay(100).springify().damping(16)}>
+      <View>
         <View style={[styles.stateIconWrap, isFiltered && styles.stateIconWrapMuted]}>
           {isFiltered ? (
             <FolderX size={32} color="#64748B" strokeWidth={1.5} />
@@ -56,7 +56,7 @@ export function EmptyState({ onExplore, activeFilter }) {
             <Bookmark size={32} color="#0F172A" strokeWidth={1.5} />
           )}
         </View>
-      </Animated.View>
+      </View>
       <Text style={styles.stateTitle}>
         {isFiltered ? t("saved.empty.noResults") : t("saved.empty.noSaved")}
       </Text>
@@ -82,14 +82,14 @@ export function ErrorState({ onRetry }) {
   const { t } = useTranslation();
   return (
     <Animated.View
-      entering={FadeInUp.springify().damping(16).stiffness(160)}
+      entering={FadeIn.duration(250)}
       style={styles.stateCard}
     >
-      <Animated.View entering={FadeInUp.delay(80).springify().damping(16)}>
+      <View>
         <View style={[styles.stateIconWrap, styles.stateIconError]}>
           <CloudOff size={32} color="#FF3B30" strokeWidth={1.5} />
         </View>
-      </Animated.View>
+      </View>
       <Text style={styles.stateTitle}>{t("common.error")}</Text>
       <Text style={styles.stateDesc}>
         {t("common.networkError")}

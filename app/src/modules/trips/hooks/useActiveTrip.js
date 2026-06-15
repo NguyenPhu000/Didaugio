@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { useQuery } from "@tanstack/react-query";
 import { getTripDetailApi } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
@@ -18,7 +18,7 @@ const pausedKey = (tripId) => `${PAUSED_PREFIX}${tripId}`;
 
 export async function getActiveTripId() {
   try {
-    return await AsyncStorage.getItem(ACTIVE_TRIP_KEY);
+    return await safeAsyncStorage.getItem(ACTIVE_TRIP_KEY);
   } catch {
     return null;
   }
@@ -26,7 +26,7 @@ export async function getActiveTripId() {
 
 export async function setActiveTripId(tripId) {
   try {
-    await AsyncStorage.setItem(ACTIVE_TRIP_KEY, String(tripId));
+    await safeAsyncStorage.setItem(ACTIVE_TRIP_KEY, String(tripId));
   } catch {
     // Bỏ qua lỗi ghi storage.
   }
@@ -34,7 +34,7 @@ export async function setActiveTripId(tripId) {
 
 export async function clearActiveTripId() {
   try {
-    await AsyncStorage.removeItem(ACTIVE_TRIP_KEY);
+    await safeAsyncStorage.removeItem(ACTIVE_TRIP_KEY);
   } catch {
     // Bỏ qua lỗi xóa storage.
   }
@@ -43,7 +43,7 @@ export async function clearActiveTripId() {
 export async function getVisitedDestinations(tripId) {
   if (!tripId) return [];
   try {
-    const raw = await AsyncStorage.getItem(visitedKey(tripId));
+    const raw = await safeAsyncStorage.getItem(visitedKey(tripId));
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -54,7 +54,7 @@ export async function getVisitedDestinations(tripId) {
 export async function setVisitedDestinations(tripId, ids) {
   if (!tripId) return;
   try {
-    await AsyncStorage.setItem(visitedKey(tripId), JSON.stringify(ids || []));
+    await safeAsyncStorage.setItem(visitedKey(tripId), JSON.stringify(ids || []));
   } catch {
     // Bỏ qua lỗi ghi storage.
   }
@@ -82,7 +82,7 @@ export function useActiveTrip() {
     setActiveTripIdState(id);
     if (id) {
       setVisitedIds(await getVisitedDestinations(id));
-      const pausedVal = await AsyncStorage.getItem(pausedKey(id));
+      const pausedVal = await safeAsyncStorage.getItem(pausedKey(id));
       setIsPaused(pausedVal === "true");
     } else {
       setVisitedIds([]);
@@ -127,7 +127,7 @@ export function useActiveTrip() {
   }, [nextDestination]);
 
   const startActiveTrip = useCallback(async (tripId) => {
-    await AsyncStorage.removeItem(pausedKey(tripId));
+    await safeAsyncStorage.removeItem(pausedKey(tripId));
     await setActiveTripId(tripId);
     await resetVisitedDestinations(tripId);
     setActiveTripIdState(String(tripId));
@@ -150,19 +150,19 @@ export function useActiveTrip() {
 
   const pauseActiveTrip = useCallback(async () => {
     if (!activeTripId) return;
-    await AsyncStorage.setItem(pausedKey(activeTripId), "true");
+    await safeAsyncStorage.setItem(pausedKey(activeTripId), "true");
     setIsPaused(true);
   }, [activeTripId]);
 
   const resumeActiveTrip = useCallback(async () => {
     if (!activeTripId) return;
-    await AsyncStorage.removeItem(pausedKey(activeTripId));
+    await safeAsyncStorage.removeItem(pausedKey(activeTripId));
     setIsPaused(false);
   }, [activeTripId]);
 
   const exitActiveTrip = useCallback(async () => {
     if (activeTripId) {
-      await AsyncStorage.removeItem(pausedKey(activeTripId));
+      await safeAsyncStorage.removeItem(pausedKey(activeTripId));
     }
     await clearActiveTripId();
     setActiveTripIdState(null);

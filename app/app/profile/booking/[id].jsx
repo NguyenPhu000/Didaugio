@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../../../src/utils/safeAsyncStorage";
 import {
   BOOKING_APPLE_THEME as THEME,
   TOKENS,
@@ -129,7 +129,7 @@ export default function BookingDetailScreen() {
 
   const activeQrCode = qrData?.qrCode || cachedQr?.qrCode || null;
 
-  // Cache QR to AsyncStorage when fetched successfully
+  // Cache QR to safeAsyncStorage when fetched successfully
   useEffect(() => {
     if (!qrData?.qrCode || !bookingId) return;
     const cacheEntry = {
@@ -137,7 +137,7 @@ export default function BookingDetailScreen() {
       timestamp: Date.now(),
       version: QR_CACHE_VERSION,
     };
-    AsyncStorage.setItem(
+    safeAsyncStorage.setItem(
       `${QR_CACHE_KEY}:${bookingId}`,
       JSON.stringify(cacheEntry),
     ).catch(() => {});
@@ -147,7 +147,7 @@ export default function BookingDetailScreen() {
   // Load cached QR on mount (for offline support)
   useEffect(() => {
     if (!bookingId || !canShowQr) return;
-    AsyncStorage.getItem(`${QR_CACHE_KEY}:${bookingId}`)
+    safeAsyncStorage.getItem(`${QR_CACHE_KEY}:${bookingId}`)
       .then((raw) => {
         if (!raw) return;
         const parsed = JSON.parse(raw);

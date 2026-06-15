@@ -1,15 +1,8 @@
-import { memo, useCallback, useEffect } from "react";
+import { memo, useCallback } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
@@ -19,36 +12,10 @@ import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation } from "../utils/exploreHelpers";
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-const SPRING_CONFIG = TOKENS.spring.press;
-
-function BentoTile({ place, large = false, onPress, index = 0, defaultCategoryLabel, defaultExperienceLabel }) {
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(0);
-  const tileScale = useSharedValue(0.92);
+function BentoTile({ place, large = false, onPress, defaultCategoryLabel, defaultExperienceLabel }) {
   const imageUri = resolvePlaceImageUri(place);
   const category = place?.category?.name || defaultCategoryLabel;
   const location = getPlaceLocation(place);
-
-  useEffect(() => {
-    const delay = 150 + index * 80;
-    opacity.value = withDelay(delay, withTiming(1, { duration: 350 }));
-    tileScale.value = withDelay(delay, withSpring(1, TOKENS.spring.entrance));
-  }, [index, opacity, tileScale]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value * tileScale.value }],
-    opacity: opacity.value,
-  }));
-
-  const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.96, SPRING_CONFIG);
-  }, [scale]);
-
-  const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, SPRING_CONFIG);
-  }, [scale]);
 
   const handlePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -56,11 +23,11 @@ function BentoTile({ place, large = false, onPress, index = 0, defaultCategoryLa
   }, [onPress]);
 
   return (
-    <AnimatedPressable
+    <Pressable
       onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      style={[animatedStyle, { borderCurve: "continuous" }]}
+      style={({ pressed }) => [
+        { borderCurve: "continuous", opacity: pressed ? 0.92 : 1 },
+      ]}
       className={`overflow-hidden rounded-[20px] relative ${
         large ? "flex-[1.2]" : "flex-1"
       }`}
@@ -128,24 +95,12 @@ function BentoTile({ place, large = false, onPress, index = 0, defaultCategoryLa
           </Text>
         ) : null}
       </View>
-    </AnimatedPressable>
+    </Pressable>
   );
 }
 
 function ExperienceBentoSectionInner({ places, onPressPlace }) {
   const { t } = useTranslation();
-  const sectionOpacity = useSharedValue(0);
-  const sectionY = useSharedValue(24);
-
-  useEffect(() => {
-    sectionOpacity.value = withDelay(200, withTiming(1, { duration: 400 }));
-    sectionY.value = withDelay(200, withSpring(0, TOKENS.spring.entrance));
-  }, [sectionOpacity, sectionY]);
-
-  const sectionAnimStyle = useAnimatedStyle(() => ({
-    opacity: sectionOpacity.value,
-    transform: [{ translateY: sectionY.value }],
-  }));
 
   if (!Array.isArray(places) || places.length < 3) return null;
 
@@ -154,8 +109,8 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
   const defaultExperienceLabel = t("explore.card.defaultExperience");
 
   return (
-    <Animated.View
-      style={[sectionAnimStyle, { paddingHorizontal: TAB_SCREEN_PADDING }]}
+    <View
+      style={{ paddingHorizontal: TAB_SCREEN_PADDING }}
       className="mt-7"
     >
       <View className="flex-row items-center gap-2.5 mb-3.5">
@@ -179,7 +134,6 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
           <BentoTile
             place={hero}
             large
-            index={0}
             defaultCategoryLabel={defaultCategoryLabel}
             defaultExperienceLabel={defaultExperienceLabel}
             onPress={() => onPressPlace(hero)}
@@ -188,14 +142,12 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
           <View className="flex-1 gap-2">
             <BentoTile
               place={topRight}
-              index={1}
               defaultCategoryLabel={defaultCategoryLabel}
               defaultExperienceLabel={defaultExperienceLabel}
               onPress={() => onPressPlace(topRight)}
             />
             <BentoTile
               place={bottomRight}
-              index={2}
               defaultCategoryLabel={defaultCategoryLabel}
               defaultExperienceLabel={defaultExperienceLabel}
               onPress={() => onPressPlace(bottomRight)}
@@ -203,7 +155,7 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
           </View>
         </View>
       </View>
-    </Animated.View>
+    </View>
   );
 }
 

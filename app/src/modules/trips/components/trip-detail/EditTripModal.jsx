@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../../../../utils/safeAsyncStorage";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
@@ -55,7 +55,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
       setPendingThumbnail(undefined);
     }
     if (visible && trip?.id) {
-      AsyncStorage.getItem(`trip_avoidFerry_${trip.id}`).then((val) => {
+      safeAsyncStorage.getItem(`trip_avoidFerry_${trip.id}`).then((val) => {
         setAvoidFerry(val === "true");
       });
     }
@@ -134,7 +134,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
 
     if (trip?.id) {
       try {
-        await AsyncStorage.setItem(`trip_avoidFerry_${trip.id}`, String(avoidFerry));
+        await safeAsyncStorage.setItem(`trip_avoidFerry_${trip.id}`, String(avoidFerry));
       } catch (e) {
         console.error("Lỗi khi lưu cấu hình tránh phà:", e);
       }

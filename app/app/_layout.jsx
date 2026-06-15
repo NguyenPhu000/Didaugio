@@ -2,7 +2,7 @@ import "../global.css";
 import i18n, { resolveLanguage } from "../src/i18n";
 import { useEffect, useRef, useState } from "react";
 import { View, Alert, AppState } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../src/utils/safeAsyncStorage";
 import { Stack, useRouter, useSegments, usePathname } from "expo-router";
 import { PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY } from "../src/modules/booking/hooks/usePayment";
 import * as SplashScreen from "expo-splash-screen";
@@ -54,8 +54,8 @@ function PaymentRecoveryListener() {
       if (isProcessingRef.current) return;
 
       try {
-        const pendingRef = await AsyncStorage.getItem(PENDING_PAYMENT_REF_KEY);
-        const pendingBookingId = await AsyncStorage.getItem(PENDING_PAYMENT_BOOKING_KEY);
+        const pendingRef = await safeAsyncStorage.getItem(PENDING_PAYMENT_REF_KEY);
+        const pendingBookingId = await safeAsyncStorage.getItem(PENDING_PAYMENT_BOOKING_KEY);
 
         // Validate: non-empty and valid bookingId (positive integer string)
         if (
@@ -66,7 +66,7 @@ function PaymentRecoveryListener() {
           Number(pendingBookingId) > 0
         ) {
           isProcessingRef.current = true;
-          await AsyncStorage.multiRemove([PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY]);
+          await safeAsyncStorage.multiRemove([PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY]);
           router.replace(
             `/payment/result?status=pending_verify&bookingId=${pendingBookingId}`
           );

@@ -29,7 +29,7 @@ const QUICK_SUGGESTIONS = [
   { text: "Thời tiết hôm nay", icon: "cloud" },
 ];
 
-const ACCENT = TOKENS.color.travel.ocean;
+const ACCENT = "#10B981";
 
 export function ChatPanel() {
   const { t } = useTranslation();
@@ -269,7 +269,7 @@ export function ChatPanel() {
           /* ── Empty state — ChatGPT style ── */
           <View className="items-center px-6 pb-8">
             <View
-              className="w-[76px] h-[76px] rounded-[38px] bg-white/85 items-center justify-center border-[1.5px] border-blue-500/15 mb-[18px]"
+              className="w-[76px] h-[76px] rounded-[38px] bg-white/85 items-center justify-center border-[1.5px] border-emerald-500/15 mb-[18px]"
               style={{
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 2 },
@@ -278,7 +278,7 @@ export function ChatPanel() {
                 elevation: 2,
               }}
             >
-              <MaterialIconsRounded name="smart-toy" size={36} color={ACCENT} />
+              <MaterialIconsRounded name="auto-awesome" size={36} color="#10B981" />
             </View>
             <Text className="text-6xl leading-[30px] font-heading text-slate-900 text-center mb-2">
               {t('chatPanel.greeting')}
@@ -395,12 +395,12 @@ export function ChatPanel() {
             onPress={() => handleSend()}
             disabled={!canSend}
             className={`w-[38px] h-[38px] rounded-[19px] items-center justify-center ${
-              canSend ? "bg-blue-500" : "bg-slate-200"
+              canSend ? "bg-zinc-950" : "bg-zinc-100"
             }`}
             style={
               canSend
                 ? {
-                    shadowColor: ACCENT,
+                    shadowColor: TOKENS.color.neutral[950],
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.15,
                     shadowRadius: 4,

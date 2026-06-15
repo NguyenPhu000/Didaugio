@@ -1,14 +1,7 @@
-import { memo, useCallback, useEffect, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import {
@@ -16,10 +9,6 @@ import {
   TOKENS,
 } from "../../../constants/design-tokens";
 import { normalizeText } from "../utils/exploreHelpers";
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-const SPRING_CONFIG = TOKENS.spring.press;
 
 const ACTION_CONFIG = Object.freeze([
   {
@@ -80,41 +69,16 @@ const ACTION_CONFIG = Object.freeze([
   },
 ]);
 
-function QuickActionItem({ item, index, title, onPress }) {
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(16);
-
-  useEffect(() => {
-    const delay = index * 60;
-    opacity.value = withDelay(delay, withTiming(1, { duration: 350 }));
-    translateY.value = withDelay(delay, withSpring(0, TOKENS.spring.entrance));
-  }, [index, opacity, translateY]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }, { translateY: translateY.value }],
-    opacity: opacity.value,
-  }));
-
-  const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.88, SPRING_CONFIG);
-  }, [scale]);
-
-  const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, SPRING_CONFIG);
-  }, [scale]);
-
+function QuickActionItem({ item, title, onPress }) {
   const handlePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress(item);
   }, [item, onPress]);
 
   return (
-    <AnimatedPressable
+    <Pressable
       onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      style={[animatedStyle]}
+      style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
       className="w-[25%] items-center gap-2"
     >
       <View style={{ borderCurve: "continuous", ...TOKENS.shadow.sm }} className="rounded-[18px] overflow-hidden">
@@ -134,7 +98,7 @@ function QuickActionItem({ item, index, title, onPress }) {
       >
         {title}
       </Text>
-    </AnimatedPressable>
+    </Pressable>
   );
 }
 
@@ -169,11 +133,10 @@ function ExploreQuickActionsInner({
 
   return (
     <View className="flex-row flex-wrap px-4 gap-y-4 mt-4 mb-1 justify-start">
-      {items.map((item, index) => (
+      {items.map((item) => (
         <QuickActionItem
           key={item.key}
           item={item}
-          index={index}
           title={t(`explore.quickActions.${item.key}`)}
           onPress={handlePress}
         />

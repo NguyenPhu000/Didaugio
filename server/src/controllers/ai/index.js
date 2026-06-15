@@ -4,3 +4,4 @@
 export * from "./ai.controller.js";
 export * from "./aiNavigation.controller.js";
 export * from "./groqChat.controller.js";
+export * from "./hybridPlanner.controller.js";

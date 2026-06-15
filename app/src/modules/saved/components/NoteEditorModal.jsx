@@ -14,9 +14,6 @@ import Animated, {
   FadeOut,
   SlideInDown,
   SlideOutDown,
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
 } from "react-native-reanimated";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
@@ -34,18 +31,6 @@ export function NoteEditorModal({
   onSubmit,
 }) {
   const { t } = useTranslation();
-  const cardScale = useSharedValue(1);
-
-  const animatedCardStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: cardScale.value }],
-  }));
-
-  const handlePressIn = () => {
-    cardScale.value = withSpring(0.97, { damping: 14, stiffness: 180 });
-  };
-  const handlePressOut = () => {
-    cardScale.value = withSpring(1, { damping: 14, stiffness: 160 });
-  };
 
   return (
     <Modal
@@ -64,13 +49,10 @@ export function NoteEditorModal({
           className="flex-1 justify-center px-5"
         >
           <Animated.View
-            entering={SlideInDown.springify().damping(16).stiffness(160)}
+            entering={SlideInDown.duration(250)}
             exiting={SlideOutDown.duration(180)}
-            style={animatedCardStyle}
           >
             <Pressable
-              onPressIn={handlePressIn}
-              onPressOut={handlePressOut}
               className="rounded-[28px] p-6 gap-3 bg-white"
               style={{ boxShadow: "0 20px 48px rgba(0,0,0,0.18)" }}
             >

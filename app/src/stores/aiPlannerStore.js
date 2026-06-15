@@ -1,9 +1,9 @@
 import { create } from "zustand";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../utils/safeAsyncStorage";
 
 const { persist, createJSONStorage } = require("zustand/middleware");
 
-const MAX_PLANNER_MESSAGES = 40;
+const MAX_MESSAGES = 60;
 
 function createInitialState() {
   return {
@@ -14,9 +14,9 @@ function createInitialState() {
   };
 }
 
-function trimPlannerMessages(messages) {
+function trimMessages(messages) {
   if (!Array.isArray(messages)) return [];
-  return messages.slice(-MAX_PLANNER_MESSAGES);
+  return messages.slice(-MAX_MESSAGES);
 }
 
 function normalizePlaceIds(ids) {
@@ -33,10 +33,11 @@ function normalizeMessage(message) {
 
   return {
     ...message,
-    id: message.id || `${Date.now()}`,
+    id: message.id || `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     role: message.role || "assistant",
     text: message.text ?? message.content ?? "",
     createdAt,
+    source: message.source || "planner",
     selectedPlaceIds: normalizePlaceIds(message.selectedPlaceIds),
     suggestedPlaces: Array.isArray(message.suggestedPlaces)
       ? message.suggestedPlaces
@@ -54,18 +55,23 @@ export const useAIPlannerStore = create(
           const normalized = normalizeMessage(message);
           if (!normalized) return { messages: s.messages };
           return {
-            messages: trimPlannerMessages([...s.messages, normalized]),
+            messages: trimMessages([...s.messages, normalized]),
           };
         }),
 
       setMessages: (messages) =>
         set({
-          messages: trimPlannerMessages(
+          messages: trimMessages(
             messages.map(normalizeMessage).filter(Boolean),
           ),
         }),
 
       clearMessages: () => set({ messages: [] }),
+
+      clearChatMessages: () =>
+        set((s) => ({
+          messages: s.messages.filter((m) => m.source !== "chat"),
+        })),
 
       setDraftPlan: (draftPlan) => set({ draftPlan: draftPlan || null }),
 
@@ -87,13 +93,24 @@ export const useAIPlannerStore = create(
     }),
     {
       name: "ai-planner-store",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => safeAsyncStorage),
       partialize: (s) => ({
-        messages: trimPlannerMessages(s.messages),
+        messages: trimMessages(s.messages),
         draftPlan: s.draftPlan,
         selectedPlaceIds: normalizePlaceIds(s.selectedPlaceIds),
         lastPreferences: s.lastPreferences,
       }),
+      migrate: (persistedState, version) => {
+        if (persistedState?.messages) {
+          persistedState.messages = persistedState.messages.map((m) => ({
+            ...m,
+            source: m.source || "planner",
+            text: m.text ?? m.content ?? "",
+          }));
+        }
+        return persistedState;
+      },
+      version: 2,
     },
   ),
 );

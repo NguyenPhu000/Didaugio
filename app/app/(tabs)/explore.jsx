@@ -13,8 +13,6 @@ import { StatusBar } from "expo-status-bar";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
@@ -91,11 +89,12 @@ export default function ExploreScreen() {
     isFetchingNextPage,
   } = useExplore({ categoryId: selectedCategory });
 
-  const { data: events = [], refetch: refetchEvents } = useEvents();
+  const { data: events = [], isLoading: isLoadingEvents, refetch: refetchEvents } = useEvents();
 
   // CMS aggregate — 1 request cho toàn bộ nội dung CMS
   const {
     data: cmsData,
+    isLoading: isLoadingCms,
     isRefetching: isCmsRefetching,
     refetch: refetchCms,
   } = useExploreCms();
@@ -264,7 +263,8 @@ export default function ExploreScreen() {
     [handleEndReached],
   );
 
-  const showEmpty = allPlaces.length === 0 && !isLoading;
+  const isInitialLoading = isLoading || isLoadingEvents || isLoadingCms;
+  const showEmpty = allPlaces.length === 0 && !isInitialLoading;
 
   const handleScrollEvent = useCallback((e) => {
     scrollY.value = e.nativeEvent.contentOffset.y;
@@ -280,22 +280,18 @@ export default function ExploreScreen() {
   // Removed laggy section transition animation for instant rendering performance
 
   /* — Empty state icon animation — */
-  const emptyScale = useSharedValue(0.85);
   const emptyOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (showEmpty) {
-      emptyScale.value = withSpring(1, TOKENS.spring.gentle);
-      emptyOpacity.value = withDelay(80, withTiming(1, { duration: 300 }));
+      emptyOpacity.value = withTiming(1, { duration: 250 });
     } else {
-      emptyScale.value = 0.85;
       emptyOpacity.value = 0;
     }
-  }, [showEmpty, emptyScale, emptyOpacity]);
+  }, [showEmpty, emptyOpacity]);
 
   const emptyAnimStyle = useAnimatedStyle(() => ({
     opacity: emptyOpacity.value,
-    transform: [{ scale: emptyScale.value }],
   }));
 
   return (
@@ -305,7 +301,7 @@ export default function ExploreScreen() {
     >
       <StatusBar style="dark" />
 
-      {isLoading && !isRefetching ? (
+      {isInitialLoading && !isRefetching ? (
         <ExploreSkeleton />
       ) : (
         <Animated.ScrollView
@@ -453,6 +449,7 @@ export default function ExploreScreen() {
           {/* Empty state — animated */}
           {showEmpty ? (
             <Animated.View style={emptyAnimStyle} className="items-center justify-center py-15 px-10 gap-3">
+
               <View
                 className="w-18 h-18 rounded-full items-center justify-center mb-1"
                 style={{ backgroundColor: APPLE_THEME.primaryTint }}

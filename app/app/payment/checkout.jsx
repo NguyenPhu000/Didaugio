@@ -11,7 +11,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../../src/utils/safeAsyncStorage";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useCheckout, usePollPaymentStatus, PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY } from "@/modules/booking/hooks/usePayment";
 import { getMyBookingDetailApi } from "@/modules/booking/api/bookingApi";
@@ -134,10 +134,10 @@ export default function PaymentCheckoutScreen() {
 
       // Save BEFORE opening browser (browser may freeze JS)
       try {
-        await AsyncStorage.setItem(PENDING_PAYMENT_REF_KEY, transactionRef || "");
-        await AsyncStorage.setItem(PENDING_PAYMENT_BOOKING_KEY, String(bookingId));
+        await safeAsyncStorage.setItem(PENDING_PAYMENT_REF_KEY, transactionRef || "");
+        await safeAsyncStorage.setItem(PENDING_PAYMENT_BOOKING_KEY, String(bookingId));
       } catch (storageErr) {
-        console.warn("[checkout] AsyncStorage write failed:", storageErr);
+        console.warn("[checkout] safeAsyncStorage write failed:", storageErr);
       }
 
       const browserResult = await WebBrowser.openBrowserAsync(paymentUrl, {
@@ -151,7 +151,7 @@ export default function PaymentCheckoutScreen() {
         setIsProcessing(false);
         // Clean stale keys so recovery listener doesn't fire
         try {
-          await AsyncStorage.multiRemove([PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY]);
+          await safeAsyncStorage.multiRemove([PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY]);
         } catch {
           // Ignore
         }
@@ -164,7 +164,7 @@ export default function PaymentCheckoutScreen() {
       Alert.alert("Lỗi thanh toán", msg);
       // Clean stale keys on error
       try {
-        await AsyncStorage.multiRemove([PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY]);
+        await safeAsyncStorage.multiRemove([PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY]);
       } catch {
         // Ignore
       }

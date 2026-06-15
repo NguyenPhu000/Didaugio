@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../utils/safeAsyncStorage";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { QUERY_KEYS } from "../constants/query-keys";
 import {
@@ -60,69 +60,82 @@ function slimTrip(trip) {
 }
 
 const basePersister = createAsyncStoragePersister({
-  storage: AsyncStorage,
+  storage: safeAsyncStorage,
   key: PERSIST_STORAGE_KEY,
   throttleTime: 1000,
 });
 
 export const asyncStoragePersister = {
   persistClient: async (persistedClient) => {
-    if (persistedClient && persistedClient.clientState && Array.isArray(persistedClient.clientState.queries)) {
-      // Chỉ giữ query đã filter qua shouldPersistTripQuery (đã được dehydrateOptions xử lý)
-      // nhưng vẫn slim thêm để đảm bảo không có base64 lọt vào
-      const slimmedQueries = persistedClient.clientState.queries.map((q) => {
-        const root = q.queryKey?.[0];
-        if (root === tripsRootKey && q.state?.data) {
-          const data = q.state.data;
-          let slimmedData = data;
-          if (Array.isArray(data)) {
-            slimmedData = data.map(slimTrip);
-          } else if (data?.data && typeof data.data === "object" && !Array.isArray(data.data)) {
-            slimmedData = { ...data, data: slimTrip(data.data) };
-          } else if (data && typeof data === "object" && !Array.isArray(data)) {
-            slimmedData = slimTrip(data);
+    try {
+      if (persistedClient && persistedClient.clientState && Array.isArray(persistedClient.clientState.queries)) {
+        // Chỉ giữ query đã filter qua shouldPersistTripQuery (đã được dehydrateOptions xử lý)
+        // nhưng vẫn slim thêm để đảm bảo không có base64 lọt vào
+        const slimmedQueries = persistedClient.clientState.queries.map((q) => {
+          const root = q.queryKey?.[0];
+          if (root === tripsRootKey && q.state?.data) {
+            const data = q.state.data;
+            let slimmedData = data;
+            if (Array.isArray(data)) {
+              slimmedData = data.map(slimTrip);
+            } else if (data?.data && typeof data.data === "object" && !Array.isArray(data.data)) {
+              slimmedData = { ...data, data: slimTrip(data.data) };
+            } else if (data && typeof data === "object" && !Array.isArray(data)) {
+              slimmedData = slimTrip(data);
+            }
+            return {
+              ...q,
+              state: {
+                ...q.state,
+                data: slimmedData,
+              },
+            };
           }
-          return {
-            ...q,
-            state: {
-              ...q.state,
-              data: slimmedData,
-            },
-          };
-        }
-        return q;
-      });
+          return q;
+        });
 
-      // Size guard: bỏ qua persist nếu payload quá lớn (> 1.5MB)
-      // để tránh SQLITE_FULL trên thiết bị
-      try {
-        const serialized = JSON.stringify(slimmedQueries);
-        if (serialized.length > 1_500_000) {
-          console.warn(
-            `[queryPersist] Cache quá lớn (${(serialized.length / 1024 / 1024).toFixed(1)}MB), bỏ qua persist.`
-          );
+        // Size guard: bỏ qua persist nếu payload quá lớn (> 1.5MB)
+        // để tránh SQLITE_FULL trên thiết bị
+        try {
+          const serialized = JSON.stringify(slimmedQueries);
+          if (serialized.length > 1_500_000) {
+            console.warn(
+              `[queryPersist] Cache quá lớn (${(serialized.length / 1024 / 1024).toFixed(1)}MB), bỏ qua persist.`
+            );
+            return;
+          }
+        } catch {
+          // stringify fail → bỏ qua
           return;
         }
-      } catch {
-        // stringify fail → bỏ qua
-        return;
-      }
 
-      return await basePersister.persistClient({
-        ...persistedClient,
-        clientState: {
-          ...persistedClient.clientState,
-          queries: slimmedQueries,
-        },
-      });
+        return await basePersister.persistClient({
+          ...persistedClient,
+          clientState: {
+            ...persistedClient.clientState,
+            queries: slimmedQueries,
+          },
+        });
+      }
+      return await basePersister.persistClient(persistedClient);
+    } catch (err) {
+      console.warn("[queryPersist] Ghi cache thất bại (đĩa đầy hoặc lỗi):", err);
     }
-    return await basePersister.persistClient(persistedClient);
   },
   restoreClient: async () => {
-    return await basePersister.restoreClient();
+    try {
+      return await basePersister.restoreClient();
+    } catch (err) {
+      console.warn("[queryPersist] Đọc cache thất bại:", err);
+      return undefined;
+    }
   },
   removeClient: async () => {
-    return await basePersister.removeClient();
+    try {
+      return await basePersister.removeClient();
+    } catch (err) {
+      console.warn("[queryPersist] Xóa cache thất bại:", err);
+    }
   },
 };
 

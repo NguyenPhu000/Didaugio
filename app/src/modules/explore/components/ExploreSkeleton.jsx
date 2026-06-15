@@ -37,12 +37,6 @@ function ExploreSkeletonInner() {
         borderRadius={8}
         className="mt-5"
       />
-      <Skeleton
-        width="60%"
-        height={14}
-        borderRadius={6}
-        className="mt-2"
-      />
 
       {/* Search bar skeleton */}
       <Skeleton
@@ -57,7 +51,6 @@ function ExploreSkeletonInner() {
         <Skeleton width={80} height={42} borderRadius={999} />
         <Skeleton width={90} height={42} borderRadius={999} />
         <Skeleton width={75} height={42} borderRadius={999} />
-        <Skeleton width={85} height={42} borderRadius={999} />
       </View>
 
       {/* Quick Actions skeleton — 2 rows of 4 */}
@@ -78,7 +71,6 @@ function ExploreSkeletonInner() {
       {/* Featured section header skeleton */}
       <View className="flex-row justify-between items-center mt-7 mb-3.5">
         <Skeleton width={140} height={22} borderRadius={8} />
-        <Skeleton width={70} height={13} borderRadius={6} />
       </View>
 
       {/* Featured cards skeleton */}
@@ -103,14 +95,9 @@ function ExploreSkeletonInner() {
         </View>
       </View>
 
-      {/* Popular section header skeleton */}
-      <View className="flex-row justify-between items-center mt-7 mb-3.5">
-        <Skeleton width={150} height={22} borderRadius={8} />
-      </View>
-
-      {/* Popular list skeleton — horizontal card style */}
-      {Array.from({ length: 3 }).map((_, i) => (
-        <View key={`pop-${i}`} className="flex-row gap-3.5 p-2.5 rounded-[28px] bg-white mb-3">
+      {/* Popular list skeleton — 2 items instead of 3 */}
+      {Array.from({ length: 2 }).map((_, i) => (
+        <View key={`pop-${i}`} className="flex-row gap-3.5 p-2.5 rounded-[28px] bg-white mb-3 mt-7">
           <Skeleton
             width={108}
             height={120}
@@ -130,10 +117,6 @@ function ExploreSkeletonInner() {
               borderRadius={6}
               className="mt-1"
             />
-            <View className="flex-row items-center justify-between mt-1.25">
-              <Skeleton width={60} height={15} borderRadius={6} />
-              <Skeleton width={60} height={32} borderRadius={999} />
-            </View>
           </View>
         </View>
       ))}

@@ -23,7 +23,10 @@ export function trimMessages(messages) {
 export function buildApiPayload(history, newMessage) {
   const recent = trimMessages(history);
   return {
-    messages: [...recent, { role: "user", content: newMessage }],
+    messages: [
+      ...recent.map((m) => ({ role: m.role, content: m.text ?? m.content ?? "" })),
+      { role: "user", content: newMessage },
+    ],
     newMessage,
   };
 }
