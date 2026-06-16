@@ -101,24 +101,24 @@ export default function RoleManagePage() {
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-6">
-          <div className="flex items-center gap-6">
-            <div className="accent-bar h-16"></div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <div className="accent-bar h-16 shrink-0"></div>
             <div>
               <h1 className="tim-title">{t("roles.title")}</h1>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
                   RBAC // ROLES
                 </span>
                 <p className="tim-meta">{t("roles.subtitle")}</p>
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto justify-end">
             <Button
               onClick={fetchRoles}
               variant="outline"
-              className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
+              className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white flex items-center justify-center"
               disabled={loading}
             >
               <RefreshCw

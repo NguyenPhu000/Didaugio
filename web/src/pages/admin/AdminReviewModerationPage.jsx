@@ -32,6 +32,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Doughnut, Bar } from "react-chartjs-2";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import "@/lib/chartSetup";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { cn } from "@/lib/utils";
 
@@ -81,30 +84,36 @@ const StarRating = ({ rating }) => (
   </div>
 );
 
-const StatCard = ({ title, value, icon: Icon, tone = "default" }) => (
-  <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-    <div className="flex items-center justify-between gap-3">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {title}
-        </p>
-        <p className="mt-2 text-3xl font-bold text-foreground">{value}</p>
-      </div>
-      <div
-        className={cn(
-          "flex h-11 w-11 items-center justify-center rounded-2xl",
-          tone === "danger"
-            ? "bg-red-50 text-red-600"
-            : tone === "warning"
-              ? "bg-amber-50 text-amber-600"
-              : "bg-primary/10 text-primary",
-        )}
-      >
-        <Icon className="h-5 w-5" />
-      </div>
-    </div>
-  </div>
-);
+const StatCard = ({ title, value, icon: Icon, tone = "default", subtitle }) => {
+  const toneMap = {
+    danger: { iconBg: "bg-rose-50 dark:bg-rose-950/30 text-rose-500" },
+    warning: { iconBg: "bg-amber-50 dark:bg-amber-950/30 text-amber-500" },
+    success: { iconBg: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500" },
+    default: { iconBg: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400" },
+  };
+  const config = toneMap[tone] || toneMap.default;
+
+  return (
+    <Card className="relative overflow-hidden">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1.5 min-w-0">
+            <p className="text-xs font-medium text-muted-foreground">{title}</p>
+            <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
+            {subtitle && (
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
+            )}
+          </div>
+          {Icon && (
+            <div className={cn("p-3 rounded-xl shrink-0", config.iconBg)}>
+              <Icon className="h-5 w-5" />
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const ReviewCard = ({
   review,
@@ -519,107 +528,193 @@ const AdminReviewModerationPage = () => {
         <Button
           onClick={handleExportCsv}
           variant="outline"
-          className="h-10 rounded-none border border-black hover:bg-black hover:text-white px-4 font-mono text-xs uppercase font-bold shrink-0"
+          className="gap-2 shrink-0"
         >
-          <Download className="h-4 w-4 mr-2" />
+          <Download className="h-4 w-4" />
           CSV
         </Button>
       </div>
 
       {stats && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
-          <StatCard title={t("admin.reviewModeration.totalReviews")} value={stats.total} icon={Star} />
-          <StatCard
-            title={t("admin.reviewModeration.reported")}
-            value={stats.reported}
-            icon={AlertTriangle}
-            tone="danger"
-          />
-          <StatCard
-            title={t("admin.reviewModeration.pending")}
-            value={stats.pending}
-            icon={MessageSquare}
-            tone="warning"
-          />
-          <StatCard title={t("admin.reviewModeration.hidden")} value={stats.hidden} icon={EyeOff} />
-          <StatCard title={t("admin.reviewModeration.seedData")} value={stats.seeded ?? 0} icon={Tag} />
-          <StatCard title={t("admin.reviewModeration.avgRating")} value={stats.avgRating} icon={Star} />
+        <div className="space-y-6">
+          {/* Stats Cards Grid */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+            <StatCard title={t("admin.reviewModeration.totalReviews")} value={stats.total} icon={Star} subtitle="Tất cả đánh giá" />
+            <StatCard
+              title={t("admin.reviewModeration.reported")}
+              value={stats.reported}
+              icon={AlertTriangle}
+              tone="danger"
+              subtitle="Cần kiểm tra"
+            />
+            <StatCard
+              title={t("admin.reviewModeration.pending")}
+              value={stats.pending}
+              icon={MessageSquare}
+              tone="warning"
+              subtitle="Đang chờ duyệt"
+            />
+            <StatCard title={t("admin.reviewModeration.hidden")} value={stats.hidden} icon={EyeOff} tone="default" subtitle="Đã bị ẩn" />
+            <StatCard title={t("admin.reviewModeration.seedData")} value={stats.seeded ?? 0} icon={Tag} tone="default" subtitle="Dữ liệu mẫu" />
+            <StatCard title={t("admin.reviewModeration.avgRating")} value={stats.avgRating} icon={Star} tone="success" subtitle="Điểm trung bình" />
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-4 border-b">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Star className="h-4 w-4" /> Phân phối số sao đánh giá (Ước tính)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="h-64 pt-4">
+                <Bar
+                  data={{
+                    labels: ["5 Sao", "4 Sao", "3 Sao", "2 Sao", "1 Sao"],
+                    datasets: [
+                      {
+                        label: "Số lượng đánh giá",
+                        data: [
+                          Math.round(stats.total * (stats.avgRating >= 4.5 ? 0.6 : stats.avgRating >= 4.0 ? 0.45 : 0.3)),
+                          Math.round(stats.total * (stats.avgRating >= 4.5 ? 0.25 : stats.avgRating >= 4.0 ? 0.35 : 0.3)),
+                          Math.round(stats.total * 0.12),
+                          Math.round(stats.total * 0.05),
+                          Math.round(stats.total * 0.03),
+                        ],
+                        backgroundColor: "hsl(var(--primary))",
+                        borderRadius: 6,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                    },
+                    scales: {
+                      y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.05)" } },
+                      x: { grid: { display: false } },
+                    },
+                  }}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-4 border-b">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4" /> Cơ cấu trạng thái duyệt
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="h-64 pt-4 flex items-center justify-center">
+                <Doughnut
+                  data={{
+                    labels: ["Đang hiển thị", "Chờ duyệt", "Bị báo cáo", "Đã ẩn"],
+                    datasets: [
+                      {
+                        data: [
+                          Math.max(0, stats.total - stats.reported - stats.pending - stats.hidden),
+                          stats.pending || 0,
+                          stats.reported || 0,
+                          stats.hidden || 0,
+                        ],
+                        backgroundColor: ["#10b981", "#f59e0b", "#ef4444", "#6b7280"],
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        position: "bottom",
+                        labels: { usePointStyle: true, padding: 15 },
+                      },
+                    },
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
 
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
+          <div className="relative flex-1 w-full">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Tìm nội dung, địa điểm, người dùng, note..."
-              className="pl-9"
+              className="pl-9 w-full"
             />
           </div>
-          <Select value={queue} onValueChange={setQueue}>
-            <SelectTrigger className="w-full lg:w-48">
-              <SelectValue placeholder="Hàng đợi" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả review</SelectItem>
-              <SelectItem value="needs_action">Cần xử lý (chờ/report)</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={sort} onValueChange={setSort}>
-            <SelectTrigger className="w-full lg:w-48">
-              <SelectValue placeholder="Sắp xếp" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="created_desc">Mới nhất trước</SelectItem>
-              <SelectItem value="priority">Ưu tiên (report → chờ)</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={isSeededFilter} onValueChange={setIsSeededFilter}>
-            <SelectTrigger className="w-full lg:w-40">
-              <SelectValue placeholder="Nguồn" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Mọi nguồn</SelectItem>
-              <SelectItem value="seeded">Chỉ seed</SelectItem>
-              <SelectItem value="not-seeded">Không seed</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={status} onValueChange={setStatus} disabled={queue === "needs_action"}>
-            <SelectTrigger className="w-full lg:w-44">
-              <SelectValue placeholder="Trạng thái" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={rating} onValueChange={setRating}>
-            <SelectTrigger className="w-full lg:w-36">
-              <SelectValue placeholder="Số sao" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả sao</SelectItem>
-              {[5, 4, 3, 2, 1].map((value) => (
-                <SelectItem key={value} value={String(value)}>
-                  {value} sao
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={hasMedia} onValueChange={setHasMedia}>
-            <SelectTrigger className="w-full lg:w-40">
-              <SelectValue placeholder="Ảnh" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả ảnh</SelectItem>
-              <SelectItem value="with-media">Có ảnh</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-center gap-3 w-full lg:w-auto">
+            <Select value={queue} onValueChange={setQueue}>
+              <SelectTrigger className="w-full lg:w-48">
+                <SelectValue placeholder="Hàng đợi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả review</SelectItem>
+                <SelectItem value="needs_action">Cần xử lý (chờ/report)</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sort} onValueChange={setSort}>
+              <SelectTrigger className="w-full lg:w-48">
+                <SelectValue placeholder="Sắp xếp" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_desc">Mới nhất trước</SelectItem>
+                <SelectItem value="priority">Ưu tiên (report → chờ)</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={isSeededFilter} onValueChange={setIsSeededFilter}>
+              <SelectTrigger className="w-full lg:w-40">
+                <SelectValue placeholder="Nguồn" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Mọi nguồn</SelectItem>
+                <SelectItem value="seeded">Chỉ seed</SelectItem>
+                <SelectItem value="not-seeded">Không seed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={status} onValueChange={setStatus} disabled={queue === "needs_action"}>
+              <SelectTrigger className="w-full lg:w-44">
+                <SelectValue placeholder="Trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={rating} onValueChange={setRating}>
+              <SelectTrigger className="w-full lg:w-36">
+                <SelectValue placeholder="Số sao" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả sao</SelectItem>
+                {[5, 4, 3, 2, 1].map((value) => (
+                  <SelectItem key={value} value={String(value)}>
+                    {value} sao
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={hasMedia} onValueChange={setHasMedia}>
+              <SelectTrigger className="w-full lg:w-40">
+                <SelectValue placeholder="Ảnh" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả ảnh</SelectItem>
+                <SelectItem value="with-media">Có ảnh</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 

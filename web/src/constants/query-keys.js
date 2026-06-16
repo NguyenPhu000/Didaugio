@@ -79,12 +79,26 @@ export const queryKeys = {
     all: () => ["vouchers"],
     list: (params) => ["vouchers", "list", params],
     detail: (id) => ["vouchers", "detail", id],
+    stats: () => ["vouchers", "stats"],
+    analytics: (id) => ["vouchers", "analytics", id],
   },
 
   staff: {
     all: () => ["staff"],
-    list: () => ["staff", "list"],
+    list: (params) => ["staff", "list", params],
+    detail: (id) => ["staff", "detail", id],
+    stats: () => ["staff", "stats"],
+    activity: (id) => ["staff", "activity", id],
+    auditLog: (params) => ["staff", "audit-log", params],
     invitations: () => ["staff", "invitations"],
+  },
+
+  revenue: {
+    all: () => ["revenue"],
+    overview: (params) => ["revenue", "overview", params],
+    timeline: (params) => ["revenue", "timeline", params],
+    byPlace: (params) => ["revenue", "by-place", params],
+    transactions: (params) => ["revenue", "transactions", params],
   },
 
   earnings: {
@@ -97,6 +111,7 @@ export const queryKeys = {
     all: () => ["payouts"],
     list: (params) => ["payouts", "list", params],
     detail: (id) => ["payouts", "detail", id],
+    stats: () => ["payouts", "stats"],
   },
 
   notifications: {
@@ -155,6 +170,9 @@ export const queryKeys = {
   settings: {
     all: () => ["settings"],
     business: () => ["settings", "business"],
+    featureFlags: () => ["settings", "feature-flags"],
+    systemLogs: (params) => ["settings", "system-logs", params],
+    systemHealth: () => ["settings", "system-health"],
   },
 
   blockedDates: {

@@ -398,13 +398,13 @@ const PlaceListPage = ({
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b-2 border-black pb-6">
           <div className="flex items-center gap-6">
-            <div className="accent-bar h-16"></div>
+            <div className="accent-bar h-16 shrink-0"></div>
             <div>
               <h1 className="tim-title">{resolvedPageTitle}</h1>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
                   DATABASE // PLACES
                 </span>
                 <p className="tim-meta">{resolvedPageMeta}</p>
@@ -414,7 +414,7 @@ const PlaceListPage = ({
           {allowCreate && hasPermission("places.create") && (
             <Button
               onClick={handleCreate}
-              className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
+              className="w-full sm:w-auto h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6 shrink-0"
             >
               <Plus className="mr-2 h-4 w-4" />
               {t("places.createPlace")}
@@ -472,13 +472,13 @@ const PlaceListPage = ({
           </div>
 
           {/* Filters */}
-          <div className="flex gap-4 overflow-x-auto pb-2 md:pb-0">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-4 w-full md:w-auto">
             <Select
               value={filters.status || "all"}
               onValueChange={(val) => handleFilterChange("status", val)}
               disabled={lockStatusFilter}
             >
-              <SelectTrigger className="w-[150px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
+              <SelectTrigger className="w-full sm:w-[150px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
                 <SelectValue placeholder={t("places.statusFilters.placeholder")} />
               </SelectTrigger>
               <SelectContent className="rounded-none border-black">
@@ -494,7 +494,7 @@ const PlaceListPage = ({
               value={filters.categoryId || "all"}
               onValueChange={(val) => handleFilterChange("categoryId", val)}
             >
-              <SelectTrigger className="w-[180px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
+              <SelectTrigger className="w-full sm:w-[180px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
                 <SelectValue placeholder={t("places.categoryFilter.placeholder")} />
               </SelectTrigger>
               <SelectContent className="rounded-none border-black">
@@ -507,7 +507,7 @@ const PlaceListPage = ({
               </SelectContent>
             </Select>
 
-            <div className="border-l border-black pl-4 flex gap-2">
+            <div className="col-span-2 sm:col-span-1 border-t sm:border-t-0 sm:border-l border-black pt-4 sm:pt-0 sm:pl-4 flex gap-2 justify-end">
               <Button
                 variant="ghost"
                 size="icon"
@@ -734,40 +734,114 @@ const PlaceListPage = ({
                 // LIST VIEW ROW
                 <div
                   key={place.id}
-                  className="flex items-center bg-white border border-gray-200 p-2 hover:border-black transition-colors group"
+                  className="flex flex-col sm:flex-row sm:items-center bg-white border border-black p-3 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all group gap-3 sm:gap-0"
                 >
-                  <div className="w-12 h-12 bg-gray-200 mr-4 shrink-0 relative">
-                    {place.images?.[0] && (
+                  <div className="w-full sm:w-16 sm:h-16 h-36 bg-gray-200 sm:mr-4 shrink-0 relative border border-black">
+                    {place.images?.[0] ? (
                       <img
                         src={place.images[0].imageData || place.images[0]}
                         className="w-full h-full object-cover"
+                        alt={place.name}
                       />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <MapPin className="h-6 w-6 text-gray-400" />
+                      </div>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0 grid grid-cols-12 items-center gap-4">
-                    <div className="col-span-4">
-                      <div className="font-bold text-sm uppercase truncate">
+                  <div className="flex-1 min-w-0 flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4">
+                    <div className="md:col-span-5 min-w-0">
+                      <div
+                        className="font-bold text-sm uppercase truncate cursor-pointer hover:text-yellow-600"
+                        onClick={() => handleViewDetails(place)}
+                      >
                         {place.name}
                       </div>
-                      <div className="text-[10px] text-gray-500 font-mono">
-                        {place.address}
+                      <div className="text-[10px] text-gray-500 font-mono truncate" title={place.address}>
+                        {place.address || "NO_ADDRESS"}
                       </div>
                     </div>
-                    <div className="col-span-2 text-[10px] font-mono uppercase bg-gray-50 p-1 text-center">
-                      {place.category?.name}
+                    <div className="md:col-span-3 flex items-center gap-2">
+                      <span className="text-[10px] font-mono uppercase bg-gray-100 px-2 py-0.5 border border-gray-300">
+                        {place.category?.name || "UNCATEGORIZED"}
+                      </span>
                     </div>
-                    <div className="col-span-3">
+                    <div className="md:col-span-2">
                       {getStatusBadge(place.status)}
                     </div>
-                    <div className="col-span-3 text-right">
+                    <div className="md:col-span-2 flex justify-end gap-2 mt-2 md:mt-0">
                       <Button
                         size="sm"
-                        variant="ghost"
-                        className="h-6 text-[10px] uppercase font-bold"
+                        className="flex-1 md:flex-initial h-8 rounded-none border border-black bg-white text-black hover:bg-[#F3E600] hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-mono text-[10px] uppercase font-bold"
                         onClick={() => handleEdit(place)}
                       >
                         {t("common.edit")}
                       </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-8 w-8 rounded-none border-2 border-black bg-black text-[#F3E600] hover:bg-[#F3E600] hover:text-black transition-all"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="rounded-none border border-black w-48 font-mono text-xs uppercase"
+                        >
+                          <DropdownMenuLabel>{t("places.card.actions")}</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleViewDetails(place)}
+                            className="cursor-pointer"
+                          >
+                            <Info className="mr-2 h-3 w-3" /> {t("places.card.detail")}
+                          </DropdownMenuItem>
+                          {canFeaturePlaces && (
+                            <DropdownMenuItem
+                              onClick={() => handleToggleFeature(place)}
+                              className="cursor-pointer"
+                            >
+                              <Star className="mr-2 h-3 w-3" />{" "}
+                              {place.isFeatured ? t("places.card.unfeature") : t("places.card.feature")}
+                            </DropdownMenuItem>
+                          )}
+                          {place.status === "pending" && canModeratePlaces && (
+                            <>
+                              <DropdownMenuSeparator />
+                              {hasPermission("places.approve") && (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(place, "approved")}
+                                  className="text-green-600"
+                                >
+                                  <CheckCircle className="mr-2 h-3 w-3" /> {t("places.card.quickApprove")}
+                                </DropdownMenuItem>
+                              )}
+                              {hasPermission("places.reject") && (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(place, "rejected")}
+                                  className="text-red-600"
+                                >
+                                  <XCircle className="mr-2 h-3 w-3" /> {t("places.card.reject")}
+                                </DropdownMenuItem>
+                              )}
+                            </>
+                          )}
+                          {hasPermission("places.delete") && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(place)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-3 w-3" /> {t("places.card.delete")}
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>

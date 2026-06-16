@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -62,7 +62,7 @@ const SLOT_OPTIONS = [
   TIME_SLOT_KEYS.EVENING,
 ];
 
-const BookingQuickProcessPage = () => {
+const BookingQuickProcessPage = memo(() => {
   const { t } = useTranslation();
   const [tab, setTab] = useState("pending");
   const [pending, setPending] = useState([]);
@@ -90,7 +90,7 @@ const BookingQuickProcessPage = () => {
         page: 1,
       });
       if (res?.success) setPending(res.data || []);
-      else toast.error(res?.message || "Không tải được danh sách");
+      else toast.error(res?.message || t("business.quickProcess.loadListFailed"));
     } catch (e) {
       toastApiErrorIfNeeded(e);
     } finally {
@@ -103,7 +103,7 @@ const BookingQuickProcessPage = () => {
     try {
       const res = await ruleApi.list();
       if (res?.success) setRules(res.data || []);
-      else toast.error(res?.message || "Không tải được rule");
+      else toast.error(res?.message || t("business.quickProcess.loadRuleFailed"));
     } catch (e) {
       toastApiErrorIfNeeded(e);
     } finally {
@@ -119,16 +119,16 @@ const BookingQuickProcessPage = () => {
     if (tab === "rules") loadRules();
   }, [tab, loadRules]);
 
-  const toggleSelect = (id) => {
+  const toggleSelect = useCallback((id) => {
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
-  };
+  }, []);
 
-  const selectAll = (checked) => {
+  const selectAll = useCallback((checked) => {
     if (checked) setSelected(pending.map((b) => b.id));
     else setSelected([]);
-  };
+  }, [pending]);
 
   const handleQuickApprove = async (id) => {
     setBusyId(id);
@@ -160,51 +160,43 @@ const BookingQuickProcessPage = () => {
     }
   };
 
-  const bulkApprove = async () => {
+  const bulkApprove = useCallback(async () => {
     setBulkActionLoading(true);
-    let successCount = 0;
-    let failCount = 0;
+    try {
+      const results = await Promise.allSettled(
+        selected.map((id) => bookingApi.quickApprove(id))
+      );
+      const successCount = results.filter((r) => r.status === "fulfilled" && r.value?.success).length;
+      const failCount = results.length - successCount;
 
-    for (const id of selected) {
-      try {
-        const res = await bookingApi.quickApprove(id);
-        if (res?.success) successCount++;
-        else failCount++;
-      } catch {
-        failCount++;
-      }
+      if (successCount > 0) toast.success(`${t("business.bookings.confirmedSuccess")} ${successCount}`);
+      if (failCount > 0) toast.error(`${failCount} ${t("common.operationFailed")}`);
+
+      setSelected([]);
+      await loadPending();
+    } finally {
+      setBulkActionLoading(false);
     }
+  }, [selected, t, loadPending]);
 
-    if (successCount > 0) toast.success(`${t("business.bookings.confirmedSuccess")} ${successCount}`);
-    if (failCount > 0) toast.error(`${failCount} ${t("common.operationFailed")}`);
-
-    setSelected([]);
-    setBulkActionLoading(false);
-    await loadPending();
-  };
-
-  const bulkReject = async () => {
+  const bulkReject = useCallback(async () => {
     setBulkActionLoading(true);
-    let successCount = 0;
-    let failCount = 0;
+    try {
+      const results = await Promise.allSettled(
+        selected.map((id) => bookingApi.quickReject(id))
+      );
+      const successCount = results.filter((r) => r.status === "fulfilled" && r.value?.success).length;
+      const failCount = results.length - successCount;
 
-    for (const id of selected) {
-      try {
-        const res = await bookingApi.quickReject(id);
-        if (res?.success) successCount++;
-        else failCount++;
-      } catch {
-        failCount++;
-      }
+      if (successCount > 0) toast.success(`${t("business.bookings.rejectedSuccess")} ${successCount}`);
+      if (failCount > 0) toast.error(`${failCount} ${t("common.operationFailed")}`);
+
+      setSelected([]);
+      await loadPending();
+    } finally {
+      setBulkActionLoading(false);
     }
-
-    if (successCount > 0) toast.success(`${t("business.bookings.rejectedSuccess")} ${successCount}`);
-    if (failCount > 0) toast.error(`${failCount} ${t("common.operationFailed")}`);
-
-    setSelected([]);
-    setBulkActionLoading(false);
-    await loadPending();
-  };
+  }, [selected, t, loadPending]);
 
   const submitRule = async () => {
     const conditions = {};
@@ -240,7 +232,7 @@ const BookingQuickProcessPage = () => {
           isActive: true,
         });
         await loadRules();
-      } else toast.error(res?.message || "Lỗi xảy ra");
+      } else toast.error(res?.message || t("business.quickProcess.errorOccurred"));
     } catch (e) {
       toastApiErrorIfNeeded(e);
     }
@@ -259,7 +251,7 @@ const BookingQuickProcessPage = () => {
   };
 
   const deleteRule = async (rule) => {
-    if (!window.confirm("Bạn có chắc muốn xóa rule này?")) return;
+    if (!window.confirm(t("business.quickProcess.confirmDeleteRule"))) return;
     try {
       const res = await ruleApi.remove(rule.id);
       if (res?.success) {
@@ -273,22 +265,22 @@ const BookingQuickProcessPage = () => {
 
   const getTimeSlotLabel = (slot) => TIME_SLOT_LABELS[slot] || slot;
 
-  const renderConditions = (conditions) => {
+  const renderConditions = useCallback((conditions) => {
     const parts = [];
     if (conditions?.timeSlots?.length) {
-      parts.push(`Khung gio: ${conditions.timeSlots.map(getTimeSlotLabel).join(", ")}`);
+      parts.push(`${t("business.quickProcess.timeSlot")}: ${conditions.timeSlots.map(getTimeSlotLabel).join(", ")}`);
     }
     if (conditions?.minQuantity != null) {
-      parts.push(`Toi thieu: ${conditions.minQuantity}`);
+      parts.push(`${t("business.quickProcess.minGuests")}: ${conditions.minQuantity}`);
     }
     if (conditions?.maxQuantity != null) {
-      parts.push(`Toi da: ${conditions.maxQuantity}`);
+      parts.push(`${t("business.quickProcess.maxGuests")}: ${conditions.maxQuantity}`);
     }
     return parts.join(" | ");
-  };
+  }, [t]);
 
   return (
-    <div className="space-y-6 p-6 lg:p-8 min-h-screen bg-muted/30">
+    <div className="space-y-4 p-4 md:space-y-6 md:p-6 lg:p-8 min-h-screen bg-muted/30">
       <Link
         to={BUSINESS_ROUTES.BOOKINGS}
         className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -324,7 +316,7 @@ const BookingQuickProcessPage = () => {
             <div className="sticky top-20 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur animate-in fade-in slide-in-from-top-2">
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className="text-sm px-3 py-1">
-                  {selected.length} được chọn
+                  {t("business.bookingDetail.selectedCount", { count: selected.length })}
                 </Badge>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -420,7 +412,7 @@ const BookingQuickProcessPage = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2 mb-2">
                           <h4 className="font-semibold text-base">
-                            {b.guestName || "Khách"}
+                            {b.guestName || t("business.bookingDetail.guestLabel")}
                           </h4>
                           <Badge variant="outline" className="font-mono text-xs">
                             {b.bookingCode}
@@ -571,14 +563,14 @@ const BookingQuickProcessPage = () => {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div>
-                      <p className="text-sm text-muted-foreground">Dieu kien</p>
+                      <p className="text-sm text-muted-foreground">{t("business.quickProcess.conditionLabel")}</p>
                       <p className="text-sm font-medium">
-                        {renderConditions(r.conditions) || "Khong co dieu kien"}
+                        {renderConditions(r.conditions) || t("business.quickProcess.noCondition")}
                       </p>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">
-                        Do uu tien: <span className="font-medium">{r.priority}</span>
+                        {t("business.quickProcess.priorityLabel")}: <span className="font-medium">{r.priority}</span>
                       </span>
                       <Button
                         size="sm"
@@ -728,6 +720,8 @@ const BookingQuickProcessPage = () => {
       </Dialog>
     </div>
   );
-};
+});
+
+BookingQuickProcessPage.displayName = "BookingQuickProcessPage";
 
 export default BookingQuickProcessPage;

@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { ROLES } from "../config/constants.js";
+import { setOnline } from "../utils/onlineManager.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -43,6 +44,8 @@ export const authenticate = (req, res, next) => {
       id: decoded.id || decoded.userId,
       roleId: resolveRoleId(decoded),
     };
+
+    setOnline(req.user.userId);
 
     next();
   } catch (error) {
@@ -103,6 +106,8 @@ export const authenticateOptional = (req, res, next) => {
       id: decoded.id || decoded.userId,
       roleId: resolveRoleId(decoded),
     };
+
+    setOnline(req.user.userId);
 
     return next();
   } catch (error) {
@@ -189,6 +194,8 @@ export const authenticateSSE = (req, res, next) => {
       id: decoded.id || decoded.userId,
       roleId: resolveRoleId(decoded),
     };
+
+    setOnline(req.user.userId);
 
     next();
   } catch (error) {

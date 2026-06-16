@@ -55,6 +55,14 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  const updateLocation = useCallback(
+    (lat, lng) => {
+      setMarker({ latitude: lat, longitude: lng });
+      onChange?.(lat, lng);
+    },
+    [onChange],
+  );
+
   // Initial Sync ViewState (Only once on mount if not set)
   useEffect(() => {
     if (
@@ -100,14 +108,6 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error }) => {
       alert(t("location.locationError", { message: geoError }));
     }
   }, [geoError]);
-
-  const updateLocation = useCallback(
-    (lat, lng) => {
-      setMarker({ latitude: lat, longitude: lng });
-      onChange?.(lat, lng);
-    },
-    [onChange],
-  );
 
   const onMarkerDragStart = useCallback(() => setIsDragging(true), []);
   const onMarkerDrag = useCallback((event) => {

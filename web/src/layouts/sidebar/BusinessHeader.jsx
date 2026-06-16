@@ -185,7 +185,7 @@ function BusinessHeader() {
           <PopoverContent
             align="end"
             sideOffset={8}
-            className="w-[360px] p-0 overflow-hidden border-zinc-200/80 shadow-xl rounded-2xl bg-white dark:bg-zinc-950 dark:border-zinc-800"
+            className="w-[calc(100vw-2rem)] max-w-[360px] p-0 overflow-hidden border-zinc-200/80 shadow-xl rounded-2xl bg-white dark:bg-zinc-950 dark:border-zinc-800"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">

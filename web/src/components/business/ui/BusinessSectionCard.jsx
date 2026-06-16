@@ -4,9 +4,20 @@ import { cn } from "@/lib/utils";
 
 /**
  * BusinessSectionCard — Card-style section for analytics, forms, detail panels, etc.
+ *
+ * @param {object} props
+ * @param {string} [props.title] - Section title
+ * @param {string} [props.description] - Section description text
+ * @param {import('lucide-react').LucideIcon} [props.titleIcon] - Icon next to title
+ * @param {React.ReactNode} [props.action] - Header action buttons
+ * @param {React.ReactNode} props.children - Card content
+ * @param {string} [props.className] - Additional card classes
+ * @param {string} [props.bodyClassName] - Additional content area classes
+ * @param {boolean} [props.noPadding=false] - Remove content padding
  */
 export const BusinessSectionCard = memo(({
   title,
+  description,
   titleIcon: TitleIcon,
   action,
   children,
@@ -20,11 +31,16 @@ export const BusinessSectionCard = memo(({
   )}>
     {title && (
       <div className="px-5 py-4 border-b border-zinc-200/60 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {TitleIcon && <TitleIcon className="h-4 w-4 text-zinc-400 dark:text-zinc-500" />}
-          <h3 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">{title}</h3>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            {TitleIcon && <TitleIcon className="h-4 w-4 text-zinc-400 dark:text-zinc-500 shrink-0" />}
+            <h3 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">{title}</h3>
+          </div>
+          {description && (
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{description}</p>
+          )}
         </div>
-        {action && <div className="flex items-center gap-2">{action}</div>}
+        {action && <div className="flex items-center gap-2 shrink-0">{action}</div>}
       </div>
     )}
     <CardContent className={cn(noPadding && "p-0", !noPadding && "p-5", bodyClassName)}>

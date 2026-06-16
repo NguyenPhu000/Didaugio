@@ -4,9 +4,11 @@ import { NotificationProvider } from "./NotificationProvider";
 import { useAuthStore } from "../stores/authStore";
 import { getMeApi } from "../modules/auth/api/authApi";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { useOnlineStatusPing } from "../hooks/useOnlineStatusPing";
 
 const Bootstrap = ({ children }) => {
   const hydrate = useAuthStore((state) => state.hydrate);
+  useOnlineStatusPing();
 
   useEffect(() => {
     let isMounted = true;

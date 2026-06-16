@@ -178,24 +178,24 @@ const AuditLogsPage = () => {
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b-2 border-black pb-6">
           <div className="flex items-center gap-6">
-            <div className="accent-bar h-16"></div>
+            <div className="accent-bar h-16 shrink-0"></div>
             <div>
               <h1 className="tim-title">AUDIT LOGS</h1>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
                   SYSTEM // AUDIT TRACKING
                 </span>
                 <p className="tim-meta">{t("auditLogs.subtitle")}</p>
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <Button
               onClick={handleExportCsv}
               variant="outline"
-              className="h-12 rounded-none border border-black hover:bg-black hover:text-white px-4 font-mono text-xs uppercase font-bold"
+              className="flex-1 sm:flex-none h-12 rounded-none border border-black hover:bg-black hover:text-white px-4 font-mono text-xs uppercase font-bold"
             >
               <Download className="h-4 w-4 mr-2" />
               CSV
@@ -259,8 +259,8 @@ const AuditLogsPage = () => {
               </Button>
             )}
           </div>
-          <div className="flex gap-3 flex-wrap items-end">
-            <div className="flex flex-col gap-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-end gap-3 w-full">
+            <div className="flex flex-col gap-1 w-full lg:w-auto">
               <label className="text-[10px] font-mono uppercase text-gray-500">
                 {t("auditLogs.action")}
               </label>
@@ -270,7 +270,7 @@ const AuditLogsPage = () => {
                   setActionFilter(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50 min-w-[180px]"
+                className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50 w-full lg:min-w-[180px]"
               >
                 <option value="all">{t("auditLogs.allActions")}</option>
                 {auditLogService.getActionTypes().map((action) => (
@@ -280,7 +280,7 @@ const AuditLogsPage = () => {
                 ))}
               </select>
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 w-full lg:w-auto">
               <label className="text-[10px] font-mono uppercase text-gray-500">
                 {t("auditLogs.dataTable")}
               </label>
@@ -290,7 +290,7 @@ const AuditLogsPage = () => {
                   setTableFilter(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50 min-w-[180px]"
+                className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50 w-full lg:min-w-[180px]"
               >
                 <option value="all">{t("auditLogs.allTables")}</option>
                 {auditLogService.getTableNames().map((table) => (
@@ -300,7 +300,7 @@ const AuditLogsPage = () => {
                 ))}
               </select>
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 w-full lg:w-auto">
               <label className="text-[10px] font-mono uppercase text-gray-500">
                 {t("auditLogs.fromDate")}
               </label>
@@ -311,10 +311,10 @@ const AuditLogsPage = () => {
                   setStartDate(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="h-10 px-3 border border-black rounded-none bg-white font-mono text-sm focus:outline-none focus:bg-yellow-50"
+                className="h-10 px-3 border border-black rounded-none bg-white font-mono text-sm focus:outline-none focus:bg-yellow-50 w-full"
               />
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 w-full lg:w-auto">
               <label className="text-[10px] font-mono uppercase text-gray-500">
                 {t("auditLogs.toDate")}
               </label>
@@ -325,7 +325,7 @@ const AuditLogsPage = () => {
                   setEndDate(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="h-10 px-3 border border-black rounded-none bg-white font-mono text-sm focus:outline-none focus:bg-yellow-50"
+                className="h-10 px-3 border border-black rounded-none bg-white font-mono text-sm focus:outline-none focus:bg-yellow-50 w-full"
               />
             </div>
           </div>
@@ -371,28 +371,28 @@ const AuditLogsPage = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-black text-white tim-table-header">
-                      <th className="p-3 border-r border-black/20 w-[50px]">
+                      <th className="p-3 border-r border-black/20 w-[50px] hidden sm:table-cell">
                         ID
                       </th>
                       <th className="p-3 border-r border-black/20 min-w-[200px]">
                         {t("auditLogs.performer").toUpperCase()}
                       </th>
-                      <th className="p-3 border-r border-black/20 w-[100px]">
+                      <th className="p-3 border-r border-black/20 w-[100px] hidden md:table-cell">
                         {t("auditLogs.role").toUpperCase()}
                       </th>
                       <th className="p-3 border-r border-black/20 w-[130px]">
                         {t("auditLogs.actionCol").toUpperCase()}
                       </th>
-                      <th className="p-3 border-r border-black/20 w-[120px]">
+                      <th className="p-3 border-r border-black/20 w-[120px] hidden sm:table-cell">
                         {t("auditLogs.object").toUpperCase()}
                       </th>
                       <th className="p-3 border-r border-black/20">
                         {t("auditLogs.description").toUpperCase()}
                       </th>
-                      <th className="p-3 border-r border-black/20 w-[90px]">
+                      <th className="p-3 border-r border-black/20 w-[90px] hidden lg:table-cell">
                         {t("auditLogs.ip").toUpperCase()}
                       </th>
-                      <th className="p-3 border-r border-black/20 w-[140px]">
+                      <th className="p-3 border-r border-black/20 w-[140px] hidden md:table-cell">
                         {t("auditLogs.time").toUpperCase()}
                       </th>
                       <th className="p-3 text-center w-[60px]">{t("auditLogs.details").toUpperCase()}</th>
@@ -404,7 +404,7 @@ const AuditLogsPage = () => {
                         key={log.id}
                         className="hover:bg-yellow-50/50 group transition-colors"
                       >
-                        <td className="p-3 font-mono text-sm text-gray-400 border-r border-black/5">
+                        <td className="p-3 font-mono text-sm text-gray-400 border-r border-black/5 hidden sm:table-cell">
                           #{log.id}
                         </td>
                         <td className="p-3 border-r border-black/5">
@@ -421,10 +421,19 @@ const AuditLogsPage = () => {
                               <div className="text-gray-500 text-[11px] font-mono truncate">
                                 {log.user?.email || "N/A"}
                               </div>
+                              {/* Thông tin phụ hiển thị trên mobile */}
+                              <div className="md:hidden mt-1 flex flex-wrap gap-1.5 items-center">
+                                <span className={`px-1.5 py-0.2 text-[9px] font-bold uppercase font-mono border ${auditLogService.getRoleColor(log.user?.role?.name)}`}>
+                                  {getRoleDisplay(log)}
+                                </span>
+                                <span className="font-mono text-[9px] text-gray-400">
+                                  {formatDateTime(log.createdAt)}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </td>
-                        <td className="p-3 border-r border-black/5">
+                        <td className="p-3 border-r border-black/5 hidden md:table-cell">
                           <span
                             className={`px-2 py-0.5 text-[10px] font-bold uppercase font-mono border ${auditLogService.getRoleColor(log.user?.role?.name)}`}
                           >
@@ -437,8 +446,12 @@ const AuditLogsPage = () => {
                           >
                             {log.action}
                           </span>
+                          {/* Đối tượng nhỏ hiển thị trên mobile */}
+                          <div className="sm:hidden mt-1 text-[10px] text-gray-400 font-mono">
+                            {log.tableName} #{log.recordId}
+                          </div>
                         </td>
-                        <td className="p-3 border-r border-black/5">
+                        <td className="p-3 border-r border-black/5 hidden sm:table-cell">
                           <div>
                             <div className="font-mono text-xs font-medium">
                               {auditLogService.getTableLabel(log.tableName)}
@@ -452,13 +465,17 @@ const AuditLogsPage = () => {
                           <span className="text-sm text-gray-700 line-clamp-2">
                             {log.description || "—"}
                           </span>
+                          {/* IP hiển thị trên mobile */}
+                          <div className="lg:hidden mt-1 text-[10px] font-mono text-gray-400">
+                            IP: {log.ipAddress || "—"}
+                          </div>
                         </td>
-                        <td className="p-3 border-r border-black/5">
+                        <td className="p-3 border-r border-black/5 hidden lg:table-cell">
                           <span className="font-mono text-[11px] text-gray-500">
                             {log.ipAddress || "—"}
                           </span>
                         </td>
-                        <td className="p-3 border-r border-black/5">
+                        <td className="p-3 border-r border-black/5 hidden md:table-cell">
                           <span className="font-mono text-[11px] text-gray-500">
                             {formatDateTime(log.createdAt)}
                           </span>

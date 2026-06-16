@@ -23,6 +23,7 @@ import businessRoleRoutes from "./business/businessRole.route.js";
 import businessBlockedDateRoutes from "./business/blockedDate.route.js";
 import businessSettingsRoutes from "./business/businessSettings.route.js";
 import businessPayoutRoutes from "./business/payout.route.js";
+import businessRevenueRoutes from "./business/revenue.route.js";
 import adminPayoutRoutes from "./admin/payout.route.js";
 import businessOfferingRoutes from "./businessOffering/businessOffering.route.js";
 import bookingRoutes from "./booking/booking.route.js";
@@ -113,6 +114,7 @@ export const registerApiRoutes = (app) => {
   app.use("/api/services", serviceBookingRoutes);
   app.use("/api/business/booking-auto-rules", autoApproveRuleRoutes);
   app.use("/api/business/vouchers", voucherRoutes);
+  app.use("/api/business/revenue", businessRevenueRoutes);
   app.use("/api/business/reviews", reviewRoutes);
   app.use("/api/admin/reviews", adminReviewRoutes);
   app.use("/api/business", businessRoutes);

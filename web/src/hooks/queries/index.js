@@ -108,11 +108,16 @@ export {
 export {
   useStaff,
   useStaffDetail,
+  useStaffStats,
+  useAuditLog,
+  useStaffActivity,
   useCreateStaff,
   useUpdateStaff,
+  useRemoveStaff,
   useDeactivateStaff,
   useActivateStaff,
   useResetStaffPassword,
+  useBulkAssignRole,
 } from "./useStaffQueries";
 
 // Vouchers
@@ -120,10 +125,14 @@ export {
   useVouchers,
   useVoucherDetail,
   useVoucherUsageStats,
+  useVoucherStats,
+  useVoucherAnalytics,
   useCreateVoucher,
   useUpdateVoucher,
   useDeleteVoucher,
   useBulkDeactivateVouchers,
+  useBulkUpdateVouchers,
+  useDuplicateVoucher,
 } from "./useVoucherQueries";
 
 // Earnings

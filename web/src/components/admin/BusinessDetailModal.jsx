@@ -57,32 +57,35 @@ const formatCurrency = (value) => {
   });
 };
 
-const ChecklistItem = ({ label, checked, previewUrl, onPreview }) => (
-  <div className="flex items-center justify-between border-b border-border/50 py-2 text-sm last:border-0">
-    <div className="flex items-center gap-2">
-      <span>{label}</span>
-      {previewUrl && (
-        <button 
-          onClick={() => onPreview?.(previewUrl, label)} 
-          className="text-muted-foreground hover:text-black" 
-          title={t("common.viewAll")}
-        >
-          <Eye className="h-3.5 w-3.5" />
-        </button>
-      )}
+const ChecklistItem = ({ label, checked, previewUrl, onPreview }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center justify-between border-b border-border/50 py-2 text-sm last:border-0">
+      <div className="flex items-center gap-2">
+        <span>{label}</span>
+        {previewUrl && (
+          <button 
+            onClick={() => onPreview?.(previewUrl, label)} 
+            className="text-muted-foreground hover:text-black" 
+            title={t("common.viewAll")}
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      <span
+        className={cn(
+          "font-mono text-[10px] uppercase px-2 py-1 border rounded-none",
+          checked
+            ? "bg-emerald-50 border-emerald-500 text-emerald-800"
+            : "bg-red-50 border-red-500 text-red-700",
+        )}
+      >
+        {checked ? t("common.active") : t("common.inactive")}
+      </span>
     </div>
-    <span
-      className={cn(
-        "font-mono text-[10px] uppercase px-2 py-1 border rounded-none",
-        checked
-          ? "bg-emerald-50 border-emerald-500 text-emerald-800"
-          : "bg-red-50 border-red-500 text-red-700",
-      )}
-    >
-      {checked ? t("common.active") : t("common.inactive")}
-    </span>
-  </div>
-);
+  );
+};
 
 export default function BusinessDetailModal({
   open,

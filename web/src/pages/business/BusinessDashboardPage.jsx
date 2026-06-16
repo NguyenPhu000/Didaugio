@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -31,7 +31,7 @@ import {
 import { formatVND } from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/Button";
 
-const BusinessDashboardPage = () => {
+const BusinessDashboardPage = memo(() => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -88,7 +88,7 @@ const BusinessDashboardPage = () => {
     { key: BOOKING_STATUS.NO_SHOW, label: t("business.dashboard.bookingStatus.noShow"), colorClass: "bg-gray-400" },
   ], [t]);
 
-  const CONTRACT_STATUS_CONFIG = {
+  const CONTRACT_STATUS_CONFIG = useMemo(() => ({
     signed: {
       title: t("business.dashboard.contractStatus.signed"),
       description: t("business.dashboard.contractStatus.signedDesc"),
@@ -101,7 +101,7 @@ const BusinessDashboardPage = () => {
       icon: AlertTriangle,
       className: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400",
     },
-  };
+  }), [t]);
 
   const contractStatusKey = useMemo(() => {
     const isSigned =
@@ -113,8 +113,12 @@ const BusinessDashboardPage = () => {
   const contractStatus = CONTRACT_STATUS_CONFIG[contractStatusKey];
   const ContractStatusIcon = contractStatus.icon;
 
+  const handleNavigateContract = useCallback(() => {
+    navigate(BUSINESS_ROUTES.PROFILE_CONTRACT);
+  }, [navigate]);
+
   return (
-    <div className="space-y-6 p-6 lg:p-8 min-h-screen">
+    <div className="space-y-4 p-4 md:space-y-6 md:p-6 lg:p-8 min-h-screen">
       {/* Welcome Banner */}
       <WelcomeBanner
         name={user?.fullName || user?.username}
@@ -299,7 +303,7 @@ const BusinessDashboardPage = () => {
               <Button
                 variant={contractStatusKey === "signed" ? "outline" : "default"}
                 className="w-full gap-2"
-                onClick={() => navigate(BUSINESS_ROUTES.PROFILE_CONTRACT)}
+                onClick={handleNavigateContract}
               >
                 {contractStatusKey === "signed"
                   ? t("business.dashboard.contract.viewContract")
@@ -364,6 +368,8 @@ const BusinessDashboardPage = () => {
       )}
     </div>
   );
-};
+});
+
+BusinessDashboardPage.displayName = "BusinessDashboardPage";
 
 export default BusinessDashboardPage;

@@ -5,6 +5,8 @@ import {
   DialogHeader,
   DialogTitle,
   Button,
+  Badge,
+  Skeleton,
 } from "@/components/ui";
 import {
   User,
@@ -16,16 +18,56 @@ import {
   Calendar,
   CheckCircle,
   XCircle,
+  Activity,
 } from "lucide-react";
 import { ROLE_NAMES } from "@/constants/constants";
 import { formatDate, formatDateTime } from "@/utils/dateUtils";
 import { locationService } from "@/apis/locationService";
+import { auditLogService } from "@/apis/auditLogService";
 import { useTranslation } from "react-i18next";
 
-const UserDetailModal = ({ open, onClose, user }) => {
+const UserDetailModal = ({
+  open,
+  onClose,
+  user,
+  activityLog: externalActivityLog,
+  activityLoading: externalActivityLoading,
+}) => {
   const { t } = useTranslation();
   const [fullAddress, setFullAddress] = useState(t("user.detailModal.loading"));
   const [loadingAddress, setLoadingAddress] = useState(false);
+  const [activityLog, setActivityLog] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+
+  // Use external activity log if provided, otherwise fetch internally
+  useEffect(() => {
+    if (externalActivityLog !== undefined) {
+      setActivityLog(externalActivityLog);
+      setActivityLoading(externalActivityLoading ?? false);
+    }
+  }, [externalActivityLog, externalActivityLoading]);
+
+  // Fetch activity log if not provided externally
+  useEffect(() => {
+    if (open && user?.id && externalActivityLog === undefined) {
+      const fetchActivity = async () => {
+        try {
+          setActivityLoading(true);
+          const res = await auditLogService.getAll({
+            userId: user.id,
+            limit: 10,
+            page: 1,
+          });
+          setActivityLog(res.data || []);
+        } catch {
+          setActivityLog([]);
+        } finally {
+          setActivityLoading(false);
+        }
+      };
+      fetchActivity();
+    }
+  }, [open, user?.id, externalActivityLog]);
 
   // Build full address from province/district codes
   useEffect(() => {
@@ -38,7 +80,6 @@ const UserDetailModal = ({ open, onClose, user }) => {
       setLoadingAddress(true);
       const parts = [];
 
-      // Get address from profile or user
       const address = user.profile?.address || user.address;
       if (address) parts.push(address);
 
@@ -52,47 +93,22 @@ const UserDetailModal = ({ open, onClose, user }) => {
       }
 
       try {
-        // Fetch all wards for the province
         if (districtCode) {
           try {
-            const wards =
-              await locationService.getWardsByProvince(provinceCode);
-
-            // ProvinceDistrictSelect lưu ward_code vào districtCode
-            // Nên tìm ward theo ward_code
+            const wards = await locationService.getWardsByProvince(provinceCode);
             const ward = wards.find((w) => w.ward_code === districtCode);
-
             if (ward) {
-              // Thêm tên phường/xã
-              if (ward.ward_name) {
-                parts.push(ward.ward_name);
-              }
-              // Thêm tên quận/huyện
-              if (ward.district_name) {
-                parts.push(ward.district_name);
-              }
-            } else {
-              console.warn(
-                "Ward not found. WardCode:",
-                districtCode,
-                "Available wards:",
-                wards.length,
-              );
+              if (ward.ward_name) parts.push(ward.ward_name);
+              if (ward.district_name) parts.push(ward.district_name);
             }
           } catch (err) {
             console.error("Error fetching ward:", err);
           }
         }
 
-        // Fetch province name
         const provinces = await locationService.getAllProvinces();
-        const province = provinces.find(
-          (p) => p.province_code === provinceCode,
-        );
-
-        if (province) {
-          parts.push(province.name);
-        }
+        const province = provinces.find((p) => p.province_code === provinceCode);
+        if (province) parts.push(province.name);
       } catch (error) {
         console.error("Error fetching location names:", error);
       }
@@ -105,8 +121,6 @@ const UserDetailModal = ({ open, onClose, user }) => {
   }, [user, open, t]);
 
   if (!user) return null;
-
-  // Helper functions
 
   const getRoleName = (roleId) => {
     const roleKeys = {
@@ -144,16 +158,15 @@ const UserDetailModal = ({ open, onClose, user }) => {
 
   const getRoleColor = (roleId) => {
     const colors = {
-      1: "bg-red-100 text-red-700", // Super Admin
-      2: "bg-purple-100 text-purple-700", // Admin
-      3: "bg-primary/10 text-primary", // Business
-      4: "bg-blue-100 text-blue-700", // Staff
-      5: "bg-gray-100 text-gray-700", // Guest
+      1: "bg-red-100 text-red-700",
+      2: "bg-purple-100 text-purple-700",
+      3: "bg-primary/10 text-primary",
+      4: "bg-blue-100 text-blue-700",
+      5: "bg-gray-100 text-gray-700",
     };
     return colors[roleId] || "bg-gray-100 text-gray-700";
   };
 
-  // Get display values
   const displayName =
     user.profile?.fullName || user.fullName || t("user.detailModal.notUpdated");
   const displayPhone = user.profile?.phone || user.phone || "—";
@@ -186,16 +199,10 @@ const UserDetailModal = ({ open, onClose, user }) => {
               </h3>
               <p className="text-sm text-gray-500 truncate">{user.email}</p>
               <div className="flex flex-wrap gap-2 mt-2">
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(
-                    user.roleId,
-                  )}`}
-                >
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(user.roleId)}`}>
                   {getRoleName(user.roleId)}
                 </span>
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.className}`}
-                >
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.className}`}>
                   {statusInfo.text}
                 </span>
               </div>
@@ -210,12 +217,8 @@ const UserDetailModal = ({ open, onClose, user }) => {
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 rounded-lg p-4">
               <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">
-                  Email
-                </p>
-                <p className="font-medium text-gray-900 break-all">
-                  {user.email}
-                </p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Email</p>
+                <p className="font-medium text-gray-900 break-all">{user.email}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
@@ -271,9 +274,7 @@ const UserDetailModal = ({ open, onClose, user }) => {
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
                   {t("user.detailModal.role")}
                 </p>
-                <p className="font-medium text-gray-900">
-                  {getRoleName(user.roleId)}
-                </p>
+                <p className="font-medium text-gray-900">{getRoleName(user.roleId)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
@@ -317,18 +318,70 @@ const UserDetailModal = ({ open, onClose, user }) => {
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
                   {t("user.detailModal.createdAt")}
                 </p>
-                <p className="font-medium text-gray-900">
-                  {formatDateTime(user.createdAt)}
-                </p>
+                <p className="font-medium text-gray-900">{formatDateTime(user.createdAt)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
                   {t("user.detailModal.lastLogin")}
                 </p>
-                <p className="font-medium text-gray-900">
-                  {formatDateTime(user.lastLoginAt)}
-                </p>
+                <p className="font-medium text-gray-900">{formatDateTime(user.lastLoginAt)}</p>
               </div>
+            </div>
+          </div>
+
+          {/* Activity Log */}
+          <div>
+            <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-800">
+              <Activity className="w-4 h-4 text-blue-500" />
+              Hoạt động gần đây
+            </h4>
+            <div className="bg-gray-50 rounded-lg p-4">
+              {activityLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <Skeleton className="h-6 w-6 rounded-full" />
+                      <div className="flex-1 space-y-1">
+                        <Skeleton className="h-3 w-3/4" />
+                        <Skeleton className="h-2.5 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : activityLog.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  Chưa có hoạt động nào
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {activityLog.slice(0, 10).map((entry, index) => {
+                    const actionColor = auditLogService.getActionColor(entry.action);
+                    return (
+                      <div key={entry.id || index} className="flex items-start gap-3">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white border mt-0.5">
+                          <Activity className="h-3 w-3 text-gray-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium text-gray-900">
+                              {entry.description || entry.action}
+                            </span>
+                            <Badge variant="outline" className={`text-[10px] ${actionColor}`}>
+                              {entry.action}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {entry.createdAt
+                              ? new Date(entry.createdAt).toLocaleString("vi-VN")
+                              : ""}
+                            {entry.tableName && ` · ${entry.tableName}`}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>

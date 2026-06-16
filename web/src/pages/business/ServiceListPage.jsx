@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, memo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
@@ -562,7 +562,7 @@ const ConfirmDeleteModal = ({ name, open, onConfirm, onCancel }) => {
 
 // ─── Service Item ─────────────────────────────────────────────────────────────
 
-const ServiceItem = ({ svc, onEdit, onDelete }) => {
+const ServiceItem = memo(({ svc, onEdit, onDelete }) => {
   const { t } = useTranslation();
   return (
     <div className="[content-visibility:auto] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4 border-b border-border/60 last:border-0 group hover:bg-muted/30 px-1 -mx-1 rounded-lg transition-colors">
@@ -643,7 +643,7 @@ const ServiceItem = ({ svc, onEdit, onDelete }) => {
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 w-8 p-0"
+          className="h-9 w-9 md:h-8 md:w-8 p-0 min-h-[44px] md:min-h-0"
           aria-label={`${t("common.edit")} ${svc.name}`}
           onClick={() => onEdit(svc)}
         >
@@ -652,7 +652,7 @@ const ServiceItem = ({ svc, onEdit, onDelete }) => {
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+          className="h-9 w-9 md:h-8 md:w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 min-h-[44px] md:min-h-0"
           aria-label={`${t("common.delete")} ${svc.name}`}
           onClick={() => onDelete(svc)}
         >
@@ -661,18 +661,19 @@ const ServiceItem = ({ svc, onEdit, onDelete }) => {
       </div>
     </div>
   );
-};
+});
+ServiceItem.displayName = "ServiceItem";
 
 // ─── Place Overview Card ─────────────────────────────────────────────────────
 
-const PlaceOverviewCard = ({ item, isSelected, onClick }) => {
+const PlaceOverviewCard = memo(({ item, isSelected, onClick }) => {
   const { t } = useTranslation();
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-xl border border-zinc-200/80 bg-white p-4 text-left w-full transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
+        "rounded-xl border border-zinc-200/80 bg-white p-4 text-left w-full transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 min-h-[44px]",
         isSelected && "ring-2 ring-zinc-950 border-zinc-950/50",
       )}
     >
@@ -697,7 +698,8 @@ const PlaceOverviewCard = ({ item, isSelected, onClick }) => {
       </div>
     </button>
   );
-};
+});
+PlaceOverviewCard.displayName = "PlaceOverviewCard";
 
 // ─── PAGE SIZE ───────────────────────────────────────────────────────────────
 
@@ -781,20 +783,20 @@ const ServiceListPage = () => {
     });
   }, [groupedServices]);
 
-  const handleCreate = async (data) => {
+  const handleCreate = useCallback(async (data) => {
     await businessOfferingApi.create(data);
     toast.success(t("business.services.createSuccess"));
     loadServices();
-  };
+  }, [t, loadServices]);
 
-  const handleUpdate = async (data) => {
+  const handleUpdate = useCallback(async (data) => {
     await businessOfferingApi.update(editService.id, data);
     toast.success(t("business.services.updateSuccess"));
     setEditService(null);
     loadServices();
-  };
+  }, [editService, t, loadServices]);
 
-  const handleDeleteConfirmed = async () => {
+  const handleDeleteConfirmed = useCallback(async () => {
     const { id } = confirmDelete;
     setConfirmDelete(null);
     try {
@@ -805,32 +807,32 @@ const ServiceListPage = () => {
     } catch (error) {
       toastApiErrorIfNeeded(error, t("common.operationFailed"));
     }
-  };
+  }, [confirmDelete, services.length, page, t, loadServices]);
 
-  const openCreate = (placeKey) => {
+  const openCreate = useCallback((placeKey) => {
     setEditService(null);
     setDraftPlaceId(placeKey && placeKey !== "none" ? String(placeKey) : "");
     setShowForm(true);
-  };
+  }, []);
 
-  const openEdit = (svc) => {
+  const openEdit = useCallback((svc) => {
     setEditService(svc);
     setDraftPlaceId("");
     setShowForm(true);
-  };
+  }, []);
 
-  const closeForm = () => {
+  const closeForm = useCallback(() => {
     setShowForm(false);
     setEditService(null);
     setDraftPlaceId("");
-  };
+  }, []);
 
   // Stat summary
   const totalActive = services.filter((s) => s.isActive).length;
   const totalDiscounted = services.filter((s) => s.discountPrice).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 p-4 md:p-6 lg:p-8">
       {/* Header */}
       <BusinessPageHeader
         title={t("business.services.title")}
@@ -911,7 +913,7 @@ const ServiceListPage = () => {
         value={search}
       >
         <Select value={selectedPlaceId} onValueChange={setSelectedPlaceId}>
-          <SelectTrigger className="h-9 text-xs w-44 border-zinc-200">
+          <SelectTrigger className="h-9 text-xs w-full sm:w-44 border-zinc-200">
             <SelectValue placeholder={t("business.bookings.allPlaces")} />
           </SelectTrigger>
           <SelectContent>

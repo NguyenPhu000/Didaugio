@@ -223,10 +223,11 @@ function TimeSlotHeader({ slot, count, isExpanded, onToggle }) {
 // ─── Payment Method Badge ───────────────────────────────────────────────────────
 
 function PaymentMethodBadge({ payment }) {
+  const { t } = useTranslation();
   if (!payment) {
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200/60 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800">
-        Thanh toán tại quầy
+        {t("business.common.counterPayment")}
       </span>
     );
   }
@@ -792,15 +793,13 @@ const BookingListPage = () => {
   const [expandedPlaces, setExpandedPlaces] = useState({});
   const [expandedSlots, setExpandedSlots] = useState({});
 
-  // Toggle place expansion
-  const togglePlace = (placeId) => {
+  const togglePlace = useCallback((placeId) => {
     setExpandedPlaces(prev => ({ ...prev, [placeId]: !prev[placeId] }));
-  };
+  }, []);
 
-  // Toggle time slot expansion
-  const toggleSlot = (key) => {
+  const toggleSlot = useCallback((key) => {
     setExpandedSlots(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  }, []);
 
   // Expand all by default when filtering
   useEffect(() => {
@@ -885,15 +884,15 @@ const BookingListPage = () => {
     expired: t("business.bookings.expired"),
   };
 
-  const handleExportCsv = async () => {
+  const handleExportCsv = useCallback(async () => {
     try {
       toast.loading(t("common.processing"), { id: "csv-export" });
       const allData = await fetchAllPages(async (params) => {
         const res = await bookingApi.getAll({
           ...params,
-          ...(selectedPlace && { placeId: selectedPlace }),
-          ...(statusTab !== "all" && { status: statusTab }),
-          ...(searchQuery && { search: searchQuery }),
+          ...(selectedPlaceId !== "all" && { placeId: selectedPlaceId }),
+          ...(status !== "all" && { status }),
+          ...(search && { search }),
           ...(fromDate && { fromDate }),
           ...(toDate && { toDate }),
         });
@@ -923,7 +922,7 @@ const BookingListPage = () => {
     } catch {
       toast.error(t("common.operationFailed"), { id: "csv-export" });
     }
-  };
+  }, [search, status, fromDate, toDate, selectedPlaceId, t]);
 
   // ─── Action Handlers ───────────────────────────────────────────────────────
 
@@ -1075,7 +1074,7 @@ const BookingListPage = () => {
   }, [bookings]);
 
   // Group by time slot within each place
-  const groupByTimeSlot = (placeBookings) => {
+  const groupByTimeSlot = useCallback((placeBookings) => {
     const timeSlots = getTimeSlots(t);
     const groups = { morning: [], afternoon: [], evening: [], other: [] };
     placeBookings.forEach((booking) => {
@@ -1087,16 +1086,16 @@ const BookingListPage = () => {
       }
     });
     return groups;
-  };
+  }, [t]);
 
-  const toggleSelect = (id) =>
-    setSelected(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
+  const toggleSelect = useCallback((id) =>
+    setSelected(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]), []);
 
   return (
     <div className="min-h-screen bg-zinc-50/50 dark:bg-zinc-950/50">
       {/* Sticky Header with stat cards + tabs */}
       <div className="bg-white border-b border-zinc-200/80 sticky top-0 z-20 dark:bg-zinc-950 dark:border-zinc-800 shadow-sm">
-        <div className="px-6 py-4">
+        <div className="px-4 py-4 md:px-6">
           {/* Page title + actions */}
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -1163,7 +1162,7 @@ const BookingListPage = () => {
         </div>
 
         {/* Tabs */}
-        <div className="px-6 border-t border-zinc-100 dark:border-zinc-800">
+        <div className="px-4 border-t border-zinc-100 dark:border-zinc-800 md:px-6">
           <Tabs value={status} onValueChange={setStatus}>
             <TabsList className="h-10 bg-transparent gap-1 p-0 border-b-0 rounded-none w-auto dark:bg-transparent">
               {getStatusTabs(t).map((tab) => (
@@ -1190,7 +1189,7 @@ const BookingListPage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="p-6 space-y-6">
+      <div className="p-4 space-y-4 md:p-6 md:space-y-6">
         {/* Filters */}
         <BusinessFilterBar
           searchPlaceholder={t("business.bookings.searchPlaceholder")}
@@ -1198,7 +1197,7 @@ const BookingListPage = () => {
           onSearch={setSearch}
         >
           <Select value={selectedPlaceId} onValueChange={setSelectedPlaceId}>
-            <SelectTrigger className="h-9 w-52 text-sm border-zinc-200 bg-transparent hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900">
+            <SelectTrigger className="h-9 w-full sm:w-52 text-sm border-zinc-200 bg-transparent hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900">
               <div className="flex items-center gap-2">
                 <Layers className="h-4 w-4 text-zinc-400" aria-hidden="true" />
                 <SelectValue placeholder={t("business.bookings.allPlaces")} />
@@ -1215,26 +1214,26 @@ const BookingListPage = () => {
           </Select>
 
           {/* Date Range */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <CalendarDays className="h-4 w-4 text-zinc-400 shrink-0" aria-hidden="true" />
             <Input
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="h-9 w-36 text-sm border-zinc-200 bg-transparent focus-visible:ring-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-900"
+              className="h-9 flex-1 sm:flex-none sm:w-36 text-sm border-zinc-200 bg-transparent focus-visible:ring-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-900"
             />
             <span className="text-zinc-300 dark:text-zinc-600">—</span>
             <Input
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="h-9 w-36 text-sm border-zinc-200 bg-transparent focus-visible:ring-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-900"
+              className="h-9 flex-1 sm:flex-none sm:w-36 text-sm border-zinc-200 bg-transparent focus-visible:ring-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-900"
             />
           </div>
 
           {/* Total count */}
           {total > 0 && (
-            <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 ml-auto">
+            <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 w-full sm:w-auto sm:ml-auto justify-end sm:justify-start">
               <span className="tabular-nums font-semibold text-zinc-950 dark:text-zinc-100">{total}</span>
               <span>{t("business.bookings.bookings")}</span>
             </div>

@@ -1,4 +1,5 @@
 import authService from "../../services/auth/auth.service.js";
+import { setOffline, setOnline } from "../../utils/onlineManager.js";
 
 // AUTH CONTROLLER
 
@@ -211,6 +212,9 @@ export const logout = async (req, res, next) => {
   try {
     const { refreshToken } = req.body;
     const result = await authService.logout(refreshToken);
+    if (req.user?.userId) {
+      setOffline(req.user.userId);
+    }
     res.json({
       success: true,
       data: null,
@@ -228,6 +232,9 @@ export const logout = async (req, res, next) => {
 export const logoutAll = async (req, res, next) => {
   try {
     const result = await authService.logoutAll(req.user.userId);
+    if (req.user?.userId) {
+      setOffline(req.user.userId);
+    }
     res.json({
       success: true,
       data: null,
@@ -275,6 +282,21 @@ export const revokeSession = async (req, res, next) => {
   }
 };
 
+export const pingOnline = async (req, res, next) => {
+  try {
+    if (req.user?.userId) {
+      setOnline(req.user.userId);
+    }
+    res.json({
+      success: true,
+      data: null,
+      message: "Ping thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   register,
   login,
@@ -291,4 +313,5 @@ export default {
   logoutAll,
   getSessions,
   revokeSession,
+  pingOnline,
 };

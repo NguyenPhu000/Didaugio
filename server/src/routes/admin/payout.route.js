@@ -16,6 +16,13 @@ router.get(
   payoutController.adminGetAll,
 );
 
+// GET /api/admin/payouts/stats - Get payout stats for admin dashboard
+router.get(
+  "/stats",
+  hasPermission("payouts.view"),
+  payoutController.adminGetStats,
+);
+
 // GET /api/admin/payouts/commission - Platform commission summary
 router.get(
   "/commission",

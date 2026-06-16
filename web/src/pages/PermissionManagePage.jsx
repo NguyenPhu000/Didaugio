@@ -118,26 +118,28 @@ export default function PermissionManagePage() {
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-6">
-          <div className="flex items-center gap-6">
-            <div className="accent-bar h-16"></div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <div className="accent-bar h-16 shrink-0"></div>
             <div>
               <h1 className="tim-title">QUẢN LÝ QUYỀN HẠN</h1>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
                   RBAC // PERMISSIONS
                 </span>
                 <p className="tim-meta">PHÂN HỆ CHỨC NĂNG VÀ QUYỀN TRUY CẬP</p>
               </div>
             </div>
           </div>
-          <button
-            onClick={fetchPermissions}
-            className="h-12 w-12 border border-black bg-white hover:bg-black hover:text-white transition-colors flex items-center justify-center"
-            title="Làm mới"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
+          <div className="flex gap-2 w-full sm:w-auto justify-end">
+            <button
+              onClick={fetchPermissions}
+              className="flex-1 sm:flex-initial h-12 w-12 border border-black bg-white hover:bg-black hover:text-white transition-colors flex items-center justify-center"
+              title="Làm mới"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Thống kê nhanh */}

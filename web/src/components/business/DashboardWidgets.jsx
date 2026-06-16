@@ -262,12 +262,9 @@ export const StatCard = ({
         <MiniSparkline data={miniChart} color={iconColor} />
 
         {href && (
-          <Link
-            to={href}
-            className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-zinc-500 transition-colors hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-100"
-          >
+          <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-zinc-500 transition-colors group-hover:text-zinc-950 dark:text-zinc-400 dark:group-hover:text-zinc-100">
             Xem chi tiết <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          </span>
         )}
       </CardContent>
     </>

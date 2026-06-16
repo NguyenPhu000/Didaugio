@@ -308,6 +308,55 @@ export const getStaffDetail = async (businessId, staffId) => {
   return staff;
 };
 
+/**
+ * Get aggregated staff stats for a business
+ */
+export const getStaffStats = async (businessId) => {
+  const baseWhere = {
+    businessId,
+    roleId: ROLES.STAFF,
+    deletedAt: null,
+  };
+
+  const [total, active, inactive, byRole] = await Promise.all([
+    prisma.user.count({ where: baseWhere }),
+    prisma.user.count({ where: { ...baseWhere, status: USER_STATUS.ACTIVE } }),
+    prisma.user.count({ where: { ...baseWhere, status: USER_STATUS.INACTIVE } }),
+    prisma.user.groupBy({
+      by: ["businessRoleId"],
+      where: baseWhere,
+      _count: { id: true },
+    }),
+  ]);
+
+  // Enrich role breakdown with role names
+  const roleIds = byRole
+    .map((r) => r.businessRoleId)
+    .filter((id) => id !== null);
+
+  const roles = roleIds.length
+    ? await prisma.businessRole.findMany({
+        where: { id: { in: roleIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+
+  const roleMap = Object.fromEntries(roles.map((r) => [r.id, r.name]));
+
+  const byRoleBreakdown = byRole.map((r) => ({
+    roleId: r.businessRoleId,
+    roleName: r.businessRoleId ? roleMap[r.businessRoleId] || "Chưa phân quyền" : "Chưa phân quyền",
+    count: r._count.id,
+  }));
+
+  return {
+    total,
+    active,
+    inactive,
+    byRole: byRoleBreakdown,
+  };
+};
+
 export default {
   getStaffList,
   createStaff,
@@ -316,4 +365,5 @@ export default {
   deactivateStaff,
   activateStaff,
   getStaffDetail,
+  getStaffStats,
 };

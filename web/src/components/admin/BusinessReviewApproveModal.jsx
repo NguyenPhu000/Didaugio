@@ -50,6 +50,7 @@ const FieldRow = ({ label, value, mono }) => (
  * Thẻ xem nhanh giấy tờ: hỗ trợ URL https, data URI ảnh/PDF, đường dẫn /... ghép origin API.
  */
 function DocumentPreviewCard({ title, raw }) {
+  const { t } = useTranslation();
   const resolved = useMemo(() => resolveMediaUrl(raw), [raw]);
   const [imgError, setImgError] = useState(false);
 

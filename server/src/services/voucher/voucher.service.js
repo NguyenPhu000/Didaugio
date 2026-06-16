@@ -333,6 +333,51 @@ export const getUsageStats = async (id) => {
   };
 };
 
+export const getStats = async (userId, roleId) => {
+  const where = {};
+
+  if (roleId > ROLES.ADMIN) {
+    const business = await prisma.business.findUnique({
+      where: { ownerId: userId },
+      select: { id: true },
+    });
+    if (!business) {
+      return { total: 0, active: 0, expired: 0, totalUsage: 0, totalDiscount: 0 };
+    }
+    where.businessId = business.id;
+  }
+
+  const now = new Date();
+
+  const [total, active, expired, usageAgg] = await Promise.all([
+    prisma.voucher.count({ where }),
+    prisma.voucher.count({ where: { ...where, isActive: true, endDate: { gte: now } } }),
+    prisma.voucher.count({ where: { ...where, endDate: { lt: now } } }),
+    prisma.voucher.aggregate({
+      where,
+      _sum: { usageCount: true },
+    }),
+  ]);
+
+  const totalBookings = await prisma.booking.aggregate({
+    where: {
+      voucherId: { not: null },
+      ...(where.businessId ? { businessId: where.businessId } : {}),
+      status: { notIn: ["cancelled", "rejected", "expired"] },
+    },
+    _sum: { discountAmount: true },
+    _count: true,
+  });
+
+  return {
+    total,
+    active,
+    expired,
+    totalUsage: usageAgg._sum.usageCount || 0,
+    totalDiscount: totalBookings._sum.discountAmount || 0,
+  };
+};
+
 export const bulkDeactivate = async (voucherIds, userId) => {
   const business = await prisma.business.findUnique({
     where: { ownerId: userId },

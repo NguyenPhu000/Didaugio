@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
@@ -577,7 +577,7 @@ function BookingDetailModal({ booking, open, onClose, t }) {
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
-const BookingSchedulePage = () => {
+const BookingSchedulePage = memo(() => {
   const { t } = useTranslation();
   // Week start (Monday)
   const [weekStart, setWeekStart] = useState(() => {
@@ -691,31 +691,31 @@ const BookingSchedulePage = () => {
   }, [activeBookingModel]);
 
   // Navigation
-  const goToPrevWeek = () => {
+  const goToPrevWeek = useCallback(() => {
     const prev = new Date(weekStart);
     prev.setDate(prev.getDate() - 7);
     setWeekStart(prev);
-  };
+  }, [weekStart]);
 
-  const goToNextWeek = () => {
+  const goToNextWeek = useCallback(() => {
     const next = new Date(weekStart);
     next.setDate(next.getDate() + 7);
     setWeekStart(next);
-  };
+  }, [weekStart]);
 
-  const goToToday = () => {
+  const goToToday = useCallback(() => {
     const now = new Date();
     const dayOfWeek = now.getDay();
     const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
     const monday = new Date(now.setDate(diff));
     monday.setHours(0, 0, 0, 0);
     setWeekStart(monday);
-  };
+  }, []);
 
-  const handleViewBooking = (booking) => {
+  const handleViewBooking = useCallback((booking) => {
     setSelectedBooking(booking);
     setDetailOpen(true);
-  };
+  }, []);
 
   const selectedPlace = places.find((p) => String(p.id) === selectedPlaceId);
 
@@ -728,7 +728,7 @@ const BookingSchedulePage = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="px-6 py-4">
+        <div className="px-4 py-4 md:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link
@@ -794,7 +794,7 @@ const BookingSchedulePage = () => {
         </div>
 
         {/* Week Navigation */}
-        <div className="px-6 py-3 bg-gray-50 border-t border-gray-100">
+        <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 md:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={goToPrevWeek} className="h-8 w-8">
@@ -835,7 +835,7 @@ const BookingSchedulePage = () => {
       </div>
 
       {/* Filters */}
-      <div className="px-6 py-3 bg-white border-b border-gray-100">
+      <div className="px-4 py-3 bg-white border-b border-gray-100 md:px-6">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-gray-400" />
@@ -886,8 +886,95 @@ const BookingSchedulePage = () => {
         </div>
       </div>
 
-      {/* Calendar Grid */}
-      <div className="p-6">
+      {/* Mobile Day View */}
+      <div className="md:hidden px-4 pb-4 space-y-4">
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-xl border border-gray-200 bg-white p-4">
+                <Skeleton className="h-5 w-40 mb-3" />
+                <Skeleton className="h-16 w-full rounded-lg" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {weekDays.map((day) => {
+              const dayBookings = getBookingsForDay(day);
+              const dayBlocked = getBlockedForDay(day);
+              const isToday = isSameDay(day, new Date());
+              const isBlocked = dayBlocked.length > 0;
+
+              if (dayBookings.length === 0 && !isBlocked) return null;
+
+              return (
+                <div
+                  key={day.toISOString()}
+                  className={cn(
+                    "rounded-xl border bg-white overflow-hidden",
+                    isToday ? "border-primary/30 ring-1 ring-primary/10" : "border-gray-200",
+                    isBlocked && "border-red-200 bg-red-50/30"
+                  )}
+                >
+                  <div className={cn(
+                    "px-4 py-3 border-b flex items-center justify-between",
+                    isToday ? "bg-primary/5 border-primary/10" : "bg-gray-50 border-gray-100",
+                    isBlocked && "bg-red-50 border-red-100"
+                  )}>
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "text-sm font-bold",
+                        isToday ? "text-primary" : isBlocked ? "text-red-600" : "text-gray-900"
+                      )}>
+                        {day.toLocaleDateString("vi-VN", { weekday: "short", day: "numeric", month: "short" })}
+                      </span>
+                      {isToday && (
+                        <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] font-semibold rounded-full">
+                          {t("business.schedule.today")}
+                        </span>
+                      )}
+                    </div>
+                    {isBlocked ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-100 text-[10px] font-medium text-red-700 rounded-full">
+                        <Lock className="h-2.5 w-2.5" />
+                        {dayBlocked[0].reason || t("business.schedule.block")}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-500 tabular-nums">
+                        {dayBookings.length} {t("business.bookings.bookings")}
+                      </span>
+                    )}
+                  </div>
+                  {!isBlocked && (
+                    <div className="p-3 space-y-2">
+                      {dayBookings.map((booking) => (
+                        <BookingCard
+                          key={booking.id}
+                          booking={booking}
+                          onClick={handleViewBooking}
+                          t={t}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {weekDays.every((day) => {
+              const dayBookings = getBookingsForDay(day);
+              const dayBlocked = getBlockedForDay(day);
+              return dayBookings.length === 0 && dayBlocked.length === 0;
+            }) && (
+              <div className="text-center py-8 text-sm text-gray-500">
+                {t("business.common.noBookingsThisWeek")}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Calendar Grid */}
+      <div className="hidden md:block p-4 md:p-6">
         {loading ? (
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <div className="flex">
@@ -1043,6 +1130,8 @@ const BookingSchedulePage = () => {
       />
     </div>
   );
-};
+});
+
+BookingSchedulePage.displayName = "BookingSchedulePage";
 
 export default BookingSchedulePage;

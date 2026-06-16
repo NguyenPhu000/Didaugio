@@ -127,7 +127,7 @@ const DashboardPage = () => {
       {/* Recent Places Table */}
       <div className="rounded-lg border bg-card">
         <div className="border-b px-6 py-4">
-          <h3 className="text-lg font-semibold">{t("dashboard.recentPlaces")}</h3>
+          <h3 className="text-lg font-semibold">{t("dashboard.recentPlaces.title")}</h3>
           <p className="text-sm text-muted-foreground">
             {t("dashboard.latestPlaces")}
           </p>

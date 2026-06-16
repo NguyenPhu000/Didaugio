@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Doughnut } from "react-chartjs-2";
+import "@/lib/chartSetup";
 import {
   IconCheck,
   IconClock,
@@ -166,24 +168,32 @@ function buildTimeline(payment) {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function StatCard({ title, value, icon: Icon, tone = "default" }) {
-  const toneClass =
-    {
-      default: "text-slate-700",
-      warning: "text-amber-600",
-      success: "text-emerald-600",
-    }[tone] || "text-slate-700";
+function StatCard({ title, value, icon: Icon, tone = "default", subtitle }) {
+  const toneMap = {
+    danger: { iconBg: "bg-rose-50 dark:bg-rose-950/30 text-rose-500" },
+    warning: { iconBg: "bg-amber-50 dark:bg-amber-950/30 text-amber-500" },
+    success: { iconBg: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500" },
+    default: { iconBg: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400" },
+  };
+  const config = toneMap[tone] || toneMap.default;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-        <Icon className={cn("h-4 w-4", toneClass)} />
-      </CardHeader>
-      <CardContent>
-        <div className={cn("text-2xl font-bold", toneClass)}>{value}</div>
+    <Card className="relative overflow-hidden">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1.5 min-w-0">
+            <p className="text-xs font-medium text-muted-foreground">{title}</p>
+            <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
+            {subtitle && (
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
+            )}
+          </div>
+          {Icon && (
+            <div className={cn("p-3 rounded-xl shrink-0", config.iconBg)}>
+              <Icon className="h-5 w-5" />
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -596,11 +606,72 @@ export default function AdminRefundManagementPage() {
 
   // -- stats derived from current tab's list --
   const stats = useMemo(() => {
+    let pendingCount = 0;
+    let processedCount = 0;
+    let pendingAmount = 0;
+    let refundedAmount = 0;
+
     if (activeTab === "pending") {
-      return { pending: payments.length, refunded: 0 };
+      pendingCount = payments.length;
+      payments.forEach((p) => {
+        pendingAmount += Number(p.amount) || 0;
+      });
+    } else {
+      processedCount = payments.length;
+      payments.forEach((p) => {
+        refundedAmount += Number(p.refundAmount) || 0;
+      });
     }
-    return { pending: 0, refunded: payments.length };
+
+    return {
+      pending: pendingCount,
+      refunded: processedCount,
+      pendingAmount,
+      refundedAmount,
+    };
   }, [payments, activeTab]);
+
+  const gatewayChartData = useMemo(() => {
+    const counts = { VNPAY: 0, MOMO: 0, manual: 0 };
+    payments.forEach((p) => {
+      const method = p.paymentMethod || "manual";
+      if (counts[method] !== undefined) {
+        counts[method]++;
+      } else {
+        counts.manual++;
+      }
+    });
+
+    return {
+      labels: ["VNPAY", "MoMo", "Thủ công"],
+      datasets: [
+        {
+          data: [counts.VNPAY, counts.MOMO, counts.manual],
+          backgroundColor: ["#3b82f6", "#ec4899", "#6b7280"],
+        },
+      ],
+    };
+  }, [payments]);
+
+  const statusChartData = useMemo(() => {
+    const counts = { paid: 0, partially_refunded: 0, fully_refunded: 0, rejected: 0 };
+    payments.forEach((p) => {
+      const status = getPaymentStatus(p);
+      if (counts[status] !== undefined) {
+        counts[status]++;
+      }
+    });
+
+    return {
+      labels: ["Chờ xử lý", "Hoàn một phần", "Đã hoàn tiền", "Đã từ chối"],
+      datasets: [
+        {
+          data: [counts.paid, counts.partially_refunded, counts.fully_refunded, counts.rejected],
+          backgroundColor: ["#f59e0b", "#0ea5e9", "#10b981", "#f43f5e"],
+        },
+      ],
+    };
+  }, [payments]);
 
   // -- reset refundReason when dialogTab changes --
   useEffect(() => {
@@ -871,20 +942,87 @@ export default function AdminRefundManagementPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Đơn chờ xử lý"
           value={stats.pending}
           icon={IconClock}
           tone="warning"
+          subtitle="Yêu cầu chờ hoàn"
         />
         <StatCard
           title="Đã xử lý (hoàn/từ chối)"
           value={stats.refunded}
           icon={IconCheck}
           tone="success"
+          subtitle="Đơn đã đối soát"
+        />
+        <StatCard
+          title="Tổng tiền chờ hoàn"
+          value={formatCurrency(stats.pendingAmount)}
+          icon={IconWallet}
+          tone="warning"
+          subtitle="Số tiền cần hoàn"
+        />
+        <StatCard
+          title="Tổng tiền đã hoàn"
+          value={formatCurrency(stats.refundedAmount)}
+          icon={IconCheck}
+          tone="success"
+          subtitle="Số tiền đã hoàn"
         />
       </div>
+
+      {/* Charts Row */}
+      {!loading && payments.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader className="pb-4 border-b">
+              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <IconWallet className="h-4 w-4" /> Tỷ lệ cổng thanh toán sử dụng
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="h-64 pt-4 flex items-center justify-center">
+              <Doughnut
+                data={gatewayChartData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: "bottom",
+                      labels: { usePointStyle: true, padding: 15 },
+                    },
+                  },
+                }}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-4 border-b">
+              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <IconClock className="h-4 w-4" /> Cơ cấu trạng thái hoàn tiền
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="h-64 pt-4 flex items-center justify-center">
+              <Doughnut
+                data={statusChartData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: "bottom",
+                      labels: { usePointStyle: true, padding: 15 },
+                    },
+                  },
+                }}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Tabs + Filters + Table */}
       <Card>

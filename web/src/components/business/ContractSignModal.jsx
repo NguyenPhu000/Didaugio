@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PenLine, RotateCcw, CheckCircle2 } from "lucide-react";
 import {
@@ -22,6 +23,7 @@ const ContractSignModal = ({
   loading = false,
   contractVersion,
 }) => {
+  const { t } = useTranslation();
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasStroke, setHasStroke] = useState(false);
@@ -90,12 +92,12 @@ const ContractSignModal = ({
 
   const handleConfirm = async () => {
     if (!acceptedTerms) {
-      toast.error("Bạn cần đồng ý điều khoản trước khi ký");
+      toast.error(t("business.common.acceptTermsBeforeSign"));
       return;
     }
 
     if (!hasStroke) {
-      toast.error("Vui lòng ký vào khung chữ ký");
+      toast.error(t("business.common.signHereRequired"));
       return;
     }
 

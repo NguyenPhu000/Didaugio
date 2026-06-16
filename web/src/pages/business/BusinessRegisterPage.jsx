@@ -27,20 +27,14 @@ import DocumentImageUploadField from "@/components/business/DocumentImageUploadF
 import { DOCUMENT_SAMPLE_IMAGES } from "@/components/business/documentImageConstants";
 
 const registerSchema = z.object({
-  businessName: z.string().min(2, "Tên doanh nghiệp phải có ít nhất 2 ký tự"),
+  businessName: z.string().min(2),
   businessType: z.enum(["individual", "household", "company"]),
   taxCode: z.string().optional(),
-  idCardNumber: z.string().min(9, "Số CCCD không hợp lệ").max(12),
+  idCardNumber: z.string().min(9).max(12),
   bankName: z.string().optional(),
   bankAccountNumber: z.string().optional(),
   bankAccountOwner: z.string().optional(),
 });
-
-const BUSINESS_TYPES = [
-  { value: "individual", label: "Cá nhân" },
-  { value: "household", label: "Hộ kinh doanh" },
-  { value: "company", label: "Công ty" },
-];
 
 const FormField = ({ label, required, error, children }) => (
   <div className="space-y-1.5">
@@ -64,6 +58,12 @@ const BusinessRegisterPage = () => {
   });
   const [documentErrors, setDocumentErrors] = useState({});
 
+  const BUSINESS_TYPES = [
+    { value: "individual", label: t("business.register.businessTypeIndividual") },
+    { value: "household", label: t("business.register.businessTypeHousehold") },
+    { value: "company", label: t("business.register.businessTypeCompany") },
+  ];
+
   const {
     register,
     handleSubmit,
@@ -81,21 +81,21 @@ const BusinessRegisterPage = () => {
     const nextErrors = {
       businessLicense:
         documents.businessLicense.length === 0
-          ? "Vui lòng tải ảnh Giấy phép kinh doanh / Chứng nhận"
+          ? t("business.register.errorBusinessLicense")
           : "",
       idCardFront:
         documents.idCardFront.length === 0
-          ? "Vui lòng tải CCCD/CMND mặt trước"
+          ? t("business.register.errorIdCardFront")
           : "",
       idCardBack:
         documents.idCardBack.length === 0
-          ? "Vui lòng tải CCCD/CMND mặt sau"
+          ? t("business.register.errorIdCardBack")
           : "",
     };
 
     setDocumentErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean)) {
-      toast.error("Bạn cần tải đầy đủ 3 giấy tờ bắt buộc");
+      toast.error(t("business.register.errorAllDocuments"));
       return;
     }
 
@@ -114,28 +114,28 @@ const BusinessRegisterPage = () => {
   };
 
   return (
-    <div className="space-y-6 p-6 lg:p-8 min-h-screen">
+    <div className="space-y-4 md:space-y-6 p-4 md:p-6 lg:p-8 min-h-screen">
       <BusinessPageHeader
         title={t("business.register.title")}
         description={t("business.register.title")}
       />
 
-      <BusinessSectionCard title="Thông tin đăng ký" titleIcon={Store}>
+      <BusinessSectionCard title={t("business.register.registrationInfo")} titleIcon={Store}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <input type="hidden" {...register("businessType")} />
 
           <FormField
-            label="Tên doanh nghiệp"
+            label={t("business.register.businessName")}
             required
             error={errors.businessName?.message}
           >
             <Input
               {...register("businessName")}
-              placeholder="Tên doanh nghiệp / cửa hàng"
+              placeholder={t("business.register.businessNamePlaceholder")}
             />
           </FormField>
 
-          <FormField label="Loại hình" required>
+          <FormField label={t("business.register.businessType")} required>
             <Select
               value={watch("businessType")}
               onValueChange={(v) =>
@@ -157,42 +157,41 @@ const BusinessRegisterPage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
-              label="Số CCCD"
+              label={t("business.register.idCard")}
               required
               error={errors.idCardNumber?.message}
             >
-              <Input {...register("idCardNumber")} placeholder="Số CCCD/CMND" />
+              <Input {...register("idCardNumber")} placeholder={t("business.register.idCardPlaceholder")} />
             </FormField>
-            <FormField label="Mã số thuế" error={errors.taxCode?.message}>
-              <Input {...register("taxCode")} placeholder="Nếu có" />
+            <FormField label={t("business.register.taxCode")} error={errors.taxCode?.message}>
+              <Input {...register("taxCode")} placeholder={t("business.register.taxCodePlaceholder")} />
             </FormField>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField label="Tên ngân hàng">
-              <Input {...register("bankName")} placeholder="VD: Vietcombank" />
+            <FormField label={t("business.register.bankName")}>
+              <Input {...register("bankName")} placeholder={t("business.register.bankNamePlaceholder")} />
             </FormField>
-            <FormField label="Số tài khoản">
+            <FormField label={t("business.register.bankAccount")}>
               <Input {...register("bankAccountNumber")} />
             </FormField>
-            <FormField label="Chủ tài khoản">
+            <FormField label={t("business.register.accountHolder")}>
               <Input {...register("bankAccountOwner")} />
             </FormField>
           </div>
 
-          <BusinessSectionCard title="Giấy tờ xác minh" bodyClassName="space-y-4">
+          <BusinessSectionCard title={t("business.register.documents")} bodyClassName="space-y-4">
             <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
               <h4 className="text-sm font-semibold text-foreground">
-                Upload hình ảnh giấy tờ
+                {t("business.register.documentsTitle")}
               </h4>
               <p className="mt-1 text-xs text-muted-foreground">
-                Ảnh mẫu sẽ hiển thị mặc định. Khi chọn ảnh mới, preview sẽ đổi
-                ngay theo ảnh bạn tải lên.
+                {t("business.register.documentsDesc")}
               </p>
 
               <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
                 <DocumentImageUploadField
-                  label="Giấy phép kinh doanh / Chứng nhận"
+                  label={t("business.register.businessLicense")}
                   required
                   value={documents.businessLicense}
                   onChange={(files) => {
@@ -205,41 +204,41 @@ const BusinessRegisterPage = () => {
                       businessLicense: "",
                     }));
                   }}
-                  hint="Tải lên hình chụp Giấy phép kinh doanh hoặc giấy chứng nhận liên quan"
+                  hint={t("business.register.licenseHint")}
                   fallbackPreview={DOCUMENT_SAMPLE_IMAGES.portrait}
-                  previewAlt="Giấy phép kinh doanh"
+                  previewAlt={t("business.register.altBusinessLicense")}
                   previewClassName="h-[300px] sm:h-[360px]"
                   error={documentErrors.businessLicense}
                   disabled={isLoading}
                 />
 
                 <DocumentImageUploadField
-                  label="Ảnh mặt trước CC/CCCD"
+                  label={t("business.register.idFront")}
                   required
                   value={documents.idCardFront}
                   onChange={(files) => {
                     setDocuments((prev) => ({ ...prev, idCardFront: files }));
                     setDocumentErrors((prev) => ({ ...prev, idCardFront: "" }));
                   }}
-                  hint="Tải lên ảnh mặt trước CC/CCCD có định dạng PNG, JPEG, JPG"
+                  hint={t("business.register.idFrontHint")}
                   fallbackPreview={DOCUMENT_SAMPLE_IMAGES.idCardFront}
-                  previewAlt="CCCD mặt trước"
+                  previewAlt={t("business.register.altIdFront")}
                   previewClassName="h-[220px] sm:h-[260px]"
                   error={documentErrors.idCardFront}
                   disabled={isLoading}
                 />
 
                 <DocumentImageUploadField
-                  label="Ảnh mặt sau CC/CCCD"
+                  label={t("business.register.idBack")}
                   required
                   value={documents.idCardBack}
                   onChange={(files) => {
                     setDocuments((prev) => ({ ...prev, idCardBack: files }));
                     setDocumentErrors((prev) => ({ ...prev, idCardBack: "" }));
                   }}
-                  hint="Tải lên ảnh mặt sau CC/CCCD có định dạng PNG, JPEG, JPG"
+                  hint={t("business.register.idBackHint")}
                   fallbackPreview={DOCUMENT_SAMPLE_IMAGES.idCardBack}
-                  previewAlt="CCCD mặt sau"
+                  previewAlt={t("business.register.altIdBack")}
                   previewClassName="h-[220px] sm:h-[260px]"
                   error={documentErrors.idCardBack}
                   disabled={isLoading}
@@ -249,7 +248,7 @@ const BusinessRegisterPage = () => {
           </BusinessSectionCard>
 
           <Button type="submit" disabled={isLoading} className="w-full gap-2">
-            {isLoading ? "Đang gửi..." : "Đăng ký"}
+            {isLoading ? t("business.register.submitting") : t("business.register.submit")}
             {!isLoading && <ArrowRight className="h-4 w-4" />}
           </Button>
         </form>

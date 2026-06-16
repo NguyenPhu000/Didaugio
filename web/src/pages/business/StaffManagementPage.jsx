@@ -1,11 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 import { staffApi } from "@/apis/staffApi";
 import { staffInvitationApi } from "@/apis/staffInvitationApi";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useStaffStats } from "@/hooks/queries/useStaffQueries";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +18,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/Dialog";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/Label";
 import {
   Select,
   SelectContent,
@@ -26,73 +30,236 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  IconPlus,
-  IconDotsVertical,
-  IconEdit,
-  IconLock,
-  IconLockOpen,
-  IconKey,
-  IconUsers,
-  IconUserCheck,
-  IconUserOff,
-  IconSearch,
-  IconLink,
-  IconCopy,
-  IconCheck,
-  IconMail,
-  IconClock,
-  IconX,
-  IconShield,
-} from "@tabler/icons-react";
+  Users,
+  UserPlus,
+  UserCheck,
+  UserX,
+  MoreVertical,
+  Search,
+  Mail,
+  Phone,
+  Key,
+  Edit,
+  Trash2,
+  Shield,
+  Clock,
+  Activity,
+  Link,
+  Copy,
+  Check,
+  X,
+  Send,
+  UserCog,
+} from "lucide-react";
 import { toast } from "sonner";
 
-// Tab component
-function Tabs({ tabs, activeTab, onTabChange }) {
+const getStatusConfig = (t) => ({
+  active: {
+    label: t("business.staff.active"),
+    className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    dot: "bg-emerald-500",
+  },
+  inactive: {
+    label: t("business.staff.locked"),
+    className: "bg-red-50 text-red-700 border-red-200",
+    dot: "bg-red-500",
+  },
+  pending: {
+    label: t("business.staff.pending"),
+    className: "bg-yellow-50 text-yellow-700 border-yellow-200",
+    dot: "bg-yellow-500",
+  },
+});
+
+const getInvitationStatusConfig = (t) => ({
+  pending: {
+    label: t("business.staff.pending"),
+    className: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  },
+  accepted: {
+    label: t("business.staff.accepted"),
+    className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  expired: {
+    label: t("business.staff.expired"),
+    className: "bg-gray-50 text-gray-600 border-gray-200",
+  },
+  revoked: {
+    label: t("business.staff.revoked"),
+    className: "bg-red-50 text-red-700 border-red-200",
+  },
+});
+
+/**
+ * StatsCard — single stat card with icon and value.
+ */
+const StatsCard = memo(function StatsCard({ title, value, icon: Icon, color, loading: isLoading }) {
   return (
-    <div className="flex gap-1 rounded-lg bg-muted p-1">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => onTabChange(tab.id)}
-          className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === tab.id
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {tab.icon}
-          {tab.label}
-          {tab.count !== undefined && (
-            <span
-              className={`ml-1 rounded-full px-2 py-0.5 text-xs ${
-                activeTab === tab.id
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted-foreground/20"
-              }`}
-            >
-              {tab.count}
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {title}
+        </CardTitle>
+        <Icon className={cn("h-4 w-4", color || "text-muted-foreground")} />
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <Skeleton className="h-8 w-16" />
+        ) : (
+          <div className={cn("text-2xl font-bold", color?.replace("bg-", "text-"))}>
+            {value ?? 0}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+});
+
+/**
+ * StaffCard — card-based staff member display.
+ */
+const StaffCard = memo(function StaffCard({
+  staffMember,
+  onEdit,
+  onResetPassword,
+  onToggleStatus,
+  onRemove,
+}) {
+  const { t } = useTranslation();
+  const initials = (staffMember.profile?.fullName || staffMember.email || "?")
+    .split(" ")
+    .slice(-2)
+    .map((w) => w[0]?.toUpperCase() || "")
+    .join("");
+
+  const statusConfig = getStatusConfig(t);
+  const statusCfg = statusConfig[staffMember.status] || statusConfig.inactive;
+  const lastActive = staffMember.lastLoginAt || staffMember.updatedAt;
+  const roles = staffMember.roles || (staffMember.roleName ? [staffMember.roleName] : []);
+
+  return (
+    <div className="flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/20">
+      {/* Avatar */}
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+        {initials || <Users className="h-5 w-5" />}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-medium text-sm truncate">
+            {staffMember.profile?.fullName || t("business.staff.notUpdated")}
+          </p>
+          <Badge
+            variant="outline"
+            className={cn("text-[10px]", statusCfg.className)}
+          >
+            <span className={cn("mr-1 h-1.5 w-1.5 rounded-full", statusCfg.dot)} />
+            {statusCfg.label}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground truncate">
+          {staffMember.email}
+        </p>
+        <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+          {staffMember.profile?.phone && (
+            <span className="flex items-center gap-1">
+              <Phone className="h-3 w-3" />
+              {staffMember.profile.phone}
             </span>
           )}
-        </button>
-      ))}
+          {lastActive && (
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {new Date(lastActive).toLocaleDateString("vi-VN")}
+            </span>
+          )}
+        </div>
+        {roles.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {roles.map((role, i) => (
+              <Badge
+                key={i}
+                variant="secondary"
+                className="text-[10px] px-1.5 py-0"
+              >
+                <Shield className="mr-1 h-2.5 w-2.5" />
+                {typeof role === "string" ? role : role.name || `Role ${role.id}`}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-9 w-9 md:h-8 md:w-8 shrink-0 min-h-[44px] md:min-h-0">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={() => onEdit(staffMember)}>
+            <Edit className="mr-2 h-4 w-4" />
+            {t("business.staff.editAction")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onResetPassword(staffMember)}>
+            <Key className="mr-2 h-4 w-4" />
+            {t("business.staff.resetPassword")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onToggleStatus(staffMember)}>
+            {staffMember.status === "active" ? (
+              <>
+                <UserX className="mr-2 h-4 w-4" />
+                {t("business.staff.lockAccount")}
+              </>
+            ) : (
+              <>
+                <UserCheck className="mr-2 h-4 w-4" />
+                {t("business.staff.activate")}
+              </>
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => onRemove(staffMember)}
+            className="text-red-600 focus:text-red-600"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {t("business.staff.removeStaff")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+});
+
+/**
+ * StaffCardSkeleton — loading placeholder for staff cards.
+ */
+function StaffCardSkeleton() {
+  return (
+    <div className="flex items-center gap-4 rounded-lg border p-4">
+      <Skeleton className="h-11 w-11 rounded-full" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-48" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+      <Skeleton className="h-8 w-8" />
     </div>
   );
 }
 
 export default function StaffManagementPage() {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState("staff");
 
   // ─── Staff state ───────────────────────────────────────────────────────────
   const [staff, setStaff] = useState([]);
@@ -105,6 +272,11 @@ export default function StaffManagementPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
+
+  // ─── Stats ─────────────────────────────────────────────────────────────────
+  const { data: statsData, isLoading: statsLoading } = useStaffStats();
+  const stats = statsData?.data || statsData || {};
 
   // ─── Invitation state ──────────────────────────────────────────────────────
   const [invitations, setInvitations] = useState([]);
@@ -121,27 +293,31 @@ export default function StaffManagementPage() {
   const [businessRoles, setBusinessRoles] = useState([]);
 
   // ─── Dialogs ───────────────────────────────────────────────────────────────
-  const [createOpen, setCreateOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("staff");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteSuccessOpen, setInviteSuccessOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [resetPwOpen, setResetPwOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState(null);
 
   // ─── Form state ────────────────────────────────────────────────────────────
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
+  const [editForm, setEditForm] = useState({
     fullName: "",
     phone: "",
+    email: "",
     roleId: "",
+    isActive: true,
   });
-  const [editForm, setEditForm] = useState({ fullName: "", phone: "" });
   const [newPassword, setNewPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   // ─── Invite form state ─────────────────────────────────────────────────────
-  const [inviteForm, setInviteForm] = useState({ email: "", roleId: "" });
+  const [inviteForm, setInviteForm] = useState({
+    email: "",
+    roleId: "",
+    message: "",
+  });
   const [inviteResult, setInviteResult] = useState(null);
   const [copied, setCopied] = useState(false);
 
@@ -154,19 +330,19 @@ export default function StaffManagementPage() {
         limit: pagination.limit,
         search: search || undefined,
         status: statusFilter !== "all" ? statusFilter : undefined,
+        roleId: roleFilter !== "all" ? roleFilter : undefined,
       });
       const data = res.data;
       if (data) {
         setStaff(data.staff || []);
         setPagination((p) => ({ ...p, ...(data.pagination || {}) }));
       }
-    } catch (err) {
-      console.error("Failed to load staff:", err);
-      toast.error("Không thể tải danh sách nhân viên");
+    } catch {
+      toast.error(t("business.staff.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [pagination.page, pagination.limit, search, statusFilter]);
+  }, [pagination.page, pagination.limit, search, statusFilter, roleFilter]);
 
   const fetchInvitations = useCallback(async () => {
     try {
@@ -181,448 +357,346 @@ export default function StaffManagementPage() {
         setInvitations(data.invitations || []);
         setInvPagination((p) => ({ ...p, ...(data.pagination || {}) }));
       }
-    } catch (err) {
-      console.error("Failed to load invitations:", err);
+    } catch {
+      // Silent fail for invitations
     } finally {
       setInvLoading(false);
     }
   }, [invPagination.page, invPagination.limit, invStatusFilter]);
 
-  const fetchBusinessRoles = async () => {
+  const fetchBusinessRoles = useCallback(async () => {
     try {
       const res = await staffInvitationApi.getRoles();
-      const data = res.data;
-      if (data) {
-        setBusinessRoles(data);
-      }
+      if (res.data) setBusinessRoles(res.data);
     } catch {
       // Ignore
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchStaff();
   }, [fetchStaff]);
 
   useEffect(() => {
-    if (activeTab === "invitations") {
-      fetchInvitations();
-    }
+    if (activeTab === "invitations") fetchInvitations();
   }, [activeTab, fetchInvitations]);
 
   useEffect(() => {
     fetchBusinessRoles();
-  }, []);
+  }, [fetchBusinessRoles]);
+
+  // ─── Derived stats ─────────────────────────────────────────────────────────
+  const displayStats = useMemo(
+    () => ({
+      total: stats.total ?? pagination.total ?? 0,
+      active: stats.active ?? staff.filter((s) => s.status === "active").length,
+      pendingInvitations:
+        stats.pendingInvitations ??
+        invitations.filter((i) => i.status === "pending").length,
+    }),
+    [stats, pagination.total, staff, invitations],
+  );
 
   // ─── Staff handlers ────────────────────────────────────────────────────────
-  const handleCreate = async () => {
-    if (!form.email || !form.password) {
-      toast.error("Email và mật khẩu là bắt buộc");
-      return;
-    }
-    try {
-      setSubmitting(true);
-      const payload = {
-        email: form.email,
-        password: form.password,
-        fullName: form.fullName || undefined,
-        phone: form.phone || undefined,
-        roleId: form.roleId ? parseInt(form.roleId) : undefined,
-      };
-      await staffApi.create(payload);
-      toast.success("Tạo tài khoản nhân viên thành công");
-      setCreateOpen(false);
-      setForm({ email: "", password: "", fullName: "", phone: "", roleId: "" });
-      fetchStaff();
-    } catch (err) {
-      toast.error(err.message || "Lỗi tạo nhân viên");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleEdit = async () => {
-    if (!selectedStaff) return;
-    try {
-      setSubmitting(true);
-      await staffApi.update(selectedStaff.id, editForm);
-      toast.success("Cập nhật nhân viên thành công");
-      setEditOpen(false);
-      fetchStaff();
-    } catch (err) {
-      toast.error(err.message || "Lỗi cập nhật");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleResetPassword = async () => {
-    if (!selectedStaff || !newPassword) return;
-    try {
-      setSubmitting(true);
-      await staffApi.resetPassword(selectedStaff.id, newPassword);
-      toast.success("Đặt lại mật khẩu thành công");
-      setResetPwOpen(false);
-      setNewPassword("");
-    } catch (err) {
-      toast.error(err.message || "Lỗi đặt lại mật khẩu");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleToggleStatus = async (staffMember) => {
-    const isActive = staffMember.status === "active";
-    try {
-      if (isActive) {
-        await staffApi.deactivate(staffMember.id);
-        toast.success("Đã khóa tài khoản nhân viên");
-      } else {
-        await staffApi.activate(staffMember.id);
-        toast.success("Đã mở khóa tài khoản nhân viên");
+  const handleToggleStatus = useCallback(
+    async (staffMember) => {
+      const isActive = staffMember.status === "active";
+      try {
+        if (isActive) {
+          await staffApi.deactivate(staffMember.id);
+          toast.success(t("business.staff.accountLocked"));
+        } else {
+          await staffApi.activate(staffMember.id);
+          toast.success(t("business.staff.accountActivated"));
+        }
+        fetchStaff();
+      } catch (err) {
+        toast.error(err.message || t("business.staff.statusChangeError"));
       }
-      fetchStaff();
-    } catch (err) {
-      toast.error(err.message || "Lỗi thay đổi trạng thái");
-    }
-  };
+    },
+    [fetchStaff],
+  );
 
-  const openEdit = (s) => {
+  const openEdit = useCallback((s) => {
     setSelectedStaff(s);
     setEditForm({
       fullName: s.profile?.fullName || "",
       phone: s.profile?.phone || "",
+      email: s.email || "",
+      roleId: s.roleId ? String(s.roleId) : "",
+      isActive: s.status === "active",
     });
     setEditOpen(true);
-  };
+  }, []);
 
-  const openResetPw = (s) => {
+  const openResetPw = useCallback((s) => {
     setSelectedStaff(s);
     setNewPassword("");
     setResetPwOpen(true);
-  };
+  }, []);
+
+  const openRemove = useCallback((s) => {
+    setSelectedStaff(s);
+    setRemoveOpen(true);
+  }, []);
+
+  const handleEdit = useCallback(async () => {
+    if (!selectedStaff) return;
+    try {
+      setSubmitting(true);
+      await staffApi.update(selectedStaff.id, {
+        fullName: editForm.fullName || undefined,
+        phone: editForm.phone || undefined,
+        roleId: editForm.roleId ? parseInt(editForm.roleId) : undefined,
+        status: editForm.isActive ? "active" : "inactive",
+      });
+      toast.success(t("business.staff.updateSuccess"));
+      setEditOpen(false);
+      fetchStaff();
+    } catch (err) {
+      toast.error(err.message || t("business.staff.updateError"));
+    } finally {
+      setSubmitting(false);
+    }
+  }, [selectedStaff, editForm, fetchStaff]);
+
+  const handleResetPassword = useCallback(async () => {
+    if (!selectedStaff || !newPassword) return;
+    try {
+      setSubmitting(true);
+      await staffApi.resetPassword(selectedStaff.id, newPassword);
+      toast.success(t("business.staff.resetPasswordSuccess"));
+      setResetPwOpen(false);
+      setNewPassword("");
+    } catch (err) {
+      toast.error(err.message || t("business.staff.resetPasswordError"));
+    } finally {
+      setSubmitting(false);
+    }
+  }, [selectedStaff, newPassword]);
+
+  const handleRemove = useCallback(async () => {
+    if (!selectedStaff) return;
+    try {
+      setSubmitting(true);
+      await staffApi.remove(selectedStaff.id);
+      toast.success(t("business.staff.removeSuccess"));
+      setRemoveOpen(false);
+      setSelectedStaff(null);
+      fetchStaff();
+    } catch (err) {
+      toast.error(err.message || t("business.staff.removeError"));
+    } finally {
+      setSubmitting(false);
+    }
+  }, [selectedStaff, fetchStaff]);
 
   // ─── Invitation handlers ───────────────────────────────────────────────────
-  const handleCreateInvite = async () => {
+  const handleCreateInvite = useCallback(async () => {
     try {
       setSubmitting(true);
       const res = await staffInvitationApi.create({
         email: inviteForm.email || undefined,
         roleId: inviteForm.roleId ? parseInt(inviteForm.roleId) : undefined,
+        message: inviteForm.message || undefined,
       });
       setInviteResult(res.data);
       setInviteOpen(false);
       setInviteSuccessOpen(true);
-      setInviteForm({ email: "", roleId: "" });
+      setInviteForm({ email: "", roleId: "", message: "" });
       fetchInvitations();
     } catch (err) {
-      toast.error(err.message || "Lỗi tạo lời mời");
+      toast.error(err.message || t("business.staff.inviteCreateError"));
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [inviteForm, fetchInvitations]);
 
-  const handleRevokeInvite = async (inv) => {
-    try {
-      await staffInvitationApi.revoke(inv.id);
-      toast.success("Đã thu hồi lời mời");
-      fetchInvitations();
-    } catch (err) {
-      toast.error(err.message || "Lỗi thu hồi lời mời");
-    }
-  };
+  const handleRevokeInvite = useCallback(
+    async (inv) => {
+      try {
+        await staffInvitationApi.revoke(inv.id);
+        toast.success(t("business.staff.inviteRevoked"));
+        fetchInvitations();
+      } catch (err) {
+        toast.error(err.message || t("business.staff.inviteRevokeError"));
+      }
+    },
+    [fetchInvitations],
+  );
 
-  const handleCopyLink = () => {
+  const handleCopyLink = useCallback(() => {
     if (!inviteResult?.token) return;
     const link = `${window.location.origin}/invite?token=${inviteResult.token}`;
     navigator.clipboard.writeText(link).then(() => {
       setCopied(true);
-      toast.success("Đã sao chép link mời");
+      toast.success(t("business.staff.linkCopied"));
       setTimeout(() => setCopied(false), 2000);
     });
-  };
+  }, [inviteResult]);
 
-  const getInviteLink = (token) =>
-    `${window.location.origin}/invite?token=${token}`;
+  const getInviteLink = useCallback(
+    (token) => `${window.location.origin}/invite?token=${token}`,
+    [],
+  );
 
-  const activeCount = staff.filter((s) => s.status === "active").length;
-  const inactiveCount = staff.filter((s) => s.status !== "active").length;
-  const pendingCount = invitations.filter((i) => i.status === "pending").length;
-
-  const tabs = [
-    {
-      id: "staff",
-      label: "Nhân viên",
-      icon: <IconUsers className="h-4 w-4" />,
-      count: staff.length,
-    },
-    {
-      id: "invitations",
-      label: "Lời mời",
-      icon: <IconMail className="h-4 w-4" />,
-      count: pendingCount,
-    },
-  ];
-
-  const invStatusBadge = (status) => {
-    const map = {
-      pending: {
-        label: "Chờ xử lý",
-        className: "text-yellow-700 bg-yellow-50 border-yellow-200",
-      },
-      accepted: {
-        label: "Đã chấp nhận",
-        className: "text-green-700 bg-green-50 border-green-200",
-      },
-      expired: {
-        label: "Đã hết hạn",
-        className: "text-gray-700 bg-gray-50 border-gray-200",
-      },
-      revoked: {
-        label: "Đã thu hồi",
-        className: "text-red-700 bg-red-50 border-red-200",
-      },
-    };
-    const cfg = map[status] || map.pending;
-    return (
-      <Badge variant="outline" className={cfg.className}>
-        {cfg.label}
-      </Badge>
-    );
-  };
-
+  // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
+    <div className="flex-1 space-y-6 p-4 pt-6 md:p-8">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            Quản lý nhân viên
+          <h2 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+            {t("business.staff.title")}
+            {!statsLoading && (
+              <Badge variant="secondary" className="text-sm">
+                {displayStats.total}
+              </Badge>
+            )}
           </h2>
-          <p className="text-muted-foreground">
-            Tạo và quản lý tài khoản nhân viên cho doanh nghiệp
+          <p className="text-muted-foreground text-sm mt-1">
+            {t("business.staff.subtitle")}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setInviteOpen(true)}>
-            <IconMail className="mr-2 h-4 w-4" />
-            Mời nhân viên
-          </Button>
-          <Button onClick={() => setCreateOpen(true)}>
-            <IconPlus className="mr-2 h-4 w-4" />
-            Thêm nhân viên
-          </Button>
-        </div>
+        <Button onClick={() => setInviteOpen(true)}>
+          <UserPlus className="mr-2 h-4 w-4" />
+          {t("business.staff.inviteStaff")}
+        </Button>
+      </div>
+
+      {/* Stats Row */}
+      <div className="grid grid-cols-2 gap-3 md:gap-4 sm:grid-cols-3">
+        <StatsCard
+          title={t("business.staff.totalStaff")}
+          value={displayStats.total}
+          icon={Users}
+          color="text-blue-600"
+          loading={statsLoading}
+        />
+        <StatsCard
+          title={t("business.staff.activeStaff")}
+          value={displayStats.active}
+          icon={UserCheck}
+          color="text-emerald-600"
+          loading={statsLoading}
+        />
+        <StatsCard
+          title={t("business.staff.pendingInvitations")}
+          value={displayStats.pendingInvitations}
+          icon={Mail}
+          color="text-amber-600"
+          loading={statsLoading}
+        />
       </div>
 
       {/* Tabs */}
-      <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="staff" className="gap-2">
+            <Users className="h-4 w-4" />
+            {t("business.staff.staffTab")}
+            <Badge variant="secondary" className="ml-1 text-[10px]">
+              {staff.length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="invitations" className="gap-2">
+            <Mail className="h-4 w-4" />
+            {t("business.staff.invitationsTab")}
+            {displayStats.pendingInvitations > 0 && (
+              <Badge variant="secondary" className="ml-1 text-[10px]">
+                {displayStats.pendingInvitations}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-      {/* ─── Staff Tab ──────────────────────────────────────────────────────── */}
-      {activeTab === "staff" && (
-        <>
-          {/* Stats */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Tổng nhân viên
-                </CardTitle>
-                <IconUsers className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{pagination.total}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Đang hoạt động
-                </CardTitle>
-                <IconUserCheck className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {activeCount}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Đã khóa</CardTitle>
-                <IconUserOff className="h-4 w-4 text-red-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">
-                  {inactiveCount}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Filters */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 max-w-sm">
-              <IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        {/* ─── Staff Tab ──────────────────────────────────────────────────────── */}
+        <TabsContent value="staff" className="space-y-4">
+          {/* Search & Filter */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center flex-wrap">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Tìm nhân viên..."
+                placeholder={t("business.staff.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Tất cả trạng thái" />
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder={t("business.staff.status")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="active">Hoạt động</SelectItem>
-                <SelectItem value="inactive">Đã khóa</SelectItem>
+                <SelectItem value="all">{t("business.staff.all")}</SelectItem>
+                <SelectItem value="active">{t("business.staff.active")}</SelectItem>
+                <SelectItem value="inactive">{t("business.staff.locked")}</SelectItem>
               </SelectContent>
             </Select>
+            {businessRoles.length > 0 && (
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-full sm:w-40">
+                  <SelectValue placeholder={t("business.staff.role")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("business.staff.allRoles")}</SelectItem>
+                  {businessRoles.map((role) => (
+                    <SelectItem key={role.id} value={String(role.id)}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
-          {/* Staff Table */}
-          <div className="rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nhân viên</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Số điện thoại</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Ngày tạo</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      {Array.from({ length: 6 }).map((_, j) => (
-                        <TableCell key={j}>
-                          <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : staff.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <IconUsers className="h-8 w-8 text-muted-foreground" />
-                        <p className="text-muted-foreground">
-                          Chưa có nhân viên nào
-                        </p>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setInviteOpen(true)}
-                          >
-                            <IconMail className="mr-2 h-3 w-3" />
-                            Mời nhân viên
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCreateOpen(true)}
-                          >
-                            <IconPlus className="mr-2 h-3 w-3" />
-                            Thêm trực tiếp
-                          </Button>
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  staff.map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-sm font-medium">
-                            {(s.profile?.fullName || s.email)[0]?.toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-medium">
-                              {s.profile?.fullName || "—"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              @{s.username}
-                            </p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">{s.email}</TableCell>
-                      <TableCell className="text-sm">
-                        {s.profile?.phone || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            s.status === "active"
-                              ? "text-green-700 bg-green-50 border-green-200"
-                              : "text-red-700 bg-red-50 border-red-200"
-                          }
-                        >
-                          {s.status === "active" ? "Hoạt động" : "Đã khóa"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {new Date(s.createdAt).toLocaleDateString("vi-VN")}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                            >
-                              <IconDotsVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEdit(s)}>
-                              <IconEdit className="mr-2 h-4 w-4" />
-                              Chỉnh sửa
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openResetPw(s)}>
-                              <IconKey className="mr-2 h-4 w-4" />
-                              Đặt lại mật khẩu
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleToggleStatus(s)}
-                            >
-                              {s.status === "active" ? (
-                                <>
-                                  <IconLock className="mr-2 h-4 w-4" />
-                                  Khóa tài khoản
-                                </>
-                              ) : (
-                                <>
-                                  <IconLockOpen className="mr-2 h-4 w-4" />
-                                  Mở khóa
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          {/* Staff List */}
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <StaffCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : staff.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
+              <Users className="h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">
+                {t("business.staff.noStaffAny")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 mb-4">
+                {t("business.staff.noStaffDesc")}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInviteOpen(true)}
+                >
+                  <Mail className="mr-2 h-3 w-3" />
+                  {t("business.staff.inviteStaff")}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {staff.map((s) => (
+                <StaffCard
+                  key={s.id}
+                  staffMember={s}
+                  onEdit={openEdit}
+                  onResetPassword={openResetPw}
+                  onToggleStatus={handleToggleStatus}
+                  onRemove={openRemove}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pt-2">
               <p className="text-sm text-muted-foreground">
-                {pagination.total} nhân viên
+                {t("business.staff.staffCount", { count: pagination.total })}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -633,10 +707,10 @@ export default function StaffManagementPage() {
                     setPagination((p) => ({ ...p, page: p.page - 1 }))
                   }
                 >
-                  Trước
+                  {t("business.staff.prev")}
                 </Button>
                 <span className="text-sm">
-                  Trang {pagination.page} / {pagination.totalPages}
+                  {t("business.staff.page", { page: pagination.page, total: pagination.totalPages })}
                 </span>
                 <Button
                   variant="outline"
@@ -646,255 +720,179 @@ export default function StaffManagementPage() {
                     setPagination((p) => ({ ...p, page: p.page + 1 }))
                   }
                 >
-                  Sau
+                  {t("business.staff.next")}
                 </Button>
               </div>
             </div>
           )}
-        </>
-      )}
+        </TabsContent>
 
-      {/* ─── Invitations Tab ────────────────────────────────────────────────── */}
-      {activeTab === "invitations" && (
-        <>
-          <div className="flex items-center gap-2">
+        {/* ─── Invitations Tab ────────────────────────────────────────────────── */}
+        <TabsContent value="invitations" className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center flex-wrap">
             <Select
               value={invStatusFilter}
               onValueChange={setInvStatusFilter}
             >
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Tất cả trạng thái" />
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder={t("business.staff.status")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="pending">Chờ xử lý</SelectItem>
-                <SelectItem value="accepted">Đã chấp nhận</SelectItem>
-                <SelectItem value="expired">Đã hết hạn</SelectItem>
-                <SelectItem value="revoked">Đã thu hồi</SelectItem>
+                <SelectItem value="all">{t("business.staff.all")}</SelectItem>
+                <SelectItem value="pending">{t("business.staff.pending")}</SelectItem>
+                <SelectItem value="accepted">{t("business.staff.accepted")}</SelectItem>
+                <SelectItem value="expired">{t("business.staff.expired")}</SelectItem>
+                <SelectItem value="revoked">{t("business.staff.revoked")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Vai trò</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Ngày tạo</TableHead>
-                  <TableHead>Hết hạn</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invLoading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i}>
-                      {Array.from({ length: 6 }).map((_, j) => (
-                        <TableCell key={j}>
-                          <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : invitations.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <IconMail className="h-8 w-8 text-muted-foreground" />
-                        <p className="text-muted-foreground">
-                          Chưa có lời mời nào
-                        </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setInviteOpen(true)}
-                        >
-                          <IconPlus className="mr-2 h-3 w-3" />
-                          Tạo lời mời mới
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  invitations.map((inv) => (
-                    <TableRow key={inv.id}>
-                      <TableCell className="text-sm">
-                        {inv.email || "—"}
-                      </TableCell>
-                      <TableCell>
-                        {inv.role ? (
-                          <span className="inline-flex items-center gap-1 text-sm">
-                            <IconShield className="h-3 w-3 text-muted-foreground" />
-                            {inv.role.name}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell>{invStatusBadge(inv.status)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {new Date(inv.createdAt).toLocaleDateString("vi-VN")}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {new Date(inv.expiresAt).toLocaleDateString("vi-VN")}
-                      </TableCell>
-                      <TableCell>
-                        {inv.status === "pending" && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                              >
-                                <IconDotsVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  navigator.clipboard.writeText(
-                                    getInviteLink(inv.token),
-                                  );
-                                  toast.success("Đã sao chép link mời");
-                                }}
-                              >
-                                <IconCopy className="mr-2 h-4 w-4" />
-                                Copy link
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleRevokeInvite(inv)}
-                                className="text-red-600"
-                              >
-                                <IconX className="mr-2 h-4 w-4" />
-                                Thu hồi
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </>
-      )}
-
-      {/* ─── Create Staff Dialog ────────────────────────────────────────────── */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Thêm nhân viên mới</DialogTitle>
-            <DialogDescription>
-              Tạo tài khoản nhân viên cho doanh nghiệp.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="staff-email">Email *</Label>
-              <Input
-                id="staff-email"
-                type="email"
-                placeholder="nhanvien@email.com"
-                value={form.email}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, email: e.target.value }))
-                }
-              />
+          {invLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <StaffCardSkeleton key={i} />
+              ))}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="staff-password">Mật khẩu *</Label>
-              <Input
-                id="staff-password"
-                type="password"
-                placeholder="Ít nhất 6 ký tự"
-                value={form.password}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, password: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="staff-name">Họ tên</Label>
-              <Input
-                id="staff-name"
-                placeholder="Nguyễn Văn A"
-                value={form.fullName}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, fullName: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="staff-phone">Số điện thoại</Label>
-              <Input
-                id="staff-phone"
-                placeholder="0901234567"
-                value={form.phone}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, phone: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="staff-role">Vai trò</Label>
-              <Select
-                value={form.roleId}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, roleId: v }))
-                }
+          ) : invitations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
+              <Mail className="h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">
+                {t("business.staff.noStaffAny")}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => setInviteOpen(true)}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn vai trò cho nhân viên" />
-                </SelectTrigger>
-                <SelectContent>
-                  {businessRoles.map((role) => (
-                    <SelectItem key={role.id} value={String(role.id)}>
-                      <div className="flex flex-col">
-                        <span>{role.name}</span>
-                        {role.description && (
-                          <span className="text-xs text-muted-foreground">
-                            {role.description}
-                          </span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <UserPlus className="mr-2 h-3 w-3" />
+                {t("business.staff.inviteNewStaff")}
+              </Button>
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCreateOpen(false)}
-              disabled={submitting}
-            >
-              Hủy
-            </Button>
-            <Button onClick={handleCreate} disabled={submitting}>
-              {submitting ? "Đang tạo..." : "Tạo nhân viên"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          ) : (
+            <div className="space-y-2">
+              {invitations.map((inv) => {
+                const statusCfg =
+                  INVITATION_STATUS_CONFIG[inv.status] ||
+                  INVITATION_STATUS_CONFIG.pending;
+                return (
+                  <div
+                    key={inv.id}
+                    className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 rounded-lg border bg-card p-4"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {inv.email || t("business.staff.inviteLink")}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          {inv.role && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              <Shield className="mr-1 h-2.5 w-2.5" />
+                              {inv.role.name}
+                            </Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {t("business.staff.expiresAt")}{" "}
+                            {new Date(inv.expiresAt).toLocaleDateString("vi-VN")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                      <Badge variant="outline" className={statusCfg.className}>
+                        {statusCfg.label}
+                      </Badge>
+                      {inv.status === "pending" && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 md:h-8 md:w-8 min-h-[44px] md:min-h-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              navigator.clipboard.writeText(
+                                getInviteLink(inv.token),
+                              );
+                              toast.success(t("business.staff.linkCopied"));
+                            }}
+                          >
+                            <Copy className="mr-2 h-4 w-4" />
+                            {t("business.staff.copyLink")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleRevokeInvite(inv)}
+                            className="text-red-600"
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            {t("business.staff.revoke")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {invPagination.totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-sm text-muted-foreground">
+                {t("business.staff.inviteCount", { count: invPagination.total })}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={invPagination.page <= 1}
+                  onClick={() =>
+                    setInvPagination((p) => ({ ...p, page: p.page - 1 }))
+                  }
+                >
+                  {t("business.staff.prev")}
+                </Button>
+                <span className="text-sm">
+                  {t("business.staff.page", { page: invPagination.page, total: invPagination.totalPages })}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={invPagination.page >= invPagination.totalPages}
+                  onClick={() =>
+                    setInvPagination((p) => ({ ...p, page: p.page + 1 }))
+                  }
+                >
+                  {t("business.staff.next")}
+                </Button>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* ─── Invite Dialog ──────────────────────────────────────────────────── */}
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Mời nhân viên mới</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              {t("business.staff.inviteNewStaff")}
+            </DialogTitle>
             <DialogDescription>
-              Tạo lời mời nhân viên. Nếu nhập email, link đăng ký sẽ được gửi tự động.
+              {t("business.staff.inviteDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="invite-email">Email nhân viên</Label>
+              <Label htmlFor="invite-email">{t("business.staff.staffEmail")}</Label>
               <Input
                 id="invite-email"
                 type="email"
@@ -905,11 +903,11 @@ export default function StaffManagementPage() {
                 }
               />
               <p className="text-xs text-muted-foreground">
-                Nhập email để gửi link mời trực tiếp. Nếu bỏ trống, bạn có thể copy link để gửi thủ công.
+                {t("business.staff.emailHint")}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="invite-role">Vai trò *</Label>
+              <Label htmlFor="invite-role">{t("business.staff.roleRequired")}</Label>
               <Select
                 value={inviteForm.roleId}
                 onValueChange={(v) =>
@@ -917,7 +915,7 @@ export default function StaffManagementPage() {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Chọn vai trò cho nhân viên" />
+                  <SelectValue placeholder={t("business.staff.selectRole")} />
                 </SelectTrigger>
                 <SelectContent>
                   {businessRoles.map((role) => (
@@ -935,6 +933,18 @@ export default function StaffManagementPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="invite-message">{t("business.staff.messageOptional")}</Label>
+              <Textarea
+                id="invite-message"
+                placeholder={t("business.staff.messagePlaceholder")}
+                value={inviteForm.message}
+                onChange={(e) =>
+                  setInviteForm((f) => ({ ...f, message: e.target.value }))
+                }
+                rows={3}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -942,10 +952,17 @@ export default function StaffManagementPage() {
               onClick={() => setInviteOpen(false)}
               disabled={submitting}
             >
-              Hủy
+              {t("business.staff.cancel")}
             </Button>
             <Button onClick={handleCreateInvite} disabled={submitting}>
-              {submitting ? "Đang tạo..." : "Tạo lời mời"}
+              {submitting ? (
+                t("business.staff.sending")
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  {t("business.staff.sendInvite")}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -955,32 +972,32 @@ export default function StaffManagementPage() {
       <Dialog open={inviteSuccessOpen} onOpenChange={setInviteSuccessOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-600">
-              <IconCheck className="h-5 w-5" />
-              Tạo lời mời thành công
+            <DialogTitle className="flex items-center gap-2 text-emerald-600">
+              <Check className="h-5 w-5" />
+              {t("business.staff.inviteSuccess")}
             </DialogTitle>
             <DialogDescription>
               {inviteResult?.emailSent
-                ? `Email mời đã được gửi đến ${inviteResult.email}.`
-                : "Gửi link bên dưới cho nhân viên để họ đăng ký tài khoản."}
+                ? t("business.staff.emailSentTo", { email: inviteResult.email })
+                : t("business.staff.shareLinkDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {inviteResult?.emailSent && (
-              <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700 flex items-center gap-2">
-                <IconMail className="h-4 w-4 shrink-0" />
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 flex items-center gap-2">
+                <Mail className="h-4 w-4 shrink-0" />
                 <span>
-                  Đã gửi email đến <strong>{inviteResult.email}</strong>. Nhân viên sẽ nhận được link đăng ký trong hộp thư.
+                  {t("business.staff.emailSentMessage", { email: inviteResult.email })}
                 </span>
               </div>
             )}
 
             <div className="rounded-lg border bg-muted p-4">
-              <div className="flex items-center gap-2">
-                <IconLink className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Link mời:</span>
+              <div className="flex items-center gap-2 mb-2">
+                <Link className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">{t("business.staff.inviteLinkLabel")}</span>
               </div>
-              <div className="mt-2 flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <code className="flex-1 break-all rounded bg-background p-2 text-xs">
                   {inviteResult?.token
                     ? getInviteLink(inviteResult.token)
@@ -993,35 +1010,26 @@ export default function StaffManagementPage() {
                   className="shrink-0"
                 >
                   {copied ? (
-                    <IconCheck className="h-4 w-4 text-green-600" />
+                    <Check className="h-4 w-4 text-emerald-600" />
                   ) : (
-                    <IconCopy className="h-4 w-4" />
+                    <Copy className="h-4 w-4" />
                   )}
                 </Button>
               </div>
             </div>
 
-            <div className="rounded-lg border p-3 text-sm">
+            <div className="rounded-lg border p-3 text-sm space-y-1">
               <div className="flex items-center gap-2 text-muted-foreground">
-                <IconClock className="h-4 w-4" />
+                <Clock className="h-4 w-4" />
                 <span>
-                  Link hết hạn sau{" "}
-                  <strong>7 ngày</strong>
+                  {t("business.staff.linkExpiresIn")}
                 </span>
               </div>
-              {inviteResult?.email && (
-                <div className="mt-1 flex items-center gap-2 text-muted-foreground">
-                  <IconMail className="h-4 w-4" />
-                  <span>
-                    Dành cho: <strong>{inviteResult.email}</strong>
-                  </span>
-                </div>
-              )}
               {inviteResult?.roleName && (
-                <div className="mt-1 flex items-center gap-2 text-muted-foreground">
-                  <IconShield className="h-4 w-4" />
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Shield className="h-4 w-4" />
                   <span>
-                    Vai trò: <strong>{inviteResult.roleName}</strong>
+                    {t("business.staff.roleLabel")} <strong>{inviteResult.roleName}</strong>
                   </span>
                 </div>
               )}
@@ -1034,24 +1042,27 @@ export default function StaffManagementPage() {
                 setInviteResult(null);
               }}
             >
-              Đã hiểu
+              {t("business.staff.gotIt")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ─── Edit Dialog ────────────────────────────────────────────────────── */}
+      {/* ─── Edit Staff Dialog ──────────────────────────────────────────────── */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Chỉnh sửa nhân viên</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCog className="h-5 w-5" />
+              {t("business.staff.editStaff")}
+            </DialogTitle>
             <DialogDescription>
-              Cập nhật thông tin nhân viên {selectedStaff?.email}
+              {t("business.staff.editDesc", { email: selectedStaff?.email })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-name">Họ tên</Label>
+              <Label htmlFor="edit-name">{t("business.staff.fullName")}</Label>
               <Input
                 id="edit-name"
                 value={editForm.fullName}
@@ -1061,12 +1072,59 @@ export default function StaffManagementPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-phone">Số điện thoại</Label>
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, email: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-phone">{t("business.staff.phone")}</Label>
               <Input
                 id="edit-phone"
                 value={editForm.phone}
                 onChange={(e) =>
                   setEditForm((f) => ({ ...f, phone: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-role">{t("business.staff.role")}</Label>
+              <Select
+                value={editForm.roleId}
+                onValueChange={(v) =>
+                  setEditForm((f) => ({ ...f, roleId: v }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("business.staff.selectRole")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {businessRoles.map((role) => (
+                    <SelectItem key={role.id} value={String(role.id)}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label>{t("business.staff.activityStatus")}</Label>
+                <p className="text-xs text-muted-foreground">
+                  {editForm.isActive
+                    ? t("business.staff.staffActive")
+                    : t("business.staff.accountLockedDesc")}
+                </p>
+              </div>
+              <Switch
+                checked={editForm.isActive}
+                onCheckedChange={(checked) =>
+                  setEditForm((f) => ({ ...f, isActive: checked }))
                 }
               />
             </div>
@@ -1077,10 +1135,10 @@ export default function StaffManagementPage() {
               onClick={() => setEditOpen(false)}
               disabled={submitting}
             >
-              Hủy
+              {t("business.staff.cancel")}
             </Button>
             <Button onClick={handleEdit} disabled={submitting}>
-              {submitting ? "Đang lưu..." : "Lưu thay đổi"}
+              {submitting ? t("business.staff.saving") : t("business.staff.saveChanges")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1090,18 +1148,20 @@ export default function StaffManagementPage() {
       <Dialog open={resetPwOpen} onOpenChange={setResetPwOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Đặt lại mật khẩu</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              {t("business.staff.resetPassword")}
+            </DialogTitle>
             <DialogDescription>
-              Đặt lại mật khẩu cho nhân viên {selectedStaff?.email}. Nhân viên
-              sẽ sử dụng mật khẩu mới để đăng nhập.
+              {t("business.staff.resetPasswordDesc", { email: selectedStaff?.email })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="new-pw">Mật khẩu mới</Label>
+            <Label htmlFor="new-pw">{t("business.staff.newPassword")}</Label>
             <Input
               id="new-pw"
               type="password"
-              placeholder="Ít nhất 6 ký tự"
+              placeholder={t("business.staff.minChars")}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
@@ -1112,10 +1172,41 @@ export default function StaffManagementPage() {
               onClick={() => setResetPwOpen(false)}
               disabled={submitting}
             >
-              Hủy
+              {t("business.staff.cancel")}
             </Button>
             <Button onClick={handleResetPassword} disabled={submitting}>
-              {submitting ? "Đang xử lý..." : "Đặt lại mật khẩu"}
+              {submitting ? t("business.staff.processing") : t("business.staff.resetPassword")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Remove Staff Dialog ────────────────────────────────────────────── */}
+      <Dialog open={removeOpen} onOpenChange={setRemoveOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              {t("business.staff.removeStaff")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("business.staff.removeDesc", { email: selectedStaff?.email })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRemoveOpen(false)}
+              disabled={submitting}
+            >
+              {t("business.staff.cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRemove}
+              disabled={submitting}
+            >
+              {submitting ? t("business.staff.deleting") : t("business.staff.removeStaff")}
             </Button>
           </DialogFooter>
         </DialogContent>

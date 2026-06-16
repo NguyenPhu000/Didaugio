@@ -37,4 +37,36 @@ export const bulkDeactivate = async (voucherIds) => {
   return response;
 };
 
-export default { getAll, getById, create, update, remove, getUsageStats, bulkDeactivate };
+export const getVoucherStats = async () => {
+  const response = await api.get(`${BASE_URL}/stats`);
+  return response;
+};
+
+export const getVoucherAnalytics = async (id) => {
+  const response = await api.get(`${BASE_URL}/${id}/analytics`);
+  return response;
+};
+
+export const bulkUpdate = async (ids, updates) => {
+  const response = await api.patch(`${BASE_URL}/bulk`, { ids, updates });
+  return response;
+};
+
+export const duplicateVoucher = async (id) => {
+  const response = await api.post(`${BASE_URL}/${id}/duplicate`);
+  return response;
+};
+
+export default {
+  getAll,
+  getById,
+  create,
+  update,
+  remove,
+  getUsageStats,
+  bulkDeactivate,
+  getVoucherStats,
+  getVoucherAnalytics,
+  bulkUpdate,
+  duplicateVoucher,
+};

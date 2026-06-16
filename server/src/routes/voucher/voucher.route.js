@@ -25,6 +25,8 @@ const voucherViewPermission = [
 
 router.get("/", hasPermission(voucherViewPermission), controller.getAll);
 
+router.get("/stats", hasPermission(voucherViewPermission), controller.getStats);
+
 router.post(
   "/",
   hasPermission("business.manage_vouchers"),

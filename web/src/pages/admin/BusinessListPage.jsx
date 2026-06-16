@@ -268,22 +268,22 @@ const KYCProgress = ({ biz }) => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between border-b-2 border-black pb-6 gap-4">
           <div className="flex items-center gap-6">
-            <div className="accent-bar h-16" />
+            <div className="accent-bar h-16 shrink-0" />
             <div>
               <h1 className="tim-title">{t("admin.business.title")}</h1>
               <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1">
+                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
                   {t("admin.business.system")}
                 </span>
                 <p className="tim-meta">{t("admin.business.subtitle")}</p>
               </div>
             </div>
           </div>
-          <div className="flex gap-2 self-start md:self-auto">
+          <div className="flex flex-wrap gap-2 w-full md:w-auto">
             <button
               type="button"
               onClick={handleExportCsv}
-              className="h-12 px-4 flex items-center justify-center border border-black bg-white hover:bg-black hover:text-white transition-colors shrink-0 font-mono text-xs uppercase font-bold gap-2"
+              className="flex-1 md:flex-initial h-12 px-4 flex items-center justify-center border border-black bg-white hover:bg-black hover:text-white transition-colors shrink-0 font-mono text-xs uppercase font-bold gap-2"
               title={t("admin.business.csvExport")}
             >
               <Download className="h-4 w-4" />
@@ -355,13 +355,13 @@ const KYCProgress = ({ biz }) => {
               className="flex-1 bg-zinc-50 px-4 font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400 transition-colors"
             />
           </div>
-          <div className="flex flex-wrap gap-0 md:border-l-0">
+          <div className="hidden lg:flex flex-wrap gap-0">
             {STATUS_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => setStatus(opt.value)}
-                className={`flex-1 min-w-[100px] px-3 py-3 font-mono text-[11px] font-bold uppercase tracking-wider border-b md:border-b-0 md:border-r border-black last:border-r-0 transition-colors ${
+                className={`flex-1 min-w-[100px] px-3 py-3 font-mono text-[11px] font-bold uppercase tracking-wider border-b lg:border-b-0 lg:border-r border-black last:border-r-0 transition-colors ${
                   status === opt.value
                     ? "bg-black text-white"
                     : "bg-white hover:bg-muted/60 text-foreground"
@@ -371,8 +371,22 @@ const KYCProgress = ({ biz }) => {
               </button>
             ))}
           </div>
+          {/* Mobile Status Selector */}
+          <div className="flex lg:hidden border-b lg:border-b-0 border-black w-full bg-white">
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="w-full h-12 px-4 font-mono text-xs uppercase focus:outline-none bg-white"
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
           {/* View toggle */}
-          <div className="flex border-l border-black">
+          <div className="flex border-l border-black ml-auto lg:ml-0">
             <button
               type="button"
               onClick={() => setViewMode("card")}
@@ -591,38 +605,43 @@ const KYCProgress = ({ biz }) => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-black text-white font-mono text-[10px] uppercase tracking-wider">
-                      <th className="px-3 py-3 text-left border-r border-white/20">#</th>
+                      <th className="px-3 py-3 text-left border-r border-white/20 hidden sm:table-cell">#</th>
                       <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.businessName")}</th>
                       <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.type")}</th>
                       <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.status")}</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.kyc")}</th>
+                      <th className="px-3 py-3 text-left border-r border-white/20 hidden md:table-cell">{t("admin.business.kyc")}</th>
                       <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.contract")}</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.ownerEmail")}</th>
-                      <th className="px-3 py-3 text-center border-r border-white/20">{t("admin.business.places")}</th>
-                      <th className="px-3 py-3 text-center border-r border-white/20">{t("admin.business.services")}</th>
-                      <th className="px-3 py-3 text-center border-r border-white/20">{t("admin.business.vouchers")}</th>
-                      <th className="px-3 py-3 text-center border-r border-white/20">{t("admin.business.bookings")}</th>
+                      <th className="px-3 py-3 text-left border-r border-white/20 hidden lg:table-cell">{t("admin.business.ownerEmail")}</th>
+                      <th className="px-3 py-3 text-center border-r border-white/20 hidden md:table-cell">{t("admin.business.places")}</th>
+                      <th className="px-3 py-3 text-center border-r border-white/20 hidden md:table-cell">{t("admin.business.services")}</th>
+                      <th className="px-3 py-3 text-center border-r border-white/20 hidden md:table-cell">{t("admin.business.vouchers")}</th>
+                      <th className="px-3 py-3 text-center border-r border-white/20 hidden md:table-cell">{t("admin.business.bookings")}</th>
                       <th className="px-3 py-3 text-right">{t("admin.business.actions")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black/10">
                     {(businesses || []).map((biz) => (
                       <tr key={biz.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground">{biz.id}</td>
-                        <td className="px-3 py-2 font-semibold text-xs uppercase max-w-[200px] truncate" title={biz.businessName}>{biz.businessName}</td>
+                        <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground hidden sm:table-cell">{biz.id}</td>
+                        <td className="px-3 py-2 font-semibold text-xs uppercase max-w-[200px] truncate" title={biz.businessName}>
+                          {biz.businessName}
+                          <div className="lg:hidden text-[10px] text-muted-foreground font-mono font-normal mt-1 truncate max-w-[160px]" title={biz.owner?.email}>
+                            {biz.owner?.email || "—"}
+                          </div>
+                        </td>
                         <td className="px-3 py-2 text-[11px]">{BUSINESS_TYPE_LABELS[biz.businessType] || biz.businessType}</td>
                         <td className="px-3 py-2">{getBusinessStatusBadge(biz.status)}</td>
-                        <td className="px-3 py-2"><KYCProgress biz={biz} /></td>
+                        <td className="px-3 py-2 hidden md:table-cell"><KYCProgress biz={biz} /></td>
                         <td className="px-3 py-2">
                           <span className={cn("font-mono text-[10px] uppercase px-1.5 py-0.5 border", biz.contractSigned ? "bg-emerald-50 border-emerald-400 text-emerald-700" : "bg-red-50 border-red-400 text-red-700")}>
                             {biz.contractSigned ? t("admin.business.contractSignedShort") : t("admin.business.contractUnsignedShort")}
                           </span>
                         </td>
-                        <td className="px-3 py-2 text-[11px] text-muted-foreground truncate max-w-[160px]" title={biz.owner?.email}>{biz.owner?.email || "—"}</td>
-                        <td className="px-3 py-2 text-center font-mono text-xs">{biz._count?.places ?? 0}</td>
-                        <td className="px-3 py-2 text-center font-mono text-xs">{biz._count?.services ?? 0}</td>
-                        <td className="px-3 py-2 text-center font-mono text-xs">{biz._count?.vouchers ?? 0}</td>
-                        <td className="px-3 py-2 text-center font-mono text-xs">{biz._count?.bookings ?? 0}</td>
+                        <td className="px-3 py-2 text-[11px] text-muted-foreground truncate max-w-[160px] hidden lg:table-cell" title={biz.owner?.email}>{biz.owner?.email || "—"}</td>
+                        <td className="px-3 py-2 text-center font-mono text-xs hidden md:table-cell">{biz._count?.places ?? 0}</td>
+                        <td className="px-3 py-2 text-center font-mono text-xs hidden md:table-cell">{biz._count?.services ?? 0}</td>
+                        <td className="px-3 py-2 text-center font-mono text-xs hidden md:table-cell">{biz._count?.vouchers ?? 0}</td>
+                        <td className="px-3 py-2 text-center font-mono text-xs hidden md:table-cell">{biz._count?.bookings ?? 0}</td>
                         <td className="px-3 py-2 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <Button size="sm" variant="outline" onClick={() => setDetailBusinessId(biz.id)} className="rounded-none border-black font-mono text-[10px] uppercase h-7 px-2">{t("admin.business.details")}</Button>

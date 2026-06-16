@@ -92,7 +92,7 @@ export const getEarningsSummary = async (businessId) => {
     availableBalance: Math.max(0, availableBalance),
     totalPaidOut,
     totalPending,
-    completedBookings: completedBookings.length,
+    completedBookings: revenueAgg._count,
     monthlyEarnings,
     recentPayouts: payouts.slice(0, 10),
   };
@@ -309,6 +309,82 @@ export const rejectPayout = async (payoutId, reviewerId, rejectReason) => {
   });
 };
 
+/**
+ * Admin: get payout stats overview
+ */
+export const getAdminPayoutStats = async () => {
+  // 1. Tổng chờ duyệt (pending hoặc approved)
+  const pendingAgg = await prisma.payout.aggregate({
+    where: {
+      status: { in: ["pending", "approved"] },
+    },
+    _sum: { amount: true },
+    _count: true,
+  });
+
+  // 2. Đã xử lý hôm nay (transferred hôm nay)
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const processedTodayAgg = await prisma.payout.aggregate({
+    where: {
+      status: "transferred",
+      transferredAt: { gte: startOfToday },
+    },
+    _sum: { amount: true },
+    _count: true,
+  });
+
+  // 3. Thất bại (rejected)
+  const failedCount = await prisma.payout.count({
+    where: {
+      status: "rejected",
+    },
+  });
+
+  // 4. Thời gian xử lý trung bình (avgProcessingTime)
+  // Lấy các payout đã hoàn thành (transferred)
+  const transferredPayouts = await prisma.payout.findMany({
+    where: {
+      status: "transferred",
+      transferredAt: { not: null },
+    },
+    select: {
+      createdAt: true,
+      transferredAt: true,
+    },
+    take: 100, // Lấy mẫu 100 giao dịch gần nhất
+    orderBy: { transferredAt: "desc" },
+  });
+
+  let avgProcessingTime = "—";
+  if (transferredPayouts.length > 0) {
+    const totalDiff = transferredPayouts.reduce((sum, p) => {
+      const diff = new Date(p.transferredAt) - new Date(p.createdAt);
+      return sum + diff;
+    }, 0);
+    const avgMs = totalDiff / transferredPayouts.length;
+    const avgHours = avgMs / (1000 * 60 * 60);
+
+    if (avgHours < 1) {
+      avgProcessingTime = `${Math.round(avgHours * 60)} phút`;
+    } else if (avgHours < 24) {
+      avgProcessingTime = `${avgHours.toFixed(1)} giờ`;
+    } else {
+      avgProcessingTime = `${(avgHours / 24).toFixed(1)} ngày`;
+    }
+  }
+
+  return {
+    totalPendingAmount: pendingAgg._sum.amount || 0,
+    pendingCount: pendingAgg._count || 0,
+    processedTodayAmount: processedTodayAgg._sum.amount || 0,
+    processedTodayCount: processedTodayAgg._count || 0,
+    failedCount,
+    avgProcessingTime,
+  };
+};
+
 export default {
   getEarningsSummary,
   requestPayout,
@@ -317,4 +393,5 @@ export default {
   approvePayout,
   markTransferred,
   rejectPayout,
+  getAdminPayoutStats,
 };

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Trash2, Plus, Lock, Loader2 } from "lucide-react";
 import {
@@ -18,6 +19,7 @@ import {
 import { blockedDateApi } from "@/apis/blockedDateApi";
 
 const BlockedDatesCard = () => {
+  const { t } = useTranslation();
   const [blockedDates, setBlockedDates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -31,7 +33,7 @@ const BlockedDatesCard = () => {
       const response = await blockedDateApi.getAll();
       setBlockedDates(response?.data || []);
     } catch {
-      toast.error("Không thể tải danh sách ngày chặn");
+      toast.error(t("business.settings.blockedDates.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -43,7 +45,7 @@ const BlockedDatesCard = () => {
 
   const handleAdd = async () => {
     if (!newDate) {
-      toast.error("Vui lòng chọn ngày");
+      toast.error(t("business.settings.blockedDates.selectDate"));
       return;
     }
     setSubmitting(true);
@@ -52,13 +54,13 @@ const BlockedDatesCard = () => {
         date: new Date(newDate).toISOString(),
         reason: newReason || undefined,
       });
-      toast.success("Chặn ngày thành công");
+      toast.success(t("business.settings.blockedDates.blockSuccess"));
       setDialogOpen(false);
       setNewDate("");
       setNewReason("");
       fetchBlockedDates();
     } catch (error) {
-      toast.error(error.message || "Chặn ngày thất bại");
+      toast.error(error.message || t("business.settings.blockedDates.blockFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -67,10 +69,10 @@ const BlockedDatesCard = () => {
   const handleRemove = async (id) => {
     try {
       await blockedDateApi.remove(id);
-      toast.success("Bỏ chặn ngày thành công");
+      toast.success(t("business.settings.blockedDates.unblockSuccess"));
       setBlockedDates((prev) => prev.filter((d) => d.id !== id));
     } catch {
-      toast.error("Bỏ chặn thất bại");
+      toast.error(t("business.settings.blockedDates.unblockFailed"));
     }
   };
 
@@ -81,10 +83,10 @@ const BlockedDatesCard = () => {
           <div>
             <CardTitle className="text-base font-black uppercase tracking-wide flex items-center gap-2">
               <Lock className="h-4 w-4" />
-              4) NGÀY CHẶN
+              {t("business.settings.blockedDates.cardTitle")}
             </CardTitle>
             <CardDescription className="font-mono text-xs uppercase tracking-wider text-gray-500">
-              Khóa ngày nghỉ, bảo trì, tạm ngưng
+              {t("business.settings.blockedDates.cardDescription")}
             </CardDescription>
           </div>
           <Button
@@ -92,7 +94,7 @@ const BlockedDatesCard = () => {
             className="rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-8 px-3 uppercase font-bold text-[10px]"
           >
             <Plus className="h-3 w-3 mr-1" />
-            THÊM
+            {t("business.settings.blockedDates.add")}
           </Button>
         </div>
       </CardHeader>
@@ -105,7 +107,7 @@ const BlockedDatesCard = () => {
           <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-gray-200">
             <Lock className="h-8 w-8 text-gray-300 mb-2" />
             <p className="font-mono text-[10px] text-gray-400 uppercase">
-              Chưa có ngày nào bị chặn
+              {t("business.settings.blockedDates.noBlockedDates")}
             </p>
           </div>
         ) : (
@@ -147,13 +149,13 @@ const BlockedDatesCard = () => {
         <DialogContent className="sm:max-w-[400px] rounded-none border-black">
           <DialogHeader>
             <DialogTitle className="font-black uppercase text-sm">
-              CHẶN NGÀY
+              {t("business.settings.blockedDates.dialogTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1">
               <label className="font-mono text-[11px] uppercase">
-                Ngày chặn
+                {t("business.settings.blockedDates.dateLabel")}
               </label>
               <Input
                 type="date"
@@ -164,12 +166,12 @@ const BlockedDatesCard = () => {
             </div>
             <div className="space-y-1">
               <label className="font-mono text-[11px] uppercase">
-                Lý do (tùy chọn)
+                {t("business.settings.blockedDates.reasonLabel")}
               </label>
               <Input
                 value={newReason}
                 onChange={(e) => setNewReason(e.target.value)}
-                placeholder="Nghỉ lễ, bảo trì..."
+                placeholder={t("business.settings.blockedDates.reasonPlaceholder")}
                 className="rounded-none border-black"
               />
             </div>
@@ -180,7 +182,7 @@ const BlockedDatesCard = () => {
               onClick={() => setDialogOpen(false)}
               className="rounded-none border-black uppercase font-bold text-xs"
             >
-              HỦY
+              {t("business.settings.blockedDates.cancel")}
             </Button>
             <Button
               onClick={handleAdd}
@@ -190,7 +192,7 @@ const BlockedDatesCard = () => {
               {submitting ? (
                 <Loader2 className="h-3 w-3 animate-spin mr-1" />
               ) : null}
-              CHẶN NGÀY
+              {t("business.settings.blockedDates.blockDate")}
             </Button>
           </DialogFooter>
         </DialogContent>

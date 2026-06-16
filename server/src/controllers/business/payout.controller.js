@@ -149,6 +149,19 @@ export const adminReject = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/admin/payouts/stats
+ * Admin: get payout overview stats
+ */
+export const adminGetStats = async (req, res, next) => {
+  try {
+    const stats = await payoutService.getAdminPayoutStats();
+    res.json({ success: true, data: stats, message: "OK" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getEarnings,
   requestPayout,
@@ -157,4 +170,5 @@ export default {
   adminApprove,
   adminTransfer,
   adminReject,
+  adminGetStats,
 };

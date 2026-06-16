@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/Label";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ const DocumentImageUploadField = ({
   maxFileSize = DOCUMENT_IMAGE_MAX_BYTES,
   error,
 }) => {
+  const { t } = useTranslation();
   const files = useMemo(() => (Array.isArray(value) ? value : []), [value]);
   const selectedFile = files[0] ?? null;
   const localPreviewUrl = useMemo(() => {
@@ -68,12 +70,12 @@ const DocumentImageUploadField = ({
           if (!pickedFile) return;
 
           if (!isImageFile(pickedFile)) {
-            toast.error("Chỉ hỗ trợ ảnh PNG/JPG/JPEG/WEBP");
+            toast.error(t("common.invalidImageFormat"));
             return;
           }
 
           if (maxFileSize && pickedFile.size > maxFileSize) {
-            toast.error("Ảnh vượt quá 10MB, vui lòng chọn ảnh nhỏ hơn");
+            toast.error(t("common.imageTooLarge"));
             return;
           }
 

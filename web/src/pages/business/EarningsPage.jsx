@@ -1,10 +1,37 @@
-import { useState, useEffect, useCallback } from "react";
+import { memo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import api from "@/constants/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Wallet,
+  ArrowUpRight,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  CreditCard,
+  Building2,
+  Copy,
+  ChevronRight,
+  ChevronLeft,
+} from "lucide-react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import {
+  useEarnings,
+  usePayoutHistory,
+  useCreatePayout,
+  useCancelPayout,
+} from "@/hooks/queries/usePayoutQueries";
+import {
+  BusinessPageHeader,
+  BusinessSectionCard,
+  BusinessSectionCardSkeleton,
+} from "@/components/business/ui";
+import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { Card, CardContent, CardHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +40,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/Dialog";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -22,361 +48,538 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  IconWallet,
-  IconTrendingUp,
-  IconTrendingDown,
-  IconClock,
-  IconCheck,
-  IconX,
-  IconArrowUpRight,
-} from "@tabler/icons-react";
-import { toast } from "sonner";
 
-export default function EarningsPage() {
+export default memo(function EarningsPage() {
   const { t } = useTranslation();
 
   const STATUS_MAP = {
-    pending: { label: t("business.earnings.statusPending"), color: "text-yellow-700 bg-yellow-50 border-yellow-200" },
-    approved: { label: t("business.earnings.statusApproved"), color: "text-blue-700 bg-blue-50 border-blue-200" },
-    transferred: { label: t("business.earnings.statusTransferred"), color: "text-green-700 bg-green-50 border-green-200" },
-    rejected: { label: t("business.earnings.statusRejected"), color: "text-red-700 bg-red-50 border-red-200" },
+    pending: {
+      label: t("business.earnings.statusPending"),
+      className: "bg-amber-50 text-amber-700 border-amber-200",
+      icon: Clock,
+    },
+    approved: {
+      label: t("business.earnings.statusApproved"),
+      className: "bg-blue-50 text-blue-700 border-blue-200",
+      icon: CheckCircle2,
+    },
+    transferred: {
+      label: t("business.earnings.statusTransferred"),
+      className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      icon: CheckCircle2,
+    },
+    rejected: {
+      label: t("business.earnings.statusRejected"),
+      className: "bg-rose-50 text-rose-700 border-rose-200",
+      icon: XCircle,
+    },
+    cancelled: {
+      label: t("business.earnings.statusCancelled"),
+      className: "bg-zinc-50 text-zinc-700 border-zinc-200",
+      icon: XCircle,
+    },
   };
 
-  const [summary, setSummary] = useState(null);
-  const [payouts, setPayouts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const STEPS = [
+    { id: 1, title: t("business.earnings.stepAmount"), description: t("business.earnings.stepAmountDesc") },
+    { id: 2, title: t("business.earnings.stepBankInfo"), description: t("business.earnings.stepBankInfoDesc") },
+    { id: 3, title: t("business.earnings.stepConfirm"), description: t("business.earnings.stepConfirmDesc") },
+    { id: 4, title: t("business.earnings.stepComplete"), description: t("business.earnings.stepCompleteDesc") },
+  ];
   const [payoutOpen, setPayoutOpen] = useState(false);
+  const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     amount: "",
     bankName: "",
-    bankAccount: "",
-    bankOwner: "",
+    bankAccountNumber: "",
+    bankAccountName: "",
     note: "",
   });
-  const [submitting, setSubmitting] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [earningsRes, payoutsRes] = await Promise.all([
-        api.get("/business/earnings"),
-        api.get("/business/payouts"),
-      ]);
-      if (earningsRes?.data) setSummary(earningsRes.data);
-      if (payoutsRes?.data?.payouts) setPayouts(payoutsRes.data.payouts);
-    } catch (err) {
-      console.error("Failed to load earnings:", err);
-      toast.error(t("business.earnings.loadFailed"));
-    } finally {
-      setLoading(false);
+  const { data: earningsRes, isLoading: earningsLoading } = useEarnings();
+  const { data: historyRes, isLoading: historyLoading } = usePayoutHistory({ page: 1, limit: 20 });
+  const createPayout = useCreatePayout();
+  const cancelPayout = useCancelPayout();
+
+  const earnings = earningsRes?.data || {};
+  const payouts = historyRes?.data?.payouts || [];
+
+  const resetForm = useCallback(() => {
+    setForm({
+      amount: "",
+      bankName: "",
+      bankAccountNumber: "",
+      bankAccountName: "",
+      note: "",
+    });
+    setStep(1);
+  }, []);
+
+  const handleOpenDialog = useCallback(() => {
+    resetForm();
+    setPayoutOpen(true);
+  }, [resetForm]);
+
+  const handleCloseDialog = useCallback(() => {
+    setPayoutOpen(false);
+    setTimeout(resetForm, 200);
+  }, [resetForm]);
+
+  const handleQuickAmount = useCallback((percentage) => {
+    const available = earnings.availableBalance || 0;
+    const amount = Math.floor((available * percentage) / 100);
+    setForm((f) => ({ ...f, amount: String(amount) }));
+  }, [earnings.availableBalance]);
+
+  const handleNext = () => {
+    if (step === 1) {
+      const amount = parseInt(form.amount, 10);
+      if (!amount || amount <= 0) {
+        toast.error(t("business.earnings.toastInvalidAmount"));
+        return;
+      }
+      if (amount > (earnings.availableBalance || 0)) {
+        toast.error(t("business.earnings.toastExceedBalance"));
+        return;
+      }
+      if (amount < 50000) {
+        toast.error(t("business.earnings.toastMinAmount"));
+        return;
+      }
     }
-  }, [t]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleRequestPayout = async () => {
-    if (!form.amount || parseInt(form.amount) <= 0) {
-      toast.error(t("business.earnings.invalidAmount"));
-      return;
+    if (step === 2) {
+      if (!form.bankName.trim()) {
+        toast.error(t("business.earnings.toastBankNameRequired"));
+        return;
+      }
+      if (!form.bankAccountNumber.trim()) {
+        toast.error(t("business.earnings.toastAccountNumberRequired"));
+        return;
+      }
+      if (!form.bankAccountName.trim()) {
+        toast.error(t("business.earnings.toastAccountNameRequired"));
+        return;
+      }
     }
+    setStep((s) => Math.min(s + 1, 4));
+  };
+
+  const handleBack = () => setStep((s) => Math.max(s - 1, 1));
+
+  const handleSubmit = async () => {
     try {
-      setSubmitting(true);
-      await api.post("/business/payouts", {
-        ...form,
-        amount: parseInt(form.amount),
+      await createPayout.mutateAsync({
+        amount: parseInt(form.amount, 10),
+        bankName: form.bankName,
+        bankAccountNumber: form.bankAccountNumber,
+        bankAccountName: form.bankAccountName,
+        note: form.note,
       });
-      toast.success(t("business.earnings.requestSent"));
-      setPayoutOpen(false);
-      setForm({ amount: "", bankName: "", bankAccount: "", bankOwner: "", note: "" });
-      fetchData();
-    } catch (err) {
-      toast.error(err.message || t("business.earnings.requestFailed"));
-    } finally {
-      setSubmitting(false);
+      setStep(4);
+      toast.success(t("business.earnings.toastRequestSuccess"));
+    } catch {
+      toast.error(t("business.earnings.toastRequestFailed"));
     }
   };
 
-  const formatMoney = (v) => (v || 0).toLocaleString("vi-VN") + "đ";
+  const handleCancelPayout = async (id) => {
+    try {
+      await cancelPayout.mutateAsync(id);
+      toast.success(t("business.earnings.toastCancelSuccess"));
+    } catch {
+      toast.error(t("business.earnings.toastCancelFailed"));
+    }
+  };
 
-  if (loading) {
+  if (earningsLoading) {
     return (
-      <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
-        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-32 animate-pulse rounded-lg bg-muted" />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+        <Skeleton className="h-48 w-full rounded-xl" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
-        <div className="h-64 animate-pulse rounded-lg bg-muted" />
+        <BusinessSectionCardSkeleton rows={5} />
       </div>
     );
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
+    <div className="space-y-4 p-4 md:space-y-6 md:p-6 lg:p-8">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            {t("business.earnings.title")}
-          </h2>
-          <p className="text-muted-foreground">
-            {t("business.earnings.title")}
-          </p>
-        </div>
-        <Button
-          onClick={() => setPayoutOpen(true)}
-          disabled={!summary?.availableBalance || summary.availableBalance <= 0}
-        >
-          <IconArrowUpRight className="mr-2 h-4 w-4" />
-          {t("business.earnings.title")}
-        </Button>
-      </div>
+      <BusinessPageHeader
+        title={t("business.earnings.headerTitle")}
+        description={t("business.earnings.headerDesc")}
+        action={
+          <Button
+            onClick={handleOpenDialog}
+            disabled={!earnings.availableBalance || earnings.availableBalance <= 0}
+            className="gap-1.5"
+          >
+            <ArrowUpRight className="h-4 w-4" />
+            {t("business.earnings.requestWithdrawal")}
+          </Button>
+        }
+      />
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("business.revenue.totalRevenue")}
-            </CardTitle>
-            <IconTrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatMoney(summary?.totalRevenue)}
+      {/* Balance Card */}
+      <Card className="rounded-xl border border-zinc-200/80 bg-gradient-to-br from-zinc-950 to-zinc-900 text-white shadow-sm dark:from-zinc-950 dark:to-zinc-800">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="rounded-xl bg-white/10 p-3">
+              <Wallet className="h-6 w-6" />
             </div>
-            <p className="text-xs text-muted-foreground">
-              {summary?.completedBookings || 0} {t("business.revenue.completed")}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("business.revenue.systemCommission")}
-            </CardTitle>
-            <IconTrendingDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              -{formatMoney(summary?.totalCommission)}
+            <div>
+              <p className="text-sm text-zinc-400">{t("business.earnings.totalBalance")}</p>
+              <p className="text-3xl font-bold tracking-tight">
+                {formatVND(
+                  (earnings.availableBalance || 0) +
+                    (earnings.pendingBalance || 0)
+                )}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {t("business.revenue.systemCommission")}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("business.revenue.netRevenue")}
-            </CardTitle>
-            <IconWallet className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatMoney(summary?.availableBalance)}
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mt-4 pt-4 border-t border-white/10">
+            <div>
+              <p className="text-xs text-zinc-400">{t("business.earnings.available")}</p>
+              <p className="text-lg font-semibold text-emerald-400">
+                {formatVND(earnings.availableBalance)}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {t("business.earnings.statusApproved")}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("business.earnings.statusTransferred")}
-            </CardTitle>
-            <IconCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatMoney(summary?.totalPaidOut)}
+            <div>
+              <p className="text-xs text-zinc-400">{t("business.earnings.pendingBalance")}</p>
+              <p className="text-lg font-semibold text-amber-400">
+                {formatVND(earnings.pendingBalance)}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {t("business.earnings.statusTransferred")}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Monthly Earnings */}
-      {summary?.monthlyEarnings?.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("business.earnings.title")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("business.revenue.status")}</TableHead>
-                  <TableHead>{t("business.revenue.totalRevenue")}</TableHead>
-                  <TableHead>{t("business.revenue.systemCommission")}</TableHead>
-                  <TableHead>{t("business.revenue.netRevenue")}</TableHead>
-                  <TableHead>{t("business.revenue.totalBookings")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {summary.monthlyEarnings.map((m) => (
-                  <TableRow key={m.month}>
-                    <TableCell className="font-medium">{m.month}</TableCell>
-                    <TableCell>{formatMoney(m.revenue)}</TableCell>
-                    <TableCell className="text-red-600">
-                      -{formatMoney(m.commission)}
-                    </TableCell>
-                    <TableCell className="text-green-600 font-medium">
-                      {formatMoney(m.net)}
-                    </TableCell>
-                    <TableCell>{m.bookings}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Payout History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("business.earnings.title")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {payouts.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8">
-              <IconWallet className="h-8 w-8 text-muted-foreground" />
-              <p className="text-muted-foreground">{t("business.earnings.loadFailed")}</p>
+            <div>
+              <p className="text-xs text-zinc-400">{t("business.earnings.withdrawn")}</p>
+              <p className="text-lg font-semibold text-zinc-300">
+                {formatVND(earnings.totalPaidOut)}
+              </p>
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("business.revenue.status")}</TableHead>
-                  <TableHead>{t("business.revenue.totalRevenue")}</TableHead>
-                  <TableHead>{t("business.revenue.status")}</TableHead>
-                  <TableHead>{t("business.revenue.status")}</TableHead>
-                  <TableHead>{t("business.revenue.status")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {payouts.map((p) => {
-                  const badge = STATUS_MAP[p.status] || STATUS_MAP.pending;
-                  return (
-                    <TableRow key={p.id}>
-                      <TableCell className="text-sm">
-                        {new Date(p.requestedAt).toLocaleDateString("vi-VN")}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {formatMoney(p.amount)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={badge.color}>
-                          {badge.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {p.bankName
-                          ? `${p.bankName} - ${p.bankAccount || ""}`
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {p.rejectReason || p.note || "—"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Request Payout Dialog */}
-      <Dialog open={payoutOpen} onOpenChange={setPayoutOpen}>
-        <DialogContent>
+      {/* Payout History */}
+      <BusinessSectionCard title={t("business.earnings.payoutHistory")} titleIcon={Clock}>
+        {historyLoading ? (
+          <BusinessSectionCardSkeleton rows={5} />
+        ) : payouts.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-8">
+            <Wallet className="h-8 w-8 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">{t("business.earnings.noPayoutHistory")}</p>
+          </div>
+        ) : (
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("business.earnings.tableDate")}</TableHead>
+                    <TableHead className="text-right">{t("business.earnings.tableAmount")}</TableHead>
+                    <TableHead>{t("business.earnings.tableBank")}</TableHead>
+                    <TableHead>{t("business.earnings.tableStatus")}</TableHead>
+                    <TableHead className="text-right">{t("business.earnings.tableAction")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payouts.map((p) => {
+                    const statusInfo = STATUS_MAP[p.status] || STATUS_MAP.pending;
+                    const StatusIcon = statusInfo.icon;
+                    return (
+                      <TableRow key={p.id}>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Date(p.requestedAt || p.createdAt).toLocaleDateString("vi-VN")}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-medium">
+                          {formatVND(p.amount)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div className="font-medium">{p.bankName || "—"}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {p.bankAccountNumber || p.bankAccount || ""}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn("gap-1", statusInfo.className)}>
+                            <StatusIcon className="h-3 w-3" />
+                            {statusInfo.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {p.status === "pending" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                              onClick={() => handleCancelPayout(p.id)}
+                              disabled={cancelPayout.isPending}
+                            >
+                              {t("business.earnings.cancel")}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile card view */}
+            <div className="md:hidden divide-y divide-border/50">
+              {payouts.map((p) => {
+                const statusInfo = STATUS_MAP[p.status] || STATUS_MAP.pending;
+                const StatusIcon = statusInfo.icon;
+                return (
+                  <div key={p.id} className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(p.requestedAt || p.createdAt).toLocaleDateString("vi-VN")}
+                      </span>
+                      <Badge variant="outline" className={cn("gap-1", statusInfo.className)}>
+                        <StatusIcon className="h-3 w-3" />
+                        {statusInfo.label}
+                      </Badge>
+                    </div>
+                    <p className="text-lg font-semibold font-mono">{formatVND(p.amount)}</p>
+                    <div className="text-sm">
+                      <span className="font-medium">{p.bankName || "—"}</span>
+                      {p.bankAccountNumber && (
+                        <span className="text-muted-foreground ml-2">({p.bankAccountNumber})</span>
+                      )}
+                    </div>
+                    {p.status === "pending" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 w-full"
+                        onClick={() => handleCancelPayout(p.id)}
+                        disabled={cancelPayout.isPending}
+                      >
+                        {t("business.earnings.cancelRequest")}
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </BusinessSectionCard>
+
+      {/* Payout Request Dialog */}
+      <Dialog open={payoutOpen} onOpenChange={handleCloseDialog}>
+        <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>{t("business.earnings.title")}</DialogTitle>
+            <DialogTitle>{t("business.earnings.dialogTitle")}</DialogTitle>
             <DialogDescription>
-              {t("business.revenue.netRevenue")}: {formatMoney(summary?.availableBalance)}
+              {t("business.earnings.availableBalance")}: {formatVND(earnings.availableBalance)}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="payout-amount">{t("business.earnings.invalidAmount")} *</Label>
-              <Input
-                id="payout-amount"
-                type="number"
-                placeholder={t("business.earnings.invalidAmount")}
-                value={form.amount}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, amount: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="payout-bank">{t("business.revenue.status")}</Label>
-              <Input
-                id="payout-bank"
-                placeholder={t("business.revenue.status")}
-                value={form.bankName}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, bankName: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="payout-account">{t("business.revenue.status")}</Label>
-              <Input
-                id="payout-account"
-                placeholder={t("business.revenue.status")}
-                value={form.bankAccount}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, bankAccount: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="payout-owner">{t("business.revenue.status")}</Label>
-              <Input
-                id="payout-owner"
-                placeholder={t("business.revenue.status")}
-                value={form.bankOwner}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, bankOwner: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="payout-note">{t("business.revenue.status")}</Label>
-              <Input
-                id="payout-note"
-                placeholder={t("common.optional")}
-                value={form.note}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, note: e.target.value }))
-                }
-              />
-            </div>
+
+          {/* Stepper */}
+          <div className="flex items-center gap-1 py-3">
+            {STEPS.map((s, i) => (
+              <div key={s.id} className="flex items-center">
+                <div
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold",
+                    step >= s.id
+                      ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950"
+                      : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                  )}
+                >
+                  {step > s.id ? "✓" : s.id}
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div
+                    className={cn(
+                      "h-0.5 w-8 mx-1",
+                      step > s.id ? "bg-zinc-950 dark:bg-zinc-100" : "bg-zinc-200 dark:bg-zinc-700"
+                    )}
+                  />
+                )}
+              </div>
+            ))}
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setPayoutOpen(false)}
-              disabled={submitting}
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button onClick={handleRequestPayout} disabled={submitting}>
-              {submitting ? t("common.processing") : t("common.submit")}
-            </Button>
-          </DialogFooter>
+
+          {/* Step Content */}
+          <div className="min-h-[200px]">
+            {step === 1 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="payout-amount">{t("business.earnings.amountToWithdraw")}</Label>
+                  <Input
+                    id="payout-amount"
+                    type="number"
+                    placeholder={t("business.earnings.enterAmount")}
+                    value={form.amount}
+                    onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                    className="text-lg font-mono"
+                  />
+                  {form.amount && (
+                    <p className="text-sm text-muted-foreground">
+                      {formatVND(parseInt(form.amount, 10) || 0)}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickAmount(50)}
+                    className="flex-1"
+                  >
+                    50%
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickAmount(100)}
+                    className="flex-1"
+                  >
+                    100%
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("business.earnings.minAmountNote")}
+                </p>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="bank-name">{t("business.earnings.bankName")}</Label>
+                  <Input
+                    id="bank-name"
+                    placeholder={t("business.earnings.bankNamePlaceholder")}
+                    value={form.bankName}
+                    onChange={(e) => setForm((f) => ({ ...f, bankName: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bank-account">{t("business.earnings.accountNumber")}</Label>
+                  <Input
+                    id="bank-account"
+                    placeholder={t("business.earnings.enterAccountNumber")}
+                    value={form.bankAccountNumber}
+                    onChange={(e) => setForm((f) => ({ ...f, bankAccountNumber: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bank-owner">{t("business.earnings.accountHolder")}</Label>
+                  <Input
+                    id="bank-owner"
+                    placeholder={t("business.earnings.enterAccountHolder")}
+                    value={form.bankAccountName}
+                    onChange={(e) => setForm((f) => ({ ...f, bankAccountName: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="payout-note">{t("business.earnings.noteOptional")}</Label>
+                  <Input
+                    id="payout-note"
+                    placeholder={t("business.earnings.notePlaceholder")}
+                    value={form.note}
+                    onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+                  />
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{t("business.earnings.confirmAmount")}</span>
+                      <span className="font-mono font-semibold">
+                        {formatVND(parseInt(form.amount, 10) || 0)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{t("business.earnings.confirmBank")}</span>
+                      <span className="font-medium">{form.bankName}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{t("business.earnings.confirmAccountNumber")}</span>
+                      <span className="font-mono">{form.bankAccountNumber}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{t("business.earnings.confirmAccountHolder")}</span>
+                      <span className="font-medium">{form.bankAccountName}</span>
+                    </div>
+                    {form.note && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">{t("business.earnings.confirmNote")}</span>
+                        <span className="text-sm">{form.note}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("business.earnings.confirmHint")}
+                </p>
+              </div>
+            )}
+
+            {step === 4 && (
+              <div className="flex flex-col items-center justify-center gap-3 py-6">
+                <div className="rounded-full bg-emerald-100 p-3 dark:bg-emerald-900/30">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <h3 className="text-lg font-semibold">{t("business.earnings.requestSentTitle")}</h3>
+                <p className="text-sm text-muted-foreground text-center">
+                  {t("business.earnings.requestSentDesc", { amount: formatVND(parseInt(form.amount, 10) || 0) })}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Dialog Footer */}
+          {step < 4 ? (
+            <DialogFooter>
+              {step > 1 && (
+                <Button variant="outline" onClick={handleBack}>
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  {t("business.earnings.back")}
+                </Button>
+              )}
+              {step < 3 ? (
+                <Button onClick={handleNext}>
+                  {t("business.earnings.next")}
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={createPayout.isPending}
+                >
+                  {createPayout.isPending ? t("business.earnings.processing") : t("business.earnings.confirmWithdrawal")}
+                </Button>
+              )}
+            </DialogFooter>
+          ) : (
+            <DialogFooter>
+              <Button onClick={handleCloseDialog}>{t("business.earnings.close")}</Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>
   );
-}
+});
+
+export default EarningsPage;

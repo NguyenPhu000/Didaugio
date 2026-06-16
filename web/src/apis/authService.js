@@ -113,4 +113,10 @@ export const authService = {
     });
     return response;
   },
+
+  // Ping online status
+  ping: async () => {
+    const response = await api.post("/auth/ping");
+    return response;
+  },
 };

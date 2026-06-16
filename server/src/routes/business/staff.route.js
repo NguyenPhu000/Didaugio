@@ -18,6 +18,13 @@ router.get(
   staffController.getAll,
 );
 
+// GET /api/business/staff/stats - Staff stats
+router.get(
+  "/stats",
+  hasPermission("staff.view"),
+  staffController.getStats,
+);
+
 // GET /api/business/staff/:id - Staff detail
 router.get(
   "/:id",

@@ -78,4 +78,6 @@ router.delete(
   authController.revokeSession,
 );
 
+router.post("/ping", authenticate, authController.pingOnline);
+
 export default router;

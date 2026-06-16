@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Bar, Doughnut } from "react-chartjs-2";
+import "@/lib/chartSetup";
 import {
   FileText,
   Image as ImageIcon,
@@ -1789,6 +1791,8 @@ const TripDestinationsModal = ({ open, onClose, tripItem }) => {
   const [quickPlaceOpen, setQuickPlaceOpen] = useState(false);
   const [routeInfoMap, setRouteInfoMap] = useState({});
 
+  const TRANSPORT_MODES = useMemo(() => getTransportModes(t), [t]);
+
   // Form thêm chặng đi mới
   const [newDest, setNewDest] = useState({
     placeId: "",
@@ -2556,6 +2560,37 @@ const getMockData = (t) => ({
   ],
 });
 
+const StatCard = ({ title, value, icon: Icon, tone = "default", subtitle }) => {
+  const toneMap = {
+    danger: { iconBg: "bg-rose-50 dark:bg-rose-950/30 text-rose-500" },
+    warning: { iconBg: "bg-amber-50 dark:bg-amber-950/30 text-amber-500" },
+    success: { iconBg: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500" },
+    default: { iconBg: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400" },
+  };
+  const config = toneMap[tone] || toneMap.default;
+
+  return (
+    <Card className="relative overflow-hidden">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1.5 min-w-0">
+            <p className="text-xs font-medium text-muted-foreground">{title}</p>
+            <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
+            {subtitle && (
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
+            )}
+          </div>
+          {Icon && (
+            <div className={cn("p-3 rounded-xl shrink-0", config.iconBg)}>
+              <Icon className="h-5 w-5" />
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const CMSContentPage = () => {
@@ -2893,6 +2928,108 @@ const CMSContentPage = () => {
   const totalTrips = items.length;
   const totalClones = items.reduce((acc, curr) => acc + (curr.cloneCount || 0), 0);
 
+  const eventsChartData = useMemo(() => {
+    if (activeTab !== "events") return null;
+    const topEvents = [...items]
+      .sort((a, b) => (b.totalCheckIns || 0) - (a.totalCheckIns || 0))
+      .slice(0, 5);
+
+    if (topEvents.length === 0) return null;
+
+    return {
+      labels: topEvents.map((e) => e.title.substring(0, 15) + (e.title.length > 15 ? "..." : "")),
+      datasets: [
+        {
+          label: "Lượt check-in",
+          data: topEvents.map((e) => e.totalCheckIns || 0),
+          backgroundColor: "hsl(var(--primary))",
+          borderRadius: 6,
+        },
+      ],
+    };
+  }, [items, activeTab]);
+
+  const tripsChartData = useMemo(() => {
+    if (activeTab !== "trips") return null;
+    const topTrips = [...items]
+      .sort((a, b) => (b.cloneCount || 0) - (a.cloneCount || 0))
+      .slice(0, 5);
+
+    if (topTrips.length === 0) return null;
+
+    return {
+      labels: topTrips.map((t) => t.title.substring(0, 15) + (t.title.length > 15 ? "..." : "")),
+      datasets: [
+        {
+          label: "Lượt clone",
+          data: topTrips.map((t) => t.cloneCount || 0),
+          backgroundColor: "#a855f7",
+          borderRadius: 6,
+        },
+      ],
+    };
+  }, [items, activeTab]);
+
+  const bannersChartData = useMemo(() => {
+    if (activeTab !== "banners") return null;
+    const positions = {};
+    items.forEach((b) => {
+      const pos = b.position || "Home";
+      positions[pos] = (positions[pos] || 0) + 1;
+    });
+
+    if (Object.keys(positions).length === 0) return null;
+
+    return {
+      labels: Object.keys(positions),
+      datasets: [
+        {
+          data: Object.values(positions),
+          backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"],
+        },
+      ],
+    };
+  }, [items, activeTab]);
+
+  const announcementsChartData = useMemo(() => {
+    if (activeTab !== "announcements") return null;
+    const withImage = items.filter((a) => a.imageUrl || a.image).length;
+    const noImage = items.length - withImage;
+
+    if (items.length === 0) return null;
+
+    return {
+      labels: ["Có ảnh minh họa", "Không có ảnh"],
+      datasets: [
+        {
+          data: [withImage, noImage],
+          backgroundColor: ["#10b981", "#ef4444"],
+        },
+      ],
+    };
+  }, [items, activeTab]);
+
+  const featuredChartData = useMemo(() => {
+    if (activeTab !== "featured" && activeTab !== "pages") return null;
+    const topItems = [...items]
+      .sort((a, b) => (b.views || b.viewCount || 0) - (a.views || a.viewCount || 0))
+      .slice(0, 5);
+
+    if (topItems.length === 0) return null;
+
+    return {
+      labels: topItems.map((i) => i.title.substring(0, 15) + (i.title.length > 15 ? "..." : "")),
+      datasets: [
+        {
+          label: "Lượt xem",
+          data: topItems.map((i) => i.views || i.viewCount || 0),
+          backgroundColor: "#10b981",
+          borderRadius: 6,
+        },
+      ],
+    };
+  }, [items, activeTab]);
+
   return (
     <div className="p-6 lg:p-8 min-h-screen bg-background">
       <div className="max-w-[1400px] mx-auto space-y-6">
@@ -2921,70 +3058,176 @@ const CMSContentPage = () => {
           </div>
         </div>
 
-        {/* Stats when on events tab */}
-        {activeTab === "events" && !loading && (
-          <div className="grid grid-cols-3 gap-4">
-            <Card className="border-0 bg-gradient-to-br from-rose-50 to-pink-50">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
-                  <Calendar className="h-5 w-5 text-rose-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{items.length}</p>
-                  <p className="text-xs text-muted-foreground">{t("admin.cms.events")}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 bg-gradient-to-br from-emerald-50 to-teal-50">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                  <CheckCircle className="h-5 w-5 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{activeEventCount}</p>
-                  <p className="text-xs text-muted-foreground">{t("admin.cms.active")}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 bg-gradient-to-br from-yellow-50 to-amber-50">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center">
-                  <Star className="h-5 w-5 text-yellow-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{featuredBannerCount}</p>
-                  <p className="text-xs text-muted-foreground">{t("admin.cms.featuredBanner")}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {/* Dynamic Analytics (Stats & Charts) */}
+        {!loading && (
+          <div className="space-y-6">
+            {/* Stats Row */}
+            {activeTab === "events" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatCard title="Tổng sự kiện" value={items.length} icon={Calendar} tone="default" subtitle="Tất cả sự kiện" />
+                <StatCard title="Đang hoạt động" value={activeEventCount} icon={CheckCircle} tone="success" subtitle="Sự kiện đang diễn ra" />
+                <StatCard title="Banner nổi bật" value={featuredBannerCount} icon={Star} tone="warning" subtitle="Hiển thị trên banner" />
+              </div>
+            )}
+            {activeTab === "trips" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <StatCard title="Tổng lịch trình mẫu" value={totalTrips} icon={Compass} tone="default" subtitle="Lịch trình hệ thống" />
+                <StatCard title="Tổng số lượt clone" value={totalClones} icon={RefreshCw} tone="success" subtitle="Người dùng lưu lại" />
+              </div>
+            )}
+            {activeTab === "banners" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatCard title="Tổng banner" value={items.length} icon={ImageIcon} tone="default" subtitle="Tất cả quảng cáo" />
+                <StatCard title="Đang hiển thị" value={items.filter((b) => b.isActive || b.active).length} icon={CheckCircle} tone="success" subtitle="Đang hoạt động" />
+                <StatCard title="Tổng lượt xem" value={items.reduce((acc, curr) => acc + (curr.views || 0), 0)} icon={Eye} tone="warning" subtitle="Lượt click & xem" />
+              </div>
+            )}
+            {activeTab === "announcements" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <StatCard title="Tổng thông báo" value={items.length} icon={Bell} tone="default" subtitle="Tất cả thông báo" />
+                <StatCard title="Đang hoạt động" value={items.filter((a) => a.active).length} icon={CheckCircle} tone="success" subtitle="Thông báo khả dụng" />
+              </div>
+            )}
+            {activeTab === "featured" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <StatCard title="Tổng nổi bật" value={items.length} icon={Star} tone="default" subtitle="Địa điểm nổi bật" />
+                <StatCard title="Đang kích hoạt" value={items.filter((f) => f.active).length} icon={CheckCircle} tone="success" subtitle="Hiển thị trang chủ" />
+              </div>
+            )}
+            {activeTab === "pages" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatCard title="Tổng trang tĩnh" value={items.length} icon={FileText} tone="default" subtitle="Trang hệ thống" />
+                <StatCard title="Đang kích hoạt" value={items.filter((p) => p.active).length} icon={CheckCircle} tone="success" subtitle="Khả dụng công khai" />
+                <StatCard title="Tổng lượt xem" value={items.reduce((acc, curr) => acc + (curr.views || 0), 0)} icon={Eye} tone="warning" subtitle="Tổng số lượt đọc" />
+              </div>
+            )}
 
-        {/* Stats when on trips tab */}
-        {activeTab === "trips" && !loading && (
-          <div className="grid grid-cols-2 gap-4">
-            <Card className="border-0 bg-gradient-to-br from-purple-50 to-indigo-50">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                  <Compass className="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{totalTrips}</p>
-                  <p className="text-xs text-muted-foreground">{t("admin.cms.sampleTrips")}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 bg-gradient-to-br from-emerald-50 to-teal-50">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                  <RefreshCw className="h-5 w-5 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{totalClones}</p>
-                  <p className="text-xs text-muted-foreground">{t("admin.cms.sampleTrips")}</p>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Charts Row */}
+            {items.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {activeTab === "events" && eventsChartData && (
+                  <Card className="lg:col-span-3">
+                    <CardHeader className="pb-4 border-b">
+                      <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                        <Zap className="h-4 w-4" /> Thống kê Check-in các sự kiện hàng đầu
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-64 pt-4">
+                      <Bar
+                        data={eventsChartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: { legend: { display: false } },
+                          scales: {
+                            y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.05)" } },
+                            x: { grid: { display: false } },
+                          },
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {activeTab === "trips" && tripsChartData && (
+                  <Card className="lg:col-span-3">
+                    <CardHeader className="pb-4 border-b">
+                      <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                        <Compass className="h-4 w-4" /> Top lịch trình mẫu được Clone nhiều nhất
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-64 pt-4">
+                      <Bar
+                        data={tripsChartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: { legend: { display: false } },
+                          scales: {
+                            y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.05)" } },
+                            x: { grid: { display: false } },
+                          },
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {activeTab === "banners" && bannersChartData && (
+                  <Card className="lg:col-span-3">
+                    <CardHeader className="pb-4 border-b">
+                      <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4" /> Cơ cấu phân phối Banner quảng cáo theo vị trí
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-64 pt-4 flex items-center justify-center">
+                      <Doughnut
+                        data={bannersChartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              position: "bottom",
+                              labels: { usePointStyle: true, padding: 15 },
+                            },
+                          },
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {activeTab === "announcements" && announcementsChartData && (
+                  <Card className="lg:col-span-3">
+                    <CardHeader className="pb-4 border-b">
+                      <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                        <Bell className="h-4 w-4" /> Cơ cấu thông báo hệ thống (Có ảnh vs Không ảnh)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-64 pt-4 flex items-center justify-center">
+                      <Doughnut
+                        data={announcementsChartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              position: "bottom",
+                              labels: { usePointStyle: true, padding: 15 },
+                            },
+                          },
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {(activeTab === "featured" || activeTab === "pages") && featuredChartData && (
+                  <Card className="lg:col-span-3">
+                    <CardHeader className="pb-4 border-b">
+                      <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                        <Eye className="h-4 w-4" /> Top nội dung có lượt xem nhiều nhất
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-64 pt-4">
+                      <Bar
+                        data={featuredChartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: { legend: { display: false } },
+                          scales: {
+                            y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.05)" } },
+                            x: { grid: { display: false } },
+                          },
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
           </div>
         )}
 

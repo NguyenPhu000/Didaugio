@@ -147,6 +147,29 @@ export const activate = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/business/staff/stats
+ * Get aggregated staff stats for the current business
+ */
+export const getStats = async (req, res, next) => {
+  try {
+    const businessId = req.business?.id || req.activeBusiness?.id;
+    if (!businessId) {
+      return res.status(403).json({
+        success: false,
+        data: null,
+        message: "Không tìm thấy doanh nghiệp",
+        errorCode: "NO_BUSINESS",
+      });
+    }
+
+    const stats = await staffService.getStaffStats(businessId);
+    res.json({ success: true, data: stats, message: "OK" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getAll,
   getById,
@@ -155,4 +178,5 @@ export default {
   resetPassword,
   deactivate,
   activate,
+  getStats,
 };

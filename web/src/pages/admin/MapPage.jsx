@@ -217,12 +217,12 @@ const MapPageContent = () => {
             </div>
             <div>
               <div className="text-sm font-black uppercase tracking-tight text-gray-900">
-                {t("map.title")}
+                {t("admin.map.title")}
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
                 <span className="text-[9px] font-mono text-gray-400 uppercase tracking-widest">
-                  {t("map.cityDistricts", { count: districtList.length || 9 })}
+                  {t("admin.map.cityDistricts", { count: districtList.length || 9 })}
                 </span>
               </div>
             </div>
@@ -234,14 +234,14 @@ const MapPageContent = () => {
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t("map.searchPlaceholder")}
+                placeholder={t("admin.map.searchPlaceholder")}
                 className="w-full h-9 border border-gray-200 rounded-lg pl-9 pr-8 text-sm focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
-                  aria-label={t("map.ariaLabels.clearSearch")}
+                  aria-label={t("admin.map.ariaLabels.clearSearch")}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -255,7 +255,7 @@ const MapPageContent = () => {
                 onClick={resetFilters}
                 className="flex items-center gap-1.5 h-8 px-3 text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
               >
-                <RefreshCw className="h-3 w-3" /> {t("map.clearFilters")}
+                <RefreshCw className="h-3 w-3" /> {t("admin.map.clearFilters")}
               </button>
             )}
             <button
@@ -265,15 +265,15 @@ const MapPageContent = () => {
                   ? "bg-blue-600 text-white border-blue-600"
                   : "border-gray-200 hover:bg-gray-100"
               }`}
-              title={t("map.routing")}
-              aria-label={t("map.ariaLabels.routingMode")}
+              title={t("admin.map.routing")}
+              aria-label={t("admin.map.ariaLabels.routingMode")}
             >
               <Route className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode(viewMode === "map" ? "list" : "map")}
               className={`h-8 w-8 rounded-lg flex items-center justify-center border transition-colors ${viewMode === "list" ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 hover:bg-gray-100"}`}
-              aria-label={viewMode === "map" ? t("map.ariaLabels.toList") : t("map.ariaLabels.toMap")}
+              aria-label={viewMode === "map" ? t("admin.map.ariaLabels.toList") : t("admin.map.ariaLabels.toMap")}
             >
               {viewMode === "map" ? (
                 <List className="h-4 w-4" />
@@ -284,14 +284,14 @@ const MapPageContent = () => {
             <button
               onClick={() => setSidebarOpen((v) => !v)}
               className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
-              aria-label={t("map.ariaLabels.toggleSidebar")}
+              aria-label={t("admin.map.ariaLabels.toggleSidebar")}
             >
               <Layers className="h-4 w-4" />
             </button>
             <button
               onClick={toggleFullscreen}
               className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
-              aria-label={fullscreen ? t("map.ariaLabels.exitFullscreen") : t("map.ariaLabels.enterFullscreen")}
+              aria-label={fullscreen ? t("admin.map.ariaLabels.exitFullscreen") : t("admin.map.ariaLabels.enterFullscreen")}
             >
               {fullscreen ? (
                 <Minimize2 className="h-4 w-4" />
@@ -312,7 +312,7 @@ const MapPageContent = () => {
               <span className="text-[12px] text-blue-100 font-medium truncate">
                 {routing.origin?.name ?? (
                   <span className="text-blue-400 italic">
-                    {t("map.selectOrigin")}
+                    {t("admin.map.selectOrigin")}
                   </span>
                 )}
               </span>
@@ -327,7 +327,7 @@ const MapPageContent = () => {
               <span className="text-[12px] text-blue-100 font-medium truncate">
                 {routing.destination?.name ?? (
                   <span className="text-blue-400 italic">
-                    {t("map.selectDestination")}
+                    {t("admin.map.selectDestination")}
                   </span>
                 )}
               </span>
@@ -346,7 +346,7 @@ const MapPageContent = () => {
 
             {routing.loading && (
               <span className="text-[11px] text-blue-300 italic shrink-0">
-                {t("map.findingRoute")}
+                {t("admin.map.findingRoute")}
               </span>
             )}
             {routing.error && (
@@ -361,7 +361,7 @@ const MapPageContent = () => {
                 setRoutingMode(false);
               }}
               className="shrink-0 text-blue-400 hover:text-white transition-colors"
-              aria-label={t("map.closeRouting")}
+              aria-label={t("admin.map.closeRouting")}
             >
               <X className="w-4 h-4" />
             </button>
@@ -375,14 +375,14 @@ const MapPageContent = () => {
             <div className="w-72 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 overflow-hidden shadow-sm">
               <div className="grid grid-cols-3 border-b border-gray-100">
                 {[
-                  { label: t("map.places"), value: places.length, icon: MapPin },
+                  { label: t("admin.map.places"), value: places.length, icon: MapPin },
                   {
-                    label: t("map.showing"),
+                    label: t("admin.map.showing"),
                     value: filteredPlaces.length,
                     icon: Eye,
                   },
                   {
-                    label: t("map.areas"),
+                    label: t("admin.map.areas"),
                     value: districtList.length,
                     icon: BarChart3,
                   },
@@ -403,9 +403,9 @@ const MapPageContent = () => {
 
               <div className="flex border-b border-gray-200 bg-gray-50">
                 {[
-                  { id: "places", label: t("map.places"), icon: MapPin },
-                  { id: "districts", label: t("map.districts"), icon: BarChart3 },
-                  { id: "filters", label: t("map.filters"), icon: Filter },
+                  { id: "places", label: t("admin.map.places"), icon: MapPin },
+                  { id: "districts", label: t("admin.map.districts"), icon: BarChart3 },
+                  { id: "filters", label: t("admin.map.filters"), icon: Filter },
                 ].map(({ id, label, icon: _Icon }) => (
                   <button
                     key={id}
@@ -419,7 +419,7 @@ const MapPageContent = () => {
                     <_Icon className="h-3.5 w-3.5" />
                     {label}
                     {id === "filters" && hasActiveFilters && (
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full" aria-label={t("map.ariaLabels.filterActive")} />
+                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full" aria-label={t("admin.map.ariaLabels.filterActive")} />
                     )}
                   </button>
                 ))}
@@ -432,7 +432,7 @@ const MapPageContent = () => {
                     <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
                       {selectedDistrictId
                         ? selectedDistrict?.properties?.name
-                        : t("map.allPlaces")}
+                        : t("admin.map.allPlaces")}
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-mono text-gray-400">
@@ -442,7 +442,7 @@ const MapPageContent = () => {
                         <button
                           onClick={resetSelection}
                           className="text-[10px] text-red-500 hover:text-red-700 font-bold"
-                          aria-label={t("map.deselectArea")}
+                          aria-label={t("admin.map.deselectArea")}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -454,7 +454,7 @@ const MapPageContent = () => {
                       <div className="py-12 text-center">
                         <MapPin className="h-8 w-8 text-gray-200 mx-auto mb-2" />
                         <p className="text-xs text-gray-400 font-medium">
-                          {t("map.noPlaces")}
+                          {t("admin.map.noPlaces")}
                         </p>
                       </div>
                     ) : (
@@ -475,14 +475,14 @@ const MapPageContent = () => {
                 <div className="flex flex-col flex-1 overflow-hidden">
                   <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
                     <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
-                      {districtList.length} {t("map.districts")}
+                      {districtList.length} {t("admin.map.districts")}
                     </span>
                     {selectedDistrictId && (
                       <button
                         onClick={resetSelection}
                         className="text-[10px] text-red-500 font-bold flex items-center gap-1 hover:text-red-700"
                       >
-                        <X className="h-3 w-3" /> {t("map.deselect")}
+                        <X className="h-3 w-3" /> {t("admin.map.deselect")}
                       </button>
                     )}
                   </div>
@@ -503,7 +503,7 @@ const MapPageContent = () => {
                     ))}
                     <div className="mt-2 mx-4 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
                       <p className="text-[11px] font-bold text-gray-500 uppercase mb-2">
-                        {t("map.placeDistribution")}
+                        {t("admin.map.placeDistribution")}
                       </p>
                       {districtList
                         .filter((d) => d.count > 0)
@@ -564,7 +564,7 @@ const MapPageContent = () => {
                   <div className="text-center">
                     <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                     <p className="text-sm font-medium text-gray-500">
-                      {t("map.loading")}
+                      {t("admin.map.loading")}
                     </p>
                   </div>
                 </div>
@@ -573,14 +573,14 @@ const MapPageContent = () => {
                 <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 gap-3">
                   <AlertTriangle className="h-10 w-10 text-red-400" />
                   <p className="text-sm font-medium text-gray-600">
-                    {t("map.loadError")}
+                    {t("admin.map.loadError")}
                   </p>
                   <button
                     onClick={retry}
                     className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
                   >
                     <RefreshCw className="h-4 w-4" />
-                    {t("map.retry")}
+                    {t("admin.map.retry")}
                   </button>
                 </div>
               )}
@@ -607,7 +607,7 @@ const MapPageContent = () => {
                   <strong className="text-gray-900">
                     {filteredPlaces.length}
                   </strong>{" "}
-                  {t("map.places").toLowerCase()}
+                  {t("admin.map.places").toLowerCase()}
                 </span>
                 {selectedDistrictId && (
                   <>
@@ -628,10 +628,10 @@ const MapPageContent = () => {
         <div className="h-7 bg-gray-900 flex items-center justify-between px-4 flex-shrink-0">
           <div className="flex items-center gap-4 text-[10px] font-mono text-gray-400">
             <span>
-              {t("map.statusBar.showing", { shown: filteredPlaces.length, total: places.length })}
+              {t("admin.map.statusBar.showing", { shown: filteredPlaces.length, total: places.length })}
             </span>
             {hasActiveFilters && (
-              <span className="text-yellow-400">{t("map.statusBar.filtersActive")}</span>
+              <span className="text-yellow-400">{t("admin.map.statusBar.filtersActive")}</span>
             )}
             {selectedDistrictId && (
               <span className="text-yellow-400">
@@ -640,7 +640,7 @@ const MapPageContent = () => {
             )}
           </div>
           <span className="text-[10px] font-mono text-gray-500">
-            {t("map.statusBar.canTho", { count: districtList.length || 9 })}
+            {t("admin.map.statusBar.canTho", { count: districtList.length || 9 })}
           </span>
         </div>
       </div>

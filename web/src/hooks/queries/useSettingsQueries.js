@@ -24,3 +24,61 @@ export function useUpdateSettings() {
     },
   });
 }
+
+/**
+ * Fetch feature flags.
+ */
+export function useFeatureFlags() {
+  return useApiQuery(
+    queryKeys.settings.featureFlags(),
+    () => settingsService.getFeatureFlags(),
+    {
+      staleTime: 30_000,
+    }
+  );
+}
+
+/**
+ * Toggle a feature flag.
+ */
+export function useUpdateFeatureFlag() {
+  const queryClient = useQueryClient();
+  return useApiMutation(
+    ({ key, enabled }) => settingsService.updateFeatureFlag(key, enabled),
+    {
+      onSuccess: () => {
+        invalidateQueries(queryClient, [
+          queryKeys.settings.featureFlags(),
+          queryKeys.settings.all(),
+        ]);
+      },
+    }
+  );
+}
+
+/**
+ * Fetch system logs (paginated).
+ */
+export function useSystemLogs(params = {}) {
+  return useApiQuery(
+    queryKeys.settings.systemLogs(params),
+    () => settingsService.getSystemLogs(params),
+    {
+      keepPreviousData: true,
+    }
+  );
+}
+
+/**
+ * Fetch system health status.
+ */
+export function useSystemHealth() {
+  return useApiQuery(
+    queryKeys.settings.systemHealth(),
+    () => settingsService.getSystemHealth(),
+    {
+      refetchInterval: 60_000,
+      staleTime: 30_000,
+    }
+  );
+}

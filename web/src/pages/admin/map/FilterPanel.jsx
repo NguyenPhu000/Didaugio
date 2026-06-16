@@ -124,7 +124,7 @@ const FilterPanel = ({
         onClick={onResetFilters}
         className="w-full flex items-center justify-center gap-2 py-2.5 border border-red-200 text-red-600 bg-red-50 rounded-lg text-[12px] font-bold hover:bg-red-100 transition-colors"
       >
-        <RefreshCw className="h-3.5 w-3.5" /> {t("map.clearFilters")}
+        <RefreshCw className="h-3.5 w-3.5" /> {t("admin.map.clearFilters")}
       </button>
     )}
   </div>

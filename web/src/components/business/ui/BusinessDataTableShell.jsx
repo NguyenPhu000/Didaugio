@@ -1,13 +1,32 @@
 import { memo } from "react";
+import { Inbox, AlertTriangle, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { BusinessEmptyState } from "./BusinessEmptyState";
-import { Inbox } from "lucide-react";
 
 /**
  * BusinessDataTableShell — Consistent wrapper for data tables.
- * Provides rounded card container, loading skeleton, and empty state.
+ * Handles loading, empty, and error states with card container.
+ *
+ * @param {object} props
+ * @param {string} [props.title] - Card header title
+ * @param {string} [props.description] - Card header description
+ * @param {React.ReactNode} [props.action] - Header action buttons
+ * @param {boolean} [props.loading=false] - Show loading skeleton
+ * @param {boolean} [props.empty=false] - Show empty state
+ * @param {import('lucide-react').LucideIcon} [props.emptyIcon] - Empty state icon
+ * @param {string} [props.emptyMessage='Không có dữ liệu'] - Empty state message
+ * @param {React.ReactNode} [props.emptyAction] - Empty state action button
+ * @param {boolean} [props.isError=false] - Show error state
+ * @param {string|Error} [props.error] - Error message or object
+ * @param {() => void} [props.onRetry] - Retry callback for error state
+ * @param {number} [props.columns=4] - Number of skeleton columns
+ * @param {number} [props.skeletonRows=5] - Number of skeleton rows
+ * @param {React.ReactNode} [props.children] - Table content
+ * @param {string} [props.className] - Additional classes
+ * @param {boolean} [props.noPadding=false] - Remove card padding
  */
 export const BusinessDataTableShell = memo(({
   title,
@@ -18,6 +37,9 @@ export const BusinessDataTableShell = memo(({
   emptyIcon = Inbox,
   emptyMessage = "Không có dữ liệu",
   emptyAction,
+  isError = false,
+  error,
+  onRetry,
   columns = 4,
   skeletonRows = 5,
   children,
@@ -57,6 +79,19 @@ export const BusinessDataTableShell = memo(({
               ))}
             </div>
           ))}
+        </div>
+      ) : isError ? (
+        <div className="py-12">
+          <BusinessEmptyState
+            icon={AlertTriangle}
+            message={typeof error === "string" ? error : error?.message || "Đã xảy ra lỗi khi tải dữ liệu"}
+            action={onRetry && (
+              <Button variant="outline" size="sm" onClick={onRetry} className="gap-1.5">
+                <RefreshCw className="h-3.5 w-3.5" />
+                Thử lại
+              </Button>
+            )}
+          />
         </div>
       ) : empty ? (
         <div className="py-12">

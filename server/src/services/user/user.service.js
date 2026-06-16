@@ -15,6 +15,8 @@ import {
 import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
 
+import { isOnline as checkOnlineStatus } from "../../utils/onlineManager.js";
+
 export const getAllUsers = async (query = {}) => {
   const { page, limit } = paginationSchema.parse(query);
   const skip = (page - 1) * Math.min(limit, PAGINATION.MAX_LIMIT);
@@ -86,6 +88,7 @@ export const getAllUsers = async (query = {}) => {
     roleId: user.roleId,
     status: user.status,
     isActive: user.status === USER_STATUS.ACTIVE,
+    isOnline: checkOnlineStatus(user.id),
     emailVerified: user.emailVerified,
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,

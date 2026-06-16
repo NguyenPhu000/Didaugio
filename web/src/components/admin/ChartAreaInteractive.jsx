@@ -30,12 +30,12 @@ import { dashboardService } from "@/apis/dashboardService";
 
 const getChartConfig = (t) => ({
   places: {
-    label: t("admin.chart.views"),
-    color: "var(--primary)",
+    label: t("admin.chart.places"),
+    color: "hsl(var(--primary))",
   },
   views: {
-    label: t("admin.chart.bookings"),
-    color: "var(--primary)",
+    label: t("admin.chart.views"),
+    color: "#3b82f6",
   },
 });
 
@@ -219,14 +219,12 @@ export default function ChartAreaInteractive() {
                 type="natural"
                 fill="url(#fillViews)"
                 stroke="var(--color-views)"
-                stackId="a"
               />
               <Area
                 dataKey="places"
                 type="natural"
                 fill="url(#fillPlaces)"
                 stroke="var(--color-places)"
-                stackId="a"
               />
             </AreaChart>
           </ChartContainer>
