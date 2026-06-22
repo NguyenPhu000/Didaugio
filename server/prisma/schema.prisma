@@ -811,6 +811,7 @@ model Business {
   places                 Place[]
   vouchers               Voucher[]
   payouts                Payout[]
+  partnerWallet          PartnerWallet?
   blockedDates           BusinessBlockedDate[]
   settings               Json                    @default("{}") @map("settings")
 
@@ -1028,6 +1029,10 @@ model Booking {
   deletedAt        DateTime?          @map("deleted_at")
   businessId       Int                @map("business_id")
   bookingAt        DateTime?          @map("booking_at")
+  idempotencyKey   String?            @unique @map("idempotency_key")
+  adminEarned      Int                @default(0) @map("admin_earned")
+  businessEarned   Int                @default(0) @map("business_earned")
+  commissionRate   Int                @default(10) @map("commission_rate")
   actionLogs       BookingActionLog[]
   business         Business           @relation(fields: [businessId], references: [id])
   service          BusinessService    @relation(fields: [serviceId], references: [id])
@@ -1036,6 +1041,7 @@ model Booking {
   resource         PlaceResource?     @relation(fields: [resourceId], references: [id])
   payment          Payment?
   transaction      BookingTransaction?
+  financialLedgers FinancialLedger[]
   reviews          Review[]
 
   @@index([userId])
@@ -1141,8 +1147,36 @@ model Payout {
   @@map("payouts")
 }
 
+model PartnerWallet {
+  id            Int      @id @default(autoincrement())
+  businessId    Int      @unique @map("business_id")
+  balance       Int      @default(0)
+  frozenBalance Int      @default(0) @map("frozen_balance")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("partner_wallets")
+}
+
+model FinancialLedger {
+  id          Int      @id @default(autoincrement())
+  bookingId   Int?     @map("booking_id")
+  payoutId    Int?     @map("payout_id")
+  type        String   // "COMMISSION", "EARNING", "WITHDRAW", "REFUND", "SETTLE"
+  amount      Int
+  description String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@map("financial_ledgers")
+}
+
 enum BookingStatus {
   pending
+  paid_pending_confirm
   confirmed
   completed
   cancelled
@@ -1163,6 +1197,7 @@ enum BookingAction {
   auto_approve
   auto_approve_failed
   auto_expire
+  checkin
 }
 
 model CachedItinerary {

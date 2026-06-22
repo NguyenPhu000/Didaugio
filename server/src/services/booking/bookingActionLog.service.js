@@ -12,6 +12,7 @@ export const BOOKING_ACTION = {
   AUTO_APPROVE: "auto_approve",
   AUTO_APPROVE_FAILED: "auto_approve_failed",
   AUTO_EXPIRE: "auto_expire",
+  CHECKIN: "checkin",
 };
 
 /**

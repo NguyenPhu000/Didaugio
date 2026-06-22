@@ -22,6 +22,7 @@ export const EVENTS = {
   },
   BOOKING: {
     CREATED: "booking:created",
+    PAID: "booking:paid",
     CONFIRMED: "booking:confirmed",
     CANCELLED: "booking:cancelled",
     REJECTED: "booking:rejected",

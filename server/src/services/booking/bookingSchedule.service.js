@@ -26,6 +26,7 @@ import {
   assertBookingTransition,
   BOOKING_TRANSITION,
 } from "./bookingStateMachine.js";
+import { refundLedger } from "./financialCore.service.js";
 
 const scheduleInclude = {
   service: {
@@ -434,6 +435,13 @@ export async function quickRejectBooking(
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
       where: { id: parseInt(bookingId, 10) },
+      select: {
+        id: true,
+        status: true,
+        businessId: true,
+        paymentStatus: true,
+        businessEarned: true,
+      },
     });
     if (!existing) {
       throw new ServiceError(
@@ -458,6 +466,11 @@ export async function quickRejectBooking(
         ...(businessNote !== undefined && { businessNote }),
       },
     });
+
+    // Refund frozen balance if booking was paid
+    if (existing.paymentStatus === "paid" && existing.businessEarned > 0) {
+      await refundLedger(tx, existing.id, existing.businessId, existing.businessEarned);
+    }
 
     await appendBookingActionLog(tx, {
       bookingId: existing.id,

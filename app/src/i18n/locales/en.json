@@ -129,7 +129,7 @@
       "all": "All"
     },
     "recommended": "Must-try places",
-    "results": "{count} results",
+    "results": "{{count}} results",
     "sections": {
       "featured": "Featured destinations",
       "culinary": "Culinary highlights",
@@ -163,7 +163,7 @@
       "placeholder": "Search places, restaurants, fun spots...",
       "close": "Close",
       "resetFilters": "Reset filters",
-      "resultsMatch": "{count} matching results",
+      "resultsMatch": "{{count}} matching results",
       "searchNext": "Find your next destination",
       "noResults": "No results found",
       "tabs": {
@@ -200,7 +200,7 @@
   },
   "saved": {
     "title": "Favorites",
-    "countLabel": "{count} places",
+    "countLabel": "{{count}} places",
     "filterAll": "All",
     "empty": {
       "noResults": "No places",
@@ -322,7 +322,7 @@
   },
   "notifications": {
     "title": "Notifications",
-    "unreadCount": "{count} unread",
+    "unreadCount": "{{count}} unread",
     "markAllRead": "Mark all read",
     "filterUnread": "Unread",
     "filterAll": "All",
@@ -334,9 +334,9 @@
     },
     "time": {
       "justNow": "Just now",
-      "minutes": "{count} min",
-      "hours": "{count}h",
-      "days": "{count} days"
+      "minutes": "{{count}} min",
+      "hours": "{{count}}h",
+      "days": "{{count}} days"
     }
   },
   "bookings": {
@@ -561,7 +561,7 @@
     "phone": "Phone",
     "website": "Website",
     "rating": "Rating",
-    "reviewCount": "{count} reviews",
+    "reviewCount": "{{count}} reviews",
     "writeReview": "Write a review",
     "noReviews": "No reviews yet",
     "loading": "Loading place info...",
@@ -694,7 +694,7 @@
       "startDate": "Start date",
       "endDate": "End date",
       "selectDate": "Select date",
-      "duration": "{count} days",
+      "duration": "{{count}} days",
       "selectEndDate": "Select end date",
       "endDateError": "End date must be after start date",
       "cancelAlert": "Cancel trip creation?",
@@ -931,7 +931,6 @@
     "errors": {
       "mapData": "Could not load data",
       "retry": "Retry",
-      "routeBuild": "Cannot calculate route.",
       "routeDirectionTitle": "Cannot get directions",
       "routeDirectionMessage": "Routing connection error. Please try again.",
       "routeFallbackTitle": "Using estimated route",
@@ -945,7 +944,7 @@
       "noticeTitle": "Web mode is using a list view",
       "noticeSubtext": "Native maps are not supported on web. You can still search, filter and open places on Google Maps.",
       "allCategories": "All",
-      "summaryFound": "Found {count} places",
+      "summaryFound": "Found {{count}} places",
       "loadingPlaces": "Loading data...",
       "placesLoadError": "Could not load place data",
       "noPlacesForFilters": "No places match the filters",
@@ -974,21 +973,6 @@
       "minuteShortUnit": "m",
       "meterUnit": "m",
       "kilometerUnit": "km"
-    },
-    "routeBuilder": {
-      "panelTitle": "Build your route",
-      "emptyDraftHint": "Long press a marker to add a stop",
-      "readyToConfirmHint": "Ready to confirm",
-      "minimumStopsHint": "Need at least {minimumStops} points",
-      "stopFallbackName": "Stop {index}",
-      "noStopNotice": "No stops yet. Long press a marker to add to route.",
-      "updateRoute": "Update route",
-      "confirmRoute": "Confirm route",
-      "clearAll": "Clear all",
-      "recoveryTitle": "You've passed the destination",
-      "etaPrefix": "ETA",
-      "stateCompleted": "All legs completed",
-      "retryRoute": "Retry route"
     },
     "arrivalModal": {
       "title": "Arrived at destination",
@@ -1021,7 +1005,7 @@
       "allAreas": "All areas",
       "areaFallback": "Area",
       "noneApplied": "None applied",
-      "countApplied": "{count} filters",
+      "countApplied": "{{count}} filters",
       "groupFallback": "filters"
     }
   },
@@ -1090,7 +1074,9 @@
     "saveAccessibility": "Save trip",
     "newTrip": "New trip",
     "days": "days",
-    "destinations": "destinations"
+    "destinations": "destinations",
+    "dayCount": "{{count}} days",
+    "placeCount": "{{count}} places"
   },
   "tripHeader": {
     "from": "From {{date}}",

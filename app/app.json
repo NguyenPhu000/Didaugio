@@ -59,7 +59,10 @@
     },
     "ios": {
       "bundleIdentifier": "vn.didaugio.app",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": ["momo"]
+      }
     },
     "extra": {
       "router": {},

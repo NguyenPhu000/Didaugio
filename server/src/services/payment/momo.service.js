@@ -22,6 +22,12 @@ const MOMO_IPN_URL = process.env.MOMO_IPN_URL || "http://localhost:8081/api/paym
  * @returns {Promise<{ paymentUrl: string, transId: string }>}
  */
 export async function createPaymentUrl({ amount, transactionRef, orderInfo, returnUrl }) {
+  if (!MOMO_PARTNER_CODE || !MOMO_ACCESS_KEY || !MOMO_SECRET_KEY) {
+    throw new Error(
+      "MoMo chưa được cấu hình. Vui lòng thêm MOMO_PARTNER_CODE, MOMO_ACCESS_KEY, MOMO_SECRET_KEY vào .env",
+    );
+  }
+
   const requestId = `${transactionRef}_${Date.now()}`;
   const orderId = transactionRef;
   const requestType = "captureWallet";
@@ -80,6 +86,8 @@ export async function createPaymentUrl({ amount, transactionRef, orderInfo, retu
 
   return {
     paymentUrl: payUrl || deeplink || qrCodeUrl,
+    deeplink: deeplink || null,
+    payUrl: payUrl || null,
     transId: transId || null,
     requestId,
   };

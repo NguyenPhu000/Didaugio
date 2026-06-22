@@ -30,6 +30,10 @@ import {
   incrementVoucherUsage,
 } from "../voucher/index.js";
 import { createBookingTransaction } from "./bookingTransaction.service.js";
+import {
+  settleCompletedLedger,
+  refundLedger,
+} from "./financialCore.service.js";
 
 let expirePendingBookingsEnumWarned = false;
 
@@ -817,9 +821,7 @@ export const getById = async (id) => {
   });
 
   if (!booking) {
-    const error = new Error("Booking không tồn tại");
-    error.statusCode = 404;
-    throw error;
+    throw new ServiceError("Booking không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
   return serializeBookingUser(booking);
@@ -1143,22 +1145,26 @@ export const confirm = async (bookingId, userId, businessNote = undefined) => {
       "Chỉ có thể xác nhận booking đang chờ",
     );
 
-    const at = existing.bookingAt
-      ? new Date(existing.bookingAt)
-      : combineUseDateAndTime(existing.useDate, existing.useTime);
+    // Skip availability check for already-paid bookings (slot already taken at payment time)
+    const isPaidPending = existing.status === BOOKING_STATUS.PAID_PENDING_CONFIRM;
+    if (!isPaidPending) {
+      const at = existing.bookingAt
+        ? new Date(existing.bookingAt)
+        : combineUseDateAndTime(existing.useDate, existing.useTime);
 
-    const avail = await checkAvailability(tx, {
-      serviceId: existing.serviceId,
-      bookingAt: at,
-      quantity: existing.quantity,
-      excludeBookingId: existing.id,
-    });
-    if (!avail.ok) {
-      throw new ServiceError(
-        "Không đủ slot trong khung giờ này",
-        409,
-        ERROR_CODES.CONFLICT,
-      );
+      const avail = await checkAvailability(tx, {
+        serviceId: existing.serviceId,
+        bookingAt: at,
+        quantity: existing.quantity,
+        excludeBookingId: existing.id,
+      });
+      if (!avail.ok) {
+        throw new ServiceError(
+          "Không đủ slot trong khung giờ này",
+          409,
+          ERROR_CODES.CONFLICT,
+        );
+      }
     }
 
     const updated = await tx.booking.update({
@@ -1235,6 +1241,11 @@ export const cancel = async (bookingId, cancelReason, userId, actorType = "user"
       },
       include: defaultInclude,
     });
+
+    // Refund frozen balance if booking was paid
+    if (existing.paymentStatus === PAYMENT_STATUS.PAID && existing.businessEarned > 0) {
+      await refundLedger(tx, existing.id, existing.businessId, existing.businessEarned);
+    }
 
     // Decrement voucher usage count if this booking used a voucher
     if (existing.voucherId) {
@@ -1346,11 +1357,9 @@ export const cancelMyBooking = async (bookingId, userId, cancelReason) => {
       },
     });
 
-    if (existing.payment && existing.payment.status === PAYMENT_STATUS.UNPAID) {
-      await tx.payment.update({
-        where: { id: existing.payment.id },
-        data: { status: PAYMENT_STATUS.UNPAID },
-      });
+    // Refund frozen balance if booking was paid
+    if (existing.paymentStatus === PAYMENT_STATUS.PAID && existing.businessEarned > 0) {
+      await refundLedger(tx, existing.id, existing.businessId, existing.businessEarned);
     }
 
     if (existing.voucherId) {
@@ -1446,6 +1455,11 @@ export const complete = async (bookingId, userId, businessNote = undefined) => {
       commissionAmount,
       source: "complete",
     });
+
+    // Settle frozen funds to available balance if payment was made via gateway
+    if (hasPayment && existing.businessEarned > 0) {
+      await settleCompletedLedger(tx, existing.id, existing.businessId, existing.businessEarned);
+    }
 
     await appendBookingActionLog(tx, {
       bookingId: existing.id,
@@ -1708,6 +1722,11 @@ export const verifyQR = async (payload = {}, actorUserId, actorRoleId) => {
       source: "qr_checkin",
     });
 
+    // Settle frozen funds to available balance if payment was made via gateway
+    if (booking.businessEarned > 0) {
+      await settleCompletedLedger(tx, booking.id, booking.businessId, booking.businessEarned);
+    }
+
     const enriched = await tx.booking.findUnique({
       where: { id: booking.id },
       include: defaultInclude,
@@ -1715,7 +1734,7 @@ export const verifyQR = async (payload = {}, actorUserId, actorRoleId) => {
 
     await appendBookingActionLog(tx, {
       bookingId: updated.id,
-      action: BOOKING_ACTION.APPROVE,
+      action: BOOKING_ACTION.CHECKIN,
       actorUserId,
       metadata: {
         source: "qr_checkin",

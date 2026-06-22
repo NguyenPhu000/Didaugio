@@ -1,14 +1,13 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
-  Platform,
   Pressable,
+  StyleSheet,
   Text,
   View,
   useWindowDimensions,
 } from "react-native";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
   useAnimatedStyle,
@@ -25,16 +24,9 @@ import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { resolveMediaUrl } from "../../../lib/media-url";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-const BANNER_H = 200;
+const BANNER_H = 220;
 const AUTO_SCROLL_INTERVAL = 10000;
 
-const GRADIENT_COLORS = {
-  background: ["#1B4332", "#0F1419"],
-  overlay: ["rgba(15,23,42,0)", "rgba(15,23,42,0.85)"],
-  imageFade: ["rgba(15,20,25,1)", "rgba(15,20,25,0.5)", "rgba(15,20,25,0)"],
-};
-
-// Fallback banner khi admin chưa tạo banner nào
 const FALLBACK_BANNER = {
   id: "fallback",
   title: "Đi Đâu Giờ?",
@@ -81,79 +73,60 @@ function BannerSlide({ banner, width, onPress }) {
         {
           width,
           height: BANNER_H,
-          borderRadius: TOKENS.radius.xl,
+          borderRadius: 24,
           borderCurve: "continuous",
           overflow: "hidden",
-          backgroundColor: GRADIENT_COLORS.background[0],
-          ...(Platform.OS === "ios" ? TOKENS.shadow.lg : null),
+          backgroundColor: APPLE_THEME.surfaceMuted,
         },
       ]}
     >
-      {/* Deep forest green → black gradient background */}
-      <LinearGradient
-        colors={GRADIENT_COLORS.background}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ position: "absolute", inset: 0 }}
-      />
-
-      {/* Right-side image blended into dark background */}
+      {/* Full image - no gradient overlay */}
       {hasImage ? (
-        <>
-          <Image
-            source={{ uri: imageUri }}
-            contentFit="cover"
-            transition={300}
-            cachePolicy="memory-disk"
-            style={{
-              position: "absolute",
-              right: 0,
-              top: 0,
-              width: "55%",
-              height: "100%",
-            }}
-          />
-          {/* Image fade — blends image into dark background from right to left */}
-          <LinearGradient
-            colors={GRADIENT_COLORS.imageFade}
-            locations={[0, 0.45, 1]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{ position: "absolute", inset: 0 }}
-            pointerEvents="none"
-          />
-        </>
-      ) : null}
+        <Image
+          source={{ uri: imageUri }}
+          contentFit="cover"
+          transition={300}
+          cachePolicy="memory-disk"
+          style={StyleSheet.absoluteFillObject}
+        />
+      ) : (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <MaterialIconsRounded name="image" size={48} color={APPLE_THEME.textMuted} />
+        </View>
+      )}
 
-      {/* Bottom-up shadow overlay for text readability */}
-      <LinearGradient
-        colors={GRADIENT_COLORS.overlay}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={{ position: "absolute", inset: 0 }}
-        pointerEvents="none"
-      />
+      {/* Solid dark overlay at bottom for text - only if has content */}
+      {banner.title ? (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "45%",
+            backgroundColor: "rgba(0,0,0,0.5)",
+          }}
+        />
+      ) : null}
 
       {/* Fallback badge */}
       {banner.isFallback ? (
         <View
           style={{
             position: "absolute",
-            top: TOKENS.space[4],
-            left: TOKENS.space[4],
-            paddingHorizontal: TOKENS.space[3],
-            paddingVertical: TOKENS.space[1],
-            borderRadius: TOKENS.radius.full,
-            backgroundColor: "rgba(255,255,255,0.15)",
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.25)",
+            top: 16,
+            left: 16,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 999,
+            backgroundColor: "rgba(0,0,0,0.5)",
           }}
         >
           <Text
             style={{
-              color: APPLE_THEME.white,
-              fontSize: TOKENS.fontSize.xs,
-              fontFamily: TOKENS.font.semibold,
+              color: "#FFF",
+              fontSize: 10,
+              fontFamily: TOKENS.font.bold,
               letterSpacing: 1.5,
             }}
           >
@@ -162,76 +135,72 @@ function BannerSlide({ banner, width, onPress }) {
         </View>
       ) : null}
 
-      {/* Content — left-aligned */}
-      <View
-        style={{
-          position: "absolute",
-          bottom: TOKENS.space[5],
-          left: TOKENS.space[5],
-          right: hasImage ? "50%" : TOKENS.space[5],
-        }}
-      >
-        <Text
+      {/* Content - bottom left */}
+      {banner.title ? (
+        <View
           style={{
-            color: APPLE_THEME.white,
-            fontSize: TOKENS.fontSize["2xl"],
-            lineHeight: 28,
-            fontFamily: TOKENS.font.heading,
-            letterSpacing: -0.3,
+            position: "absolute",
+            bottom: 20,
+            left: 20,
+            right: 20,
           }}
-          numberOfLines={2}
         >
-          {banner.title}
-        </Text>
-
-        {banner.description ? (
           <Text
             style={{
-              color: "rgba(255,255,255,0.75)",
-              fontSize: TOKENS.fontSize.sm,
-              lineHeight: 18,
-              fontFamily: TOKENS.font.medium,
-              marginTop: TOKENS.space[1.5] || 6,
+              color: "#FFF",
+              fontSize: 22,
+              lineHeight: 28,
+              fontFamily: TOKENS.font.bold,
+              letterSpacing: -0.4,
             }}
             numberOfLines={2}
           >
-            {banner.description}
+            {banner.title}
           </Text>
-        ) : null}
 
-        {/* CTA Button — beige rounded with dark text + arrow */}
-        {banner.linkType && banner.linkType !== "none" ? (
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              alignSelf: "flex-start",
-              marginTop: TOKENS.space[3],
-              paddingHorizontal: TOKENS.space[4],
-              paddingVertical: TOKENS.space[2],
-              borderRadius: TOKENS.radius.button,
-              borderCurve: "continuous",
-              backgroundColor: "#F5F0E8",
-              gap: TOKENS.space[1.5] || 6,
-            }}
-          >
+          {banner.description ? (
             <Text
               style={{
-                color: APPLE_THEME.primary,
-                fontSize: TOKENS.fontSize.sm,
-                fontFamily: TOKENS.font.semibold,
+                color: "rgba(255,255,255,0.8)",
+                fontSize: 13,
+                lineHeight: 18,
+                fontFamily: TOKENS.font.medium,
+                marginTop: 6,
+              }}
+              numberOfLines={2}
+            >
+              {banner.description}
+            </Text>
+          ) : null}
+
+          {banner.linkType && banner.linkType !== "none" ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                alignSelf: "flex-start",
+                marginTop: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 999,
+                backgroundColor: "#FFF",
+                gap: 6,
               }}
             >
-              {t("explore.heroBanner.cta")}
-            </Text>
-            <MaterialIconsRounded
-              name="arrow-forward"
-              size={14}
-              color={APPLE_THEME.primary}
-            />
-          </View>
-        ) : null}
-      </View>
+              <Text
+                style={{
+                  color: APPLE_THEME.text,
+                  fontSize: 13,
+                  fontFamily: TOKENS.font.semibold,
+                }}
+              >
+                {t("explore.heroBanner.cta")}
+              </Text>
+              <MaterialIconsRounded name="arrow-forward" size={14} color={APPLE_THEME.text} />
+            </View>
+          ) : null}
+        </View>
+      ) : null}
     </AnimatedPressable>
   );
 }
@@ -242,14 +211,12 @@ function CmsBannerCarouselInner({ banners: rawBanners, onPressBanner }) {
   const { width: screenWidth } = useWindowDimensions();
   const BANNER_W = screenWidth - TAB_SCREEN_PADDING * 2;
 
-  // Nếu không có banner → dùng fallback
   const banners = rawBanners?.length > 0 ? rawBanners : [FALLBACK_BANNER];
 
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef(null);
   const autoScrollTimer = useRef(null);
 
-  // Auto-scroll mỗi 4 giây
   useEffect(() => {
     if (banners.length <= 1) return;
 
@@ -266,30 +233,28 @@ function CmsBannerCarouselInner({ banners: rawBanners, onPressBanner }) {
 
   const renderItem = useCallback(
     ({ item }) => (
-      <BannerSlide
-        banner={item}
-        width={BANNER_W}
-        onPress={onPressBanner}
-      />
+      <BannerSlide banner={item} width={BANNER_W} onPress={onPressBanner} />
     ),
-    [BANNER_W, onPressBanner]
+    [BANNER_W, onPressBanner],
   );
 
   const getItemLayout = useCallback(
     (_, index) => ({ length: BANNER_W, offset: BANNER_W * index, index }),
-    [BANNER_W]
+    [BANNER_W],
   );
 
-  const onMomentumScrollEnd = useCallback((e) => {
-    const x = e?.nativeEvent?.contentOffset?.x || 0;
-    const next = Math.round(x / BANNER_W);
-    setActiveIndex(next);
-    // Reset auto-scroll timer khi user tự cuộn
-    clearInterval(autoScrollTimer.current);
-  }, [BANNER_W]);
+  const onMomentumScrollEnd = useCallback(
+    (e) => {
+      const x = e?.nativeEvent?.contentOffset?.x || 0;
+      const next = Math.round(x / BANNER_W);
+      setActiveIndex(next);
+      clearInterval(autoScrollTimer.current);
+    },
+    [BANNER_W],
+  );
 
   return (
-    <View className="mt-3 mb-1">
+    <View style={{ marginTop: 12, marginBottom: 4 }}>
       <FlatList
         ref={flatListRef}
         data={banners}
@@ -302,13 +267,19 @@ function CmsBannerCarouselInner({ banners: rawBanners, onPressBanner }) {
         decelerationRate="fast"
         getItemLayout={getItemLayout}
         contentContainerStyle={{ paddingHorizontal: TAB_SCREEN_PADDING }}
-        ItemSeparatorComponent={null}
         onMomentumScrollEnd={onMomentumScrollEnd}
       />
 
-      {/* Dot indicator */}
       {banners.length > 1 ? (
-        <View style={{ marginTop: TOKENS.space[2.5] || 10, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
+        <View
+          style={{
+            marginTop: 10,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+          }}
+        >
           {banners.map((_, index) => {
             const active = index === activeIndex;
             return (
@@ -316,7 +287,7 @@ function CmsBannerCarouselInner({ banners: rawBanners, onPressBanner }) {
                 key={`dot-${index}`}
                 style={{
                   height: 6,
-                  borderRadius: TOKENS.radius.full,
+                  borderRadius: 3,
                   width: active ? 20 : 6,
                   backgroundColor: active ? APPLE_THEME.focusBlue : "rgba(0,0,0,0.12)",
                 }}

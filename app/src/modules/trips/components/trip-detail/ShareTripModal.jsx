@@ -9,7 +9,9 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { cn } from "@/lib/cn";
 import { useTripShares, useCreateTripShare, useDeleteTripShare } from "../../hooks/useTrips";
+import { T, ALPHA } from "../../utils/tripDetailTokens";
 import * as Haptics from "expo-haptics";
 
 function ShareLinkRow({ share, onDelete, isDeleting }) {
@@ -25,7 +27,7 @@ function ShareLinkRow({ share, onDelete, isDeleting }) {
     <View className="bg-black/[0.03] rounded-2xl p-3.5 mb-2">
       <View className="flex-row items-center justify-between mb-2">
         <View className="flex-row items-center gap-1.5">
-          <View className={`w-2 h-2 rounded-full ${share.shareType === "edit" ? "bg-[#007AFF]" : "bg-[#34C759]"}`} />
+          <View className={cn("w-2 h-2 rounded-full", share.shareType === "edit" ? "bg-primary" : "bg-success")} />
           <Text className="text-[12px] font-medium text-black/50">
             {share.shareType === "edit" ? t("trip.share.editLabel") : t("trip.share.viewOnly")}
           </Text>
@@ -43,9 +45,9 @@ function ShareLinkRow({ share, onDelete, isDeleting }) {
             className="w-7 h-7 rounded-full items-center justify-center active:bg-black/[0.06]"
           >
             {isDeleting ? (
-              <ActivityIndicator size="small" color="#FF3B30" />
+              <ActivityIndicator size="small" color={T.danger} />
             ) : (
-              <MaterialIconsRounded name="close" size={14} color="rgba(0,0,0,0.4)" />
+              <MaterialIconsRounded name="close" size={14} color={ALPHA.iconStrong} />
             )}
           </Pressable>
         </View>
@@ -61,9 +63,9 @@ function ShareLinkRow({ share, onDelete, isDeleting }) {
             // Would use Clipboard.setStringAsync in real impl
           }}
           hitSlop={8}
-          className="w-8 h-8 rounded-lg bg-[#007AFF]/10 items-center justify-center"
+          className="w-8 h-8 rounded-lg bg-primary/10 items-center justify-center"
         >
-          <MaterialIconsRounded name="content-copy" size={15} color="#007AFF" />
+          <MaterialIconsRounded name="content-copy" size={15} color={T.primary} />
         </Pressable>
       </View>
 
@@ -122,7 +124,7 @@ export const ShareTripModal = memo(function ShareTripModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-[#F5F5F7]">
+      <View className="flex-1 bg-surface">
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 py-4 bg-white border-b border-black/[0.06]">
           <Pressable
@@ -130,9 +132,9 @@ export const ShareTripModal = memo(function ShareTripModal({
             hitSlop={12}
             className="w-9 h-9 rounded-xl items-center justify-center active:bg-black/[0.06]"
           >
-            <MaterialIconsRounded name="close" size={20} color="#1D1D1F" />
+            <MaterialIconsRounded name="close" size={20} color={T.ink} />
           </Pressable>
-          <Text className="text-[17px] font-semibold text-[#1D1D1F] tracking-tight">
+          <Text className="text-[17px] font-semibold text-ink tracking-tight">
             {t("tripShare.title")}
           </Text>
           <View className="w-9" />
@@ -149,7 +151,7 @@ export const ShareTripModal = memo(function ShareTripModal({
 
           {/* Create new share */}
           <View className="bg-white rounded-2xl p-4 mb-5 border border-black/[0.05]">
-            <Text className="text-[13px] font-semibold text-[#1D1D1F] mb-3 tracking-tight">
+            <Text className="text-[13px] font-semibold text-ink mb-3 tracking-tight">
               {t("trip.share.newLink")}
             </Text>
 
@@ -160,16 +162,16 @@ export const ShareTripModal = memo(function ShareTripModal({
                   <Pressable
                     key={opt.value}
                     onPress={() => setShareType(opt.value)}
-                    className={`flex-1 py-2.5 rounded-xl items-center border ${
-                      isActive
-                        ? "bg-[#1D1D1F] border-[#1D1D1F]"
-                        : "bg-white border-black/[0.08]"
-                    }`}
+                    className={cn(
+                      "flex-1 py-2.5 rounded-xl items-center border",
+                      isActive ? "bg-ink border-ink" : "bg-white border-black/[0.08]",
+                    )}
                   >
                     <Text
-                      className={`text-[13px] font-medium tracking-tight ${
-                        isActive ? "text-white" : "text-black/50"
-                      }`}
+                      className={cn(
+                        "text-[13px] font-medium tracking-tight",
+                        isActive ? "text-white" : "text-black/50",
+                      )}
                     >
                       {opt.label}
                     </Text>
@@ -181,9 +183,10 @@ export const ShareTripModal = memo(function ShareTripModal({
             <Pressable
               onPress={handleCreateShare}
               disabled={createMutation.isPending}
-              className={`h-11 rounded-xl items-center justify-center ${
-                createMutation.isPending ? "bg-black/20" : "bg-[#1D1D1F]"
-              }`}
+              className={cn(
+                "h-11 rounded-xl items-center justify-center",
+                createMutation.isPending ? "bg-black/20" : "bg-ink",
+              )}
             >
               {createMutation.isPending ? (
                 <ActivityIndicator size="small" color="white" />
@@ -195,7 +198,7 @@ export const ShareTripModal = memo(function ShareTripModal({
             </Pressable>
 
             {createMutation.isError ? (
-              <Text className="text-[12px] text-[#FF3B30] mt-2 text-center">
+              <Text className="text-[12px] text-danger mt-2 text-center">
                 {createMutation.error?.message || t("trip.share.createLinkError")}
               </Text>
             ) : null}
@@ -204,11 +207,11 @@ export const ShareTripModal = memo(function ShareTripModal({
           {/* Existing shares */}
           {isLoadingShares ? (
             <View className="items-center py-8">
-              <ActivityIndicator size="small" color="#1D1D1F" />
+              <ActivityIndicator size="small" color={T.ink} />
             </View>
           ) : shares.length > 0 ? (
             <View>
-              <Text className="text-[13px] font-semibold text-[#1D1D1F] mb-3 tracking-tight">
+              <Text className="text-[13px] font-semibold text-ink mb-3 tracking-tight">
                 {t("trip.share.createdLinks")}
               </Text>
               {shares.map((share) => (
@@ -222,7 +225,7 @@ export const ShareTripModal = memo(function ShareTripModal({
             </View>
           ) : (
             <View className="items-center py-8">
-              <MaterialIconsRounded name="link-off" size={36} color="rgba(0,0,0,0.15)" />
+              <MaterialIconsRounded name="link-off" size={36} color={ALPHA.iconFaint} />
               <Text className="text-[14px] text-black/30 mt-2">
                 {t("trip.share.noLinks")}
               </Text>

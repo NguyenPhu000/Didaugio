@@ -90,6 +90,7 @@ const safeAsyncStorage = {
         await AsyncStorage.setItem(key, value);
         diskFullFlag = false;
       } catch (retryError) {
+        diskFullFlag = true;
         console.warn(
           `[safeAsyncStorage] Retry setItem "${key}" thất bại — bỏ qua persist`,
         );
@@ -153,6 +154,7 @@ const safeAsyncStorage = {
         await AsyncStorage.multiSet(keyValuePairs);
         diskFullFlag = false;
       } catch (retryError) {
+        diskFullFlag = true;
         console.warn("[safeAsyncStorage] Retry multiSet thất bại — bỏ qua persist");
       }
     }

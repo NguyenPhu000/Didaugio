@@ -34,6 +34,12 @@ function sortAndBuildData(params) {
  * @returns {string} Payment URL
  */
 export function createPaymentUrl({ amount, transactionRef, orderInfo, ipAddress, bankCode, returnUrl }) {
+  if (!VNPAY_TMN_CODE || !VNPAY_HASH_SECRET || VNPAY_TMN_CODE === "your_tmn_code") {
+    throw new Error(
+      "VNPay chưa được cấu hình. Vui lòng cập nhật VNPAY_TMN_CODE và VNPAY_HASH_SECRET trong .env",
+    );
+  }
+
   const vnp_Amount = String(amount * 100);
   const vnp_Command = "pay";
   const vnp_CurrCode = "VND";

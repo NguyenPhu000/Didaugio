@@ -4,6 +4,7 @@ import { useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import DraggableFlatList from "react-native-draggable-flatlist";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { cn } from "@/lib/cn";
 import {
   buildDestinationBookings,
   buildDayList,
@@ -17,6 +18,7 @@ import TimelineConnector from "./TimelineConnector";
 import MoveDestinationModal from "./MoveDestinationModal";
 import EditDestinationForm from "./EditDestinationForm";
 import InlineAddPlaceModal from "./InlineAddPlaceModal";
+import { T, ALPHA } from "../../utils/tripDetailTokens";
 import CustomAlertModal from "../../../../components/composed/CustomAlertModal";
 
 function ItineraryTab({
@@ -377,21 +379,31 @@ function ItineraryTab({
                 style={({ pressed }) => [
                   pressed && { opacity: 0.9 },
                 ]}
-                className={`px-3 rounded-2xl items-center justify-center gap-0.5 h-14 min-w-[64px] max-w-[88px] ${isActive ? "bg-[#1D1D1F]" : "bg-black/[0.04]"} ${isToday(dayNumber) && !isActive ? "border-2 border-[#007AFF]" : ""}`}
+                className={cn(
+                  "px-3 rounded-2xl items-center justify-center gap-0.5 h-14 min-w-[64px] max-w-[88px]",
+                  isActive ? "bg-ink" : "bg-black/[0.04]",
+                  isToday(dayNumber) && !isActive && "border-2 border-primary",
+                )}
                 onPress={() => setSelectedDay(dayNumber)}
               >
                 {isToday(dayNumber) && !isActive ? (
-                  <View className="absolute -top-1 right-1 w-2 h-2 rounded-full bg-[#007AFF]" />
+                  <View className="absolute -top-1 right-1 w-2 h-2 rounded-full bg-primary" />
                 ) : null}
                 <Text
-                  className={`text-[13px] font-semibold tracking-tight ${isActive ? "text-white" : isToday(dayNumber) ? "text-[#007AFF]" : "text-[#1D1D1F]"}`}
+                  className={cn(
+                    "text-[13px] font-semibold tracking-tight",
+                    isActive ? "text-white" : isToday(dayNumber) ? "text-primary" : "text-ink",
+                  )}
                   numberOfLines={1}
                 >
                   {isToday(dayNumber) ? t("trip.itinerary.today") : t("trip.itinerary.dayLabel", { number: dayNumber })}
                 </Text>
                 {date ? (
                   <Text
-                    className={`text-[10px] font-normal tracking-tight ${isActive ? "text-white" : isToday(dayNumber) ? "text-[#007AFF]/70" : "text-[#1D1D1F]/50"}`}
+                    className={cn(
+                      "text-[10px] font-normal tracking-tight",
+                      isActive ? "text-white" : isToday(dayNumber) ? "text-primary/70" : "text-ink/50",
+                    )}
                     numberOfLines={1}
                   >
                     {formatChipDate(date)}
@@ -406,10 +418,16 @@ function ItineraryTab({
                     alignSelf: "center",
                     zIndex: 1,
                   }}
-                  className={`min-w-[18px] h-[18px] rounded-full items-center justify-center px-1.25 ${isActive ? "bg-white" : isToday(dayNumber) ? "bg-[#007AFF]" : "bg-black/[0.12]"}`}
+                  className={cn(
+                    "min-w-[18px] h-[18px] rounded-full items-center justify-center px-1.25",
+                    isActive ? "bg-white" : isToday(dayNumber) ? "bg-primary" : "bg-black/[0.12]",
+                  )}
                 >
                   <Text
-                    className={`text-[10px] font-semibold ${isActive ? "text-[#1D1D1F]" : "text-white"}`}
+                    className={cn(
+                      "text-[10px] font-semibold",
+                      isActive ? "text-ink" : "text-white",
+                    )}
                   >
                     {dayDests.length}
                   </Text>
@@ -424,31 +442,31 @@ function ItineraryTab({
       {canStartTrip ? (
         <View className="relative px-5 pt-1.5 pb-3">
           {/* Ambient glow layer */}
-          <View className="absolute top-1 left-10 right-10 h-12 rounded-[24px] bg-[#007BFF]/10" />
+          <View className="absolute top-1 left-10 right-10 h-12 rounded-[24px] bg-primary/10" />
           <Pressable
             onPress={() => onStartTrip?.()}
             disabled={isStartingTrip}
             style={({ pressed }) => [
-              { shadowColor: "#007BFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.16, shadowRadius: 20, elevation: 8 },
+              { shadowColor: T.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.16, shadowRadius: 20, elevation: 8 },
               pressed && { transform: [{ scale: 0.98 }], opacity: 0.95 },
             ]}
-            className="h-[68px] rounded-[24px] bg-[#1D1D1F] border border-white/[0.08] overflow-hidden justify-center"
+            className="h-[68px] rounded-[24px] bg-ink border border-white/[0.08] overflow-hidden justify-center"
           >
             {isStartingTrip ? (
               <View className="flex-row items-center justify-center gap-2.5">
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={T.onPrimary} />
                 <Text className="text-[14px] font-medium text-white/60 tracking-tight">{t("trip.itinerary.starting")}</Text>
               </View>
             ) : (
               <View className="flex-row items-center justify-center px-6 gap-3.5">
                 {/* Icon Container */}
                 <View className="relative w-10 h-10 items-center justify-center">
-                  <View className="w-10 h-10 rounded-[12px] bg-[#007BFF] items-center justify-center">
-                    <MaterialIconsRounded name="navigation" size={18} color="#FFFFFF" />
+                  <View className="w-10 h-10 rounded-[12px] bg-primary items-center justify-center">
+                    <MaterialIconsRounded name="navigation" size={18} color={T.onPrimary} />
                   </View>
                   {/* Pulse dot chỉ hiển thị khi chuyến đi đang chạy và hoạt động (không pause) */}
                   {isCurrentActiveTrip && !isPaused && (
-                    <View className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#34C759] border-2 border-[#1D1D1F]" />
+                    <View className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-success border-2 border-ink" />
                   )}
                 </View>
 
@@ -479,11 +497,11 @@ function ItineraryTab({
             pressed && { opacity: 0.8 },
           ]}
           onPress={() => onAddPlaceOpen?.()}
-          className="flex-row items-center gap-1 bg-[#1D1D1F] px-3 py-2 rounded-full"
+          className="flex-row items-center gap-1 bg-ink px-3 py-2 rounded-full"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Text className="text-white text-[12px] font-semibold tracking-tight">
-            <MaterialIconsRounded name="add" size={16} color="#FFFFFF" /> {t("trip.itinerary.addDestination")}
+            <MaterialIconsRounded name="add" size={16} color={T.onPrimary} /> {t("trip.itinerary.addDestination")}
           </Text>
         </Pressable>
       </View>
@@ -504,10 +522,10 @@ function ItineraryTab({
               <MaterialIconsRounded
                 name="add-location"
                 size={28}
-                color="rgba(0,0,0,0.2)"
+                color={ALPHA.iconFaint}
               />
             </View>
-            <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">{t("trip.itinerary.noDestinations")}</Text>
+            <Text className="text-[16px] font-semibold text-ink tracking-tight">{t("trip.itinerary.noDestinations")}</Text>
             <Text className="text-[14px] text-black/40 font-normal tracking-tight">
               {t("trip.itinerary.noDestinationsDesc")}
             </Text>
@@ -516,11 +534,11 @@ function ItineraryTab({
                 pressed && { opacity: 0.8 },
               ]}
               onPress={() => onAddPlaceOpen?.()}
-              className="flex-row items-center gap-1 bg-[#1D1D1F] px-4 py-2.5 rounded-full mt-3"
+              className="flex-row items-center gap-1 bg-ink px-4 py-2.5 rounded-full mt-3"
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Text className="text-white text-[13px] font-semibold tracking-tight">
-                <MaterialIconsRounded name="add" size={16} color="#FFFFFF" /> {t("trip.itinerary.addDestination")}
+                <MaterialIconsRounded name="add" size={16} color={T.onPrimary} /> {t("trip.itinerary.addDestination")}
               </Text>
             </Pressable>
           </View>

@@ -4,7 +4,6 @@ export const formatRouteEta = (seconds) => {
   const total = Number(seconds);
   if (!Number.isFinite(total) || total <= 0) return null;
 
-  // Hide motor ETAs for long routes exceeding 60 minutes
   if (total > 3600) return null;
 
   const minutes = Math.max(1, Math.round(total / 60));
@@ -21,7 +20,6 @@ export const formatRouteDistance = (meters) => {
   const total = Number(meters);
   if (!Number.isFinite(total) || total <= 0) return null;
 
-  // Format long routes (> 50km) as inter-provincial (Liên tỉnh)
   if (total > 50000) {
     return `Liên tỉnh (~${Math.round(total / 1000)} km)`;
   }

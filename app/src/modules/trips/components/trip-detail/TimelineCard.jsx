@@ -8,6 +8,7 @@ import { ScaleDecorator } from "react-native-draggable-flatlist";
 import { TRIP_STATUS_META } from "../../utils/tripTheme";
 import { formatPrice, formatDestinationTimeLabel, formatDuration } from "../../utils/tripHelpers";
 import { T, ALPHA } from "../../utils/tripDetailTokens";
+import { cn } from "@/lib/cn";
 import { StatusBadge } from "./StatusBadge";
 
 import { resolvePlaceImageUri } from "../../../../lib/media-url";
@@ -86,7 +87,7 @@ function TimelineCard({
               </View>
             </View>
           ) : (
-            <Text className="text-[14px] font-semibold text-[#1D1D1F] flex-1 tracking-tight" numberOfLines={1}>
+            <Text className="text-[14px] font-semibold text-ink flex-1 tracking-tight" numberOfLines={1}>
               {timeLabel}
             </Text>
           )}
@@ -121,7 +122,7 @@ function TimelineCard({
             </View>
             <View className="flex-1 gap-0.75">
               <View className="flex-row items-center gap-1.5">
-                <Text className="flex-1 text-[15px] font-semibold text-[#1D1D1F] tracking-tight" numberOfLines={1}>
+                <Text className="flex-1 text-[15px] font-semibold text-ink tracking-tight" numberOfLines={1}>
                   {placeName}
                 </Text>
                 {isVisited ? (
@@ -162,11 +163,11 @@ function TimelineCard({
                   onPress={() => onOpenBooking?.(b.id)}
                 >
                   <StatusBadge status={b.status} />
-                  <Text className="flex-1 text-[13px] text-[#1D1D1F] font-normal tracking-tight" numberOfLines={1}>
+                  <Text className="flex-1 text-[13px] text-ink font-normal tracking-tight" numberOfLines={1}>
                     {b.serviceName || b.placeName}
                   </Text>
                   {b.totalAmount ? (
-                    <Text className="text-[13px] font-semibold text-[#1D1D1F] tracking-tight">
+                    <Text className="text-[13px] font-semibold text-ink tracking-tight">
                       {formatPrice(b.totalAmount)}
                     </Text>
                   ) : null}
@@ -208,7 +209,7 @@ function TimelineCard({
               onPress={handleEditPress}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               style={({ pressed }) => [pressed && { backgroundColor: T.inkPressed }]}
-              className="flex-row items-center justify-center gap-1 h-9 px-4 rounded-full bg-[#1D1D1F]"
+              className="flex-row items-center justify-center gap-1 h-9 px-4 rounded-full bg-ink"
               accessibilityRole="button"
               accessibilityLabel={t("trip.timeline.editItinerary")}
             >

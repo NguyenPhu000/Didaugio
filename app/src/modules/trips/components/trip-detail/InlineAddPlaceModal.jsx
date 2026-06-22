@@ -31,6 +31,7 @@ import {
 import { Image } from "expo-image";
 import { TRANSPORT_OPTIONS } from "../../utils/tripHelpers";
 import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
+import { cn } from "@/lib/cn";
 import TimeField from "./TimeField";
 
 const isNewArchitectureEnabled = global?.nativeFabricUIManager != null;
@@ -260,15 +261,15 @@ function InlineAddPlaceModal({
                     className="pr-1.5"
                     accessibilityLabel={t('inlineAddPlace.backToSearch')}
                   >
-                    <MaterialIconsRounded name="arrow-back" size={20} color="#1D1D1F" />
+                    <MaterialIconsRounded name="arrow-back" size={20} color={T.ink} />
                   </Pressable>
                 )}
                 <MaterialIconsRounded
                   name={step === 1 ? "search" : "edit-calendar"}
                   size={18}
-                  color="#1D1D1F"
+                  color={T.ink}
                 />
-                <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">
+                <Text className="text-[16px] font-semibold text-ink tracking-tight">
                   {step === 1
                     ? t('inlineAddPlace.addPlaceToTrip')
                     : t('inlineAddPlace.addToItinerary')}
@@ -280,7 +281,7 @@ function InlineAddPlaceModal({
                 className="w-8 h-8 rounded-full items-center justify-center"
                 accessibilityLabel={t('inlineAddPlace.closeModal')}
               >
-                <MaterialIconsRounded name="close" size={18} color="rgba(0,0,0,0.4)" />
+                <MaterialIconsRounded name="close" size={18} color={ALPHA.iconStrong} />
               </Pressable>
             </View>
 
@@ -289,13 +290,13 @@ function InlineAddPlaceModal({
               <View className="px-5 pt-4 gap-3 flex-shrink">
                 {/* Search Bar */}
                 <View className="flex-row items-center bg-[#F5F5F7] rounded-xl px-3 h-11 gap-2 border border-black/[0.06]">
-                  <MaterialIconsRounded name="search" size={20} color="rgba(0,0,0,0.4)" />
+                  <MaterialIconsRounded name="search" size={20} color={ALPHA.iconStrong} />
                   <TextInput
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     placeholder={t('inlineAddPlace.searchPlaceholder')}
                     placeholderTextColor="rgba(0,0,0,0.4)"
-                    className="flex-1 text-[15px] font-normal text-[#1D1D1F]"
+                    className="flex-1 text-[15px] font-normal text-ink"
                     returnKeyType="search"
                     autoFocus
                   />
@@ -308,7 +309,7 @@ function InlineAddPlaceModal({
                       <MaterialIconsRounded
                         name="cancel"
                         size={16}
-                        color="rgba(0,0,0,0.4)"
+                        color={ALPHA.iconStrong}
                       />
                     </Pressable>
                   )}
@@ -317,8 +318,8 @@ function InlineAddPlaceModal({
                 {/* Results list */}
                 {searchQuery.trim().length === 0 && mergedPlaces.length === 0 ? (
                   <View className="py-14 items-center gap-2">
-                    <MaterialIconsRounded name="search" size={32} color="rgba(0,0,0,0.4)" />
-                    <Text className="text-[15px] font-semibold text-[#1D1D1F]">{t('inlineAddPlace.enterKeyword')}</Text>
+                    <MaterialIconsRounded name="search" size={32} color={ALPHA.iconStrong} />
+                    <Text className="text-[15px] font-semibold text-ink">{t('inlineAddPlace.enterKeyword')}</Text>
                     <Text className="text-[13px] font-normal text-black/50">
                       {t('inlineAddPlace.searchDesc')}
                     </Text>
@@ -328,9 +329,9 @@ function InlineAddPlaceModal({
                     <MaterialIconsRounded
                       name="search-off"
                       size={32}
-                      color="rgba(0,0,0,0.4)"
+                      color={ALPHA.iconStrong}
                     />
-                    <Text className="text-[15px] font-semibold text-[#1D1D1F]">
+                    <Text className="text-[15px] font-semibold text-ink">
                       {t('inlineAddPlace.noResults')}
                     </Text>
                     <Text className="text-[13px] font-normal text-black/50">
@@ -341,7 +342,7 @@ function InlineAddPlaceModal({
                   <View className="flex-shrink max-h-[340px]">
                     {isSearchLoading && (
                       <View className="flex-row items-center justify-center py-2 gap-2 bg-[#F5F5F7]/85 rounded-xl mb-2 border border-black/[0.04]">
-                        <ActivityIndicator size="small" color="#1D1D1F" />
+                        <ActivityIndicator size="small" color={T.ink} />
                         <Text className="text-[12px] text-black/50 font-normal">{t('inlineAddPlace.searchingSystem')}</Text>
                       </View>
                     )}
@@ -386,17 +387,17 @@ function InlineAddPlaceModal({
                                 <MaterialIconsRounded
                                   name="place"
                                   size={18}
-                                  color="rgba(0,0,0,0.4)"
+                                  color={ALPHA.iconStrong}
                                 />
                               </View>
                             )}
                             <View className="flex-1 gap-0.5">
                               <View className="flex-row items-center gap-1.5 flex-1">
-                                <Text className="text-[14px] font-semibold text-[#1D1D1F] flex-shrink" numberOfLines={1}>
+                                <Text className="text-[14px] font-semibold text-ink flex-shrink" numberOfLines={1}>
                                   {item.name}
                                 </Text>
                                 {item.isSavedLocal && (
-                                  <MaterialIconsRounded name="bookmark" size={14} color="#FF9F0A" />
+                                  <MaterialIconsRounded name="bookmark" size={14} color={T.warning} />
                                 )}
                               </View>
                               <Text className="text-[12px] font-normal text-black/50" numberOfLines={1}>
@@ -406,7 +407,7 @@ function InlineAddPlaceModal({
                             <MaterialIconsRounded
                               name="chevron-right"
                               size={20}
-                              color="rgba(0,0,0,0.4)"
+                              color={ALPHA.iconStrong}
                             />
                           </Pressable>
                         );
@@ -429,7 +430,7 @@ function InlineAddPlaceModal({
                 >
                   {/* Place Summary */}
                   <View className="gap-1 bg-[#F5F5F7] p-3.5 rounded-2xl border border-black/[0.06]">
-                    <Text className="text-[16px] font-semibold text-[#1D1D1F]" numberOfLines={1}>
+                    <Text className="text-[16px] font-semibold text-ink" numberOfLines={1}>
                       {selectedPlace.name}
                     </Text>
                     <Text className="text-[12px] font-normal text-black/50" numberOfLines={1}>
@@ -451,16 +452,18 @@ function InlineAddPlaceModal({
                         return (
                           <Pressable
                             key={dayVal}
-                            className={`px-4 py-2.5 rounded-xl border-[1.5px] border-transparent ${
-                              isActive ? "bg-[#1D1D1F]" : "bg-[#F5F5F7]"
-                            }`}
+                            className={cn(
+                              "px-4 py-2.5 rounded-xl border-[1.5px] border-transparent",
+                              isActive ? "bg-ink" : "bg-[#F5F5F7]",
+                            )}
                             onPress={() => setDayNumber(dayVal)}
                             accessibilityLabel={t('inlineAddPlace.selectDay') + ` ${dayVal}`}
                           >
                             <Text
-                              className={`text-[13px] font-semibold ${
-                                isActive ? "text-white" : "text-[#1D1D1F]"
-                              }`}
+                              className={cn(
+                                "text-[13px] font-semibold",
+                                isActive ? "text-white" : "text-ink",
+                              )}
                             >
                               {t('inlineAddPlace.dayLabel', { number: dayVal })}
                             </Text>
@@ -509,12 +512,13 @@ function InlineAddPlaceModal({
                                 <MaterialIconsRounded
                                   name={opt.icon}
                                   size={16}
-                                  color={isSelected ? "#1D1D1F" : "rgba(0,0,0,0.6)"}
+                                  color={isSelected ? T.ink : ALPHA.iconStrong}
                                 />
                                 <Text
-                                  className={`text-[13px] font-semibold ${
-                                    isSelected ? "text-[#1D1D1F] opacity-100" : "text-[#1D1D1F] opacity-60"
-                                  }`}
+                                  className={cn(
+                                    "text-[13px] font-semibold text-ink",
+                                    isSelected ? "opacity-100" : "opacity-60",
+                                  )}
                                 >
                                   {opt.label}
                                 </Text>

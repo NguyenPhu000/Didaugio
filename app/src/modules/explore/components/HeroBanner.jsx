@@ -1,5 +1,11 @@
 import { memo, useCallback } from "react";
-import { Platform, Text, View, useWindowDimensions } from "react-native";
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
@@ -12,16 +18,9 @@ import {
 import { resolveMediaUrl } from "../../../lib/media-url";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 
-const HERO_HEIGHT = 200;
-
+const HERO_HEIGHT = 280;
 const DEFAULT_IMAGE_URI =
-  "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80&auto=format";
-
-const GRADIENT_COLORS = {
-  background: ["#1B4332", "#0F1419"],
-  overlay: ["rgba(15,23,42,0)", "rgba(15,23,42,0.85)"],
-  imageFade: ["rgba(15,20,25,0)", "rgba(15,20,25,0.6)", "rgba(15,20,25,1)"],
-};
+  "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1200&q=80&auto=format";
 
 function HeroBannerInner({ title, description, onPress, imageUrl }) {
   const { t } = useTranslation();
@@ -40,88 +39,146 @@ function HeroBannerInner({ title, description, onPress, imageUrl }) {
     <Pressable
       haptic="light"
       onPress={handlePress}
-      className="rounded-[22px] overflow-hidden"
-      style={{
-        width: containerWidth,
-        height: HERO_HEIGHT,
-        borderCurve: "continuous",
-        backgroundColor: GRADIENT_COLORS.background[0],
-        ...(Platform.OS === "ios" ? TOKENS.shadow.lg : null),
-      }}
+      style={[
+        styles.container,
+        { width: containerWidth },
+        Platform.OS === "ios" && TOKENS.shadow.xl,
+      ]}
     >
-      {/* Gradient background layer */}
-      <LinearGradient
-        colors={GRADIENT_COLORS.background}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="absolute inset-0"
-      />
-
-      {/* Right-side image with soft fade */}
       <Image
         source={{ uri: resolvedImageUrl }}
         contentFit="cover"
         transition={300}
         cachePolicy="memory-disk"
-        className="absolute right-0 top-0 h-full"
-        style={{ width: "55%" }}
+        style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Image fade overlay — blends image into dark background */}
       <LinearGradient
-        colors={GRADIENT_COLORS.imageFade}
+        colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.1)", "rgba(0,0,0,0.85)"]}
         locations={[0, 0.4, 1]}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 0 }}
-        className="absolute inset-0"
+        style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
 
-      {/* Bottom shadow overlay for text readability */}
-      <LinearGradient
-        colors={GRADIENT_COLORS.overlay}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        className="absolute inset-0"
-        pointerEvents="none"
-      />
-
-      {/* Content */}
-      <View className="absolute bottom-5 left-5 right-[50%]">
-        <Text
-          className="text-white text-[20px] leading-[28px] font-bold tracking-tight"
-          numberOfLines={2}
-        >
-          {displayTitle}
+      <View style={styles.badge}>
+        <MaterialIconsRounded
+          name="local-fire-department"
+          size={14}
+          color="#FFF"
+        />
+        <Text style={styles.badgeText}>
+          {t("explore.heroBanner.badge") || "ĐỀ XUẤT CHO BẠN"}
         </Text>
+      </View>
 
-        <Text
-          className="text-white/75 text-sm font-medium mt-1.5"
-          numberOfLines={2}
-        >
-          {displayDescription}
-        </Text>
-
-        {/* CTA Button */}
-        <View
-          className="flex-row items-center self-start mt-3 px-4 py-2 rounded-xl gap-1.5"
-          style={{
-            borderCurve: "continuous",
-            backgroundColor: "#F5F0E8",
-          }}
-        >
-          <Text className="text-sm font-semibold" style={{ color: APPLE_THEME.primary }}>
-            {t("explore.heroBanner.cta")}
+      <View style={styles.contentWrapper}>
+        <View style={styles.textContainer}>
+          <Text style={styles.title} numberOfLines={2}>
+            {displayTitle}
           </Text>
-          <MaterialIconsRounded
-            name="arrow-forward"
-            size={14}
-            color={APPLE_THEME.primary}
-          />
+          <Text style={styles.description} numberOfLines={2}>
+            {displayDescription}
+          </Text>
+        </View>
+
+        <View style={styles.ctaButton}>
+          <Text style={styles.ctaText}>
+            {t("explore.heroBanner.cta") || "Khám phá"}
+          </Text>
+          <View style={styles.ctaIconWrapper}>
+            <MaterialIconsRounded
+              name="arrow-forward-ios"
+              size={12}
+              color="#000"
+            />
+          </View>
         </View>
       </View>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    height: HERO_HEIGHT,
+    borderRadius: 24,
+    borderCurve: "continuous",
+    overflow: "hidden",
+    backgroundColor: APPLE_THEME.background || "#F3F4F6",
+  },
+  badge: {
+    position: "absolute",
+    top: 20,
+    left: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontFamily: TOKENS.font.bold,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  contentWrapper: {
+    position: "absolute",
+    bottom: 20,
+    left: 20,
+    right: 20,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 16,
+  },
+  textContainer: {
+    flex: 1,
+  },
+  title: {
+    color: "#FFFFFF",
+    fontSize: 26,
+    lineHeight: 32,
+    fontFamily: TOKENS.font.bold,
+    letterSpacing: -0.5,
+  },
+  description: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: TOKENS.font.medium,
+    marginTop: 6,
+  },
+  ctaButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingLeft: 16,
+    paddingRight: 6,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  ctaText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontFamily: TOKENS.font.semibold,
+  },
+  ctaIconWrapper: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
 
 export const HeroBanner = memo(HeroBannerInner);

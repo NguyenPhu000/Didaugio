@@ -23,7 +23,6 @@ export const MAP_TEXT = Object.freeze({
   errors: {
     get mapData() { return i18n.t("map.errors.mapData"); },
     get retry() { return i18n.t("map.errors.retry"); },
-    get routeBuild() { return i18n.t("map.errors.routeBuild"); },
     get routeDirectionTitle() { return i18n.t("map.errors.routeDirectionTitle"); },
     get routeDirectionMessage() { return i18n.t("map.errors.routeDirectionMessage"); },
     get routeFallbackTitle() { return i18n.t("map.errors.routeFallbackTitle"); },
@@ -72,41 +71,6 @@ export const MAP_TEXT = Object.freeze({
   },
   analytics: {
     routeModeCurrentLocationToPlace: "current_location_to_place",
-  },
-  routeBuilder: {
-    get panelTitle() { return i18n.t("map.routeBuilder.panelTitle"); },
-    get emptyDraftHint() { return i18n.t("map.routeBuilder.emptyDraftHint"); },
-    get readyToConfirmHint() { return i18n.t("map.routeBuilder.readyToConfirmHint"); },
-    minimumStopsHint: (minimumStops) => i18n.t("map.routeBuilder.minimumStopsHint", { minimumStops }),
-    statusHint: ({ draftCount, canConfirm, minimumStops }) => {
-      if (!draftCount) return i18n.t("map.routeBuilder.emptyDraftHint");
-      return `${draftCount} ${i18n.t("common.results")} • ${
-        canConfirm
-          ? i18n.t("map.routeBuilder.readyToConfirmHint")
-          : i18n.t("map.routeBuilder.minimumStopsHint", { minimumStops })
-      }`;
-    },
-    stopFallbackName: (index) => i18n.t("map.routeBuilder.stopFallbackName", { index: index + 1 }),
-    get noStopNotice() { return i18n.t("map.routeBuilder.noStopNotice"); },
-    get updateRoute() { return i18n.t("map.routeBuilder.updateRoute"); },
-    get confirmRoute() { return i18n.t("map.routeBuilder.confirmRoute"); },
-    get clearAll() { return i18n.t("map.routeBuilder.clearAll"); },
-    pendingArrivalNotice: (targetName) =>
-      i18n.t("map.arrivalModal.body", { targetName: targetName || i18n.t(DEFAULT_TARGET_NAME_KEY) }),
-    get recoveryTitle() { return i18n.t("map.routeBuilder.recoveryTitle"); },
-    recoveryMessage: (targetName, distanceLabel) =>
-      `${i18n.t("map.routeBuilder.recoveryTitle")} ${targetName || i18n.t(DEFAULT_TARGET_NAME_KEY)}${
-        distanceLabel ? ` (${distanceLabel})` : ""
-      }.`,
-    progressLabel: (completedLegs, legCount) =>
-      `${i18n.t("common.done")} ${Math.min(completedLegs, legCount)}/${legCount}`,
-    get etaPrefix() { return i18n.t("map.routeBuilder.etaPrefix"); },
-    get stateCompleted() { return i18n.t("map.routeBuilder.stateCompleted"); },
-    statePendingConfirm: (targetName) =>
-      `${i18n.t("map.arrivalModal.title")} ${targetName || i18n.t(DEFAULT_TARGET_NAME_KEY)} • ${i18n.t("common.confirm")}`,
-    stateRecovery: (targetName) =>
-      `${i18n.t("map.routeBuilder.recoveryTitle")} ${targetName || i18n.t(DEFAULT_TARGET_NAME_KEY)}`,
-    get retryRoute() { return i18n.t("map.routeBuilder.retryRoute"); },
   },
   arrivalModal: {
     get title() { return i18n.t("map.arrivalModal.title"); },

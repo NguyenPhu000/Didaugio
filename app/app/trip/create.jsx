@@ -11,6 +11,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useNavigation } from "expo-router";
@@ -28,6 +30,7 @@ import { useCreateTrip } from "../../src/modules/trips/hooks/useTrips";
 import { addDestinationApi } from "../../src/modules/trips/api/tripsApi";
 import { useSavedPlacesCached } from "../../src/modules/saved/hooks/useSavedOffline";
 import { CustomDatePicker } from "../../src/components/ui/CustomDatePicker";
+import { compressImageToDataUrl } from "../../src/lib/image-compress";
 import { toYmdString } from "../../src/modules/trips/utils/tripHelpers";
 import { QUERY_KEYS } from "../../src/constants/query-keys";
 import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../src/constants/design-tokens";
@@ -88,6 +91,9 @@ export default function CreateTripScreen() {
   const [selectedSavedPlaceIds, setSelectedSavedPlaceIds] = useState([]);
   const [isAddingDestinations, setIsAddingDestinations] = useState(false);
   const [destinationError, setDestinationError] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState(null);
+  const [pendingThumbnail, setPendingThumbnail] = useState(undefined);
+  const [isProcessingThumbnail, setIsProcessingThumbnail] = useState(false);
 
   const ctaScale = useSharedValue(1);
   const hasSavedRef = useRef(false);
@@ -112,7 +118,8 @@ export default function CreateTripScreen() {
     title.trim().length > 0 &&
     !isDateRangeInvalid &&
     !createMutation.isPending &&
-    !isAddingDestinations;
+    !isAddingDestinations &&
+    !isProcessingThumbnail;
 
   const savedPlacesPreview = useMemo(
     () => savedPlaces.slice(0, 16),
@@ -129,12 +136,55 @@ export default function CreateTripScreen() {
     setDestinationError(null);
   }, []);
 
+  const handlePickThumbnail = useCallback(async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          t("editTrip.noPhotoAccess"),
+          t("editTrip.noPhotoAccessDesc"),
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 1,
+      });
+
+      const selectedUri = result?.assets?.[0]?.uri;
+      if (result.canceled || !selectedUri) return;
+
+      setIsProcessingThumbnail(true);
+      const compressed = await compressImageToDataUrl(selectedUri, {
+        startWidth: 1280,
+      });
+      setThumbnailPreview(compressed.dataUrl);
+      setPendingThumbnail(compressed.dataUrl);
+    } catch (error) {
+      Alert.alert(
+        t("editTrip.error"),
+        error?.message || t("editTrip.imageError"),
+      );
+    } finally {
+      setIsProcessingThumbnail(false);
+    }
+  }, [t]);
+
+  const handleRemoveThumbnail = useCallback(() => {
+    setThumbnailPreview(null);
+    setPendingThumbnail(null);
+  }, []);
+
   const isFormDirty =
     title.trim().length > 0 ||
     description.trim().length > 0 ||
     startDate !== null ||
     endDate !== null ||
-    selectedSavedPlaceIds.length > 0;
+    selectedSavedPlaceIds.length > 0 ||
+    pendingThumbnail !== undefined;
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
@@ -181,6 +231,7 @@ export default function CreateTripScreen() {
         endDate: endDate ? toYmdString(endDate) : undefined,
         totalDays: totalDays ?? 1,
         status: "planned",
+        ...(pendingThumbnail !== undefined && { thumbnail: pendingThumbnail }),
       });
       const newId = result?.data?.id;
       if (newId) {
@@ -246,6 +297,7 @@ export default function CreateTripScreen() {
     endDate,
     totalDays,
     selectedSavedPlaceIds,
+    pendingThumbnail,
     queryClient,
     router,
   ]);
@@ -300,6 +352,53 @@ export default function CreateTripScreen() {
       >
         {/* ── Hero ── */}
         <HeroSection />
+
+        {/* ── Cover Photo ── */}
+        <Section icon="photo-camera" label={t("editTrip.coverPhoto")} delay={50}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handlePickThumbnail}
+            disabled={isProcessingThumbnail}
+            style={styles.coverPhotoWrap}
+          >
+            {thumbnailPreview ? (
+              <Image
+                source={{ uri: thumbnailPreview }}
+                style={StyleSheet.absoluteFillObject}
+                contentFit="cover"
+                transition={200}
+              />
+            ) : (
+              <View style={styles.coverPhotoEmpty}>
+                <MaterialIconsRounded name="add-photo-alternate" size={32} color={T.muted48} />
+                <Text style={styles.coverPhotoEmptyText}>{t("editTrip.tapToSelect")}</Text>
+              </View>
+            )}
+
+            {isProcessingThumbnail ? (
+              <View style={styles.coverPhotoLoading}>
+                <ActivityIndicator size="small" color="#FFF" />
+              </View>
+            ) : null}
+
+            {thumbnailPreview && !isProcessingThumbnail ? (
+              <View style={styles.coverPhotoActions}>
+                <View style={styles.coverPhotoEditBadge}>
+                  <MaterialIconsRounded name="edit" size={13} color="#FFFFFF" />
+                  <Text style={styles.coverPhotoEditText}>{t("editTrip.changePhoto")}</Text>
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={handleRemoveThumbnail}
+                  hitSlop={8}
+                  style={styles.coverPhotoRemoveBtn}
+                >
+                  <MaterialIconsRounded name="close" size={15} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+        </Section>
 
         {/* ── Trip Info ── */}
         <Section icon="description" label={t("trip.create.info")} delay={100}>
@@ -511,6 +610,63 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: "rgba(0,0,0,0.06)",
     marginVertical: 2,
+  },
+
+  /* ── Cover Photo ── */
+  coverPhotoWrap: {
+    width: "100%",
+    height: 160,
+    borderRadius: 20,
+    overflow: "hidden",
+    backgroundColor: "#F5F5F7",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coverPhotoEmpty: {
+    alignItems: "center",
+    gap: 8,
+  },
+  coverPhotoEmptyText: {
+    fontSize: 13,
+    fontFamily: TOKENS.font.medium,
+    color: T.muted48,
+  },
+  coverPhotoLoading: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
+  coverPhotoActions: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    flexDirection: "row",
+    gap: 8,
+  },
+  coverPhotoEditBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  coverPhotoEditText: {
+    fontSize: 11,
+    fontFamily: TOKENS.font.semibold,
+    color: "#FFFFFF",
+  },
+  coverPhotoRemoveBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.55)",
   },
 
   /* ── Inputs ── */

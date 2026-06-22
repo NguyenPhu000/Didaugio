@@ -230,6 +230,8 @@ export const getAllPlaces = async (filters = {}) => {
           select: {
             id: true,
             imageData: true,
+            secureUrl: true,
+            thumbnailUrl: true,
             caption: true,
             isCover: true,
           },
@@ -313,6 +315,8 @@ export const getNearbyPlaces = async (params = {}) => {
         select: {
           id: true,
           imageData: true,
+          secureUrl: true,
+          thumbnailUrl: true,
           caption: true,
           isCover: true,
         },

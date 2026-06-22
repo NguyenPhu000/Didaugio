@@ -3,9 +3,10 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { cn } from "@/lib/cn";
 import { StatusBadge } from "./StatusBadge";
 import { formatBookingDateTime, formatPrice } from "../../utils/tripHelpers";
-import s, { T, STYLES } from "../../utils/tripDetailTokens";
+import s, { T, ALPHA, STYLES } from "../../utils/tripDetailTokens";
 
 export const BudgetTab = memo(function BudgetTab({
   bookings,
@@ -39,7 +40,7 @@ export const BudgetTab = memo(function BudgetTab({
     return (
       <View className={STYLES.centeredState}>
         <View className="w-12 h-12 rounded-full bg-black/[0.04] items-center justify-center">
-          <ActivityIndicator size="small" color="#1D1D1F" />
+          <ActivityIndicator size="small" color={T.ink} />
         </View>
         <Text className={STYLES.centeredBody}>{t("trip.budget.loading")}</Text>
       </View>
@@ -53,7 +54,7 @@ export const BudgetTab = memo(function BudgetTab({
           <MaterialIconsRounded
             name="account-balance-wallet"
             size={28}
-            color="rgba(0,0,0,0.2)"
+            color={ALPHA.iconFaint}
           />
         </View>
         <Text className={STYLES.emptyTitle}>{t("trip.budget.noData")}</Text>
@@ -65,9 +66,9 @@ export const BudgetTab = memo(function BudgetTab({
             pressed && { opacity: 0.85 },
           ]}
           onPress={() => router.push("/(tabs)/explore")}
-          className="flex-row items-center gap-1.5 bg-[#1D1D1F] px-4.5 py-2.5 rounded-full mt-3"
+          className="flex-row items-center gap-1.5 bg-ink px-4.5 py-2.5 rounded-full mt-3"
         >
-          <MaterialIconsRounded name="explore" size={16} color="#FFFFFF" />
+          <MaterialIconsRounded name="explore" size={16} color={T.onPrimary} />
           <Text className="text-white text-[13px] font-semibold tracking-tight">{t("trip.budget.exploreServices")}</Text>
         </Pressable>
       </View>
@@ -88,14 +89,14 @@ export const BudgetTab = memo(function BudgetTab({
       contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120, gap: 16 }}
     >
       {/* Total card */}
-      <View className="bg-[#1D1D1F] rounded-[24px] p-6 gap-2">
+      <View className="bg-ink rounded-[24px] p-6 gap-2">
         <Text className="text-[13px] font-normal text-white/50 tracking-tight">{t("trip.budget.totalEstimate")}</Text>
         <Text className="text-[34px] font-semibold text-white tracking-tighter">
           {formatPrice(totalAmount)}
         </Text>
         <View className="flex-row items-center gap-2 mt-1">
           <View className="flex-row items-center gap-1.5">
-            <View className="w-1.5 h-1.5 rounded-full bg-[#34C759]" />
+            <View className="w-1.5 h-1.5 rounded-full bg-success" />
             <Text className="text-[13px] font-normal text-white/55 tracking-tight">
               {t("trip.budget.bookingCount", { count: totalCount })}
             </Text>
@@ -111,10 +112,10 @@ export const BudgetTab = memo(function BudgetTab({
             <MaterialIconsRounded
               name="check-circle"
               size={56}
-              color="#34C759"
+              color={T.success}
             />
           </View>
-          <Text className="text-[15px] font-bold text-[#1D1D1F] tracking-tight text-center z-10" numberOfLines={1}>
+          <Text className="text-[15px] font-bold text-ink tracking-tight text-center z-10" numberOfLines={1}>
             {formatPrice(confirmedAmount + completedAmount)}
           </Text>
           <Text className="text-[12px] font-normal text-black/45 tracking-tight text-center mt-0.5 z-10">
@@ -127,10 +128,10 @@ export const BudgetTab = memo(function BudgetTab({
             <MaterialIconsRounded
               name="schedule"
               size={56}
-              color="#FF9F0A"
+              color={T.warning}
             />
           </View>
-          <Text className="text-[15px] font-bold text-[#1D1D1F] tracking-tight text-center z-10" numberOfLines={1}>
+          <Text className="text-[15px] font-bold text-ink tracking-tight text-center z-10" numberOfLines={1}>
             {formatPrice(pendingAmount)}
           </Text>
           <Text className="text-[12px] font-normal text-black/45 tracking-tight text-center mt-0.5 z-10">
@@ -157,15 +158,15 @@ export const BudgetTab = memo(function BudgetTab({
                 style={({ pressed }) => [pressed && { opacity: 0.85 }]}
                 className="flex-row items-start gap-3 p-4 bg-[#FFF9E6] border border-[#FFE0B2] rounded-[18px]"
               >
-                <View className="w-9 h-9 rounded-full bg-[#FF9F0A]/10 items-center justify-center mt-0.5">
-                  <MaterialIconsRounded name="notifications-active" size={18} color="#FF9F0A" />
+                <View className="w-9 h-9 rounded-full bg-warning/10 items-center justify-center mt-0.5">
+                  <MaterialIconsRounded name="notifications-active" size={18} color={T.warning} />
                 </View>
                 <View className="flex-1 gap-1">
-                  <Text className="text-[14px] font-bold text-[#D97706] tracking-tight">
+                  <Text className="text-[14px] font-bold text-warning tracking-tight">
                     {t("trip.budget.appointmentSoon")} ({timeLeftLabel})
                   </Text>
                   <Text className="text-[13px] text-black/75 font-medium leading-[18px]">
-                    {t("trip.budget.reminderBody", { service: <Text className="font-bold text-[#1D1D1F]">{booking?.service?.name}</Text>, place: <Text className="font-bold text-[#1D1D1F]">{booking?.service?.place?.name || t("trip.budget.defaultPlace")}</Text>, time: <Text className="font-semibold text-[#1D1D1F]">{formatBookingDateTime(booking)}</Text> })}
+                    {t("trip.budget.reminderBody", { service: <Text className="font-bold text-ink">{booking?.service?.name}</Text>, place: <Text className="font-bold text-ink">{booking?.service?.place?.name || t("trip.budget.defaultPlace")}</Text>, time: <Text className="font-semibold text-ink">{formatBookingDateTime(booking)}</Text> })}
                   </Text>
                 </View>
               </Pressable>
@@ -188,7 +189,7 @@ export const BudgetTab = memo(function BudgetTab({
             className="flex-row items-center justify-between gap-2.5 py-3.5 px-4 bg-white rounded-[18px] border border-black/[0.05]"
           >
             <View className={STYLES.bookingRowInfo}>
-              <Text className="text-[15px] font-bold text-[#1D1D1F] tracking-tight" numberOfLines={1}>
+              <Text className="text-[15px] font-bold text-ink tracking-tight" numberOfLines={1}>
                 {booking?.service?.place?.name || t("trip.budget.unknownPlace")}
               </Text>
               <Text className="text-[13px] font-medium text-black/60 mt-0.5" numberOfLines={1}>
@@ -202,7 +203,7 @@ export const BudgetTab = memo(function BudgetTab({
 
             <View className={STYLES.bookingRowRight}>
               <StatusBadge status={booking?.status} />
-              <Text className="text-[14px] font-semibold text-[#1D1D1F] tracking-tight">
+              <Text className="text-[14px] font-semibold text-ink tracking-tight">
                 {formatPrice(booking?.finalPrice)}
               </Text>
             </View>

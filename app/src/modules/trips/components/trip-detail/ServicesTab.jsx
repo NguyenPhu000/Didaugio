@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { StatusBadge } from "./StatusBadge";
 import { formatBookingDateTime, formatPrice } from "../../utils/tripHelpers";
-import s, { STYLES } from "../../utils/tripDetailTokens";
+import s, { T, ALPHA, STYLES } from "../../utils/tripDetailTokens";
 
 export const ServicesTab = memo(function ServicesTab({
   groupedBookings,
@@ -16,7 +16,7 @@ export const ServicesTab = memo(function ServicesTab({
     return (
       <View className={STYLES.centeredState}>
         <View className="w-12 h-12 rounded-full bg-black/[0.04] items-center justify-center">
-          <ActivityIndicator size="small" color="#1D1D1F" />
+          <ActivityIndicator size="small" color={T.ink} />
         </View>
         <Text className={STYLES.centeredBody}>{t("trip.services.loading")}</Text>
       </View>
@@ -27,7 +27,7 @@ export const ServicesTab = memo(function ServicesTab({
     return (
       <View className={STYLES.centeredState}>
         <View className="w-14 h-14 rounded-[20px] bg-black/[0.04] items-center justify-center mb-2">
-          <MaterialIconsRounded name="receipt-long" size={28} color="rgba(0,0,0,0.2)" />
+          <MaterialIconsRounded name="receipt-long" size={28} color={ALPHA.iconFaint} />
         </View>
         <Text className={STYLES.emptyTitle}>{t("trip.services.noBookings")}</Text>
         <Text className={STYLES.emptyBody}>
@@ -65,7 +65,7 @@ export const ServicesTab = memo(function ServicesTab({
               className="flex-row items-center justify-between gap-2.5 py-3.5 px-4 bg-white rounded-[18px] border border-black/[0.05]"
             >
               <View className={STYLES.bookingRowInfo}>
-                <Text className="text-[15px] font-semibold text-[#1D1D1F] tracking-tight" numberOfLines={1}>
+                <Text className="text-[15px] font-semibold text-ink tracking-tight" numberOfLines={1}>
                   {booking?.service?.name || t("trip.services.defaultService")}
                 </Text>
                 <Text className={STYLES.bookingRowPlace} numberOfLines={1}>
@@ -79,7 +79,7 @@ export const ServicesTab = memo(function ServicesTab({
 
               <View className={STYLES.bookingRowRight}>
                 <StatusBadge status={booking?.status} />
-                <Text className="text-[14px] font-semibold text-[#1D1D1F] tracking-tight">
+                <Text className="text-[14px] font-semibold text-ink tracking-tight">
                   {formatPrice(booking?.finalPrice)}
                 </Text>
               </View>

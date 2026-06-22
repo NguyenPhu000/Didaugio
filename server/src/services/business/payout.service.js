@@ -1,5 +1,6 @@
 import prisma from "../../config/prismaClient.js";
 import ServiceError from "../../utils/serviceError.js";
+import { getAvailableBalance } from "../booking/financialCore.service.js";
 
 /**
  * Get earnings summary for a business
@@ -30,6 +31,9 @@ export const getEarningsSummary = async (businessId) => {
   const totalCommission = revenueAgg._sum.commissionAmount || 0;
   const netEarnings = totalRevenue - totalCommission;
 
+  // Get available balance from PartnerWallet
+  const walletBalance = await getAvailableBalance(businessId);
+
   // Get payout history
   const payouts = await prisma.payout.findMany({
     where: { businessId },
@@ -45,7 +49,7 @@ export const getEarningsSummary = async (businessId) => {
     .filter((p) => p.status === "pending" || p.status === "approved")
     .reduce((sum, p) => sum + p.amount, 0);
 
-  const availableBalance = netEarnings - totalPaidOut - totalPending;
+  const availableBalance = walletBalance.balance - totalPaidOut - totalPending;
 
   // Monthly breakdown (last 6 months)
   const sixMonthsAgo = new Date();
@@ -108,11 +112,11 @@ export const requestPayout = async (businessId, data) => {
     throw new ServiceError("Số tiền rút phải lớn hơn 0", 400, "INVALID_AMOUNT");
   }
 
-  // Check available balance
-  const summary = await getEarningsSummary(businessId);
-  if (amount > summary.availableBalance) {
+  // Check available balance from PartnerWallet
+  const walletBalance = await getAvailableBalance(businessId);
+  if (amount > walletBalance.balance) {
     throw new ServiceError(
-      `Số dư khả dụng không đủ. Hiện tại: ${summary.availableBalance.toLocaleString("vi-VN")}đ`,
+      `Số dư khả dụng không đủ. Hiện tại: ${walletBalance.balance.toLocaleString("vi-VN")}đ`,
       400,
       "INSUFFICIENT_BALANCE",
     );

@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { formatDate, formatDistance } from "../../utils/tripHelpers";
+import { cn } from "@/lib/cn";
 import s, { T, STYLES } from "../../utils/tripDetailTokens";
 
 export const TripHeader = memo(function TripHeader({
@@ -49,7 +50,7 @@ export const TripHeader = memo(function TripHeader({
 
       <View className="flex-1 min-w-0">
         <Text
-          className="text-[17px] font-semibold text-[#1D1D1F] tracking-tight"
+          className="text-[17px] font-semibold text-ink tracking-tight"
           numberOfLines={1}
         >
           {trip.title}
@@ -93,7 +94,7 @@ export const TripHeader = memo(function TripHeader({
         <Pressable
           onPress={() => (onAddPlace ? onAddPlace() : router.push("/explore"))}
           style={({ pressed }) => [pressed ? { opacity: 0.85 } : null]}
-          className="flex-row items-center gap-1 bg-[#1D1D1F] px-3.5 py-2 rounded-lg flex-shrink-0"
+          className="flex-row items-center gap-1 bg-ink px-3.5 py-2 rounded-lg flex-shrink-0"
         >
           <MaterialIconsRounded name="add" size={18} color={T.onPrimary} />
           <Text className="text-white text-[13px] font-semibold tracking-tight">{t('tripHeader.add')}</Text>
@@ -129,7 +130,7 @@ export const TripHeader = memo(function TripHeader({
                       <MaterialIconsRounded name="share" size={16} color={T.ink} />
                     </View>
                     <Text
-                      className="flex-1 text-[14px] font-medium text-[#1D1D1F] tracking-tight min-w-0"
+                      className="flex-1 text-[14px] font-medium text-ink tracking-tight min-w-0"
                       numberOfLines={1}
                     >
                       {t('tripHeader.share')}
@@ -156,7 +157,7 @@ export const TripHeader = memo(function TripHeader({
                       <MaterialIconsRounded name="content-copy" size={16} color={T.ink} />
                     </View>
                     <Text
-                      className="flex-1 text-[14px] font-medium text-[#1D1D1F] tracking-tight min-w-0"
+                      className="flex-1 text-[14px] font-medium text-ink tracking-tight min-w-0"
                       numberOfLines={1}
                     >
                       {isDuplicating ? t("trip.detail.duplicating") : t("trip.detail.duplicateTrip")}
@@ -188,12 +189,14 @@ export const TripHeader = memo(function TripHeader({
                       <MaterialIconsRounded
                         name={isSaved ? "bookmark" : "bookmark-border"}
                         size={16}
-                        color={isSaved ? "#FF9F0A" : T.ink}
+                        color={isSaved ? T.warning : T.ink}
                       />
                     </View>
                     <Text
-                      className="flex-1 text-[14px] font-medium text-[#1D1D1F] tracking-tight min-w-0"
-                      style={[isSaved && { color: "#FF9F0A", fontWeight: "600" }]}
+                      className={cn(
+                        "flex-1 text-[14px] font-medium tracking-tight min-w-0",
+                        isSaved ? "text-warning font-semibold" : "text-ink font-medium",
+                      )}
                       numberOfLines={1}
                     >
                       {isSaved ? t('tripHeader.unsave') : t('tripHeader.saveTrip')}
@@ -218,7 +221,7 @@ export const TripHeader = memo(function TripHeader({
                   <View className="w-7 h-7 rounded-lg bg-black/[0.04] items-center justify-center flex-shrink-0">
                     <MaterialIconsRounded name="edit" size={16} color={T.ink} />
                   </View>
-                  <Text className="flex-1 text-[14px] font-medium text-[#1D1D1F] tracking-tight min-w-0" numberOfLines={1}>
+                  <Text className="flex-1 text-[14px] font-medium text-ink tracking-tight min-w-0" numberOfLines={1}>
                     {t('tripHeader.editInfo')}
                   </Text>
                 </View>
@@ -239,13 +242,10 @@ export const TripHeader = memo(function TripHeader({
                   className="flex-row items-center gap-2 py-2.25 px-2 rounded-xl"
                   style={[pressed && { backgroundColor: "rgba(0,0,0,0.04)" }]}
                 >
-                  <View
-                    className="w-7 h-7 rounded-lg bg-black/[0.04] items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: "rgba(255,59,48,0.06)" }}
-                  >
+                  <View className="w-7 h-7 rounded-lg bg-danger/[0.06] items-center justify-center flex-shrink-0">
                     <MaterialIconsRounded name="delete-outline" size={16} color={T.danger} />
                   </View>
-                  <Text className="flex-1 text-[14px] text-[#FF3B30] font-semibold tracking-tight min-w-0" numberOfLines={1}>
+                  <Text className="flex-1 text-[14px] text-danger font-semibold tracking-tight min-w-0" numberOfLines={1}>
                     {t('tripHeader.deleteTrip')}
                   </Text>
                 </View>

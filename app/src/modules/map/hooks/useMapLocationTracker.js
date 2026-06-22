@@ -197,7 +197,7 @@ export function useMapLocationTracker({
           },
         );
       } catch {
-        // Keep silent: route builder still works with manual locate updates.
+        // Keep silent: location tracking still works with manual locate updates.
       }
     };
 

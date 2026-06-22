@@ -33,7 +33,7 @@ function EventSectionInner({ events, onPressEvent, onPressViewAll }) {
     <View className="mt-[26px]">
       <View style={{ paddingHorizontal: TAB_SCREEN_PADDING }} className="flex-row justify-between items-center mb-3.5">
         <View className="flex-row items-center gap-1.5">
-          <Text className="text-[#1D1D1F] text-[22px] leading-7 tracking-[-0.5px] font-bold" style={{ fontFamily: TOKENS.font.heading }}>
+          <Text className="text-ink text-[22px] leading-7 tracking-[-0.5px] font-bold" style={{ fontFamily: TOKENS.font.heading }}>
             Sự kiện cộng đồng
           </Text>
           <View className="px-2 py-0.5 rounded-full bg-red-100 items-center justify-center">
@@ -42,7 +42,7 @@ function EventSectionInner({ events, onPressEvent, onPressViewAll }) {
         </View>
         {onPressViewAll ? (
           <Pressable onPress={onPressViewAll} hitSlop={8}>
-            <Text className="text-[#0071E3] text-[13px] font-semibold px-3.5 h-8 rounded-full bg-[#0071E3]/[0.08] overflow-hidden text-center" style={{ fontFamily: TOKENS.font.semibold, lineHeight: 32 }}>
+            <Text className="text-primary text-[13px] font-semibold px-3.5 h-8 rounded-full bg-primary/[0.08] overflow-hidden text-center" style={{ fontFamily: TOKENS.font.semibold, lineHeight: 32 }}>
               Xem tất cả
             </Text>
           </Pressable>

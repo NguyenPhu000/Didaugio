@@ -494,7 +494,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       images: {
         take: 1,
         orderBy: [{ isCover: "desc" }],
-        select: { imageData: true },
+        select: { imageData: true, secureUrl: true, thumbnailUrl: true },
       },
     },
   });
@@ -679,7 +679,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
                 images: {
                   take: 1,
                   orderBy: [{ isCover: "desc" }],
-                  select: { imageData: true },
+                  select: { imageData: true, secureUrl: true, thumbnailUrl: true },
                 },
               },
             },

@@ -40,6 +40,7 @@ export async function checkout(req, res, next) {
 
     return successResponse(res, {
       paymentUrl: result.paymentUrl,
+      deeplink: result.deeplink || null,
       paymentId: result.paymentId,
       transactionRef: result.transactionRef,
     }, "Tao link thanh toan thanh cong");

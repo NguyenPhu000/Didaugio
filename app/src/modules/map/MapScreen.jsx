@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Keyboard,
-  Modal,
   Pressable,
   StatusBar,
   Text,
@@ -28,12 +27,9 @@ import { useHomeData } from "./hooks/useHomeData";
 import { useMapPlaces } from "./hooks/useMapPlaces";
 import { useBoundaryData } from "./hooks/useBoundaryData";
 import { useFilterState } from "./hooks/useFilterState";
-import { useNavigationStateMachine } from "./hooks/useNavigationStateMachine";
-import { useRouteBuilderController } from "./hooks/useRouteBuilderController";
 import { useMapLocationTracker } from "./hooks/useMapLocationTracker";
 import MapView from "./components/MapView";
 import RoutePolyline from "./components/RoutePolyline";
-import RouteBuilderPanel from "./components/route-builder/RouteBuilderPanel";
 import ArrivalConfirmModal from "./components/navigation/ArrivalConfirmModal";
 import ActiveTripNavBanner from "./components/navigation/ActiveTripNavBanner";
 import NavigationStatusBanner from "./components/navigation/NavigationStatusBanner";
@@ -57,8 +53,6 @@ import { sendLocalNotification } from "../../lib/local-notifications";
 import FilterGroupBar from "./components/filters/FilterGroupBar";
 import FilterPickerModal from "./components/filters/FilterPickerModal";
 import CurrentLocationMarker from "./components/map-overlays/CurrentLocationMarker";
-import RouteBuilderStopsMarkerLayer from "./components/map-overlays/RouteBuilderStopsMarkerLayer";
-import ActiveRouteLayer from "./components/map-overlays/ActiveRouteLayer";
 import { useMapRouting } from "./hooks/useMapRouting";
 import { Locate, Layers, X } from "lucide-react-native";
 import {
@@ -80,17 +74,15 @@ import {
 import { TOKENS } from "../../constants/design-tokens";
 import {
   FLOATING_TAB_CLEARANCE,
-  TAB_BAR_HEIGHT,
 } from "../../../app/(tabs)/_layout";
 import { ALL_AREAS_KEY } from "./constants/filter.constants";
-import { ROUTE_BUILDER_LONG_PRESS_PICK_RADIUS_M } from "./constants/routeBuilder.constants";
 import { NAVIGATION_EVENT_DEDUP_MS } from "./constants/navigation.constants";
 import { MAP_TEXT } from "./constants/mapText.constants";
 import { distanceMeters } from "./utils/distance";
 import {
   formatRouteDistance,
   formatRouteEta,
-} from "./utils/routeBuilderMapper";
+} from "./utils/routeFormat";
 import { filterVisiblePlaces, getPlaceDistrictMeta } from "./utils/placeFilter";
 
 const MAP_UI_THEME = {
@@ -112,27 +104,6 @@ const MAP_CANVAS_STYLE = {
   inset: 0,
   width: "100%",
   height: "100%",
-};
-const PLACE_SPATIAL_INDEX_CELL_DEGREES = 0.003;
-
-const getSpatialCellKey = (latitude, longitude) => {
-  const latCell = Math.floor(latitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
-  const lngCell = Math.floor(longitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
-  return `${latCell}:${lngCell}`;
-};
-
-const buildNearbySpatialKeys = (latitude, longitude) => {
-  const latCell = Math.floor(latitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
-  const lngCell = Math.floor(longitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
-  const keys = [];
-
-  for (let dLat = -1; dLat <= 1; dLat += 1) {
-    for (let dLng = -1; dLng <= 1; dLng += 1) {
-      keys.push(`${latCell + dLat}:${lngCell + dLng}`);
-    }
-  }
-
-  return keys;
 };
 
 const GlassPanel = ({ style, children, intensity = 40 }) => (
@@ -363,23 +334,6 @@ export default function MapScreen() {
     [allPlaces, searchText, activeCategoryId, activeArea, quickFilters],
   );
 
-  const visiblePlaceSpatialIndex = useMemo(() => {
-    const index = new Map();
-
-    visiblePlaces.forEach((place) => {
-      const latitude = Number(place?.latitude);
-      const longitude = Number(place?.longitude);
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
-
-      const key = getSpatialCellKey(latitude, longitude);
-      const bucket = index.get(key) || [];
-      bucket.push(place);
-      index.set(key, bucket);
-    });
-
-    return index;
-  }, [visiblePlaces]);
-
   const currentUserNickname = useMemo(() => {
     const nickname =
       authUser?.profile?.nickname || authUser?.nickname || authUser?.username;
@@ -417,58 +371,8 @@ export default function MapScreen() {
     mapRef.current?.flyTo([CAN_THO_CENTER.lng, CAN_THO_CENTER.lat], 12);
   }, []);
 
-  const routeBuilder = useRouteBuilderController({
-    allPlaces,
-    onSelectPlace: setSelectedPlace,
-    onLocationResolved: focusMapForLocation,
-  });
-
-  const {
-    currentLocation,
-    locateNow,
-    mode: routeBuilderMode,
-    setMode: setRouteBuilderMode,
-    draftStops: routeBuilderDraftStops,
-    canConfirm: routeBuilderCanConfirm,
-    hasConfirmedRoute: routeBuilderHasConfirmedRoute,
-    isDirty: routeBuilderIsDirty,
-    minimumStops: routeBuilderMinimumStops,
-    enabled: routeBuilderEnabled,
-    pendingArrival: routeBuilderPendingArrival,
-    recoveryMode: routeBuilderRecoveryMode,
-    activeTarget: routeBuilderActiveTarget,
-    distanceToActiveTargetLabel: routeBuilderDistanceToActiveTargetLabel,
-    completedLegs: routeBuilderCompletedLegs,
-    legCount: routeBuilderLegCount,
-    hasPendingArrival: routeBuilderHasPendingArrival,
-    completedView: routeBuilderCompletedView,
-    etaLabel: routeBuilderEtaLabel,
-    distanceLabel: routeBuilderDistanceLabel,
-    isRouteError: isRouteBuilderError,
-    isRouteFetching: isRouteBuilderFetching,
-    arrivalAlertVisible: routeBuilderArrivalAlertVisible,
-    recoveryCoordinates: routeBuilderRecoveryCoordinates,
-    recoverySource: routeBuilderRecoverySource,
-    legVisuals: routeBuilderLegVisuals,
-    addStopFromPlace: handleAddRouteBuilderStopFromPlace,
-    removeStop: handleRemoveRouteBuilderStop,
-    clear: handleClearRouteBuilder,
-    confirmRoute: handleConfirmRouteBuilder,
-    exit: handleExitRouteBuilder,
-    confirmArrivedLeg: handleConfirmArrivedRouteBuilderLeg,
-    dismissArrivalAlert: handleDismissRouteBuilderArrivalAlert,
-    resetProgress: handleResetRouteBuilderProgress,
-    toggleCompletedView: handleToggleCompletedLegView,
-    retryRoute: refetchRouteBuilder,
-    hasFinished: routeBuilderHasFinished,
-  } = routeBuilder;
-
-  const routeBuilderNavigationMeta = useNavigationStateMachine({
-    routeBuilderMode,
-    routeBuilderHasFinished,
-    routeBuilderPendingArrival,
-    routeBuilderRecoveryMode,
-    routeBuilderActiveTargetName: routeBuilderActiveTarget?.name,
+  const { currentLocation, locateNow } = useMapLocationTracker({
+    watchEnabled: false,
   });
 
   // ─── Active Trip Mode ───────────────────────────────────────────────────────
@@ -495,7 +399,7 @@ export default function MapScreen() {
     return { timeInterval: 10000, distanceInterval: 15 }; // Default cruising frequency
   }, [nearbyTriggered]);
 
-  // GPS thời gian thực riêng cho active trip (route builder dùng tracker khác). Dừng định vị khi paused.
+  // GPS thời gian thực riêng cho active trip. Dừng định vị khi paused.
   const {
     currentLocation: activeTripLocation,
     locateNow: locateActiveTripNow,
@@ -971,7 +875,7 @@ export default function MapScreen() {
     };
   }, [activePlace]);
 
-  const shouldSuppressSingleRoute = routeBuilderEnabled || isActiveTripMode;
+  const shouldSuppressSingleRoute = isActiveTripMode;
 
   const routeOrigin = shouldSuppressSingleRoute
     ? null
@@ -1022,7 +926,7 @@ export default function MapScreen() {
     !routeDistanceLabel;
 
   const routeStatus = useMemo(() => {
-    if (routeBuilderMode || !routeEnabled) return null;
+    if (!routeEnabled) return null;
 
     if (isRouteError) {
       return {
@@ -1048,7 +952,6 @@ export default function MapScreen() {
   }, [
     isRouteError,
     isRouteFallback,
-    routeBuilderMode,
     routeEnabled,
     routeError?.message,
     routeSource,
@@ -1073,13 +976,6 @@ export default function MapScreen() {
       mapRef.current?.flyTo([Number(place.longitude), Number(place.latitude) - latOffset], 15);
     }
   }, []);
-
-  const handleLongPressPlace = useCallback(
-    (place) => {
-      handleAddRouteBuilderStopFromPlace(place);
-    },
-    [handleAddRouteBuilderStopFromPlace],
-  );
 
   const handleStartRouteFromPreview = useCallback(
     async (place) => {
@@ -1117,7 +1013,6 @@ export default function MapScreen() {
       });
 
       setSelectedPlace(place);
-      setRouteBuilderMode(false);
 
       if (!currentLocation) {
         await handleLocate();
@@ -1140,44 +1035,6 @@ export default function MapScreen() {
     if (event?.nativeEvent?.action === "marker-press") return;
     setSelectedPlace(null);
   }, []);
-
-  const handleMapLongPress = useCallback(
-    (event) => {
-      const latitude = Number(event?.nativeEvent?.coordinate?.latitude);
-      const longitude = Number(event?.nativeEvent?.coordinate?.longitude);
-
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-        return;
-      }
-
-      let nearestPlace = null;
-      let minDistance = Number.POSITIVE_INFINITY;
-      const candidatePlaces = buildNearbySpatialKeys(
-        latitude,
-        longitude,
-      ).flatMap((key) => visiblePlaceSpatialIndex.get(key) || []);
-
-      candidatePlaces.forEach((place) => {
-        const placeLat = Number(place?.latitude);
-        const placeLng = Number(place?.longitude);
-        if (!Number.isFinite(placeLat) || !Number.isFinite(placeLng)) return;
-
-        const meters = distanceMeters(latitude, longitude, placeLat, placeLng);
-        if (meters < minDistance) {
-          minDistance = meters;
-          nearestPlace = place;
-        }
-      });
-
-      if (
-        nearestPlace &&
-        minDistance <= ROUTE_BUILDER_LONG_PRESS_PICK_RADIUS_M
-      ) {
-        handleLongPressPlace(nearestPlace);
-      }
-    },
-    [handleLongPressPlace, visiblePlaceSpatialIndex],
-  );
 
   const handleOpenPlaceDetail = useCallback(
     (place) => {
@@ -1249,29 +1106,21 @@ export default function MapScreen() {
 
   const showFerryWarning = useMemo(() => {
     if (isActiveTripMode) return activeTripAvoidFerry && Boolean(activeRouteFerryAvoidanceFailed);
-    if (routeBuilderMode) return Boolean(routeBuilderEnabled && routeBuilder?.ferryAvoidanceFailed);
     return false;
   }, [
     activeTripAvoidFerry,
     isActiveTripMode,
     activeRouteFerryAvoidanceFailed,
-    routeBuilderMode,
-    routeBuilderEnabled,
-    routeBuilder?.ferryAvoidanceFailed,
   ]);
 
   const warningTargetName = useMemo(() => {
     if (isActiveTripMode) return activeTargetPoint?.name;
-    if (routeBuilderMode) return routeBuilder?.activeTarget?.name;
     return activePlace?.name;
-  }, [isActiveTripMode, activeTargetPoint, routeBuilderMode, routeBuilder?.activeTarget, activePlace]);
+  }, [isActiveTripMode, activeTargetPoint, activePlace]);
 
   const warningTopOffset = useMemo(() => {
-    if (isActiveTripMode) {
-      return (insets.top || 0) + 106;
-    }
-    return (insets.top || 0) + 114;
-  }, [isActiveTripMode, insets.top]);
+    return (insets.top || 0) + 106;
+  }, [insets.top]);
 
   return (
     <View
@@ -1332,9 +1181,7 @@ export default function MapScreen() {
           places={visiblePlaces}
           selectedPlaceId={activePlace?.id ?? null}
           onSelectPlace={handleSelectPlace}
-          onLongPressPlace={handleLongPressPlace}
           onPressMap={handleMapPress}
-          onLongPressMap={handleMapLongPress}
           tileUrls={mapStyle.urls}
           mapType={mapStyle.mapType || "standard"}
           useNativeCleanStyle={mapStyle.useNativeCleanStyle === true}
@@ -1354,8 +1201,6 @@ export default function MapScreen() {
             }
           />
 
-          <RouteBuilderStopsMarkerLayer stops={routeBuilderDraftStops} />
-
           {isActiveTripMode && activeRouteCoordinates.length > 1 ? (
             <RoutePolyline
               coordinates={activeRouteCoordinates}
@@ -1366,17 +1211,15 @@ export default function MapScreen() {
               color="hsl(145, 63%, 38%)"
               strokeOpacity={0.95}
             />
-          ) : (
-            <ActiveRouteLayer
-              routeBuilderEnabled={routeBuilderEnabled}
-              routeBuilderRecoveryMode={routeBuilderRecoveryMode}
-              routeBuilderRecoveryCoordinates={routeBuilderRecoveryCoordinates}
-              routeBuilderRecoverySource={routeBuilderRecoverySource}
-              routeBuilderLegVisuals={routeBuilderLegVisuals}
-              routeCoordinates={routeCoordinates}
-              routeSource={routeSource}
+          ) : routeCoordinates.length > 1 ? (
+            <RoutePolyline
+              coordinates={routeCoordinates}
+              source={routeSource || "osrm"}
+              strokeWidth={5}
+              isPrimary
+              dashed={routeSource === "fallback"}
             />
-          )}
+          ) : null}
 
           {isActiveTripMode && neonSpots.length > 0
             ? neonSpots.map((spot) => (
@@ -1418,45 +1261,6 @@ export default function MapScreen() {
             : null}
         </MapView>
       </View>
-
-      <RouteBuilderPanel
-        visible={routeBuilderMode}
-        bottomOffset={FLOATING_TAB_CLEARANCE + 4}
-        statusLabel={routeBuilderNavigationMeta.label}
-        draftStops={routeBuilderDraftStops}
-        canConfirm={routeBuilderCanConfirm}
-        hasConfirmedRoute={routeBuilderHasConfirmedRoute}
-        isDirty={routeBuilderIsDirty}
-        minimumStops={routeBuilderMinimumStops}
-        enabled={routeBuilderEnabled}
-        pendingArrival={routeBuilderPendingArrival}
-        recoveryMode={routeBuilderRecoveryMode}
-        activeTargetName={routeBuilderActiveTarget?.name}
-        distanceToActiveTargetLabel={routeBuilderDistanceToActiveTargetLabel}
-        completedLegs={routeBuilderCompletedLegs}
-        legCount={routeBuilderLegCount}
-        hasPendingArrival={routeBuilderHasPendingArrival}
-        completedView={routeBuilderCompletedView}
-        etaLabel={routeBuilderEtaLabel}
-        distanceLabel={routeBuilderDistanceLabel}
-        isRouteError={isRouteBuilderError}
-        isRouteFetching={isRouteBuilderFetching}
-        onExit={handleExitRouteBuilder}
-        onRemoveStop={handleRemoveRouteBuilderStop}
-        onConfirmRoute={handleConfirmRouteBuilder}
-        onClear={handleClearRouteBuilder}
-        onConfirmArrived={handleConfirmArrivedRouteBuilderLeg}
-        onResetProgress={handleResetRouteBuilderProgress}
-        onToggleCompletedView={handleToggleCompletedLegView}
-        onRetryRoute={refetchRouteBuilder}
-      />
-
-      <ArrivalConfirmModal
-        visible={routeBuilderMode && routeBuilderArrivalAlertVisible}
-        targetName={routeBuilderPendingArrival?.targetName}
-        onDismiss={handleDismissRouteBuilderArrivalAlert}
-        onConfirm={handleConfirmArrivedRouteBuilderLeg}
-      />
 
       <ActiveTripNavBanner
         visible={isActiveTripMode && !activeTrip.isPaused}
@@ -1636,11 +1440,9 @@ export default function MapScreen() {
         isRouteFetching={isRouteFetching}
         onRetry={refetchRoute}
         bottomOffset={
-          routeBuilderMode
-            ? FLOATING_TAB_CLEARANCE + 82
-            : activePlace
-              ? FLOATING_TAB_CLEARANCE + 124
-              : FLOATING_TAB_CLEARANCE + 82
+          activePlace
+            ? FLOATING_TAB_CLEARANCE + 124
+            : FLOATING_TAB_CLEARANCE + 82
         }
       />
 
@@ -1654,11 +1456,9 @@ export default function MapScreen() {
             ...(isActiveTripMode
               ? { top: warningTopOffset }
               : {
-                  bottom: routeBuilderMode
-                    ? FLOATING_TAB_CLEARANCE + 154
-                    : activePlace
-                      ? FLOATING_TAB_CLEARANCE + 196
-                      : FLOATING_TAB_CLEARANCE + 128,
+                  bottom: activePlace
+                    ? FLOATING_TAB_CLEARANCE + 196
+                    : FLOATING_TAB_CLEARANCE + 128,
                 }),
             zIndex: 99,
           }}
@@ -2007,7 +1807,7 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {activePlace && !routeBuilderMode && !isActiveTripMode ? (
+      {activePlace && !isActiveTripMode ? (
         <View
           pointerEvents="box-none"
           style={{

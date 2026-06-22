@@ -1,6 +1,7 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
@@ -8,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  UIManager,
   View,
 } from "react-native";
 import { Image } from "expo-image";
@@ -16,14 +18,27 @@ import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../../constants/design-tokens";
+import { cn } from "@/lib/cn";
 import { useExplore, useCategories } from "../hooks/useExplore";
 import { useBoundaryData } from "../../map/hooks/useBoundaryData";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation, normalizeText } from "../utils/exploreHelpers";
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const LAYOUT_ANIM = {
+  duration: 200,
+  create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+  update: { type: LayoutAnimation.Types.easeInEaseOut },
+  delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+};
 
 const CHIP_SHADOW = {
   shadowColor: "#0F172A",
@@ -105,7 +120,7 @@ const SearchResultItem = memo(function SearchResultItem({
       </View>
 
       <View className="flex-1 gap-0.5">
-        <Text className="text-[#1D1D1F] text-sm font-semibold" numberOfLines={1}>
+        <Text className="text-ink text-sm font-semibold" numberOfLines={1}>
           {place?.name}
         </Text>
         {location ? (
@@ -115,7 +130,7 @@ const SearchResultItem = memo(function SearchResultItem({
               size={12}
               color={APPLE_THEME.focusBlue}
             />
-            <Text className="text-[#54647A] text-[11px] font-medium" numberOfLines={1}>
+            <Text className="text-ink-muted text-[11px] font-medium" numberOfLines={1}>
               {location}
             </Text>
           </View>
@@ -123,7 +138,7 @@ const SearchResultItem = memo(function SearchResultItem({
         {rating > 0 ? (
           <View className="flex-row items-center gap-0.75">
             <MaterialIconsRounded name="star" size={12} color="#FBBF24" />
-            <Text className="text-[#1D1D1F] text-[11px] font-semibold">{rating.toFixed(1)}</Text>
+            <Text className="text-ink text-[11px] font-semibold">{rating.toFixed(1)}</Text>
           </View>
         ) : null}
       </View>
@@ -181,7 +196,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
     selectedMinRating !== null ||
     selectedSortBy !== "newest";
 
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+  const { data, isFetching, isPending, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useExplore({
       search: debouncedText,
       categoryId: selectedCategory,
@@ -191,6 +206,8 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
       sortBy: selectedSortBy,
       enabled: visible && isActive,
     });
+
+  const isInitialLoad = isPending && !data;
 
   const results = useMemo(() => {
     const raw = data?.pages.flatMap((page) => page?.data || []) ?? [];
@@ -210,6 +227,12 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
         return buildPlaceSearchIndex(place).includes(normalizedQuery);
       });
   }, [data, debouncedText]);
+
+  const animateFilterChange = useCallback((setter, value) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    LayoutAnimation.configureNext(LAYOUT_ANIM);
+    setter(value);
+  }, []);
 
   const handleClose = useCallback(() => {
     setText("");
@@ -273,7 +296,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
               onChangeText={setText}
               placeholder={t("explore.search.placeholder")}
               placeholderTextColor={APPLE_THEME.textMuted}
-              className="flex-1 text-[#1D1D1F] text-sm py-0 font-sans"
+              className="flex-1 text-ink text-sm py-0 font-sans"
               returnKeyType="search"
               autoCorrect={false}
               autoCapitalize="none"
@@ -289,17 +312,19 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
             ) : null}
           </View>
           <Pressable onPress={handleClose} hitSlop={10}>
-            <Text className="text-[#007AFF] text-sm font-semibold">{t("explore.search.close")}</Text>
+            <Text className="text-primary text-sm font-semibold">{t("explore.search.close")}</Text>
           </Pressable>
         </View>
 
         {isActive ? (
           <View className="flex-row items-center justify-between px-5 pb-2 gap-2">
-            <Text className="text-[#54647A] text-xs font-medium">
+            <Text className="text-ink-muted text-xs font-medium">
               {t("explore.search.resultsMatch", { count: results.length })}
             </Text>
             <Pressable
               onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                LayoutAnimation.configureNext(LAYOUT_ANIM);
                 setText("");
                 setDebouncedText("");
                 setSelectedCategory(null);
@@ -315,15 +340,22 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
                 size={14}
                 color={APPLE_THEME.focusBlue}
               />
-              <Text className="text-[#007AFF] text-[11px] font-semibold">{t("explore.search.resetFilters")}</Text>
+              <Text className="text-primary-500 text-[11px] font-semibold">{t("explore.search.resetFilters")}</Text>
             </Pressable>
+          </View>
+        ) : null}
+
+        {/* Subtle fetching indicator */}
+        {isFetching && !isInitialLoad ? (
+          <View className="h-[2px] bg-primary-500/20">
+            <View className="h-full w-1/3 bg-primary-500 rounded-full" />
           </View>
         ) : null}
 
         {/* Category chips */}
         {categories.length > 0 ? (
           <View className="shrink-0 mb-0.5">
-            <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">{t("explore.search.tabs.categories")}</Text>
+            <Text className="px-5 pt-1.5 text-ink-muted text-[11px] font-semibold uppercase tracking-[0.4px]">{t("explore.search.tabs.categories")}</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -331,14 +363,14 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
               keyboardShouldPersistTaps="handled"
             >
               <Pressable
-                onPress={() => setSelectedCategory(null)}
+                onPress={() => animateFilterChange(setSelectedCategory, null)}
                 className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
-                  selectedCategory === null ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                  selectedCategory === null ? "bg-primary-500 border-primary-500" : "bg-white border-[#E5E5EA]"
                 }`}
               >
                 <Text
                   className={`text-xs font-semibold ${
-                    selectedCategory === null ? "text-white" : "text-[#54647A]"
+                    selectedCategory === null ? "text-white" : "text-ink-muted"
                   }`}
                 >
                   {t("common.all")}
@@ -350,14 +382,14 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
                 return (
                   <Pressable
                     key={cat.id}
-                    onPress={() => setSelectedCategory(active ? null : cat.id)}
+                    onPress={() => animateFilterChange(setSelectedCategory, active ? null : cat.id)}
                     className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
-                      active ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                      active ? "bg-primary-500 border-primary-500" : "bg-white border-[#E5E5EA]"
                     }`}
                   >
                     <Text
                       className={`text-xs font-semibold ${
-                        active ? "text-white" : "text-[#54647A]"
+                        active ? "text-white" : "text-ink-muted"
                       }`}
                     >
                       {cat.name}
@@ -371,7 +403,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
 
         {districtOptions.length > 0 ? (
           <View className="shrink-0 mb-0.5">
-            <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">{t("explore.search.tabs.areas")}</Text>
+            <Text className="px-5 pt-1.5 text-ink-muted text-[11px] font-semibold uppercase tracking-[0.4px]">{t("explore.search.tabs.areas")}</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -379,14 +411,14 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
               keyboardShouldPersistTaps="handled"
             >
               <Pressable
-                onPress={() => setSelectedDistrict(null)}
+                onPress={() => animateFilterChange(setSelectedDistrict, null)}
                 className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
-                  selectedDistrict === null ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                  selectedDistrict === null ? "bg-primary-500 border-primary-500" : "bg-white border-[#E5E5EA]"
                 }`}
               >
                 <Text
                   className={`text-xs font-semibold ${
-                    selectedDistrict === null ? "text-white" : "text-[#54647A]"
+                    selectedDistrict === null ? "text-white" : "text-ink-muted"
                   }`}
                 >
                   {t("common.all")}
@@ -400,14 +432,14 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
                 return (
                   <Pressable
                     key={String(district.id)}
-                    onPress={() => setSelectedDistrict(active ? null : id)}
+                    onPress={() => animateFilterChange(setSelectedDistrict, active ? null : id)}
                     className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
-                      active ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                      active ? "bg-primary-500 border-primary-500" : "bg-white border-[#E5E5EA]"
                     }`}
                   >
                     <Text
                       className={`text-xs font-semibold ${
-                        active ? "text-white" : "text-[#54647A]"
+                        active ? "text-white" : "text-ink-muted"
                       }`}
                     >
                       {district.name}
@@ -420,7 +452,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
         ) : null}
 
         <View className="shrink-0 mb-0.5">
-          <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">{t("explore.search.tabs.price")}</Text>
+          <Text className="px-5 pt-1.5 text-ink-muted text-[11px] font-semibold uppercase tracking-[0.4px]">{t("explore.search.tabs.price")}</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -433,15 +465,15 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
                 <Pressable
                   key={item.value}
                   onPress={() =>
-                    setSelectedPriceRange(active ? null : item.value)
+                    animateFilterChange(setSelectedPriceRange, active ? null : item.value)
                   }
                   className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
-                    active ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                    active ? "bg-primary-500 border-primary-500" : "bg-white border-[#E5E5EA]"
                   }`}
                 >
                   <Text
                     className={`text-xs font-semibold ${
-                      active ? "text-white" : "text-[#54647A]"
+                      active ? "text-white" : "text-ink-muted"
                     }`}
                   >
                     {item.label}
@@ -453,7 +485,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
         </View>
 
         <View className="shrink-0 mb-0.5">
-          <Text className="px-5 pt-1.5 text-[#54647A] text-[11px] font-semibold uppercase tracking-[0.4px]">{t("explore.search.tabs.ratingSort")}</Text>
+          <Text className="px-5 pt-1.5 text-ink-muted text-[11px] font-semibold uppercase tracking-[0.4px]">{t("explore.search.tabs.ratingSort")}</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -466,15 +498,15 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
                 <Pressable
                   key={String(item.value)}
                   onPress={() =>
-                    setSelectedMinRating(active ? null : item.value)
+                    animateFilterChange(setSelectedMinRating, active ? null : item.value)
                   }
                   className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
-                    active ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                    active ? "bg-primary-500 border-primary-500" : "bg-white border-[#E5E5EA]"
                   }`}
                 >
                   <Text
                     className={`text-xs font-semibold ${
-                      active ? "text-white" : "text-[#54647A]"
+                      active ? "text-white" : "text-ink-muted"
                     }`}
                   >
                     {item.label}
@@ -487,14 +519,14 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
               return (
                 <Pressable
                   key={item.value}
-                  onPress={() => setSelectedSortBy(item.value)}
+                  onPress={() => animateFilterChange(setSelectedSortBy, item.value)}
                   className={`px-4 py-2 rounded-full border self-center justify-center h-9 ${
-                    active ? "bg-[#007AFF] border-[#007AFF]" : "bg-white border-[#E5E5EA]"
+                    active ? "bg-primary-500 border-primary-500" : "bg-white border-[#E5E5EA]"
                   }`}
                 >
                   <Text
                     className={`text-xs font-semibold ${
-                      active ? "text-white" : "text-[#54647A]"
+                      active ? "text-white" : "text-ink-muted"
                     }`}
                   >
                     {item.label}
@@ -506,7 +538,7 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
         </View>
 
         {/* Results */}
-        {isLoading ? (
+        {isInitialLoad ? (
           <View className="flex-1 items-center justify-center gap-2.5 px-12">
             <ActivityIndicator color={APPLE_THEME.focusBlue} />
           </View>
@@ -517,8 +549,8 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
               size={42}
               color={APPLE_THEME.textMuted}
             />
-            <Text className="text-[#1D1D1F] text-[17px] font-bold text-center mt-1">{t("explore.search.searchNext")}</Text>
-            <Text className="text-[#54647A] text-sm text-center leading-5">
+            <Text className="text-ink text-[17px] font-bold text-center mt-1">{t("explore.search.searchNext")}</Text>
+            <Text className="text-ink-muted text-sm text-center leading-5">
               {t("explore.header.searchPlaceholder")}
             </Text>
           </View>
@@ -529,8 +561,8 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
               size={42}
               color={APPLE_THEME.textMuted}
             />
-            <Text className="text-[#1D1D1F] text-[17px] font-bold text-center mt-1">{t("explore.search.noResults")}</Text>
-            <Text className="text-[#54647A] text-sm text-center leading-5">
+            <Text className="text-ink text-[17px] font-bold text-center mt-1">{t("explore.search.noResults")}</Text>
+            <Text className="text-ink-muted text-sm text-center leading-5">
               {t("explore.empty.noResultsDesc")}
             </Text>
           </View>

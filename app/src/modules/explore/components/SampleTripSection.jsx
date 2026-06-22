@@ -39,7 +39,7 @@ function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
       >
         <View>
           <Text
-            className="text-[#1D1D1F] text-[22px] leading-7 tracking-[-0.5px] font-bold"
+            className="text-ink text-[22px] leading-7 tracking-[-0.5px] font-bold"
             style={{ fontFamily: TOKENS.font.heading }}
           >
             Lich trinh mau
@@ -54,7 +54,7 @@ function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
         {onPressViewAll ? (
           <Pressable onPress={onPressViewAll} hitSlop={8}>
             <Text
-              className="text-[#0071E3] text-[13px] font-semibold px-3.5 h-8 rounded-full bg-[#0071E3]/[0.08] overflow-hidden text-center"
+              className="text-primary text-[13px] font-semibold px-3.5 h-8 rounded-full bg-primary/[0.08] overflow-hidden text-center"
               style={{ fontFamily: TOKENS.font.semibold, lineHeight: 32 }}
             >
               Xem tat ca

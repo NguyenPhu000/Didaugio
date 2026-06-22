@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
-  RefreshControl,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -16,8 +15,10 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { Pressable } from "@/components/primitives/Pressable";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
+import { RefreshControl } from "react-native-gesture-handler";
 
 import {
   useCategories,
@@ -37,30 +38,22 @@ import {
 
 import { FeaturedSection } from "../../src/modules/explore/components/FeaturedSection";
 import { ExperienceBentoSection } from "../../src/modules/explore/components/ExperienceBentoSection";
-import { PopularSection } from "../../src/modules/explore/components/PopularSection";
+import { CategoryPlacesSection } from "../../src/modules/explore/components/CategoryPlacesSection";
 import { ExploreSkeleton } from "../../src/modules/explore/components/ExploreSkeleton";
 import { SearchOverlay } from "../../src/modules/explore/components/SearchOverlay";
 import { ExploreModernHeader } from "../../src/modules/explore/components/ExploreModernHeader";
-import { ExploreQuickActions } from "../../src/modules/explore/components/ExploreQuickActions";
 import { CategoryPills } from "../../src/modules/explore/components/CategoryPills";
-import { HeroBanner } from "../../src/modules/explore/components/HeroBanner";
-
-// Event components
 import { useEvents } from "../../src/modules/explore/hooks/useEvents";
 import { EventBannerCarousel } from "../../src/modules/explore/components/EventBannerCarousel";
 import { EventSection } from "../../src/modules/explore/components/EventSection";
 
-// CMS components
 import { useExploreCms } from "../../src/modules/explore/hooks/useExploreCms";
 import { CmsBannerCarousel } from "../../src/modules/explore/components/CmsBannerCarousel";
 import { SampleTripSection } from "../../src/modules/explore/components/SampleTripSection";
 import { AnnouncementBanner } from "../../src/modules/explore/components/AnnouncementBanner";
 
-// Save/favorite hooks
 import { useSavePlace, useUnsavePlace, useSavedPlaces } from "../../src/modules/saved/hooks/useSaved";
 
-
-const FEATURED_COUNT = 6;
 const FOOD_HINTS = ["ẩm thực", "food", "restaurant", "ăn", "quán", "bánh"].map(
   (item) => normalizeText(item),
 );
@@ -76,7 +69,6 @@ export default function ExploreScreen() {
 
   const [searchVisible, setSearchVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const scrollY = useSharedValue(0);
   const { data: categories = [] } = useCategories();
 
   const {
@@ -91,7 +83,6 @@ export default function ExploreScreen() {
 
   const { data: events = [], isLoading: isLoadingEvents, refetch: refetchEvents } = useEvents();
 
-  // CMS aggregate — 1 request cho toàn bộ nội dung CMS
   const {
     data: cmsData,
     isLoading: isLoadingCms,
@@ -119,7 +110,6 @@ export default function ExploreScreen() {
     }
   }, [router]);
 
-  // Save/favorite functionality
   const isLoggedIn = !!user && !isGuest;
   const { data: savedPlaces = [] } = useSavedPlaces(isLoggedIn);
   const saveMutation = useSavePlace();
@@ -149,16 +139,10 @@ export default function ExploreScreen() {
     try {
       if (isCurrentlySaved) {
         await unsaveMutation.mutateAsync(placeId);
-        useUIStore.getState().addToast({
-          type: "success",
-          message: t("explore.toast.unsaved"),
-        });
+        useUIStore.getState().addToast({ type: "success", message: t("explore.toast.unsaved") });
       } else {
         await saveMutation.mutateAsync({ placeId });
-        useUIStore.getState().addToast({
-          type: "success",
-          message: t("explore.toast.saved"),
-        });
+        useUIStore.getState().addToast({ type: "success", message: t("explore.toast.saved") });
       }
     } catch {
       useUIStore.getState().addToast({
@@ -176,12 +160,7 @@ export default function ExploreScreen() {
   const categoryTabs = useMemo(() => {
     const normalizedCategories = Array.isArray(categories) ? categories : [];
     return [
-      {
-        key: "all",
-        categoryId: null,
-        label: t("explore.categories.all"),
-        icon: "travel-explore",
-      },
+      { key: "all", categoryId: null, label: t("explore.categories.all"), icon: "travel-explore" },
       ...normalizedCategories
         .filter((category) => category?.id != null && category?.name)
         .map((category) => ({
@@ -195,13 +174,38 @@ export default function ExploreScreen() {
 
   const selectedCategoryName = useMemo(() => {
     if (selectedCategory == null) return null;
-    const matched = categories.find(
-      (category) => String(category?.id) === String(selectedCategory),
-    );
+    const matched = categories.find((category) => String(category?.id) === String(selectedCategory));
     return matched?.name || null;
   }, [categories, selectedCategory]);
 
   const popularPlaces = allPlaces;
+
+  const placesByCategory = useMemo(() => {
+    if (selectedCategory != null) return [];
+
+    const categoryMap = new Map();
+    for (const place of allPlaces) {
+      const catId = place?.category?.id;
+      const catName = place?.category?.name;
+      if (catId != null && catName) {
+        if (!categoryMap.has(catId)) {
+          categoryMap.set(catId, { id: catId, name: catName, icon: getCategoryIcon(catName), places: [] });
+        }
+        categoryMap.get(catId).places.push(place);
+      }
+    }
+
+    return Array.from(categoryMap.values())
+      .sort((a, b) => b.places.length - a.places.length)
+      .map((cat) => ({ ...cat, places: cat.places.slice(0, 8) }));
+  }, [allPlaces, selectedCategory]);
+
+  const handleViewCategoryPlaces = useCallback(
+    (category) => {
+      router.push({ pathname: "/explore/category-places", params: { id: category.id, name: category.name } });
+    },
+    [router],
+  );
 
   const culinaryPlaces = useMemo(() => {
     const matched = allPlaces.filter((place) => {
@@ -209,40 +213,29 @@ export default function ExploreScreen() {
       const content = normalizeText(textToCheck);
       return FOOD_HINTS.some((keyword) => content.includes(keyword));
     });
-
     const source = matched.length >= 3 ? matched : allPlaces;
     return source.slice(0, 3);
   }, [allPlaces]);
 
   const handlePressPlace = useCallback(
     (place) => {
-      const id = place?.id;
-      if (id) {
-        router.push({ pathname: "/place/[id]", params: { id } });
-      }
+      if (place?.id) router.push({ pathname: "/place/[id]", params: { id: place.id } });
     },
     [router],
   );
 
-  const handleOpenSearch = useCallback(() => {
-    setSearchVisible(true);
-  }, []);
-
-  const handleCloseSearch = useCallback(() => {
-    setSearchVisible(false);
-  }, []);
+  const handleOpenSearch = useCallback(() => setSearchVisible(true), []);
+  const handleCloseSearch = useCallback(() => setSearchVisible(false), []);
 
   const handleRefresh = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     refetch();
     refetchEvents();
-    refetchCms(); // Đồng bộ CMS data
+    refetchCms();
   }, [refetch, refetchEvents, refetchCms]);
 
   const handleEndReached = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
-    }
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleSelectCategory = useCallback((categoryId) => {
@@ -251,54 +244,35 @@ export default function ExploreScreen() {
 
   const handleScroll = useCallback(
     (event) => {
-      const { layoutMeasurement, contentOffset, contentSize } =
-        event.nativeEvent;
-      const distanceFromBottom =
-        contentSize.height - (layoutMeasurement.height + contentOffset.y);
-
-      if (distanceFromBottom <= 240) {
+      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+      if (contentSize.height - (layoutMeasurement.height + contentOffset.y) <= 240) {
         handleEndReached();
       }
     },
     [handleEndReached],
   );
 
+  const handleScrollEvent = useCallback((e) => {
+    handleScroll(e);
+  }, [handleScroll]);
+
+  const handlePressTrip = useCallback((trip) => {
+    if (trip?.id) router.push({ pathname: "/trip/[id]", params: { id: trip.id } });
+  }, [router]);
+
   const isInitialLoading = isLoading || isLoadingEvents || isLoadingCms;
   const showEmpty = allPlaces.length === 0 && !isInitialLoading;
 
-  const handleScrollEvent = useCallback((e) => {
-    scrollY.value = e.nativeEvent.contentOffset.y;
-    handleScroll(e);
-  }, [scrollY, handleScroll]);
-
-  const handlePressTrip = useCallback((trip) => {
-    if (trip?.id) {
-      router.push({ pathname: "/trip/[id]", params: { id: trip.id } });
-    }
-  }, [router]);
-
-  // Removed laggy section transition animation for instant rendering performance
-
-  /* — Empty state icon animation — */
   const emptyOpacity = useSharedValue(0);
 
   useEffect(() => {
-    if (showEmpty) {
-      emptyOpacity.value = withTiming(1, { duration: 250 });
-    } else {
-      emptyOpacity.value = 0;
-    }
+    emptyOpacity.value = showEmpty ? withTiming(1, { duration: 250 }) : 0;
   }, [showEmpty, emptyOpacity]);
 
-  const emptyAnimStyle = useAnimatedStyle(() => ({
-    opacity: emptyOpacity.value,
-  }));
+  const emptyAnimStyle = useAnimatedStyle(() => ({ opacity: emptyOpacity.value }));
 
   return (
-    <View
-      className="flex-1"
-      style={{ paddingTop: insets.top, backgroundColor: APPLE_THEME.background }}
-    >
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar style="dark" />
 
       {isInitialLoading && !isRefetching ? (
@@ -307,7 +281,7 @@ export default function ExploreScreen() {
         <Animated.ScrollView
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={{ paddingTop: 4, paddingBottom: FLOATING_TAB_CLEARANCE }}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: FLOATING_TAB_CLEARANCE }]}
           refreshControl={
             <RefreshControl
               refreshing={isRefetching || isCmsRefetching}
@@ -319,14 +293,8 @@ export default function ExploreScreen() {
           onScroll={handleScrollEvent}
           scrollEventThrottle={16}
         >
-          {/* Header */}
-          <ExploreModernHeader
-            user={user}
-            onPressSearch={handleOpenSearch}
-            scrollY={scrollY}
-          />
+          <ExploreModernHeader user={user} onPressSearch={handleOpenSearch} />
 
-          {/* Category Pills */}
           {categoryTabs.length > 1 ? (
             <CategoryPills
               categories={categoryTabs}
@@ -335,72 +303,32 @@ export default function ExploreScreen() {
             />
           ) : null}
 
-          {/* Announcement Banner — hệ thống */}
           <AnnouncementBanner announcement={announcement} />
 
-          {/* CMS Banner Carousel — với fallback khi rỗng */}
-          {selectedCategory === null ? (
-            <CmsBannerCarousel banners={banners} />
-          ) : null}
+          {selectedCategory === null ? <CmsBannerCarousel banners={banners} /> : null}
 
-          {/* Hero Banner — premium promotional */}
-          {selectedCategory === null ? (
-            <View className="mx-5 mt-3">
-              <HeroBanner
-                onPress={() => router.push("/(tabs)/explore")}
-              />
-            </View>
-          ) : null}
-
-          {/* Event Banner Carousel */}
           {selectedCategory === null && featuredEvents.length > 0 ? (
-            <EventBannerCarousel
-              events={featuredEvents}
-              onPressEvent={handlePressEvent}
-            />
+            <EventBannerCarousel events={featuredEvents} onPressEvent={handlePressEvent} />
           ) : null}
 
-          {/* Inline filter indicator — only when a category is selected */}
           {selectedCategoryName ? (
-            <View
-              className="flex-row items-center mx-5 mt-2.5 px-3.5 h-9 rounded-full gap-2"
-              style={{
-                backgroundColor: TOKENS.color.overlay.blue,
-                borderWidth: 1,
-                borderColor: TOKENS.color.border.soft,
-              }}
-            >
-              <View
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: APPLE_THEME.focusBlue }}
-              />
-              <Text
-                className="flex-1 text-[13px] font-semibold"
-                style={{ color: APPLE_THEME.focusBlue, fontFamily: TOKENS.font.semibold }}
-              >
+            <View style={styles.filterPill}>
+              <View style={styles.filterDot} />
+              <Text style={styles.filterText}>
                 {selectedCategoryName} · {t("explore.results", { count: allPlaces.length })}
               </Text>
               <Pressable
+                haptic="light"
                 onPress={() => handleSelectCategory(null)}
                 hitSlop={8}
-                className="w-5.5 h-5.5 rounded-full items-center justify-center"
-                style={{ backgroundColor: APPLE_THEME.primaryTint }}
+                style={styles.filterCloseBtn}
               >
-                <MaterialIconsRounded name="close" size={14} color={APPLE_THEME.textMuted} />
+                <MaterialIconsRounded name="close" size={14} color={APPLE_THEME.text} />
               </Pressable>
             </View>
           ) : null}
 
-          {/* Wrapper for content sections */}
           <View>
-            {/* Quick Actions */}
-            <ExploreQuickActions
-              categories={categories}
-              onSelectCategory={handleSelectCategory}
-              onOpenSearch={handleOpenSearch}
-            />
-
-            {/* Featured carousel — dùng isFeatured=true data từ CMS */}
             {featuredPlaces.length > 0 ? (
               <FeaturedSection
                 places={featuredPlaces}
@@ -410,95 +338,66 @@ export default function ExploreScreen() {
               />
             ) : null}
 
-            {/* Sample Trips Section */}
-            <SampleTripSection
-              sampleTrips={sampleTrips}
-              onPressTrip={handlePressTrip}
-            />
+            <SampleTripSection sampleTrips={sampleTrips} onPressTrip={handlePressTrip} />
 
-            {/* Event Section */}
             {selectedCategory === null && regularEvents.length > 0 ? (
-              <EventSection
-                events={regularEvents}
-                onPressEvent={handlePressEvent}
-              />
+              <EventSection events={regularEvents} onPressEvent={handlePressEvent} />
             ) : null}
 
-            {/* Bento culinary */}
             {culinaryPlaces.length >= 3 ? (
-              <ExperienceBentoSection
-                places={culinaryPlaces}
-                onPressPlace={handlePressPlace}
-              />
+              <ExperienceBentoSection places={culinaryPlaces} onPressPlace={handlePressPlace} />
             ) : null}
 
-            {/* Popular list */}
-            {popularPlaces.length > 0 ? (
-              <PopularSection
-                places={popularPlaces}
+            {selectedCategory === null
+              ? placesByCategory.map((category) => (
+                  <CategoryPlacesSection
+                    key={category.id}
+                    categoryName={category.name}
+                    categoryId={category.id}
+                    places={category.places}
+                    icon={category.icon}
+                    onPressPlace={handlePressPlace}
+                    onPressViewAll={() => handleViewCategoryPlaces(category)}
+                  />
+                ))
+              : null}
+
+            {selectedCategory != null && popularPlaces.length > 0 ? (
+              <CategoryPlacesSection
+                categoryName={selectedCategoryName}
+                categoryId={selectedCategory}
+                places={popularPlaces.slice(0, 8)}
                 onPressPlace={handlePressPlace}
-                title={
-                  selectedCategory == null
-                    ? t("explore.recommended")
-                    : t("explore.placesInCategory", { category: selectedCategoryName })
+                onPressViewAll={() =>
+                  handleViewCategoryPlaces({ id: selectedCategory, name: selectedCategoryName })
                 }
               />
             ) : null}
           </View>
 
-          {/* Empty state — animated */}
           {showEmpty ? (
-            <Animated.View style={emptyAnimStyle} className="items-center justify-center py-15 px-10 gap-3">
-
-              <View
-                className="w-18 h-18 rounded-full items-center justify-center mb-1"
-                style={{ backgroundColor: APPLE_THEME.primaryTint }}
-              >
-                <MaterialIconsRounded
-                  name="explore-off"
-                  size={40}
-                  color={APPLE_THEME.textMuted}
-                />
+            <Animated.View style={[styles.emptyContainer, emptyAnimStyle]}>
+              <View style={styles.emptyIconWrapper}>
+                <MaterialIconsRounded name="explore-off" size={32} color={APPLE_THEME.textMuted} />
               </View>
-              <Text
-                className="text-[18px] font-semibold tracking-tight text-center"
-                style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.semibold }}
-              >
-                {selectedCategory == null
-                  ? t("explore.empty.noPlaces")
-                  : t("explore.empty.noResults")}
+              <Text style={styles.emptyTitle}>
+                {selectedCategory == null ? t("explore.empty.noPlaces") : t("explore.empty.noResults")}
               </Text>
-              <Text
-                className="text-[14px] text-center leading-[22px]"
-                style={{ color: APPLE_THEME.textMuted, fontFamily: TOKENS.font.body }}
-              >
-                {selectedCategory == null
-                  ? t("explore.empty.noPlacesDesc")
-                  : t("explore.empty.noResultsDesc")}
+              <Text style={styles.emptyDesc}>
+                {selectedCategory == null ? t("explore.empty.noPlacesDesc") : t("explore.empty.noResultsDesc")}
               </Text>
               {selectedCategory != null ? (
-                <Pressable
-                  onPress={() => handleSelectCategory(null)}
-                  className="mt-1 h-9 px-5 rounded-full items-center justify-center"
-                  style={{ backgroundColor: APPLE_THEME.text }}
-                >
-                  <Text
-                    className="text-white text-[14px] font-semibold"
-                    style={{ fontFamily: TOKENS.font.semibold }}
-                  >
-                    {t("common.viewAll")}
-                  </Text>
+                <Pressable haptic="light" onPress={() => handleSelectCategory(null)} style={styles.emptyActionBtn}>
+                  <Text style={styles.emptyActionText}>{t("common.viewAll")}</Text>
                 </Pressable>
               ) : null}
             </Animated.View>
           ) : null}
 
-          {/* Loading more */}
           {isFetchingNextPage ? (
-            <ActivityIndicator
-              color={APPLE_THEME.focusBlue}
-              className="py-5"
-            />
+            <View style={styles.loadingMoreWrapper}>
+              <ActivityIndicator color={APPLE_THEME.focusBlue} />
+            </View>
           ) : null}
         </Animated.ScrollView>
       )}
@@ -507,3 +406,98 @@ export default function ExploreScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: APPLE_THEME.background,
+  },
+  scrollContent: {
+    paddingTop: 4,
+  },
+  filterPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 20,
+    marginTop: 12,
+    paddingHorizontal: 16,
+    height: 40,
+    borderRadius: 999,
+    backgroundColor: APPLE_THEME.surfaceMuted,
+    gap: 10,
+  },
+  filterDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: APPLE_THEME.focusBlue,
+  },
+  filterText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: TOKENS.font.semibold,
+    color: APPLE_THEME.text,
+    letterSpacing: -0.2,
+  },
+  filterCloseBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: APPLE_THEME.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 80,
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  emptyIconWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: APPLE_THEME.surfaceMuted,
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: TOKENS.font.bold,
+    color: APPLE_THEME.text,
+    textAlign: "center",
+    letterSpacing: -0.3,
+  },
+  emptyDesc: {
+    fontSize: 14,
+    lineHeight: 22,
+    fontFamily: TOKENS.font.medium,
+    color: APPLE_THEME.textMuted,
+    textAlign: "center",
+  },
+  emptyActionBtn: {
+    marginTop: 12,
+    height: 44,
+    paddingHorizontal: 24,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: APPLE_THEME.text,
+  },
+  emptyActionText: {
+    color: APPLE_THEME.white,
+    fontSize: 14,
+    fontFamily: TOKENS.font.semibold,
+  },
+  loadingMoreWrapper: {
+    paddingVertical: 24,
+    alignItems: "center",
+  },
+});

@@ -47,17 +47,17 @@ function EventCardInner({ event, onPress }) {
   const end = event?.endDate ? new Date(event.endDate) : null;
 
   let statusText = "Sắp diễn ra";
-  let statusColor = "#0071E3"; // Apple Blue
+  let statusColor = APPLE_THEME.focusBlue;
   let statusBg = "rgba(0, 113, 227, 0.15)";
 
   if (start && end) {
     if (now >= start && now <= end) {
       statusText = "Đang diễn ra";
-      statusColor = "#34C759"; // Apple Green
+      statusColor = APPLE_THEME.success;
       statusBg = "rgba(52, 199, 89, 0.15)";
     } else if (now > end) {
       statusText = "Đã kết thúc";
-      statusColor = "#8E8E93"; // Apple Gray
+      statusColor = APPLE_THEME.textMuted;
       statusBg = "rgba(142, 142, 147, 0.15)";
     }
   }
@@ -117,7 +117,7 @@ function EventCardInner({ event, onPress }) {
         {/* Companion count (neon neon) */}
         {event?.activeCompanionCount > 0 ? (
           <View className="px-2 py-1 rounded-full bg-black/60 border border-white/10 flex-row items-center gap-1">
-            <View className="w-1.5 h-1.5 rounded-full bg-[#34C759] animate-pulse" />
+            <View className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
             <Text className="text-white text-[10px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
               {event.activeCompanionCount} online
             </Text>
@@ -163,7 +163,7 @@ function EventCardInner({ event, onPress }) {
           </View>
 
           <View className="w-6 h-6 rounded-full bg-white/20 items-center justify-center border border-white/30">
-            <MaterialIconsRounded name="chevron-right" size={16} color="#FFFFFF" />
+            <MaterialIconsRounded name="chevron-right" size={16} color={APPLE_THEME.white} />
           </View>
         </View>
       </View>

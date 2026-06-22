@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { formatDate, buildDayList } from "../../utils/tripHelpers";
 import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
+import { cn } from "@/lib/cn";
 import TimeField from "./TimeField";
 
 function MoveDestinationModal({
@@ -100,18 +101,15 @@ function MoveDestinationModal({
               <View className="w-9 h-1 rounded-full bg-black/12 self-center mt-2.5 mb-1" />
               <View className="flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]">
                 <View className="flex-row items-center gap-2 flex-1">
-                  <MaterialIconsRounded name="edit-location-alt" size={20} color="#1D1D1F" />
-                  <Text className="text-[17px] font-semibold text-[#1D1D1F] tracking-tight">{t('moveDestination.editItinerary')}</Text>
+                  <MaterialIconsRounded name="edit-location-alt" size={20} color={T.ink} />
+                  <Text className="text-[17px] font-semibold text-ink tracking-tight">{t('moveDestination.editItinerary')}</Text>
                 </View>
                 <Pressable
                   onPress={onCancel}
                   hitSlop={12}
-                  style={({ pressed }) => [
-                    pressed && { backgroundColor: "rgba(0,0,0,0.06)" },
-                  ]}
-                  className="w-8 h-8 rounded-full items-center justify-center"
+                  className="w-8 h-8 rounded-full items-center justify-center active:bg-black/[0.06]"
                 >
-                  <MaterialIconsRounded name="close" size={20} color="rgba(0,0,0,0.45)" />
+                  <MaterialIconsRounded name="close" size={20} color={ALPHA.iconStrong} />
                 </Pressable>
               </View>
 
@@ -136,15 +134,17 @@ function MoveDestinationModal({
                       return (
                         <Pressable
                           key={day.dayNumber}
-                          className={`px-3.5 py-2.5 rounded-xl border-[1.5px] border-transparent items-center min-w-[80px] ${
-                            isSelected ? "bg-[#1D1D1F]" : "bg-[#F5F5F7]"
-                          }`}
+                          className={cn(
+                            "px-3.5 py-2.5 rounded-xl border-[1.5px] border-transparent items-center min-w-[80px]",
+                            isSelected ? "bg-ink" : "bg-[#F5F5F7]",
+                          )}
                           onPress={() => setSelectedDay(day.dayNumber)}
                         >
                           <Text
-                            className={`text-[13px] font-semibold ${
-                              isSelected ? "text-white" : "text-[#1D1D1F]"
-                            }`}
+                            className={cn(
+                              "text-[13px] font-semibold",
+                              isSelected ? "text-white" : "text-ink",
+                            )}
                           >
                             {t('moveDestination.dayLabel', { number: day.dayNumber })}
                           </Text>

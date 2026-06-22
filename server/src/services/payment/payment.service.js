@@ -9,6 +9,7 @@ import * as momoService from "./momo.service.js";
 import * as webhookLogService from "./webhookLog.service.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import * as bookingService from "../booking/booking.service.js";
+import { processPaymentLedger } from "../booking/financialCore.service.js";
 
 /**
  * Create a payment checkout: validates booking, creates Payment record,
@@ -97,6 +98,7 @@ export async function createCheckout({ bookingId, paymentMethod, ipAddress, user
   const returnUrl = `${serverBase}/api/payments/${normalizedMethod === "VNPAY" ? "vnpay-return" : "momo-return"}?clientType=${clientType}&bookingId=${booking.id}&paymentId=${payment.id}`;
 
   let paymentUrl;
+  let momoDeeplink = null;
   try {
     if (normalizedMethod === "VNPAY") {
       paymentUrl = vnpayService.createPaymentUrl({
@@ -114,6 +116,7 @@ export async function createCheckout({ bookingId, paymentMethod, ipAddress, user
         returnUrl,
       });
       paymentUrl = momoResult.paymentUrl;
+      momoDeeplink = momoResult.deeplink;
       if (momoResult.transId) {
         await prisma.payment.update({
           where: { id: payment.id },
@@ -130,6 +133,7 @@ export async function createCheckout({ bookingId, paymentMethod, ipAddress, user
 
   return {
     paymentUrl,
+    deeplink: momoDeeplink,
     paymentId: payment.id,
     transactionRef: payment.transactionRef,
   };
@@ -219,44 +223,43 @@ export async function processVNPayIPN(query) {
         },
       });
 
-      await tx.booking.update({
+      // Update booking to paid_pending_confirm (NOT confirmed)
+      const bookingForTx = await tx.booking.update({
         where: { id: payment.booking_id },
         data: {
-          status: BOOKING_STATUS.CONFIRMED,
-          confirmedAt: new Date(),
+          status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
           paymentStatus: PAYMENT_STATUS.PAID,
+          confirmedAt: null,
+        },
+        select: {
+          id: true,
+          businessId: true,
+          originalPrice: true,
+          discountAmount: true,
+          finalPrice: true,
+          service: {
+            select: { business: { select: { commissionRate: true } } },
+          },
         },
       });
 
-      await tx.bookingTransaction.upsert({
-        where: { bookingId: payment.booking_id },
-        update: {},
-        create: {
+      // Process financial ledger (commission split + frozen balance)
+      const commissionRate =
+        Number(bookingForTx.service?.business?.commissionRate) || 10;
+      await processPaymentLedger(
+        tx,
+        bookingForTx.id,
+        bookingForTx.finalPrice,
+        commissionRate,
+        bookingForTx.businessId,
+      );
+
+      await tx.bookingActionLog.create({
+        data: {
           bookingId: payment.booking_id,
-          businessId: (
-            await tx.booking.findUnique({
-              where: { id: payment.booking_id },
-              select: { businessId: true },
-            })
-          ).businessId,
-          originalPrice: (
-            await tx.booking.findUnique({
-              where: { id: payment.booking_id },
-              select: { originalPrice: true },
-            })
-          ).originalPrice,
-          finalPrice: payment.amount,
-          discountAmount: (
-            await tx.booking.findUnique({
-              where: { id: payment.booking_id },
-              select: { discountAmount: true },
-            })
-          ).discountAmount,
-          commissionRate: 10,
-          commissionAmount: Math.floor(payment.amount * 10 / 100),
-          netAmount: payment.amount - Math.floor(payment.amount * 10 / 100),
-          completedAt: new Date(),
-          source: "payment_gateway",
+          action: "approve",
+          actorUserId: null,
+          metadata: { source: "payment_gateway", gateway: "VNPAY" },
         },
       });
 
@@ -286,20 +289,22 @@ export async function processVNPayIPN(query) {
           id: true,
           bookingCode: true,
           userId: true,
+          businessId: true,
           service: {
             select: {
               place: { select: { name: true } },
-              business: { select: { ownerId: true } },
+              business: { select: { id: true, ownerId: true } },
             },
           },
         },
       });
 
-      eventEmitter.emit(EVENTS.BOOKING.CONFIRMED, {
+      eventEmitter.emit(EVENTS.BOOKING.PAID, {
         bookingId: booking.id,
         bookingCode: booking.bookingCode,
         userId: booking.userId,
-        confirmedBy: null,
+        businessId: booking.businessId,
+        businessOwnerId: booking.service?.business?.ownerId,
         source: "payment_gateway",
         paymentMethod: "VNPAY",
       });
@@ -396,44 +401,43 @@ export async function processMoMoIPN(body) {
         },
       });
 
-      await tx.booking.update({
+      // Update booking to paid_pending_confirm (NOT confirmed)
+      const bookingForTx = await tx.booking.update({
         where: { id: payment.booking_id },
         data: {
-          status: BOOKING_STATUS.CONFIRMED,
-          confirmedAt: new Date(),
+          status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
           paymentStatus: PAYMENT_STATUS.PAID,
+          confirmedAt: null,
+        },
+        select: {
+          id: true,
+          businessId: true,
+          originalPrice: true,
+          discountAmount: true,
+          finalPrice: true,
+          service: {
+            select: { business: { select: { commissionRate: true } } },
+          },
         },
       });
 
-      await tx.bookingTransaction.upsert({
-        where: { bookingId: payment.booking_id },
-        update: {},
-        create: {
+      // Process financial ledger (commission split + frozen balance)
+      const commissionRate =
+        Number(bookingForTx.service?.business?.commissionRate) || 10;
+      await processPaymentLedger(
+        tx,
+        bookingForTx.id,
+        bookingForTx.finalPrice,
+        commissionRate,
+        bookingForTx.businessId,
+      );
+
+      await tx.bookingActionLog.create({
+        data: {
           bookingId: payment.booking_id,
-          businessId: (
-            await tx.booking.findUnique({
-              where: { id: payment.booking_id },
-              select: { businessId: true },
-            })
-          ).businessId,
-          originalPrice: (
-            await tx.booking.findUnique({
-              where: { id: payment.booking_id },
-              select: { originalPrice: true },
-            })
-          ).originalPrice,
-          finalPrice: payment.amount,
-          discountAmount: (
-            await tx.booking.findUnique({
-              where: { id: payment.booking_id },
-              select: { discountAmount: true },
-            })
-          ).discountAmount,
-          commissionRate: 10,
-          commissionAmount: Math.floor(payment.amount * 10 / 100),
-          netAmount: payment.amount - Math.floor(payment.amount * 10 / 100),
-          completedAt: new Date(),
-          source: "payment_gateway",
+          action: "approve",
+          actorUserId: null,
+          metadata: { source: "payment_gateway", gateway: "MOMO" },
         },
       });
 
@@ -463,20 +467,22 @@ export async function processMoMoIPN(body) {
           id: true,
           bookingCode: true,
           userId: true,
+          businessId: true,
           service: {
             select: {
               place: { select: { name: true } },
-              business: { select: { ownerId: true } },
+              business: { select: { id: true, ownerId: true } },
             },
           },
         },
       });
 
-      eventEmitter.emit(EVENTS.BOOKING.CONFIRMED, {
+      eventEmitter.emit(EVENTS.BOOKING.PAID, {
         bookingId: booking.id,
         bookingCode: booking.bookingCode,
         userId: booking.userId,
-        confirmedBy: null,
+        businessId: booking.businessId,
+        businessOwnerId: booking.service?.business?.ownerId,
         source: "payment_gateway",
         paymentMethod: "MOMO",
       });

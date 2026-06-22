@@ -9,7 +9,7 @@ import {
 import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { TOKENS } from "../../../constants/design-tokens";
+import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../../constants/design-tokens";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import {
   getPlaceLocation,
@@ -64,7 +64,7 @@ function SmallPlaceCardInner({ place, onPress }) {
       </View>
 
       <View className="pt-3 px-1 pb-3 gap-0.75">
-        <Text className="text-[#111827] text-base font-semibold leading-5 tracking-[-0.3px]" numberOfLines={1}>
+        <Text className="text-ink text-base font-semibold leading-5 tracking-[-0.3px]" numberOfLines={1}>
           {place?.name}
         </Text>
         
@@ -72,14 +72,14 @@ function SmallPlaceCardInner({ place, onPress }) {
           <MaterialCommunityIcons
             name="map-marker"
             size={12}
-            color="#9CA3AF"
+            color={APPLE_THEME.textMuted}
           />
-          <Text className="text-[#6B7280] text-xs font-medium flex-1" numberOfLines={1}>
+          <Text className="text-ink-muted text-xs font-medium flex-1" numberOfLines={1}>
             {location}
           </Text>
         </View>
 
-        <Text className="text-[#9CA3AF] text-[11px] font-medium mt-0.5 tracking-[-0.1px]" numberOfLines={1}>
+        <Text className="text-ink-muted text-[11px] font-medium mt-0.5 tracking-[-0.1px]" numberOfLines={1}>
           {ratingCap}
         </Text>
       </View>

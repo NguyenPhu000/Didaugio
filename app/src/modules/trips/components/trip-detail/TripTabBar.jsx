@@ -39,7 +39,7 @@ export const TripTabBar = memo(function TripTabBar({
               {t(`tripTabBar.${tab.key}`)}
             </Text>
             {showBadge ? (
-              <View className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#1D1D1F] items-center justify-center">
+              <View className="min-w-[18px] h-[18px] px-1 rounded-full bg-ink items-center justify-center">
                 <Text className="text-[10px] font-semibold text-white">
                   {serviceCount > 99 ? "99+" : serviceCount}
                 </Text>

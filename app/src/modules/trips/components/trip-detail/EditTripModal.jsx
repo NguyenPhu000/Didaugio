@@ -22,6 +22,8 @@ import { CustomDatePicker } from "../../../../components/ui/CustomDatePicker";
 import { compressImageToDataUrl } from "../../../../lib/image-compress";
 import { resolveMediaUrl } from "../../../../lib/media-url";
 import { toYmdString, toValidDate } from "../../utils/tripHelpers";
+import { T, ALPHA } from "../../utils/tripDetailTokens";
+import { cn } from "@/lib/cn";
 import CustomAlertModal from "../../../../components/composed/CustomAlertModal";
 
 function calcTotalDays(start, end) {
@@ -173,18 +175,15 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
             <View className="w-9 h-1 rounded-full bg-black/12 self-center mt-2.5 mb-1.5" />
             <View className="flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]">
               <View className="flex-row items-center gap-2">
-                <MaterialIconsRounded name="edit-calendar" size={18} color="#1D1D1F" />
-                <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">{t('editTrip.editTrip')}</Text>
+                <MaterialIconsRounded name="edit-calendar" size={18} color={T.ink} />
+                <Text className="text-[16px] font-semibold text-ink tracking-tight">{t('editTrip.editTrip')}</Text>
               </View>
               <Pressable
                 onPress={onCancel}
                 hitSlop={12}
-                style={({ pressed }) => [
-                  pressed && { backgroundColor: "rgba(0,0,0,0.06)" },
-                ]}
-                className="w-8 h-8 rounded-full items-center justify-center"
+                className="w-8 h-8 rounded-full items-center justify-center active:bg-black/[0.06]"
               >
-                <MaterialIconsRounded name="close" size={20} color="rgba(0,0,0,0.45)" />
+                <MaterialIconsRounded name="close" size={20} color={ALPHA.iconStrong} />
               </Pressable>
             </View>
 
@@ -212,21 +211,21 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
                     />
                   ) : (
                     <View className="items-center gap-2">
-                      <MaterialIconsRounded name="add-photo-alternate" size={32} color="rgba(0,0,0,0.3)" />
+                      <MaterialIconsRounded name="add-photo-alternate" size={32} color={ALPHA.placeholder} />
                       <Text className="text-[13px] text-black/40 font-medium">{t('editTrip.tapToSelect')}</Text>
                     </View>
                   )}
 
                   {isProcessingThumbnail ? (
                     <View className="absolute inset-0 items-center justify-center bg-black/30">
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={T.onPrimary} />
                     </View>
                   ) : null}
 
                   {thumbnailPreview && !isProcessingThumbnail ? (
                     <View className="absolute top-2.5 right-2.5 flex-row gap-2">
                       <View className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-full bg-black/55">
-                        <MaterialIconsRounded name="edit" size={13} color="#FFFFFF" />
+                        <MaterialIconsRounded name="edit" size={13} color={T.onPrimary} />
                         <Text className="text-white text-[11px] font-semibold">{t('editTrip.changePhoto')}</Text>
                       </View>
                       <Pressable
@@ -234,7 +233,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
                         hitSlop={8}
                         className="w-7 h-7 rounded-full bg-black/55 items-center justify-center"
                       >
-                        <MaterialIconsRounded name="close" size={15} color="#FFFFFF" />
+                        <MaterialIconsRounded name="close" size={15} color={T.onPrimary} />
                       </Pressable>
                     </View>
                   ) : null}
@@ -248,7 +247,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
                   onChangeText={setTitle}
                   placeholder={t('editTrip.tripNamePlaceholder')}
                   placeholderTextColor="rgba(0,0,0,0.3)"
-                  className="bg-[#F5F5F7] rounded-xl px-3 py-3 text-[15px] color-[#1D1D1F] font-normal border border-black/[0.06]"
+                  className="bg-[#F5F5F7] rounded-xl px-3 py-3 text-[15px] text-ink font-normal border border-black/[0.06]"
                   returnKeyType="next"
                 />
               </View>
@@ -260,7 +259,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
                   onChangeText={setDescription}
                   placeholder={t('editTrip.descPlaceholder')}
                   placeholderTextColor="rgba(0,0,0,0.3)"
-                  className="bg-[#F5F5F7] rounded-xl px-3 py-3 text-[15px] color-[#1D1D1F] font-normal border border-black/[0.06] min-h-[84px]"
+                  className="bg-[#F5F5F7] rounded-xl px-3 py-3 text-[15px] text-ink font-normal border border-black/[0.06] min-h-[84px]"
                   multiline
                   textAlignVertical="top"
                 />
@@ -287,18 +286,18 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
               <View className="rounded-2xl bg-[#F5F5F7] px-4 py-3.5 border border-black/[0.06] flex-row items-center justify-between">
                 <View className="flex-row items-center gap-3 flex-1">
                   <View className="w-9 h-9 rounded-xl bg-white items-center justify-center border border-black/[0.06]">
-                    <MaterialIconsRounded name="directions-boat" size={18} color={avoidFerry ? "#FF9500" : "rgba(0,0,0,0.35)"} />
+                    <MaterialIconsRounded name="directions-boat" size={18} color={avoidFerry ? T.warning : ALPHA.iconStrong} />
                   </View>
                   <View className="flex-1 gap-0.5">
-                    <Text className="text-[15px] font-semibold text-[#1D1D1F] tracking-tight">{t('editTrip.avoidFerry')}</Text>
+                    <Text className="text-[15px] font-semibold text-ink tracking-tight">{t('editTrip.avoidFerry')}</Text>
                     <Text className="text-[12px] text-black/40 tracking-tight">{t('editTrip.avoidFerryDesc')}</Text>
                   </View>
                 </View>
                 <Switch
                   value={avoidFerry}
                   onValueChange={setAvoidFerry}
-                  trackColor={{ false: "rgba(0,0,0,0.12)", true: "#34C759" }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: "rgba(0,0,0,0.12)", true: T.success }}
+                  thumbColor={T.onPrimary}
                   ios_backgroundColor="rgba(0,0,0,0.12)"
                 />
               </View>
@@ -307,10 +306,10 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
                 <Pressable
                   onPress={onComplete}
                   disabled={isSaving}
-                  className="flex-row items-center justify-center gap-2.5 py-3.5 rounded-2xl border-2 border-[#34C759]/30 bg-[#34C759]/5"
+                  className="flex-row items-center justify-center gap-2.5 py-3.5 rounded-2xl border-2 border-success/30 bg-success/5"
                 >
-                  <MaterialIconsRounded name="task-alt" size={18} color="#34C759" />
-                  <Text className="text-[15px] font-semibold text-[#34C759] tracking-tight">{t('editTrip.markComplete') || t('trip.detail.markComplete')}</Text>
+                  <MaterialIconsRounded name="task-alt" size={18} color={T.success} />
+                  <Text className="text-[15px] font-semibold text-success tracking-tight">{t('editTrip.markComplete') || t('trip.detail.markComplete')}</Text>
                 </Pressable>
               )}
             </ScrollView>
@@ -320,12 +319,13 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
                 onPress={handleSave}
                 disabled={!canSave}
                 activeOpacity={0.8}
-                className={`w-full h-[52px] rounded-full bg-[#1D1D1F] items-center justify-center ${
-                  !canSave ? "opacity-50" : ""
-                }`}
+                className={cn(
+                  "w-full h-[52px] rounded-full bg-ink items-center justify-center",
+                  !canSave && "opacity-50",
+                )}
               >
                 {isSaving ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={T.onPrimary} />
                 ) : (
                   <Text className="text-white text-[16px] font-semibold tracking-tight text-center">{t('editTrip.save')}</Text>
                 )}

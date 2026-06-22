@@ -19,8 +19,8 @@ function ExploreHeaderInner({ user }) {
         </View>
 
         <View className="flex-1 min-w-0">
-          <Text className="text-[#54647A] text-[11px] leading-[13px] font-semibold tracking-[0.9px] uppercase">Đi Đâu Giờ?</Text>
-          <Text className="mt-0.5 text-[#1D1D1F] text-[17px] leading-[21px] font-bold tracking-[-0.2px]" numberOfLines={1}>
+          <Text className="text-ink-muted text-[11px] leading-[13px] font-semibold tracking-[0.9px] uppercase">Đi Đâu Giờ?</Text>
+          <Text className="mt-0.5 text-ink text-[17px] leading-[21px] font-bold tracking-[-0.2px]" numberOfLines={1}>
             {`Xin chào, ${userName}`}
           </Text>
         </View>

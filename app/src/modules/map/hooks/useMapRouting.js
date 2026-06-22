@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   calculateRouteApi,
-  calculateRouteLegsApi,
 } from "../../../api/routingApi";
 import { mapRoutingResponse } from "./routeMapping";
 
@@ -29,15 +28,6 @@ const isValidPoint = (point) =>
   Number.isFinite(point.lng) &&
   Math.abs(point.lat) <= 90 &&
   Math.abs(point.lng) <= 180;
-
-const DEFAULT_ROUTE_OPTIONS = {
-  alternatives: 1,
-  steps: true,
-  overview: "full",
-  geometries: "polyline6",
-  snapToRoad: true,
-  simplifyGeometry: true,
-};
 
 /**
  * Hook tính route 2 điểm — dùng trong MapScreen / directions flow.
@@ -108,57 +98,3 @@ export function useMapRouting({
   };
 }
 
-/**
- * Hook tính legs giữa nhiều waypoints — dùng trong Trip Detail / AI Planner.
- *
- * @param {{ waypoints, mode?, options?, enabled? }} params
- */
-export function useRoutingLegs({
-  waypoints = [],
-  mode = "driving",
-  options = {},
-  enabled = true,
-} = {}) {
-  const normalizedWaypoints = useMemo(
-    () => waypoints.map(normalizePoint).filter(isValidPoint),
-    [waypoints],
-  );
-
-  const isReady = enabled && normalizedWaypoints.length >= 2;
-
-  const queryKey = useMemo(
-    () => ["route-legs", normalizedWaypoints, mode, options],
-    [normalizedWaypoints, mode, options],
-  );
-
-  const query = useQuery({
-    queryKey,
-    queryFn: () =>
-      calculateRouteLegsApi({
-        waypoints: normalizedWaypoints,
-        mode,
-        options: {
-          simplifyGeometry: true,
-          ...options,
-        },
-      }),
-    enabled: isReady,
-    staleTime: STALE_TIME,
-    gcTime: STALE_TIME * 2,
-    retry: 1,
-    select: (response) => response?.data ?? null,
-  });
-
-  return {
-    legsData: query.data,
-    totalDistance: query.data?.totalDistance ?? null,
-    totalDuration: query.data?.totalDuration ?? null,
-    legs: query.data?.legs ?? [],
-    ferryAvoidanceFailed: query.data?.ferryAvoidanceFailed ?? false,
-    isLoading: query.isLoading,
-    isFetching: query.isFetching,
-    isError: query.isError,
-    error: query.error,
-    refetch: query.refetch,
-  };
-}

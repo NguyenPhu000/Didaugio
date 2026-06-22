@@ -14,7 +14,7 @@ const METHODS = [
   {
     id: "MOMO",
     name: "Ví điện tử MoMo",
-    desc: "Thanh toán nhanh qua MoMo",
+    desc: "Mở ứng dụng MoMo để thanh toán",
     color: "#a50064",
     bg: "#FCE4EC",
     border: "#F48FB1",

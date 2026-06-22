@@ -35,7 +35,7 @@ function TimeField({ label, value, onChange, placeholder = "--:--", icon = "sche
         accessibilityLabel={`Chọn thời gian cho ${label}`}
       >
         <MaterialIconsRounded name={icon} size={15} color={ALPHA.iconStrong} />
-        <Text className={`text-[15px] text-[#1D1D1F] font-normal ${!value ? "text-black/30" : ""}`}>
+        <Text className={`text-[15px] text-ink font-normal ${!value ? "text-black/30" : ""}`}>
           {value || placeholder}
         </Text>
       </Pressable>
@@ -50,9 +50,9 @@ function TimeField({ label, value, onChange, placeholder = "--:--", icon = "sche
           <Pressable className="flex-1 bg-black/35 justify-end" onPress={() => setShow(false)}>
             <View className="bg-white rounded-t-[20px] pb-[34px]" onStartShouldSetResponder={() => true}>
               <View className="flex-row justify-between items-center px-5 py-3.5 border-b border-black/[0.06]">
-                <Text className="text-[16px] font-semibold text-[#1D1D1F]">{label}</Text>
+                <Text className="text-[16px] font-semibold text-ink">{label}</Text>
                 <Pressable onPress={() => setShow(false)} hitSlop={10}>
-                  <Text className="text-[16px] color-[#1D1D1F] font-semibold">{t("trip.timeField.done")}</Text>
+                  <Text className="text-[16px] text-ink font-semibold">{t("trip.timeField.done")}</Text>
                 </Pressable>
               </View>
               <DateTimePicker

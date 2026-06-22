@@ -18,8 +18,6 @@ import {
 } from "../config/mapConfig";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 
-const LABEL_ZOOM_THRESHOLD = 13;
-
 const CLEAN_NATIVE_MAP_STYLE = [
   { featureType: "poi", stylers: [{ visibility: "off" }] },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
@@ -99,11 +97,11 @@ const getClusterVisual = (pointCount) => {
 };
 
 /**
- * PlaceMarker — Image-based marker for New Architecture compatibility.
- * Custom view markers don't work on Fabric, so we use image + pinColor.
+ * PlaceMarker — Image marker with always-visible label.
+ * Uses custom view children for label display.
  */
 const PlaceMarker = memo(
-  ({ place, isActive, onSelectPlace, onLongPressPlace, showLabel }) => {
+  ({ place, isActive, onSelectPlace, onLongPressPlace }) => {
     const handlePress = useCallback(() => {
       onSelectPlace?.(place);
     }, [onSelectPlace, place]);
@@ -118,29 +116,27 @@ const PlaceMarker = memo(
         ? "#f59e0b"
         : CATEGORY_MARKER_STYLES[place?.categoryId]?.color || "#ef4444";
 
-    const labelColor = CATEGORY_MARKER_STYLES[place?.categoryId]?.color || "#374151";
-
-    if (showLabel && place?.name) {
+    if (place?.name) {
       return (
         <Marker
           coordinate={{ latitude: place.latitude, longitude: place.longitude }}
           onPress={handlePress}
           onLongPress={handleLongPress}
           anchor={{ x: 0.5, y: 1 }}
-          image={place.markerImageUri ? { uri: place.markerImageUri } : undefined}
+          image={
+            place.markerImageUri ? { uri: place.markerImageUri } : undefined
+          }
           pinColor={markerColor}
           tracksViewChanges={false}
         >
           <View style={styles.placeLabelWrap} pointerEvents="none">
-            <View style={styles.placeLabelBubble}>
-              <Text
-                style={[styles.placeLabelText, { color: labelColor }]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {place.name}
-              </Text>
-            </View>
+            <Text
+              style={styles.placeLabelText}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {place.name}
+            </Text>
           </View>
         </Marker>
       );
@@ -155,7 +151,6 @@ const PlaceMarker = memo(
         image={place.markerImageUri ? { uri: place.markerImageUri } : undefined}
         pinColor={markerColor}
         tracksViewChanges={false}
-        title={place?.name}
       />
     );
   },
@@ -163,8 +158,7 @@ const PlaceMarker = memo(
     prev.place?.id === next.place?.id &&
     prev.place?.name === next.place?.name &&
     prev.place?.categoryId === next.place?.categoryId &&
-    prev.isActive === next.isActive &&
-    prev.showLabel === next.showLabel,
+    prev.isActive === next.isActive,
 );
 
 const MapView = memo(
@@ -328,12 +322,7 @@ const MapView = memo(
               </View>
 
               <View style={styles.clusterTextContainer}>
-                <Text
-                  style={[
-                    styles.clusterText,
-                    { color: colors.text },
-                  ]}
-                >
+                <Text style={[styles.clusterText, { color: colors.text }]}>
                   {pointLabel}
                 </Text>
               </View>
@@ -436,7 +425,6 @@ const MapView = memo(
               isActive={place.id === selectedPlaceId}
               onSelectPlace={onSelectPlace}
               onLongPressPlace={onLongPressPlace}
-              showLabel={currentZoom >= LABEL_ZOOM_THRESHOLD}
             />
           ))}
 
@@ -491,25 +479,16 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   placeLabelWrap: {
-    alignItems: "center",
-  },
-  placeLabelBubble: {
-    marginTop: 3,
-    maxWidth: 130,
-    backgroundColor: "rgba(255, 255, 255, 0.92)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    elevation: 3,
+    position: "absolute",
+    left: "100%",
+    top: "50%",
+    marginLeft: 6,
+    transform: [{ translateY: -7 }],
   },
   placeLabelText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "600",
-    color: "#1e293b",
+    color: "#000000",
     letterSpacing: 0.1,
   },
 });

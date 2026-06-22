@@ -1,17 +1,20 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View, Dimensions } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import { Box, Text, Pressable as PrimitivePressable } from "@/components/primitives";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
-import { TOKENS } from "../../../../src/constants/design-tokens";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../../src/constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import {
   STATUS_THEME,
@@ -19,96 +22,185 @@ import {
   getDisplayStatus,
 } from "../utils/tripHelpers";
 import { resolveTripCoverUri } from "../../../lib/media-url";
+import { cn } from "@/lib/cn";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const CARD_MIN_HEIGHT = 240;
-const COVER_WIDTH = 720;
+const IMMERSIVE_COVER_WIDTH = 720;
+const IMMERSIVE_HEIGHT = 212;
 
-const GLASS = {
-  fill: "rgba(0,0,0,0.16)",
-  border: "rgba(255,255,255,0.12)",
-  blur: 8,
+// Overlay gradient cho từng trạng thái — rất nhẹ, chỉ tint mờ mờ
+const STATUS_OVERLAYS = {
+  upcoming: null,
+  ongoing: null,
+  completed: {
+    colors: ["rgba(34,197,94,0.06)", "rgba(34,197,94,0.12)"],
+    shadow: null,
+  },
+  cancelled: {
+    colors: ["rgba(107,114,128,0.18)", "rgba(75,85,99,0.28)"],
+    shadow: null,
+  },
 };
 
-function GlassPanel({ style, children, compact = false, tint }) {
-  const flat = StyleSheet.flatten(style) ?? {};
-  const radius = flat.borderRadius ?? (compact ? 999 : 14);
+function dateLabel(dateDisplay) {
+  if (dateDisplay.kind === "empty") return null;
+  if (dateDisplay.kind === "range") {
+    return `${dateDisplay.start} — ${dateDisplay.end}`;
+  }
+  return dateDisplay.label;
+}
 
+function SaveButton({ onPress, isSaved, label }) {
   return (
-    <View className="overflow-hidden" style={{ borderRadius: radius }}>
-      <BlurView
-        intensity={GLASS.blur}
-        tint="dark"
-        style={StyleSheet.absoluteFillObject}
+    <PrimitivePressable
+      onPress={onPress}
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      haptic="light"
+      className="w-[34px] h-[34px] rounded-[17px] overflow-hidden items-center justify-center"
+    >
+      <BlurView intensity={28} tint="light" style={StyleSheet.absoluteFill} />
+      <Box className="absolute inset-0 bg-white/[0.66]" pointerEvents="none" />
+      <MaterialIconsRounded
+        name={isSaved ? "bookmark" : "bookmark-border"}
+        size={18}
+        color={isSaved ? "#FF9F0A" : APPLE_THEME.text}
       />
-      <View
-        className="absolute inset-0 bg-black/22"
-        style={tint ? { backgroundColor: tint } : null}
-        pointerEvents="none"
-      />
-      <View className="z-[1]" style={[style, { borderRadius: radius }]}>
-        {children}
-      </View>
-    </View>
+    </PrimitivePressable>
   );
 }
 
-function TripDateLine({ dateDisplay }) {
-  const { t } = useTranslation();
-  if (dateDisplay.kind === "range") {
-    return (
-      <View className="flex-row items-center gap-[5px]">
-        <MaterialIconsRounded
-          name="event"
-          size={13}
-          color="rgba(255,255,255,0.76)"
-        />
-        <Text
-          className="flex-1 text-[12px] font-medium text-white tracking-[0.05px]"
-          style={{ fontVariant: ["tabular-nums"] }}
-        >
-          {dateDisplay.start}
-          <Text className="text-white/60"> — </Text>
-          {dateDisplay.end}
-        </Text>
-      </View>
-    );
-  }
-
-  if (
-    dateDisplay.kind === "single" ||
-    dateDisplay.kind === "from" ||
-    dateDisplay.kind === "to"
-  ) {
-    return (
-      <View className="flex-row items-center gap-[5px]">
-        <MaterialIconsRounded
-          name="event"
-          size={13}
-          color="rgba(255,255,255,0.76)"
-        />
-        <Text
-          className="flex-1 text-[12px] font-medium text-white tracking-[0.05px]"
-          style={{ fontVariant: ["tabular-nums"] }}
-        >
-          {dateDisplay.label}
-        </Text>
-      </View>
-    );
-  }
-
+function StatusPill({ status }) {
   return (
-    <View className="flex-row items-center gap-[5px]">
-      <MaterialIconsRounded
-        name="event-busy"
-        size={13}
-        color="rgba(255,255,255,0.4)"
+    <Box className="rounded-full overflow-hidden">
+      <BlurView intensity={28} tint="light" style={StyleSheet.absoluteFill} />
+      <Box
+        className="absolute inset-0 bg-white/[0.66]"
+        pointerEvents="none"
       />
-      <Text className="flex-1 text-[12px] text-white/40 font-sans">
-        {t("tripCard.noDate")}
-      </Text>
-    </View>
+      <Box className="flex-row items-center gap-1.5 px-[11px] py-1.5">
+        <Box
+          className="w-1.5 h-1.5 rounded-[3px]"
+          style={{ backgroundColor: status.accent || status.text }}
+        />
+        <Text
+          className="text-[11px] font-semibold tracking-[0.2px]"
+          style={{ color: status.text }}
+          numberOfLines={1}
+        >
+          {status.label}
+        </Text>
+      </Box>
+    </Box>
+  );
+}
+
+/* ── Card chính cho tất cả chuyến đi ── */
+function ImmersiveCard({
+  trip,
+  status,
+  displayUri,
+  onImageError,
+  dateText,
+  destinationCount,
+  onSave,
+  isSaved,
+  saveLabel,
+  t,
+  statusOverlay,
+}) {
+  return (
+    <Box className="flex-1">
+      {displayUri ? (
+        <Image
+          source={{ uri: displayUri }}
+          recyclingKey={`trip-${trip?.id}-cover`}
+          style={StyleSheet.absoluteFillObject}
+          contentFit="cover"
+          transition={280}
+          cachePolicy="memory-disk"
+          onError={onImageError}
+        />
+      ) : (
+        <LinearGradient
+          colors={["#2C3038", "#1C1F25", "#121419"]}
+          style={StyleSheet.absoluteFillObject}
+        />
+      )}
+
+      {/* Overlay gradient mặc định */}
+      <LinearGradient
+        colors={["rgba(0,0,0,0.32)", "transparent", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.82)"]}
+        locations={[0, 0.32, 0.66, 1]}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+
+      {/* Overlay theo trạng thái (completed/cancelled) */}
+      {statusOverlay ? (
+        <LinearGradient
+          colors={statusOverlay.colors}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+      ) : null}
+
+      <Box className="absolute top-3 left-3 right-3 flex-row items-center justify-between">
+        <StatusPill status={status} />
+        {onSave ? (
+          <SaveButton
+            onPress={onSave}
+            isSaved={isSaved}
+            label={saveLabel}
+          />
+        ) : null}
+      </Box>
+
+      <Box className="absolute left-0 right-0 bottom-0 px-4 pb-[15px] gap-2.5">
+        <Text
+          className="text-[21px] font-bold text-white tracking-[-0.5px] leading-[26px]"
+          style={TITLE_TEXT_SHADOW}
+          numberOfLines={2}
+        >
+          {trip.title || t("tripCard.newTrip")}
+        </Text>
+
+        <Box className="flex-row items-center flex-wrap gap-[7px]">
+          {dateText ? (
+            <Box className="flex-row items-center gap-[5px] bg-white/[0.18] px-[9px] py-[5px] rounded-full">
+              <MaterialIconsRounded name="event" size={13} color="#FFFFFF" />
+              <Text
+                className="text-xs font-semibold text-white tracking-[-0.1px]"
+                style={{ fontVariant: ["tabular-nums"] }}
+                numberOfLines={1}
+              >
+                {dateText}
+              </Text>
+            </Box>
+          ) : null}
+          <Box className="flex-row items-center gap-[5px] bg-white/[0.18] px-[9px] py-[5px] rounded-full">
+            <MaterialIconsRounded name="today" size={13} color="#FFFFFF" />
+            <Text
+              className="text-xs font-semibold text-white tracking-[-0.1px]"
+              style={{ fontVariant: ["tabular-nums"] }}
+            >
+              {t("tripCard.dayCount", { count: trip.totalDays ?? 1 })}
+            </Text>
+          </Box>
+          <Box className="flex-row items-center gap-[5px] bg-white/[0.18] px-[9px] py-[5px] rounded-full">
+            <MaterialIconsRounded name="place" size={13} color="#FFFFFF" />
+            <Text
+              className="text-xs font-semibold text-white tracking-[-0.1px]"
+              style={{ fontVariant: ["tabular-nums"] }}
+            >
+              {t("tripCard.placeCount", { count: destinationCount })}
+            </Text>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 }
 
@@ -121,27 +213,24 @@ export const TripCard = memo(function TripCard({
   const { t } = useTranslation();
   const displayStatus = getDisplayStatus(trip);
   const status = STATUS_THEME[displayStatus] || STATUS_THEME.upcoming;
-  const coverUri = resolveTripCoverUri(trip, COVER_WIDTH);
+  const statusOverlay = STATUS_OVERLAYS[displayStatus] || null;
+
+  const coverUri = resolveTripCoverUri(trip, IMMERSIVE_COVER_WIDTH);
   const [displayUri, setDisplayUri] = useState(coverUri);
   const scale = useSharedValue(1);
-  const [cardLayout, setCardLayout] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     setDisplayUri(coverUri);
   }, [coverUri, trip?.id]);
 
   const destinationCount = trip.destinations?.length || 0;
-  const dateDisplay = useMemo(() => getTripCardDateDisplay(trip), [trip]);
-
-  const handleLayout = useCallback((e) => {
-    const { width, height } = e.nativeEvent.layout;
-    if (width > 0 && height > 0) {
-      setCardLayout({ width, height });
-    }
-  }, []);
+  const dateText = useMemo(
+    () => dateLabel(getTripCardDateDisplay(trip)),
+    [trip],
+  );
 
   const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.982, TOKENS.spring.press);
+    scale.value = withSpring(0.97, TOKENS.spring.press);
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
@@ -149,216 +238,83 @@ export const TripCard = memo(function TripCard({
   }, [scale]);
 
   const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress?.();
   }, [onPress]);
 
   const handleSavePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onSave?.(trip.id);
   }, [onSave, trip?.id]);
+
+  const handleImageError = useCallback(() => setDisplayUri(null), []);
 
   const cardAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
+  const saveLabel = isSaved
+    ? t("tripCard.unsaveAccessibility")
+    : t("tripCard.saveAccessibility");
+
+  // Shadow theo trạng thái (nếu có), không thì dùng mặc định
+  const cardShadow = statusOverlay?.shadow
+    ? {
+        shadowColor: statusOverlay.shadow.color,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: statusOverlay.shadow.opacity,
+        shadowRadius: 16,
+        elevation: 5,
+      }
+    : SHADOW_IMMERSIVE;
+
   return (
-    <View style={{ marginHorizontal: TAB_SCREEN_PADDING }}>
+    <Box style={{ marginHorizontal: TAB_SCREEN_PADDING }}>
       <AnimatedPressable
         onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        onLayout={handleLayout}
         accessibilityRole="button"
         accessibilityLabel={t("tripCard.tripAccessibility", {
           name: trip.title || t("tripCard.newTrip"),
           status: status.label,
         })}
         accessibilityHint={t("tripCard.tripHint")}
-        accessibilityActions={[
-          {
-            name: "save",
-            label: isSaved
-              ? t("tripCard.unsaveAccessibility")
-              : t("tripCard.saveAccessibility"),
-          },
-        ]}
+        accessibilityActions={[{ name: "save", label: saveLabel }]}
         onAccessibilityAction={(event) => {
           if (event.nativeEvent.actionName === "save") {
             handleSavePress();
           }
         }}
-        className="min-h-[240px] rounded-[22px] overflow-hidden bg-neutral-900"
-        style={[
-          cardAnimStyle,
-          {
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 12,
-            elevation: 3,
-          },
-        ]}
+        style={[cardAnimStyle, cardShadow]}
+        className="rounded-3xl overflow-hidden h-[212px] bg-[#1C1F25]"
       >
-        {/* ── LAYER 1: Ảnh gốc nét căng phía sau ── */}
-        {displayUri ? (
-          <Image
-            source={{ uri: displayUri }}
-            recyclingKey={`trip-${trip?.id}-cover`}
-            style={StyleSheet.absoluteFillObject}
-            contentFit="cover"
-            transition={280}
-            cachePolicy="memory-disk"
-            onError={() => setDisplayUri(null)}
-          />
-        ) : (
-          <LinearGradient
-            colors={["#1C1C1E", "#2C2C2E", "#3A3A3C"]}
-            style={StyleSheet.absoluteFillObject}
-          />
-        )}
-
-        {/* ── LAYER 2: Fake Foreground Blur Box ── */}
-        {displayUri && cardLayout.width > 0 && cardLayout.height > 0 ? (
-          <View className="absolute bottom-0 left-0 w-full h-[37%] overflow-hidden">
-            <Image
-              source={{ uri: displayUri }}
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                width: cardLayout.width,
-                height: cardLayout.height,
-              }}
-              contentFit="cover"
-              blurRadius={8}
-            />
-          </View>
-        ) : null}
-
-        {/* ── LAYER 3: Gradient Vignette tối ── */}
-        <LinearGradient
-          colors={["transparent", "rgba(9,15,26,0.28)", "rgba(9,15,26,0.88)"]}
-          locations={[0, 0.4, 1]}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
+        <ImmersiveCard
+          trip={trip}
+          status={status}
+          displayUri={displayUri}
+          onImageError={handleImageError}
+          dateText={dateText}
+          destinationCount={destinationCount}
+          onSave={onSave ? handleSavePress : null}
+          isSaved={isSaved}
+          saveLabel={saveLabel}
+          t={t}
+          statusOverlay={statusOverlay}
         />
-
-        {/* ── LAYER 4: Badge trạng thái + Bookmark (góc trên) ── */}
-        <View className="absolute top-3.5 left-3.5 right-3.5 flex-row items-center justify-between z-20">
-          <GlassPanel
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              paddingHorizontal: 11,
-              paddingVertical: 6,
-              borderRadius: 999,
-            }}
-            compact
-            tint={status.bg}
-          >
-            <View
-              className="w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: status.text }}
-            />
-            <Text
-              className="text-[11px] font-semibold tracking-[0.2px]"
-              style={{ color: status.text }}
-            >
-              {status.label}
-            </Text>
-          </GlassPanel>
-
-          {onSave ? (
-            <Pressable
-              onPress={handleSavePress}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel={
-                isSaved
-                  ? t("tripCard.unsaveAccessibility")
-                  : t("tripCard.saveAccessibility")
-              }
-            >
-              <GlassPanel
-                style={{
-                  width: 34,
-                  height: 34,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 17,
-                }}
-                compact
-              >
-                <MaterialIconsRounded
-                  name={isSaved ? "bookmark" : "bookmark-border"}
-                  size={18}
-                  color={isSaved ? "#FF9F0A" : "rgba(255,255,255,0.88)"}
-                />
-              </GlassPanel>
-            </Pressable>
-          ) : null}
-        </View>
-
-        {/* ── LAYER 5: Nội dung đáy - Naked Typography ── */}
-        <View className="absolute bottom-0 left-0 right-0 px-3.5 pb-3.5 pt-2.5 gap-2">
-          {/* Tiêu đề */}
-          <Text
-            className="text-[18px] font-bold text-white tracking-[-0.4px]"
-            style={{
-              lineHeight: 23,
-              textShadowColor: "rgba(0,0,0,0.35)",
-              textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 4,
-            }}
-            numberOfLines={2}
-          >
-            {trip.title || t("tripCard.newTrip")}
-          </Text>
-
-          {/* Row: ngày tháng bên trái | stats bên phải */}
-          <View className="flex-row items-center justify-between gap-2">
-            {/* Ngày tháng */}
-            <View className="flex-1 min-w-0">
-              <TripDateLine dateDisplay={dateDisplay} />
-            </View>
-
-            {/* Stats: số ngày | điểm đến */}
-            <View className="flex-row items-center gap-0">
-              <View className="items-center px-2 gap-[1px]">
-                <Text className="text-[14px] font-semibold text-white tracking-[-0.2px]">
-                  {trip.totalDays ?? 1}
-                </Text>
-                <Text className="text-[9px] font-sans text-white/50 tracking-[0.2px]">
-                  {t("tripCard.days")}
-                </Text>
-              </View>
-
-              <View
-                className="h-5 bg-white/12"
-                style={{ width: StyleSheet.hairlineWidth }}
-              />
-
-              <View className="items-center px-2 gap-[1px]">
-                <Text className="text-[14px] font-semibold text-white tracking-[-0.2px]">
-                  {destinationCount === 0 ? "—" : destinationCount}
-                </Text>
-                <Text className="text-[9px] font-sans text-white/50 tracking-[0.2px]">
-                  {t("tripCard.destinations")}
-                </Text>
-              </View>
-
-              <MaterialIconsRounded
-                name="chevron-right"
-                size={16}
-                color="rgba(255,255,255,0.52)"
-                style={{ marginLeft: 2, opacity: 0.8 }}
-              />
-            </View>
-          </View>
-        </View>
       </AnimatedPressable>
-    </View>
+    </Box>
   );
 });
+
+const SHADOW_IMMERSIVE = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.16,
+  shadowRadius: 18,
+  elevation: 5,
+};
+
+const TITLE_TEXT_SHADOW = {
+  textShadowColor: "rgba(0,0,0,0.3)",
+  textShadowOffset: { width: 0, height: 1 },
+  textShadowRadius: 6,
+};

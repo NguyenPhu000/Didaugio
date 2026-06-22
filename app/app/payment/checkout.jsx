@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Platform,
+  AppState,
+  Linking,
   Pressable,
   ScrollView,
   Text,
@@ -17,7 +18,6 @@ import { useCheckout, usePollPaymentStatus, PENDING_PAYMENT_REF_KEY, PENDING_PAY
 import { getMyBookingDetailApi } from "@/modules/booking/api/bookingApi";
 import { OrderSummary } from "@/modules/booking/components/OrderSummary";
 import { PaymentMethodSelector } from "@/modules/booking/components/PaymentMethodSelector";
-import { useTranslation } from "react-i18next";
 
 const BOOKING_THEME = {
   background: "#F5F5F7",
@@ -51,7 +51,6 @@ const formatPrice = (price) => {
 };
 
 export default function PaymentCheckoutScreen() {
-  const { t } = useTranslation();
   const { bookingId } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -66,6 +65,7 @@ export default function PaymentCheckoutScreen() {
 
   const checkoutMutation = useCheckout();
   const { startPolling } = usePollPaymentStatus();
+  const momoPaymentRef = useRef(null);
 
   const loadBooking = useCallback(async () => {
     if (!bookingId) return;
@@ -111,6 +111,19 @@ export default function PaymentCheckoutScreen() {
     return () => clearInterval(timer);
   }, [isExpired]);
 
+  // Handle return from MoMo app: start polling when app resumes after deeplink
+  useEffect(() => {
+    const handleAppState = (nextState) => {
+      if (nextState === "active" && momoPaymentRef.current) {
+        const { transactionRef, paymentId, bookingId: bid } = momoPaymentRef.current;
+        momoPaymentRef.current = null;
+        startPolling(transactionRef, paymentId, bid);
+      }
+    };
+    const sub = AppState.addEventListener("change", handleAppState);
+    return () => sub.remove();
+  }, [startPolling]);
+
   const handleCheckout = async () => {
     if (isProcessing || isExpired || !selectedMethod || !bookingId) return;
     setIsProcessing(true);
@@ -125,19 +138,32 @@ export default function PaymentCheckoutScreen() {
 
       const paymentData = res?.data ?? res;
       const paymentUrl = paymentData?.paymentUrl;
+      const deeplink = paymentData?.deeplink;
       const transactionRef = paymentData?.transactionRef;
-      const paymentId = paymentData?.id;
+      const paymentId = paymentData?.paymentId;
 
       if (!paymentUrl) {
         throw new Error("Không nhận được liên kết thanh toán");
       }
 
-      // Save BEFORE opening browser (browser may freeze JS)
+      // Save BEFORE opening browser/app (may freeze JS)
       try {
         await safeAsyncStorage.setItem(PENDING_PAYMENT_REF_KEY, transactionRef || "");
         await safeAsyncStorage.setItem(PENDING_PAYMENT_BOOKING_KEY, String(bookingId));
       } catch (storageErr) {
         console.warn("[checkout] safeAsyncStorage write failed:", storageErr);
+      }
+
+      // MoMo: open native app via deeplink if available
+      if (selectedMethod === "MOMO" && deeplink) {
+        const canOpen = await Linking.canOpenURL(deeplink);
+        if (canOpen) {
+          momoPaymentRef.current = { transactionRef, paymentId, bookingId };
+          await Linking.openURL(deeplink);
+          // Polling will start when app resumes (see AppState listener)
+          return;
+        }
+        // MoMo app not installed — fall through to WebBrowser with payUrl
       }
 
       const browserResult = await WebBrowser.openBrowserAsync(paymentUrl, {
@@ -149,7 +175,6 @@ export default function PaymentCheckoutScreen() {
       // Only start polling if user didn't cancel
       if (browserResult.type === "cancel" || browserResult.type === "dismiss") {
         setIsProcessing(false);
-        // Clean stale keys so recovery listener doesn't fire
         try {
           await safeAsyncStorage.multiRemove([PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY]);
         } catch {
@@ -162,7 +187,6 @@ export default function PaymentCheckoutScreen() {
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || "Thanh toán thất bại";
       Alert.alert("Lỗi thanh toán", msg);
-      // Clean stale keys on error
       try {
         await safeAsyncStorage.multiRemove([PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY]);
       } catch {
@@ -370,8 +394,9 @@ export default function PaymentCheckoutScreen() {
           }}
         >
           <Text style={{ color: BOOKING_THEME.textSecondary, fontSize: 12, lineHeight: 18 }}>
-            Sau khi chọn phương thức và bấm "Thanh toán ngay", bạn sẽ được chuyển sang cổng
-            thanh toán để hoàn tất. Không tắt ứng dụng trong quá trình thanh toán.
+            {selectedMethod === "MOMO"
+              ? 'Bấm "Thanh toán ngay" để mở ứng dụng MoMo. Sau khi hoàn tất, bạn sẽ tự động quay lại.'
+              : 'Sau khi chọn phương thức và bấm "Thanh toán ngay", bạn sẽ được chuyển sang cổng thanh toán để hoàn tất. Không tắt ứng dụng trong quá trình thanh toán.'}
           </Text>
         </View>
       </ScrollView>

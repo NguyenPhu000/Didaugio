@@ -23,6 +23,7 @@ import {
   toTimeSortValue,
 } from "../../utils/tripHelpers";
 import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
+import { cn } from "@/lib/cn";
 import TimeField from "./TimeField";
 import CustomAlertModal from "../../../../components/composed/CustomAlertModal";
 
@@ -101,18 +102,15 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
             {/* Header: tiêu đề + đóng */}
             <View className="flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]">
               <View className="flex-row items-center gap-2 flex-1 mr-2">
-                <MaterialIconsRounded name="edit-location" size={18} color="#1D1D1F" />
-                <Text className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">{t('editDestination.editPlace')}</Text>
+                <MaterialIconsRounded name="edit-location" size={18} color={T.ink} />
+                <Text className="text-[16px] font-semibold text-ink tracking-tight">{t('editDestination.editPlace')}</Text>
               </View>
               <Pressable
                 onPress={onCancel}
                 hitSlop={12}
-                style={({ pressed }) => [
-                  pressed && { backgroundColor: "rgba(0,0,0,0.06)" },
-                ]}
-                className="w-8 h-8 rounded-full items-center justify-center"
+                className="w-8 h-8 rounded-full items-center justify-center active:bg-black/[0.06]"
               >
-                <MaterialIconsRounded name="close" size={18} color="rgba(0,0,0,0.45)" />
+                <MaterialIconsRounded name="close" size={18} color={ALPHA.iconStrong} />
               </Pressable>
             </View>
 
@@ -149,8 +147,8 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
 
               {durationLabel ? (
                 <View className="flex-row items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#F5F5F7]">
-                  <MaterialIconsRounded name="schedule" size={16} color="#1D1D1F" />
-                  <Text className="text-[13px] font-medium text-[#1D1D1F] tracking-tight">
+                  <MaterialIconsRounded name="schedule" size={16} color={T.ink} />
+                  <Text className="text-[13px] font-medium text-ink tracking-tight">
                     {t('editDestination.stayDuration', { duration: durationLabel })}
                   </Text>
                 </View>
@@ -174,11 +172,12 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
                             <MaterialIconsRounded
                               name={opt.icon}
                               size={16}
-                              color={isSelected ? "#1D1D1F" : "rgba(0,0,0,0.6)"}
+                              color={isSelected ? T.ink : ALPHA.iconStrong}
                             />
-                            <Text className={`text-[13px] font-semibold ${
-                              isSelected ? "text-[#1D1D1F]" : "text-black/60"
-                            }`}>
+                            <Text className={cn(
+                              "text-[13px] font-semibold",
+                              isSelected ? "text-ink" : "text-black/60",
+                            )}>
                               {opt.label}
                             </Text>
                           </Pressable>

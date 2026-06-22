@@ -93,7 +93,7 @@ function SampleTripCardInner({ trip, onPress }) {
 
       {/* Badge style */}
       {styleLabel ? (
-        <View className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#0071E3] border border-[#0071E3]/60">
+        <View className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-primary border border-primary/60">
           <Text
             className="text-white text-[10px] font-bold"
             style={{ fontFamily: TOKENS.font.bold }}

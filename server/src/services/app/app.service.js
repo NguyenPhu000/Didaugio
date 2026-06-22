@@ -265,6 +265,8 @@ export const getHomeData = async (query = {}) => {
           select: {
             id: true,
             imageData: true,
+            secureUrl: true,
+            thumbnailUrl: true,
             isCover: true,
           },
         },
@@ -333,7 +335,7 @@ export const searchPlaces = async (query = {}) => {
         images: {
           take: 1,
           orderBy: [{ isCover: "desc" }, { order: "asc" }],
-          select: { id: true, imageData: true, isCover: true },
+          select: { id: true, imageData: true, secureUrl: true, thumbnailUrl: true, isCover: true },
         },
       },
     }),
@@ -372,6 +374,8 @@ export const getPlaceDetail = async (placeId, userId = null) => {
         select: {
           id: true,
           imageData: true,
+          secureUrl: true,
+          thumbnailUrl: true,
           caption: true,
           isCover: true,
         },
@@ -742,6 +746,8 @@ export const getMySavedPlaces = async (userId, query = {}) => {
               select: {
                 id: true,
                 imageData: true,
+                secureUrl: true,
+                thumbnailUrl: true,
                 isCover: true,
               },
             },

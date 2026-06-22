@@ -541,6 +541,27 @@ eventEmitter.on(
   },
 );
 
+eventEmitter.on(EVENTS.BOOKING.PAID, async ({ bookingId, bookingCode, userId, businessId }) => {
+  await Promise.all([
+    notifyUser(
+      userId,
+      "Đã thanh toán, chờ xác nhận",
+      `Booking #${bookingCode} đã thanh toán thành công. Đang chờ doanh nghiệp xác nhận.`,
+      { bookingId, type: "booking_paid" },
+    ),
+    businessId
+      ? notifyBusinessOwner(
+          businessId,
+          "Có đơn thanh toán mới, vui lòng xác nhận",
+          `Booking #${bookingCode} đã được thanh toán. Vui lòng xác nhận đơn.`,
+          { bookingId, type: "booking_paid_business" },
+        )
+      : Promise.resolve(),
+  ]).catch((error) => {
+    console.error("[Notification] Error processing BOOKING.PAID:", error);
+  });
+});
+
 eventEmitter.on(EVENTS.BOOKING.CONFIRMED, async ({ bookingId, bookingCode, confirmedBy, userId }) => {
   await notifyUser(
     userId,

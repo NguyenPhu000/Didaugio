@@ -65,6 +65,11 @@ export async function checkResourceOverlap(tx, payload) {
  */
 export async function checkAvailability(tx, payload) {
   const { serviceId, bookingAt, quantity, excludeBookingId } = payload;
+
+  // Lock service row to serialize concurrent booking requests for the same service.
+  // Prevents race condition where two transactions read the same capacity count.
+  await tx.$executeRaw`SELECT id FROM business_services WHERE id = ${serviceId} FOR UPDATE`;
+
   const svc = await tx.businessService.findUnique({
     where: { id: serviceId },
     select: {

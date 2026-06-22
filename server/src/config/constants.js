@@ -71,6 +71,7 @@ export function getManagedRoleIds(roleName) {
 
 export const BOOKING_STATUS = {
   PENDING: "pending",
+  PAID_PENDING_CONFIRM: "paid_pending_confirm",
   CONFIRMED: "confirmed",
   COMPLETED: "completed",
   CANCELLED: "cancelled",

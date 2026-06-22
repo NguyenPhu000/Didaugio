@@ -101,7 +101,7 @@ const TravelModeSelector = memo(function TravelModeSelector({
     );
   }
 
-  // Chế độ mở rộng đầy đủ (cho Single Route, Route Builder hoặc Active Trip khi được tap mở ra)
+  // Chế độ mở rộng đầy đủ (cho Single Route hoặc Active Trip khi được tap mở ra)
   return (
     <View className="w-full" style={style} pointerEvents="box-none">
       <BlurView

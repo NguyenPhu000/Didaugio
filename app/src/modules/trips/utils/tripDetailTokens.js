@@ -59,15 +59,15 @@ export const STYLES = {
     "flex-row items-center px-5 py-3.5 gap-3.5 bg-white border-b border-black/[0.06]",
   backBtn:
     "w-[38px] h-[38px] rounded-full items-center justify-center bg-black/[0.04]",
-  backBtnText: "text-[22px] text-[#1D1D1F] -mt-0.5",
+  backBtnText: "text-[22px] text-ink -mt-0.5",
   headerCenter: "flex-1 gap-0.5",
-  headerTitle: "text-[17px] font-semibold text-[#1D1D1F] tracking-tight",
+  headerTitle: "text-[17px] font-semibold text-ink tracking-tight",
   headerMeta: "text-[12px] font-normal text-black/50 tracking-tight",
   headerActions: "flex-row items-center gap-1.5",
   headerActionBtn: "px-3 py-2 rounded-full",
-  headerActionText: "text-[14px] font-normal text-[#1D1D1F] tracking-tight",
-  headerActionDanger: "text-[14px] font-normal text-[#FF3B30] tracking-tight",
-  primaryBtn: "bg-[#1D1D1F] px-4.5 py-2.25 rounded-full",
+  headerActionText: "text-[14px] font-normal text-ink tracking-tight",
+  headerActionDanger: "text-[14px] font-normal text-danger tracking-tight",
+  primaryBtn: "bg-ink px-4.5 py-2.25 rounded-full",
   primaryBtnText: "text-white text-[14px] font-semibold tracking-tight",
 
   /* ── Tab bar — pill style ── */
@@ -75,15 +75,15 @@ export const STYLES = {
   tabItem: "flex-1 items-center py-2.5 rounded-xl",
   tabItemActive: "bg-black/[0.05]",
   tabLabel: "text-[14px] font-medium text-black/50 tracking-tight",
-  tabLabelActive: "text-[#1D1D1F] font-semibold",
+  tabLabelActive: "text-ink font-semibold",
   tabIndicator:
-    "absolute bottom-0 left-5 right-5 h-[2px] bg-[#1D1D1F] rounded-[1px]",
+    "absolute bottom-0 left-5 right-5 h-[2px] bg-ink rounded-[1px]",
 
   /* ── Day chips ── */
   dayChipsRow: "px-5 py-3 gap-2",
   dayChip: "px-4.5 py-2.5 rounded-[14px] bg-black/[0.04]",
-  dayChipActive: "bg-[#1D1D1F]",
-  dayChipLabel: "text-[13px] font-semibold text-[#1D1D1F] tracking-tight",
+  dayChipActive: "bg-ink",
+  dayChipLabel: "text-[13px] font-semibold text-ink tracking-tight",
   dayChipLabelActive: "text-black",
 
   /* ── Inline loading ── */
@@ -93,14 +93,14 @@ export const STYLES = {
   /* ── Empty states ── */
   emptyState: "flex-1 items-center justify-center px-10 py-16 gap-2",
   emptyTitle:
-    "text-[18px] font-semibold text-[#1D1D1F] tracking-tight text-center",
+    "text-[18px] font-semibold text-ink tracking-tight text-center",
   emptyBody:
     "text-[14px] leading-5 font-normal text-black/50 text-center tracking-tight",
   centeredState: "flex-1 items-center justify-center px-10 gap-2",
   centeredBody: "text-[13px] font-normal text-black/50",
   linkBtn: "px-5 py-2.5",
   linkBtnText:
-    "text-[#1D1D1F] text-[17px] font-normal tracking-tight underline",
+    "text-ink text-[17px] font-normal tracking-tight underline",
 
   /* ── Tab content wrapper ── */
   tabContent: "flex-1",
@@ -112,11 +112,11 @@ export const STYLES = {
   destThumb: "w-12 h-12 rounded-xl overflow-hidden bg-[#F5F5F7]",
   destThumbEmpty: "flex-1 bg-[#F5F5F7]",
   destInfo: "flex-1 gap-0.5",
-  destName: "text-[15px] font-semibold text-[#1D1D1F] tracking-tight",
+  destName: "text-[15px] font-semibold text-ink tracking-tight",
   destAddress: "text-[12px] font-normal text-black/50 tracking-tight",
   destNote: "text-[12px] font-normal text-black/50 tracking-tight",
   destRemove: "px-2 py-1",
-  destRemoveText: "text-[13px] font-normal text-[#FF3B30] tracking-tight",
+  destRemoveText: "text-[13px] font-normal text-danger tracking-tight",
   destDistance: "text-[12px] font-normal text-black/60 tracking-tight",
 
   /* ── Booking rows ── */
@@ -125,11 +125,11 @@ export const STYLES = {
     "flex-row items-center justify-between gap-2.5 py-3 px-3.5 bg-black/[0.025] rounded-2xl border border-black/[0.04]",
   pressed: "opacity-70",
   bookingRowInfo: "flex-1 gap-0.75",
-  bookingRowName: "text-[14px] font-semibold text-[#1D1D1F] tracking-tight",
+  bookingRowName: "text-[14px] font-semibold text-ink tracking-tight",
   bookingRowPlace: "text-[12px] font-normal text-black/50 tracking-tight",
   bookingRowMeta: "text-[12px] font-normal text-black/50 tracking-tight",
   bookingRowRight: "items-end gap-1.5",
-  bookingRowPrice: "text-[14px] font-semibold text-[#1D1D1F] tracking-tight",
+  bookingRowPrice: "text-[14px] font-semibold text-ink tracking-tight",
   moreText: "text-[12px] font-normal text-black/50",
 
   /* ── Status badge ── */
@@ -153,10 +153,10 @@ export const STYLES = {
   summaryGrid: "flex-row flex-wrap gap-2.5",
   summaryCard:
     "w-[48%] rounded-[20px] bg-white p-4.5 gap-1.5 border border-black/[0.05]",
-  summaryCardPrimary: "bg-[#1D1D1F] border-[#1D1D1F]",
+  summaryCardPrimary: "bg-ink border-ink",
   summaryLabel: "text-[12px] font-normal text-black/50 tracking-tight",
   summaryLabelLight: "text-[12px] font-normal text-white/55 tracking-tight",
-  summaryValue: "text-[20px] font-semibold text-[#1D1D1F] tracking-tight",
+  summaryValue: "text-[20px] font-semibold text-ink tracking-tight",
   summaryValueLight: "text-[30px] font-semibold text-white tracking-tighter",
   budgetDetail: "gap-2.5",
 
@@ -165,18 +165,18 @@ export const STYLES = {
   sheetHandle: "w-9 h-1 rounded-full bg-black/12 self-center mt-2.5 mb-1.5",
   sheetHeader:
     "flex-row items-center justify-between px-5 py-3 border-b border-black/[0.07]",
-  sheetTitle: "text-[16px] font-semibold text-[#1D1D1F] tracking-tight",
+  sheetTitle: "text-[16px] font-semibold text-ink tracking-tight",
   sheetCloseBtn: "w-8 h-8 rounded-full items-center justify-center",
   sheetFooter:
     "px-5 pt-4 pb-2 border-t border-black/[0.07] bg-white flex-shrink-0",
   fieldLabel:
     "text-[11px] text-black/40 font-semibold uppercase tracking-widest",
   sectionLabel:
-    "text-[11px] text-[#1D1D1F] font-semibold uppercase tracking-widest mb-1.5",
+    "text-[11px] text-ink font-semibold uppercase tracking-widest mb-1.5",
   field:
-    "bg-[#F5F5F7] rounded-xl px-3 py-3 text-[15px] color-[#1D1D1F] font-normal border border-black/[0.06]",
+    "bg-[#F5F5F7] rounded-xl px-3 py-3 text-[15px] text-ink font-normal border border-black/[0.06]",
   submitBtn:
-    "w-full h-[52px] rounded-full bg-[#1D1D1F] items-center justify-center",
+    "w-full h-[52px] rounded-full bg-ink items-center justify-center",
   submitBtnText:
     "text-white text-[16px] font-semibold tracking-tight text-center",
   chip: "flex-row items-center gap-1.5 bg-[#F5F5F7] rounded-xl px-3 py-2.5 border border-black/[0.06]",
