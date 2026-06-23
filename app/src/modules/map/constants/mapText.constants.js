@@ -69,6 +69,10 @@ export const MAP_TEXT = Object.freeze({
   accessibility: {
     get openMenu() { return i18n.t("common.close"); },
   },
+  navigation: {
+    get signalLost() { return i18n.t("map.navigation.signalLost", { defaultValue: "Đang tìm tín hiệu..." }); },
+    get signalLostSubtitle() { return i18n.t("map.navigation.signalLostSubtitle", { defaultValue: "Vị trí ước tính dựa trên tốc độ cuối" }); },
+  },
   analytics: {
     routeModeCurrentLocationToPlace: "current_location_to_place",
   },

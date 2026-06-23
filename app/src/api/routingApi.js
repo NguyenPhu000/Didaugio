@@ -5,8 +5,8 @@ import { ENDPOINTS } from "./endpoints";
  * Tính route giữa 2 điểm (origin -> destination, optional waypoints).
  * @param {{ origin, destination, waypoints?, mode?, options? }} payload
  */
-export const calculateRouteApi = async (payload) => {
-  const response = await apiClient.post(ENDPOINTS.routing.calculate, payload);
+export const calculateRouteApi = async (payload, config = {}) => {
+  const response = await apiClient.post(ENDPOINTS.routing.calculate, payload, config);
   return response;
 };
 

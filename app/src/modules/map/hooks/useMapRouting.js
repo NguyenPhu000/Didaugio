@@ -32,7 +32,7 @@ const isValidPoint = (point) =>
 /**
  * Hook tính route 2 điểm — dùng trong MapScreen / directions flow.
  *
- * @param {{ origin, destination, mode?, options?, enabled? }} params
+ * @param {{ origin, destination, mode?, options?, enabled?, navMode?, rerouteKey? }} params
  */
 export function useMapRouting({
   origin,
@@ -40,6 +40,8 @@ export function useMapRouting({
   mode = "driving",
   options = {},
   enabled = true,
+  navMode = "preview",
+  rerouteKey = 0,
 } = {}) {
   const normalizedOrigin = useMemo(() => normalizePoint(origin), [origin]);
   const normalizedDestination = useMemo(
@@ -53,8 +55,11 @@ export function useMapRouting({
     isValidPoint(normalizedDestination);
 
   const queryKey = useMemo(
-    () => ["route", normalizedOrigin, normalizedDestination, mode, options],
-    [normalizedDestination, normalizedOrigin, mode, options],
+    () =>
+      navMode === "navigation"
+        ? ["route", "navigation", rerouteKey, normalizedDestination, mode, options]
+        : ["route", "preview", normalizedOrigin, normalizedDestination, mode, options],
+    [navMode, normalizedDestination, normalizedOrigin, rerouteKey, mode, options],
   );
 
   const query = useQuery({

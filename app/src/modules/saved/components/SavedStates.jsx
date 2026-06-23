@@ -1,37 +1,50 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { Compass, Bookmark, CloudOff, RefreshCw, FolderX } from "lucide-react-native";
+import { Pressable, Text, View } from "react-native";
+import {
+  Compass,
+  Bookmark,
+  CloudOff,
+  RefreshCw,
+  FolderX,
+} from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../../constants/design-tokens";
+import * as Haptics from "expo-haptics";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 
 export function LoadingState() {
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 6, paddingTop: 16 }}>
+    <View className="flex-row flex-wrap px-1.5 pt-4">
       {[1, 2, 3, 4].map((i) => (
         <Animated.View
           key={i}
           entering={FadeIn.duration(200)}
-          style={{
-            width: "50%",
-            paddingHorizontal: 6,
-            marginBottom: 12,
-          }}
+          className="w-1/2 px-1.5 mb-3"
         >
-          <View style={styles.skeletonCard}>
+          {/* Thêm animate-pulse để tạo hiệu ứng nhịp đập khi loading */}
+          <View
+            className="w-full h-[220px] bg-[#F2F2F7] px-3 py-3 justify-between animate-pulse"
+            style={{ borderRadius: 28, borderCurve: "continuous" }}
+          >
             {/* Top Row: Category and Actions */}
-            <View style={styles.skeletonTopRow}>
-              <View style={styles.skeletonCategoryPill} />
-              <View style={styles.skeletonActionBtns}>
-                <View style={styles.skeletonRoundBtn} />
-                <View style={styles.skeletonRoundBtn} />
+            <View className="flex-row items-center justify-between">
+              <View className="w-8 h-8 rounded-full bg-black/5" />
+              <View className="flex-row items-center gap-1.5">
+                <View className="w-8 h-8 rounded-full bg-black/5" />
+                <View className="w-8 h-8 rounded-full bg-black/5" />
               </View>
             </View>
 
             {/* Bottom Panel */}
-            <View style={styles.skeletonMetaPanel}>
-              <View style={styles.skeletonLineTitle} />
-              <View style={styles.skeletonLineText} />
+            <View
+              className="bg-white/40 border border-white/30 px-2.5 py-2.5 gap-1.5"
+              style={{ borderRadius: 16, borderCurve: "continuous" }}
+            >
+              <View className="w-4/5 h-3.5 rounded bg-black/5" />
+              <View className="w-1/2 h-2.5 rounded bg-black/5" />
             </View>
           </View>
         </Animated.View>
@@ -43,35 +56,64 @@ export function LoadingState() {
 export function EmptyState({ onExplore, activeFilter }) {
   const { t } = useTranslation();
   const isFiltered = Boolean(activeFilter);
+
+  const handleExplore = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onExplore?.();
+  };
+
   return (
     <Animated.View
       entering={FadeIn.duration(250)}
-      style={styles.stateCard}
+      className="mt-4 p-9 items-center bg-white border border-black/5 shadow-sm shadow-black/5"
+      style={{
+        marginHorizontal: TAB_SCREEN_PADDING,
+        borderRadius: 28,
+        borderCurve: "continuous",
+      }}
     >
-      <View>
-        <View style={[styles.stateIconWrap, isFiltered && styles.stateIconWrapMuted]}>
-          {isFiltered ? (
-            <FolderX size={32} color="#64748B" strokeWidth={1.5} />
-          ) : (
-            <Bookmark size={32} color="#0F172A" strokeWidth={1.5} />
-          )}
-        </View>
+      <View
+        className={`w-[72px] h-[72px] items-center justify-center mb-3.5 ${
+          isFiltered ? "bg-black/[0.03]" : "bg-black/5"
+        }`}
+        style={{ borderRadius: 24, borderCurve: "continuous" }}
+      >
+        {isFiltered ? (
+          <FolderX size={32} color="#8E8E93" strokeWidth={1.5} />
+        ) : (
+          <Bookmark size={32} color={APPLE_THEME.text} strokeWidth={1.5} />
+        )}
       </View>
-      <Text style={styles.stateTitle}>
+
+      <Text
+        className="text-[18px] text-center tracking-tight"
+        style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.heading }}
+      >
         {isFiltered ? t("saved.empty.noResults") : t("saved.empty.noSaved")}
       </Text>
-      <Text style={styles.stateDesc}>
+
+      <Text
+        className="text-[14px] text-center leading-[20px] mt-1.5 max-w-[280px]"
+        style={{ color: APPLE_THEME.textMuted, fontFamily: TOKENS.font.body }}
+      >
         {isFiltered
           ? t("saved.empty.noResultsDesc")
           : t("saved.empty.noSavedDesc")}
       </Text>
+
       {!isFiltered && onExplore ? (
         <Pressable
-          onPress={onExplore}
-          style={({ pressed }) => [styles.stateCta, pressed && styles.stateCtaPressed]}
+          onPress={handleExplore}
+          className="flex-row items-center gap-1.5 mt-5 px-5 py-3 bg-[#1D1D1F] active:opacity-80 active:scale-[0.97]"
+          style={{ borderRadius: 14, borderCurve: "continuous" }}
         >
-          <Compass size={17} color="#FFFFFF" strokeWidth={1.75} />
-          <Text style={styles.stateCtaText}>{t("saved.empty.explore")}</Text>
+          <Compass size={17} color="#FFFFFF" strokeWidth={2} />
+          <Text
+            className="text-[14px] text-white tracking-tight"
+            style={{ fontFamily: TOKENS.font.semibold }}
+          >
+            {t("saved.empty.explore")}
+          </Text>
         </Pressable>
       ) : null}
     </Animated.View>
@@ -80,170 +122,58 @@ export function EmptyState({ onExplore, activeFilter }) {
 
 export function ErrorState({ onRetry }) {
   const { t } = useTranslation();
+
+  const handleRetry = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onRetry?.();
+  };
+
   return (
     <Animated.View
       entering={FadeIn.duration(250)}
-      style={styles.stateCard}
+      className="mt-4 p-9 items-center bg-white border border-black/5 shadow-sm shadow-black/5"
+      style={{
+        marginHorizontal: TAB_SCREEN_PADDING,
+        borderRadius: 28,
+        borderCurve: "continuous",
+      }}
     >
-      <View>
-        <View style={[styles.stateIconWrap, styles.stateIconError]}>
-          <CloudOff size={32} color="#FF3B30" strokeWidth={1.5} />
-        </View>
+      <View
+        className="w-[72px] h-[72px] items-center justify-center mb-3.5 bg-[#FF3B30]/10"
+        style={{ borderRadius: 24, borderCurve: "continuous" }}
+      >
+        <CloudOff size={32} color="#FF3B30" strokeWidth={1.5} />
       </View>
-      <Text style={styles.stateTitle}>{t("common.error")}</Text>
-      <Text style={styles.stateDesc}>
+
+      <Text
+        className="text-[18px] text-center tracking-tight"
+        style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.heading }}
+      >
+        {t("common.error")}
+      </Text>
+
+      <Text
+        className="text-[14px] text-center leading-[20px] mt-1.5 max-w-[280px]"
+        style={{ color: APPLE_THEME.textMuted, fontFamily: TOKENS.font.body }}
+      >
         {t("common.networkError")}
       </Text>
+
       {onRetry ? (
         <Pressable
-          onPress={onRetry}
-          style={({ pressed }) => [styles.stateRetry, pressed && styles.stateRetryPressed]}
+          onPress={handleRetry}
+          className="flex-row items-center gap-1.5 mt-5 px-5 py-3 bg-[#FF3B30]/10 border border-[#FF3B30]/20 active:opacity-80 active:scale-[0.97]"
+          style={{ borderRadius: 14, borderCurve: "continuous" }}
         >
-          <RefreshCw size={15} color="#FF3B30" strokeWidth={1.75} />
-          <Text style={styles.stateRetryText}>{t("common.retry")}</Text>
+          <RefreshCw size={15} color="#FF3B30" strokeWidth={2} />
+          <Text
+            className="text-[14px] text-[#FF3B30] tracking-tight"
+            style={{ fontFamily: TOKENS.font.semibold }}
+          >
+            {t("common.retry")}
+          </Text>
         </Pressable>
       ) : null}
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  stateCard: {
-    marginHorizontal: TAB_SCREEN_PADDING,
-    marginTop: 16,
-    borderRadius: 28,
-    padding: 36,
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "rgba(15, 23, 42, 0.05)",
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)",
-    elevation: 1,
-  },
-  stateIconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(15, 23, 42, 0.04)",
-    marginBottom: 14,
-  },
-  stateIconWrapMuted: {
-    backgroundColor: "rgba(15, 23, 42, 0.03)",
-  },
-  stateIconError: {
-    backgroundColor: "rgba(255, 59, 48, 0.08)",
-  },
-  stateTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#0F172A",
-    textAlign: "center",
-    fontFamily: TOKENS.font.heading,
-    letterSpacing: -0.3,
-  },
-  stateDesc: {
-    fontSize: 13,
-    color: "#64748B",
-    textAlign: "center",
-    lineHeight: 20,
-    maxWidth: 280,
-    fontFamily: TOKENS.font.body,
-    marginTop: 6,
-  },
-  stateCta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 20,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 14,
-    backgroundColor: "#0F172A", // slate-900
-  },
-  stateCtaPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.97 }],
-  },
-  stateCtaText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#FFFFFF",
-    fontFamily: TOKENS.font.semibold,
-  },
-  stateRetry: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 20,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 14,
-    backgroundColor: "rgba(255, 59, 48, 0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 59, 48, 0.12)",
-  },
-  stateRetryPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.97 }],
-  },
-  stateRetryText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#FF3B30",
-    fontFamily: TOKENS.font.semibold,
-  },
-  skeletonCard: {
-    width: "100%",
-    height: 220,
-    borderRadius: 28,
-    backgroundColor: "rgba(15, 23, 42, 0.04)",
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    justifyContent: "space-between",
-  },
-  skeletonTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  skeletonCategoryPill: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(15, 23, 42, 0.05)",
-  },
-  skeletonActionBtns: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  skeletonRoundBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(15, 23, 42, 0.05)",
-  },
-  skeletonMetaPanel: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    borderColor: "rgba(255, 255, 255, 0.15)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    gap: 6,
-  },
-  skeletonLineTitle: {
-    width: "80%",
-    height: 14,
-    borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
-  },
-  skeletonLineText: {
-    width: "50%",
-    height: 10,
-    borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
-  },
-});

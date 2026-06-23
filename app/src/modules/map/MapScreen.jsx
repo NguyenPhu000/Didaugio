@@ -22,15 +22,17 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { Image } from "expo-image";
 import { Alert } from "react-native";
 import { usePingEvent, useEventDetail, useCreateMoment } from "../explore/hooks/useEvents";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { MaterialIconsRounded } from "../../components/primitives/MaterialIconsRounded";
 import { useHomeData } from "./hooks/useHomeData";
 import { useMapPlaces } from "./hooks/useMapPlaces";
 import { useBoundaryData } from "./hooks/useBoundaryData";
 import { useFilterState } from "./hooks/useFilterState";
 import { useMapLocationTracker } from "./hooks/useMapLocationTracker";
+import { useNavigationController } from "./hooks/useNavigationController";
 import MapView from "./components/MapView";
 import RoutePolyline from "./components/RoutePolyline";
-import ArrivalConfirmModal from "./components/navigation/ArrivalConfirmModal";
+import SnapLine from "./components/SnapLine";
+import ArrivalBanner from "./components/navigation/ArrivalBanner";
 import ActiveTripNavBanner from "./components/navigation/ActiveTripNavBanner";
 import NavigationStatusBanner from "./components/navigation/NavigationStatusBanner";
 import NearbyWarningBanner from "./components/navigation/NearbyWarningBanner";
@@ -63,7 +65,7 @@ import {
 import { trackEvent } from "../../lib/analytics";
 import { resolveMediaUrl } from "../../lib/media-url";
 import { useAuthStore } from "../../stores/authStore";
-import { DistrictLayer, WardLayer } from "./components/BoundaryLayer";
+import { ContextualBoundaryLayer } from "./components/BoundaryLayer";
 import {
   CATEGORY_MARKER_STYLES,
   DEFAULT_CATEGORY_ICON,
@@ -76,13 +78,23 @@ import {
   FLOATING_TAB_CLEARANCE,
 } from "../../../app/(tabs)/_layout";
 import { ALL_AREAS_KEY } from "./constants/filter.constants";
-import { NAVIGATION_EVENT_DEDUP_MS } from "./constants/navigation.constants";
+import {
+  NAVIGATION_EVENT_DEDUP_MS,
+  SCREEN_DIM_ACTIVATE_DISTANCE_M,
+  SCREEN_DIM_DEACTIVATE_DISTANCE_M,
+  SCREEN_DIM_OVERLAY_OPACITY,
+} from "./constants/navigation.constants";
 import { MAP_TEXT } from "./constants/mapText.constants";
 import { distanceMeters } from "./utils/distance";
 import {
   formatRouteDistance,
   formatRouteEta,
 } from "./utils/routeFormat";
+import {
+  getVoiceMutedPreference,
+  setVoiceMutedPreference,
+  speakNavigationInstruction,
+} from "./utils/voiceGuidance";
 import { filterVisiblePlaces, getPlaceDistrictMeta } from "./utils/placeFilter";
 
 const MAP_UI_THEME = {
@@ -105,6 +117,7 @@ const MAP_CANVAS_STYLE = {
   width: "100%",
   height: "100%",
 };
+const ARRIVING_SOON_RADIUS_M = 150;
 
 const GlassPanel = ({ style, children, intensity = 40 }) => (
   <BlurView
@@ -149,6 +162,7 @@ export default function MapScreen() {
   const searchInputRef = useRef(null);
   const lastAppliedFocusRef = useRef(null);
   const lastNavigationEventRef = useRef({ signature: null, timestamp: 0 });
+  const navigationTickHandlerRef = useRef(null);
 
   const [mapStyle, setMapStyle] = useState(DEFAULT_MAP_STYLE);
   const [layerModalVisible, setLayerModalVisible] = useState(false);
@@ -162,6 +176,7 @@ export default function MapScreen() {
   const [tripCompleteVisible, setTripCompleteVisible] = useState(false);
   const [completeIsTripEnd, setCompleteIsTripEnd] = useState(false);
   const [completeDayNumber, setCompleteDayNumber] = useState(1);
+  const [isVoiceMuted, setIsVoiceMuted] = useState(true);
 
   // Event states
   const [activeEventId, setActiveEventId] = useState(null);
@@ -184,7 +199,6 @@ export default function MapScreen() {
 
   const {
     districts: districtGeo,
-    wards: wardGeo,
     refetch: refetchBoundary,
   } = useBoundaryData();
 
@@ -349,6 +363,20 @@ export default function MapScreen() {
     return null;
   }, [authUser]);
 
+  const handleActiveLocationUpdate = useCallback((location) => {
+    navigationTickHandlerRef.current?.(location);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getVoiceMutedPreference().then((muted) => {
+      if (!cancelled) setIsVoiceMuted(muted);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const currentUserAvatarUri = useMemo(
     () =>
       resolveMediaUrl(
@@ -407,11 +435,14 @@ export default function MapScreen() {
     watchEnabled: isActiveTripMode && !activeTrip.isPaused,
     timeInterval: gpsIntervals.timeInterval,
     distanceInterval: gpsIntervals.distanceInterval,
+    onLocationUpdate: handleActiveLocationUpdate,
   });
 
   const [activeArrivalVisible, setActiveArrivalVisible] = useState(false);
   const followCameraRef = useRef(false);
   const arrivalHandledRef = useRef(null);
+  const dimActivatedRef = useRef(false);
+  const [isScreenDimmed, setIsScreenDimmed] = useState(false);
 
   // Xin quyền vị trí (foreground + background) khi vào Active Trip Mode.
   useEffect(() => {
@@ -575,22 +606,6 @@ export default function MapScreen() {
     void locateActiveTripNow();
   }, [isActiveTripMode, activeTrip.isPaused, locateActiveTripNow]);
 
-  // Auto-follow camera theo GPS khi đang dẫn đường.
-  useEffect(() => {
-    if (!isActiveTripMode || activeTrip.isPaused || !followCameraRef.current || !activeTripLocation) {
-      return;
-    }
-    mapRef.current?.flyTo(
-      [activeTripLocation.longitude, activeTripLocation.latitude],
-      16,
-    );
-  }, [
-    isActiveTripMode,
-    activeTrip.isPaused,
-    activeTripLocation?.latitude,
-    activeTripLocation?.longitude,
-  ]);
-
   const activeRouteOrigin = useMemo(() => {
     if (!isActiveTripMode || activeTrip.isPaused || !activeTripLocation) return null;
     return {
@@ -632,11 +647,11 @@ export default function MapScreen() {
   }, [activeTripDetail?.destinations, activeNextDestination, mapTransportToMode]);
 
   const {
-    coordinates: activeRouteCoordinates,
-    firstRoute: activeFirstRoute,
-    source: activeRouteSource,
-    distanceM: activeRouteDistanceM,
-    durationS: activeRouteDurationS,
+    coordinates: baseActiveRouteCoordinates,
+    firstRoute: baseActiveFirstRoute,
+    source: baseActiveRouteSource,
+    distanceM: baseActiveRouteDistanceM,
+    durationS: baseActiveRouteDurationS,
     isFetching: isActiveRouteFetching,
     ferryAvoidanceFailed: activeRouteFerryAvoidanceFailed,
   } = useMapRouting({
@@ -647,9 +662,50 @@ export default function MapScreen() {
       exclude: activeTripAvoidFerry ? "ferry" : undefined,
     },
     enabled: Boolean(activeRouteOrigin && activeTargetPoint),
+    navMode: "navigation",
   });
 
+  const navigationController = useNavigationController({
+    enabled: isActiveTripMode && !activeTrip.isPaused,
+    routeCoordinates: baseActiveRouteCoordinates,
+    firstRoute: baseActiveFirstRoute,
+    destination: activeTargetPoint,
+    mode: activeTravelMode,
+    options: {
+      exclude: activeTripAvoidFerry ? "ferry" : undefined,
+    },
+    mapRef,
+  });
+
+  useEffect(() => {
+    navigationTickHandlerRef.current = navigationController.onLocationUpdate;
+    return () => {
+      if (navigationTickHandlerRef.current === navigationController.onLocationUpdate) {
+        navigationTickHandlerRef.current = null;
+      }
+    };
+  }, [navigationController.onLocationUpdate]);
+
+  const activeNavigationRoute = navigationController.routeOverride;
+  const activeRouteCoordinates =
+    activeNavigationRoute?.coordinates ?? baseActiveRouteCoordinates;
+  const activeFirstRoute =
+    activeNavigationRoute?.firstRoute ?? baseActiveFirstRoute;
+  const activeRouteSource =
+    activeNavigationRoute?.source ?? baseActiveRouteSource;
+  const activeRouteDistanceM =
+    navigationController.progress?.remainingMeters ??
+    activeNavigationRoute?.distanceM ??
+    baseActiveRouteDistanceM;
+  const activeRouteDurationS =
+    navigationController.progress?.etaSeconds ??
+    activeNavigationRoute?.durationS ??
+    baseActiveRouteDurationS;
+
   const activeDistanceToTarget = useMemo(() => {
+    if (Number.isFinite(navigationController.distanceToDest)) {
+      return navigationController.distanceToDest;
+    }
     if (!activeTripLocation || !activeTargetPoint) return null;
     return distanceMeters(
       activeTripLocation.latitude,
@@ -657,12 +713,15 @@ export default function MapScreen() {
       activeTargetPoint.lat,
       activeTargetPoint.lng,
     );
-  }, [activeTripLocation, activeTargetPoint]);
+  }, [activeTripLocation, activeTargetPoint, navigationController.distanceToDest]);
 
   const activeUpcomingStep = useMemo(() => {
+    if (navigationController.upcomingStep) return navigationController.upcomingStep;
     const steps = activeFirstRoute?.legs?.[0]?.steps;
-    return pickUpcomingStep(steps, activeTripLocation, distanceMeters);
-  }, [activeFirstRoute, activeTripLocation]);
+    return pickUpcomingStep(steps, activeTripLocation, distanceMeters, {
+      currentHeading: activeTripLocation?.heading,
+    });
+  }, [activeFirstRoute, activeTripLocation, navigationController.upcomingStep]);
 
   const activeInstruction = useMemo(
     () => (activeUpcomingStep ? buildManeuverLabel(activeUpcomingStep) : null),
@@ -681,6 +740,68 @@ export default function MapScreen() {
     () => formatRouteDistance(activeRouteDistanceM),
     [activeRouteDistanceM],
   );
+  const activeDistanceToNextTurnLabel = useMemo(
+    () => formatRouteDistance(navigationController.distanceToNextTurn),
+    [navigationController.distanceToNextTurn],
+  );
+  const activeTripSpeedKmh =
+    navigationController.lastLocation?.speedKmh ??
+    activeTripLocation?.speedKmh ??
+    (Number.isFinite(activeTripLocation?.speed) ? activeTripLocation.speed * 3.6 : 0);
+  const activeMapPadding = useMemo(
+    () =>
+      isActiveTripMode && !activeTrip.isPaused
+        ? { top: 0, right: 0, bottom: viewportHeight * 0.4, left: 0 }
+        : undefined,
+    [activeTrip.isPaused, isActiveTripMode, viewportHeight],
+  );
+
+  const handleToggleVoice = useCallback(() => {
+    setIsVoiceMuted((prev) => {
+      const next = !prev;
+      void setVoiceMutedPreference(next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isActiveTripMode || activeTrip.isPaused || !activeInstruction) return;
+
+    const nextTurnDistance = navigationController.distanceToNextTurn;
+    const distanceToDest = activeDistanceToTarget;
+    let speechKey = null;
+    let speechText = null;
+
+    if (Number.isFinite(distanceToDest) && distanceToDest <= 30) {
+      speechKey = `arrival:${activeNextDestination?.id ?? "destination"}`;
+      speechText = `Bạn đã đến ${activeTargetPoint?.name || "điểm đến"}`;
+    } else if (Number.isFinite(nextTurnDistance) && nextTurnDistance <= 50) {
+      speechKey = `turn-now:${activeUpcomingStep?.maneuver?.location?.join(",")}`;
+      speechText = activeInstruction;
+    } else if (Number.isFinite(nextTurnDistance) && nextTurnDistance <= 300) {
+      speechKey = `turn-soon:${activeUpcomingStep?.maneuver?.location?.join(",")}`;
+      speechText = `Còn ${Math.round(nextTurnDistance)} mét, ${activeInstruction}`;
+    }
+
+    if (speechText) {
+      void speakNavigationInstruction(speechText, {
+        key: speechKey,
+        isMuted: isVoiceMuted,
+        speedKmh: activeTripSpeedKmh,
+      });
+    }
+  }, [
+    activeDistanceToTarget,
+    activeInstruction,
+    activeNextDestination?.id,
+    activeTargetPoint?.name,
+    activeTrip.isPaused,
+    activeTripSpeedKmh,
+    activeUpcomingStep,
+    isActiveTripMode,
+    isVoiceMuted,
+    navigationController.distanceToNextTurn,
+  ]);
 
   // Nhắc nhở di chuyển thông minh trước 10 phút.
   useDepartureAlerts({
@@ -729,7 +850,7 @@ export default function MapScreen() {
     return null;
   }, [isActiveTripMode, activeTrip.isPaused, currentDestination, activeNextDestination, dayDateMap]);
 
-  // Phát hiện đến nơi (< 50m) → mở popup điểm danh.
+  // Phát hiện sắp đến nơi (< 150m) → mở bottom banner không chặn bản đồ.
   useEffect(() => {
     if (!isActiveTripMode || !activeNextDestination) {
       setActiveArrivalVisible(false);
@@ -737,7 +858,7 @@ export default function MapScreen() {
     }
     if (
       Number.isFinite(activeDistanceToTarget) &&
-      activeDistanceToTarget <= ARRIVAL_RADIUS_M &&
+      activeDistanceToTarget <= ARRIVING_SOON_RADIUS_M &&
       arrivalHandledRef.current !== activeNextDestination.id
     ) {
       setActiveArrivalVisible(true);
@@ -752,7 +873,13 @@ export default function MapScreen() {
 
   // Hysteresis logic cho nearby warning banner (khoảng cách <= 150m)
   useEffect(() => {
-    if (!isActiveTripMode || activeTrip.isPaused || !activeDistanceToTarget || activeDistanceToTarget <= ARRIVAL_RADIUS_M) {
+    if (
+      !isActiveTripMode ||
+      activeTrip.isPaused ||
+      !activeDistanceToTarget ||
+      activeArrivalVisible ||
+      activeDistanceToTarget <= ARRIVAL_RADIUS_M
+    ) {
       setNearbyTriggered(false);
       return;
     }
@@ -761,7 +888,33 @@ export default function MapScreen() {
     } else if (activeDistanceToTarget > 200) {
       setNearbyTriggered(false);
     }
-  }, [activeDistanceToTarget, isActiveTripMode, activeTrip.isPaused]);
+  }, [activeDistanceToTarget, isActiveTripMode, activeTrip.isPaused, activeArrivalVisible]);
+
+  // Screen dimming: giảm sáng khi đường thẳng dài (> 1km không có ngã rẽ)
+  useEffect(() => {
+    if (!isActiveTripMode || activeTrip.isPaused) {
+      setIsScreenDimmed(false);
+      dimActivatedRef.current = false;
+      return;
+    }
+
+    const nextTurnDist = navigationController.distanceToNextTurn;
+    if (!Number.isFinite(nextTurnDist)) {
+      setIsScreenDimmed(false);
+      dimActivatedRef.current = false;
+      return;
+    }
+
+    if (dimActivatedRef.current) {
+      if (nextTurnDist <= SCREEN_DIM_DEACTIVATE_DISTANCE_M) {
+        dimActivatedRef.current = false;
+        setIsScreenDimmed(false);
+      }
+    } else if (nextTurnDist >= SCREEN_DIM_ACTIVATE_DISTANCE_M) {
+      dimActivatedRef.current = true;
+      setIsScreenDimmed(true);
+    }
+  }, [isActiveTripMode, activeTrip.isPaused, navigationController.distanceToNextTurn]);
 
   const handleExitActiveTrip = useCallback(async () => {
     followCameraRef.current = false;
@@ -1185,10 +1338,15 @@ export default function MapScreen() {
           tileUrls={mapStyle.urls}
           mapType={mapStyle.mapType || "standard"}
           useNativeCleanStyle={mapStyle.useNativeCleanStyle === true}
+          mapPadding={activeMapPadding}
+          courseUpEnabled={isActiveTripMode && !activeTrip.isPaused}
           style={MAP_CANVAS_STYLE}
         >
-          {districtGeo ? <DistrictLayer geojson={districtGeo} /> : null}
-          {wardGeo ? <WardLayer geojson={wardGeo} /> : null}
+          <ContextualBoundaryLayer
+            geojson={districtGeo}
+            activeArea={activeArea}
+            allAreasKey={ALL_AREAS_KEY}
+          />
 
           <CurrentLocationMarker
             location={isActiveTripMode ? activeTripLocation : currentLocation}
@@ -1209,7 +1367,7 @@ export default function MapScreen() {
               isPrimary
               dashed={activeRouteSource === "fallback"}
               color="hsl(145, 63%, 38%)"
-              strokeOpacity={0.95}
+              strokeOpacity={navigationController.isGpsLost ? 0.4 : 0.95}
             />
           ) : routeCoordinates.length > 1 ? (
             <RoutePolyline
@@ -1218,6 +1376,16 @@ export default function MapScreen() {
               strokeWidth={5}
               isPrimary
               dashed={routeSource === "fallback"}
+            />
+          ) : null}
+
+          {isActiveTripMode &&
+          !navigationController.isGpsLost &&
+          navigationController.snappedPoint &&
+          Number(navigationController.distanceToRoute) > 8 ? (
+            <SnapLine
+              from={activeTripLocation}
+              to={navigationController.snappedPoint}
             />
           ) : null}
 
@@ -1259,6 +1427,39 @@ export default function MapScreen() {
                 </Marker>
               ))
             : null}
+
+          {isActiveTripMode &&
+          navigationController.isGpsLost &&
+          navigationController.estimatedPosition ? (
+            <Marker
+              coordinate={navigationController.estimatedPosition}
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
+            >
+              <View style={{ alignItems: "center", justifyContent: "center" }}>
+                <View
+                  style={{
+                    backgroundColor: "#9CA3AF",
+                    opacity: 0.3,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    position: "absolute",
+                  }}
+                />
+                <View
+                  style={{
+                    backgroundColor: "#9CA3AF",
+                    borderColor: "#FFFFFF",
+                    borderWidth: 1.5,
+                    width: 12,
+                    height: 12,
+                    borderRadius: 6,
+                  }}
+                />
+              </View>
+            </Marker>
+          ) : null}
         </MapView>
       </View>
 
@@ -1268,10 +1469,16 @@ export default function MapScreen() {
         instruction={activeInstruction}
         instructionIcon={activeInstructionIcon}
         targetName={activeTargetPoint?.name}
+        streetName={activeUpcomingStep?.name}
         etaLabel={activeRouteEtaLabel}
         distanceLabel={activeRouteDistanceLabel}
+        distanceToNextTurn={navigationController.distanceToNextTurn}
+        distanceToNextTurnLabel={activeDistanceToNextTurnLabel}
         isFetching={isActiveRouteFetching}
+        isOffRoute={navigationController.isOffRoute}
+        isVoiceMuted={isVoiceMuted}
         travelMode={activeTravelMode}
+        onToggleVoice={handleToggleVoice}
         onExit={handleExitActiveTrip}
       />
 
@@ -1281,6 +1488,58 @@ export default function MapScreen() {
         targetName={activeTargetPoint?.name}
         distanceMeters={activeDistanceToTarget ?? 0}
       />
+
+      {isActiveTripMode && navigationController.isGpsLost ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            top: (insets.top || 0) + 94,
+            zIndex: 75,
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              backgroundColor: "rgba(30, 41, 59, 0.92)",
+              borderWidth: 1,
+              borderColor: "rgba(148, 163, 184, 0.24)",
+              borderRadius: 14,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+            }}
+          >
+            <MaterialIconsRounded name="signal-cellular-off" size={16} color="#94A3B8" />
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  color: "#E2E8F0",
+                  fontSize: 13,
+                  fontFamily: TOKENS.font.semibold,
+                }}
+              >
+                {MAP_TEXT.navigation.signalLost}
+              </Text>
+              {navigationController.estimatedPosition ? (
+                <Text
+                  style={{
+                    color: "#94A3B8",
+                    fontSize: 11,
+                    fontFamily: TOKENS.font.medium,
+                  }}
+                >
+                  {MAP_TEXT.navigation.signalLostSubtitle}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        </View>
+      ) : null}
 
       {/* Broadcast Notice from Event Organizers */}
       {broadcastNotice ? (
@@ -1425,9 +1684,12 @@ export default function MapScreen() {
         primaryActionText={completeIsTripEnd ? t("mapScreen.complete") : t("mapScreen.paused")}
       />
 
-      <ArrivalConfirmModal
+      <ArrivalBanner
         visible={isActiveTripMode && !activeTrip.isPaused && activeArrivalVisible}
         targetName={activeTargetPoint?.name}
+        distanceMeters={activeDistanceToTarget ?? Number.POSITIVE_INFINITY}
+        speedKmh={activeTripSpeedKmh}
+        bottomOffset={FLOATING_TAB_CLEARANCE + 18}
         onDismiss={handleDismissActiveArrival}
         onConfirm={handleConfirmActiveArrival}
       />
@@ -1834,6 +2096,19 @@ export default function MapScreen() {
             compact={isCompactPreviewCard}
           />
           </View>
+      ) : null}
+
+      {/* Screen dimming overlay cho đường thẳng dài */}
+      {isActiveTripMode && !activeTrip.isPaused && isScreenDimmed ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundColor: `rgba(0, 0, 0, ${SCREEN_DIM_OVERLAY_OPACITY})`,
+            zIndex: 4,
+          }}
+        />
       ) : null}
 
       <FilterPickerModal

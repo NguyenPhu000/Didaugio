@@ -56,15 +56,20 @@ export function NoteEditorModal({
               className="rounded-[28px] p-6 gap-3 bg-white"
               style={{ boxShadow: "0 20px 48px rgba(0,0,0,0.18)" }}
             >
-              <Text className="text-[#1D1D1F] text-[22px] font-bold tracking-[-0.4px]">{t('noteEditor.title')}</Text>
-              <Text className="text-[#54647A] text-[14px] leading-5 tracking-[-0.1px]" numberOfLines={2}>
-                {placeName || t('noteEditor.subtitle')}
+              <Text className="text-[#1D1D1F] text-[22px] font-bold tracking-[-0.4px]">
+                {t("noteEditor.title")}
+              </Text>
+              <Text
+                className="text-[#54647A] text-[14px] leading-5 tracking-[-0.1px]"
+                numberOfLines={2}
+              >
+                {placeName || t("noteEditor.subtitle")}
               </Text>
 
               <TextInput
                 value={value}
                 onChangeText={onChangeText}
-                placeholder={t('noteEditor.placeholder')}
+                placeholder={t("noteEditor.placeholder")}
                 placeholderTextColor="rgba(29, 29, 31, 0.42)"
                 multiline
                 maxLength={500}
@@ -78,7 +83,9 @@ export function NoteEditorModal({
                   disabled={saving}
                   className="flex-1 items-center justify-center rounded-full py-3 bg-[#F2F2F7] active:scale-[0.97]"
                 >
-                  <Text className="text-[#1D1D1F] text-[15px] font-semibold tracking-[-0.2px]">{t('noteEditor.cancel')}</Text>
+                  <Text className="text-[#1D1D1F] text-[15px] font-semibold tracking-[-0.2px]">
+                    {t("noteEditor.cancel")}
+                  </Text>
                 </Pressable>
                 <Pressable
                   onPress={onSubmit}
@@ -88,7 +95,7 @@ export function NoteEditorModal({
                   }`}
                 >
                   <Text className="text-white text-[15px] font-semibold tracking-[-0.2px]">
-                    {saving ? t('noteEditor.saving') : t('noteEditor.saveNote')}
+                    {saving ? t("noteEditor.saving") : t("noteEditor.saveNote")}
                   </Text>
                 </Pressable>
               </View>

@@ -14,7 +14,6 @@ import {
   Alert,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -23,8 +22,12 @@ import { Image } from "expo-image";
 import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../../constants/design-tokens";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
 import {
   useSavePlace,
   useUnsavePlace,
@@ -60,7 +63,6 @@ export const CollectionSelectorSheet = memo(
     const [showCreateInput, setShowCreateInput] = useState(false);
     const [localCollections, setLocalCollections] = useState([]);
 
-    // Tải localCollections từ safeAsyncStorage để hiển thị các folder trống đồng bộ với màn Saved
     useEffect(() => {
       const loadLocalCollections = async () => {
         try {
@@ -82,7 +84,6 @@ export const CollectionSelectorSheet = memo(
       }
     }, [isLoggedIn, user?.id]);
 
-    // Xác định xem địa điểm này đã được lưu vào collection nào chưa
     const savedEntry = useMemo(() => {
       if (!placeId) return null;
       return savedPlaces.find(
@@ -93,21 +94,18 @@ export const CollectionSelectorSheet = memo(
 
     const currentCollectionName = useMemo(() => {
       if (!savedEntry) return null;
-      return savedEntry.collectionName || t('collectionSelector.favorite');
-    }, [savedEntry]);
+      return savedEntry.collectionName || t("collectionSelector.favorite");
+    }, [savedEntry, t]);
 
-    // Gom dữ liệu để lấy ảnh đại diện và đếm số lượng items cho từng folder
     const folderDataList = useMemo(() => {
       const map = new Map();
 
-      // Mặc định luôn có Yêu thích
       map.set("yêu thích", {
-        name: t('collectionSelector.favorite'),
+        name: t("collectionSelector.favorite"),
         count: 0,
         thumbnail: null,
       });
 
-      // Thêm các local collections để đảm bảo các folder trống cục bộ hiển thị đầy đủ
       localCollections.forEach((name) => {
         const key = name.toLowerCase();
         if (!map.has(key)) {
@@ -134,7 +132,7 @@ export const CollectionSelectorSheet = memo(
 
         if (!map.has(key)) {
           map.set(key, {
-            name: colName || t('collectionSelector.favorite'),
+            name: colName || t("collectionSelector.favorite"),
             count: 0,
             thumbnail: null,
           });
@@ -154,7 +152,7 @@ export const CollectionSelectorSheet = memo(
       });
 
       return Array.from(map.values());
-    }, [collections, savedPlaces, localCollections]);
+    }, [collections, savedPlaces, localCollections, t]);
 
     useImperativeHandle(ref, () => ({
       present: () => {
@@ -171,7 +169,7 @@ export const CollectionSelectorSheet = memo(
           {...props}
           disappearsOnIndex={-1}
           appearsOnIndex={0}
-          opacity={0.3}
+          opacity={0.4}
         />
       ),
       [],
@@ -181,34 +179,55 @@ export const CollectionSelectorSheet = memo(
       async (collectionName) => {
         if (!placeId) return;
 
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
         try {
           const isDefault = collectionName === "Yêu thích";
           const targetCollectionName = isDefault ? null : collectionName;
 
           if (currentCollectionName === collectionName) {
             await unsaveMutation.mutateAsync(placeId);
-            Alert.alert(t('collectionSelector.unsaved'), t('collectionSelector.unsavedDesc'));
+            Alert.alert(
+              t("collectionSelector.unsaved"),
+              t("collectionSelector.unsavedDesc"),
+            );
           } else {
             await saveMutation.mutateAsync({
               placeId,
               collectionName: targetCollectionName || undefined,
             });
-            Alert.alert(t('collectionSelector.saveSuccess'), t('collectionSelector.saveSuccessDesc', { name: collectionName }));
+            Alert.alert(
+              t("collectionSelector.saveSuccess"),
+              t("collectionSelector.saveSuccessDesc", { name: collectionName }),
+            );
           }
           onSuccess?.();
           bottomSheetModalRef.current?.dismiss();
         } catch (err) {
-          Alert.alert(t('collectionSelector.error'), t('collectionSelector.errorDesc'));
+          Alert.alert(
+            t("collectionSelector.error"),
+            t("collectionSelector.errorDesc"),
+          );
         }
       },
-      [placeId, currentCollectionName, saveMutation, unsaveMutation, onSuccess],
+      [
+        placeId,
+        currentCollectionName,
+        saveMutation,
+        unsaveMutation,
+        onSuccess,
+        t,
+      ],
     );
 
     const handleCreateCollection = useCallback(async () => {
       const name = newCollectionName.trim();
       if (!name) return;
       if (name.toLowerCase() === "yêu thích") {
-        Alert.alert(t('collectionSelector.duplicateName'), t('collectionSelector.duplicateNameDesc'));
+        Alert.alert(
+          t("collectionSelector.duplicateName"),
+          t("collectionSelector.duplicateNameDesc"),
+        );
         return;
       }
 
@@ -219,7 +238,6 @@ export const CollectionSelectorSheet = memo(
           collectionName: name,
         });
 
-        // Đồng bộ lưu tên collection mới vào safeAsyncStorage để màn hình Saved nạp được
         try {
           const key = user?.id
             ? `local_collections_${user.id}`
@@ -234,17 +252,24 @@ export const CollectionSelectorSheet = memo(
           // Lỗi lưu offline âm thầm
         }
 
-        Alert.alert(t('collectionSelector.saveSuccessNew'), t('collectionSelector.saveSuccessNewDesc', { name }));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(
+          t("collectionSelector.saveSuccessNew"),
+          t("collectionSelector.saveSuccessNewDesc", { name }),
+        );
         setNewCollectionName("");
         setShowCreateInput(false);
         onSuccess?.();
         bottomSheetModalRef.current?.dismiss();
       } catch (err) {
-        Alert.alert(t('collectionSelector.createError'), t('collectionSelector.createErrorDesc'));
+        Alert.alert(
+          t("collectionSelector.createError"),
+          t("collectionSelector.createErrorDesc"),
+        );
       } finally {
         setIsCreating(false);
       }
-    }, [newCollectionName, placeId, saveMutation, onSuccess, user?.id]);
+    }, [newCollectionName, placeId, saveMutation, onSuccess, user?.id, t]);
 
     return (
       <BottomSheetModal
@@ -255,75 +280,87 @@ export const CollectionSelectorSheet = memo(
         onDismiss={onClose}
         handleIndicatorStyle={{
           backgroundColor: "rgba(0,0,0,0.15)",
-          width: 36,
-          height: 4,
+          width: 40,
+          height: 5,
         }}
         backgroundStyle={{
           backgroundColor: "#FFFFFF",
-          borderRadius: 28,
+          borderRadius: 24,
         }}
       >
-        <View className="px-5 pb-4 pt-2">
-          <View
-            className="flex-row items-center justify-between mb-4"
-          >
-            <Text className="text-[#1D1D1F] text-lg font-extrabold tracking-[-0.3px]">
-              {t('collectionSelector.saveToCollection')}
+        <View className="px-5 pb-2 pt-1">
+          <View className="flex-row items-center justify-between mb-5">
+            <Text
+              className="text-[22px] tracking-tight"
+              style={{
+                color: APPLE_THEME.text,
+                fontFamily: TOKENS.font.heading,
+              }}
+            >
+              {t("collectionSelector.saveToCollection")}
             </Text>
             <Pressable
-              onPress={() => bottomSheetModalRef.current?.dismiss()}
-              hitSlop={8}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                bottomSheetModalRef.current?.dismiss();
+              }}
+              className="w-8 h-8 rounded-full bg-black/5 items-center justify-center active:bg-black/10"
             >
               <MaterialIconsRounded
                 name="close"
-                size={22}
+                size={18}
                 color={APPLE_THEME.textMuted}
               />
             </Pressable>
           </View>
 
-          {/* Dòng kích hoạt tạo mới nhanh dạng nét vẽ đứt quãng sang xịn */}
+          {/* Dòng tạo mới chuẩn Apple: Sạch sẽ, không gạch đứt */}
           {!showCreateInput ? (
             <Pressable
-              onPress={() => setShowCreateInput(true)}
-              className="flex-row items-center gap-3 py-3.5 px-3 border border-dashed border-[#D1D1D6] rounded-2xl active:bg-black/[0.01]"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowCreateInput(true);
+              }}
+              className="flex-row items-center gap-3.5 py-3 px-1 mb-2 rounded-2xl active:opacity-70"
             >
-              <View className="w-8 h-8 rounded-lg bg-orange-50 items-center justify-center">
-                <MaterialIconsRounded name="add" size={18} color="#FF9500" />
+              <View className="w-12 h-12 rounded-2xl bg-[#FF9500]/10 items-center justify-center border border-[#FF9500]/10">
+                <MaterialIconsRounded name="add" size={24} color="#FF9500" />
               </View>
-              <Text className="text-[#FF9500] text-[14px] font-bold">
-                {t('collectionSelector.createNew')}
+              <Text
+                className="text-[#FF9500] text-[16px]"
+                style={{ fontFamily: TOKENS.font.semibold }}
+              >
+                {t("collectionSelector.createNew")}
               </Text>
             </Pressable>
           ) : (
-            <View className="flex-row items-center gap-2.5 bg-[#F2F2F7] px-3.5 py-2.5 rounded-2xl border border-black/[0.01]">
+            <View className="flex-row items-center gap-3 bg-[#F2F2F7] pl-4 pr-2 py-2 mb-4 rounded-2xl">
               <TextInput
-                placeholder={t('collectionSelector.namePlaceholder')}
+                placeholder={t("collectionSelector.namePlaceholder")}
                 value={newCollectionName}
                 onChangeText={setNewCollectionName}
-                className="flex-1 text-[#1D1D1F] text-[14px] p-0 font-bold"
+                className="flex-1 text-[16px] text-[#1D1D1F] p-0"
+                style={{ fontFamily: TOKENS.font.medium }}
                 placeholderTextColor="#AEAEB2"
                 autoFocus
               />
               <Pressable
                 onPress={handleCreateCollection}
-                disabled={isCreating}
-                className="bg-black px-4 py-2 rounded-xl active:opacity-85"
+                disabled={isCreating || !newCollectionName.trim()}
+                className={`px-4 py-2.5 rounded-xl active:opacity-80 ${
+                  newCollectionName.trim() ? "bg-[#FF9500]" : "bg-[#D1D1D6]"
+                }`}
               >
                 {isCreating ? (
                   <ActivityIndicator size="small" color="#FFF" />
                 ) : (
-                  <Text className="text-white text-xs font-bold">{t('collectionSelector.create')}</Text>
+                  <Text
+                    className="text-white text-[14px]"
+                    style={{ fontFamily: TOKENS.font.bold }}
+                  >
+                    {t("collectionSelector.create")}
+                  </Text>
                 )}
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  setShowCreateInput(false);
-                  setNewCollectionName("");
-                }}
-                className="p-1 rounded-full bg-white/80 active:bg-white"
-              >
-                <MaterialIconsRounded name="close" size={14} color="#8E8E93" />
               </Pressable>
             </View>
           )}
@@ -336,7 +373,7 @@ export const CollectionSelectorSheet = memo(
         ) : (
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 40 }}
+            contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 12 }}
           >
             {folderDataList.map((folder, idx) => {
               const isSelected = currentCollectionName === folder.name;
@@ -346,71 +383,80 @@ export const CollectionSelectorSheet = memo(
                   entering={FadeIn.duration(180)}
                   layout={LinearTransition.duration(180)}
                 >
-                <Pressable
-                  onPress={() => handleSelectCollection(folder.name)}
-                  className="flex-row items-center justify-between px-5 py-4 border-b border-black/[0.03] active:bg-black/[0.01]"
-                  style={
-                    isSelected
-                      ? { backgroundColor: "rgba(255, 149, 0, 0.02)" }
-                      : {}
-                  }
-                >
-                  <View className="flex-row items-center gap-3.5 flex-1 mr-4">
-                    {/* Thumbnail folder hoặc Icon */}
-                    {folder.thumbnail ? (
-                      <Image
-                        source={{ uri: folder.thumbnail }}
-                        className="w-12 h-12 rounded-2xl bg-gray-50 border border-black/[0.04]"
-                        contentFit="cover"
-                      />
-                    ) : (
-                      <View
-                        className="w-12 h-12 rounded-2xl items-center justify-center border border-black/[0.03]"
-                        style={{
-                          backgroundColor: isSelected
-                            ? "rgba(255, 149, 0, 0.1)"
-                            : "#F2F2F7",
-                        }}
-                      >
-                        <MaterialIconsRounded
-                          name={
-                            folder.name === "Yêu thích" ? "favorite" : "folder"
-                          }
-                          size={20}
-                          color={isSelected ? "#FF9500" : "#8E8E93"}
-                        />
-                      </View>
-                    )}
-
-                    <View className="flex-1">
-                      <Text
-                        className={`text-[15px] font-bold ${isSelected ? "text-[#FF9500]" : "text-[#1D1D1F]"}`}
-                      >
-                        {folder.name}
-                      </Text>
-                      <Text className="text-[#8E8E93] text-xs mt-0.5 font-semibold">
-                        {t('collectionSelector.placeCount', { count: folder.count })}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Radio button Checkmark màu cam ấm cực kỳ đồng bộ */}
-                  <View
-                    className="w-5.5 h-5.5 rounded-full border-2 items-center justify-center"
-                    style={{
-                      borderColor: isSelected ? "#FF9500" : "#D1D1D6",
-                      backgroundColor: isSelected ? "#FF9500" : "transparent",
-                    }}
+                  <Pressable
+                    onPress={() => handleSelectCollection(folder.name)}
+                    className="flex-row items-center justify-between px-3 py-2.5 rounded-2xl active:bg-black/5"
+                    style={
+                      isSelected
+                        ? { backgroundColor: "rgba(255, 149, 0, 0.05)" }
+                        : {}
+                    }
                   >
-                    {isSelected && (
-                      <MaterialIconsRounded
-                        name="check"
-                        size={13}
-                        color="#FFF"
-                      />
-                    )}
-                  </View>
-                </Pressable>
+                    <View className="flex-row items-center gap-3.5 flex-1 mr-4">
+                      {folder.thumbnail ? (
+                        <Image
+                          source={{ uri: folder.thumbnail }}
+                          className="w-12 h-12 rounded-2xl bg-gray-50 border border-black/5"
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <View
+                          className="w-12 h-12 rounded-2xl items-center justify-center border border-black/5"
+                          style={{
+                            backgroundColor: isSelected
+                              ? "rgba(255, 149, 0, 0.15)"
+                              : "#F2F2F7",
+                          }}
+                        >
+                          <MaterialIconsRounded
+                            name={
+                              folder.name === "Yêu thích"
+                                ? "favorite"
+                                : "folder"
+                            }
+                            size={22}
+                            color={isSelected ? "#FF9500" : "#8E8E93"}
+                          />
+                        </View>
+                      )}
+
+                      <View className="flex-1 justify-center">
+                        <Text
+                          className={`text-[16px] tracking-tight ${
+                            isSelected ? "text-[#FF9500]" : "text-[#1D1D1F]"
+                          }`}
+                          style={{ fontFamily: TOKENS.font.semibold }}
+                        >
+                          {folder.name}
+                        </Text>
+                        <Text
+                          className="text-[#8E8E93] text-[13px] mt-0.5"
+                          style={{ fontFamily: TOKENS.font.medium }}
+                        >
+                          {t("collectionSelector.placeCount", {
+                            count: folder.count,
+                          })}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Vòng tròn Checkmark Minimalist */}
+                    <View
+                      className="w-[22px] h-[22px] rounded-full border-[1.5px] items-center justify-center"
+                      style={{
+                        borderColor: isSelected ? "#FF9500" : "#D1D1D6",
+                        backgroundColor: isSelected ? "#FF9500" : "transparent",
+                      }}
+                    >
+                      {isSelected && (
+                        <MaterialIconsRounded
+                          name="check"
+                          size={14}
+                          color="#FFF"
+                        />
+                      )}
+                    </View>
+                  </Pressable>
                 </Animated.View>
               );
             })}

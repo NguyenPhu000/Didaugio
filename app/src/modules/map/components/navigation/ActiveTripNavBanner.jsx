@@ -1,8 +1,20 @@
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+  cancelAnimation,
+  Easing,
+} from "react-native-reanimated";
 import { BlurView } from "expo-blur";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { MaterialIconsRounded } from "../../../../components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../../constants/design-tokens";
+import { formatRouteDistance } from "../../utils/routeFormat";
+
+const APPROACHING_THRESHOLD_M = 300;
 
 /**
  * Banner dẫn đường turn-by-turn cho Active Trip Mode.
@@ -23,6 +35,35 @@ const getTravelModeIcon = (mode) => {
   }
 };
 
+const getBannerTone = (distanceMeters, isOffRoute) => {
+  if (isOffRoute) {
+    return {
+      background: "rgba(127,29,29,0.88)",
+      accent: "#FCA5A5",
+      iconBg: "#DC2626",
+    };
+  }
+  if (Number(distanceMeters) < 30) {
+    return {
+      background: "rgba(127,29,29,0.86)",
+      accent: "#FCA5A5",
+      iconBg: "#EF4444",
+    };
+  }
+  if (Number(distanceMeters) < 100) {
+    return {
+      background: "rgba(124,45,18,0.86)",
+      accent: "#FDBA74",
+      iconBg: "#F97316",
+    };
+  }
+  return {
+    background: "rgba(16,32,24,0.84)",
+    accent: "#5DD39E",
+    iconBg: "hsl(145, 63%, 32%)",
+  };
+};
+
 const ActiveTripNavBanner = memo(function ActiveTripNavBanner({
   visible,
   topOffset = 0,
@@ -31,11 +72,55 @@ const ActiveTripNavBanner = memo(function ActiveTripNavBanner({
   targetName,
   etaLabel,
   distanceLabel,
+  distanceToNextTurn,
+  distanceToNextTurnLabel,
+  streetName,
   isFetching,
+  isOffRoute = false,
+  isVoiceMuted = false,
   travelMode,
+  onToggleVoice,
   onExit,
 }) {
+  const pulseScale = useSharedValue(1);
+  const isApproaching =
+    Number(distanceToNextTurn) > 0 &&
+    Number(distanceToNextTurn) < APPROACHING_THRESHOLD_M;
+
+  useEffect(() => {
+    if (isApproaching) {
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.12, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+        ),
+        -1,
+        false,
+      );
+    } else {
+      cancelAnimation(pulseScale);
+      pulseScale.value = withTiming(1, { duration: 200 });
+    }
+    return () => cancelAnimation(pulseScale);
+  }, [isApproaching, pulseScale]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
+
   if (!visible) return null;
+
+  const mainDistanceLabel =
+    distanceToNextTurnLabel ||
+    formatRouteDistance(distanceToNextTurn) ||
+    distanceLabel ||
+    "Đang đi";
+  const tone = getBannerTone(distanceToNextTurn, isOffRoute);
+  const subtitle = isOffRoute
+    ? "Đang tính lại tuyến phù hợp"
+    : streetName || targetName
+      ? `Tiếp tục đến ${streetName || targetName}`
+      : "Bám theo tuyến đường hiện tại";
 
   return (
     <View
@@ -45,69 +130,78 @@ const ActiveTripNavBanner = memo(function ActiveTripNavBanner({
     >
       <BlurView
         tint="dark"
-        intensity={36}
-        className="flex-row items-center gap-3 overflow-hidden rounded-[18px] border"
+        intensity={42}
+        className="overflow-hidden rounded-[22px] border"
         style={{
-          paddingHorizontal: 14,
-          paddingVertical: 12,
           borderColor: "rgba(255,255,255,0.16)",
-          backgroundColor: "rgba(16,32,24,0.82)",
+          backgroundColor: tone.background,
         }}
       >
-        <View
-          className="h-11 w-11 items-center justify-center rounded-[14px]"
-          style={{ backgroundColor: "hsl(145, 63%, 32%)" }}
-        >
-          <MaterialIconsRounded name={instructionIcon} size={26} color="#FFFFFF" />
-        </View>
-
-        <View className="flex-1 gap-0.5">
-          <Text
-            className="text-[15px] font-semibold"
-            style={{ color: "#FFFFFF", fontFamily: TOKENS.font.semibold, letterSpacing: -0.2 }}
-            numberOfLines={2}
+        <View className="flex-row items-center gap-3 px-4 py-3">
+          <Animated.View
+            className="h-16 w-16 items-center justify-center rounded-[22px]"
+            style={[{ backgroundColor: tone.iconBg }, pulseStyle]}
           >
-            {instruction || "Đang tính tuyến đường..."}
-          </Text>
-          <View className="flex-row items-center gap-2">
-            {targetName ? (
+            <MaterialIconsRounded name={instructionIcon} size={40} color="#FFFFFF" />
+          </Animated.View>
+
+          <View className="flex-1">
+            <Text
+              className="text-[28px] font-bold leading-[32px] text-white"
+              style={{ fontFamily: TOKENS.font.bold, letterSpacing: -0.6 }}
+              numberOfLines={1}
+            >
+              {mainDistanceLabel}
+            </Text>
+            <Text
+              className="mt-1 text-[15px] font-semibold leading-5 text-white"
+              style={{ fontFamily: TOKENS.font.semibold, letterSpacing: -0.2 }}
+              numberOfLines={2}
+            >
+              {instruction || "Đang tính tuyến đường..."}
+            </Text>
+            <View className="mt-1 flex-row items-center gap-2">
+              {travelMode ? (
+                <MaterialIconsRounded
+                  name={getTravelModeIcon(travelMode)}
+                  size={14}
+                  color={tone.accent}
+                />
+              ) : null}
               <Text
-                className="shrink text-xs"
-                style={{ color: "rgba(255,255,255,0.7)", fontFamily: TOKENS.font.medium }}
+                className="shrink text-xs font-semibold"
+                style={{ color: tone.accent, fontFamily: TOKENS.font.semibold }}
                 numberOfLines={1}
               >
-                Đến {targetName}
+                {isFetching
+                  ? "Đang cập nhật..."
+                  : [subtitle, etaLabel].filter(Boolean).join(" • ")}
               </Text>
-            ) : null}
-            {travelMode ? (
-              <MaterialIconsRounded name={getTravelModeIcon(travelMode)} size={14} color="#5DD39E" />
-            ) : null}
-            {etaLabel || distanceLabel ? (
-              <Text
-                className="text-xs font-semibold"
-                style={{ color: "#5DD39E", fontFamily: TOKENS.font.semibold }}
-              >
-                {[distanceLabel, etaLabel].filter(Boolean).join(" • ")}
-              </Text>
-            ) : isFetching ? (
-              <Text
-                className="text-xs font-semibold"
-                style={{ color: "#5DD39E", fontFamily: TOKENS.font.semibold }}
-              >
-                Đang cập nhật…
-              </Text>
-            ) : null}
+            </View>
           </View>
-        </View>
 
-        <Pressable
-          onPress={onExit}
-          hitSlop={10}
-          className="h-8 w-8 items-center justify-center rounded-full"
-          style={{ backgroundColor: "rgba(255,255,255,0.14)" }}
-        >
-          <MaterialIconsRounded name="close" size={18} color="#FFFFFF" />
-        </Pressable>
+          {onToggleVoice ? (
+            <Pressable
+              onPress={onToggleVoice}
+              hitSlop={10}
+              className="h-9 w-9 items-center justify-center rounded-full bg-white/15"
+            >
+              <MaterialIconsRounded
+                name={isVoiceMuted ? "volume-off" : "volume-up"}
+                size={19}
+                color="#FFFFFF"
+              />
+            </Pressable>
+          ) : null}
+
+          <Pressable
+            onPress={onExit}
+            hitSlop={10}
+            className="h-9 w-9 items-center justify-center rounded-full bg-white/15"
+          >
+            <MaterialIconsRounded name="close" size={19} color="#FFFFFF" />
+          </Pressable>
+        </View>
       </BlurView>
     </View>
   );

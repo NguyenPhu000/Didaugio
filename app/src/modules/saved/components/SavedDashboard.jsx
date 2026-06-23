@@ -11,24 +11,27 @@ import {
   View,
 } from "react-native";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../../constants/design-tokens";
-import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import {
-  ALL_AREAS_KEY,
-  ALL_COLLECTIONS_KEY,
-} from "../utils/savedHelpers";
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
+import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
+import { ALL_AREAS_KEY, ALL_COLLECTIONS_KEY } from "../utils/savedHelpers";
 
-const FilterChip = memo(function FilterChip({ icon, label, active, onPress, onLongPress }) {
+const FilterChip = memo(function FilterChip({
+  icon,
+  label,
+  active,
+  onPress,
+  onLongPress,
+}) {
   return (
     <TouchableOpacity
       activeOpacity={0.7}
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={500}
-      style={[
-        styles.chip,
-        active ? styles.chipActive : styles.chipIdle,
-      ]}
+      style={[styles.chip, active ? styles.chipActive : styles.chipIdle]}
     >
       {icon ? (
         <MaterialIconsRounded
@@ -63,9 +66,10 @@ function FilterRow({ title, data, activeKey, onChange, onLongPressItem }) {
             label={item.name}
             active={activeKey === item.key}
             onPress={() => onChange(item.key)}
-            onLongPress={item.key !== ALL_COLLECTIONS_KEY && item.key !== ALL_AREAS_KEY
-              ? () => onLongPressItem?.(item.key, item.name)
-              : undefined
+            onLongPress={
+              item.key !== ALL_COLLECTIONS_KEY && item.key !== ALL_AREAS_KEY
+                ? () => onLongPressItem?.(item.key, item.name)
+                : undefined
             }
           />
         ))}
@@ -92,7 +96,7 @@ export const SavedDashboard = memo(function SavedDashboard({
       {
         key: ALL_COLLECTIONS_KEY,
         icon: "collections-bookmark",
-        name: t('savedDashboard.allWithCount', { count: savedData.length }),
+        name: t("savedDashboard.allWithCount", { count: savedData.length }),
       },
       ...collectionOptions.map((option) => ({
         ...option,
@@ -107,83 +111,92 @@ export const SavedDashboard = memo(function SavedDashboard({
       {
         key: ALL_AREAS_KEY,
         icon: "map",
-        name: t('savedDashboard.allAreasWithCount', { count: savedData.length }),
+        name: t("savedDashboard.allAreasWithCount", {
+          count: savedData.length,
+        }),
       },
       ...areaOptions.map((area) => ({ ...area, icon: "place" })),
     ],
     [areaOptions, savedData.length],
   );
 
-  const handleCollectionLongPress = useCallback((collectionName) => {
-    if (!collectionName || collectionName === ALL_COLLECTIONS_KEY) return;
+  const handleCollectionLongPress = useCallback(
+    (collectionName) => {
+      if (!collectionName || collectionName === ALL_COLLECTIONS_KEY) return;
 
-    const showOptions = (options) => {
-      const labels = options.map((o) => o.label);
-      const handlers = options.map((o) => o.handler);
+      const showOptions = (options) => {
+        const labels = options.map((o) => o.label);
+        const handlers = options.map((o) => o.handler);
 
-      if (Platform.OS === "ios") {
-        ActionSheetIOS.showActionSheetWithOptions(
-          { options: [...labels, t('savedDashboard.cancel')], cancelButtonIndex: labels.length },
-          (index) => {
-            if (index < labels.length) handlers[index]();
-          },
-        );
-      } else {
-        Alert.alert(
-          t('savedDashboard.manageCollection'),
-          t('savedDashboard.collectionLabel', { name: collectionName }),
-          [
-            ...options.map((o) => ({ text: o.label, onPress: o.handler })),
-            { text: t('savedDashboard.cancel'), style: "cancel" },
-          ],
-        );
-      }
-    };
-
-    showOptions([
-      {
-        label: t('savedDashboard.renameCollection'),
-        handler: () => {
-          if (Platform.OS === "ios") {
-            Alert.prompt(
-              t('savedDashboard.renameCollection'),
-              t('savedDashboard.renamePrompt', { name: collectionName }),
-              (newName) => {
-                if (newName?.trim()) onRenameCollection?.(collectionName, newName.trim());
-              },
-              "plain-text",
-              collectionName,
-            );
-          } else {
-            // On Android, Alert.prompt is not available, use a simple approach
-            onRenameCollection?.(collectionName);
-          }
-        },
-      },
-      {
-        label: t('common.delete'),
-        handler: () => {
+        if (Platform.OS === "ios") {
+          ActionSheetIOS.showActionSheetWithOptions(
+            {
+              options: [...labels, t("savedDashboard.cancel")],
+              cancelButtonIndex: labels.length,
+            },
+            (index) => {
+              if (index < labels.length) handlers[index]();
+            },
+          );
+        } else {
           Alert.alert(
-            t('savedDashboard.deleteCollection'),
-            t('savedDashboard.deleteConfirm', { name: collectionName }),
+            t("savedDashboard.manageCollection"),
+            t("savedDashboard.collectionLabel", { name: collectionName }),
             [
-              { text: t('savedDashboard.cancel'), style: "cancel" },
-              {
-                text: t('common.delete'),
-                style: "destructive",
-                onPress: () => onDeleteCollection?.(collectionName),
-              },
+              ...options.map((o) => ({ text: o.label, onPress: o.handler })),
+              { text: t("savedDashboard.cancel"), style: "cancel" },
             ],
           );
+        }
+      };
+
+      showOptions([
+        {
+          label: t("savedDashboard.renameCollection"),
+          handler: () => {
+            if (Platform.OS === "ios") {
+              Alert.prompt(
+                t("savedDashboard.renameCollection"),
+                t("savedDashboard.renamePrompt", { name: collectionName }),
+                (newName) => {
+                  if (newName?.trim())
+                    onRenameCollection?.(collectionName, newName.trim());
+                },
+                "plain-text",
+                collectionName,
+              );
+            } else {
+              // On Android, Alert.prompt is not available, use a simple approach
+              onRenameCollection?.(collectionName);
+            }
+          },
         },
-      },
-    ]);
-  }, [onRenameCollection, onDeleteCollection]);
+        {
+          label: t("common.delete"),
+          handler: () => {
+            Alert.alert(
+              t("savedDashboard.deleteCollection"),
+              t("savedDashboard.deleteConfirm", { name: collectionName }),
+              [
+                { text: t("savedDashboard.cancel"), style: "cancel" },
+                {
+                  text: t("common.delete"),
+                  style: "destructive",
+                  onPress: () => onDeleteCollection?.(collectionName),
+                },
+              ],
+            );
+          },
+        },
+      ]);
+    },
+    [onRenameCollection, onDeleteCollection],
+  );
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>{t('savedDashboard.saved')}</Text>
+        <Text style={styles.title}>{t("savedDashboard.saved")}</Text>
         {filteredCount > 0 ? (
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{filteredCount}</Text>
@@ -193,14 +206,14 @@ export const SavedDashboard = memo(function SavedDashboard({
 
       <View style={styles.filters}>
         <FilterRow
-          title={t('savedDashboard.collections')}
+          title={t("savedDashboard.collections")}
           data={collectionFilterData}
           activeKey={activeCollection}
           onChange={onChangeCollection}
           onLongPressItem={(key, name) => handleCollectionLongPress(key)}
         />
         <FilterRow
-          title={t('savedDashboard.areas')}
+          title={t("savedDashboard.areas")}
           data={areaFilterData}
           activeKey={activeArea}
           onChange={onChangeArea}

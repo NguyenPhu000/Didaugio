@@ -6,11 +6,13 @@ import { distanceMeters } from "../utils/distance";
 const LAST_KNOWN_MAX_AGE_MS = 5 * 60 * 1000;
 const WATCH_STATE_PUBLISH_INTERVAL_MS = 3500;
 const WATCH_STATE_PUBLISH_DISTANCE_M = 18;
+const HEADING_FREEZE_SPEED_KMH = 3;
 
 export function useMapLocationTracker({
   watchEnabled = false,
   timeInterval = 5000,
-  distanceInterval = 12
+  distanceInterval = 12,
+  onLocationUpdate,
 } = {}) {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [heading, setHeading] = useState(null);
@@ -22,9 +24,18 @@ export function useMapLocationTracker({
 
   const mergeHeading = useCallback((loc) => {
     if (!loc) return loc;
-    const h = loc.heading ?? headingRef.current;
+    const speedKmh = Number.isFinite(loc.speedKmh)
+      ? loc.speedKmh
+      : Number.isFinite(loc.speed)
+        ? loc.speed * 3.6
+        : null;
+    const shouldFreezeHeading =
+      Number.isFinite(speedKmh) &&
+      speedKmh < HEADING_FREEZE_SPEED_KMH &&
+      headingRef.current !== null;
+    const h = shouldFreezeHeading ? headingRef.current : loc.heading ?? headingRef.current;
     const ha = loc.headingAccuracy ?? headingAccuracyRef.current;
-    return { ...loc, heading: h, headingAccuracy: ha };
+    return { ...loc, heading: h, headingAccuracy: ha, speedKmh };
   }, []);
 
   const publishLocation = useCallback(
@@ -52,6 +63,14 @@ export function useMapLocationTracker({
       currentLocationSharedValue.value = merged;
       currentLocationRef.current = merged;
 
+      if (typeof onLocationUpdate === "function") {
+        try {
+          onLocationUpdate(merged);
+        } catch {
+          // Keep GPS watcher alive even if a navigation subscriber fails.
+        }
+      }
+
       if (
         force ||
         !previous ||
@@ -62,7 +81,7 @@ export function useMapLocationTracker({
         setCurrentLocation(merged);
       }
     },
-    [currentLocationSharedValue, mergeHeading],
+    [currentLocationSharedValue, mergeHeading, onLocationUpdate],
   );
 
   // Compass heading watcher — updates heading continuously
@@ -152,6 +171,7 @@ export function useMapLocationTracker({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
             heading: position.coords.heading ?? undefined,
+            speed: position.coords.speed ?? undefined,
           },
           { force: true },
         );
@@ -193,6 +213,7 @@ export function useMapLocationTracker({
               latitude: location.coords.latitude,
               longitude: location.coords.longitude,
               heading: location.coords.heading ?? undefined,
+              speed: location.coords.speed ?? undefined,
             });
           },
         );
@@ -224,6 +245,7 @@ export function useMapLocationTracker({
           latitude: lastKnown.coords.latitude,
           longitude: lastKnown.coords.longitude,
           heading: headingRef.current ?? lastKnown.coords.heading ?? undefined,
+          speed: lastKnown.coords.speed ?? undefined,
         };
         publishLocation(nextLocation, { force: true });
 
@@ -239,6 +261,7 @@ export function useMapLocationTracker({
                 longitude: location.coords.longitude,
                 heading:
                   location.coords.heading ?? headingRef.current ?? undefined,
+                speed: location.coords.speed ?? undefined,
               },
               { force: true },
             );
@@ -259,6 +282,7 @@ export function useMapLocationTracker({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
         heading: headingRef.current ?? location.coords.heading ?? undefined,
+        speed: location.coords.speed ?? undefined,
       };
       publishLocation(nextLocation, { force: true });
       return nextLocation;

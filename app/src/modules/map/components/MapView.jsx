@@ -161,6 +161,8 @@ const PlaceMarker = memo(
     prev.isActive === next.isActive,
 );
 
+PlaceMarker.displayName = "PlaceMarker";
+
 const MapView = memo(
   forwardRef(
     (
@@ -176,6 +178,8 @@ const MapView = memo(
         tileUrls,
         mapType = "standard",
         useNativeCleanStyle = false,
+        mapPadding,
+        courseUpEnabled = false,
         children,
       },
       ref,
@@ -183,7 +187,7 @@ const MapView = memo(
       const mapRef = useRef(null);
       const regionRef = useRef(INITIAL_REGION);
       const [tileError, setTileError] = useState(false);
-      const [currentZoom, setCurrentZoom] = useState(() =>
+      const [, setCurrentZoom] = useState(() =>
         Math.round(Math.log2(360 / INITIAL_REGION.latitudeDelta)),
       );
       const tileErrorTimerRef = useRef(null);
@@ -220,6 +224,9 @@ const MapView = memo(
           };
           regionRef.current = next;
           mapRef.current?.animateToRegion(next, ZOOM_DURATION);
+        },
+        animateCamera: (camera, options) => {
+          mapRef.current?.animateCamera(camera, options);
         },
       }));
 
@@ -390,8 +397,8 @@ const MapView = memo(
           renderCluster={renderCluster}
           mapType={shouldUseTiles ? "none" : mapType}
           customMapStyle={customMapStyle}
-          rotateEnabled={false}
-          pitchEnabled={false}
+          rotateEnabled={courseUpEnabled}
+          pitchEnabled={courseUpEnabled}
           showsCompass={false}
           showsScale={false}
           showsBuildings={false}
@@ -403,6 +410,7 @@ const MapView = memo(
           onLongPress={onLongPressMap}
           onRegionChangeComplete={handleRegionChangeComplete}
           edgePadding={{ top: 120, right: 120, bottom: 120, left: 120 }}
+          mapPadding={mapPadding}
         >
           {shouldUseTiles
             ? resolvedTileUrls.map((tileUrl) => (

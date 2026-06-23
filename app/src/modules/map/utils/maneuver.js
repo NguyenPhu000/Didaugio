@@ -1,7 +1,8 @@
 /**
  * Ánh xạ maneuver của OSRM sang nhãn tiếng Việt + icon MaterialIcons.
  */
-import i18n from "@/i18n";
+import i18n from "../../../i18n";
+import { hasPassedManeuver } from "./routeEngine";
 
 const MODIFIER_LABELS = {
   left: i18n.t("maneuver.left"),
@@ -80,12 +81,14 @@ export function getManeuverIcon(step) {
  * @param {Array} steps - danh sách step của leg đầu tiên.
  * @param {{ latitude:number, longitude:number }} location
  * @param {(la,lo,la2,lo2)=>number} distanceFn - hàm Haversine.
+ * @param {{ currentHeading?: number }} options
  */
-export function pickUpcomingStep(steps, location, distanceFn) {
+export function pickUpcomingStep(steps, location, distanceFn, options = {}) {
   if (!Array.isArray(steps) || steps.length === 0) return null;
   if (!location) return steps[0];
 
   const PASSED_RADIUS_M = 25;
+  const currentHeading = options.currentHeading ?? location.heading;
   let best = null;
   let bestDist = Number.POSITIVE_INFINITY;
 
@@ -93,8 +96,21 @@ export function pickUpcomingStep(steps, location, distanceFn) {
     const loc = step?.maneuver?.location;
     if (!Array.isArray(loc) || loc.length < 2) continue;
     const [lng, lat] = loc;
+    const maneuverPoint = { lat, lng };
+    const bearingAfter = Number(step?.maneuver?.bearing_after);
+    if (
+      hasPassedManeuver(
+        location,
+        maneuverPoint,
+        Number.isFinite(bearingAfter) ? bearingAfter : null,
+        currentHeading,
+      )
+    ) {
+      continue;
+    }
+
     const d = distanceFn(location.latitude, location.longitude, lat, lng);
-    if (d <= PASSED_RADIUS_M) continue; // đã đi qua maneuver này
+    if (!Number.isFinite(currentHeading) && d <= PASSED_RADIUS_M) continue;
     if (d < bestDist) {
       bestDist = d;
       best = step;

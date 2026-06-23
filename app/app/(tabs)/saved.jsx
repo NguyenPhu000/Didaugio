@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import * as Haptics from "expo-haptics";
 import { GuestGate } from "../../src/components/ui/GuestGate";
 import { OfflineBanner } from "../../src/components/ui/OfflineBanner";
 import {
@@ -103,6 +104,16 @@ export default function SavedScreen() {
   const isFiltered =
     activeArea !== ALL_AREAS_KEY || activeCategory !== ALL_CATEGORIES_KEY;
 
+  const handleCategoryPress = useCallback((key) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveCategory(key);
+  }, []);
+
+  const handleAreaPress = useCallback((key) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveArea(key);
+  }, []);
+
   const handleOpenNoteEditor = useCallback((entry) => {
     const place = entry?.place || entry;
     setNoteTarget({
@@ -129,7 +140,7 @@ export default function SavedScreen() {
     } catch {
       Alert.alert(t("saved.alert.noteError"), t("common.tryAgain"));
     }
-  }, [handleCloseNoteEditor, noteDraft, noteTarget?.placeId, saveMutation]);
+  }, [handleCloseNoteEditor, noteDraft, noteTarget?.placeId, saveMutation, t]);
 
   const handleUnsave = useCallback(
     (placeId) => {
@@ -143,7 +154,7 @@ export default function SavedScreen() {
         },
       ]);
     },
-    [unsaveMutation],
+    [unsaveMutation, t],
   );
 
   const handleOpenPlace = useCallback(
@@ -154,7 +165,10 @@ export default function SavedScreen() {
     [router],
   );
 
-  const handleExplore = useCallback(() => router.push("/explore"), [router]);
+  const handleExplore = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push("/explore");
+  }, [router]);
 
   const getCategoryIcon = (categoryName) => {
     const name = String(categoryName || "").toLowerCase();
@@ -164,7 +178,11 @@ export default function SavedScreen() {
       name.includes("ẩm thực")
     )
       return { Icon: Utensils, color: "#F97316" };
-    if (name.includes("cà phê") || name.includes("cafe") || name.includes("trà"))
+    if (
+      name.includes("cà phê") ||
+      name.includes("cafe") ||
+      name.includes("trà")
+    )
       return { Icon: Coffee, color: "#EAB308" };
     if (
       name.includes("khách sạn") ||
@@ -190,7 +208,11 @@ export default function SavedScreen() {
   // Build category items with counts
   const catItems = useMemo(() => {
     const items = [
-      { key: ALL_CATEGORIES_KEY, name: t("common.all"), count: savedData.length },
+      {
+        key: ALL_CATEGORIES_KEY,
+        name: t("common.all"),
+        count: savedData.length,
+      },
     ];
     categoryOptions.forEach((opt) => {
       const count = savedData.filter((entry) => {
@@ -222,7 +244,8 @@ export default function SavedScreen() {
           place?.district?.name ?? place?.ward?.district?.name ?? null;
         let key;
         if (districtId != null) key = `id:${districtId}`;
-        else if (districtName) key = `name:${districtName.trim().toLowerCase()}`;
+        else if (districtName)
+          key = `name:${districtName.trim().toLowerCase()}`;
         else return false;
         return key === opt.key;
       }).length;
@@ -231,12 +254,11 @@ export default function SavedScreen() {
     return items;
   }, [savedData, areaOptions, t]);
 
-  // Render một card trong cột Masonry
   const renderMasonryCard = useCallback(
     (item) => {
       const place = item?.place || item;
       return (
-        <View key={String(item.id)} style={{ marginBottom: 14 }}>
+        <View key={String(item.id)} className="mb-3.5">
           <SavedCard
             entry={item}
             onPress={() => handleOpenPlace(place?.id)}
@@ -256,45 +278,20 @@ export default function SavedScreen() {
     const showAreas = areaItems.length > 1;
 
     return (
-      <View
-        style={{ paddingTop: 16, paddingBottom: 14, paddingHorizontal: 16 }}
-      >
+      <View className="pt-4 pb-3.5 px-4">
         {/* Tiêu đề + Badge */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 16,
-          }}
-        >
+        <View className="flex-row items-center justify-between mb-4">
           <Text
-            style={{
-              fontSize: 28,
-              fontFamily: TOKENS.font.heading,
-              color: "#0F172A",
-              letterSpacing: -0.8,
-            }}
+            className="text-[28px] tracking-tight text-[#0F172A]"
+            style={{ fontFamily: TOKENS.font.heading }}
           >
             {t("saved.title")}
           </Text>
           {filteredSavedData.length > 0 && (
-            <View
-              style={{
-                height: 26,
-                borderRadius: 13,
-                paddingHorizontal: 10,
-                backgroundColor: "rgba(0,0,0,0.06)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+            <View className="h-7 px-2.5 rounded-full bg-black/5 items-center justify-center">
               <Text
-                style={{
-                  fontSize: 13,
-                  fontFamily: TOKENS.font.semibold,
-                  color: "#6B7280",
-                }}
+                className="text-[13px] text-[#6B7280]"
+                style={{ fontFamily: TOKENS.font.semibold }}
               >
                 {filteredSavedData.length}
               </Text>
@@ -308,8 +305,8 @@ export default function SavedScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 10, paddingRight: 4, alignItems: "center" }}
-              style={showAreas ? { marginBottom: 8 } : undefined}
+              contentContainerClassName="gap-2.5 pr-1 items-center"
+              className={showAreas ? "mb-2.5" : ""}
             >
               {catItems.map((item) => {
                 const active = activeCategory === item.key;
@@ -320,25 +317,12 @@ export default function SavedScreen() {
                 return (
                   <Pressable
                     key={item.key}
-                    onPress={() => setActiveCategory(item.key)}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 6,
-                      paddingHorizontal: 16,
-                      paddingVertical: 10,
-                      borderRadius: TOKENS.radius.full,
-                      backgroundColor: active ? "#1C1C1E" : "#FFFFFF",
-                      borderWidth: active ? 0 : 1.5,
-                      borderColor: "rgba(0,0,0,0.08)",
-                      ...(active && {
-                        shadowColor: "#0F172A",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.2,
-                        shadowRadius: 6,
-                        elevation: 3,
-                      }),
-                    }}
+                    onPress={() => handleCategoryPress(item.key)}
+                    className={`flex-row items-center gap-1.5 px-3.5 py-2 rounded-full border active:scale-[0.97] active:opacity-90 ${
+                      active
+                        ? "bg-[#1C1C1E] border-[#1C1C1E] shadow-sm shadow-black/20"
+                        : "bg-white border-black/5"
+                    }`}
                   >
                     <Icon
                       size={15}
@@ -347,37 +331,28 @@ export default function SavedScreen() {
                     />
                     <Text
                       numberOfLines={1}
+                      className={`text-[13px] tracking-tight ${
+                        active ? "text-white" : "text-[#1C1C1E]"
+                      }`}
                       style={{
-                        fontSize: 13,
                         fontFamily: active
                           ? TOKENS.font.semibold
                           : TOKENS.font.medium,
-                        color: active ? "#FFFFFF" : "#1C1C1E",
                       }}
                     >
                       {item.name}
                     </Text>
                     <View
-                      style={{
-                        borderRadius: TOKENS.radius.full,
-                        paddingHorizontal: 6,
-                        paddingVertical: 1,
-                        minWidth: 22,
-                        alignItems: "center",
-                        backgroundColor: active
-                          ? "rgba(255,255,255,0.2)"
-                          : "rgba(0,0,0,0.06)",
-                      }}
+                      className={`rounded-full px-1.5 py-[1px] min-w-[22px] items-center ${
+                        active ? "bg-white/20" : "bg-black/5"
+                      }`}
                     >
                       <Text
                         numberOfLines={1}
-                        style={{
-                          fontSize: 11,
-                          fontFamily: TOKENS.font.semibold,
-                          color: active
-                            ? "rgba(255,255,255,0.85)"
-                            : "rgba(0,0,0,0.45)",
-                        }}
+                        className={`text-[11px] ${
+                          active ? "text-white/90" : "text-black/45"
+                        }`}
+                        style={{ fontFamily: TOKENS.font.semibold }}
                       >
                         {item.count}
                       </Text>
@@ -395,32 +370,19 @@ export default function SavedScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 10, paddingRight: 4, alignItems: "center" }}
+              contentContainerClassName="gap-2.5 pr-1 items-center"
             >
               {areaItems.map((item) => {
                 const active = activeArea === item.key;
                 return (
                   <Pressable
                     key={item.key}
-                    onPress={() => setActiveArea(item.key)}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 6,
-                      paddingHorizontal: 16,
-                      paddingVertical: 10,
-                      borderRadius: TOKENS.radius.full,
-                      backgroundColor: active ? "#1C1C1E" : "#FFFFFF",
-                      borderWidth: active ? 0 : 1.5,
-                      borderColor: "rgba(0,0,0,0.08)",
-                      ...(active && {
-                        shadowColor: "#0F172A",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.2,
-                        shadowRadius: 6,
-                        elevation: 3,
-                      }),
-                    }}
+                    onPress={() => handleAreaPress(item.key)}
+                    className={`flex-row items-center gap-1.5 px-3.5 py-2 rounded-full border active:scale-[0.97] active:opacity-90 ${
+                      active
+                        ? "bg-[#1C1C1E] border-[#1C1C1E] shadow-sm shadow-black/20"
+                        : "bg-white border-black/5"
+                    }`}
                   >
                     <MapPin
                       size={15}
@@ -429,37 +391,28 @@ export default function SavedScreen() {
                     />
                     <Text
                       numberOfLines={1}
+                      className={`text-[13px] tracking-tight ${
+                        active ? "text-white" : "text-[#1C1C1E]"
+                      }`}
                       style={{
-                        fontSize: 13,
                         fontFamily: active
                           ? TOKENS.font.semibold
                           : TOKENS.font.medium,
-                        color: active ? "#FFFFFF" : "#1C1C1E",
                       }}
                     >
                       {item.name}
                     </Text>
                     <View
-                      style={{
-                        borderRadius: TOKENS.radius.full,
-                        paddingHorizontal: 6,
-                        paddingVertical: 1,
-                        minWidth: 22,
-                        alignItems: "center",
-                        backgroundColor: active
-                          ? "rgba(255,255,255,0.2)"
-                          : "rgba(0,0,0,0.06)",
-                      }}
+                      className={`rounded-full px-1.5 py-[1px] min-w-[22px] items-center ${
+                        active ? "bg-white/20" : "bg-black/5"
+                      }`}
                     >
                       <Text
                         numberOfLines={1}
-                        style={{
-                          fontSize: 11,
-                          fontFamily: TOKENS.font.semibold,
-                          color: active
-                            ? "rgba(255,255,255,0.85)"
-                            : "rgba(0,0,0,0.45)",
-                        }}
+                        className={`text-[11px] ${
+                          active ? "text-white/90" : "text-black/45"
+                        }`}
+                        style={{ fontFamily: TOKENS.font.semibold }}
                       >
                         {item.count}
                       </Text>
@@ -481,8 +434,8 @@ export default function SavedScreen() {
     activeCategory,
     filteredSavedData.length,
     t,
-    setActiveArea,
-    setActiveCategory,
+    handleAreaPress,
+    handleCategoryPress,
   ]);
 
   if (!isLoggedIn) {
@@ -499,7 +452,11 @@ export default function SavedScreen() {
 
   return (
     <View
-      style={{ flex: 1, paddingTop: insets.top, backgroundColor: APPLE_THEME.background }}
+      className="flex-1"
+      style={{
+        paddingTop: insets.top,
+        backgroundColor: APPLE_THEME.background,
+      }}
     >
       <OfflineBanner />
       <NoteEditorModal
@@ -528,27 +485,24 @@ export default function SavedScreen() {
         {renderHeader()}
 
         {showContent ? (
-          <View style={{ paddingHorizontal: 12, flexDirection: "row" }}>
+          <View className="px-3 flex-row">
             {/* Cột trái */}
-            <View style={{ flex: 1, paddingRight: 4 }}>
+            <View className="flex-1 pr-1">
               {leftColumn.map(renderMasonryCard)}
             </View>
-            {/* Cột phải - offset xuống một chút để tạo staggered effect */}
-            <View style={{ flex: 1, paddingLeft: 4, paddingTop: 18 }}>
+            {/* Cột phải - Offset padding top để tạo hiệu ứng so le (Staggered Masonry) */}
+            <View className="flex-1 pl-1 pt-4">
               {rightColumn.map(renderMasonryCard)}
             </View>
           </View>
         ) : (
-          <View style={{ paddingHorizontal: 12 }}>
+          <View className="px-3">
             {isLoading ? (
               <LoadingState />
             ) : isError ? (
               <ErrorState onRetry={refetch} />
             ) : (
-              <EmptyState
-                activeFilter={isFiltered}
-                onExplore={handleExplore}
-              />
+              <EmptyState activeFilter={isFiltered} onExplore={handleExplore} />
             )}
           </View>
         )}
