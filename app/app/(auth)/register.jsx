@@ -309,13 +309,15 @@ export default function RegisterScreen() {
 
             {/* Main Action Button */}
             <View 
-              className="rounded-[14px] overflow-hidden mt-2 shadow-sm elevation-2"
+              className="rounded-[14px] overflow-hidden mt-2"
               style={Platform.OS === "ios" ? {
                 shadowColor: "#007AFF",
                 shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.25,
+                shadowOpacity: 0.3,
                 shadowRadius: 8,
-              } : null}
+              } : {
+                elevation: 3,
+              }}
             >
               <Pressable
                 onPress={handleRegister}

@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useAuthStore } from "../../src/stores/authStore";
 import i18n from "@/i18n";
+import { getI18nLocale } from "../../src/utils/dateFormat";
 import {
   usePlaceServices,
   useCreateBooking,
@@ -112,7 +113,7 @@ const buildCalendarDays = (monthDate) => {
   });
 };
 
-const getLocale = () => i18n.language === "vi" ? "vi-VN" : "en-US";
+const getLocale = () => getI18nLocale();
 
 const formatMonthYearLabel = (monthDate) =>
   monthDate.toLocaleDateString(getLocale(), {
@@ -137,7 +138,7 @@ const formatBookingDateTime = (dateYmd, timeValue, notSelectedLabel) => {
 
 const formatPrice = (price, contactLabel) => {
   if (!price && price !== 0) return contactLabel || "—";
-  return new Intl.NumberFormat("vi-VN", {
+  return new Intl.NumberFormat(getI18nLocale(), {
     style: "currency",
     currency: "VND",
   }).format(price);

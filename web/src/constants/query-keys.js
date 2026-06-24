@@ -27,6 +27,11 @@ export const queryKeys = {
     dashboard: () => ["business", "dashboard"],
   },
 
+  documents: {
+    all: () => ["documents"],
+    status: (businessId) => ["documents", "status", businessId],
+  },
+
   places: {
     all: () => ["places"],
     list: (params) => ["places", "list", params],
@@ -154,6 +159,8 @@ export const queryKeys = {
   dashboard: {
     all: () => ["dashboard"],
     stats: () => ["dashboard", "stats"],
+    health: () => ["dashboard", "health"],
+    onlineUsers: () => ["dashboard", "online-users"],
   },
 
   events: {

@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { resolveMediaUrl, resolvePlaceImageUri } from "../../../lib/media-url";
+import { formatMonthYear } from "@/utils/dateFormat";
 
 export function MemoriesSection({ completedTrips }) {
   if (!completedTrips || completedTrips.length === 0) {
@@ -29,7 +30,7 @@ export function MemoriesSection({ completedTrips }) {
   const memory1 = {
     title: mem1?.title || "Hành trình",
     date: mem1?.endDate
-      ? new Date(mem1.endDate).toLocaleDateString("vi-VN", { month: "long", year: "numeric" }).toUpperCase()
+      ? (formatMonthYear(mem1.endDate) || "").toUpperCase()
       : "",
     image: coverImage1,
   };

@@ -40,9 +40,17 @@
     "loginRequired": "Login required",
     "login": "Login",
     "saving": "Saving...",
-    "processing": "Processing..."
+    "processing": "Processing...",
+    "weekdays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    }
   },
-  "tabs": {
     "map": "Map",
     "explore": "Explore",
     "saved": "Saved",
@@ -985,6 +993,59 @@
       "optimizedInfo": "Optimized based on current travel time.",
       "retryingRoute": "Retrying...",
       "retryRoute": "Retry directions"
+    },
+    "navigation": {
+      "signalLost": "Searching for signal...",
+      "signalLostSubtitle": "Estimated position based on last speed"
+    },
+    "voice": {
+      "arrived": "You have arrived at {{name}}",
+      "distanceInstruction": "{{distance}} meters, {{instruction}}",
+      "defaultDestination": "destination"
+    },
+    "activeTripNavBanner": {
+      "traveling": "Traveling",
+      "recalculating": "Recalculating route",
+      "continueTo": "Continue to {{name}}",
+      "followCurrentRoute": "Follow the current route",
+      "calculatingRoute": "Calculating route...",
+      "updating": "Updating..."
+    },
+    "arrivalBanner": {
+      "arrivedTitle": "Have you arrived?",
+      "approachingTitle": "Almost there",
+      "arrivedMessage": "Confirm arrival at {{name}} to complete this leg.",
+      "approachingMessage": "{{distance}} to {{name}}. Find a safe place to stop.",
+      "swipeToConfirm": "Swipe/tap to confirm",
+      "unlockWhenStopped": "Unlocks when stopped within 30m",
+      "defaultDestination": "destination",
+      "defaultDistance": "a short distance"
+    },
+    "nearbyWarningBanner": {
+      "title": "Almost there!",
+      "message": "Only {{distance}}m to {{name}}.",
+      "defaultTarget": "Destination"
+    },
+    "startNavigationModal": {
+      "title": "Start journey",
+      "body": "Would you like to start navigation and track your location for the trip now?",
+      "later": "Later",
+      "startNow": "Start now"
+    },
+    "tripCompleteModal": {
+      "journeyTitle": "Congratulations on completing the journey!",
+      "dayTitle": "Day {{day}} complete!",
+      "journeyMessage": "You have excellently completed all destinations in this trip. Wishing you many beautiful memories in Can Tho!",
+      "dayMessage": "All destinations for Day {{day}} have been explored. Would you like to pause navigation to rest?",
+      "close": "Close",
+      "complete": "Complete",
+      "pause": "Pause"
+    },
+    "departureReminderBanner": {
+      "title": "Get ready to move",
+      "withMinutes": "About {{minutes}} minutes left before moving to {{name}}.",
+      "now": "It's time to head to {{name}}. Let's go!",
+      "defaultNextName": "next destination"
     },
     "filters": {
       "quickOptions": {

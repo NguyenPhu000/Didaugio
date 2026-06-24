@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import {
   MapPin,
   Ticket,
@@ -13,10 +14,16 @@ import {
   ShieldCheck,
   AlertTriangle,
   ArrowRight,
+  Download,
+  CheckCircle2,
+  Circle,
+  CreditCard,
+  Building2,
 } from "lucide-react";
 import { useBusinessProfile, useBusinessDashboard } from "@/hooks/queries/useBusinessQueries";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BOOKING_STATUS } from "@/constants/constants";
+import { queryKeys } from "@/constants/query-keys";
 import { useAuthStore } from "@/stores/authStore";
 import {
   WelcomeBanner,
@@ -30,6 +37,11 @@ import {
 } from "@/components/business/ui";
 import { formatVND } from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { cn } from "@/lib/utils";
+import { getDocumentStatus } from "@/apis/documentApi";
+import { downloadContract } from "@/apis/businessApi";
+import { toast } from "sonner";
 
 const BusinessDashboardPage = memo(() => {
   const { t } = useTranslation();
@@ -43,6 +55,49 @@ const BusinessDashboardPage = memo(() => {
   const overview = useMemo(() => stats?.overview || stats || {}, [stats]);
   const topServices = stats?.topServices || [];
   const period = stats?.period || null;
+
+  const businessId = business?.id;
+
+  const { data: docStatusRes } = useQuery({
+    queryKey: queryKeys.documents.status(businessId),
+    queryFn: () => getDocumentStatus(businessId),
+    enabled: !!businessId,
+  });
+
+  const docStatus = useMemo(() => {
+    const raw = docStatusRes?.data || docStatusRes || {};
+    return {
+      idCardFront: Array.isArray(raw?.idCardFront) ? raw.idCardFront : [],
+      idCardBack: Array.isArray(raw?.idCardBack) ? raw.idCardBack : [],
+      businessLicense: Array.isArray(raw?.businessLicense) ? raw.businessLicense : [],
+      certificate: Array.isArray(raw?.certificate) ? raw.certificate : [],
+    };
+  }, [docStatusRes]);
+
+  const docsUploadedCount = useMemo(
+    () =>
+      [docStatus.idCardFront, docStatus.idCardBack, docStatus.businessLicense, docStatus.certificate]
+        .filter((arr) => arr.length > 0).length,
+    [docStatus],
+  );
+
+  const handleDownloadContract = useCallback(async () => {
+    if (!businessId) return;
+    try {
+      const blob = await downloadContract(businessId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `contract-${businessId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(t("business.documents.downloadStarted"));
+    } catch {
+      toast.error(t("business.documents.loadFailed"));
+    }
+  }, [businessId, t]);
 
   const statMiniCharts = useMemo(() => {
     const places = Number(overview?.placesCount || 0);
@@ -300,16 +355,81 @@ const BusinessDashboardPage = memo(() => {
                 </div>
               </div>
 
-              <Button
-                variant={contractStatusKey === "signed" ? "outline" : "default"}
-                className="w-full gap-2"
-                onClick={handleNavigateContract}
-              >
-                {contractStatusKey === "signed"
-                  ? t("business.dashboard.contract.viewContract")
-                  : t("business.dashboard.contract.completeContract")}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {t("business.dashboard.documents.title")}
+                  </p>
+                  <Badge variant="outline" className="text-xs">
+                    {t("business.dashboard.documents.count", {
+                      count: docsUploadedCount,
+                      total: 4,
+                    })}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { docs: docStatus.businessLicense, icon: Building2, label: t("business.dashboard.documents.license") },
+                    { docs: docStatus.idCardFront, icon: CreditCard, label: t("business.dashboard.documents.idFront") },
+                    { docs: docStatus.idCardBack, icon: CreditCard, label: t("business.dashboard.documents.idBack") },
+                  ].map(({ docs, icon: DocIcon, label }) => {
+                    const hasDocs = docs.length > 0;
+                    return (
+                      <div
+                        key={label}
+                        className={cn(
+                          "flex flex-col items-center gap-1.5 rounded-lg border p-2.5 text-center",
+                          hasDocs
+                            ? "border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/50 dark:bg-emerald-950/20"
+                            : "border-border/60 bg-background",
+                        )}
+                      >
+                        <DocIcon
+                          className={cn(
+                            "h-4 w-4",
+                            hasDocs ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
+                          )}
+                        />
+                        <p className="text-[10px] font-medium text-foreground leading-tight">
+                          {label}
+                        </p>
+                        {hasDocs ? (
+                          <div className="flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            {docs.length > 1 && (
+                              <span className="text-[10px] text-emerald-600">{docs.length}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <Circle className="h-3 w-3 text-muted-foreground/40" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={handleDownloadContract}
+                  disabled={!business?.contractSigned}
+                >
+                  <Download className="h-4 w-4" />
+                  {t("business.dashboard.contract.downloadContract")}
+                </Button>
+                <Button
+                  variant={contractStatusKey === "signed" ? "outline" : "default"}
+                  className="w-full gap-2"
+                  onClick={handleNavigateContract}
+                >
+                  {contractStatusKey === "signed"
+                    ? t("business.dashboard.contract.viewContract")
+                    : t("business.dashboard.contract.completeContract")}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </BusinessSectionCard>
         )}

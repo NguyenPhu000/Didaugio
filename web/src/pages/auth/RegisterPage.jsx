@@ -25,7 +25,11 @@ import {
   CardDescription,
   Label,
 } from "@/components/ui";
+import { useAuthStore } from "@/stores/authStore";
 import { authService } from "@/apis/authService";
+import GoogleSignUpButton from "@/components/auth/GoogleSignUpButton";
+import { resolvePostLoginRoute } from "@/utils/authRouting";
+import { AUTH_ROUTES } from "@/constants/routes";
 
 const registerSchema = z
   .object({
@@ -59,13 +63,49 @@ const registerSchema = z
 const RegisterPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { setAuth, logout } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const HAS_GOOGLE_OAUTH = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
     document.title = t("auth.register.pageTitle");
   }, []);
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setIsGoogleLoading(true);
+    try {
+      const idToken = credentialResponse.credential;
+      if (!idToken) {
+        toast.error(t("auth.register.googleNoToken"));
+        return;
+      }
+      const response = await authService.googleRegister(idToken);
+      if (response.success) {
+        const dashboardUrl = resolvePostLoginRoute(response.data.user);
+        if (dashboardUrl === AUTH_ROUTES.LOGIN) {
+          logout();
+          toast.error(t("auth.register.googleNoPermission"));
+          return;
+        }
+
+        setAuth(
+          response.data.user,
+          response.data.accessToken,
+          response.data.refreshToken,
+        );
+        toast.success(t("auth.register.googleSuccess"));
+        navigate(dashboardUrl, { replace: true });
+      }
+    } catch (error) {
+      toast.error(error.message || t("auth.register.googleFailed"));
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const {
     register,
@@ -418,17 +458,26 @@ const RegisterPage = () => {
               </Button>
             </form>
 
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t-2 border-black border-dashed"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-4 text-gray-500 font-mono">
-                  {t("common.or")}
-                </span>
-              </div>
-            </div>
+            {HAS_GOOGLE_OAUTH && (
+              <>
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t-2 border-black border-dashed"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-4 text-gray-500 font-mono">
+                      {t("common.or")}
+                    </span>
+                  </div>
+                </div>
+
+                <GoogleSignUpButton
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => toast.error(t("auth.register.googleFailed"))}
+                  disabled={isGoogleLoading}
+                />
+              </>
+            )}
 
             {/* Login Link */}
             <div className="text-center">

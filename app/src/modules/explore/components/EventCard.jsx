@@ -14,6 +14,7 @@ import {
   TOKENS,
 } from "../../../constants/design-tokens";
 import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../../lib/media-url";
+import { formatDayMonthNumeric, formatDayMonth } from "@/utils/dateFormat";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -29,15 +30,8 @@ function EventCardInner({ event, onPress }) {
   const rawImage = event?.thumbnail || event?.imageUrl;
   const imageUri = rawImage ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 600) : "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80";
 
-  const startDateStr = event?.startDate ? new Date(event.startDate).toLocaleDateString("vi-VN", {
-    day: "numeric",
-    month: "numeric",
-  }) : "";
-  const endDateStr = event?.endDate ? new Date(event.endDate).toLocaleDateString("vi-VN", {
-    day: "numeric",
-    month: "numeric",
-    year: "numeric",
-  }) : "";
+  const startDateStr = event?.startDate ? formatDayMonthNumeric(event.startDate) : "";
+  const endDateStr = event?.endDate ? formatDayMonth(event.endDate) : "";
 
   const dateRange = startDateStr && endDateStr ? `${startDateStr} - ${endDateStr}` : "";
 

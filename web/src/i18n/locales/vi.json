@@ -82,7 +82,9 @@
     "pendingApproval": "Chờ duyệt",
     "reviewing": "Đang duyệt",
     "invalidImageFormat": "Chỉ hỗ trợ ảnh PNG/JPG/JPEG/WEBP",
-    "imageTooLarge": "Ảnh vượt quá 10MB, vui lòng chọn ảnh nhỏ hơn"
+    "invalidFileFormat": "Chỉ hỗ trợ ảnh PNG/JPG/JPEG/WEBP hoặc PDF",
+    "imageTooLarge": "Ảnh vượt quá 10MB, vui lòng chọn ảnh nhỏ hơn",
+    "fileTooLarge": "Tệp vượt quá 10MB, vui lòng chọn tệp nhỏ hơn"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -304,6 +306,10 @@
       "submitting": "ĐANG TẠO TÀI KHOẢN...",
       "success": "Đăng ký thành công! Vui lòng kiểm tra email để xác thực.",
       "failed": "Đăng ký thất bại. Vui lòng thử lại.",
+      "googleSuccess": "Đăng ký Google thành công!",
+      "googleFailed": "Đăng ký Google thất bại.",
+      "googleNoToken": "Không nhận được token từ Google.",
+      "googleNoPermission": "Tài khoản không có quyền truy cập.",
       "hasAccount": "ĐÃ CÓ TÀI KHOẢN?",
       "loginNow": "ĐĂNG NHẬP NGAY",
       "termsNote": "BẰNG VIỆC ĐĂNG KÝ, BẠN ĐỒNG Ý VỚI ĐIỀU KHOẢN SỬ DỤNG & CHÍNH SÁCH BẢO MẬT CỦA CHÚNG TÔI."
@@ -335,6 +341,27 @@
       "contactSupport": "Liên hệ support@didaugio.com nếu cần hỗ trợ",
       "tryDifferentEmail": "THỬ EMAIL KHÁC",
       "needHelp": "CẦN HỖ TRỢ?"
+    },
+    "resendVerification": {
+      "title": "Xác thực Email",
+      "subtitle": "Gửi lại email xác thực để kích hoạt tài khoản",
+      "submit": "Gửi lại email xác thực",
+      "submitting": "Đang gửi...",
+      "accountCreated": "Tài khoản đã được tạo thành công! Vui lòng xác thực email để đăng nhập.",
+      "note": "Lưu ý:",
+      "noteCheckSpam": "Kiểm tra thư mục Spam/Junk nếu không thấy email",
+      "noteExpiry": "Link xác thực sẽ hết hạn sau 24 giờ",
+      "noteRateLimit": "Chỉ được gửi lại tối đa 3 lần mỗi giờ",
+      "backToLogin": "Quay lại đăng nhập",
+      "noAccount": "Chưa có tài khoản?",
+      "registerNow": "Đăng ký ngay",
+      "enterValidEmail": "Vui lòng nhập email hợp lệ",
+      "success": "Email xác thực đã được gửi lại!",
+      "sendFailed": "Gửi email thất bại. Vui lòng thử lại.",
+      "emailSent": "EMAIL ĐÃ ĐƯỢC GỬI",
+      "checkInbox": "Vui lòng kiểm tra hộp thư và nhấn vào link xác thực.",
+      "autoRedirect": "Tự động chuyển đến trang đăng nhập sau 5 giây...",
+      "emailFromAccount": "Email từ tài khoản đã đăng nhập"
     }
   },
   "users": {
@@ -1889,7 +1916,34 @@
       "displayBankAccount": "Số tài khoản",
       "displayAccountHolder": "Chủ tài khoản",
       "bankInfoAlert": "Thông tin tài khoản sẽ được dùng để chuyển doanh thu hàng tháng. Vui lòng nhập chính xác.",
+      "secureDocuments": "Giấy tờ bảo mật",
+      "secureDocumentsDesc": "Quản lý CCCD và giấy phép kinh doanh được mã hóa an toàn",
       "loadFailed": "Không thể tải hồ sơ"
+    },
+    "documents": {
+      "idCardFront": "CCCD mặt trước",
+      "idCardBack": "CCCD mặt sau",
+      "businessLicense": "Giấy phép kinh doanh",
+      "certificate": "Chứng nhận / Giấy tờ khác",
+      "idCardFrontHint": "Tải lên ảnh mặt trước CCCD (PNG, JPEG, WEBP)",
+      "idCardBackHint": "Tải lên ảnh mặt sau CCCD (PNG, JPEG, WEBP)",
+      "businessLicenseHint": "Tải lên giấy phép kinh doanh (PNG, JPEG, WEBP, PDF)",
+      "certificateHint": "Tải lên chứng nhận hành nghề, giấy phép con,... (PNG, JPEG, WEBP, PDF)",
+      "uploaded": "Đã tải lên",
+      "notUploaded": "Chưa tải lên",
+      "reupload": "Tải lại",
+      "files": "tệp",
+      "noFiles": "Chưa có tệp",
+      "addMore": "Thêm tệp",
+      "uploadSuccess": "Tải lên thành công",
+      "uploadFailed": "Tải lên thất bại",
+      "deleteSuccess": "Xóa thành công",
+      "deleteFailed": "Xóa thất bại",
+      "loadFailed": "Không thể tải tài liệu",
+      "noContract": "Chưa có hợp đồng",
+      "contractPreview": "Xem trước hợp đồng",
+      "contractPdf": "Hợp đồng PDF",
+      "downloadStarted": "Bắt đầu tải xuống"
     },
     "staff": {
       "title": "Quản lý nhân viên",
@@ -2142,6 +2196,7 @@
       "acceptTermsLabel": "Tôi đã đọc, hiểu và đồng ý với điều khoản hợp đồng.",
       "clearSignature": "Xóa chữ ký",
       "confirmSign": "Xác nhận ký",
+      "latestVersion": "mới nhất",
       "invalidImageFormat": "Chỉ hỗ trợ ảnh PNG/JPG/JPEG/WEBP",
       "imageTooLarge": "Ảnh vượt quá {{maxSize}}, vui lòng chọn ảnh nhỏ hơn",
       "noImageToShow": "Chưa có ảnh để hiển thị",
@@ -2155,6 +2210,71 @@
       "retry": "Thử lại",
       "loadingData": "Đang tải dữ liệu...",
       "downloadCsv": "Tải CSV"
+    },
+    "contractWizard": {
+      "headerTitle": "Ký hợp đồng điện tử",
+      "deferLater": "Để sau — tôi sẽ ký sau",
+      "termsIssue": "Gặp vấn đề với điều khoản?",
+      "back": "Quay lại",
+      "continue": "Tiếp tục",
+      "steps": {
+        "confirmInfo": "Xác nhận thông tin",
+        "readContract": "Đọc hợp đồng",
+        "signContract": "Ký hợp đồng"
+      },
+      "partyA": {
+        "title": "Bên sử dụng dịch vụ (Bên A)",
+        "fullName": "Họ và tên",
+        "idCard": "Số CCCD",
+        "address": "Địa chỉ",
+        "phone": "Điện thoại",
+        "email": "Email"
+      },
+      "partyB": {
+        "title": "Bên cung cấp dịch vụ (Bên B)",
+        "representative": "Người đại diện",
+        "position": "Chức vụ",
+        "address": "Địa chỉ",
+        "phone": "Điện thoại",
+        "email": "Email",
+        "taxCode": "MST",
+        "bankAccount": "Số tài khoản",
+        "accountName": "Tên tài khoản",
+        "branch": "Chi nhánh",
+        "bankName": "Ngân hàng",
+        "expand": "Mở rộng thông tin Bên B",
+        "collapse": "Thu gọn thông tin Bên B"
+      },
+      "contract": {
+        "republicTitle": "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+        "republicMotto": "Độc Lập - Tự Do - Hạnh Phúc",
+        "contractNumberLabel": "Hợp đồng số",
+        "dateLabel": "Ngày {{day}} tháng {{month}} năm {{year}}",
+        "contractTitle": "HỢP ĐỒNG DỊCH VỤ",
+        "legalBasis": [
+          "Căn cứ Luật Thương mại nước CHXHCN Việt Nam năm 2005;",
+          "Căn cứ Bộ Luật dân sự số 91/2015/QH13 ngày 24/11/2015;",
+          "Căn cứ Luật Bảo vệ dữ liệu cá nhân số 91/2025/QH15 ngày 26/6/2025, có hiệu lực từ ngày 01/01/2026;",
+          "Căn cứ nhu cầu và khả năng thực tế của các bên trong hợp đồng;"
+        ],
+        "partiesIntro": "Chúng tôi gồm:"
+      },
+      "checklist": {
+        "title": "CẦN HOÀN TẤT TRƯỚC KHI KÝ",
+        "completed": "{{done}}/{{total}} hoàn tất",
+        "readContract": "Đã đọc hợp đồng",
+        "acceptTerms": "Đã tick xác nhận"
+      },
+      "signer": {
+        "name": "Người xác thực",
+        "confirmedAt": "Thời điểm xác nhận",
+        "ip": "IP",
+        "ipResolving": "Đang xác định...",
+        "device": "Thiết bị",
+        "note": "Chữ ký được lưu kèm thời điểm và metadata của phiên ký."
+      },
+      "consentLabel": "Tôi đã đọc và đồng ý ký hợp đồng dịch vụ điện tử này",
+      "signNow": "Ký hợp đồng"
     },
     "dashboard": {
       "businessOwner": "Chủ doanh nghiệp",
@@ -2197,7 +2317,15 @@
       "contract": {
         "signedAt": "Ký lúc",
         "viewContract": "Xem hợp đồng",
-        "completeContract": "Hoàn tất hợp đồng"
+        "completeContract": "Hoàn tất hợp đồng",
+        "downloadContract": "Tải hợp đồng PDF"
+      },
+      "documents": {
+        "title": "Giấy tờ xác minh",
+        "count": "{{count}}/{{total}} đã tải",
+        "license": "Giấy phép KD",
+        "idFront": "CCCD mặt trước",
+        "idBack": "CCCD mặt sau"
       },
       "operations": {
         "pendingToday": "Chờ xử lý hôm nay",

@@ -1,5 +1,6 @@
 import { memo, useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -82,6 +83,7 @@ const ActiveTripNavBanner = memo(function ActiveTripNavBanner({
   onToggleVoice,
   onExit,
 }) {
+  const { t } = useTranslation();
   const pulseScale = useSharedValue(1);
   const isApproaching =
     Number(distanceToNextTurn) > 0 &&
@@ -114,13 +116,13 @@ const ActiveTripNavBanner = memo(function ActiveTripNavBanner({
     distanceToNextTurnLabel ||
     formatRouteDistance(distanceToNextTurn) ||
     distanceLabel ||
-    "Đang đi";
+    t("map.activeTripNavBanner.traveling");
   const tone = getBannerTone(distanceToNextTurn, isOffRoute);
   const subtitle = isOffRoute
-    ? "Đang tính lại tuyến phù hợp"
+    ? t("map.activeTripNavBanner.recalculating")
     : streetName || targetName
-      ? `Tiếp tục đến ${streetName || targetName}`
-      : "Bám theo tuyến đường hiện tại";
+      ? t("map.activeTripNavBanner.continueTo", { name: streetName || targetName })
+      : t("map.activeTripNavBanner.followCurrentRoute");
 
   return (
     <View
@@ -158,7 +160,7 @@ const ActiveTripNavBanner = memo(function ActiveTripNavBanner({
               style={{ fontFamily: TOKENS.font.semibold, letterSpacing: -0.2 }}
               numberOfLines={2}
             >
-              {instruction || "Đang tính tuyến đường..."}
+              {instruction || t("map.activeTripNavBanner.calculatingRoute")}
             </Text>
             <View className="mt-1 flex-row items-center gap-2">
               {travelMode ? (
@@ -174,7 +176,7 @@ const ActiveTripNavBanner = memo(function ActiveTripNavBanner({
                 numberOfLines={1}
               >
                 {isFetching
-                  ? "Đang cập nhật..."
+                  ? t("map.activeTripNavBanner.updating")
                   : [subtitle, etaLabel].filter(Boolean).join(" • ")}
               </Text>
             </View>

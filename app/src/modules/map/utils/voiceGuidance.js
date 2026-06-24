@@ -3,6 +3,8 @@ import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 
 const VOICE_MUTED_KEY = "didaugio:navigation:voice-muted";
 const SPEAK_DEBOUNCE_MS = 10_000;
+const CACHE_MAX_AGE_MS = 60_000;
+const CACHE_MAX_ENTRIES = 100;
 
 const TTS_REPLACEMENTS = Object.freeze({
   "Đ.": "Đường",
@@ -23,6 +25,16 @@ const TTS_REPLACEMENTS = Object.freeze({
 });
 
 let lastSpokenAtByKey = new Map();
+
+function pruneVoiceCache() {
+  if (lastSpokenAtByKey.size <= CACHE_MAX_ENTRIES) return;
+  const cutoff = Date.now() - CACHE_MAX_AGE_MS;
+  for (const [key, timestamp] of lastSpokenAtByKey) {
+    if (timestamp < cutoff) {
+      lastSpokenAtByKey.delete(key);
+    }
+  }
+}
 
 export function sanitizeTextForTTS(text) {
   if (!text) return "";
@@ -57,6 +69,7 @@ export async function speakNavigationInstruction(text, options = {}) {
   if (now - lastSpokenAt < SPEAK_DEBOUNCE_MS) return false;
 
   lastSpokenAtByKey.set(key, now);
+  pruneVoiceCache();
   const volume = Number(speedKmh) > 30 ? 1 : 0.85;
   Speech.speak(sanitized, {
     language,
@@ -69,4 +82,8 @@ export async function speakNavigationInstruction(text, options = {}) {
 
 export function resetVoiceGuidanceDebounce() {
   lastSpokenAtByKey = new Map();
+}
+
+export function stopSpeech() {
+  Speech.stop();
 }

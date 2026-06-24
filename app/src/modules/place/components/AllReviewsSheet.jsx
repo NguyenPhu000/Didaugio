@@ -11,6 +11,7 @@ import { Image } from "expo-image";
 import { BottomSheetView } from "@gorhom/bottom-sheet";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { resolveMediaUrl } from "../../../lib/media-url";
+import { formatShortDate } from "@/utils/dateFormat";
 import {
   PALETTE,
   TOKENS,
@@ -76,7 +77,7 @@ export const ReviewCard = memo(function ReviewCard({ review, t }) {
           </View>
         </View>
         <Text style={styles.reviewDate}>
-          {review?.createdAt ? new Date(review.createdAt).toLocaleDateString("vi-VN") : ""}
+          {review?.createdAt ? formatShortDate(review.createdAt) : ""}
         </Text>
       </View>
       {review?.content ? <Text style={styles.reviewContent}>{review.content}</Text> : null}

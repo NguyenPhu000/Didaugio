@@ -15,6 +15,14 @@ router.get("/vnpay-return", controller.vnpayReturn);
 
 router.get("/momo-return", controller.momoReturn);
 
+router.post("/sepay-ipn", controller.sepayIpn);
+
+router.get("/sepay-return", controller.sepayReturn);
+
+router.get("/sepay-checkout-form/:paymentId", controller.sepayCheckoutForm);
+
+router.post("/sepay-webhook", controller.sepayBankWebhook);
+
 /* ── Authenticated endpoints ────────────────────────────────────────────── */
 
 router.use(authenticate);

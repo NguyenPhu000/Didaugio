@@ -1,3 +1,4 @@
+import { createRequire } from "module";
 import express from "express";
 import { createServer } from "http";
 import cors from "cors";
@@ -12,6 +13,10 @@ import { validateEnv } from "./config/validateEnv.js";
 import { registerApiRoutes, registerRateLimiters } from "./routes/index.js";
 import { startPendingBookingExpireScheduler } from "./schedulers/pendingBookingExpire.scheduler.js";
 import { startTripAutoCompleteScheduler } from "./schedulers/tripAutoComplete.scheduler.js";
+import { initContractGenerationListener } from "./services/contract/contractGenerationListener.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json");
 
 dotenv.config({ override: true });
 validateEnv();
@@ -26,12 +31,11 @@ const configuredOrigins = (process.env.CORS_ORIGINS || "")
   .map((o) => o.trim())
   .filter(Boolean);
 const isProduction = process.env.NODE_ENV === "production";
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "";
 
-// Trust first proxy hop (nginx, load balancer, cloud platform)
-// Ensures req.ip returns client's real IP, not proxy IP
-if (isProduction) {
-  app.set("trust proxy", 1);
-}
+// Trust first proxy hop (nginx, load balancer, cloud platform, ngrok)
+// "loopback" = chỉ trust localhost (127.0.0.1, ::1), đủ cho dev + ngrok
+app.set("trust proxy", "loopback");
 
 const devDefaultOrigins = [
   "http://localhost:3000",
@@ -80,6 +84,10 @@ const isOriginAllowed = (origin) => {
 
 app.disable("x-powered-by");
 
+const cloudinaryDomains = CLOUDINARY_CLOUD_NAME
+  ? ["https://res.cloudinary.com"]
+  : [];
+
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -87,11 +95,20 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://*.googleusercontent.com"],
-        connectSrc: ["'self'", ...allowedOriginPatterns, ...allowedOriginPatterns.map(o => o.replace(/^http/, "ws"))],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "https://*.googleusercontent.com",
+          ...cloudinaryDomains,
+        ],
+        connectSrc: [
+          "'self'",
+          ...allowedOriginPatterns,
+          ...allowedOriginPatterns.map((o) => o.replace(/^http/, "ws")),
+        ],
         fontSrc: ["'self'"],
         objectSrc: ["'none'"],
-        mediaSrc: ["'self'", "https://res.cloudinary.com"],
+        mediaSrc: ["'self'", ...cloudinaryDomains],
         frameSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
@@ -135,8 +152,8 @@ app.get("/", async (req, res) => {
     res.json({
       success: true,
       data: {
-        name: "Di Dau Gio API Server",
-        version: "1.0.0",
+        name: pkg.name,
+        version: pkg.version,
         database: "Connected",
       },
       message: "Server is running",
@@ -154,6 +171,7 @@ app.get("/", async (req, res) => {
 app.use(errorHandler);
 
 initNotificationService();
+initContractGenerationListener();
 
 const httpServer = createServer(app);
 const io = initSocketIO(httpServer, allowedOriginPatterns);

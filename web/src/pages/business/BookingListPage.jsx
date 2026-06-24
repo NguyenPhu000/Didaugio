@@ -235,6 +235,7 @@ function PaymentMethodBadge({ payment }) {
   const configs = {
     VNPAY: "bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800",
     MOMO: "bg-pink-50 text-pink-700 border-pink-200/60 dark:bg-pink-950/40 dark:text-pink-400 dark:border-pink-800",
+    SEPAY: "bg-indigo-50 text-indigo-700 border-indigo-200/60 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800",
   };
 
   return (

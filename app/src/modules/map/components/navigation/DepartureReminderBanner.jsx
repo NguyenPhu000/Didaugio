@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { BlurView } from "expo-blur";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../../constants/design-tokens";
@@ -11,10 +12,14 @@ import { TOKENS } from "../../../../constants/design-tokens";
 const DepartureReminderBanner = memo(function DepartureReminderBanner({
   visible,
   bottomOffset = 0,
-  nextName = "địa điểm tiếp theo",
+  nextName,
   minutesLeft = 10,
 }) {
+  const { t } = useTranslation();
+
   if (!visible) return null;
+
+  const resolvedNextName = nextName || t("map.departureReminderBanner.defaultNextName");
 
   return (
     <View
@@ -46,7 +51,7 @@ const DepartureReminderBanner = memo(function DepartureReminderBanner({
             style={{ color: "#0A84FF", fontFamily: TOKENS.font.semibold, letterSpacing: -0.1 }}
             numberOfLines={1}
           >
-            Chuẩn bị di chuyển
+            {t("map.departureReminderBanner.title")}
           </Text>
           <Text
             className="text-sm leading-4"
@@ -54,8 +59,8 @@ const DepartureReminderBanner = memo(function DepartureReminderBanner({
             numberOfLines={2}
           >
             {minutesLeft > 0
-              ? `Còn khoảng ${minutesLeft} phút nữa là đến giờ đi tiếp sang ${nextName}.`
-              : `Đã đến giờ xuất phát sang ${nextName}. Hãy di chuyển nhé!`}
+              ? t("map.departureReminderBanner.withMinutes", { minutes: minutesLeft, name: resolvedNextName })
+              : t("map.departureReminderBanner.now", { name: resolvedNextName })}
           </Text>
         </View>
       </BlurView>

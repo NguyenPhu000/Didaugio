@@ -1,24 +1,15 @@
 import { View, Text } from "react-native";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { formatPriceLocale, formatBookingDate } from "@/utils/dateFormat";
 
 const formatPrice = (price) => {
   if (price == null) return "—";
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(price);
+  return formatPriceLocale(price);
 };
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("vi-VN", {
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  return formatBookingDate(dateStr) || "—";
 };
 
 export function OrderSummary({ service, useDate, useTime, quantity, totalPrice }) {

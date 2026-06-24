@@ -10,5 +10,6 @@ router.use(authenticate);
 router.get("/stats", hasPermission("system.view_analytics"), dashboardController.getStats);
 router.get("/timeline", hasPermission("system.view_analytics"), dashboardController.getTimeline);
 router.get("/health", hasPermission("system.view_analytics"), dashboardController.getHealth);
+router.get("/online-users", hasPermission("system.view_analytics"), dashboardController.getOnlineUsers);
 
 export default router;

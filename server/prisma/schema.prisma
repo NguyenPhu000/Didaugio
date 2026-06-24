@@ -800,6 +800,10 @@ model Business {
   contractSignedAt       DateTime?               @map("contract_signed_at")
   contractVersion        String?                 @map("contract_version")
   signerMetadata         Json?                   @map("signer_metadata")
+  contractPdfPath        String?                 @map("contract_pdf_path")
+  contractPdfIv          String?                 @map("contract_pdf_iv")
+  contractPdfAuthTag     String?                 @map("contract_pdf_auth_tag")
+  contractPdfChecksum    String?                 @map("contract_pdf_checksum")
   autoApproveRules       AutoApproveRule[]
   bookings               Booking[]
   notificationRecipients NotificationRecipient[]
@@ -813,10 +817,32 @@ model Business {
   payouts                Payout[]
   partnerWallet          PartnerWallet?
   blockedDates           BusinessBlockedDate[]
+  sensitiveDocuments     SensitiveDocument[]
   settings               Json                    @default("{}") @map("settings")
 
   @@index([status])
   @@map("businesses")
+}
+
+model SensitiveDocument {
+  id            Int      @id @default(autoincrement())
+  businessId    Int      @map("business_id")
+  type          String // "id_card_front", "id_card_back", "business_license", "certificate"
+  sortOrder     Int      @default(0) @map("sort_order") // Thứ tự khi có nhiều file cùng loại
+  encryptedPath String   @map("encrypted_path")
+  iv            String
+  authTag       String   @map("auth_tag")
+  mimeType      String   @map("mime_type")
+  originalName  String?  @map("original_name")
+  fileSize      Int      @map("file_size")
+  checksum      String
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, type])
+  @@map("sensitive_documents")
 }
 
 model BusinessRole {
@@ -1006,39 +1032,39 @@ model Booking {
   startTime DateTime? @map("start_time") @db.Timestamptz // VD: 2026-05-03T14:00:00+07:00
   endTime   DateTime? @map("end_time") @db.Timestamptz // VD: 2026-05-03T16:00:00+07:00
 
-  resourceId       Int?               @map("resource_id")
-  guestName        String             @map("guest_name")
-  guestPhone       String             @map("guest_phone")
-  guestEmail       String?            @map("guest_email")
-  guestNote        String?            @map("guest_note")
-  originalPrice    Int                @map("original_price")
-  discountAmount   Int                @default(0) @map("discount_amount")
-  voucherId        Int?               @map("voucher_id")
-  finalPrice       Int                @map("final_price")
-  commissionAmount Int                @default(0) @map("commission_amount")
-  paymentStatus    String             @default("unpaid") @map("payment_status")
-  status           BookingStatus      @default(pending)
-  cancelReason     String?            @map("cancel_reason")
-  cancelledBy      String?            @map("cancelled_by")
-  cancelledAt      DateTime?          @map("cancelled_at")
-  confirmedAt      DateTime?          @map("confirmed_at")
-  completedAt      DateTime?          @map("completed_at")
-  businessNote     String?            @map("business_note")
-  createdAt        DateTime           @default(now()) @map("created_at")
-  updatedAt        DateTime           @updatedAt @map("updated_at")
-  deletedAt        DateTime?          @map("deleted_at")
-  businessId       Int                @map("business_id")
-  bookingAt        DateTime?          @map("booking_at")
-  idempotencyKey   String?            @unique @map("idempotency_key")
-  adminEarned      Int                @default(0) @map("admin_earned")
-  businessEarned   Int                @default(0) @map("business_earned")
-  commissionRate   Int                @default(10) @map("commission_rate")
+  resourceId       Int?                @map("resource_id")
+  guestName        String              @map("guest_name")
+  guestPhone       String              @map("guest_phone")
+  guestEmail       String?             @map("guest_email")
+  guestNote        String?             @map("guest_note")
+  originalPrice    Int                 @map("original_price")
+  discountAmount   Int                 @default(0) @map("discount_amount")
+  voucherId        Int?                @map("voucher_id")
+  finalPrice       Int                 @map("final_price")
+  commissionAmount Int                 @default(0) @map("commission_amount")
+  paymentStatus    String              @default("unpaid") @map("payment_status")
+  status           BookingStatus       @default(pending)
+  cancelReason     String?             @map("cancel_reason")
+  cancelledBy      String?             @map("cancelled_by")
+  cancelledAt      DateTime?           @map("cancelled_at")
+  confirmedAt      DateTime?           @map("confirmed_at")
+  completedAt      DateTime?           @map("completed_at")
+  businessNote     String?             @map("business_note")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+  deletedAt        DateTime?           @map("deleted_at")
+  businessId       Int                 @map("business_id")
+  bookingAt        DateTime?           @map("booking_at")
+  idempotencyKey   String?             @unique @map("idempotency_key")
+  adminEarned      Int                 @default(0) @map("admin_earned")
+  businessEarned   Int                 @default(0) @map("business_earned")
+  commissionRate   Int                 @default(10) @map("commission_rate")
   actionLogs       BookingActionLog[]
-  business         Business           @relation(fields: [businessId], references: [id])
-  service          BusinessService    @relation(fields: [serviceId], references: [id])
-  user             User               @relation(fields: [userId], references: [id])
-  voucher          Voucher?           @relation(fields: [voucherId], references: [id])
-  resource         PlaceResource?     @relation(fields: [resourceId], references: [id])
+  business         Business            @relation(fields: [businessId], references: [id])
+  service          BusinessService     @relation(fields: [serviceId], references: [id])
+  user             User                @relation(fields: [userId], references: [id])
+  voucher          Voucher?            @relation(fields: [voucherId], references: [id])
+  resource         PlaceResource?      @relation(fields: [resourceId], references: [id])
   payment          Payment?
   transaction      BookingTransaction?
   financialLedgers FinancialLedger[]
@@ -1065,60 +1091,60 @@ model Booking {
 // Each completed booking creates one record here so the platform admin
 // can reconcile commission without depending on stale payout calculations.
 model BookingTransaction {
-  id            Int      @id @default(autoincrement())
-  bookingId     Int      @unique @map("booking_id")
-  businessId    Int      @map("business_id")
-  originalPrice Int      @map("original_price")
-  finalPrice    Int      @map("final_price")
-  discountAmount Int      @default(0) @map("discount_amount")
-  commissionRate Int      @map("commission_rate")
-  commissionAmount Int    @map("commission_amount")
-  netAmount     Int      @map("net_amount") // finalPrice - commissionAmount (what business earns)
-  completedAt   DateTime @default(now()) @map("completed_at")
-  source        String   @default("qr_checkin") // "complete", "qr_checkin"
-  booking       Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id               Int      @id @default(autoincrement())
+  bookingId        Int      @unique @map("booking_id")
+  businessId       Int      @map("business_id")
+  originalPrice    Int      @map("original_price")
+  finalPrice       Int      @map("final_price")
+  discountAmount   Int      @default(0) @map("discount_amount")
+  commissionRate   Int      @map("commission_rate")
+  commissionAmount Int      @map("commission_amount")
+  netAmount        Int      @map("net_amount") // finalPrice - commissionAmount (what business earns)
+  completedAt      DateTime @default(now()) @map("completed_at")
+  source           String   @default("qr_checkin") // "complete", "qr_checkin"
+  booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([businessId, completedAt])
   @@map("booking_transactions")
 }
 
 model Payment {
-  id             Int       @id @default(autoincrement())
-  bookingId      Int       @unique @map("booking_id")
-  userId         Int       @map("user_id")
+  id             Int                 @id @default(autoincrement())
+  bookingId      Int                 @unique @map("booking_id")
+  userId         Int                 @map("user_id")
   amount         Int
-  currency       String    @default("VND")
-  paymentMethod  String    @map("payment_method")
-  transactionId  String?   @map("transaction_id")
-  transactionRef String    @unique @map("transaction_ref")
-  idempotencyKey String    @unique @map("idempotency_key")
-  bankCode       String?   @map("bank_code")
-  paymentData    Json?     @map("payment_data")
-  status         String    @default("unpaid")
-  paidAt         DateTime? @map("paid_at")
-  refundAmount   Int?      @map("refund_amount")
-  refundedAt     DateTime? @map("refunded_at")
-  refundReason   String?   @map("refund_reason")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  booking        Booking   @relation(fields: [bookingId], references: [id])
-  user           User      @relation(fields: [userId], references: [id])
+  currency       String              @default("VND")
+  paymentMethod  String              @map("payment_method")
+  transactionId  String?             @map("transaction_id")
+  transactionRef String              @unique @map("transaction_ref")
+  idempotencyKey String              @unique @map("idempotency_key")
+  bankCode       String?             @map("bank_code")
+  paymentData    Json?               @map("payment_data")
+  status         String              @default("unpaid")
+  paidAt         DateTime?           @map("paid_at")
+  refundAmount   Int?                @map("refund_amount")
+  refundedAt     DateTime?           @map("refunded_at")
+  refundReason   String?             @map("refund_reason")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  booking        Booking             @relation(fields: [bookingId], references: [id])
+  user           User                @relation(fields: [userId], references: [id])
   webhookLogs    PaymentWebhookLog[]
 
   @@map("payments")
 }
 
 model PaymentWebhookLog {
-  id         Int      @id @default(autoincrement())
-  paymentId  Int?     @map("payment_id")
-  gateway    String
-  payload    Json
-  signature  String?
-  verified   Boolean  @default(false)
-  processed  Boolean  @default(false)
-  error      String?
-  createdAt  DateTime @default(now()) @map("created_at")
-  payment    Payment? @relation(fields: [paymentId], references: [id])
+  id        Int      @id @default(autoincrement())
+  paymentId Int?     @map("payment_id")
+  gateway   String
+  payload   Json
+  signature String?
+  verified  Boolean  @default(false)
+  processed Boolean  @default(false)
+  error     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  payment   Payment? @relation(fields: [paymentId], references: [id])
 
   @@index([gateway, createdAt])
   @@map("payment_webhook_logs")
@@ -1164,7 +1190,7 @@ model FinancialLedger {
   id          Int      @id @default(autoincrement())
   bookingId   Int?     @map("booking_id")
   payoutId    Int?     @map("payout_id")
-  type        String   // "COMMISSION", "EARNING", "WITHDRAW", "REFUND", "SETTLE"
+  type        String // "COMMISSION", "EARNING", "WITHDRAW", "REFUND", "SETTLE"
   amount      Int
   description String
   createdAt   DateTime @default(now()) @map("created_at")
@@ -1197,6 +1223,8 @@ enum BookingAction {
   auto_approve
   auto_approve_failed
   auto_expire
+  auto_cancel_termination
+  auto_cancel_suspension
   checkin
 }
 
@@ -1211,42 +1239,42 @@ model CachedItinerary {
 }
 
 model Event {
-  id                Int                @id @default(autoincrement())
+  id                Int      @id @default(autoincrement())
   title             String
   description       String?
-  thumbnail         String?            // Dữ liệu ảnh (URL Cloudinary tối ưu)
-  thumbnailPublicId String?            @map("thumbnail_public_id") // publicId Cloudinary để dễ xóa
-  startDate         DateTime           @map("start_date") @db.Date
-  endDate           DateTime           @map("end_date") @db.Date
-  location          String?            @default("Cần Thơ")
-  maxParticipants   Int?               @map("max_participants")
-  status            String             @default("active") // active | inactive | completed
-  isFeaturedBanner  Boolean            @default(false) @map("is_featured_banner") // Hiển thị trên Carousel Explore
-  
+  thumbnail         String? // Dữ liệu ảnh (URL Cloudinary tối ưu)
+  thumbnailPublicId String?  @map("thumbnail_public_id") // publicId Cloudinary để dễ xóa
+  startDate         DateTime @map("start_date") @db.Date
+  endDate           DateTime @map("end_date") @db.Date
+  location          String?  @default("Cần Thơ")
+  maxParticipants   Int?     @map("max_participants")
+  status            String   @default("active") // active | inactive | completed
+  isFeaturedBanner  Boolean  @default(false) @map("is_featured_banner") // Hiển thị trên Carousel Explore
+
   // ─── Tích hợp 4 Viễn cảnh Trải nghiệm ───
-  totalCheckIns     Int                @default(0) @map("total_check_ins") // Viễn cảnh 2: Tiến trình cộng đồng
-  broadcastNotice   String?            @db.VarChar(255) @map("broadcast_notice") // Viễn cảnh 4: Ticker khẩn cấp từ BTC
-  
-  tripId            Int?               @map("trip_id")
-  trip              Trip?              @relation(fields: [tripId], references: [id], onDelete: SetNull)
-  createdBy         Int                @map("created_by")
-  createdByUser     User               @relation("EventCreator", fields: [createdBy], references: [id])
-  createdAt         DateTime           @default(now()) @map("created_at")
-  updatedAt         DateTime           @updatedAt @map("updated_at")
-  participants      EventParticipant[]
-  moments           EventMoment[]
-  activeSessions    ActiveSession[]
+  totalCheckIns   Int     @default(0) @map("total_check_ins") // Viễn cảnh 2: Tiến trình cộng đồng
+  broadcastNotice String? @map("broadcast_notice") @db.VarChar(255) // Viễn cảnh 4: Ticker khẩn cấp từ BTC
+
+  tripId         Int?               @map("trip_id")
+  trip           Trip?              @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  createdBy      Int                @map("created_by")
+  createdByUser  User               @relation("EventCreator", fields: [createdBy], references: [id])
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+  participants   EventParticipant[]
+  moments        EventMoment[]
+  activeSessions ActiveSession[]
 
   @@map("events")
 }
 
 model EventParticipant {
-  id        Int      @id @default(autoincrement())
-  eventId   Int      @map("event_id")
-  userId    Int      @map("user_id")
-  joinedAt  DateTime @default(now()) @map("joined_at")
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id       Int      @id @default(autoincrement())
+  eventId  Int      @map("event_id")
+  userId   Int      @map("user_id")
+  joinedAt DateTime @default(now()) @map("joined_at")
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
   @@map("event_participants")

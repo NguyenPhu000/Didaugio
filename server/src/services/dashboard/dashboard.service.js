@@ -184,17 +184,50 @@ const getActivityTimeline = async () => {
   return timeline;
 };
 
-const getSystemHealth = async () => {
-  const MAX_RECORDS_THRESHOLD = 100000;
+// ─── Simple in-memory cache for dashboard APIs ───────────────────────────────
+const createCache = (ttlMs) => {
+  let cached = null;
+  let cachedAt = 0;
+  return {
+    get: () => (Date.now() - cachedAt < ttlMs ? cached : null),
+    set: (data) => { cached = data; cachedAt = Date.now(); },
+    invalidate: () => { cached = null; cachedAt = 0; },
+  };
+};
 
-  const [totalRecords, recentErrors] = await Promise.all([
+const healthCache = createCache(25_000);   // 25s
+const onlineCache = createCache(15_000);   // 15s
+
+const getSystemHealth = async () => {
+  const hit = healthCache.get();
+  if (hit) return hit;
+
+  const MAX_RECORDS_THRESHOLD = 100000;
+  const mem = process.memoryUsage();
+
+  const [totalRecords, recentErrorLogs] = await Promise.all([
     prisma.auditLog.count(),
-    Promise.resolve(0),
+    prisma.auditLog.findMany({
+      where: { action: { contains: "error", mode: "insensitive" } },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: { id: true, action: true, description: true, createdAt: true },
+    }),
   ]);
 
   const dbLoad = Math.min((totalRecords / MAX_RECORDS_THRESHOLD) * 100, 100);
 
-  return {
+  const result = {
+    server: {
+      uptime: Math.round(process.uptime()),
+      memory: {
+        heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+        heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
+        rss: Math.round(mem.rss / 1024 / 1024),
+      },
+      nodeVersion: process.version,
+      pid: process.pid,
+    },
     database: {
       totalRecords,
       load: Math.round(dbLoad),
@@ -204,9 +237,43 @@ const getSystemHealth = async () => {
       status: "operational",
     },
     errors: {
-      recent: recentErrors,
+      recent: recentErrorLogs,
     },
   };
+
+  healthCache.set(result);
+  return result;
 };
 
-export { getDashboardStats, getActivityTimeline, getSystemHealth };
+/**
+ * Real-time online users from in-memory tracker + DB lookup (cached 15s)
+ */
+const getOnlineUsersCount = async () => {
+  const hit = onlineCache.get();
+  if (hit) return hit;
+
+  const { getOnlineUsers } = await import("../../utils/onlineManager.js");
+  const onlineUserIds = getOnlineUsers();
+
+  let users = [];
+  if (onlineUserIds.length > 0) {
+    users = await prisma.user.findMany({
+      where: { id: { in: onlineUserIds } },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        roleId: true,
+        role: { select: { name: true } },
+        profile: { select: { fullName: true, avatar: true } },
+        lastLoginAt: true,
+      },
+    });
+  }
+
+  const result = { count: onlineUserIds.length, users };
+  onlineCache.set(result);
+  return result;
+};
+
+export { getDashboardStats, getActivityTimeline, getSystemHealth, getOnlineUsersCount };

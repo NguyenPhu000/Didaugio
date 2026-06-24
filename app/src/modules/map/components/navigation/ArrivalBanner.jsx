@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { BlurView } from "expo-blur";
 import { MaterialIconsRounded } from "../../../../components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../../constants/design-tokens";
@@ -16,6 +17,8 @@ const ArrivalBanner = memo(function ArrivalBanner({
   onDismiss,
   onConfirm,
 }) {
+  const { t } = useTranslation();
+
   if (!visible) return null;
 
   const canConfirm =
@@ -43,15 +46,15 @@ const ArrivalBanner = memo(function ArrivalBanner({
               className="text-[15px] font-bold text-slate-950"
               style={{ fontFamily: TOKENS.font.bold }}
             >
-              {canConfirm ? "Bạn đã đến nơi?" : "Sắp đến nơi"}
+              {canConfirm ? t("map.arrivalBanner.arrivedTitle") : t("map.arrivalBanner.approachingTitle")}
             </Text>
             <Text
               className="mt-1 text-xs leading-[18px] text-slate-600"
               style={{ fontFamily: TOKENS.font.medium }}
             >
               {canConfirm
-                ? `Xác nhận đã tới ${targetName || "điểm đến"} để hoàn tất chặng.`
-                : `Còn ${distanceLabel || "một đoạn ngắn"} đến ${targetName || "điểm đến"}. Tìm chỗ dừng xe an toàn.`}
+                ? t("map.arrivalBanner.arrivedMessage", { name: targetName || t("map.arrivalBanner.defaultDestination") })
+                : t("map.arrivalBanner.approachingMessage", { distance: distanceLabel || t("map.arrivalBanner.defaultDistance"), name: targetName || t("map.arrivalBanner.defaultDestination") })}
             </Text>
           </View>
 
@@ -77,7 +80,7 @@ const ArrivalBanner = memo(function ArrivalBanner({
             }`}
             style={{ fontFamily: TOKENS.font.bold }}
           >
-            {canConfirm ? "Vuốt/nhấn để xác nhận" : "Mở khóa khi dừng trong 30m"}
+            {canConfirm ? t("map.arrivalBanner.swipeToConfirm") : t("map.arrivalBanner.unlockWhenStopped")}
           </Text>
         </Pressable>
       </BlurView>

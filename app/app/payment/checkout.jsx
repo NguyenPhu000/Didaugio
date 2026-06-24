@@ -18,6 +18,7 @@ import { useCheckout, usePollPaymentStatus, PENDING_PAYMENT_REF_KEY, PENDING_PAY
 import { getMyBookingDetailApi } from "@/modules/booking/api/bookingApi";
 import { OrderSummary } from "@/modules/booking/components/OrderSummary";
 import { PaymentMethodSelector } from "@/modules/booking/components/PaymentMethodSelector";
+import { getI18nLocale, formatPriceLocale, formatBookingDate } from "../../src/utils/dateFormat";
 
 const BOOKING_THEME = {
   background: "#F5F5F7",
@@ -34,7 +35,7 @@ const BOOKING_THEME = {
 const PAYMENT_EXPIRY_MINUTES = 15;
 const PAYMENT_EXPIRY_MS = PAYMENT_EXPIRY_MINUTES * 60 * 1000;
 
-const getLocale = () => "vi-VN";
+const getLocale = () => getI18nLocale();
 
 const formatCountdown = (seconds) => {
   const m = Math.floor(seconds / 60);
@@ -44,10 +45,7 @@ const formatCountdown = (seconds) => {
 
 const formatPrice = (price) => {
   if (price == null) return "—";
-  return new Intl.NumberFormat(getLocale(), {
-    style: "currency",
-    currency: "VND",
-  }).format(price);
+  return formatPriceLocale(price);
 };
 
 export default function PaymentCheckoutScreen() {
@@ -57,7 +55,7 @@ export default function PaymentCheckoutScreen() {
 
   const [booking, setBooking] = useState(null);
   const [loadingBooking, setLoadingBooking] = useState(true);
-  const [selectedMethod, setSelectedMethod] = useState("VNPAY");
+  const [selectedMethod, setSelectedMethod] = useState("SEPAY");
   const [timeLeft, setTimeLeft] = useState(PAYMENT_EXPIRY_MINUTES * 60);
   const [isExpired, setIsExpired] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -142,16 +140,46 @@ export default function PaymentCheckoutScreen() {
       const transactionRef = paymentData?.transactionRef;
       const paymentId = paymentData?.paymentId;
 
-      if (!paymentUrl) {
-        throw new Error("Không nhận được liên kết thanh toán");
-      }
-
-      // Save BEFORE opening browser/app (may freeze JS)
+      // Save BEFORE opening browser/app or navigating (may freeze JS)
       try {
         await safeAsyncStorage.setItem(PENDING_PAYMENT_REF_KEY, transactionRef || "");
         await safeAsyncStorage.setItem(PENDING_PAYMENT_BOOKING_KEY, String(bookingId));
       } catch (storageErr) {
         console.warn("[checkout] safeAsyncStorage write failed:", storageErr);
+      }
+
+      // SePay: hiển thị màn QR chuyển khoản trực tiếp (không mở browser)
+      if (selectedMethod === "SEPAY") {
+        const qrUrl = paymentData?.qrUrl;
+        if (!qrUrl) {
+          throw new Error("Không tạo được mã QR thanh toán");
+        }
+
+        const createdAtMs = booking?.createdAt
+          ? new Date(booking.createdAt).getTime()
+          : Date.now();
+        const expiresAt = createdAtMs - serverOffset + PAYMENT_EXPIRY_MS;
+
+        router.push({
+          pathname: "/payment/sepay-qr",
+          params: {
+            bookingId: String(bookingId),
+            paymentId: String(paymentId ?? ""),
+            transactionRef: transactionRef ?? "",
+            amount: String(paymentData?.amount ?? booking?.finalPrice ?? ""),
+            qrUrl,
+            bankName: paymentData?.bankName ?? "",
+            bankAccountNumber: paymentData?.bankAccountNumber ?? "",
+            bankAccountName: paymentData?.bankAccountName ?? "",
+            expiresAt: String(expiresAt),
+          },
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      if (!paymentUrl) {
+        throw new Error("Không nhận được liên kết thanh toán");
       }
 
       // MoMo: open native app via deeplink if available
@@ -396,7 +424,9 @@ export default function PaymentCheckoutScreen() {
           <Text style={{ color: BOOKING_THEME.textSecondary, fontSize: 12, lineHeight: 18 }}>
             {selectedMethod === "MOMO"
               ? 'Bấm "Thanh toán ngay" để mở ứng dụng MoMo. Sau khi hoàn tất, bạn sẽ tự động quay lại.'
-              : 'Sau khi chọn phương thức và bấm "Thanh toán ngay", bạn sẽ được chuyển sang cổng thanh toán để hoàn tất. Không tắt ứng dụng trong quá trình thanh toán.'}
+              : selectedMethod === "SEPAY"
+                ? 'Bấm "Thanh toán ngay" để hiện mã QR. Quét mã bằng ứng dụng ngân hàng và chuyển khoản, hệ thống sẽ tự xác nhận.'
+                : 'Sau khi chọn phương thức và bấm "Thanh toán ngay", bạn sẽ được chuyển sang cổng thanh toán để hoàn tất. Không tắt ứng dụng trong quá trình thanh toán.'}
           </Text>
         </View>
       </ScrollView>

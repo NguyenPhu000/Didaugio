@@ -17,23 +17,16 @@ import {
 import { useMyBookings } from "../../src/modules/booking/hooks/useBooking";
 import { NotificationBell } from "../../src/components/composed/NotificationBell";
 import { useTranslation } from "react-i18next";
-
-
+import { getI18nLocale, formatShortDate } from "../../src/utils/dateFormat";
 
 const formatCurrency = (value) => {
   const amount = Number(value || 0);
-  return `${amount.toLocaleString("vi-VN")}đ`;
+  return `${amount.toLocaleString(getI18nLocale())}đ`;
 };
 
 const formatDate = (value) => {
   if (!value) return "--";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  return formatShortDate(value) || String(value);
 };
 
 export default function MyBookingsScreen() {

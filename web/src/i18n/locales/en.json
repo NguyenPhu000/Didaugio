@@ -81,7 +81,9 @@
     "pendingApproval": "Pending",
     "reviewing": "Reviewing",
     "invalidImageFormat": "Only PNG/JPG/JPEG/WEBP images are supported",
-    "imageTooLarge": "Image exceeds 10MB, please choose a smaller image"
+    "invalidFileFormat": "Only PNG/JPG/JPEG/WEBP images or PDF files are supported",
+    "imageTooLarge": "Image exceeds 10MB, please choose a smaller image",
+    "fileTooLarge": "File exceeds 10MB, please choose a smaller file"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -303,6 +305,10 @@
       "submitting": "CREATING ACCOUNT...",
       "success": "Registration successful! Please check your email to verify.",
       "failed": "Registration failed. Please try again.",
+      "googleSuccess": "Google registration successful!",
+      "googleFailed": "Google registration failed.",
+      "googleNoToken": "No token received from Google.",
+      "googleNoPermission": "Account does not have access.",
       "hasAccount": "ALREADY HAVE AN ACCOUNT?",
       "loginNow": "LOGIN NOW",
       "termsNote": "BY REGISTERING, YOU AGREE TO OUR TERMS OF SERVICE & PRIVACY POLICY."
@@ -334,6 +340,27 @@
       "contactSupport": "Contact support@didaugio.com for assistance",
       "tryDifferentEmail": "TRY DIFFERENT EMAIL",
       "needHelp": "NEED HELP?"
+    },
+    "resendVerification": {
+      "title": "Verify Email",
+      "subtitle": "Resend verification email to activate your account",
+      "submit": "Resend verification email",
+      "submitting": "Sending...",
+      "accountCreated": "Account created successfully! Please verify your email to log in.",
+      "note": "Note:",
+      "noteCheckSpam": "Check Spam/Junk folder if you don't see the email",
+      "noteExpiry": "Verification link expires in 24 hours",
+      "noteRateLimit": "You can resend up to 3 times per hour",
+      "backToLogin": "Back to login",
+      "noAccount": "Don't have an account?",
+      "registerNow": "Register now",
+      "enterValidEmail": "Please enter a valid email",
+      "success": "Verification email resent!",
+      "sendFailed": "Failed to send email. Please try again.",
+      "emailSent": "EMAIL SENT",
+      "checkInbox": "Please check your inbox and click the verification link.",
+      "autoRedirect": "Redirecting to login page in 5 seconds...",
+      "emailFromAccount": "Email from your logged-in account"
     }
   },
   "users": {
@@ -1887,7 +1914,34 @@
       "displayBankAccount": "Account Number",
       "displayAccountHolder": "Account Holder",
       "bankInfoAlert": "Account information will be used for monthly revenue transfers. Please enter accurately.",
+      "secureDocuments": "Secure Documents",
+      "secureDocumentsDesc": "Manage encrypted ID card and business license documents",
       "loadFailed": "Failed to load profile"
+    },
+    "documents": {
+      "idCardFront": "ID Card Front",
+      "idCardBack": "ID Card Back",
+      "businessLicense": "Business License",
+      "certificate": "Certificates / Other Documents",
+      "idCardFrontHint": "Upload front photo of ID card (PNG, JPEG, WEBP)",
+      "idCardBackHint": "Upload back photo of ID card (PNG, JPEG, WEBP)",
+      "businessLicenseHint": "Upload business license (PNG, JPEG, WEBP, PDF)",
+      "certificateHint": "Upload professional certificates, sub-licenses,... (PNG, JPEG, WEBP, PDF)",
+      "uploaded": "Uploaded",
+      "notUploaded": "Not uploaded",
+      "reupload": "Re-upload",
+      "files": "files",
+      "noFiles": "No files",
+      "addMore": "Add file",
+      "uploadSuccess": "Upload successful",
+      "uploadFailed": "Upload failed",
+      "deleteSuccess": "Delete successful",
+      "deleteFailed": "Delete failed",
+      "loadFailed": "Failed to load document",
+      "noContract": "No contract available",
+      "contractPreview": "Contract Preview",
+      "contractPdf": "Contract PDF",
+      "downloadStarted": "Download started"
     },
     "staff": {
       "title": "Staff Management",
@@ -2089,6 +2143,90 @@
         "revenueDetails": "Revenue Details"
       }
     },
+    "common": {
+      "justNow": "Just now",
+      "minutesAgo": "{{count}} minutes ago",
+      "hoursAgo": "{{count}} hours ago",
+      "daysAgo": "{{count}} days ago",
+      "system": "System",
+      "exportCsv": "Export CSV",
+      "today": "Today",
+      "acceptTermsBeforeSign": "Please accept the terms before signing",
+      "signHereRequired": "Please sign in the signature area",
+      "signContract": "Sign Electronic Contract",
+      "signContractDesc": "Confirm internal signature for contract version {{version}}.",
+      "signWithMouse": "Sign with mouse or touch. Signature will be saved with timestamp and session metadata.",
+      "acceptTermsLabel": "I have read, understood and agree to the contract terms.",
+      "clearSignature": "Clear Signature",
+      "confirmSign": "Confirm Signature",
+      "latestVersion": "latest",
+      "downloadCsv": "Download CSV"
+    },
+    "contractWizard": {
+      "headerTitle": "Sign Electronic Contract",
+      "deferLater": "Later — I will sign afterwards",
+      "termsIssue": "Having an issue with the terms?",
+      "back": "Back",
+      "continue": "Continue",
+      "steps": {
+        "confirmInfo": "Confirm information",
+        "readContract": "Read contract",
+        "signContract": "Sign contract"
+      },
+      "partyA": {
+        "title": "Service user (Party A)",
+        "fullName": "Full name",
+        "idCard": "ID number",
+        "address": "Address",
+        "phone": "Phone",
+        "email": "Email"
+      },
+      "partyB": {
+        "title": "Service provider (Party B)",
+        "representative": "Representative",
+        "position": "Position",
+        "address": "Address",
+        "phone": "Phone",
+        "email": "Email",
+        "taxCode": "Tax code",
+        "bankAccount": "Account number",
+        "accountName": "Account name",
+        "branch": "Branch",
+        "bankName": "Bank",
+        "expand": "Expand Party B information",
+        "collapse": "Collapse Party B information"
+      },
+      "contract": {
+        "republicTitle": "SOCIALIST REPUBLIC OF VIETNAM",
+        "republicMotto": "Independence - Freedom - Happiness",
+        "contractNumberLabel": "Contract No.",
+        "dateLabel": "Day {{day}} month {{month}} year {{year}}",
+        "contractTitle": "SERVICE CONTRACT",
+        "legalBasis": [
+          "Pursuant to the Commercial Law of the Socialist Republic of Vietnam 2005;",
+          "Pursuant to Civil Code No. 91/2015/QH13 dated 24/11/2015;",
+          "Pursuant to the Personal Data Protection Law No. 91/2025/QH15 dated 26/6/2025, effective from 01/01/2026;",
+          "Pursuant to the actual needs and capabilities of the parties to the contract;"
+        ],
+        "partiesIntro": "We include:"
+      },
+      "checklist": {
+        "title": "COMPLETE BEFORE SIGNING",
+        "completed": "{{done}}/{{total}} completed",
+        "readContract": "Contract read",
+        "acceptTerms": "Confirmation ticked"
+      },
+      "signer": {
+        "name": "Authenticated by",
+        "confirmedAt": "Confirmed at",
+        "ip": "IP",
+        "ipResolving": "Resolving...",
+        "device": "Device",
+        "note": "The signature is stored with the timestamp and metadata of the signing session."
+      },
+      "consentLabel": "I have read and agree to sign this electronic service contract",
+      "signNow": "Sign contract"
+    },
     "dashboard": {
       "businessOwner": "Business Owner",
       "stat": {
@@ -2130,7 +2268,15 @@
       "contract": {
         "signedAt": "Signed at",
         "viewContract": "View Contract",
-        "completeContract": "Complete Contract"
+        "completeContract": "Complete Contract",
+        "downloadContract": "Download Contract PDF"
+      },
+      "documents": {
+        "title": "Verification Documents",
+        "count": "{{count}}/{{total}} uploaded",
+        "license": "Business License",
+        "idFront": "ID Front",
+        "idBack": "ID Back"
       },
       "operations": {
         "pendingToday": "Pending Today",

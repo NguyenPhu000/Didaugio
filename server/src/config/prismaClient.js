@@ -1,10 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 
+// PRISMA_LOG: "query" | "error" | "warn" (comma-separated). Mặc định: "error,warn"
+// Set PRISMA_LOG=query,error,warn khi cần debug SQL
+const prismaLogEnv = process.env.PRISMA_LOG || "error,warn";
+const prismaLogLevels = prismaLogEnv.split(",").map((l) => l.trim()).filter(Boolean);
+
 const prisma = new PrismaClient({
-  log:
-    process.env.NODE_ENV === "development"
-      ? ["query", "error", "warn"]
-      : ["error"],
+  log: prismaLogLevels,
 });
 
 process.on("beforeExit", async () => {

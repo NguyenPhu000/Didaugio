@@ -94,6 +94,7 @@ import {
   getVoiceMutedPreference,
   setVoiceMutedPreference,
   speakNavigationInstruction,
+  stopSpeech,
 } from "./utils/voiceGuidance";
 import { filterVisiblePlaces, getPlaceDistrictMeta } from "./utils/placeFilter";
 
@@ -163,6 +164,7 @@ export default function MapScreen() {
   const lastAppliedFocusRef = useRef(null);
   const lastNavigationEventRef = useRef({ signature: null, timestamp: 0 });
   const navigationTickHandlerRef = useRef(null);
+  const pingMutationRef = useRef(pingEventMutation);
 
   const [mapStyle, setMapStyle] = useState(DEFAULT_MAP_STYLE);
   const [layerModalVisible, setLayerModalVisible] = useState(false);
@@ -419,6 +421,10 @@ export default function MapScreen() {
   const updateActiveTripMutation = useUpdateTrip(activeTrip.activeTripId);
   const pingEventMutation = usePingEvent();
 
+  useEffect(() => {
+    pingMutationRef.current = pingEventMutation;
+  }, [pingEventMutation]);
+
   // Tần suất và khoảng cách GPS động dựa trên nearbyTriggered
   const gpsIntervals = useMemo(() => {
     if (nearbyTriggered) {
@@ -495,7 +501,7 @@ export default function MapScreen() {
 
     const sendPing = async () => {
       try {
-        await pingEventMutation.mutateAsync({
+        await pingMutationRef.current.mutateAsync({
           id: activeEventId,
           payload: {
             latitude: activeTripLocation.latitude,
@@ -518,7 +524,6 @@ export default function MapScreen() {
     activeTripLocation?.longitude,
     activeNextDestination?.placeId,
     activeTrip.isPaused,
-    pingEventMutation,
   ]);
 
   // 4. Giả lập 3 đốm Neon nhấp nháy xung quanh đích chặng
@@ -774,13 +779,13 @@ export default function MapScreen() {
 
     if (Number.isFinite(distanceToDest) && distanceToDest <= 30) {
       speechKey = `arrival:${activeNextDestination?.id ?? "destination"}`;
-      speechText = `Bạn đã đến ${activeTargetPoint?.name || "điểm đến"}`;
+      speechText = t("map.voice.arrived", { name: activeTargetPoint?.name || t("map.voice.defaultDestination") });
     } else if (Number.isFinite(nextTurnDistance) && nextTurnDistance <= 50) {
       speechKey = `turn-now:${activeUpcomingStep?.maneuver?.location?.join(",")}`;
       speechText = activeInstruction;
     } else if (Number.isFinite(nextTurnDistance) && nextTurnDistance <= 300) {
       speechKey = `turn-soon:${activeUpcomingStep?.maneuver?.location?.join(",")}`;
-      speechText = `Còn ${Math.round(nextTurnDistance)} mét, ${activeInstruction}`;
+      speechText = t("map.voice.distanceInstruction", { distance: Math.round(nextTurnDistance), instruction: activeInstruction });
     }
 
     if (speechText) {
@@ -790,6 +795,10 @@ export default function MapScreen() {
         speedKmh: activeTripSpeedKmh,
       });
     }
+
+    return () => {
+      stopSpeech();
+    };
   }, [
     activeDistanceToTarget,
     activeInstruction,
@@ -843,7 +852,7 @@ export default function MapScreen() {
 
     if (minutesLeft <= 10 && minutesLeft >= -15) {
       return {
-        nextName: activeNextDestination.place?.name || "địa điểm tiếp theo",
+        nextName: activeNextDestination.place?.name || t("map.departureReminderBanner.defaultNextName"),
         minutesLeft: Math.max(0, Math.ceil(minutesLeft)),
       };
     }
@@ -982,7 +991,7 @@ export default function MapScreen() {
       } else {
         await sendLocalNotification({
           title: t("mapScreen.checkedIn"),
-          body: t("mapScreen.checkedInDesc", { name: arrivedDest.place?.name || "địa điểm" }),
+          body: t("mapScreen.checkedInDesc", { name: arrivedDest.place?.name || t("map.common.destinationNameLower") }),
         });
       }
     }

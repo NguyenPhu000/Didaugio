@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import DraggableFlatList from "react-native-draggable-flatlist";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { cn } from "@/lib/cn";
+import { formatDayMonth } from "@/utils/dateFormat";
 import {
   buildDestinationBookings,
   buildDayList,
@@ -141,10 +142,7 @@ function ItineraryTab({
 
   const formatChipDate = useCallback((date) => {
     if (!date) return null;
-    return new Date(date).toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-    });
+    return formatDayMonth(date);
   }, []);
 
   const reorderMutation = useReorderDestinations(tripId);

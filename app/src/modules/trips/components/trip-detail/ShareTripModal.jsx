@@ -12,6 +12,7 @@ import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRound
 import { cn } from "@/lib/cn";
 import { useTripShares, useCreateTripShare, useDeleteTripShare } from "../../hooks/useTrips";
 import { T, ALPHA } from "../../utils/tripDetailTokens";
+import { formatShortDate } from "@/utils/dateFormat";
 import * as Haptics from "expo-haptics";
 
 function ShareLinkRow({ share, onDelete, isDeleting }) {
@@ -35,7 +36,7 @@ function ShareLinkRow({ share, onDelete, isDeleting }) {
         <View className="flex-row items-center gap-2">
           {share.expiresAt ? (
             <Text className="text-[11px] text-black/30">
-              {new Date(share.expiresAt).toLocaleDateString("vi-VN")}
+              {formatShortDate(share.expiresAt)}
             </Text>
           ) : null}
           <Pressable

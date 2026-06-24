@@ -45,7 +45,7 @@ export function usePollPaymentStatus() {
   }, []);
 
   const startPolling = useCallback(
-    async (transactionRef, paymentId, bookingId) => {
+    async (transactionRef, paymentId, bookingId, options = {}) => {
       if (!bookingId) {
         console.warn("[usePayment] startPolling called without bookingId");
         return;
@@ -55,6 +55,10 @@ export function usePollPaymentStatus() {
       if (isActiveRef.current) {
         return;
       }
+
+      // Cho phép tùy biến (vd: QR chuyển khoản cần poll lâu ~15 phút)
+      const maxPolls = options.maxPolls ?? MAX_POLLS;
+      const intervalMs = options.intervalMs ?? POLL_INTERVAL_MS;
 
       pollCountRef.current = 0;
       isActiveRef.current = true;
@@ -78,7 +82,7 @@ export function usePollPaymentStatus() {
 
         pollCountRef.current += 1;
 
-        if (pollCountRef.current > MAX_POLLS) {
+        if (pollCountRef.current > maxPolls) {
           stopPolling();
           await clearPendingKeys();
           router.replace(
@@ -120,7 +124,7 @@ export function usePollPaymentStatus() {
           }
 
           if (
-            pollCountRef.current >= MAX_POLLS &&
+            pollCountRef.current >= maxPolls &&
             (status === "unpaid" || !status)
           ) {
             // Check if booking was expired/cancelled by scheduler
@@ -146,7 +150,7 @@ export function usePollPaymentStatus() {
           }
         } catch (err) {
           console.warn("[usePayment] Poll error:", err);
-          if (pollCountRef.current >= MAX_POLLS) {
+          if (pollCountRef.current >= maxPolls) {
             stopPolling();
             await clearPendingKeys();
             router.replace(
@@ -154,7 +158,7 @@ export function usePollPaymentStatus() {
             );
           }
         }
-      }, POLL_INTERVAL_MS);
+      }, intervalMs);
     },
     [stopPolling, clearPendingKeys]
   );

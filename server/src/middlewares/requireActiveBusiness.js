@@ -53,6 +53,20 @@ export const requireActiveBusiness = (options = {}) => {
             contractVersion: true,
           },
         });
+
+        if (
+          business &&
+          (business.status === BUSINESS_STATUS.SUSPENDED ||
+            business.status === BUSINESS_STATUS.TERMINATED)
+        ) {
+          return res.status(403).json({
+            success: false,
+            data: null,
+            message:
+              "Doanh nghiệp đã bị tạm ngưng hoặc chấm dứt. Vui lòng liên hệ quản trị viên.",
+            errorCode: "BUSINESS_SUSPENDED",
+          });
+        }
       } else {
         business = await prisma.business.findUnique({
           where: { ownerId: userId },

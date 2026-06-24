@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export const checkoutSchema = z.object({
   bookingId: z.coerce.number().int().positive("bookingId không hợp lệ"),
-  paymentMethod: z.enum(["VNPAY", "MOMO", "vnpay", "momo"], {
-    errorMap: () => ({ message: "paymentMethod phải là VNPAY hoặc MOMO" }),
+  paymentMethod: z.enum(["VNPAY", "MOMO", "SEPAY", "vnpay", "momo", "sepay"], {
+    errorMap: () => ({ message: "paymentMethod phải là VNPAY, MOMO hoặc SEPAY" }),
   }),
   ipAddress: z
     .string()

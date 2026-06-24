@@ -34,6 +34,7 @@ import { useSavePlace } from "../../../src/modules/saved/hooks/useSaved";
 import { useOffline } from "../../../src/hooks/useOffline";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
+import { getI18nLocale, formatShortDate, formatDateTimeLocale } from "../../../src/utils/dateFormat";
 
 
 const QR_CACHE_KEY = "@booking_qr_cache";
@@ -70,31 +71,22 @@ const formatCurrency = (value) => {
   return `${amount.toLocaleString(locale)}đ`;
 };
 
-const formatDateVN = (dateStr) => {
-  if (!dateStr) return "--/--/----";
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return "--/--/----";
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
-};
-
 const formatDateTime = (booking, notDeterminedLabel) => {
   if (booking?.useDate || booking?.useTime) {
-    const date = formatDateVN(booking?.useDate);
+    const date = formatShortDate(booking?.useDate) || "--/--/----";
     return `${date} • ${booking?.useTime || "--:--"}`;
   }
 
   if (booking?.bookingAt) {
     const at = new Date(booking.bookingAt);
     if (!Number.isNaN(at.getTime())) {
-      const day = String(at.getDate()).padStart(2, "0");
-      const month = String(at.getMonth() + 1).padStart(2, "0");
-      const year = at.getFullYear();
-      const hour = String(at.getHours()).padStart(2, "0");
-      const minute = String(at.getMinutes()).padStart(2, "0");
-      return `${day}/${month}/${year} • ${hour}:${minute}`;
+      return formatDateTimeLocale(at, {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     }
   }
 

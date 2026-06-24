@@ -6,10 +6,33 @@ import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
 import * as vnpayService from "./vnpay.service.js";
 import * as momoService from "./momo.service.js";
+import * as sepayService from "./sepay.service.js";
+import * as sepayWebhookService from "./sepayWebhook.service.js";
 import * as webhookLogService from "./webhookLog.service.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import * as bookingService from "../booking/booking.service.js";
 import { processPaymentLedger } from "../booking/financialCore.service.js";
+
+const PAYMENT_CODE_PREFIX = process.env.PAYMENT_CODE_PREFIX || "DDG";
+const PAYMENT_CODE_RANDOM_LENGTH = 7;
+
+/**
+ * Generate a short, user-friendly payment code.
+ * Format: {PREFIX}{RANDOM_ALPHANUMERIC} — e.g., DDG3KAUQ190
+ * The bookingId is encoded in the random part for uniqueness.
+ */
+function generatePaymentCode(bookingId) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const timestamp = Date.now().toString(36).toUpperCase().slice(-3);
+  let random = "";
+  const seed = `${bookingId}-${Date.now()}-${crypto.randomUUID()}`;
+  const hash = crypto.createHash("sha256").update(seed).digest("hex");
+  for (let i = 0; i < PAYMENT_CODE_RANDOM_LENGTH - 3; i++) {
+    const idx = parseInt(hash.slice(i * 2, i * 2 + 2), 16) % chars.length;
+    random += chars[idx];
+  }
+  return `${PAYMENT_CODE_PREFIX}${timestamp}${random}`;
+}
 
 /**
  * Create a payment checkout: validates booking, creates Payment record,
@@ -23,7 +46,13 @@ import { processPaymentLedger } from "../booking/financialCore.service.js";
  * @param {string} [opts.clientType]  - "web" | "mobile" — determines return URL
  * @returns {Promise<{ paymentUrl: string, paymentId: number, transactionRef: string }>}
  */
-export async function createCheckout({ bookingId, paymentMethod, ipAddress, userId, clientType = "web" }) {
+export async function createCheckout({
+  bookingId,
+  paymentMethod,
+  ipAddress,
+  userId,
+  clientType = "web",
+}) {
   const booking = await prisma.booking.findUnique({
     where: { id: parseInt(bookingId, 10) },
     select: {
@@ -41,7 +70,11 @@ export async function createCheckout({ bookingId, paymentMethod, ipAddress, user
   }
 
   if (booking.userId !== userId) {
-    throw new ServiceError("Booking không thuộc về bạn", 403, ERROR_CODES.FORBIDDEN);
+    throw new ServiceError(
+      "Booking không thuộc về bạn",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
   }
 
   if (booking.status !== BOOKING_STATUS.PENDING) {
@@ -53,11 +86,19 @@ export async function createCheckout({ bookingId, paymentMethod, ipAddress, user
   }
 
   if (booking.paymentStatus === PAYMENT_STATUS.PAID) {
-    throw new ServiceError("Booking đã được thanh toán", 422, ERROR_CODES.CONFLICT);
+    throw new ServiceError(
+      "Booking đã được thanh toán",
+      422,
+      ERROR_CODES.CONFLICT,
+    );
   }
 
   const normalizedMethod = paymentMethod.toUpperCase();
-  if (normalizedMethod !== "VNPAY" && normalizedMethod !== "MOMO") {
+  if (
+    normalizedMethod !== "VNPAY" &&
+    normalizedMethod !== "MOMO" &&
+    normalizedMethod !== "SEPAY"
+  ) {
     throw new ServiceError(
       "Phương thức thanh toán không hỗ trợ",
       400,
@@ -67,38 +108,63 @@ export async function createCheckout({ bookingId, paymentMethod, ipAddress, user
 
   const amount = booking.finalPrice;
   if (!Number.isFinite(amount) || amount <= 0) {
-    throw new ServiceError("Số tiền thanh toán không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError(
+      "Số tiền thanh toán không hợp lệ",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
   }
 
-  const existingPaymentCount = await prisma.payment.count({
-    where: { bookingId: booking.id },
-  });
-  const attemptCount = existingPaymentCount + 1;
-  const transactionRef = `DDG_BKG_${booking.id}_${attemptCount}`;
-  const idempotencyKey = crypto.randomUUID();
-
-  const payment = await prisma.payment.create({
-    data: {
-      bookingId: booking.id,
-      userId: booking.userId,
-      amount,
-      paymentMethod: normalizedMethod,
-      transactionRef,
-      idempotencyKey,
-      status: PAYMENT_STATUS.UNPAID,
-    },
+  // Reuse existing UNPAID payment for this booking (avoid unique constraint violation)
+  const existingPayment = await prisma.payment.findFirst({
+    where: { bookingId: booking.id, status: PAYMENT_STATUS.UNPAID },
     select: { id: true, transactionRef: true },
   });
 
-  const orderInfo = `Thanh toan booking ${booking.bookingCode}`;
+  let payment;
+  if (existingPayment) {
+    // Update method & idempotency key, keep same transactionRef
+    payment = await prisma.payment.update({
+      where: { id: existingPayment.id },
+      data: {
+        paymentMethod: normalizedMethod,
+        idempotencyKey: crypto.randomUUID(),
+      },
+      select: { id: true, transactionRef: true },
+    });
+  } else {
+    payment = await prisma.payment.create({
+      data: {
+        bookingId: booking.id,
+        userId: booking.userId,
+        amount,
+        paymentMethod: normalizedMethod,
+        transactionRef: generatePaymentCode(booking.id),
+        idempotencyKey: crypto.randomUUID(),
+        status: PAYMENT_STATUS.UNPAID,
+      },
+      select: { id: true, transactionRef: true },
+    });
+  }
+
+  const orderInfo = `Thanh toán booking ${booking.bookingCode}`;
+  const transactionRef = payment.transactionRef;
 
   // Build the return URL: server endpoint that handles redirect logic.
   // For mobile, the server will forward to the app deep link.
   const serverBase = process.env.API_BASE_URL || `http://localhost:8081`;
-  const returnUrl = `${serverBase}/api/payments/${normalizedMethod === "VNPAY" ? "vnpay-return" : "momo-return"}?clientType=${clientType}&bookingId=${booking.id}&paymentId=${payment.id}`;
+  const returnPath =
+    normalizedMethod === "VNPAY"
+      ? "vnpay-return"
+      : normalizedMethod === "MOMO"
+        ? "momo-return"
+        : "sepay-return";
+  const returnUrl = `${serverBase}/api/payments/${returnPath}?clientType=${clientType}&bookingId=${booking.id}&paymentId=${payment.id}`;
 
   let paymentUrl;
   let momoDeeplink = null;
+  let sepayFields = null;
+  let qrInfo = null;
   try {
     if (normalizedMethod === "VNPAY") {
       paymentUrl = vnpayService.createPaymentUrl({
@@ -108,6 +174,19 @@ export async function createCheckout({ bookingId, paymentMethod, ipAddress, user
         ipAddress: ipAddress || "127.0.0.1",
         returnUrl,
       });
+    } else if (normalizedMethod === "SEPAY") {
+      // QR chuyển khoản trực tiếp (không dùng gateway redirect).
+      // Nội dung CK = transactionRef → webhook bank match theo field này.
+      const bankInfo = sepayService.getBankInfo();
+      const qrUrl = sepayService.buildQrUrl({ amount, transactionRef });
+      qrInfo = {
+        qrUrl,
+        bankName: bankInfo.bankName,
+        bankAccountNumber: bankInfo.bankAccountNumber,
+        bankAccountName: bankInfo.bankAccountName,
+      };
+      // Giữ paymentUrl = qrUrl để tương thích các client cũ
+      paymentUrl = qrUrl;
     } else {
       const momoResult = await momoService.createPaymentUrl({
         amount,
@@ -125,15 +204,19 @@ export async function createCheckout({ bookingId, paymentMethod, ipAddress, user
       }
     }
   } catch (gatewayError) {
-    await prisma.payment
-      .delete({ where: { id: payment.id } })
-      .catch(() => {});
+    await prisma.payment.delete({ where: { id: payment.id } }).catch(() => {});
     throw gatewayError;
   }
 
   return {
     paymentUrl,
     deeplink: momoDeeplink,
+    sepayFields,
+    qrUrl: qrInfo?.qrUrl || null,
+    bankName: qrInfo?.bankName || null,
+    bankAccountNumber: qrInfo?.bankAccountNumber || null,
+    bankAccountName: qrInfo?.bankAccountName || null,
+    amount,
     paymentId: payment.id,
     transactionRef: payment.transactionRef,
   };
@@ -159,11 +242,20 @@ export async function processVNPayIPN(query) {
         webhookLogId,
         errorMsg: verifyResult.error,
       });
-      return vnpayService.buildIpnResponse("97", verifyResult.error || "Invalid signature");
+      return vnpayService.buildIpnResponse(
+        "97",
+        verifyResult.error || "Invalid signature",
+      );
     }
 
-    const { transactionRef, responseCode, amount, bankCode, transactionNo, payDate } =
-      verifyResult.data;
+    const {
+      transactionRef,
+      responseCode,
+      amount,
+      bankCode,
+      transactionNo,
+      payDate,
+    } = verifyResult.data;
 
     const result = await prisma.$transaction(async (tx) => {
       const locked = await tx.$queryRaw`
@@ -263,7 +355,11 @@ export async function processVNPayIPN(query) {
         },
       });
 
-      return { type: "SUCCESS", payment: updatedPayment, bookingId: payment.booking_id };
+      return {
+        type: "SUCCESS",
+        payment: updatedPayment,
+        bookingId: payment.booking_id,
+      };
     });
 
     if (result.type && result.type !== "NOT_FOUND") {
@@ -312,7 +408,10 @@ export async function processVNPayIPN(query) {
       return vnpayService.buildIpnResponse("00", "Confirm success");
     }
   } catch (error) {
-    logger.error("processVNPayIPN error", { error: error.message, transactionRef: query.vnp_TxnRef });
+    logger.error("processVNPayIPN error", {
+      error: error.message,
+      transactionRef: query.vnp_TxnRef,
+    });
     await webhookLogService.markError({
       transactionRef: query.vnp_TxnRef || null,
       webhookLogId,
@@ -341,7 +440,10 @@ export async function processMoMoIPN(body) {
         webhookLogId,
         errorMsg: verifyResult.error,
       });
-      return momoService.buildIpnResponse(1000, verifyResult.error || "Invalid signature");
+      return momoService.buildIpnResponse(
+        1000,
+        verifyResult.error || "Invalid signature",
+      );
     }
 
     const { orderId, amount, transId, resultCode, message } = body;
@@ -441,11 +543,18 @@ export async function processMoMoIPN(body) {
         },
       });
 
-      return { type: "SUCCESS", payment: updatedPayment, bookingId: payment.booking_id };
+      return {
+        type: "SUCCESS",
+        payment: updatedPayment,
+        bookingId: payment.booking_id,
+      };
     });
 
     if (dbResult.type && dbResult.type !== "NOT_FOUND") {
-      await webhookLogService.markProcessed({ transactionRef: orderId, webhookLogId });
+      await webhookLogService.markProcessed({
+        transactionRef: orderId,
+        webhookLogId,
+      });
     }
 
     if (dbResult.type === "NOT_FOUND") {
@@ -490,13 +599,434 @@ export async function processMoMoIPN(body) {
       return momoService.buildIpnResponse(0, "Confirm success");
     }
   } catch (error) {
-    logger.error("processMoMoIPN error", { error: error.message, orderId: body.orderId });
+    logger.error("processMoMoIPN error", {
+      error: error.message,
+      orderId: body.orderId,
+    });
     await webhookLogService.markError({
       transactionRef: body.orderId || null,
       webhookLogId,
       errorMsg: error.message,
     });
     return momoService.buildIpnResponse(1001, "System error");
+  }
+}
+
+/**
+ * Process SePay IPN (server-to-server callback).
+ * SePay sends POST JSON with { notification_type, order, transaction }.
+ * Idempotent: if payment already "paid" or "fully_refunded", returns success.
+ */
+export async function processSePayIPN(body) {
+  const webhookLogId = await webhookLogService.logWebhook({
+    gateway: "SEPAY",
+    payload: body,
+    signature: null,
+  });
+
+  try {
+    const parseResult = sepayService.parseIPN(body);
+    if (!parseResult.valid) {
+      await webhookLogService.markError({
+        transactionRef: body?.order?.order_invoice_number || null,
+        webhookLogId,
+        errorMsg: parseResult.error,
+      });
+      return sepayService.buildIpnError(parseResult.error);
+    }
+
+    const {
+      transactionRef,
+      orderId,
+      amount,
+      transactionId,
+      paymentMethod: sepayMethod,
+      transactionDate,
+    } = parseResult.data;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw`
+        SELECT id, status, amount, booking_id
+        FROM payments
+        WHERE transaction_ref = ${transactionRef}
+        LIMIT 1
+        FOR UPDATE
+      `;
+
+      if (!locked || locked.length === 0) {
+        return { type: "NOT_FOUND" };
+      }
+
+      const payment = locked[0];
+
+      if (
+        payment.status === PAYMENT_STATUS.PAID ||
+        payment.status === PAYMENT_STATUS.FULLY_REFUNDED
+      ) {
+        return { type: "ALREADY_PROCESSED", status: payment.status };
+      }
+
+      const updatedPayment = await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: PAYMENT_STATUS.PAID,
+          paidAt: new Date(),
+          transactionId: transactionId || orderId || null,
+          bankCode: sepayMethod || null,
+          paymentData: {
+            sepayOrderId: orderId,
+            transactionId,
+            paymentMethod: sepayMethod,
+            transactionDate,
+            gateway: "SEPAY",
+            processedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      const bookingForTx = await tx.booking.update({
+        where: { id: payment.booking_id },
+        data: {
+          status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
+          paymentStatus: PAYMENT_STATUS.PAID,
+          confirmedAt: null,
+        },
+        select: {
+          id: true,
+          businessId: true,
+          originalPrice: true,
+          discountAmount: true,
+          finalPrice: true,
+          service: {
+            select: { business: { select: { commissionRate: true } } },
+          },
+        },
+      });
+
+      const commissionRate =
+        Number(bookingForTx.service?.business?.commissionRate) || 10;
+      await processPaymentLedger(
+        tx,
+        bookingForTx.id,
+        bookingForTx.finalPrice,
+        commissionRate,
+        bookingForTx.businessId,
+      );
+
+      await tx.bookingActionLog.create({
+        data: {
+          bookingId: payment.booking_id,
+          action: "approve",
+          actorUserId: null,
+          metadata: { source: "payment_gateway", gateway: "SEPAY" },
+        },
+      });
+
+      return {
+        type: "SUCCESS",
+        payment: updatedPayment,
+        bookingId: payment.booking_id,
+      };
+    });
+
+    if (result.type && result.type !== "NOT_FOUND") {
+      await webhookLogService.markProcessed({ transactionRef, webhookLogId });
+    }
+
+    if (result.type === "NOT_FOUND") {
+      return sepayService.buildIpnError("Order not found");
+    }
+
+    if (result.type === "ALREADY_PROCESSED") {
+      return sepayService.buildIpnSuccess();
+    }
+
+    if (result.type === "SUCCESS") {
+      const booking = await prisma.booking.findUnique({
+        where: { id: result.bookingId },
+        select: {
+          id: true,
+          bookingCode: true,
+          userId: true,
+          businessId: true,
+          service: {
+            select: {
+              place: { select: { name: true } },
+              business: { select: { id: true, ownerId: true } },
+            },
+          },
+        },
+      });
+
+      eventEmitter.emit(EVENTS.BOOKING.PAID, {
+        bookingId: booking.id,
+        bookingCode: booking.bookingCode,
+        userId: booking.userId,
+        businessId: booking.businessId,
+        businessOwnerId: booking.service?.business?.ownerId,
+        source: "payment_gateway",
+        paymentMethod: "SEPAY",
+      });
+
+      return sepayService.buildIpnSuccess();
+    }
+  } catch (error) {
+    logger.error("processSePayIPN error", { error: error.message, body });
+    await webhookLogService.markError({
+      transactionRef: body?.order?.order_invoice_number || null,
+      webhookLogId,
+      errorMsg: error.message,
+    });
+    return sepayService.buildIpnError("System error");
+  }
+}
+
+/**
+ * Process SePay bank transaction webhook.
+ * This is from SePay Webhooks system (Dashboard → Tích hợp → Webhooks),
+ * NOT from Payment Gateway IPN.
+ *
+ * Matches incoming bank transfers to pending Payments by `code` field (= transactionRef).
+ * Uses sepayTransactionId for idempotency (INSERT IGNORE pattern).
+ *
+ * @param {Object} body - Raw webhook body from SePay
+ * @param {Object} headers - Request headers (for signature verification)
+ * @returns {Promise<{ success: boolean, message?: string }>}
+ */
+export async function processSePayBankWebhook(body, headers = {}) {
+  const webhookLogId = await webhookLogService.logWebhook({
+    gateway: "SEPAY_BANK",
+    payload: body,
+    signature: headers["x-sepay-signature"] || null,
+  });
+
+  try {
+    // Verify HMAC-SHA256 signature if configured
+    const signature = headers["x-sepay-signature"] || "";
+    const timestamp = headers["x-sepay-timestamp"] || "";
+    const rawBody = typeof body === "string" ? body : JSON.stringify(body);
+
+    const sigResult = sepayWebhookService.verifyWebhookSignature(
+      rawBody,
+      signature,
+      timestamp,
+    );
+    if (!sigResult.valid) {
+      await webhookLogService.markError({
+        transactionRef: body?.code || null,
+        webhookLogId,
+        errorMsg: `Signature verification failed: ${sigResult.error}`,
+      });
+      return sepayService.buildIpnError(sigResult.error);
+    }
+
+    // Parse bank transaction
+    const parseResult = sepayWebhookService.parseBankWebhook(body);
+    if (!parseResult.valid) {
+      if (webhookLogId) {
+        await webhookLogService.markError({
+          transactionRef: body?.code || null,
+          webhookLogId,
+          errorMsg: parseResult.error,
+        });
+      }
+      // Return success for non-matchable transactions (no code, wrong type) to avoid retries
+      return sepayService.buildIpnSuccess();
+    }
+
+    const {
+      sepayTransactionId,
+      code,
+      transferAmount,
+      gateway,
+      transactionDate,
+      referenceCode,
+    } = parseResult.data;
+
+    // Idempotency: check if we already processed this SePay transaction
+    const existingWebhook = await prisma.paymentWebhookLog.findFirst({
+      where: {
+        gateway: "SEPAY_BANK",
+        processed: true,
+        payload: {
+          path: ["id"],
+          equals: sepayTransactionId,
+        },
+      },
+    });
+
+    if (existingWebhook) {
+      return sepayService.buildIpnSuccess();
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Match by code (= transactionRef in Payment table)
+      const locked = await tx.$queryRaw`
+        SELECT id, status, amount, booking_id
+        FROM payments
+        WHERE transaction_ref = ${code}
+        LIMIT 1
+        FOR UPDATE
+      `;
+
+      if (!locked || locked.length === 0) {
+        return { type: "NOT_FOUND" };
+      }
+
+      const payment = locked[0];
+
+      if (
+        payment.status === PAYMENT_STATUS.PAID ||
+        payment.status === PAYMENT_STATUS.FULLY_REFUNDED
+      ) {
+        return { type: "ALREADY_PROCESSED", status: payment.status };
+      }
+
+      // Verify amount matches
+      if (payment.amount !== transferAmount) {
+        logger.warn("SePay bank webhook amount mismatch", {
+          expected: payment.amount,
+          received: transferAmount,
+          code,
+        });
+        return {
+          type: "AMOUNT_MISMATCH",
+          expected: payment.amount,
+          received: transferAmount,
+        };
+      }
+
+      const updatedPayment = await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: PAYMENT_STATUS.PAID,
+          paidAt: new Date(),
+          transactionId: String(sepayTransactionId),
+          bankCode: gateway || null,
+          paymentData: {
+            sepayTransactionId,
+            gateway,
+            transactionDate,
+            referenceCode,
+            transferAmount,
+            source: "sepay_bank_webhook",
+            processedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      const bookingForTx = await tx.booking.update({
+        where: { id: payment.booking_id },
+        data: {
+          status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
+          paymentStatus: PAYMENT_STATUS.PAID,
+          confirmedAt: null,
+        },
+        select: {
+          id: true,
+          businessId: true,
+          finalPrice: true,
+          service: {
+            select: { business: { select: { commissionRate: true } } },
+          },
+        },
+      });
+
+      const commissionRate =
+        Number(bookingForTx.service?.business?.commissionRate) || 10;
+      await processPaymentLedger(
+        tx,
+        bookingForTx.id,
+        bookingForTx.finalPrice,
+        commissionRate,
+        bookingForTx.businessId,
+      );
+
+      await tx.bookingActionLog.create({
+        data: {
+          bookingId: payment.booking_id,
+          action: "approve",
+          actorUserId: null,
+          metadata: {
+            source: "sepay_bank_webhook",
+            gateway,
+            sepayTransactionId,
+          },
+        },
+      });
+
+      return {
+        type: "SUCCESS",
+        payment: updatedPayment,
+        bookingId: payment.booking_id,
+      };
+    });
+
+    if (result.type && result.type !== "NOT_FOUND" && webhookLogId) {
+      await webhookLogService.markProcessed({
+        transactionRef: code,
+        webhookLogId,
+      });
+    }
+
+    if (result.type === "NOT_FOUND") {
+      logger.info("SePay bank webhook: no matching payment", {
+        code,
+        transferAmount,
+      });
+      return sepayService.buildIpnSuccess();
+    }
+
+    if (result.type === "ALREADY_PROCESSED") {
+      return sepayService.buildIpnSuccess();
+    }
+
+    if (result.type === "AMOUNT_MISMATCH") {
+      return sepayService.buildIpnSuccess();
+    }
+
+    if (result.type === "SUCCESS") {
+      const booking = await prisma.booking.findUnique({
+        where: { id: result.bookingId },
+        select: {
+          id: true,
+          bookingCode: true,
+          userId: true,
+          businessId: true,
+          service: {
+            select: {
+              place: { select: { name: true } },
+              business: { select: { id: true, ownerId: true } },
+            },
+          },
+        },
+      });
+
+      eventEmitter.emit(EVENTS.BOOKING.PAID, {
+        bookingId: booking.id,
+        bookingCode: booking.bookingCode,
+        userId: booking.userId,
+        businessId: booking.businessId,
+        businessOwnerId: booking.service?.business?.ownerId,
+        source: "sepay_bank_webhook",
+        paymentMethod: "SEPAY",
+      });
+
+      return sepayService.buildIpnSuccess();
+    }
+  } catch (error) {
+    logger.error("processSePayBankWebhook error", {
+      error: error.message,
+      body,
+    });
+    if (webhookLogId) {
+      await webhookLogService.markError({
+        transactionRef: body?.code || null,
+        webhookLogId,
+        errorMsg: error.message,
+      });
+    }
+    return sepayService.buildIpnError("System error");
   }
 }
 
@@ -512,10 +1042,18 @@ export async function processMoMoIPN(body) {
  * @param {number} adminUserId
  * @returns {Promise<Object>}
  */
-export async function refundPayment(paymentId, { amount, reason } = {}, adminUserId) {
+export async function refundPayment(
+  paymentId,
+  { amount, reason } = {},
+  adminUserId,
+) {
   const id = parseInt(paymentId, 10);
   if (Number.isNaN(id)) {
-    throw new ServiceError("Payment ID không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError(
+      "Payment ID không hợp lệ",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
   }
 
   const payment = await prisma.payment.findUnique({
@@ -524,7 +1062,11 @@ export async function refundPayment(paymentId, { amount, reason } = {}, adminUse
   });
 
   if (!payment) {
-    throw new ServiceError("Không tìm thấy giao dịch", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      "Không tìm thấy giao dịch",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   if (payment.status !== PAYMENT_STATUS.PAID) {
@@ -547,7 +1089,11 @@ export async function refundPayment(paymentId, { amount, reason } = {}, adminUse
 export async function rejectRefund(paymentId, reason) {
   const id = parseInt(paymentId, 10);
   if (Number.isNaN(id)) {
-    throw new ServiceError("Payment ID không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError(
+      "Payment ID không hợp lệ",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
   }
 
   const payment = await prisma.payment.findUnique({
@@ -556,7 +1102,11 @@ export async function rejectRefund(paymentId, reason) {
   });
 
   if (!payment) {
-    throw new ServiceError("Không tìm thấy giao dịch", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError(
+      "Không tìm thấy giao dịch",
+      404,
+      ERROR_CODES.NOT_FOUND,
+    );
   }
 
   if (payment.status !== PAYMENT_STATUS.PAID) {
@@ -713,7 +1263,11 @@ export async function getAdminPayments({
 export async function getPaymentById(paymentId, { userId, roleId }) {
   const id = parseInt(paymentId, 10);
   if (Number.isNaN(id)) {
-    throw new ServiceError("Payment ID không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError(
+      "Payment ID không hợp lệ",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
   }
 
   const isAdmin = roleId <= 2;
@@ -784,7 +1338,11 @@ export async function getPaymentById(paymentId, { userId, roleId }) {
   }
 
   if (!isAdmin && payment.userId !== userId) {
-    throw new ServiceError("Bạn không có quyền xem payment này", 403, ERROR_CODES.FORBIDDEN);
+    throw new ServiceError(
+      "Bạn không có quyền xem payment này",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
   }
 
   return payment;

@@ -16,6 +16,7 @@ import {
   Clock,
   Edit3,
   X,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -38,6 +39,8 @@ import {
 import { BUSINESS_TOKENS } from "@/components/business/tokens";
 import { cn } from "@/lib/utils";
 import ContractSignModal from "@/components/business/ContractSignModal";
+import ContractPdfViewer from "@/components/business/ContractPdfViewer";
+import DocumentUploadCard from "@/components/business/DocumentUploadCard";
 import DocumentImageUploadField from "@/components/business/DocumentImageUploadField";
 import { DOCUMENT_SAMPLE_IMAGES } from "@/components/business/documentImageConstants";
 import { isImageSource, resolveMediaUrl } from "@/utils/mediaUrl";
@@ -454,13 +457,22 @@ const BusinessProfilePage = () => {
             </div>
           </BusinessSectionCard>
 
+          <BusinessSectionCard
+            title={t("business.profile.secureDocuments")}
+            titleIcon={Lock}
+            description={t("business.profile.secureDocumentsDesc")}
+            className="lg:col-span-2"
+          >
+            <DocumentUploadCard businessId={business?.id} />
+          </BusinessSectionCard>
+
           <div
             ref={contractSectionRef}
             id="business-contract-section"
             className="scroll-mt-24 lg:col-span-2"
           >
             <BusinessSectionCard title={t("business.profile.contract")} titleIcon={FileSignature}>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="rounded-lg border border-border/60 p-3">
                   <p className="text-xs text-muted-foreground">
                     {t("business.profile.contractStatus")}
@@ -482,6 +494,10 @@ const BusinessProfilePage = () => {
                     </p>
                   )}
                 </div>
+
+                {business?.contractSigned && business?.id && (
+                  <ContractPdfViewer businessId={business.id} />
+                )}
 
                 <Button
                   type="button"
@@ -517,7 +533,7 @@ const BusinessProfilePage = () => {
 
                 <FormField label={t("business.profile.businessType")}>
                   <Select
-                    value={watch("businessType")}
+                    value={watch("businessType") || ""}
                     onValueChange={(v) =>
                       setValue("businessType", v, { shouldDirty: true })
                     }
@@ -619,6 +635,7 @@ const BusinessProfilePage = () => {
                       previewAlt={t("business.profile.altBusinessLicense")}
                       previewClassName="h-[300px] sm:h-[360px]"
                       disabled={saving}
+                      acceptPdf
                     />
 
                     <DocumentImageUploadField
@@ -721,6 +738,7 @@ const BusinessProfilePage = () => {
         onSubmit={handleSignContract}
         loading={signing}
         contractVersion={business?.contractVersion || "v1"}
+        business={business}
       />
     </div>
   );

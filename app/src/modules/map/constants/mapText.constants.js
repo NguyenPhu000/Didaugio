@@ -70,8 +70,8 @@ export const MAP_TEXT = Object.freeze({
     get openMenu() { return i18n.t("common.close"); },
   },
   navigation: {
-    get signalLost() { return i18n.t("map.navigation.signalLost", { defaultValue: "Đang tìm tín hiệu..." }); },
-    get signalLostSubtitle() { return i18n.t("map.navigation.signalLostSubtitle", { defaultValue: "Vị trí ước tính dựa trên tốc độ cuối" }); },
+    get signalLost() { return i18n.t("map.navigation.signalLost"); },
+    get signalLostSubtitle() { return i18n.t("map.navigation.signalLostSubtitle"); },
   },
   analytics: {
     routeModeCurrentLocationToPlace: "current_location_to_place",

@@ -10,13 +10,15 @@ import { setOffline, setOnline } from "../../utils/onlineManager.js";
  */
 export const loginGoogle = async (req, res, next) => {
   try {
-    const { idToken } = req.body;
+    const { idToken, context } = req.body;
     const clientInfo = {
       ipAddress: req.ip || req.connection.remoteAddress,
       deviceId: req.headers["x-device-id"],
       deviceName: req.headers["x-device-name"] || req.headers["user-agent"],
     };
-    const result = await authService.loginWithGoogle(idToken, clientInfo);
+    const result = await authService.loginWithGoogle(idToken, clientInfo, {
+      context,
+    });
     res.json({
       success: true,
       data: result,

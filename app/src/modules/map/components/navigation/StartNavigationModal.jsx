@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { BlurView } from "expo-blur";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../../constants/design-tokens";
@@ -12,9 +13,9 @@ const StartNavigationModal = memo(function StartNavigationModal({
   visible,
   onDismiss,
   onConfirm,
-  title = "Bắt đầu hành trình",
-  body = "Bạn có muốn bắt đầu dẫn đường và theo dõi vị trí cho chuyến đi ngay bây giờ?",
 }) {
+  const { t } = useTranslation();
+
   return (
     <Modal
       visible={visible}
@@ -75,7 +76,7 @@ const StartNavigationModal = memo(function StartNavigationModal({
                 letterSpacing: -0.4,
               }}
             >
-              {title}
+              {t("map.startNavigationModal.title")}
             </Text>
             <Text
               className="text-base text-center mt-2 leading-5"
@@ -84,7 +85,7 @@ const StartNavigationModal = memo(function StartNavigationModal({
                 fontFamily: TOKENS.font.medium,
               }}
             >
-              {body}
+              {t("map.startNavigationModal.body")}
             </Text>
           </View>
 
@@ -109,7 +110,7 @@ const StartNavigationModal = memo(function StartNavigationModal({
                 className="text-md font-semibold"
                 style={{ color: "rgba(255, 255, 255, 0.8)", fontFamily: TOKENS.font.semibold }}
               >
-                Để sau
+                {t("map.startNavigationModal.later")}
               </Text>
             </Pressable>
 
@@ -131,7 +132,7 @@ const StartNavigationModal = memo(function StartNavigationModal({
                 className="text-md font-semibold"
                 style={{ color: "#FFFFFF", fontFamily: TOKENS.font.semibold }}
               >
-                Bắt đầu ngay
+                {t("map.startNavigationModal.startNow")}
               </Text>
             </Pressable>
           </View>

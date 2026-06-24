@@ -8,12 +8,15 @@ import Search from "lucide-react/dist/esm/icons/search";
 import { ADMIN_ROUTES } from "@/constants/routes";
 import { useTranslation } from "react-i18next";
 
-// New shadcn admin components
+// Admin components
 import SectionCards from "@/components/admin/SectionCards";
 import ChartAreaInteractive from "@/components/admin/ChartAreaInteractive";
 import RecentPlacesTable from "@/components/admin/RecentPlacesTable";
+import OnlineUsersCard from "@/components/admin/OnlineUsersCard";
+import ServerHealthCard from "@/components/admin/ServerHealthCard";
+import RecentErrorsCard from "@/components/admin/RecentErrorsCard";
 
-// Legacy sub-components (kept for additional sections)
+// Legacy sub-components
 import { DashboardDataStatus, DashboardCategories } from "./dashboard";
 
 const DashboardPage = () => {
@@ -117,6 +120,13 @@ const DashboardPage = () => {
 
       {/* Interactive Chart */}
       <ChartAreaInteractive />
+
+      {/* Monitoring Section */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <OnlineUsersCard />
+        <ServerHealthCard />
+        <RecentErrorsCard />
+      </div>
 
       {/* Data Status + Categories (legacy sections) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

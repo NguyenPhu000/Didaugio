@@ -39,6 +39,25 @@ const connectedUsers = new Map();
 /** Singleton io instance */
 let ioInstance = null;
 
+/** Throttled broadcast — max once per 2 seconds */
+let broadcastTimer = null;
+let pendingIO = null;
+
+const broadcastOnlineCountThrottled = (io) => {
+  pendingIO = io;
+  if (broadcastTimer) return;
+  broadcastTimer = setTimeout(() => {
+    broadcastTimer = null;
+    const uniqueUserIds = new Set(
+      [...connectedUsers.values()].map((u) => u.userId),
+    );
+    pendingIO.to("admin").emit("admin:online-count", {
+      count: uniqueUserIds.size,
+      connections: connectedUsers.size,
+    });
+  }, 2000);
+};
+
 /**
  * Initialize Socket.io server.
  * @param {import("http").Server} httpServer
@@ -140,11 +159,14 @@ export const initSocketIO = (httpServer, allowedOrigins = []) => {
       `[Socket] User ${userId} connected (${socket.id}), total: ${connectedUsers.size}`
     );
 
+    broadcastOnlineCountThrottled(io);
+
     socket.on("disconnect", () => {
       connectedUsers.delete(socket.id);
       logger.info(
         `[Socket] User ${userId} disconnected (${socket.id}), total: ${connectedUsers.size}`
       );
+      broadcastOnlineCountThrottled(io);
     });
   });
 

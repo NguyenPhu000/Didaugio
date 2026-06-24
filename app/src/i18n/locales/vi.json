@@ -40,7 +40,16 @@
     "loginRequired": "Cần đăng nhập",
     "login": "Đăng nhập",
     "saving": "Đang lưu...",
-    "processing": "Đang xử lý..."
+    "processing": "Đang xử lý...",
+    "weekdays": {
+      "mon": "T2",
+      "tue": "T3",
+      "wed": "T4",
+      "thu": "T5",
+      "fri": "T6",
+      "sat": "T7",
+      "sun": "CN"
+    }
   },
   "tabs": {
     "map": "Bản đồ",
@@ -52,7 +61,7 @@
     "login": {
       "title": "ĐĂNG NHẬP",
       "subtitle": "TRUY CẬP HỆ THỐNG",
-      "brandTagline": "Khám Pha Cần Thơ theo cách của bạn",
+      "brandTagline": "Khám Phá Cần Thơ theo cách của bạn",
       "emailOrUsername": "Email hoặc tên đăng nhập",
       "password": "Mật khẩu",
       "rememberMe": "GHI NHỚ ĐĂNG NHẬP",
@@ -60,7 +69,7 @@
       "submit": "TRUY CẬP HỆ THỐNG",
       "submitting": "ĐANG XÁC THỰC...",
       "orContinueWith": "HOẶC TIẾP TỤC VỚI",
-      "googleLogin": "Đăng nhập Google",
+      "googleLogin": "Đăng nhập bằng Google",
       "guestExperience": "Trải nghiệm khách",
       "noAccount": "Chưa có tài khoản?",
       "createAccount": "Tạo tài khoản mới",
@@ -78,7 +87,7 @@
       "securityPassword": "MẬT KHẨU BẢO MẬT",
       "password": "Mật khẩu",
       "confirmPassword": "Xác nhận mật khẩu",
-      "submit": "Đăng ký tài kho��n",
+      "submit": "Đăng ký tài khoản",
       "hasAccount": "Đã có tài khoản?",
       "loginNow": "Đăng nhập ngay",
       "success": "Đăng ký thành công!",
@@ -984,6 +993,59 @@
       "optimizedInfo": "Đã tối ưu theo thời gian di chuyển hiện tại.",
       "retryingRoute": "Đang thử lại...",
       "retryRoute": "Thử lại chỉ đường"
+    },
+    "navigation": {
+      "signalLost": "Đang tìm tín hiệu...",
+      "signalLostSubtitle": "Vị trí ước tính dựa trên tốc độ cuối"
+    },
+    "voice": {
+      "arrived": "Bạn đã đến {{name}}",
+      "distanceInstruction": "Còn {{distance}} mét, {{instruction}}",
+      "defaultDestination": "điểm đến"
+    },
+    "activeTripNavBanner": {
+      "traveling": "Đang đi",
+      "recalculating": "Đang tính lại tuyến phù hợp",
+      "continueTo": "Tiếp tục đến {{name}}",
+      "followCurrentRoute": "Bám theo tuyến đường hiện tại",
+      "calculatingRoute": "Đang tính tuyến đường...",
+      "updating": "Đang cập nhật..."
+    },
+    "arrivalBanner": {
+      "arrivedTitle": "Bạn đã đến nơi?",
+      "approachingTitle": "Sắp đến nơi",
+      "arrivedMessage": "Xác nhận đã tới {{name}} để hoàn tất chặng.",
+      "approachingMessage": "Còn {{distance}} đến {{name}}. Tìm chỗ dừng xe an toàn.",
+      "swipeToConfirm": "Vuốt/nhấn để xác nhận",
+      "unlockWhenStopped": "Mở khóa khi dừng trong 30m",
+      "defaultDestination": "điểm đến",
+      "defaultDistance": "một đoạn ngắn"
+    },
+    "nearbyWarningBanner": {
+      "title": "Sắp đến nơi rồi!",
+      "message": "Chỉ còn {{distance}}m nữa là đến {{name}}.",
+      "defaultTarget": "Điểm đến"
+    },
+    "startNavigationModal": {
+      "title": "Bắt đầu hành trình",
+      "body": "Bạn có muốn bắt đầu dẫn đường và theo dõi vị trí cho chuyến đi ngay bây giờ?",
+      "later": "Để sau",
+      "startNow": "Bắt đầu ngay"
+    },
+    "tripCompleteModal": {
+      "journeyTitle": "Chúc mừng hoàn thành hành trình!",
+      "dayTitle": "Hoàn thành Ngày {{day}}!",
+      "journeyMessage": "Bạn đã xuất sắc hoàn thành toàn bộ các điểm đến trong chuyến đi này. Chúc bạn có nhiều kỷ niệm đẹp tại Cần Thơ!",
+      "dayMessage": "Tất cả các điểm đến của Ngày {{day}} đã được khám phá. Bạn có muốn tạm dừng chỉ đường để nghỉ ngơi không?",
+      "close": "Đóng",
+      "complete": "Hoàn tất",
+      "pause": "Tạm nghỉ"
+    },
+    "departureReminderBanner": {
+      "title": "Chuẩn bị di chuyển",
+      "withMinutes": "Còn khoảng {{minutes}} phút nữa là đến giờ đi tiếp sang {{name}}.",
+      "now": "Đã đến giờ xuất phát sang {{name}}. Hãy di chuyển nhé!",
+      "defaultNextName": "địa điểm tiếp theo"
     },
     "filters": {
       "quickOptions": {

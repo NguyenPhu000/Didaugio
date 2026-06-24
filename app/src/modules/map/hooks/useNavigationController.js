@@ -118,6 +118,7 @@ export function useNavigationController({
   const [machineState, setMachineState] = useState(
     enabled ? NAVIGATION_STATES.NAVIGATING : NAVIGATION_STATES.IDLE,
   );
+  const machineStateRef = useRef(machineState);
   const [routeOverride, setRouteOverride] = useState(null);
   const [navSnapshot, setNavSnapshot] = useState({
     state: enabled ? NAVIGATION_STATES.NAVIGATING : NAVIGATION_STATES.IDLE,
@@ -153,6 +154,10 @@ export function useNavigationController({
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
+
+  useEffect(() => {
+    machineStateRef.current = machineState;
+  }, [machineState]);
 
   useEffect(() => {
     if (!enabled) {
@@ -237,8 +242,11 @@ export function useNavigationController({
         .catch((error) => {
           if (isAbortError(error)) return;
           if (!existingPromise) return;
-          fetchRouteFromServer(location).then(applyRoute).catch(() => {});
-        });
+          fetchRouteFromServer(location)
+            .then(applyRoute)
+            .catch(() => {});
+        })
+        .catch(() => {});
     },
     [applyRoute, fetchRouteFromServer],
   );
@@ -252,15 +260,20 @@ export function useNavigationController({
 
   const safeAnimateCamera = useCallback(
     (location, distanceToNextTurn) => {
-      if (!mapRef?.current || !Number.isFinite(location?.heading)) return;
+      if (!mapRef?.current) return;
+      const isFirstCamera = lastCameraUpdateRef.current === 0;
+      if (!isFirstCamera && !Number.isFinite(location?.heading)) return;
       const now = Date.now();
       if (now - lastCameraUpdateRef.current < CAMERA_MIN_INTERVAL_MS) return;
 
+      const heading = Number.isFinite(location?.heading)
+        ? location.heading
+        : (lastCameraHeadingRef.current ?? 0);
       const previousHeading = lastCameraHeadingRef.current;
       const headingDelta =
         previousHeading === null
           ? CAMERA_MIN_HEADING_DELTA_DEG + 1
-          : normalizeHeadingDelta(location.heading, previousHeading);
+          : normalizeHeadingDelta(heading, previousHeading);
       if (
         headingDelta !== null &&
         headingDelta <= CAMERA_MIN_HEADING_DELTA_DEG
@@ -271,14 +284,14 @@ export function useNavigationController({
       const speedKmh = Number(location.speedKmh ?? location.speed ?? 0);
       const camera = calculateKinematicCamera(speedKmh, distanceToNextTurn);
       lastCameraUpdateRef.current = now;
-      lastCameraHeadingRef.current = location.heading;
+      lastCameraHeadingRef.current = heading;
       mapRef.current.animateCamera?.(
         {
           center: {
             latitude: location.latitude,
             longitude: location.longitude,
           },
-          heading: location.heading,
+          heading,
           pitch: camera.pitch,
           zoom: camera.zoom,
         },
@@ -368,7 +381,7 @@ export function useNavigationController({
       lastUiPublishRef.current = now;
       setNavSnapshot((prev) => ({
         ...prev,
-        state: machineState,
+        state: machineStateRef.current,
         isOffRoute: offRoute,
         snappedPoint: toMapCoordinate(snap.snappedPoint),
         segmentIndex: snap.segmentIndex,
@@ -385,7 +398,6 @@ export function useNavigationController({
       cancelShadowReroute,
       confirmReroute,
       enabled,
-      machineState,
       routeOverride,
       safeAnimateCamera,
       startShadowReroute,
@@ -456,10 +468,19 @@ export function useNavigationController({
       const bLat = b.latitude ?? b.lat;
       const bLng = b.longitude ?? b.lng;
 
-      setEstimatedPosition({
+      const estimated = {
         latitude: aLat + (bLat - aLat) * fraction,
         longitude: aLng + (bLng - aLng) * fraction,
+      };
+
+      const snap = snapToRoute(estimated, route.coordinates, segIdx, {
+        spatialIndex: route.spatialIndex,
       });
+      if (snap?.snappedPoint) {
+        setEstimatedPosition(toMapCoordinate(snap.snappedPoint));
+      } else {
+        setEstimatedPosition(estimated);
+      }
     };
 
     tick();

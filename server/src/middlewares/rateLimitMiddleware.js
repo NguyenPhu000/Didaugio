@@ -120,3 +120,19 @@ export const groqChatLimiter = createLimiter({
   prodDefault: 60,
   message: "Qua nhieu yeu cau tro ly AI, vui long thu lai sau",
 });
+
+export const documentUploadLimiter = createLimiter({
+  envKey: "DOCUMENT_UPLOAD_RATE_LIMIT_MAX",
+  devDefault: 50,
+  prodDefault: 10,
+  windowMs: 15 * 60 * 1000,
+  message: "Quá nhiều lần tải lên tài liệu, vui lòng thử lại sau 15 phút",
+});
+
+export const documentDownloadLimiter = createLimiter({
+  envKey: "DOCUMENT_DOWNLOAD_RATE_LIMIT_MAX",
+  devDefault: 60,
+  prodDefault: 5,
+  windowMs: 60 * 1000,
+  message: "Quá nhiều lần tải xuống tài liệu, vui lòng thử lại sau",
+});

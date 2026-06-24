@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { BlurView } from "expo-blur";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../../constants/design-tokens";
@@ -16,6 +17,8 @@ const TripCompleteModal = memo(function TripCompleteModal({
   onPrimaryAction,
   primaryActionText,
 }) {
+  const { t } = useTranslation();
+
   return (
     <Modal
       visible={visible}
@@ -81,8 +84,8 @@ const TripCompleteModal = memo(function TripCompleteModal({
               }}
             >
               {isTripEnd
-                ? "Chúc mừng hoàn thành hành trình!"
-                : `Hoàn thành Ngày ${dayNumber}!`}
+                ? t("map.tripCompleteModal.journeyTitle")
+                : t("map.tripCompleteModal.dayTitle", { day: dayNumber })}
             </Text>
             <Text
               className="text-base text-center mt-2 leading-5"
@@ -92,8 +95,8 @@ const TripCompleteModal = memo(function TripCompleteModal({
               }}
             >
               {isTripEnd
-                ? "Bạn đã xuất sắc hoàn thành toàn bộ các điểm đến trong chuyến đi này. Chúc bạn có nhiều kỷ niệm đẹp tại Cần Thơ!"
-                : `Tất cả các điểm đến của Ngày ${dayNumber} đã được khám phá. Bạn có muốn tạm dừng chỉ đường để nghỉ ngơi không?`}
+                ? t("map.tripCompleteModal.journeyMessage")
+                : t("map.tripCompleteModal.dayMessage", { day: dayNumber })}
             </Text>
           </View>
 
@@ -118,7 +121,7 @@ const TripCompleteModal = memo(function TripCompleteModal({
                 className="text-md font-semibold"
                 style={{ color: "rgba(255, 255, 255, 0.8)", fontFamily: TOKENS.font.semibold }}
               >
-                Đóng
+                {t("map.tripCompleteModal.close")}
               </Text>
             </Pressable>
 
@@ -141,7 +144,7 @@ const TripCompleteModal = memo(function TripCompleteModal({
                   className="text-md font-semibold"
                   style={{ color: "#FFFFFF", fontFamily: TOKENS.font.semibold }}
                 >
-                  {primaryActionText || (isTripEnd ? "Hoàn tất" : "Tạm nghỉ")}
+                  {primaryActionText || (isTripEnd ? t("map.tripCompleteModal.complete") : t("map.tripCompleteModal.pause"))}
                 </Text>
               </Pressable>
             ) : null}

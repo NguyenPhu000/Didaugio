@@ -34,6 +34,7 @@ import {
 import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../src/lib/media-url";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
+import { formatFullDate, formatFullDateNoWeekday } from "../../src/utils/dateFormat";
 
 const SCREEN_W = Dimensions.get("window").width;
 
@@ -339,10 +340,10 @@ export default function EventDetailScreen() {
               <MaterialIconsRounded name="calendar-today" size={18} color="#8E8E93" />
               <View>
                 <Text className="text-[#1D1D1F] text-[13px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
-                  {new Date(event.startDate).toLocaleDateString(i18n.language === "vi" ? "vi-VN" : "en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  {formatFullDate(event.startDate)}
                 </Text>
                 <Text className="text-black/40 text-[11px] font-medium" style={{ fontFamily: TOKENS.font.medium }}>
-                  {t("event.to")} {new Date(event.endDate).toLocaleDateString(i18n.language === "vi" ? "vi-VN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' })}
+                  {t("event.to")} {formatFullDateNoWeekday(event.endDate)}
                 </Text>
               </View>
             </View>

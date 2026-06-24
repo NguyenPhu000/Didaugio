@@ -12,7 +12,8 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { Link, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather, FontAwesome5 } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
+import { GoogleLogo } from "../../src/components/primitives/GoogleLogo";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
@@ -207,13 +208,15 @@ export default function LoginScreen() {
 
             {/* Main Action Button (Apple Royal Blue Gradient) */}
             <View 
-              className="rounded-[14px] overflow-hidden mt-2 shadow-sm elevation-2"
+              className="rounded-[14px] overflow-hidden mt-2"
               style={Platform.OS === "ios" ? {
                 shadowColor: "#007AFF",
                 shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.25,
+                shadowOpacity: 0.3,
                 shadowRadius: 8,
-              } : null}
+              } : {
+                elevation: 3,
+              }}
             >
               <Pressable
                 onPress={handleLogin}
@@ -243,31 +246,34 @@ export default function LoginScreen() {
             </View>
 
             {/* Social Logins */}
-            <View className="flex-row gap-2.5 mb-4 w-full">
+            <View className="gap-2.5 mb-4 w-full">
+              {/* Google Sign-In Button — follows Google Brand Guidelines */}
               <Pressable
                 onPress={loginWithGoogle}
                 disabled={isGoogleLoading}
-                className="flex-1 flex-row items-center justify-center h-12 rounded-[14px] bg-white border border-[#E5E5EA] gap-1.5 shadow-sm elevation-1 active:opacity-90 active:scale-[0.98]"
+                className="flex-row items-center justify-center h-[52px] rounded-[14px] bg-white border border-[#DADCE0] gap-3 active:opacity-90 active:scale-[0.98]"
                 style={Platform.OS === "ios" ? {
                   shadowColor: "#000000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 3,
-                } : null}
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 4,
+                } : {
+                  elevation: 2,
+                }}
               >
                 {isGoogleLoading ? (
                   <ActivityIndicator color="#1C1C1E" size="small" />
                 ) : (
                   <>
-                    <FontAwesome5 name="google" size={15} color="#EA4335" />
-                    <Text className="text-[#1C1C1E] text-[13px] font-semibold">{t("auth.login.googleLogin")}</Text>
+                    <GoogleLogo size={20} />
+                    <Text className="text-[#1F1F1F] text-[15px] font-medium tracking-[0.2px]">{t("auth.login.googleLogin")}</Text>
                   </>
                 )}
               </Pressable>
 
               <Pressable
                 onPress={continueAsGuest}
-                className="flex-1 flex-row items-center justify-center h-12 rounded-[14px] bg-[#007AFF]/10 gap-1.5 active:opacity-90 active:scale-[0.98]"
+                className="flex-row items-center justify-center h-12 rounded-[14px] bg-[#007AFF]/10 gap-2 active:opacity-90 active:scale-[0.98]"
               >
                 <Feather name="compass" size={16} color="#007AFF" />
                 <Text className="text-[#007AFF] text-[13px] font-semibold">{t("auth.login.guestExperience")}</Text>

@@ -8,12 +8,13 @@ export const authService = {
   },
 
   // Đăng nhập
-  login: async (identifier, password, deviceInfo = {}) => {
+  login: async (identifier, password, { rememberMe = false, deviceInfo = {} } = {}) => {
     const normalizedIdentifier = String(identifier || "").trim();
     const isEmailIdentifier = /\S+@\S+\.\S+/.test(normalizedIdentifier);
 
     const payload = {
       password,
+      rememberMe,
       ...deviceInfo,
       ...(isEmailIdentifier
         ? { email: normalizedIdentifier.toLowerCase() }
@@ -110,6 +111,15 @@ export const authService = {
   googleLogin: async (idToken) => {
     const response = await api.post("/auth/google", {
       idToken,
+    });
+    return response;
+  },
+
+  // Đăng ký business bằng Google (id_token + context)
+  googleRegister: async (idToken) => {
+    const response = await api.post("/auth/google", {
+      idToken,
+      context: "web_business",
     });
     return response;
   },

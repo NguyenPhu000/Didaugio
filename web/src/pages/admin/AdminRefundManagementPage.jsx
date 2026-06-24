@@ -74,6 +74,7 @@ const formatDate = (dateStr) => {
 const GATEWAY_CONFIG = {
   VNPAY: { label: "VNPAY", color: "bg-blue-100 text-blue-700 border-blue-200" },
   MOMO: { label: "MoMo", color: "bg-pink-100 text-pink-700 border-pink-200" },
+  SEPAY: { label: "SePay", color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
   manual: {
     label: "Thủ công",
     color: "bg-gray-100 text-gray-700 border-gray-200",
@@ -632,7 +633,7 @@ export default function AdminRefundManagementPage() {
   }, [payments, activeTab]);
 
   const gatewayChartData = useMemo(() => {
-    const counts = { VNPAY: 0, MOMO: 0, manual: 0 };
+    const counts = { VNPAY: 0, MOMO: 0, SEPAY: 0, manual: 0 };
     payments.forEach((p) => {
       const method = p.paymentMethod || "manual";
       if (counts[method] !== undefined) {
@@ -643,11 +644,11 @@ export default function AdminRefundManagementPage() {
     });
 
     return {
-      labels: ["VNPAY", "MoMo", "Thủ công"],
+      labels: ["VNPAY", "MoMo", "SePay", "Thủ công"],
       datasets: [
         {
-          data: [counts.VNPAY, counts.MOMO, counts.manual],
-          backgroundColor: ["#3b82f6", "#ec4899", "#6b7280"],
+          data: [counts.VNPAY, counts.MOMO, counts.SEPAY, counts.manual],
+          backgroundColor: ["#3b82f6", "#ec4899", "#6366f1", "#6b7280"],
         },
       ],
     };
@@ -1057,6 +1058,7 @@ export default function AdminRefundManagementPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="SEPAY">SePay</SelectItem>
                   <SelectItem value="VNPAY">VNPAY</SelectItem>
                   <SelectItem value="MOMO">MOMO</SelectItem>
                 </SelectContent>

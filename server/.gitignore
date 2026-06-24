@@ -6,6 +6,8 @@ scripts
 /generated/prisma
 prisma/migrations
 tests
+storage/sensitive/*
+!storage/sensitive/.gitkeep
 scripts
 check_db.js 
 debug_turf.js

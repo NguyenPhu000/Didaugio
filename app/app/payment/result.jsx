@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { getMyBookingDetailApi } from "@/modules/booking/api/bookingApi";
+import { formatPriceLocale, formatLongDate } from "../../src/utils/dateFormat";
 
 const THEME = {
   background: "#F5F5F7",
@@ -33,23 +34,12 @@ const METHOD_LABELS = {
 
 const formatPrice = (price) => {
   if (price == null) return "—";
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(price);
+  return formatPriceLocale(price);
 };
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("vi-VN", {
-    weekday: "long",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  return formatLongDate(dateStr) || "—";
 };
 
 const STATUS_CONFIG = {

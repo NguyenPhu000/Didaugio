@@ -55,6 +55,7 @@ export const BusinessStatCard = memo(({
   if (loading) return <BusinessStatCardSkeleton />;
 
   const trendValue = formatTrendValue(trend);
+  const isWrapped = !!href;
 
   const cardContent = (
     <>
@@ -96,7 +97,7 @@ export const BusinessStatCard = memo(({
 
         <MiniSparkline data={miniChart} color={iconColor} />
 
-        {href && (
+        {href && !isWrapped && (
           <Link
             to={href}
             className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-zinc-500 transition-colors hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-100"

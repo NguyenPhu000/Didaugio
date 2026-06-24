@@ -97,7 +97,9 @@ const LoginPage = () => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      const response = await authService.login(data.identifier, data.password);
+      const response = await authService.login(data.identifier, data.password, {
+        rememberMe,
+      });
       if (response.success) {
         const dashboardUrl = resolvePostLoginRoute(response.data.user);
         if (dashboardUrl === AUTH_ROUTES.LOGIN) {
@@ -113,7 +115,7 @@ const LoginPage = () => {
           localStorage.removeItem(REMEMBER_KEY);
         }
 
-        // Trigger browser's "Save password?" dialog
+        // Trigger browser's "Save password?" dialog via Web Credentials API
         if ("credentials" in navigator && navigator.credentials.create) {
           try {
             const credential = await navigator.credentials.create({

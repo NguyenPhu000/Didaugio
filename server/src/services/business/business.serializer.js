@@ -39,14 +39,15 @@ const sanitizeBankAccount = (value) => {
 
 export const serializeBusiness = (business, options = {}) => {
   if (!business) return null;
-  
-  const { decryptSensitive = false } = options;
-  const { bankAccount, bankOwner, ...rest } = business;
-  
+
+  const { decryptSensitive = false, includeDocumentUrls = false } = options;
+  // Destructure out sensitive document URLs — never expose raw paths by default
+  const { bankAccount, bankOwner, idCardFront, idCardBack, businessLicense, sensitiveDocuments, ...rest } = business;
+
   // Helper to get display value (decrypt if needed, then mask)
   const getDisplayValue = (encryptedValue, maskOptions) => {
     if (encryptedValue === null || encryptedValue === undefined) return null;
-    
+
     // If encrypted, try to decrypt first
     let plainValue = encryptedValue;
     if (isEncrypted(encryptedValue)) {
@@ -61,10 +62,13 @@ export const serializeBusiness = (business, options = {}) => {
         return "***ENCRYPTED***";
       }
     }
-    
+
     return maskMiddle(plainValue, maskOptions);
   };
-  
+
+  // Derive document presence flags from sensitiveDocuments relation (if included)
+  const docTypes = new Set((sensitiveDocuments ?? []).map((d) => d.type));
+
   const result = {
     ...rest,
     commissionRate:
@@ -79,7 +83,18 @@ export const serializeBusiness = (business, options = {}) => {
     bankAccountOwnerMasked: getDisplayValue(bankOwner, { keepStart: 1, keepEnd: 0 }),
     // Include bankName (not sensitive)
     bankName: business.bankName || null,
+    // Document presence flags — boolean, no URLs exposed
+    hasIdCardFront: docTypes.has("id_card_front") || Boolean(idCardFront),
+    hasIdCardBack: docTypes.has("id_card_back") || Boolean(idCardBack),
+    hasBusinessLicense: docTypes.has("business_license") || Boolean(businessLicense),
   };
+
+  // Include document URLs only for authorized contexts (owner viewing own profile)
+  if (includeDocumentUrls) {
+    result.idCardFront = idCardFront || null;
+    result.idCardBack = idCardBack || null;
+    result.businessLicense = businessLicense || null;
+  }
   
   if (result.owner) {
     result.owner = {

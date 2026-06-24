@@ -3,23 +3,33 @@ import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRound
 
 const METHODS = [
   {
-    id: "VNPAY",
-    name: "Cổng thanh toán VNPAY",
-    desc: "Thẻ nội địa, QR, Thẻ quốc tế",
-    color: "#108ee9",
-    bg: "#EBF5FB",
-    border: "#AED6F1",
-    icon: "account-balance",
+    id: "SEPAY",
+    name: "Chuyển khoản ngân hàng",
+    desc: "Quét mã QR VietQR - Thanh toán qua ứng dụng ngân hàng",
+    color: "#0066FF",
+    bg: "#EBF1FF",
+    border: "#B3D1FF",
+    icon: "qr-code-scanner",
   },
-  {
-    id: "MOMO",
-    name: "Ví điện tử MoMo",
-    desc: "Mở ứng dụng MoMo để thanh toán",
-    color: "#a50064",
-    bg: "#FCE4EC",
-    border: "#F48FB1",
-    icon: "qr-code",
-  },
+  // ── Tạm ẩn: VNPay & MoMo chưa khả dụng ──────────────────────────
+  // {
+  //   id: "VNPAY",
+  //   name: "Cổng thanh toán VNPAY",
+  //   desc: "Thẻ nội địa, QR, Thẻ quốc tế",
+  //   color: "#108ee9",
+  //   bg: "#EBF5FB",
+  //   border: "#AED6F1",
+  //   icon: "account-balance",
+  // },
+  // {
+  //   id: "MOMO",
+  //   name: "Ví điện tử MoMo",
+  //   desc: "Mở ứng dụng MoMo để thanh toán",
+  //   color: "#a50064",
+  //   bg: "#FCE4EC",
+  //   border: "#F48FB1",
+  //   icon: "qr-code",
+  // },
 ];
 
 export function PaymentMethodSelector({ selectedMethod, onSelect }) {

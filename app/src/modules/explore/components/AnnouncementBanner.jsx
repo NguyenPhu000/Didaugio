@@ -9,6 +9,7 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 import { TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
+import { formatDayMonthNumeric } from "@/utils/dateFormat";
 
 function AnnouncementBannerInner({ announcement }) {
   const [dismissed, setDismissed] = useState(false);
@@ -33,10 +34,7 @@ function AnnouncementBannerInner({ announcement }) {
 
   // Format ngày tháng gọn
   const dateText = announcement.sentAt
-    ? new Date(announcement.sentAt).toLocaleDateString("vi-VN", {
-        day: "numeric",
-        month: "short",
-      })
+    ? formatDayMonthNumeric(announcement.sentAt)
     : null;
 
   return (

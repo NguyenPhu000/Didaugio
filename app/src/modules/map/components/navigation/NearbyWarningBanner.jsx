@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { BlurView } from "expo-blur";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../../constants/design-tokens";
@@ -11,12 +12,15 @@ import { TOKENS } from "../../../../constants/design-tokens";
 const NearbyWarningBanner = memo(function NearbyWarningBanner({
   visible,
   topOffset = 0,
-  targetName = "Điểm đến",
+  targetName,
   distanceMeters = 0,
 }) {
+  const { t } = useTranslation();
+
   if (!visible) return null;
 
   const displayDistance = Math.round(distanceMeters);
+  const resolvedTargetName = targetName || t("map.nearbyWarningBanner.defaultTarget");
 
   return (
     <View
@@ -48,14 +52,14 @@ const NearbyWarningBanner = memo(function NearbyWarningBanner({
             style={{ color: "#FFD60A", fontFamily: TOKENS.font.semibold, letterSpacing: -0.1 }}
             numberOfLines={1}
           >
-            Sắp đến nơi rồi!
+            {t("map.nearbyWarningBanner.title")}
           </Text>
           <Text
             className="text-sm leading-4"
             style={{ color: "rgba(255, 255, 255, 0.85)", fontFamily: TOKENS.font.medium }}
             numberOfLines={2}
           >
-            Chỉ còn {displayDistance}m nữa là đến {targetName}.
+            {t("map.nearbyWarningBanner.message", { distance: displayDistance, name: resolvedTargetName })}
           </Text>
         </View>
       </BlurView>

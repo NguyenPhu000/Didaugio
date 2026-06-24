@@ -81,6 +81,13 @@ export const contractSign = async (data = {}) => {
   return response;
 };
 
+export const downloadContract = async (businessId) => {
+  const response = await api.get(`${BASE_URL}/${businessId}/contract`, {
+    responseType: "blob",
+  });
+  return response;
+};
+
 // Dashboard
 export const getDashboard = async (params = {}) => {
   const response = await api.get(`${BASE_URL}/dashboard`, {
@@ -142,6 +149,7 @@ export default {
   register,
   updateProfile,
   contractSign,
+  downloadContract,
   getDashboard,
   getMyPlaces,
   getAll,

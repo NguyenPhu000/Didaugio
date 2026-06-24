@@ -34,15 +34,23 @@ if (!JWT_SECRET) {
   );
 }
 const ACCESS_TOKEN_EXPIRES = process.env.ACCESS_TOKEN_EXPIRES || "15m";
-const REFRESH_TOKEN_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 13;
+
+const REFRESH_TOKEN_EXPIRES_DAYS = Number(process.env.REFRESH_TOKEN_EXPIRES_DAYS) || 7;
+const REFRESH_TOKEN_EXPIRES_MS = REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000;
+
+const REMEMBER_ME_EXPIRES_DAYS = Number(process.env.REMEMBER_ME_EXPIRES_DAYS) || 30;
+const REMEMBER_ME_REFRESH_EXPIRES_MS = REMEMBER_ME_EXPIRES_DAYS * 24 * 60 * 60 * 1000;
+
 const GOOGLE_ALLOWED_ISSUERS = new Set([
   "https://accounts.google.com",
   "accounts.google.com",
 ]);
 
 // Account lockout config
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+const MAX_FAILED_ATTEMPTS = Number(process.env.AUTH_MAX_FAILED_ATTEMPTS) || 5;
+const LOCKOUT_DURATION_MINUTES = Number(process.env.AUTH_LOCKOUT_DURATION_MINUTES) || 15;
+const LOCKOUT_DURATION = LOCKOUT_DURATION_MINUTES * 60 * 1000;
 const RESEND_VERIFICATION_GENERIC_MESSAGE =
   "Nếu email tồn tại và chưa xác thực, hệ thống đã gửi lại email xác thực.";
 
@@ -132,8 +140,7 @@ export const register = async (data) => {
     );
   }
 
-  // Hash password with increased cost factor (13 rounds ~ 2x slower than 12)
-  const hashedPassword = await bcrypt.hash(validated.password, 13);
+  const hashedPassword = await bcrypt.hash(validated.password, BCRYPT_ROUNDS);
 
   // Create user - Default to BUSINESS role (3) for web registration
   const user = await prisma.user.create({
@@ -311,6 +318,11 @@ export const login = async (data, clientInfo = {}) => {
 
   const refreshToken = generateRefreshToken();
 
+  // Use longer expiry when "Remember Me" is checked
+  const refreshExpiresMs = validated.rememberMe
+    ? REMEMBER_ME_REFRESH_EXPIRES_MS
+    : REFRESH_TOKEN_EXPIRES_MS;
+
   // Create session
   await prisma.userSession.create({
     data: {
@@ -319,7 +331,7 @@ export const login = async (data, clientInfo = {}) => {
       deviceId: validated.deviceId || clientInfo.deviceId || null,
       deviceName: validated.deviceName || clientInfo.deviceName || null,
       ipAddress: clientInfo.ipAddress || null,
-      expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRES_MS),
+      expiresAt: new Date(Date.now() + refreshExpiresMs),
     },
   });
 
@@ -488,7 +500,7 @@ export const changePassword = async (userId, data) => {
     );
   }
 
-  const hashedPassword = await bcrypt.hash(validated.newPassword, 13);
+  const hashedPassword = await bcrypt.hash(validated.newPassword, BCRYPT_ROUNDS);
 
   await prisma.user.update({
     where: { id: userId },
@@ -738,14 +750,19 @@ export const loginWithGoogle = async (
       fallback: "google_user",
     });
 
-    // Tạo tài khoản mới với role USER (5) — khách du lịch dùng mobile app
-    // ROLES.USER = 5: regular tourist, không phải STAFF nội bộ hay GUEST ẩn danh
+    // Determine role based on context:
+    // - "web_business" → BUSINESS (3) for business registration from web
+    // - default → USER (5) for mobile app / regular login
+    const assignedRole =
+      options.context === "web_business" ? ROLES.BUSINESS : ROLES.USER;
+
+    // Tạo tài khoản mới
     user = await prisma.user.create({
       data: {
         email,
         username: generatedUsername,
-        password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 13),
-        roleId: ROLES.USER, // 5 — USER role: khách du lịch đã xác thực qua Google
+        password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), BCRYPT_ROUNDS),
+        roleId: assignedRole,
         status: USER_STATUS.ACTIVE,
         emailVerified: true, // Google đã xác thực rồi
         profile: {

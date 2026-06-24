@@ -9,9 +9,10 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { getI18nLocale, formatDateLocale } from "@/utils/dateFormat";
 
 const formatCurrency = (amount) =>
-  `${new Intl.NumberFormat("vi-VN").format(Number(amount) || 0)}đ`;
+  `${new Intl.NumberFormat(getI18nLocale()).format(Number(amount) || 0)}đ`;
 
 export default function RefundPolicyModal({
   visible,
@@ -46,7 +47,7 @@ export default function RefundPolicyModal({
   };
 
   const usageDate = booking?.useDate
-    ? new Date(booking.useDate).toLocaleDateString("vi-VN")
+    ? formatDateLocale(booking.useDate) || "-"
     : "-";
 
   return (
@@ -158,7 +159,7 @@ export default function RefundPolicyModal({
                   lineHeight: 20,
                 }}
               >
-                • Thời gian hiện tại: {new Date().toLocaleDateString("vi-VN")}{"\n"}
+                • Thời gian hiện tại: {formatDateLocale(new Date())}{"\n"}
                 • Ngày sử dụng: {usageDate}{"\n"}
                 • Mức hoàn trả: Admin sẽ xem xét và xử lý theo chính sách của dịch vụ
               </Text>

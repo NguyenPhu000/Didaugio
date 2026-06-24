@@ -124,6 +124,11 @@ const OnlinePaymentInfo = memo(({ payment }) => {
                 MOMO
               </Badge>
             )}
+            {payment?.paymentMethod === "SEPAY" && (
+              <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-medium px-2 py-0.5">
+                SePay
+              </Badge>
+            )}
             {!payment?.paymentMethod && (
               <span className="text-sm text-muted-foreground">—</span>
             )}

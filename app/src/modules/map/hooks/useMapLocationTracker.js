@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as Location from "expo-location";
 import { useSharedValue } from "react-native-reanimated";
 import { distanceMeters } from "../utils/distance";
+import { normalizeHeadingDelta } from "../utils/routeEngine";
 
 const LAST_KNOWN_MAX_AGE_MS = 5 * 60 * 1000;
 const WATCH_STATE_PUBLISH_INTERVAL_MS = 3500;
@@ -107,7 +108,7 @@ export function useMapLocationTracker({
           const prevAcc = headingAccuracyRef.current;
           const rawAcc = headingData.accuracy;
 
-          if (prev !== null && Math.abs(raw - prev) < 2 && prevAcc === rawAcc) {
+          if (prev !== null && normalizeHeadingDelta(raw, prev) < 2 && prevAcc === rawAcc) {
             return;
           }
 

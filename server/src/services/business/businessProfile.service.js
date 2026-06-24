@@ -55,7 +55,7 @@ const getMonthRange = () => {
 };
 
 const mapProfileResponse = async (business) => {
-  const serialized = serializeBusiness(business);
+  const serialized = serializeBusiness(business, { includeDocumentUrls: true });
   const { monthStart, nextMonthStart, now } = getMonthRange();
 
   const [
