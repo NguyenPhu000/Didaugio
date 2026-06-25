@@ -357,8 +357,9 @@ export default function StaffManagementPage() {
         setInvitations(data.invitations || []);
         setInvPagination((p) => ({ ...p, ...(data.pagination || {}) }));
       }
-    } catch {
-      // Silent fail for invitations
+    } catch (err) {
+      console.error("Failed to fetch invitations:", err);
+      toast.error(t("business.staff.loadFailed"));
     } finally {
       setInvLoading(false);
     }
@@ -368,8 +369,8 @@ export default function StaffManagementPage() {
     try {
       const res = await staffInvitationApi.getRoles();
       if (res.data) setBusinessRoles(res.data);
-    } catch {
-      // Ignore
+    } catch (err) {
+      console.error("Failed to fetch business roles:", err);
     }
   }, []);
 
@@ -772,9 +773,10 @@ export default function StaffManagementPage() {
           ) : (
             <div className="space-y-2">
               {invitations.map((inv) => {
+                const invitationStatusConfig = getInvitationStatusConfig(t);
                 const statusCfg =
-                  INVITATION_STATUS_CONFIG[inv.status] ||
-                  INVITATION_STATUS_CONFIG.pending;
+                  invitationStatusConfig[inv.status] ||
+                  invitationStatusConfig.pending;
                 return (
                   <div
                     key={inv.id}

@@ -59,7 +59,10 @@ const readFileAsDataUrl = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Không thể đọc tệp ảnh"));
+    reader.onerror = () => {
+      toast.error("Không thể đọc tệp ảnh");
+      reject(new Error("Không thể đọc tệp ảnh"));
+    };
     reader.readAsDataURL(file);
   });
 
@@ -194,10 +197,10 @@ const ServiceFormModal = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Ticket className="h-5 w-5 text-primary" />
-            {service ? t("business.services.updateSuccess") : t("business.services.createSuccess")}
+            {service ? "Chỉnh sửa dịch vụ" : "Tạo dịch vụ mới"}
           </DialogTitle>
           <DialogDescription>
-            {t("common.submit")}
+            Điền thông tin dịch vụ bên dưới
           </DialogDescription>
         </DialogHeader>
 
@@ -208,7 +211,7 @@ const ServiceFormModal = ({
         >
           <div className="space-y-1.5">
             <Label htmlFor="svc-name">
-              {t("business.services.title")} <span className="text-destructive">*</span>
+              Tên dịch vụ <span className="text-destructive">*</span>
             </Label>
             <Input
               id="svc-name"
@@ -216,19 +219,19 @@ const ServiceFormModal = ({
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
               minLength={2}
-              placeholder={t("business.services.title")}
+              placeholder="Nhập tên dịch vụ"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="svc-desc">{t("common.edit")}</Label>
+            <Label htmlFor="svc-desc">Mô tả</Label>
             <Textarea
               id="svc-desc"
               value={form.description}
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
               }
-              placeholder={t("business.services.title")}
+              placeholder="Nhập mô tả dịch vụ"
               className="min-h-[80px]"
             />
           </div>
@@ -264,7 +267,7 @@ const ServiceFormModal = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>{t("business.services.title")}</Label>
+              <Label>Loại dịch vụ</Label>
               <Select
                 value={form.serviceType}
                 onValueChange={(v) => setForm({ ...form, serviceType: v })}
@@ -284,7 +287,7 @@ const ServiceFormModal = ({
 
             <div className="space-y-1.5">
               <Label htmlFor="svc-price">
-                {t("business.revenue.totalRevenue")} (VND) <span className="text-destructive">*</span>
+                Giá (VND) <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="svc-price"
@@ -297,7 +300,7 @@ const ServiceFormModal = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="svc-discount">{t("business.revenue.totalRevenue")} (VND)</Label>
+              <Label htmlFor="svc-discount">Giá khuyến mãi (VND)</Label>
               <Input
                 id="svc-discount"
                 type="number"
@@ -311,7 +314,7 @@ const ServiceFormModal = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="svc-duration">{t("business.schedule.title")}</Label>
+              <Label htmlFor="svc-duration">Thời lượng (phút)</Label>
               <Input
                 id="svc-duration"
                 type="number"
@@ -322,7 +325,7 @@ const ServiceFormModal = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="svc-capacity">{t("business.bookings.guests")}</Label>
+              <Label htmlFor="svc-capacity">Sức chứa tối đa</Label>
               <Input
                 id="svc-capacity"
                 type="number"
@@ -340,7 +343,7 @@ const ServiceFormModal = ({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <Label htmlFor="svc-require-deposit" className="font-medium">
-                  {t("business.services.title")}
+                  Yêu cầu đặt cọc
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">
                   {t("common.optional")}
@@ -358,7 +361,7 @@ const ServiceFormModal = ({
             {form.requireDeposit ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>{t("business.services.title")}</Label>
+                  <Label>Loại đặt cọc</Label>
                   <Select
                     value={form.depositType}
                     onValueChange={(v) => setForm({ ...form, depositType: v })}
@@ -368,10 +371,10 @@ const ServiceFormModal = ({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="PERCENT">
-                        {t("business.services.title")}
+                        Theo phần trăm
                       </SelectItem>
                       <SelectItem value="FIXED">
-                        {t("business.services.title")}
+                        Số tiền cố định
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -380,8 +383,8 @@ const ServiceFormModal = ({
                 <div className="space-y-1.5">
                   <Label htmlFor="svc-deposit-amount">
                     {form.depositType === "PERCENT"
-                      ? t("business.services.title")
-                      : t("business.services.title")}
+                      ? "Phần trăm đặt cọc (%)"
+                      : "Số tiền đặt cọc (VND)"}
                   </Label>
                   <Input
                     id="svc-deposit-amount"
@@ -401,7 +404,7 @@ const ServiceFormModal = ({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="svc-refundable">{t("business.services.title")}</Label>
+                  <Label htmlFor="svc-refundable">Hoàn cọc</Label>
                   <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2">
                     <Checkbox
                       id="svc-refundable"
@@ -411,13 +414,13 @@ const ServiceFormModal = ({
                       }
                     />
                     <Label htmlFor="svc-refundable" className="cursor-pointer">
-                      {t("business.services.title")}
+                      Cho phép hoàn cọc
                     </Label>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="svc-refund-percent">{t("business.services.title")}</Label>
+                  <Label htmlFor="svc-refund-percent">Phần trăm hoàn (%)</Label>
                   <Input
                     id="svc-refund-percent"
                     type="number"
@@ -437,7 +440,7 @@ const ServiceFormModal = ({
             {form.requireDeposit && depositPreview != null ? (
               <div className="text-xs rounded-md bg-primary/10 border border-primary/20 px-3 py-2">
                 <span className="text-muted-foreground">
-                  {t("business.services.title")}
+                  Tiền cọc:{" "}
                 </span>
                 <span className="font-semibold text-foreground">
                   {formatVND(depositPreview)}
@@ -448,7 +451,7 @@ const ServiceFormModal = ({
 
           <div className="space-y-3">
             <FileUploader
-              label={t("business.services.title")}
+              label="Ảnh đại diện"
               hint={t("common.optional")}
               maxFiles={1}
               maxFileSize={5 * 1024 * 1024}
@@ -460,7 +463,7 @@ const ServiceFormModal = ({
             {!thumbnailFiles.length && !!service?.thumbnail && (
               <div className="rounded-lg border border-border/60 p-2">
                 <p className="text-[11px] text-muted-foreground mb-1">
-                  {t("business.services.title")}
+                  Ảnh đại diện hiện tại
                 </p>
                 <img
                   src={service.thumbnail}
@@ -473,7 +476,7 @@ const ServiceFormModal = ({
 
           <div className="space-y-3">
             <FileUploader
-              label={t("business.services.title")}
+              label="Thư viện ảnh"
               hint={t("common.optional")}
               maxFiles={6}
               maxFileSize={5 * 1024 * 1024}
@@ -487,7 +490,7 @@ const ServiceFormModal = ({
               service.images.length > 0 && (
                 <div className="rounded-lg border border-border/60 p-2">
                   <p className="text-[11px] text-muted-foreground mb-2">
-                    {t("business.services.title")} ({service.images.length})
+                    Ảnh hiện tại ({service.images.length})
                   </p>
                   <div className="grid grid-cols-3 gap-2">
                     {service.images.slice(0, 6).map((image, idx) => (
@@ -597,7 +600,7 @@ const ServiceItem = memo(({ svc, onEdit, onDelete }) => {
             )}
             {svc.requireDeposit && (
               <Badge variant="secondary" className="text-[10px]">
-                {t("business.services.title")}
+                Đặt cọc
               </Badge>
             )}
           </div>
@@ -620,13 +623,13 @@ const ServiceItem = memo(({ svc, onEdit, onDelete }) => {
             {svc.duration && (
               <div className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                {svc.duration} {t("business.schedule.title")}
+                {svc.duration} phút
               </div>
             )}
             {svc.maxCapacity && (
               <div className="flex items-center gap-1">
                 <Users className="h-3 w-3" />
-                {svc.maxCapacity} {t("business.bookings.guests")}
+                {svc.maxCapacity} khách
               </div>
             )}
             {svc._count?.bookings > 0 && (
@@ -689,7 +692,7 @@ const PlaceOverviewCard = memo(({ item, isSelected, onClick }) => {
           <strong className="text-emerald-600">{item.activeCount}</strong>
         </span>
         <span>
-          {t("business.services.title")}:{" "}
+          Giảm giá:{" "}
           <strong className="text-amber-600">{item.discountedCount}</strong>
         </span>
         <span>
@@ -844,7 +847,7 @@ const ServiceListPage = () => {
             className="gap-2 bg-zinc-950 text-white hover:bg-zinc-900"
           >
             <Plus className="h-4 w-4" />
-            {t("business.services.createSuccess")}
+            Tạo dịch vụ
           </Button>
         }
       />
@@ -868,7 +871,7 @@ const ServiceListPage = () => {
               iconColor="emerald"
             />
             <BusinessStatCard
-              title={t("business.services.title")}
+              title="Giảm giá"
               value={totalDiscounted}
               icon={Tag}
               iconColor="amber"
@@ -952,7 +955,7 @@ const ServiceListPage = () => {
             return (
               <BusinessEmptyState
                 icon={Ticket}
-                message={t("business.services.loadFailed")}
+                message="Chưa có dịch vụ"
                 action={
                   <Button
                     size="sm"
@@ -985,7 +988,7 @@ const ServiceListPage = () => {
                         {group.label}
                       </span>
                       <span className="text-[10px] bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-medium">
-                        {group.items.length} {t("business.services.title")}
+                        {group.items.length} dịch vụ
                       </span>
                     </div>
                     <Button

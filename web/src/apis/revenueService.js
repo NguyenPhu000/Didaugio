@@ -46,6 +46,20 @@ export const getTransactions = async (params = {}) => {
   return response;
 };
 
+export const getCashflow = async (params = {}) => {
+  const response = await api.get(`${BASE_URL}/cashflow`, {
+    params: sanitizeParams(params),
+  });
+  return response;
+};
+
+export const getCashflowSummary = async (params = {}) => {
+  const response = await api.get(`${BASE_URL}/cashflow/summary`, {
+    params: sanitizeParams(params),
+  });
+  return response;
+};
+
 /** Export revenue report as CSV blob */
 export const exportRevenue = async (params = {}) => {
   const response = await api.get(`${BASE_URL}/export`, {
@@ -60,5 +74,7 @@ export default {
   getRevenueTimeline,
   getRevenueByPlace,
   getTransactions,
+  getCashflow,
+  getCashflowSummary,
   exportRevenue,
 };

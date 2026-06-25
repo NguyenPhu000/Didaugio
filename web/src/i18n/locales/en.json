@@ -95,6 +95,8 @@
       "main": "MAIN",
       "management": "MANAGEMENT",
       "business": "BUSINESS",
+      "businessAccount": "ACCOUNT",
+      "businessServices": "SERVICES",
       "adminBusiness": "ADMIN BUSINESS",
       "users": "USERS",
       "system": "SYSTEM",
@@ -111,6 +113,8 @@
     },
     "business": {
       "title": "Business",
+      "profile": "Profile",
+      "businessProfile": "Business Profile",
       "myPlaces": "My Places",
       "managePlaces": "Manage Places",
       "addPlace": "Add Place",
@@ -124,6 +128,11 @@
       "reports": "Reports",
       "revenue": "Revenue",
       "earnings": "Earnings & Payouts",
+      "cashflow": "Cash Flow",
+      "subscription": "Subscription",
+      "subscriptionCurrent": "Current Plan",
+      "subscriptionPlans": "Choose Plan",
+      "subscriptionInvoices": "Invoice History",
       "reviews": "Reviews",
       "settings": "Settings"
     },
@@ -135,7 +144,12 @@
       "analytics": "Advanced Analytics",
       "cms": "Content Management",
       "reviewModeration": "Review Moderation",
-      "payouts": "Payout Management"
+      "payouts": "Payout Management",
+      "refunds": "Refund Management",
+      "cashflow": "Cash Flow",
+      "subscriptions": "Subscription Management",
+      "subscriptionList": "List",
+      "subscriptionPlans": "Plan Management"
     },
     "users": {
       "title": "Users",
@@ -1183,6 +1197,10 @@
       "pagination": "Page {{page}} / {{totalPages}} ({{total}} requests)",
       "previous": "Previous",
       "next": "Next"
+    },
+    "cashflow": {
+      "title": "System Cash Flow",
+      "description": "Track incoming payments, refunds, payouts, and ledger for SePay reconciliation."
     },
     "cms": {
       "events": "Events",
@@ -2518,6 +2536,10 @@
       "noTransactions": "No transactions yet",
       "amount": "Amount"
     },
+    "cashflow": {
+      "title": "Cash Flow",
+      "description": "Track customer payments, refunds, and business withdrawals."
+    },
     "reviews": {
       "title": "Reviews",
       "loadFailed": "Failed to load reviews",
@@ -2588,7 +2610,12 @@
     },
     "register": {
       "title": "Business Registration",
+      "description": "Create a business account to start selling on the platform",
       "registrationInfo": "Registration Information",
+      "stepInfo": "Business Information",
+      "stepBank": "Bank Details",
+      "stepDocs": "Verification Documents",
+      "bankInfoDesc": "Bank account information to receive payments from the platform (can skip and update later)",
       "businessName": "Business Name",
       "businessNamePlaceholder": "Business / Shop name",
       "businessType": "Type",
@@ -3202,6 +3229,86 @@
   "imageUtils": {
     "invalidFormat": "Invalid image format",
     "cannotRead": "Cannot read file"
+  },
+  "subscription": {
+    "title": "Subscription",
+    "currentPlan": "Current Plan",
+    "upgradeBtn": "Upgrade",
+    "downgrade": "Downgrade",
+    "expiresAt": "Expires at",
+    "usage": "Usage",
+    "billingCycle": "Billing Cycle",
+    "startDate": "Start Date",
+    "canceledNotice": "Service plan has been canceled",
+    "cancelReason": "Reason",
+    "cancel": {
+      "cancelPlan": "Cancel Subscription",
+      "title": "Cancel Subscription",
+      "confirm": "Are you sure you want to cancel {{planName}}?",
+      "warningLabel": "Note:",
+      "warningText": "When you cancel, you will lose access to premium features. Your plan will remain active until the end of the current billing period.",
+      "reasonLabel": "Cancellation reason (optional)",
+      "reasonPlaceholder": "Enter cancellation reason...",
+      "keepPlan": "Keep Plan",
+      "confirmBtn": "Confirm Cancel"
+    },
+    "status": {
+      "active": "Active",
+      "grace": "Grace Period",
+      "past_due": "Past Due",
+      "canceled": "Canceled"
+    },
+    "plans": {
+      "title": "Choose a Plan",
+      "subtitle": "Choose a plan that fits your business",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "popular": "Most Popular",
+      "current": "Current Plan",
+      "select": "Select Plan",
+      "compareFeatures": "Compare Features",
+      "feature": "Feature"
+    },
+    "invoice": {
+      "title": "Invoice History",
+      "empty": "No invoices yet",
+      "status": {
+        "pending": "Pending",
+        "paid": "Paid",
+        "overdue": "Overdue",
+        "canceled": "Canceled"
+      },
+      "table": {
+        "date": "Date",
+        "plan": "Plan",
+        "amount": "Amount",
+        "status": "Status",
+        "transactionRef": "Transaction Ref"
+      },
+      "pagination": "Page {{page}} / {{totalPages}} ({{total}})"
+    },
+    "usageItems": {
+      "places": "Places",
+      "bookingsPerMonth": "Bookings / month",
+      "staff": "Staff",
+      "services": "Services"
+    },
+    "upgrade": {
+      "title": "Upgrade Plan",
+      "confirm": "Confirm Payment",
+      "scanQR": "Scan QR code to pay",
+      "waiting": "Waiting for confirmation..."
+    },
+    "grace": {
+      "warning": "Your plan has expired. {{days}} days remaining to renew."
+    },
+    "admin": {
+      "title": "Subscription Management",
+      "mrr": "MRR",
+      "activeSubs": "Active Subscriptions",
+      "churnRate": "Churn Rate",
+      "revenue": "Revenue"
+    }
   },
   "apiError": {
     "generic": "Cannot perform action. Please try again later."

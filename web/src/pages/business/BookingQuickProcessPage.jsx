@@ -80,6 +80,7 @@ const BookingQuickProcessPage = memo(() => {
     isActive: true,
   });
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [confirmDeleteRule, setConfirmDeleteRule] = useState(null);
 
   const loadPending = useCallback(async () => {
     setLoading(true);
@@ -211,7 +212,7 @@ const BookingQuickProcessPage = memo(() => {
       conditions.minQuantity == null &&
       conditions.maxQuantity == null
     ) {
-      toast.error(t("business.quickProcess.loadFailed"));
+      toast.error("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
@@ -250,8 +251,14 @@ const BookingQuickProcessPage = memo(() => {
     }
   };
 
-  const deleteRule = async (rule) => {
-    if (!window.confirm(t("business.quickProcess.confirmDeleteRule"))) return;
+  const deleteRule = (rule) => {
+    setConfirmDeleteRule(rule);
+  };
+
+  const handleConfirmDeleteRule = async () => {
+    const rule = confirmDeleteRule;
+    setConfirmDeleteRule(null);
+    if (!rule) return;
     try {
       const res = await ruleApi.remove(rule.id);
       if (res?.success) {
@@ -291,7 +298,7 @@ const BookingQuickProcessPage = memo(() => {
 
       <BusinessPageHeader
         title={t("business.quickProcess.title")}
-        description={t("business.quickProcess.title")}
+        description="Quản lý xử lý nhanh đặt chỗ chờ duyệt"
       />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
@@ -377,7 +384,7 @@ const BookingQuickProcessPage = memo(() => {
                 </div>
                 <h3 className="font-medium text-lg">{t("business.bookings.noBookings")}</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {t("business.bookings.noBookings")}
+                  Hiện tại không có đặt chỗ nào đang chờ duyệt
                 </p>
               </CardContent>
             </Card>
@@ -514,9 +521,9 @@ const BookingQuickProcessPage = memo(() => {
                 <div className="rounded-full bg-muted p-4 mb-4">
                   <Sparkles className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="font-medium text-lg">{t("business.quickProcess.loadFailed")}</h3>
+                <h3 className="font-medium text-lg">Chưa có quy tắc</h3>
                 <p className="text-sm text-muted-foreground mt-1 text-center max-w-sm">
-                  {t("business.quickProcess.loadFailed")}
+                  Tạo quy tắc tự động để xử lý đặt chỗ nhanh hơn
                 </p>
                 <Button
                   variant="outline"
@@ -595,18 +602,18 @@ const BookingQuickProcessPage = memo(() => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              {t("common.create")}
+              Tạo quy tắc tự động
             </DialogTitle>
             <DialogDescription>
-              {t("common.create")}
+              Thiết lập quy tắc xử lý tự động cho đặt chỗ
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 py-4">
             <div className="space-y-2">
-              <Label htmlFor="priority">{t("common.edit")}</Label>
+              <Label htmlFor="priority">Độ ưu tiên</Label>
               <p className="text-xs text-muted-foreground">
-                {t("common.edit")}
+                Quy tắc có độ ưu tiên cao sẽ được áp dụng trước
               </p>
               <Input
                 id="priority"
@@ -624,9 +631,9 @@ const BookingQuickProcessPage = memo(() => {
             </div>
 
             <div className="space-y-3">
-              <Label>{t("business.schedule.title")}</Label>
+              <Label>Khung giờ áp dụng</Label>
               <p className="text-xs text-muted-foreground">
-                {t("business.schedule.title")}
+                Chọn khung giờ quy tắc này có hiệu lực
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {SLOT_OPTIONS.map((slot) => (
@@ -659,9 +666,9 @@ const BookingQuickProcessPage = memo(() => {
             </div>
 
             <div className="space-y-3">
-              <Label>{t("business.bookings.guests")}</Label>
+              <Label>Số khách</Label>
               <p className="text-xs text-muted-foreground">
-                {t("business.bookings.guests")}
+                Áp dụng cho đặt chỗ có số khách trong khoảng này
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -693,9 +700,9 @@ const BookingQuickProcessPage = memo(() => {
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div className="space-y-0.5">
-                <Label className="text-base">{t("common.active")}</Label>
+                <Label className="text-base">Kích hoạt</Label>
                 <p className="text-xs text-muted-foreground">
-                  {t("common.active")}
+                  Bật/tắt quy tắc này
                 </p>
               </div>
               <Switch
@@ -714,6 +721,32 @@ const BookingQuickProcessPage = memo(() => {
             <Button onClick={submitRule} className="gap-1.5">
               <Check className="h-4 w-4" />
               {t("common.create")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!confirmDeleteRule} onOpenChange={(open) => { if (!open) setConfirmDeleteRule(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              {t("common.confirmDelete")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("common.confirmDelete")}{" "}
+              <span className="font-semibold text-foreground">
+                "{confirmDeleteRule?.id}"
+              </span>
+              ?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmDeleteRule(null)}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDeleteRule}>
+              {t("common.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

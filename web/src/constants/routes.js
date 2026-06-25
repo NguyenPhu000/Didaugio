@@ -49,6 +49,9 @@ export const ADMIN_ROUTES = {
   CMS: "/admin/cms",
   PAYOUTS: "/admin/payouts",
   REFUNDS: "/admin/refunds",
+  CASHFLOW: "/admin/cashflow",
+  SUBSCRIPTIONS: "/admin/subscriptions",
+  SUBSCRIPTION_PLANS: "/admin/subscriptions/plans",
 };
 
 export const BUSINESS_ROUTES = {
@@ -70,6 +73,10 @@ export const BUSINESS_ROUTES = {
   VOUCHERS: "/business/vouchers",
   STAFF: "/business/staff",
   EARNINGS: "/business/earnings",
+  CASHFLOW: "/business/cashflow",
+  SUBSCRIPTION: "/business/subscription",
+  SUBSCRIPTION_PLANS: "/business/subscription/plans",
+  SUBSCRIPTION_INVOICES: "/business/subscription/invoices",
   REVENUE: "/business/revenue",
   REPORTS: "/business/reports",
   REVIEWS: "/business/reviews",

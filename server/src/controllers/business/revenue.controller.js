@@ -1,4 +1,5 @@
 import * as revenueService from "../../services/business/revenue.service.js";
+import * as cashflowService from "../../services/payment/cashflow.service.js";
 
 const getBusinessId = (req) => req.business?.id || req.activeBusiness?.id;
 
@@ -104,10 +105,50 @@ export const exportCsv = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/business/revenue/cashflow
+ */
+export const getCashflow = async (req, res, next) => {
+  try {
+    const businessId = requireBusiness(req, res);
+    if (!businessId) return;
+
+    const data = await cashflowService.getCashflow({
+      ...req.query,
+      businessId,
+    });
+    res.json({
+      success: true,
+      data: data.rows,
+      message: "OK",
+      pagination: data.pagination,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/business/revenue/cashflow/summary
+ */
+export const getCashflowSummary = async (req, res, next) => {
+  try {
+    const businessId = requireBusiness(req, res);
+    if (!businessId) return;
+
+    const data = await cashflowService.getCashflowSummary({ businessId });
+    res.json({ success: true, data, message: "OK" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getOverview,
   getTimeline,
   getByPlace,
   getTransactions,
   exportCsv,
+  getCashflow,
+  getCashflowSummary,
 };

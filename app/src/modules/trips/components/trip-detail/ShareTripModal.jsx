@@ -71,7 +71,7 @@ function ShareLinkRow({ share, onDelete, isDeleting }) {
       </View>
 
       <Text className="text-[11px] text-black/30 mt-1.5 text-center">
-        {share.accessCount || 0} lượt truy cập
+        {t("trip.share.accessCount", { count: share.accessCount || 0 })}
       </Text>
     </View>
   );

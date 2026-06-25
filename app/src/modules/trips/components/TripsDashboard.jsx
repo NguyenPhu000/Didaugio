@@ -2,19 +2,16 @@ import { Fragment, useMemo, useState, useEffect } from "react";
 import { StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { Box, Text, Pressable } from "@/components/primitives";
-import { cn } from "@/lib/cn";
-import { LinearGradient } from "expo-linear-gradient";
+import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
+import { Box, Text, Pressable } from "../../../components/primitives";
+import { cn } from "../../../lib/cn";
 import {
-  FILTERS,
   buildSummary,
   getHeroTrip,
   getDateRangeLabel,
   getTimelineLabel,
   getDaysUntil,
-  calcDayCount,
-  toValidDate,
+  getTripFilters,
 } from "../utils/tripHelpers";
 import { resolveTripCoverUri } from "../../../lib/media-url";
 
@@ -39,6 +36,7 @@ export function TripsDashboard({
   const { t } = useTranslation();
   const heroTrip = useMemo(() => getHeroTrip(trips), [trips]);
   const summary = useMemo(() => buildSummary(trips), [trips]);
+  const filters = getTripFilters();
 
   const heroCoverUri = useMemo(
     () => (heroTrip ? resolveTripCoverUri(heroTrip, HERO_COVER_WIDTH) : null),
@@ -56,12 +54,12 @@ export function TripsDashboard({
   return (
     <Box className="px-6 pt-2 pb-6">
       {/* ── Header ── */}
-      <Box className="flex-row items-center justify-between mt-2.5 mb-[18px]">
+      <Box className="flex-row items-center justify-between mt-2.5 mb-4">
         <Box className="flex-1 pr-3">
-          <Text className="text-[34px] font-bold text-ink tracking-[-0.5px]">
+          <Text className="text-[28px] font-semibold text-ink">
             {t("tripDashboard.journey")}
           </Text>
-          <Text className="text-[15px] mt-1 tracking-[-0.2px] text-ink-muted">
+          <Text className="text-[14px] mt-1 text-ink-muted">
             {(trips?.length ?? 0) > 0
               ? t("tripDashboard.yourTrips", { count: trips.length })
               : t("tripDashboard.createMemory")}
@@ -81,7 +79,7 @@ export function TripsDashboard({
       {heroTrip ? (
         <Pressable
           onPress={() => onOpenHero(heroTrip.id)}
-          className="h-[224px] rounded-3xl overflow-hidden mb-5 bg-[#1C1C1E]"
+          className="h-[176px] rounded-2xl overflow-hidden mb-4 bg-[#1C1C1E]"
           style={SHADOW.hero}
         >
           {imgSrc?.uri ? (
@@ -94,53 +92,35 @@ export function TripsDashboard({
               onError={() => setImgSrc({ uri: null })}
             />
           ) : null}
-          <LinearGradient
-            colors={[
-              "rgba(0,0,0,0.05)",
-              "rgba(0,0,0,0.2)",
-              "rgba(0,0,0,0.6)",
-              "rgba(0,0,0,0.85)",
-            ]}
-            locations={[0, 0.35, 0.65, 1]}
-            style={StyleSheet.absoluteFill}
-          />
+          <Box className="absolute inset-0 bg-black/35" pointerEvents="none" />
 
-          {/* Top-right arrow */}
-          <Box className="absolute top-4 right-4 z-[2]">
-            <Box className="w-[38px] h-[38px] rounded-full items-center justify-center bg-white/20 border border-white/30">
-              <MaterialIconsRounded name="arrow-forward" size={18} color="#FFFFFF" />
+          <Box className="absolute top-3 left-3 rounded-full overflow-hidden">
+            <Box className="flex-row items-center px-3 py-1.5 gap-1.5 bg-white/90">
+              <Box className="w-1.5 h-1.5 rounded-full bg-success" />
+              <Text className="text-[11px] uppercase font-semibold text-ink">
+                {timelineLabel || t("tripDashboard.upcoming")}
+              </Text>
             </Box>
           </Box>
 
-          {/* Bottom content */}
-          <Box className="absolute bottom-0 left-0 right-0 p-6 gap-2.5">
-            <Box className="self-start rounded-full overflow-hidden mb-1">
-              <Box className="flex-row items-center px-3 py-1.5 gap-1.5 bg-white/25">
-                <Box className="w-1.5 h-1.5 rounded-full bg-success" style={SHADOW.greenGlow} />
-                <Text className="text-white text-xs uppercase tracking-[0.5px] font-semibold">
-                  {timelineLabel || t("tripDashboard.upcoming")}
-                </Text>
-              </Box>
-            </Box>
-
+          <Box className="absolute bottom-0 left-0 right-0 p-4 gap-2.5">
             <Text
-              className="text-white text-[28px] leading-[34px] tracking-[-0.5px] font-bold"
+              className="text-white text-[22px] leading-[27px] font-semibold"
               numberOfLines={2}
             >
               {heroTrip.title || t("tripDashboard.newTrip")}
             </Text>
 
-            <Box className="flex-row items-center gap-2 mt-1">
-              <Box className="flex-row items-center gap-1">
+            <Box className="flex-row items-center flex-wrap gap-2">
+              <Box className="flex-row items-center gap-1.5 bg-white/20 px-2.5 py-1.5 rounded-full">
                 <MaterialIconsRounded name="event" size={14} color="rgba(255,255,255,0.8)" />
-                <Text className="text-white/90 text-sm tracking-[-0.2px] font-medium">
+                <Text className="text-white text-xs font-medium">
                   {getDateRangeLabel(heroTrip)}
                 </Text>
               </Box>
-              <Box className="w-1 h-1 rounded-full bg-white/40 mx-1" />
-              <Box className="flex-row items-center gap-1">
+              <Box className="flex-row items-center gap-1.5 bg-white/20 px-2.5 py-1.5 rounded-full">
                 <MaterialIconsRounded name="place" size={14} color="rgba(255,255,255,0.8)" />
-                <Text className="text-white/90 text-sm tracking-[-0.2px] font-medium">
+                <Text className="text-white text-xs font-medium">
                   {t("tripDashboard.destinations", {
                     count: heroTrip.destinations?.length || 0,
                   })}
@@ -148,15 +128,14 @@ export function TripsDashboard({
               </Box>
             </Box>
 
-            {/* Countdown badge for upcoming trips */}
             {(() => {
               const daysUntil = getDaysUntil(heroTrip?.startDate);
               if (daysUntil === null || daysUntil > 30) return null;
               return (
-                <Box className="self-start mt-1">
-                  <Box className="flex-row items-center gap-1.5 bg-blue-500/25 rounded-full px-3 py-[5px]">
-                    <MaterialIconsRounded name="schedule" size={14} color="#FFFFFF" />
-                    <Text className="text-white text-[13px] tracking-[-0.1px] font-semibold">
+                <Box className="self-start">
+                  <Box className="flex-row items-center gap-1.5 bg-white/90 rounded-full px-3 py-[5px]">
+                    <MaterialIconsRounded name="schedule" size={14} color="#1D1D1F" />
+                    <Text className="text-ink text-[12px] font-semibold">
                       {daysUntil === 0
                         ? t("tripDashboard.startToday")
                         : daysUntil === 1
@@ -172,25 +151,17 @@ export function TripsDashboard({
       ) : (
         <Pressable
           onPress={onCreate}
-          className="h-[120px] rounded-3xl overflow-hidden flex-row items-center px-5 mb-6 border border-black/5 relative active:opacity-[0.95]"
+          className="h-[116px] rounded-2xl overflow-hidden flex-row items-center px-5 mb-5 border border-black/5 bg-white relative active:opacity-[0.95]"
           style={SHADOW.create}
         >
-          <LinearGradient
-            colors={["#F8F9FA", "#F1F3F5"]}
-            style={StyleSheet.absoluteFill}
-          />
-          <Box className="w-14 h-14 rounded-[20px] overflow-hidden items-center justify-center mr-4">
-            <LinearGradient
-              colors={["#1D1D1F", "#000000"]}
-              style={StyleSheet.absoluteFill}
-            />
+          <Box className="w-14 h-14 rounded-[18px] bg-ink items-center justify-center mr-4">
             <MaterialIconsRounded name="add-location-alt" size={28} color="#FFFFFF" />
           </Box>
           <Box className="flex-1">
-            <Text className="text-[17px] tracking-[-0.2px] mb-1 font-semibold text-ink">
+            <Text className="text-[17px] mb-1 font-semibold text-ink">
               {t("tripDashboard.createFirst")}
             </Text>
-            <Text className="text-sm tracking-[-0.2px] text-ink-muted">
+            <Text className="text-sm text-ink-muted">
               {t("tripDashboard.startExploring")}
             </Text>
           </Box>
@@ -212,7 +183,7 @@ export function TripsDashboard({
               {idx > 0 ? <Box style={DIVIDER_STYLE} /> : null}
               <Box className="flex-1 items-center justify-center gap-1 px-1">
                 <MaterialIconsRounded name={item.icon} size={16} color={theme.color} />
-                <Text className="text-[19px] leading-[23px] tracking-[-0.3px] font-bold text-ink">
+                <Text className="text-[19px] leading-[23px] font-bold text-ink">
                   {item.value}
                 </Text>
                 <Text
@@ -229,13 +200,13 @@ export function TripsDashboard({
 
       {/* ── Section Header + Apple Custom Segmented Filters ── */}
       <Box className="flex-row items-center justify-between mb-4">
-        <Text className="text-xl tracking-[-0.2px] font-semibold text-ink">
+        <Text className="text-xl font-semibold text-ink">
           {filteredCount > 0
             ? t("tripDashboard.listWithCount", { count: filteredCount })
             : t("tripDashboard.list")}
         </Text>
-        <Box className="flex-row bg-black/5 p-0.5 rounded-[9px] items-center">
-          {FILTERS.map((filter) => {
+        <Box className="flex-row bg-white border border-black/5 p-0.5 rounded-[9px] items-center">
+          {filters.map((filter) => {
             const active = activeFilter === filter.key;
             return (
               <Pressable
@@ -243,13 +214,13 @@ export function TripsDashboard({
                 onPress={() => onSelectFilter(filter.key)}
                 className={cn(
                   "px-3 py-1 rounded-[7px] items-center justify-center",
-                  active ? "bg-white" : "bg-transparent",
+                  active ? "bg-black/[0.06]" : "bg-transparent",
                 )}
                 style={active ? SHADOW.filter : undefined}
               >
                 <Text
                   className={cn(
-                    "text-xs tracking-[-0.2px] font-semibold",
+                    "text-xs font-semibold",
                     active ? "text-ink" : "text-ink-muted",
                   )}
                 >
@@ -286,12 +257,6 @@ const SHADOW = {
     shadowOpacity: 0.05,
     shadowRadius: 12,
     elevation: 2,
-  },
-  greenGlow: {
-    shadowColor: "#34C759",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
   },
   filter: {
     shadowColor: "#000",

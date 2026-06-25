@@ -1,4 +1,5 @@
 import { useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAIContextStore } from "../../../stores/aiContextStore";
 import { useAIPlannerStore } from "../../../stores/aiPlannerStore";
 import { buildApiPayload } from "../lib/conversationMemory";
@@ -42,7 +43,7 @@ function normalizePlaces(places = []) {
 
     result.push({
       id,
-      name: raw.name || "Địa điểm",
+      name: raw.name || t("place.defaultPlace"),
       address: raw.address || "",
       latitude: raw.latitude,
       longitude: raw.longitude,
@@ -64,20 +65,21 @@ function normalizePlaces(places = []) {
   return result;
 }
 
-function getFriendlyErrorMessage(err) {
+function getFriendlyErrorMessage(err, t) {
   const status = err?.response?.status || err?.status;
 
   if (status === 429) {
-    return "Nhi đang trả lời quá nhiều bạn rồi, bạn đợi một chút rồi thử lại nghen.";
+    return t("aiChat.rateLimit");
   }
   if (status === 503) {
-    return "Dịch vụ AI tạm thời quá tải. Bạn thử lại sau vài phút ha.";
+    return t("aiChat.serviceOverloaded");
   }
 
   return mapAIError(err);
 }
 
 export function useGroqChat() {
+  const { t } = useTranslation();
   const sessionContext = useAIContextStore((s) => s.sessionContext);
   const oldConversationMemory = useAIContextStore((s) => s.conversationMemory);
   const clearOldConversation = useAIContextStore((s) => s.clearConversation);
@@ -140,10 +142,10 @@ export function useGroqChat() {
 
           const planData = response?.data?.data;
           if (!planData || !planData.timeline) {
-            throw new Error("Không nhận được dữ liệu lịch trình hợp lệ.");
+            throw new Error(t("aiChat.invalidItineraryData"));
           }
 
-          const replyMessage = "Nhi đã thiết kế xong lịch trình di chuyển tối ưu và dự toán ngân sách cho bạn rồi nè! Bạn xem qua thử ha:";
+          const replyMessage = t("aiChat.itineraryReady");
 
           appendMessage({
             role: "assistant",
@@ -181,7 +183,7 @@ export function useGroqChat() {
 
           const reply =
             extractReply(response) ||
-            "Mình chưa nhận được nội dung phản hồi, bạn thử lại giúp mình nhé.";
+            t("aiChat.noReplyContent");
 
           const relatedPlaces = normalizePlaces(
             response?.data?.relatedPlaces,
@@ -200,7 +202,7 @@ export function useGroqChat() {
         if (err?.name === "CanceledError" || err?.name === "AbortError") {
           return null;
         }
-        throw new Error(getFriendlyErrorMessage(err));
+        throw new Error(getFriendlyErrorMessage(err, t));
       }
     },
     [conversationMemory, sessionContext, appendMessage],

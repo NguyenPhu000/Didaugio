@@ -6,14 +6,20 @@ import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
+  SidebarFooter,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarInset,
 } from "@/components/animate-ui/components/radix/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui";
 import AnimatedIcon from "@/components/ui/animated-icon";
 import { APP_META } from "@/constants/brand";
 import { BUSINESS_ROUTES } from "@/constants/routes";
+import { ROLES, ROLE_NAMES } from "@/constants/constants";
+import { useAuthStore } from "@/stores/authStore";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
+import { resolveRoleId } from "@/utils/authRouting";
 import { useTranslation } from "react-i18next";
 import { CustomSidebarRail, BusinessHeader, NavMain, getMenuData } from "./sidebar";
 
@@ -23,7 +29,13 @@ import { CustomSidebarRail, BusinessHeader, NavMain, getMenuData } from "./sideb
  */
 const BusinessLayout = ({ children }) => {
   const { t } = useTranslation();
+  const user = useAuthStore((state) => state.user);
+  const currentRoleId = resolveRoleId(user);
   const menuData = getMenuData();
+
+  const roleLabel = ROLE_NAMES[currentRoleId] || "Doanh nghiệp";
+  const avatarSrc = resolveMediaUrl(user?.avatar || user?.profile?.avatar);
+  const getInitials = (name) => (name ? name.charAt(0).toUpperCase() : "U");
 
   const businessMainMenu = [
     {
@@ -77,10 +89,37 @@ const BusinessLayout = ({ children }) => {
             label={t("nav.section.main")}
           />
           <NavMain
+            items={menuData.businessAccount || []}
+            label={t("nav.section.businessAccount")}
+          />
+          <NavMain
+            items={menuData.businessServices || []}
+            label={t("nav.section.businessServices")}
+          />
+          <NavMain
             items={menuData.business || []}
             label={t("nav.section.operations")}
           />
         </SidebarContent>
+
+        <SidebarFooter className="border-t border-sidebar-border p-3">
+          <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
+            <Avatar className="h-9 w-9 shrink-0 border border-sidebar-border">
+              <AvatarImage src={avatarSrc || undefined} />
+              <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
+                {getInitials(user?.fullName || user?.email)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden min-w-0">
+              <span className="text-sm font-semibold truncate text-sidebar-foreground">
+                {user?.fullName || "Doanh nghiệp"}
+              </span>
+              <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                {roleLabel}
+              </span>
+            </div>
+          </div>
+        </SidebarFooter>
       </Sidebar>
       <CustomSidebarRail />
       <SidebarInset>

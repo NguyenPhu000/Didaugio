@@ -2,10 +2,8 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
-import { Box, Text, Pressable as PrimitivePressable } from "@/components/primitives";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { Box, Text, Pressable as PrimitivePressable } from "../../../components/primitives";
+import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -14,7 +12,7 @@ import Animated, {
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
-} from "../../../../src/constants/design-tokens";
+} from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import {
   STATUS_THEME,
@@ -22,26 +20,12 @@ import {
   getDisplayStatus,
 } from "../utils/tripHelpers";
 import { resolveTripCoverUri } from "../../../lib/media-url";
-import { cn } from "@/lib/cn";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const IMMERSIVE_COVER_WIDTH = 720;
-const IMMERSIVE_HEIGHT = 212;
 
 // Overlay gradient cho từng trạng thái — rất nhẹ, chỉ tint mờ mờ
-const STATUS_OVERLAYS = {
-  upcoming: null,
-  ongoing: null,
-  completed: {
-    colors: ["rgba(34,197,94,0.06)", "rgba(34,197,94,0.12)"],
-    shadow: null,
-  },
-  cancelled: {
-    colors: ["rgba(107,114,128,0.18)", "rgba(75,85,99,0.28)"],
-    shadow: null,
-  },
-};
 
 function dateLabel(dateDisplay) {
   if (dateDisplay.kind === "empty") return null;
@@ -59,10 +43,8 @@ function SaveButton({ onPress, isSaved, label }) {
       accessibilityRole="button"
       accessibilityLabel={label}
       haptic="light"
-      className="w-[34px] h-[34px] rounded-[17px] overflow-hidden items-center justify-center"
+      className="w-[34px] h-[34px] rounded-[17px] items-center justify-center bg-white/90"
     >
-      <BlurView intensity={28} tint="light" style={StyleSheet.absoluteFill} />
-      <Box className="absolute inset-0 bg-white/[0.66]" pointerEvents="none" />
       <MaterialIconsRounded
         name={isSaved ? "bookmark" : "bookmark-border"}
         size={18}
@@ -74,19 +56,14 @@ function SaveButton({ onPress, isSaved, label }) {
 
 function StatusPill({ status }) {
   return (
-    <Box className="rounded-full overflow-hidden">
-      <BlurView intensity={28} tint="light" style={StyleSheet.absoluteFill} />
-      <Box
-        className="absolute inset-0 bg-white/[0.66]"
-        pointerEvents="none"
-      />
+    <Box className="rounded-full overflow-hidden bg-white/90">
       <Box className="flex-row items-center gap-1.5 px-[11px] py-1.5">
         <Box
           className="w-1.5 h-1.5 rounded-[3px]"
           style={{ backgroundColor: status.accent || status.text }}
         />
         <Text
-          className="text-[11px] font-semibold tracking-[0.2px]"
+          className="text-[11px] font-semibold"
           style={{ color: status.text }}
           numberOfLines={1}
         >
@@ -109,7 +86,6 @@ function ImmersiveCard({
   isSaved,
   saveLabel,
   t,
-  statusOverlay,
 }) {
   return (
     <Box className="flex-1">
@@ -124,29 +100,13 @@ function ImmersiveCard({
           onError={onImageError}
         />
       ) : (
-        <LinearGradient
-          colors={["#2C3038", "#1C1F25", "#121419"]}
-          style={StyleSheet.absoluteFillObject}
-        />
+        <Box className="absolute inset-0 bg-[#25272D]" />
       )}
 
       {/* Overlay gradient mặc định */}
-      <LinearGradient
-        colors={["rgba(0,0,0,0.32)", "transparent", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.82)"]}
-        locations={[0, 0.32, 0.66, 1]}
-        style={StyleSheet.absoluteFillObject}
-        pointerEvents="none"
-      />
+      <Box className="absolute inset-0 bg-black/35" pointerEvents="none" />
 
       {/* Overlay theo trạng thái (completed/cancelled) */}
-      {statusOverlay ? (
-        <LinearGradient
-          colors={statusOverlay.colors}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
-        />
-      ) : null}
-
       <Box className="absolute top-3 left-3 right-3 flex-row items-center justify-between">
         <StatusPill status={status} />
         {onSave ? (
@@ -160,7 +120,7 @@ function ImmersiveCard({
 
       <Box className="absolute left-0 right-0 bottom-0 px-4 pb-[15px] gap-2.5">
         <Text
-          className="text-[21px] font-bold text-white tracking-[-0.5px] leading-[26px]"
+          className="text-[20px] font-semibold text-white leading-[25px]"
           style={TITLE_TEXT_SHADOW}
           numberOfLines={2}
         >
@@ -172,7 +132,7 @@ function ImmersiveCard({
             <Box className="flex-row items-center gap-[5px] bg-white/[0.18] px-[9px] py-[5px] rounded-full">
               <MaterialIconsRounded name="event" size={13} color="#FFFFFF" />
               <Text
-                className="text-xs font-semibold text-white tracking-[-0.1px]"
+                className="text-xs font-semibold text-white"
                 style={{ fontVariant: ["tabular-nums"] }}
                 numberOfLines={1}
               >
@@ -183,7 +143,7 @@ function ImmersiveCard({
           <Box className="flex-row items-center gap-[5px] bg-white/[0.18] px-[9px] py-[5px] rounded-full">
             <MaterialIconsRounded name="today" size={13} color="#FFFFFF" />
             <Text
-              className="text-xs font-semibold text-white tracking-[-0.1px]"
+              className="text-xs font-semibold text-white"
               style={{ fontVariant: ["tabular-nums"] }}
             >
               {t("tripCard.dayCount", { count: trip.totalDays ?? 1 })}
@@ -192,7 +152,7 @@ function ImmersiveCard({
           <Box className="flex-row items-center gap-[5px] bg-white/[0.18] px-[9px] py-[5px] rounded-full">
             <MaterialIconsRounded name="place" size={13} color="#FFFFFF" />
             <Text
-              className="text-xs font-semibold text-white tracking-[-0.1px]"
+              className="text-xs font-semibold text-white"
               style={{ fontVariant: ["tabular-nums"] }}
             >
               {t("tripCard.placeCount", { count: destinationCount })}
@@ -213,7 +173,6 @@ export const TripCard = memo(function TripCard({
   const { t } = useTranslation();
   const displayStatus = getDisplayStatus(trip);
   const status = STATUS_THEME[displayStatus] || STATUS_THEME.upcoming;
-  const statusOverlay = STATUS_OVERLAYS[displayStatus] || null;
 
   const coverUri = resolveTripCoverUri(trip, IMMERSIVE_COVER_WIDTH);
   const [displayUri, setDisplayUri] = useState(coverUri);
@@ -256,15 +215,6 @@ export const TripCard = memo(function TripCard({
     : t("tripCard.saveAccessibility");
 
   // Shadow theo trạng thái (nếu có), không thì dùng mặc định
-  const cardShadow = statusOverlay?.shadow
-    ? {
-        shadowColor: statusOverlay.shadow.color,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: statusOverlay.shadow.opacity,
-        shadowRadius: 16,
-        elevation: 5,
-      }
-    : SHADOW_IMMERSIVE;
 
   return (
     <Box style={{ marginHorizontal: TAB_SCREEN_PADDING }}>
@@ -284,8 +234,8 @@ export const TripCard = memo(function TripCard({
             handleSavePress();
           }
         }}
-        style={[cardAnimStyle, cardShadow]}
-        className="rounded-3xl overflow-hidden h-[212px] bg-[#1C1F25]"
+        style={[cardAnimStyle, SHADOW_IMMERSIVE]}
+        className="rounded-2xl overflow-hidden h-[188px] bg-[#1C1F25]"
       >
         <ImmersiveCard
           trip={trip}
@@ -298,7 +248,6 @@ export const TripCard = memo(function TripCard({
           isSaved={isSaved}
           saveLabel={saveLabel}
           t={t}
-          statusOverlay={statusOverlay}
         />
       </AnimatedPressable>
     </Box>
@@ -307,10 +256,10 @@ export const TripCard = memo(function TripCard({
 
 const SHADOW_IMMERSIVE = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 8 },
-  shadowOpacity: 0.16,
-  shadowRadius: 18,
-  elevation: 5,
+  shadowOffset: { width: 0, height: 5 },
+  shadowOpacity: 0.1,
+  shadowRadius: 12,
+  elevation: 3,
 };
 
 const TITLE_TEXT_SHADOW = {

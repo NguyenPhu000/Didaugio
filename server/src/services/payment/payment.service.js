@@ -1031,6 +1031,213 @@ export async function processSePayBankWebhook(body, headers = {}) {
 }
 
 /**
+ * Process SePay outgoing bank transaction webhook.
+ * Matches money-out events to payout transfers or refunded payments.
+ */
+export async function processSePayRefundWebhook(body, headers = {}) {
+  const webhookLogId = await webhookLogService.logWebhook({
+    gateway: "SEPAY_BANK_REFUND",
+    payload: body,
+    signature: headers["x-sepay-signature"] || null,
+  });
+
+  try {
+    const signature = headers["x-sepay-signature"] || "";
+    const timestamp = headers["x-sepay-timestamp"] || "";
+    const rawBody = typeof body === "string" ? body : JSON.stringify(body);
+
+    const sigResult = sepayWebhookService.verifyWebhookSignature(
+      rawBody,
+      signature,
+      timestamp,
+    );
+    if (!sigResult.valid) {
+      await webhookLogService.markError({
+        transactionRef: body?.code || null,
+        webhookLogId,
+        errorMsg: `Signature verification failed: ${sigResult.error}`,
+      });
+      return sepayService.buildIpnError(sigResult.error);
+    }
+
+    const parseResult = sepayWebhookService.parseRefundWebhook(body);
+    if (!parseResult.valid) {
+      await webhookLogService.markError({
+        transactionRef: body?.code || null,
+        webhookLogId,
+        errorMsg: parseResult.error,
+      });
+      return sepayService.buildIpnSuccess();
+    }
+
+    const {
+      sepayTransactionId,
+      code,
+      payoutId,
+      transferAmount,
+      gateway,
+      transactionDate,
+      referenceCode,
+    } = parseResult.data;
+
+    const existingWebhook = await prisma.paymentWebhookLog.findFirst({
+      where: {
+        gateway: "SEPAY_BANK_REFUND",
+        processed: true,
+        payload: {
+          path: ["id"],
+          equals: sepayTransactionId,
+        },
+      },
+    });
+
+    if (existingWebhook) {
+      return sepayService.buildIpnSuccess();
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      if (payoutId) {
+        const payoutRows = await tx.$queryRaw`
+          SELECT id, status, amount
+          FROM payouts
+          WHERE id = ${payoutId}
+          LIMIT 1
+          FOR UPDATE
+        `;
+
+        if (payoutRows?.length) {
+          const payout = payoutRows[0];
+          if (payout.status === "transferred") {
+            return { type: "ALREADY_PROCESSED", transactionRef: code };
+          }
+
+          if (Number(payout.amount) !== Number(transferAmount)) {
+            logger.warn("SePay refund webhook payout amount mismatch", {
+              payoutId,
+              expected: payout.amount,
+              received: transferAmount,
+            });
+            return { type: "AMOUNT_MISMATCH", transactionRef: code };
+          }
+
+          const transferredAt = transactionDate
+            ? new Date(transactionDate)
+            : new Date();
+
+          const updatedPayout = await tx.payout.update({
+            where: { id: payout.id },
+            data: {
+              status: "transferred",
+              transferredAt,
+              note: [
+                payout.note,
+                `SePay transfer ${sepayTransactionId}${referenceCode ? ` (${referenceCode})` : ""}`,
+              ]
+                .filter(Boolean)
+                .join(" | "),
+            },
+          });
+
+          await tx.financialLedger.create({
+            data: {
+              payoutId: updatedPayout.id,
+              type: "WITHDRAW",
+              amount: updatedPayout.amount,
+              description: `SePay payout transfer #${updatedPayout.id}`,
+            },
+          });
+
+          return {
+            type: "PAYOUT_TRANSFERRED",
+            payout: updatedPayout,
+            transactionRef: code,
+          };
+        }
+      }
+
+      if (code) {
+        const paymentRows = await tx.$queryRaw`
+          SELECT id, status, refund_amount, amount, payment_data
+          FROM payments
+          WHERE transaction_ref = ${code}
+          LIMIT 1
+          FOR UPDATE
+        `;
+
+        if (paymentRows?.length) {
+          const payment = paymentRows[0];
+          const refundedAmount = Number(payment.refund_amount || 0);
+          if (refundedAmount > 0 && Number(transferAmount) > refundedAmount) {
+            logger.warn("SePay refund webhook payment amount exceeds refund", {
+              transactionRef: code,
+              refundedAmount,
+              received: transferAmount,
+            });
+            return { type: "AMOUNT_MISMATCH", transactionRef: code };
+          }
+
+          const paymentData =
+            payment.payment_data && typeof payment.payment_data === "object"
+              ? payment.payment_data
+              : {};
+
+          await tx.payment.update({
+            where: { id: payment.id },
+            data: {
+              paymentData: {
+                ...paymentData,
+                refundTransfer: {
+                  sepayTransactionId,
+                  gateway,
+                  transactionDate,
+                  referenceCode,
+                  transferAmount,
+                  confirmedAt: new Date().toISOString(),
+                },
+              },
+            },
+          });
+
+          return { type: "PAYMENT_REFUND_CONFIRMED", transactionRef: code };
+        }
+      }
+
+      return { type: "NOT_FOUND", transactionRef: code };
+    });
+
+    if (result.type !== "NOT_FOUND" && webhookLogId) {
+      await webhookLogService.markProcessed({
+        transactionRef: result.transactionRef || code || null,
+        webhookLogId,
+      });
+    }
+
+    if (result.type === "NOT_FOUND") {
+      logger.info("SePay refund webhook: no matching payout/payment", {
+        code,
+        payoutId,
+        transferAmount,
+      });
+    }
+
+    return sepayService.buildIpnSuccess();
+  } catch (error) {
+    logger.error("processSePayRefundWebhook error", {
+      error: error.message,
+      body,
+    });
+    if (webhookLogId) {
+      await webhookLogService.markError({
+        transactionRef: body?.code || null,
+        webhookLogId,
+        errorMsg: error.message,
+      });
+    }
+    return sepayService.buildIpnError("System error");
+  }
+}
+
+/**
  * Manual refund by Admin.
  * Delegates to bookingService.refund() which handles partial refund + commission adjustment.
  * Protected by hasPermission("payments.refund") middleware.

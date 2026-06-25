@@ -8,22 +8,20 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import safeAsyncStorage from "../../../../utils/safeAsyncStorage";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { MaterialIconsRounded } from "../../../../components/primitives/MaterialIconsRounded";
 import { CustomDatePicker } from "../../../../components/ui/CustomDatePicker";
 import { compressImageToDataUrl } from "../../../../lib/image-compress";
 import { resolveMediaUrl } from "../../../../lib/media-url";
 import { toYmdString, toValidDate } from "../../utils/tripHelpers";
 import { T, ALPHA } from "../../utils/tripDetailTokens";
-import { cn } from "@/lib/cn";
+import { cn } from "../../../../lib/cn";
 import CustomAlertModal from "../../../../components/composed/CustomAlertModal";
 
 function calcTotalDays(start, end) {
@@ -33,7 +31,7 @@ function calcTotalDays(start, end) {
   return days > 0 ? days : 1;
 }
 
-function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }) {
+function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
   const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -42,7 +40,6 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
   const [pendingThumbnail, setPendingThumbnail] = useState(undefined);
   const [isProcessingThumbnail, setIsProcessingThumbnail] = useState(false);
-  const [avoidFerry, setAvoidFerry] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ visible: false, title: "", message: "", type: "error" });
 
   const wasVisible = useRef(false);
@@ -55,11 +52,6 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
       setEndDate(toValidDate(trip?.endDate));
       setThumbnailPreview(resolveMediaUrl(trip?.thumbnail));
       setPendingThumbnail(undefined);
-    }
-    if (visible && trip?.id) {
-      safeAsyncStorage.getItem(`trip_avoidFerry_${trip.id}`).then((val) => {
-        setAvoidFerry(val === "true");
-      });
     }
     wasVisible.current = visible;
   }, [visible, trip]);
@@ -103,7 +95,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
     } finally {
       setIsProcessingThumbnail(false);
     }
-  }, []);
+  }, [t]);
 
   const handleRemoveThumbnail = useCallback(() => {
     setThumbnailPreview(null);
@@ -134,14 +126,6 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
       return;
     }
 
-    if (trip?.id) {
-      try {
-        await safeAsyncStorage.setItem(`trip_avoidFerry_${trip.id}`, String(avoidFerry));
-      } catch (e) {
-        console.error("Lỗi khi lưu cấu hình tránh phà:", e);
-      }
-    }
-
     onSave({
       title: trimmedTitle,
       description: description.trim() || null,
@@ -150,7 +134,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
       totalDays: calcTotalDays(startDate, endDate),
       ...(pendingThumbnail !== undefined && { thumbnail: pendingThumbnail }),
     });
-  }, [description, endDate, isSaving, onSave, startDate, title, pendingThumbnail, avoidFerry, trip?.id]);
+  }, [description, endDate, isSaving, onSave, pendingThumbnail, startDate, t, title]);
 
   const canSave = title.trim().length > 0 && !isSaving && !isProcessingThumbnail;
 
@@ -283,35 +267,6 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave, onComplete }
               </View>
 
 
-              <View className="rounded-2xl bg-[#F5F5F7] px-4 py-3.5 border border-black/[0.06] flex-row items-center justify-between">
-                <View className="flex-row items-center gap-3 flex-1">
-                  <View className="w-9 h-9 rounded-xl bg-white items-center justify-center border border-black/[0.06]">
-                    <MaterialIconsRounded name="directions-boat" size={18} color={avoidFerry ? T.warning : ALPHA.iconStrong} />
-                  </View>
-                  <View className="flex-1 gap-0.5">
-                    <Text className="text-[15px] font-semibold text-ink tracking-tight">{t('editTrip.avoidFerry')}</Text>
-                    <Text className="text-[12px] text-black/40 tracking-tight">{t('editTrip.avoidFerryDesc')}</Text>
-                  </View>
-                </View>
-                <Switch
-                  value={avoidFerry}
-                  onValueChange={setAvoidFerry}
-                  trackColor={{ false: "rgba(0,0,0,0.12)", true: T.success }}
-                  thumbColor={T.onPrimary}
-                  ios_backgroundColor="rgba(0,0,0,0.12)"
-                />
-              </View>
-
-              {onComplete && (
-                <Pressable
-                  onPress={onComplete}
-                  disabled={isSaving}
-                  className="flex-row items-center justify-center gap-2.5 py-3.5 rounded-2xl border-2 border-success/30 bg-success/5"
-                >
-                  <MaterialIconsRounded name="task-alt" size={18} color={T.success} />
-                  <Text className="text-[15px] font-semibold text-success tracking-tight">{t('editTrip.markComplete') || t('trip.detail.markComplete')}</Text>
-                </Pressable>
-              )}
             </ScrollView>
 
             <View className="px-5 pt-4 pb-2 border-t border-black/[0.07] bg-white flex-shrink-0">

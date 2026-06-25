@@ -44,6 +44,7 @@ import cmsRoutes from "./cms/cms.route.js";
 import bannerRoutes from "./banner/banner.route.js";
 import paymentRoutes from "./payment/payment.route.js";
 import documentRoutes from "./document/document.route.js";
+import { businessRouter as subscriptionRoutes, adminRouter as adminSubscriptionRoutes } from "./subscription/subscription.route.js";
 import {
   authLimiter,
   apiLimiter,
@@ -81,6 +82,7 @@ export const registerRateLimiters = (app) => {
   app.use("/api/business/staff", businessApiLimiter);
   app.use("/api/business/bookings", businessApiLimiter);
   app.use("/api/payments/checkout", businessApiLimiter);
+  app.use("/api/subscriptions/upgrade", businessApiLimiter);
   app.use("/api", apiLimiter);
 };
 
@@ -128,6 +130,8 @@ export const registerApiRoutes = (app) => {
   app.use("/api/payments", paymentRoutes);
   app.use("/api/documents", documentRoutes);
   app.use("/api/cms", cmsRoutes);
+  app.use("/api/subscriptions", subscriptionRoutes);
+  app.use("/api/admin/subscriptions", adminSubscriptionRoutes);
   app.use("/api/ai", aiRoutes);
   app.use("/api/routes", routingRoutes);
   app.use("/api/navigation", navigationRoutes);

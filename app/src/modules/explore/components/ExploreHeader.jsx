@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
@@ -9,6 +10,7 @@ import { getUserName } from "../utils/exploreHelpers";
 import { NotificationBell } from "../../../components/composed/NotificationBell";
 
 function ExploreHeaderInner({ user }) {
+  const { t } = useTranslation();
   const userName = getUserName(user);
 
   return (
@@ -19,9 +21,11 @@ function ExploreHeaderInner({ user }) {
         </View>
 
         <View className="flex-1 min-w-0">
-          <Text className="text-ink-muted text-[11px] leading-[13px] font-semibold tracking-[0.9px] uppercase">Đi Đâu Giờ?</Text>
+          <Text className="text-ink-muted text-[11px] leading-[13px] font-semibold tracking-[0.9px] uppercase">
+            {t("explore.headerBrand")}
+          </Text>
           <Text className="mt-0.5 text-ink text-[17px] leading-[21px] font-bold tracking-[-0.2px]" numberOfLines={1}>
-            {`Xin chào, ${userName}`}
+            {t("explore.headerGreeting", { name: userName })}
           </Text>
         </View>
       </View>

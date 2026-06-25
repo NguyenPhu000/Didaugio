@@ -10,7 +10,7 @@ const BusinessNotificationCard = ({ value, onChange }) => {
     ["newBookingPush", t("business.settings.notifications.newBookingPush")],
     ["newReviewEmail", t("business.settings.notifications.newReviewEmail")],
     ["newReviewPush", t("business.settings.notifications.newReviewPush")],
-    ["bookingCancelledEmail", t("business.settings.notifications.cancellationEmail")],
+    ["cancellationEmail", t("business.settings.notifications.cancellationEmail")],
   ];
 
   return (

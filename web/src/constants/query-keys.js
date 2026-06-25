@@ -104,6 +104,16 @@ export const queryKeys = {
     timeline: (params) => ["revenue", "timeline", params],
     byPlace: (params) => ["revenue", "by-place", params],
     transactions: (params) => ["revenue", "transactions", params],
+    cashflow: (params) => ["revenue", "cashflow", params],
+    cashflowSummary: (params) => ["revenue", "cashflow-summary", params],
+  },
+
+  cashflow: {
+    all: () => ["cashflow"],
+    admin: (params) => ["cashflow", "admin", params],
+    adminSummary: (params) => ["cashflow", "admin-summary", params],
+    business: (params) => ["cashflow", "business", params],
+    businessSummary: (params) => ["cashflow", "business-summary", params],
   },
 
   earnings: {
@@ -191,5 +201,16 @@ export const queryKeys = {
     all: () => ["services"],
     list: (params) => ["services", "list", params],
     detail: (id) => ["services", "detail", id],
+  },
+
+  subscriptions: {
+    all: () => ["subscriptions"],
+    current: () => ["subscriptions", "current"],
+    plans: () => ["subscriptions", "plans"],
+    proration: (targetPlanId) => ["subscriptions", "proration", targetPlanId],
+    invoices: (params) => ["subscriptions", "invoices", params],
+    adminList: (params) => ["subscriptions", "admin", "list", params],
+    adminStats: () => ["subscriptions", "admin", "stats"],
+    adminPlans: () => ["subscriptions", "admin", "plans"],
   },
 };

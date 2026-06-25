@@ -42,7 +42,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/Input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const PlaceDetailDialog = lazy(() => import("@/components/place/PlaceDetailDialog"));
 
@@ -53,7 +53,7 @@ const useStatusConfig = () => {
   return {
     approved: { label: t("business.places.approved"), bg: "bg-emerald-500", text: "text-white", ring: "ring-emerald-200" },
     pending: { label: t("business.places.pending"), bg: "bg-amber-500", text: "text-white", ring: "ring-amber-200" },
-    draft: { label: t("business.places.pending"), bg: "bg-slate-400", text: "text-white", ring: "ring-slate-200" },
+    draft: { label: t("business.places.draft"), bg: "bg-slate-400", text: "text-white", ring: "ring-slate-200" },
     rejected: { label: t("places.statusFilters.rejected"), bg: "bg-red-500", text: "text-white", ring: "ring-red-200" },
   };
 };
@@ -616,7 +616,6 @@ const BusinessPlacePage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { toast } = useToast();
 
   const [places, setPlacesData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -635,7 +634,7 @@ const BusinessPlacePage = () => {
       setPlacesData(res.data || []);
     } catch (err) {
       console.error("[BusinessPlacePage] Fetch error:", err);
-      toast({ title: t("common.error"), description: t("business.places.loadFailed"), variant: "destructive" });
+      toast.error(t("business.places.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -741,7 +740,7 @@ const BusinessPlacePage = () => {
           <StatCard label={t("business.places.total")} value={stats.total} color="bg-gray-900" icon={MapPin} />
           <StatCard label={t("business.places.approved")} value={stats.approved} color="bg-emerald-500" icon={CheckCircle2} />
           <StatCard label={t("business.places.pending")} value={stats.pending} color="bg-amber-500" icon={Clock} />
-          <StatCard label={t("business.places.pending")} value={stats.draft} color="bg-slate-400" icon={Edit2} />
+          <StatCard label={t("business.places.draft")} value={stats.draft} color="bg-slate-400" icon={Edit2} />
         </div>
       </header>
 

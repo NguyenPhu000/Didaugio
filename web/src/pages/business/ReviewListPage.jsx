@@ -56,6 +56,15 @@ import { resolveMediaUrl } from "@/utils/mediaUrl";
 const REVIEW_API = "/business/reviews";
 const REVIEW_MEDIA_PREVIEW_LIMIT = 5;
 
+const reviewApi = {
+  list: (params) => api.get(REVIEW_API, { params }),
+  getStats: () => api.get(`${REVIEW_API}/stats`),
+  reply: (reviewId, content) => api.post(`${REVIEW_API}/${reviewId}/reply`, { content }),
+  updateReply: (reviewId, replyId, content) => api.put(`${REVIEW_API}/${reviewId}/replies/${replyId}`, { content }),
+  deleteReply: (reviewId, replyId) => api.delete(`${REVIEW_API}/${reviewId}/replies/${replyId}`),
+  moderateReply: (reviewId, replyId, status) => api.patch(`${REVIEW_API}/${reviewId}/replies/${replyId}/moderation`, { status }),
+};
+
 // ─── Star Rating ──────────────────────────────────────────────────────────────
 
 const StarRating = memo(({ rating, size = "sm" }) => {
@@ -518,15 +527,13 @@ const ReviewListPage = () => {
   const loadReviews = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get(REVIEW_API, {
-        params: {
-          search: debouncedSearch || undefined,
-          placeId: selectedPlaceId !== "all" ? selectedPlaceId : undefined,
-          rating: ratingFilter !== "0" ? ratingFilter : undefined,
-          hasMedia: mediaFilter === "with-media" ? true : undefined,
-          page: 1,
-          limit: 50,
-        },
+      const response = await reviewApi.list({
+        search: debouncedSearch || undefined,
+        placeId: selectedPlaceId !== "all" ? selectedPlaceId : undefined,
+        rating: ratingFilter !== "0" ? ratingFilter : undefined,
+        hasMedia: mediaFilter === "with-media" ? true : undefined,
+        page: 1,
+        limit: 50,
       });
       setReviews(response.data || []);
     } catch (error) {
@@ -538,10 +545,10 @@ const ReviewListPage = () => {
 
   const loadStats = useCallback(async () => {
     try {
-      const response = await api.get(`${REVIEW_API}/stats`);
+      const response = await reviewApi.getStats();
       setStats(response.data);
-    } catch {
-      // Keep list visible even if stats endpoint fails.
+    } catch (err) {
+      console.error("[ReviewListPage] Failed to load stats:", err);
     }
   }, []);
 
@@ -589,9 +596,7 @@ const ReviewListPage = () => {
     }
     setSending(true);
     try {
-      await api.post(`${REVIEW_API}/${replyingTo}/reply`, {
-        content: replyContent,
-      });
+      await reviewApi.reply(replyingTo, replyContent);
       toast.success(t("business.reviews.replySuccess"));
       setReplyingTo(null);
       setReplyContent("");
@@ -631,9 +636,7 @@ const ReviewListPage = () => {
 
     setActionLoadingByReply((prev) => ({ ...prev, [replyId]: true }));
     try {
-      await api.put(`${REVIEW_API}/${reviewId}/replies/${replyId}`, {
-        content: editContent,
-      });
+      await reviewApi.updateReply(reviewId, replyId, editContent);
       toast.success(t("business.reviews.replySuccess"));
       handleCancelEditReply();
       await loadReviews();
@@ -647,7 +650,7 @@ const ReviewListPage = () => {
   const handleDeleteReply = useCallback(async (reviewId, replyId) => {
     setActionLoadingByReply((prev) => ({ ...prev, [replyId]: true }));
     try {
-      await api.delete(`${REVIEW_API}/${reviewId}/replies/${replyId}`);
+      await reviewApi.deleteReply(reviewId, replyId);
       toast.success(t("common.deletedSuccessfully"));
       if (editingReplyId === replyId) {
         handleCancelEditReply();
@@ -663,10 +666,7 @@ const ReviewListPage = () => {
   const handleModerateReply = useCallback(async (reviewId, replyId, status) => {
     setActionLoadingByReply((prev) => ({ ...prev, [replyId]: true }));
     try {
-      await api.patch(
-        `${REVIEW_API}/${reviewId}/replies/${replyId}/moderation`,
-        { status },
-      );
+      await reviewApi.moderateReply(reviewId, replyId, status);
       toast.success(
         status === "hidden" ? t("admin.reviewModeration.hidden") : t("admin.reviewModeration.show"),
       );
@@ -711,7 +711,7 @@ const ReviewListPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <BusinessPageHeader
           title={t("business.reviews.title")}
-          description={t("business.reviews.title")}
+          description={t("business.reviews.description")}
           badge={stats?.total || undefined}
         />
         <Button

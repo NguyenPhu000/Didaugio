@@ -1,6 +1,7 @@
 import { memo, useCallback } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
+import { useTranslation } from "react-i18next";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -18,18 +19,19 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 export const SAMPLE_TRIP_CARD_W = 220;
 const CARD_H = 240;
 
-const TRAVEL_STYLE_LABEL = {
-  adventure: "Phiêu lưu",
-  culture: "Văn hóa",
-  relax: "Nghỉ dưỡng",
-  food: "Ẩm thực",
-  family: "Gia đình",
-  budget: "Tiết kiệm",
-  luxury: "Cao cấp",
-};
-
 function SampleTripCardInner({ trip, onPress }) {
+  const { t } = useTranslation();
   const scale = useSharedValue(1);
+
+  const TRAVEL_STYLE_LABEL = {
+    adventure: t("explore.sampleTrip.adventure"),
+    culture: t("explore.sampleTrip.culture"),
+    relax: t("explore.sampleTrip.relax"),
+    food: t("explore.sampleTrip.food"),
+    family: t("explore.sampleTrip.family"),
+    budget: t("explore.sampleTrip.budget"),
+    luxury: t("explore.sampleTrip.luxury"),
+  };
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -53,7 +55,6 @@ function SampleTripCardInner({ trip, onPress }) {
     ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 400)
     : "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=400&q=70";
 
-  // Lấy tên các địa điểm trong lịch trình
   const destinationNames = (trip?.destinations || [])
     .map((d) => d?.place?.name)
     .filter(Boolean);
@@ -75,7 +76,7 @@ function SampleTripCardInner({ trip, onPress }) {
       style={[animatedStyle, { width: SAMPLE_TRIP_CARD_W, height: CARD_H }]}
       className="rounded-[20px] overflow-hidden bg-[#EDEDF2] shadow-sm border border-black/5"
     >
-      {/* Ảnh nền */}
+      {/* Background Image */}
       <Image
         source={{ uri: imageUri }}
         contentFit="cover"
@@ -103,7 +104,7 @@ function SampleTripCardInner({ trip, onPress }) {
         </View>
       ) : null}
 
-      {/* Thông tin */}
+      {/* Info */}
       <View className="absolute bottom-3.5 left-3.5 right-3.5 gap-1">
         <Text
           className="text-white text-[15px] font-bold leading-[19px] tracking-tight"
@@ -113,7 +114,7 @@ function SampleTripCardInner({ trip, onPress }) {
           {trip?.title}
         </Text>
 
-        {/* Địa điểm */}
+        {/* Destinations */}
         {destinationNames.length > 0 ? (
           <Text
             className="text-white/70 text-[11px]"
@@ -124,7 +125,7 @@ function SampleTripCardInner({ trip, onPress }) {
           </Text>
         ) : null}
 
-        {/* Số ngày + chi phí */}
+        {/* Days + Cost */}
         <View className="flex-row items-center gap-2 mt-0.5">
           {trip?.totalDays ? (
             <View className="px-2 py-0.5 rounded-full bg-white/20 border border-white/20">
@@ -132,7 +133,7 @@ function SampleTripCardInner({ trip, onPress }) {
                 className="text-white text-[10px] font-semibold"
                 style={{ fontFamily: TOKENS.font.semibold }}
               >
-                {trip.totalDays} ngay
+                {t("explore.sampleTrip.days", { count: trip.totalDays })}
               </Text>
             </View>
           ) : null}
@@ -142,7 +143,7 @@ function SampleTripCardInner({ trip, onPress }) {
                 className="text-white text-[10px] font-semibold"
                 style={{ fontFamily: TOKENS.font.semibold }}
               >
-                tu {costText}
+                {t("explore.sampleTrip.from", { price: costText })}
               </Text>
             </View>
           ) : null}

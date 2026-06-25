@@ -130,3 +130,60 @@ export function parseBankWebhook(body) {
     error: null,
   };
 }
+
+/**
+ * Parse outgoing SePay bank transaction webhook payload.
+ * Used for refunds/payout transfers from our bank account.
+ */
+export function parseRefundWebhook(body) {
+  if (!body || typeof body !== "object") {
+    return { valid: false, data: null, error: "Invalid webhook body" };
+  }
+
+  const {
+    id,
+    gateway,
+    code,
+    content,
+    transferType,
+    transferAmount,
+    transactionDate,
+    referenceCode,
+  } = body;
+
+  if (!id || !transferAmount) {
+    return {
+      valid: false,
+      data: null,
+      error: "Missing required fields (id, transferAmount)",
+    };
+  }
+
+  if (transferType !== "out") {
+    return {
+      valid: false,
+      data: null,
+      error: `Ignoring non-outgoing transfer. Type: ${transferType}`,
+    };
+  }
+
+  const resolvedCode = extractPaymentCode(code, content);
+  const payoutSource = [code, content].filter(Boolean).join(" ");
+  const payoutMatch = payoutSource.match(/\bPAYOUT[-_\s#]*(\d+)\b/i);
+  const payoutId = payoutMatch ? parseInt(payoutMatch[1], 10) : null;
+
+  return {
+    valid: true,
+    data: {
+      sepayTransactionId: id,
+      code: resolvedCode,
+      payoutId: Number.isInteger(payoutId) ? payoutId : null,
+      content,
+      gateway,
+      transferAmount,
+      transactionDate,
+      referenceCode,
+    },
+    error: null,
+  };
+}

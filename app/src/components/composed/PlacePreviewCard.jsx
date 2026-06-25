@@ -2,18 +2,11 @@ import { memo } from "react";
 import { View, Text, Pressable, Platform, ActivityIndicator, StyleSheet } from "react-native";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { cn } from "../../lib/cn";
 import { resolvePlaceImageUri } from "../../lib/media-url";
 import { TOKENS, CATEGORY_COLORS } from "../../constants/design-tokens";
-
-const PRICE_RANGE_LABELS = {
-  FREE: "Miễn phí",
-  BUDGET: "Bình dân",
-  MODERATE: "Trung bình",
-  EXPENSIVE: "Cao cấp",
-  LUXURY: "Sang trọng",
-};
 
 export const getPlaceRatingValue = (place) => {
   const parsed = Number(place?.ratingAvg ?? place?.averageRating ?? 0);
@@ -23,35 +16,6 @@ export const getPlaceRatingValue = (place) => {
 export const getPlaceReviewCount = (place) => {
   const parsed = Number(place?.reviewCount ?? place?._count?.reviews ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const formatReviewCount = (count) => {
-  const parsed = Number(count || 0);
-  if (!parsed) return "Mới";
-  if (parsed >= 1000) {
-    return `${(parsed / 1000).toFixed(1).replace(/\.0$/, "")}k đánh giá`;
-  }
-  return `${parsed} đánh giá`;
-};
-
-const formatCompactPrice = (value) => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return null;
-  if (parsed >= 1_000_000) {
-    return `${(parsed / 1_000_000).toFixed(1).replace(/\.0$/, "")} triệu`;
-  }
-  if (parsed >= 1000) {
-    return `${Math.round(parsed / 1000)}k`;
-  }
-  return `${parsed}đ`;
-};
-
-const getPreviewPriceLabel = (place) => {
-  const compactFrom = formatCompactPrice(place?.priceFrom ?? place?.price_from);
-  if (compactFrom) return `Từ ${compactFrom}`;
-
-  const priceRangeKey = String(place?.priceRange || "").toUpperCase();
-  return PRICE_RANGE_LABELS[priceRangeKey] || "Liên hệ";
 };
 
 export const PlacePreviewCard = memo(
@@ -67,17 +31,61 @@ export const PlacePreviewCard = memo(
     travelLoading = false,
     compact = false,
     selected = false,
-    detailLabel = "Xem chi tiết",
-    selectedLabel = "Đã chọn",
-    unselectedLabel = "Chọn",
-    addToTripLabel = "Thêm chặng",
-    routeActionLabel = "Chỉ đường",
+    detailLabel,
+    selectedLabel,
+    unselectedLabel,
+    addToTripLabel,
+    routeActionLabel,
     showCloseButton = true,
     showDetailAction = true,
     showSelectionAction = false,
     showAddToTripAction = false,
     showRouteAction = false,
   }) => {
+    const { t } = useTranslation();
+
+    const PRICE_RANGE_LABELS = {
+      FREE: t("place.priceRange.free"),
+      BUDGET: t("place.priceRange.budget"),
+      MODERATE: t("place.priceRange.moderate"),
+      EXPENSIVE: t("place.priceRange.expensive"),
+      LUXURY: t("place.priceRange.luxury"),
+    };
+
+    const formatReviewCount = (count) => {
+      const parsed = Number(count || 0);
+      if (!parsed) return t("place.newBadge");
+      if (parsed >= 1000) {
+        return `${(parsed / 1000).toFixed(1).replace(/\.0$/, "")}k ${t("exploreHelpers.reviews")}`;
+      }
+      return `${parsed} ${t("exploreHelpers.reviews")}`;
+    };
+
+    const formatCompactPrice = (value) => {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed) || parsed <= 0) return null;
+      if (parsed >= 1_000_000) {
+        return `${(parsed / 1_000_000).toFixed(1).replace(/\.0$/, "")} ${t("place.million")}`;
+      }
+      if (parsed >= 1000) {
+        return `${Math.round(parsed / 1000)}k`;
+      }
+      return `${parsed}đ`;
+    };
+
+    const getPreviewPriceLabel = (p) => {
+      const compactFrom = formatCompactPrice(p?.priceFrom ?? p?.price_from);
+      if (compactFrom) return `${t("place.priceFrom")} ${compactFrom}`;
+      const priceRangeKey = String(p?.priceRange || "").toUpperCase();
+      return PRICE_RANGE_LABELS[priceRangeKey] || t("booking.contactForPrice");
+    };
+
+    const resolvedDetailLabel = detailLabel || t("place.viewDetail");
+    const resolvedSelectedLabel = selectedLabel || t("place.selectedLabel");
+    const resolvedUnselectedLabel = unselectedLabel || t("place.selectLabel");
+    const resolvedAddToTripLabel = addToTripLabel || t("place.addLeg");
+    const resolvedRouteActionLabel = routeActionLabel || t("place.directionsLabel");
+
     if (!place) return null;
 
     const previewImg = resolvePlaceImageUri(place);
@@ -86,9 +94,8 @@ export const PlacePreviewCard = memo(
     const locationLabel =
       place?.address ||
       [place?.ward?.name, place?.district?.name].filter(Boolean).join(", ") ||
-      "Cần Thơ";
+      t("place.defaultLocation");
     
-    // Rút gọn địa chỉ để không bị tràn
     const shortLocationLabel = locationLabel.length > 30 
       ? locationLabel.substring(0, 28) + "..." 
       : locationLabel;
@@ -105,11 +112,11 @@ export const PlacePreviewCard = memo(
     const canShowRouteAction =
       showRouteAction && typeof onStartRoute === "function";
       
-    const selectionLabel = selected ? selectedLabel : unselectedLabel;
+    const selectionLabel = selected ? resolvedSelectedLabel : resolvedUnselectedLabel;
     const hasTravelInfo = Boolean(travelEtaLabel || travelDistanceLabel);
     
     const travelLabel = travelLoading
-      ? "Đang tính..."
+      ? t("place.calculating")
       : [travelEtaLabel, travelDistanceLabel].filter(Boolean).join(" · ");
 
     const categorySlug = place?.category?.slug || "";
@@ -166,7 +173,7 @@ export const PlacePreviewCard = memo(
                 compact && "text-sm leading-[18px]"
               )}
             >
-              {place?.name || "Địa điểm"}
+              {place?.name || t("place.defaultPlace")}
             </Text>
             {showCloseButton ? (
               <Pressable
@@ -256,7 +263,7 @@ export const PlacePreviewCard = memo(
               >
                 <MaterialIconsRounded name="navigation" size={13} color="#FFFFFF" />
                 <Text className="text-white font-semibold text-xs">
-                  {routeActionLabel}
+                  {resolvedRouteActionLabel}
                 </Text>
               </Pressable>
             ) : null}
@@ -268,7 +275,7 @@ export const PlacePreviewCard = memo(
               >
                 <MaterialIconsRounded name="arrow-forward" size={13} color="#334155" />
                 <Text className="font-semibold text-slate-700 text-xs font-bold">
-                  {detailLabel}
+                  {resolvedDetailLabel}
                 </Text>
               </Pressable>
             ) : null}
@@ -303,7 +310,7 @@ export const PlacePreviewCard = memo(
                   color="#334155"
                 />
                 <Text className="font-semibold text-slate-700 text-xs font-bold">
-                  {addToTripLabel}
+                  {resolvedAddToTripLabel}
                 </Text>
               </Pressable>
             ) : null}

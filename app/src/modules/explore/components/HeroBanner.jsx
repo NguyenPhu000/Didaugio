@@ -67,7 +67,7 @@ function HeroBannerInner({ title, description, onPress, imageUrl }) {
           color="#FFF"
         />
         <Text style={styles.badgeText}>
-          {t("explore.heroBanner.badge") || "ĐỀ XUẤT CHO BẠN"}
+          {t("explore.heroBadge")}
         </Text>
       </View>
 
@@ -83,7 +83,7 @@ function HeroBannerInner({ title, description, onPress, imageUrl }) {
 
         <View style={styles.ctaButton}>
           <Text style={styles.ctaText}>
-            {t("explore.heroBanner.cta") || "Khám phá"}
+            {t("explore.heroExplore")}
           </Text>
           <View style={styles.ctaIconWrapper}>
             <MaterialIconsRounded

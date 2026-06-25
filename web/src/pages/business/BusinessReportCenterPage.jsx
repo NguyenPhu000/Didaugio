@@ -11,7 +11,6 @@ import {
   Clock,
   Users,
   Star,
-  Share2,
   ChevronRight,
   Filter,
   BarChart3,
@@ -215,7 +214,9 @@ const BusinessReportCenterPage = () => {
   useEffect(() => {
     getMyPlaces()
       .then((res) => setPlaces(res.data || []))
-      .catch(() => {});
+      .catch(() => {
+        toast.error(t("apiError.generic"));
+      });
   }, []);
 
   useEffect(() => {
@@ -233,7 +234,7 @@ const BusinessReportCenterPage = () => {
         const res = await getDashboard(params);
         setStatsData(res.data);
       } catch (err) {
-        console.error("Failed to fetch dashboard stats", err);
+        toast.error(t("apiError.generic"));
       } finally {
         setIsLoading(false);
       }
@@ -364,10 +365,6 @@ const BusinessReportCenterPage = () => {
               <Download className="h-4 w-4" />
               <span className="hidden sm:inline">{isExporting ? t("business.reportCenter.export.exporting") : t("business.reportCenter.export.exportReport")}</span>
               <span className="sm:hidden">{isExporting ? "..." : t("business.reportCenter.export.exportShort")}</span>
-            </Button>
-            <Button variant="outline" className="gap-2">
-              <Share2 className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("business.reportCenter.share")}</span>
             </Button>
           </div>
         </div>

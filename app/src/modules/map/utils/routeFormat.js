@@ -1,4 +1,5 @@
 import { MAP_TEXT } from "../constants/mapText.constants";
+import i18n from "@/i18n";
 
 export const formatRouteEta = (seconds) => {
   const total = Number(seconds);
@@ -21,7 +22,7 @@ export const formatRouteDistance = (meters) => {
   if (!Number.isFinite(total) || total <= 0) return null;
 
   if (total > 50000) {
-    return `Liên tỉnh (~${Math.round(total / 1000)} km)`;
+    return i18n.t("map.routeFormatting.interProvince", { km: Math.round(total / 1000) });
   }
 
   if (total < 1000)

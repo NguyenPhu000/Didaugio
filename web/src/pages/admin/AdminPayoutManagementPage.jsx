@@ -1,5 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { useState, useMemo } from "react";
 import { Doughnut, Line } from "react-chartjs-2";
 import "@/lib/chartSetup";
 import {
@@ -21,6 +20,7 @@ import {
   useAdminPayouts,
   useReviewPayout,
   usePayoutStats,
+  useTransferPayout,
 } from "@/hooks/queries/usePayoutQueries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -108,7 +108,6 @@ const StatCard = ({ title, value, icon: Icon, tone = "default", subtitle }) => {
 };
 
 export default function AdminPayoutManagementPage() {
-  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("pending");
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -122,8 +121,9 @@ export default function AdminPayoutManagementPage() {
     limit: 20,
   });
   const reviewPayout = useReviewPayout();
+  const transferPayout = useTransferPayout();
 
-  const stats = statsRes?.data || {};
+  const stats = useMemo(() => statsRes?.data || {}, [statsRes?.data]);
   const payouts = payoutsRes?.data?.payouts || [];
   const pagination = payoutsRes?.data?.pagination || { page: 1, totalPages: 1, total: 0 };
 
@@ -149,6 +149,15 @@ export default function AdminPayoutManagementPage() {
       setRejectReason("");
     } catch {
       toast.error("Từ chối yêu cầu thất bại");
+    }
+  };
+
+  const handleTransfer = async (id) => {
+    try {
+      await transferPayout.mutateAsync({ id });
+      toast.success("Đã xác nhận chuyển khoản");
+    } catch {
+      toast.error("Xác nhận chuyển khoản thất bại");
     }
   };
 
@@ -449,7 +458,7 @@ export default function AdminPayoutManagementPage() {
                     <TableBody>
                       {payouts.map((p) => {
                         const statusInfo = STATUS_BADGE_MAP[p.status] || STATUS_BADGE_MAP.pending;
-                        const isProcessing = reviewPayout.isPending;
+                        const isProcessing = reviewPayout.isPending || transferPayout.isPending;
                         return (
                           <TableRow key={p.id}>
                             {activeTab === "pending" && (
@@ -523,7 +532,7 @@ export default function AdminPayoutManagementPage() {
                                     variant="outline"
                                     className="h-7 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
                                     disabled={isProcessing}
-                                    onClick={() => handleApprove(p.id)}
+                                    onClick={() => handleTransfer(p.id)}
                                   >
                                     <Send className="h-3.5 w-3.5 mr-1" />
                                     Xác nhận chuyển

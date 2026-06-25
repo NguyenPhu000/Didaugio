@@ -49,7 +49,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export default memo(function EarningsPage() {
+const MIN_WITHDRAWAL_AMOUNT = 50000;
+
+const EarningsPage = memo(function EarningsPage() {
   const { t } = useTranslation();
 
   const STATUS_MAP = {
@@ -142,7 +144,7 @@ export default memo(function EarningsPage() {
         toast.error(t("business.earnings.toastExceedBalance"));
         return;
       }
-      if (amount < 50000) {
+      if (amount < MIN_WITHDRAWAL_AMOUNT) {
         toast.error(t("business.earnings.toastMinAmount"));
         return;
       }
@@ -581,5 +583,7 @@ export default memo(function EarningsPage() {
     </div>
   );
 });
+
+EarningsPage.displayName = "EarningsPage";
 
 export default EarningsPage;

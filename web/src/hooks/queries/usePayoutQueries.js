@@ -121,6 +121,22 @@ export function useReviewPayout() {
   );
 }
 
+export function useTransferPayout() {
+  const queryClient = useQueryClient();
+  return useApiMutation(
+    ({ id, transferRef }) => payoutService.confirmPayout(id, transferRef),
+    {
+      onSuccess: () => {
+        invalidateQueries(queryClient, [
+          queryKeys.payouts.all(),
+          queryKeys.payouts.stats(),
+          queryKeys.earnings.all(),
+        ]);
+      },
+    },
+  );
+}
+
 /**
  * Payout dashboard stats (admin).
  */

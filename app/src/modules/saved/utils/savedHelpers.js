@@ -92,11 +92,12 @@ export function formatReviewLabel(reviewCount) {
 export function formatPriceLabel(place) {
   const parsed = Number(place?.priceFrom ?? place?.price_from);
   if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  const from = i18n.t("savedHelpers.priceFrom");
   if (parsed >= 1_000_000) {
-    return `Từ ${(parsed / 1_000_000).toFixed(1).replace(/\.0$/, "")}trđ`;
+    return `${from} ${(parsed / 1_000_000).toFixed(1).replace(/\.0$/, "")}${i18n.t("savedHelpers.millionUnit")}`;
   }
-  if (parsed >= 1000) return `Từ ${Math.round(parsed / 1000)}kđ`;
-  return `Từ ${parsed}đ`;
+  if (parsed >= 1000) return `${from} ${Math.round(parsed / 1000)}${i18n.t("savedHelpers.thousandUnit")}`;
+  return `${from} ${parsed}${i18n.t("savedHelpers.currencyUnit")}`;
 }
 
 export function getCategorySlug(place) {

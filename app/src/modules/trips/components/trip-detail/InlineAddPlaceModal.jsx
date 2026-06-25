@@ -18,7 +18,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { MaterialIconsRounded } from "../../../../components/primitives/MaterialIconsRounded";
 import { useQueryClient } from "@tanstack/react-query";
 import { useExplore } from "../../../explore/hooks/useExplore";
 import { useSavedPlacesCached } from "../../../saved/hooks/useSavedOffline";
@@ -31,7 +31,7 @@ import {
 import { Image } from "expo-image";
 import { TRANSPORT_OPTIONS } from "../../utils/tripHelpers";
 import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
-import { cn } from "@/lib/cn";
+import { cn } from "../../../../lib/cn";
 import TimeField from "./TimeField";
 
 const isNewArchitectureEnabled = global?.nativeFabricUIManager != null;
@@ -96,9 +96,22 @@ function InlineAddPlaceModal({
     enabled: searchEnabled,
   });
 
+  const {
+    data: popularData,
+    isLoading: isPopularLoading,
+    isFetching: isPopularFetching,
+  } = useExplore({
+    sortBy: "popular",
+    enabled: visible,
+  });
+
   const places = useMemo(() => {
     return exploreData?.pages.flatMap((page) => page?.data || []) ?? [];
   }, [exploreData]);
+
+  const popularPlaces = useMemo(() => {
+    return popularData?.pages.flatMap((page) => page?.data || []) ?? [];
+  }, [popularData]);
 
   const { data: savedPlaces = [] } = useSavedPlacesCached(visible);
 
@@ -120,22 +133,47 @@ function InlineAddPlaceModal({
       filteredSaved = normalizedSavedPlaces;
     }
 
-    // Đánh dấu isSavedLocal để hiển thị icon bookmark
-    const markedSaved = filteredSaved.map((p) => ({ ...p, isSavedLocal: true }));
-
-    // 2. Nếu chưa nhập từ khóa, chỉ trả về các địa điểm đã lưu
-    if (!query) {
-      return markedSaved;
-    }
-
-    // 3. Nếu đã nhập từ khóa, gộp kết quả từ server
+    // Saved places stay first because they reflect explicit user intent.
     const savedIds = new Set(filteredSaved.map((p) => String(p.id)));
-    const filteredServer = places
-      .filter((p) => p && p.id && !savedIds.has(String(p.id)))
-      .map((p) => ({ ...p, isSavedLocal: false }));
+    const allSavedIds = new Set(normalizedSavedPlaces.map((p) => String(p.id)));
+    const markedSaved = filteredSaved.map((p) => ({
+      ...p,
+      isSavedLocal: true,
+      sourceRank: 0,
+    }));
 
-    return [...markedSaved, ...filteredServer];
-  }, [searchQuery, normalizedSavedPlaces, places]);
+    // Popular places fill the default view and stay above generic search results.
+    const popularMatches = popularPlaces
+      .filter((p) => {
+        if (!p?.id || savedIds.has(String(p.id))) return false;
+        if (!query) return true;
+        return (
+          p.name?.toLowerCase().includes(query) ||
+          p.address?.toLowerCase().includes(query)
+        );
+      })
+      .map((p) => ({
+        ...p,
+        isSavedLocal: allSavedIds.has(String(p.id)),
+        isSuggestedLocal: true,
+        sourceRank: 1,
+      }));
+    const usedIds = new Set([
+      ...markedSaved.map((p) => String(p.id)),
+      ...popularMatches.map((p) => String(p.id)),
+    ]);
+    const filteredServer = query
+      ? places
+          .filter((p) => p?.id && !usedIds.has(String(p.id)))
+          .map((p) => ({
+            ...p,
+            isSavedLocal: allSavedIds.has(String(p.id)),
+            sourceRank: 2,
+          }))
+      : [];
+
+    return [...markedSaved, ...popularMatches, ...filteredServer];
+  }, [searchQuery, normalizedSavedPlaces, popularPlaces, places]);
 
   // Reset state on open/close
   useEffect(() => {
@@ -205,10 +243,15 @@ function InlineAddPlaceModal({
     queryClient,
     onClose,
     isSubmitting,
+    t,
   ]);
 
   const isSearchLoading =
-    isLoading || isFetching || searchQuery !== debouncedQuery;
+    isLoading ||
+    isFetching ||
+    isPopularLoading ||
+    isPopularFetching ||
+    searchQuery !== debouncedQuery;
 
   const getItemLayout = useCallback(
     (data, index) => ({
@@ -316,26 +359,22 @@ function InlineAddPlaceModal({
                 </View>
 
                 {/* Results list */}
-                {searchQuery.trim().length === 0 && mergedPlaces.length === 0 ? (
-                  <View className="py-14 items-center gap-2">
-                    <MaterialIconsRounded name="search" size={32} color={ALPHA.iconStrong} />
-                    <Text className="text-[15px] font-semibold text-ink">{t('inlineAddPlace.enterKeyword')}</Text>
-                    <Text className="text-[13px] font-normal text-black/50">
-                      {t('inlineAddPlace.searchDesc')}
-                    </Text>
-                  </View>
-                ) : mergedPlaces.length === 0 && !isSearchLoading ? (
+                {mergedPlaces.length === 0 && !isSearchLoading ? (
                   <View className="py-14 items-center gap-2">
                     <MaterialIconsRounded
-                      name="search-off"
+                      name={searchQuery.trim().length === 0 ? "travel-explore" : "search-off"}
                       size={32}
                       color={ALPHA.iconStrong}
                     />
                     <Text className="text-[15px] font-semibold text-ink">
-                      {t('inlineAddPlace.noResults')}
+                      {searchQuery.trim().length === 0
+                        ? t('inlineAddPlace.noSuggestions')
+                        : t('inlineAddPlace.noResults')}
                     </Text>
                     <Text className="text-[13px] font-normal text-black/50">
-                      {t('inlineAddPlace.tryDifferentKeyword')}
+                      {searchQuery.trim().length === 0
+                        ? t('inlineAddPlace.searchDesc')
+                        : t('inlineAddPlace.tryDifferentKeyword')}
                     </Text>
                   </View>
                 ) : (
@@ -356,10 +395,12 @@ function InlineAddPlaceModal({
                       getItemLayout={getItemLayout}
                       ItemSeparatorComponent={renderItemSeparator}
                       ListHeaderComponent={
-                        normalizedSavedPlaces.length > 0 && searchQuery.trim() === "" ? (
+                        searchQuery.trim() === "" ? (
                           <View className="pb-2 pt-1">
                             <Text className="text-[11px] font-bold text-black/35 uppercase tracking-wider">
-                              {t('inlineAddPlace.yourSavedPlaces')}
+                              {normalizedSavedPlaces.length > 0
+                                ? t('inlineAddPlace.savedAndSuggested')
+                                : t('inlineAddPlace.suggestedPlaces')}
                             </Text>
                           </View>
                         ) : null
@@ -398,6 +439,9 @@ function InlineAddPlaceModal({
                                 </Text>
                                 {item.isSavedLocal && (
                                   <MaterialIconsRounded name="bookmark" size={14} color={T.warning} />
+                                )}
+                                {!item.isSavedLocal && item.isSuggestedLocal && (
+                                  <MaterialIconsRounded name="local-fire-department" size={14} color={T.warning} />
                                 )}
                               </View>
                               <Text className="text-[12px] font-normal text-black/50" numberOfLines={1}>

@@ -1,17 +1,20 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { resolveMediaUrl, resolvePlaceImageUri } from "../../../lib/media-url";
 import { formatMonthYear } from "@/utils/dateFormat";
 
 export function MemoriesSection({ completedTrips }) {
+  const { t } = useTranslation();
+
   if (!completedTrips || completedTrips.length === 0) {
     return (
       <View className="mt-2 items-center py-8">
         <MaterialIconsRounded name="photo-library" size={32} color="#CBD5E1" />
         <Text className="mt-3 text-sm text-[#64748B] font-medium">
-          Bạn chưa có kỷ niệm nào
+          {t("profile.memoriesSection.noMemories")}
         </Text>
       </View>
     );
@@ -28,7 +31,7 @@ export function MemoriesSection({ completedTrips }) {
       : "https://picsum.photos/id/408/600/400");
 
   const memory1 = {
-    title: mem1?.title || "Hành trình",
+    title: mem1?.title || t("profile.memoriesSection.journey"),
     date: mem1?.endDate
       ? (formatMonthYear(mem1.endDate) || "").toUpperCase()
       : "",
@@ -45,7 +48,7 @@ export function MemoriesSection({ completedTrips }) {
 
   const memory2 = mem2
     ? {
-        title: mem2?.title || "Hành trình",
+        title: mem2?.title || t("profile.memoriesSection.journey"),
         image: coverImage2,
       }
     : null;
@@ -121,7 +124,9 @@ export function MemoriesSection({ completedTrips }) {
                   colors={["#3478F6", "#1E40AF"]}
                   className="flex-1 items-center justify-center"
                 >
-                  <Text className="text-[17px] font-semibold text-white">+{extraCount} Nữa</Text>
+                  <Text className="text-[17px] font-semibold text-white">
+                    {t("profile.memoriesSection.moreCount", { count: extraCount })}
+                  </Text>
                 </LinearGradient>
               </Pressable>
             ) : null}

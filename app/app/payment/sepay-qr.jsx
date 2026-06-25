@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  Linking,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,20 +19,18 @@ const THEME = {
   background: "#F5F5F7",
   surface: "#FFFFFF",
   primary: "#1D1D1F",
-  border: "#D2D2D7",
+  border: "#E5E5EA",
   text: "#1D1D1F",
-  textSecondary: "rgba(0,0,0,0.48)",
-  textMuted: "rgba(0,0,0,0.36)",
-  primaryTint: "rgba(29,29,31,0.06)",
-  accent: "#0066FF",
-  accentBg: "#EBF1FF",
-  accentBorder: "#B3D1FF",
+  textSecondary: "#8E8E93",
+  textMuted: "#AEAEB2",
+  accent: "#007AFF",
+  accentLight: "#F0F8FF",
   white: "#FFFFFF",
-  danger: "#DC2626",
-  dangerBg: "#FEF2F2",
-  dangerBorder: "#FECACA",
-  green: "#16A34A",
-  greenBg: "#F0FDF4",
+  danger: "#FF3B30",
+  dangerBg: "#FFF2F1",
+  dangerBorder: "#FFD9D7",
+  green: "#34C759",
+  greenBg: "#F0FFF4",
   greenBorder: "#BBF7D0",
 };
 
@@ -45,45 +40,8 @@ const PAYMENT_EXPIRY_MS = PAYMENT_EXPIRY_MINUTES * 60 * 1000;
 const QR_POLL_INTERVAL_MS = 4000;
 const QR_MAX_POLLS = Math.ceil(PAYMENT_EXPIRY_MS / QR_POLL_INTERVAL_MS);
 
-/** Deep link scheme cho các ngân hàng VN */
-const BANK_DEEP_LINKS = {
-  MBBank: { scheme: "mbbank://", package: "com.mbmobile" },
-  Vietcombank: { scheme: "vcbdigibank://", package: "com.VCB" },
-  Techcombank: { scheme: "tcb://", package: "vn.com.techcombank.bb.app" },
-  ACB: { scheme: "acb://", mobile: "https://acb.com.vn/app" },
-  "VPBank": { scheme: "vnpay://", package: "vpbank.mobile" },
-  TPBank: { scheme: "tpbank://", package: "com.tpb" },
-  Sacombank: { scheme: "sacombank://", package: "com.sacombank" },
-  BIDV: { scheme: "bidv://", package: "com.bidv.smartbanking" },
-  VietinBank: { scheme: "vietinbank://", package: "com.vietinbank" },
-  Agribank: { scheme: "agribank://", package: "com.agribank" },
-  MSB: { scheme: "msb://", package: "com.msb" },
-  VIB: { scheme: "vib://", package: "com.vib" },
-  SHB: { scheme: "shb://", package: "com.shb" },
-  HDBank: { scheme: "hdbank://", package: "com.hdbank" },
-  OCB: { scheme: "ocb://", package: "com.ocb" },
-  "LienVietPostBank": { scheme: "lpb://", package: "com.lpb" },
-};
-
-const BANKS = [
-  { id: "mbbank", name: "MB Bank", scheme: "mbbank://", color: "#00A651" },
-  { id: "vietcombank", name: "Vietcombank", scheme: "vietcombank://", color: "#00703C" },
-  { id: "techcombank", name: "Techcombank", scheme: "techcombank://", color: "#F58220" },
-  { id: "acb", name: "ACB", scheme: "acbmobile://", color: "#0066B3" },
-  { id: "bidv", name: "BIDV", scheme: "bidv://", color: "#E31937" },
-  { id: "vietinbank", name: "VietinBank", scheme: "vietinbank://", color: "#ED1C24" },
-  { id: "tpbank", name: "TPBank", scheme: "tpbank://", color: "#FFC700" },
-  { id: "vpbank", name: "VPBank", scheme: "vpbank://", color: "#003B70" },
-  { id: "sacombank", name: "Sacombank", scheme: "sacombank://", color: "#ED1C24" },
-  { id: "agribank", name: "Agribank", scheme: "agribank://", color: "#00874A" },
-];
-
-const normalizeBankId = (name) => {
-  if (!name) return null;
-  const lower = name.toLowerCase().replace(/\s+/g, "");
-  const match = BANKS.find((b) => lower.includes(b.id) || b.id.includes(lower));
-  return match?.id ?? null;
-};
+const QR_SIZE = 280;
+const COUNTDOWN_URGENT_SECONDS = 120;
 
 const formatCountdown = (seconds) => {
   const m = Math.floor(seconds / 60);
@@ -96,62 +54,32 @@ const formatPrice = (price) => {
   return formatPriceLocale(Number(price));
 };
 
-function CopyRow({ label, value, onCopy, copied, mono }) {
+function CopyButton({ label, value, copied, onCopy, mono }) {
   return (
-    <View style={styles.infoRow}>
-      <View style={styles.infoTextWrap}>
-        <Text style={styles.infoLabel}>{label}</Text>
+    <Pressable
+      onPress={onCopy}
+      hitSlop={12}
+      style={({ pressed }) => [
+        styles.copyRow,
+        pressed && styles.copyRowPressed,
+      ]}
+    >
+      <View style={styles.copyContent}>
+        <Text style={styles.copyLabel}>{label}</Text>
         <Text
-          style={[styles.infoValue, mono && styles.infoValueMono]}
+          style={[styles.copyValue, mono && styles.copyValueMono]}
           numberOfLines={1}
         >
           {value || "—"}
         </Text>
       </View>
-      <Pressable
-        onPress={onCopy}
-        hitSlop={8}
-        style={({ pressed }) => [styles.copyBtn, pressed && styles.copyBtnPressed]}
-      >
+      <View style={[styles.copyIcon, copied && styles.copyIconDone]}>
         <MaterialIconsRounded
           name={copied ? "check" : "content-copy"}
           size={16}
-          color={copied ? "#16A34A" : THEME.accent}
+          color={copied ? THEME.green : THEME.accent}
         />
-        <Text style={[styles.copyText, copied && styles.copyTextDone]}>
-          {copied ? "Đã chép" : "Sao chép"}
-        </Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function BankItem({ bank, isHighlighted, onPress }) {
-  const initial = bank.name.charAt(0).toUpperCase();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.bankItem,
-        isHighlighted && styles.bankItemHighlighted,
-        pressed && styles.bankItemPressed,
-      ]}
-    >
-      <View
-        style={[
-          styles.bankItemCircle,
-          { backgroundColor: bank.color },
-          isHighlighted && styles.bankItemCircleHighlighted,
-        ]}
-      >
-        <Text style={styles.bankItemInitial}>{initial}</Text>
       </View>
-      <Text
-        style={[styles.bankItemName, isHighlighted && styles.bankItemNameHighlighted]}
-        numberOfLines={1}
-      >
-        {bank.name}
-      </Text>
     </Pressable>
   );
 }
@@ -171,8 +99,6 @@ export default function SepayQrScreen() {
   const bankAccountName = params.bankAccountName;
   const amount = params.amount;
 
-  const matchedBankId = useMemo(() => normalizeBankId(bankName), [bankName]);
-
   const expiresAt = useMemo(() => {
     const parsed = Number(params.expiresAt);
     if (Number.isFinite(parsed) && parsed > 0) return parsed;
@@ -186,7 +112,6 @@ export default function SepayQrScreen() {
   const [copiedKey, setCopiedKey] = useState(null);
   const copyTimerRef = useRef(null);
 
-  // Bắt đầu polling ngay khi vào màn QR
   useEffect(() => {
     if (!bookingId || isExpired) return;
     startPolling(transactionRef, paymentId, bookingId, {
@@ -196,7 +121,6 @@ export default function SepayQrScreen() {
     return () => stopPolling();
   }, [bookingId, paymentId, transactionRef, isExpired, startPolling, stopPolling]);
 
-  // Đếm ngược
   useEffect(() => {
     if (isExpired) return;
     const timer = setInterval(() => {
@@ -228,7 +152,7 @@ export default function SepayQrScreen() {
       await Clipboard.setStringAsync(String(value));
       setCopiedKey(key);
       if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-      copyTimerRef.current = setTimeout(() => setCopiedKey(null), 1800);
+      copyTimerRef.current = setTimeout(() => setCopiedKey(null), 2000);
     } catch {
       // Ignore clipboard errors
     }
@@ -247,22 +171,6 @@ export default function SepayQrScreen() {
     [handleCopy, amount],
   );
 
-  const handleOpenBank = useCallback(async (bank) => {
-    try {
-      const canOpen = await Linking.canOpenURL(bank.scheme);
-      if (canOpen) {
-        await Linking.openURL(bank.scheme);
-        return;
-      }
-    } catch {
-      // Fall through to alert
-    }
-    Alert.alert(
-      "Chưa cài ứng dụng",
-      `Bạn chưa cài app ${bank.name}. Vui lòng tải từ CH Play hoặc App Store.`,
-    );
-  }, []);
-
   const handleBack = useCallback(() => {
     stopPolling();
     router.back();
@@ -273,164 +181,195 @@ export default function SepayQrScreen() {
     router.replace("/profile/bookings");
   }, [router, stopPolling]);
 
-  const isUrgent = timeLeft <= 120;
+  const isUrgent = timeLeft <= COUNTDOWN_URGENT_SECONDS;
+  const progressPercent = (timeLeft / (PAYMENT_EXPIRY_MINUTES * 60)) * 100;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={handleBack} style={styles.backBtn} hitSlop={8}>
           <MaterialIconsRounded name="arrow-back" size={20} color={THEME.text} />
         </Pressable>
-        <View style={styles.headerTextWrap}>
-          <Text style={styles.headerTitle}>Thanh toán qua chuyển khoản</Text>
-          <Text style={styles.headerSubtitle}>Quét QR hoặc mở app ngân hàng</Text>
-        </View>
+        <Text style={styles.headerTitle}>Thanh toán chuyển khoản</Text>
+        <View style={styles.backBtn} />
       </View>
 
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 24 },
+          { paddingBottom: insets.bottom + 32 },
         ]}
         showsVerticalScrollIndicator={false}
       >
         {isExpired ? (
-          <View style={styles.expiredCard}>
-            <Text style={styles.expiredTitle}>Đơn hàng đã hết hạn</Text>
+          <View style={styles.expiredContainer}>
+            <View style={styles.expiredIcon}>
+              <MaterialIconsRounded
+                name="access-time-filled"
+                size={48}
+                color={THEME.danger}
+              />
+            </View>
+            <Text style={styles.expiredTitle}>Đã hết hạn thanh toán</Text>
             <Text style={styles.expiredText}>
-              Đã quá thời hạn thanh toán {PAYMENT_EXPIRY_MINUTES} phút. Nếu bạn đã
-              chuyển khoản, số tiền sẽ được hoàn lại. Vui lòng đặt lại đơn mới.
+              Đơn hàng đã quá {PAYMENT_EXPIRY_MINUTES} phút. Nếu bạn đã chuyển
+              khoản, hệ thống sẽ hoàn tiền tự động.
             </Text>
-            <Pressable onPress={handleGoBookings} style={styles.expiredBtn}>
-              <Text style={styles.expiredBtnText}>Xem đơn của tôi</Text>
+            <Pressable onPress={handleGoBookings} style={styles.primaryBtn}>
+              <Text style={styles.primaryBtnText}>Xem đơn của tôi</Text>
             </Pressable>
           </View>
         ) : (
           <>
+            {/* Countdown Timer */}
             <View
               style={[
-                styles.timerPill,
-                {
-                  backgroundColor: isUrgent ? THEME.dangerBg : THEME.accentBg,
-                  borderColor: isUrgent ? THEME.dangerBorder : THEME.accentBorder,
-                },
+                styles.timerCard,
+                isUrgent && styles.timerCardUrgent,
               ]}
             >
-              <MaterialIconsRounded
-                name="schedule"
-                size={16}
-                color={isUrgent ? THEME.danger : THEME.accent}
-              />
+              <View style={styles.timerHeader}>
+                <MaterialIconsRounded
+                  name="schedule"
+                  size={18}
+                  color={isUrgent ? THEME.danger : THEME.accent}
+                />
+                <Text
+                  style={[
+                    styles.timerLabel,
+                    isUrgent && styles.timerLabelUrgent,
+                  ]}
+                >
+                  {isUrgent ? "Sắp hết hạn" : "Thời gian còn lại"}
+                </Text>
+              </View>
               <Text
                 style={[
-                  styles.timerText,
-                  { color: isUrgent ? THEME.danger : THEME.accent },
+                  styles.timerValue,
+                  isUrgent && styles.timerValueUrgent,
                 ]}
               >
-                Đơn hết hạn sau {formatCountdown(timeLeft)}
+                {formatCountdown(timeLeft)}
               </Text>
+              <View style={styles.progressBar}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${progressPercent}%`,
+                      backgroundColor: isUrgent ? THEME.danger : THEME.accent,
+                    },
+                  ]}
+                />
+              </View>
             </View>
 
+            {/* QR Code Card */}
             <View style={styles.qrCard}>
-              {qrUrl ? (
-                <Image
-                  source={{ uri: qrUrl }}
-                  style={styles.qrImage}
-                  contentFit="contain"
-                  transition={150}
-                  cachePolicy="memory-disk"
-                />
-              ) : (
-                <View style={styles.qrFallback}>
-                  <ActivityIndicator size="large" color={THEME.primary} />
-                </View>
-              )}
+              <View style={styles.qrWrapper}>
+                {qrUrl ? (
+                  <Image
+                    source={{ uri: qrUrl }}
+                    style={styles.qrImage}
+                    contentFit="contain"
+                    transition={200}
+                    cachePolicy="memory-disk"
+                  />
+                ) : (
+                  <View style={styles.qrPlaceholder}>
+                    <ActivityIndicator size="large" color={THEME.accent} />
+                    <Text style={styles.qrPlaceholderText}>
+                      Đang tạo mã QR...
+                    </Text>
+                  </View>
+                )}
+              </View>
 
               <Pressable
                 onPress={handleCopyAmount}
                 style={({ pressed }) => [
-                  styles.amountWrap,
-                  pressed && styles.amountWrapPressed,
+                  styles.amountContainer,
+                  pressed && styles.amountContainerPressed,
                 ]}
               >
-                <Text style={styles.amountLabel}>Số tiền cần chuyển</Text>
+                <Text style={styles.amountLabel}>Số tiền thanh toán</Text>
                 <Text style={styles.amountValue}>{formatPrice(amount)}</Text>
-              </Pressable>
-
-              <View style={styles.waitingRow}>
-                <ActivityIndicator size="small" color={THEME.textMuted} />
-                <Text style={styles.waitingText}>
-                  Đang chờ xác nhận thanh toán...
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.bankGridSection}>
-              <Text style={styles.bankGridTitle}>Hoặc mở app ngân hàng</Text>
-              <View style={styles.bankGrid}>
-                {BANKS.map((bank) => (
-                  <BankItem
-                    key={bank.id}
-                    bank={bank}
-                    isHighlighted={bank.id === matchedBankId}
-                    onPress={() => handleOpenBank(bank)}
+                <View style={styles.amountCopyHint}>
+                  <MaterialIconsRounded
+                    name="content-copy"
+                    size={12}
+                    color={THEME.textMuted}
                   />
-                ))}
-              </View>
+                  <Text style={styles.amountCopyText}>Chạm để sao chép</Text>
+                </View>
+              </Pressable>
             </View>
 
+            {/* Waiting Status */}
+            <View style={styles.waitingCard}>
+              <ActivityIndicator size="small" color={THEME.accent} />
+              <Text style={styles.waitingText}>
+                Đang chờ xác nhận thanh toán...
+              </Text>
+            </View>
+
+            {/* Transfer Info Card */}
             <View style={styles.infoCard}>
-              <View style={styles.bankHeaderRow}>
-                <View style={styles.bankIcon}>
+              <View style={styles.infoHeader}>
+                <View style={styles.bankBadge}>
                   <MaterialIconsRounded
                     name="account-balance"
-                    size={18}
+                    size={20}
                     color={THEME.accent}
                   />
                 </View>
-                <Text style={styles.bankNameText}>{bankName || "Ngân hàng"}</Text>
+                <View style={styles.bankInfo}>
+                  <Text style={styles.bankName}>{bankName || "Ngân hàng"}</Text>
+                  <Text style={styles.bankHint}>Thông tin chuyển khoản</Text>
+                </View>
               </View>
 
-              <CopyRow
-                label="Số tài khoản"
-                value={bankAccountNumber}
-                onCopy={handleCopyAccount}
-                copied={copiedKey === "acc"}
-                mono
-              />
-              <View style={styles.divider} />
-              <View style={styles.infoRow}>
-                <View style={styles.infoTextWrap}>
+              <View style={styles.infoRows}>
+                <CopyButton
+                  label="Số tài khoản"
+                  value={bankAccountNumber}
+                  onCopy={handleCopyAccount}
+                  copied={copiedKey === "acc"}
+                  mono
+                />
+                <View style={styles.infoDivider} />
+                <View style={styles.infoRowStatic}>
                   <Text style={styles.infoLabel}>Chủ tài khoản</Text>
                   <Text style={styles.infoValue} numberOfLines={1}>
                     {bankAccountName || "—"}
                   </Text>
                 </View>
+                <View style={styles.infoDivider} />
+                <CopyButton
+                  label="Nội dung chuyển khoản"
+                  value={transactionRef}
+                  onCopy={handleCopyContent}
+                  copied={copiedKey === "ref"}
+                  mono
+                />
               </View>
-              <View style={styles.divider} />
-              <CopyRow
-                label="Nội dung chuyển khoản"
-                value={transactionRef}
-                onCopy={handleCopyContent}
-                copied={copiedKey === "ref"}
-                mono
-              />
             </View>
 
+            {/* Note */}
             <View style={styles.noteCard}>
               <MaterialIconsRounded
                 name="info-outline"
-                size={16}
+                size={18}
                 color={THEME.accent}
               />
               <Text style={styles.noteText}>
-                Vui lòng giữ nguyên{" "}
-                <Text style={styles.noteStrong}>nội dung chuyển khoản</Text> và
-                chuyển <Text style={styles.noteStrong}>đúng số tiền</Text>. Hệ
-                thống tự xác nhận sau vài giây và chuyển sang màn hình thành công.
+                Giữ nguyên nội dung chuyển khoản và chuyển đúng số tiền. Hệ
+                thống tự xác nhận sau vài giây.
               </Text>
             </View>
 
+            {/* Pay Later Button */}
             <Pressable onPress={handleGoBookings} style={styles.secondaryBtn}>
               <Text style={styles.secondaryBtnText}>
                 Tôi sẽ thanh toán sau
@@ -448,252 +387,297 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.background,
   },
-  scrollContent: {
-    paddingHorizontal: 16,
-  },
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 12,
+    paddingVertical: 12,
   },
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 14,
+    borderRadius: 12,
     backgroundColor: THEME.surface,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
     borderColor: THEME.border,
   },
-  headerTextWrap: { flex: 1 },
-  headerTitle: { color: THEME.text, fontSize: 18, fontWeight: "800" },
-  headerSubtitle: {
-    color: THEME.textSecondary,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  timerPill: {
-    marginTop: 4,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-  },
-  timerText: {
-    fontSize: 13,
+  headerTitle: {
+    color: THEME.text,
+    fontSize: 17,
     fontWeight: "700",
-    fontVariant: ["tabular-nums"],
+    letterSpacing: -0.3,
   },
-  qrCard: {
-    marginTop: 16,
-    backgroundColor: THEME.surface,
+  scrollContent: {
+    paddingHorizontal: 20,
+  },
+
+  // Countdown Timer
+  timerCard: {
+    backgroundColor: THEME.accentLight,
     borderRadius: 20,
     padding: 20,
+    borderWidth: 1,
+    borderColor: "#D0E8FF",
+    marginBottom: 20,
+  },
+  timerCardUrgent: {
+    backgroundColor: THEME.dangerBg,
+    borderColor: THEME.dangerBorder,
+  },
+  timerHeader: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  timerLabel: {
+    color: THEME.accent,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  timerLabelUrgent: {
+    color: THEME.danger,
+  },
+  timerValue: {
+    color: THEME.accent,
+    fontSize: 42,
+    fontWeight: "800",
+    fontVariant: ["tabular-nums"],
+    letterSpacing: 2,
+    marginBottom: 12,
+  },
+  timerValueUrgent: {
+    color: THEME.danger,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: "rgba(0,122,255,0.15)",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 2,
+  },
+
+  // QR Code Card
+  qrCard: {
+    backgroundColor: THEME.surface,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: "center",
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  qrWrapper: {
+    width: QR_SIZE,
+    height: QR_SIZE,
+    borderRadius: 16,
+    backgroundColor: THEME.white,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: THEME.border,
   },
   qrImage: {
-    width: 240,
-    height: 240,
-    borderRadius: 12,
-    backgroundColor: THEME.white,
+    width: QR_SIZE - 16,
+    height: QR_SIZE - 16,
   },
-  qrFallback: {
-    width: 240,
-    height: 240,
-    borderRadius: 12,
+  qrPlaceholder: {
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: THEME.primaryTint,
+    gap: 12,
   },
-  amountWrap: {
-    marginTop: 16,
-    alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: THEME.primaryTint,
-    alignSelf: "stretch",
-  },
-  amountWrapPressed: { opacity: 0.7 },
-  amountLabel: {
-    color: THEME.textSecondary,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  amountValue: {
-    color: THEME.primary,
-    fontSize: 24,
-    fontWeight: "800",
-    marginTop: 2,
-    fontVariant: ["tabular-nums"],
-  },
-  waitingRow: {
-    marginTop: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  waitingText: {
+  qrPlaceholderText: {
     color: THEME.textMuted,
     fontSize: 13,
     fontWeight: "500",
   },
-  infoCard: {
-    marginTop: 16,
-    backgroundColor: THEME.surface,
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  bankHeaderRow: {
-    flexDirection: "row",
+  amountContainer: {
     alignItems: "center",
-    gap: 10,
-    marginBottom: 6,
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: THEME.background,
+    borderRadius: 14,
+    alignSelf: "stretch",
   },
-  bankIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: THEME.accentBg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bankNameText: { color: THEME.text, fontSize: 15, fontWeight: "700" },
-  bankGridSection: {
-    marginTop: 16,
-    backgroundColor: THEME.surface,
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  bankGridTitle: {
-    color: THEME.textSecondary,
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  bankGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  bankItem: {
-    width: "47.5%",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: THEME.primaryTint,
-    borderWidth: 1.5,
-    borderColor: "transparent",
-  },
-  bankItemHighlighted: {
-    borderColor: THEME.accent,
-    backgroundColor: THEME.accentBg,
-  },
-  bankItemPressed: {
+  amountContainerPressed: {
     opacity: 0.7,
   },
-  bankItemCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bankItemCircleHighlighted: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  bankItemInitial: {
-    color: THEME.white,
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  bankItemName: {
-    flex: 1,
-    color: THEME.text,
-    fontSize: 13,
+  amountLabel: {
+    color: THEME.textSecondary,
+    fontSize: 12,
     fontWeight: "600",
-  },
-  bankItemNameHighlighted: {
-    color: THEME.accent,
-    fontWeight: "700",
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-  },
-  infoTextWrap: { flex: 1, marginRight: 12 },
-  infoLabel: { color: THEME.textMuted, fontSize: 12 },
-  infoValue: {
-    color: THEME.text,
-    fontSize: 15,
-    fontWeight: "700",
-    marginTop: 2,
-  },
-  infoValueMono: {
-    fontVariant: ["tabular-nums"],
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  divider: {
-    height: 1,
-    backgroundColor: THEME.border,
-    opacity: 0.6,
+  amountValue: {
+    color: THEME.primary,
+    fontSize: 28,
+    fontWeight: "800",
+    marginTop: 4,
+    fontVariant: ["tabular-nums"],
   },
-  copyBtn: {
+  amountCopyHint: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: THEME.accentBg,
-    borderWidth: 1,
-    borderColor: THEME.accentBorder,
+    marginTop: 8,
   },
-  copyBtnPressed: { opacity: 0.7 },
-  copyText: { color: THEME.accent, fontSize: 12, fontWeight: "700" },
-  copyTextDone: { color: "#16A34A" },
-  noteCard: {
-    marginTop: 16,
+  amountCopyText: {
+    color: THEME.textMuted,
+    fontSize: 11,
+    fontWeight: "500",
+  },
+
+  // Waiting Status
+  waitingCard: {
     flexDirection: "row",
-    gap: 8,
-    backgroundColor: THEME.accentBg,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
+  waitingText: {
+    color: THEME.textSecondary,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+
+  // Info Card
+  infoCard: {
+    backgroundColor: THEME.surface,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  infoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.border,
+  },
+  bankBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: THEME.accentLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bankInfo: {
+    flex: 1,
+  },
+  bankName: {
+    color: THEME.text,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  bankHint: {
+    color: THEME.textSecondary,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  infoRows: {
+    gap: 0,
+  },
+  infoRowStatic: {
+    paddingVertical: 12,
+  },
+  infoLabel: {
+    color: THEME.textSecondary,
+    fontSize: 12,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  infoValue: {
+    color: THEME.text,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  infoDivider: {
+    height: 1,
+    backgroundColor: THEME.border,
+  },
+
+  // Copy Button
+  copyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  copyRowPressed: {
+    opacity: 0.7,
+  },
+  copyContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  copyLabel: {
+    color: THEME.textSecondary,
+    fontSize: 12,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  copyValue: {
+    color: THEME.text,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  copyValueMono: {
+    fontVariant: ["tabular-nums"],
+    letterSpacing: 0.5,
+  },
+  copyIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: THEME.accentLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  copyIconDone: {
+    backgroundColor: THEME.greenBg,
+  },
+
+  // Note
+  noteCard: {
+    flexDirection: "row",
+    gap: 10,
+    backgroundColor: THEME.accentLight,
     borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: THEME.accentBorder,
+    padding: 16,
+    marginBottom: 20,
   },
   noteText: {
     flex: 1,
-    color: "#1D4ED8",
-    fontSize: 12,
-    lineHeight: 18,
+    color: THEME.accent,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "500",
   },
-  noteStrong: { fontWeight: "800" },
+
+  // Buttons
   secondaryBtn: {
-    marginTop: 16,
-    borderRadius: 22,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingVertical: 16,
     alignItems: "center",
     borderWidth: 1,
     borderColor: THEME.border,
@@ -701,34 +685,50 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     color: THEME.textSecondary,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
   },
-  expiredCard: {
-    marginTop: 16,
+
+  // Expired State
+  expiredContainer: {
+    alignItems: "center",
+    paddingTop: 40,
+    paddingHorizontal: 20,
+  },
+  expiredIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
     backgroundColor: THEME.dangerBg,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: THEME.dangerBorder,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
   },
   expiredTitle: {
-    color: THEME.danger,
-    fontSize: 15,
+    color: THEME.text,
+    fontSize: 22,
     fontWeight: "800",
     marginBottom: 8,
+    textAlign: "center",
   },
   expiredText: {
-    color: "#7F1D1D",
-    fontSize: 13,
-    lineHeight: 19,
-    marginBottom: 14,
+    color: THEME.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: "center",
+    marginBottom: 32,
   },
-  expiredBtn: {
+  primaryBtn: {
     backgroundColor: THEME.primary,
-    borderRadius: 999,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
     alignItems: "center",
+    alignSelf: "stretch",
   },
-  expiredBtnText: { color: THEME.white, fontSize: 14, fontWeight: "700" },
+  primaryBtnText: {
+    color: THEME.white,
+    fontSize: 16,
+    fontWeight: "700",
+  },
 });

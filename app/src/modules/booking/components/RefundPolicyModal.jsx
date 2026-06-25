@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { getI18nLocale, formatDateLocale } from "@/utils/dateFormat";
 
 const formatCurrency = (amount) =>
@@ -21,6 +22,7 @@ export default function RefundPolicyModal({
   booking,
   isLoading = false,
 }) {
+  const { t } = useTranslation();
   const [cancelReason, setCancelReason] = useState("");
 
   useEffect(() => {
@@ -91,7 +93,7 @@ export default function RefundPolicyModal({
                   flex: 1,
                 }}
               >
-                Xác nhận hủy & yêu cầu hoàn tiền
+                {t("bookingDetail.refund.title")}
               </Text>
               <Pressable onPress={handleClose} hitSlop={8}>
                 <Ionicons name="close" size={24} color="#6B7280" />
@@ -107,7 +109,7 @@ export default function RefundPolicyModal({
               }}
             >
               <Text style={{ fontSize: 12, color: "#6B7280", marginBottom: 4 }}>
-                Booking
+                {t("bookingDetail.refund.bookingLabel")}
               </Text>
               <Text
                 style={{
@@ -117,10 +119,10 @@ export default function RefundPolicyModal({
                   marginBottom: 8,
                 }}
               >
-                {booking?.service?.name || booking?.serviceName || "Dịch vụ"} · #{booking?.bookingCode || "-"}
+                {booking?.service?.name || booking?.serviceName || t("bookingDetail.refund.defaultService")} · #{booking?.bookingCode || "-"}
               </Text>
               <Text style={{ fontSize: 12, color: "#6B7280" }}>
-                Số tiền đã thanh toán
+                {t("bookingDetail.refund.paidAmount")}
               </Text>
               <Text
                 style={{
@@ -150,7 +152,7 @@ export default function RefundPolicyModal({
                   marginBottom: 8,
                 }}
               >
-                Chính sách áp dụng
+                {t("bookingDetail.refund.policy")}
               </Text>
               <Text
                 style={{
@@ -159,9 +161,9 @@ export default function RefundPolicyModal({
                   lineHeight: 20,
                 }}
               >
-                • Thời gian hiện tại: {formatDateLocale(new Date())}{"\n"}
-                • Ngày sử dụng: {usageDate}{"\n"}
-                • Mức hoàn trả: Admin sẽ xem xét và xử lý theo chính sách của dịch vụ
+                • {t("bookingDetail.refund.currentTime")} {formatDateLocale(new Date())}{"\n"}
+                • {t("bookingDetail.refund.usageDate")} {usageDate}{"\n"}
+                • {t("bookingDetail.refund.refundLevel")}
               </Text>
             </View>
 
@@ -174,13 +176,13 @@ export default function RefundPolicyModal({
                   marginBottom: 8,
                 }}
               >
-                Lý do hủy chuyến (bắt buộc, tối thiểu 5 ký tự)
+                {t("bookingDetail.refund.cancelReason")}
               </Text>
               <TextInput
                 multiline
                 value={cancelReason}
                 onChangeText={setCancelReason}
-                placeholder="Ví dụ: Tôi bận việc đột xuất nên không thể tham gia đúng lịch."
+                placeholder={t("bookingDetail.refund.cancelReasonPlaceholder")}
                 textAlignVertical="top"
                 editable={!isLoading}
                 style={{
@@ -196,7 +198,7 @@ export default function RefundPolicyModal({
                 }}
               />
               <Text style={{ marginTop: 6, fontSize: 12, color: "#6B7280" }}>
-                Yêu cầu hoàn tiền sẽ được gửi đến admin để duyệt thủ công.
+                {t("bookingDetail.refund.refundNote")}
               </Text>
             </View>
 
@@ -216,7 +218,7 @@ export default function RefundPolicyModal({
                 }}
               >
                 <Text style={{ color: "#374151", fontSize: 14, fontWeight: "600" }}>
-                  Giữ lại đơn
+                  {t("bookingDetail.refund.keepBooking")}
                 </Text>
               </Pressable>
 
@@ -241,7 +243,7 @@ export default function RefundPolicyModal({
                   <Ionicons name="close-circle" size={18} color="#FFFFFF" />
                 )}
                 <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "700" }}>
-                  {isLoading ? "Đang xử lý..." : "Xác nhận Hủy & Đòi tiền"}
+                  {isLoading ? t("bookingDetail.refund.processing") : t("bookingDetail.refund.confirmCancel")}
                 </Text>
               </Pressable>
             </View>

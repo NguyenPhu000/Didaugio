@@ -3,9 +3,6 @@ import { useTranslation } from "react-i18next";
 import {
   DollarSign,
   TrendingUp,
-  TrendingDown,
-  ArrowUpRight,
-  ArrowDownRight,
   CreditCard,
   Download,
   RefreshCw,
@@ -393,15 +390,15 @@ const RevenuePage = memo(() => {
                   <p className="font-medium text-sm">{item.placeName}</p>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div>
-                      <p className="text-muted-foreground">Doanh thu</p>
+                      <p className="text-muted-foreground">{t("business.revenue.revenueLabel")}</p>
                       <p className="font-mono font-semibold">{formatVND(item.totalRevenue)}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Booking</p>
+                      <p className="text-muted-foreground">{t("business.revenue.bookingLabel")}</p>
                       <p className="font-semibold">{item.bookingCount}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">TB</p>
+                      <p className="text-muted-foreground">{t("business.revenue.avgLabel")}</p>
                       <p className="font-mono font-semibold">{formatVND(item.avgOrderValue)}</p>
                     </div>
                   </div>
@@ -494,7 +491,7 @@ const RevenuePage = memo(() => {
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-mono font-semibold">{formatVND(tx.amount)}</span>
                       <span className="text-xs text-muted-foreground">
-                        HH: {formatVND(tx.commission)}
+                        {t("business.revenue.commissionLabel")}: {formatVND(tx.commission)}
                       </span>
                     </div>
                   </div>

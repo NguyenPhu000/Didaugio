@@ -50,12 +50,14 @@ import {
 } from "../trips/hooks/useActiveTrip";
 import { buildTripDays } from "../trips/utils/tripHelpers";
 import { useDepartureAlerts } from "../trips/hooks/useDepartureAlerts";
-import { useUpdateTrip } from "../trips/hooks/useTripDetail";
+import { useTripDetail, useUpdateTrip } from "../trips/hooks/useTripDetail";
 import { sendLocalNotification } from "../../lib/local-notifications";
 import FilterGroupBar from "./components/filters/FilterGroupBar";
 import FilterPickerModal from "./components/filters/FilterPickerModal";
 import CurrentLocationMarker from "./components/map-overlays/CurrentLocationMarker";
 import { useMapRouting } from "./hooks/useMapRouting";
+import { mapRoutingResponse } from "./hooks/routeMapping";
+import { calculateRouteApi } from "../../api/routingApi";
 import { Locate, Layers, X } from "lucide-react-native";
 import {
   PlacePreviewCard,
@@ -97,6 +99,10 @@ import {
   stopSpeech,
 } from "./utils/voiceGuidance";
 import { filterVisiblePlaces, getPlaceDistrictMeta } from "./utils/placeFilter";
+import {
+  buildTripPreviewSegments,
+  buildTripPreviewStops,
+} from "./utils/tripRoutePreview";
 
 const MAP_UI_THEME = {
   background: TOKENS.color.neutral[900],
@@ -179,6 +185,9 @@ export default function MapScreen() {
   const [completeIsTripEnd, setCompleteIsTripEnd] = useState(false);
   const [completeDayNumber, setCompleteDayNumber] = useState(1);
   const [isVoiceMuted, setIsVoiceMuted] = useState(true);
+  const [previewRouteResults, setPreviewRouteResults] = useState([]);
+  const [isPreviewRouteLoading, setIsPreviewRouteLoading] = useState(false);
+  const [isPreviewRouteError, setIsPreviewRouteError] = useState(false);
 
   // Event states
   const [activeEventId, setActiveEventId] = useState(null);
@@ -317,24 +326,6 @@ export default function MapScreen() {
   }, []);
 
   // ─── Active Trip Ferry Avoidance (per-trip from AsyncStorage) ──────────────
-  const [activeTripAvoidFerry, setActiveTripAvoidFerry] = useState(false);
-
-  useEffect(() => {
-    if (!isActiveTripMode || !activeTrip?.activeTripId) {
-      setActiveTripAvoidFerry(false);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const key = `trip_avoidFerry_${activeTrip.activeTripId}`;
-        const val = await safeAsyncStorage.getItem(key);
-        if (!cancelled) setActiveTripAvoidFerry(val === "true");
-      } catch {}
-    })();
-    return () => { cancelled = true; };
-  }, [isActiveTripMode, activeTrip?.activeTripId]);
-
   const visiblePlaces = useMemo(
     () =>
       filterVisiblePlaces({
@@ -419,6 +410,15 @@ export default function MapScreen() {
   } = activeTrip;
 
   const updateActiveTripMutation = useUpdateTrip(activeTrip.activeTripId);
+  const rawTripPreviewId = Array.isArray(params.tripPreviewId)
+    ? params.tripPreviewId[0]
+    : params.tripPreviewId;
+  const tripPreviewId =
+    rawTripPreviewId && !isActiveTripMode ? String(rawTripPreviewId) : null;
+  const isTripPreviewMode = Boolean(tripPreviewId);
+  const { data: previewTrip, isLoading: isPreviewTripLoading } =
+    useTripDetail(tripPreviewId);
+  const updatePreviewTripMutation = useUpdateTrip(tripPreviewId);
   const pingEventMutation = usePingEvent();
 
   useEffect(() => {
@@ -658,14 +658,10 @@ export default function MapScreen() {
     distanceM: baseActiveRouteDistanceM,
     durationS: baseActiveRouteDurationS,
     isFetching: isActiveRouteFetching,
-    ferryAvoidanceFailed: activeRouteFerryAvoidanceFailed,
   } = useMapRouting({
     origin: activeRouteOrigin,
     destination: activeTargetPoint,
     mode: activeTravelMode,
-    options: {
-      exclude: activeTripAvoidFerry ? "ferry" : undefined,
-    },
     enabled: Boolean(activeRouteOrigin && activeTargetPoint),
     navMode: "navigation",
   });
@@ -676,9 +672,6 @@ export default function MapScreen() {
     firstRoute: baseActiveFirstRoute,
     destination: activeTargetPoint,
     mode: activeTravelMode,
-    options: {
-      exclude: activeTripAvoidFerry ? "ferry" : undefined,
-    },
     mapRef,
   });
 
@@ -745,6 +738,102 @@ export default function MapScreen() {
     () => formatRouteDistance(activeRouteDistanceM),
     [activeRouteDistanceM],
   );
+
+  const previewStops = useMemo(
+    () => buildTripPreviewStops(previewTrip?.destinations || []),
+    [previewTrip?.destinations],
+  );
+
+  const previewSegments = useMemo(
+    () => buildTripPreviewSegments(previewStops, previewRouteResults),
+    [previewRouteResults, previewStops],
+  );
+
+  const previewFitCoordinates = useMemo(() => {
+    if (previewSegments.length > 0) {
+      return previewSegments.flatMap((segment) => segment.coordinates);
+    }
+    return previewStops.map((stop) => stop.coordinate);
+  }, [previewSegments, previewStops]);
+
+  useEffect(() => {
+    if (!isTripPreviewMode || previewStops.length < 2) {
+      setPreviewRouteResults([]);
+      setIsPreviewRouteLoading(false);
+      setIsPreviewRouteError(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsPreviewRouteLoading(true);
+    setIsPreviewRouteError(false);
+
+    Promise.all(
+      previewStops.slice(0, -1).map(async (from, index) => {
+        const to = previewStops[index + 1];
+        try {
+          const response = await calculateRouteApi({
+            origin: {
+              lat: from.coordinate.latitude,
+              lng: from.coordinate.longitude,
+              name: from.name,
+            },
+            destination: {
+              lat: to.coordinate.latitude,
+              lng: to.coordinate.longitude,
+              name: to.name,
+            },
+            mode: mapTransportToMode(from.destination?.transportToNext),
+            options: {
+              alternatives: 1,
+              steps: false,
+              overview: "full",
+              geometries: "polyline6",
+              snapToRoad: true,
+              simplifyGeometry: true,
+            },
+          });
+          return mapRoutingResponse(response);
+        } catch {
+          return {
+            coordinates: [from.coordinate, to.coordinate],
+            distanceM: null,
+            source: "fallback",
+          };
+        }
+      }),
+    )
+      .then((results) => {
+        if (cancelled) return;
+        const hasFallback = results.some((result) => result.source === "fallback");
+        setPreviewRouteResults(results);
+        setIsPreviewRouteError(hasFallback);
+      })
+      .finally(() => {
+        if (!cancelled) setIsPreviewRouteLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isTripPreviewMode, mapTransportToMode, previewStops]);
+
+  useEffect(() => {
+    if (!isTripPreviewMode || previewFitCoordinates.length < 2) return;
+    const timer = setTimeout(() => {
+      mapRef.current?.fitToCoordinates?.(previewFitCoordinates, {
+        edgePadding: {
+          top: (insets.top || 0) + 130,
+          right: 48,
+          bottom: FLOATING_TAB_CLEARANCE + 150,
+          left: 48,
+        },
+        animated: true,
+      });
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [insets.top, isTripPreviewMode, previewFitCoordinates]);
+
   const activeDistanceToNextTurnLabel = useMemo(
     () => formatRouteDistance(navigationController.distanceToNextTurn),
     [navigationController.distanceToNextTurn],
@@ -931,6 +1020,82 @@ export default function MapScreen() {
     await exitActiveTrip();
   }, [exitActiveTrip]);
 
+  const handleRequestStopActiveTrip = useCallback(() => {
+    Alert.alert(
+      t("mapScreen.stopJourneyTitle"),
+      t("mapScreen.stopJourneyMessage"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("mapScreen.stopJourney"),
+          style: "destructive",
+          onPress: () => {
+            void handleExitActiveTrip();
+          },
+        },
+      ],
+    );
+  }, [handleExitActiveTrip, t]);
+
+  const handlePauseActiveTrip = useCallback(async () => {
+    await activeTrip.pauseActiveTrip();
+    followCameraRef.current = false;
+    setIsScreenDimmed(false);
+  }, [activeTrip]);
+
+  const handleResumeActiveTrip = useCallback(async () => {
+    await activeTrip.resumeActiveTrip();
+    followCameraRef.current = true;
+    await locateActiveTripNow();
+  }, [activeTrip, locateActiveTripNow]);
+
+  const handleCancelTripPreview = useCallback(() => {
+    setPreviewRouteResults([]);
+    router.setParams({ tripPreviewId: undefined });
+    router.back();
+  }, [router]);
+
+  const handleConfirmTripPreview = useCallback(() => {
+    if (!previewTrip?.id || updatePreviewTripMutation.isPending) return;
+    if (previewStops.length === 0) {
+      Alert.alert(t("common.error"), t("mapScreen.previewNoStops"));
+      return;
+    }
+
+    updatePreviewTripMutation.mutate(
+      { status: "in-progress" },
+      {
+        onSuccess: async () => {
+          await activeTrip.startActiveTrip(previewTrip.id);
+          await sendLocalNotification({
+            title: t("trip.detail.startNotification"),
+            body: t("trip.detail.startNotificationBody", {
+              title: previewTrip.title || t("trip.detail.defaultTitle"),
+            }),
+            data: { tripId: previewTrip.id },
+          });
+          router.setParams({ tripPreviewId: undefined });
+          followCameraRef.current = true;
+          await locateActiveTripNow();
+        },
+        onError: (error) => {
+          Alert.alert(
+            t("common.error"),
+            error?.message || t("trip.detail.startError"),
+          );
+        },
+      },
+    );
+  }, [
+    activeTrip,
+    locateActiveTripNow,
+    previewStops.length,
+    previewTrip,
+    router,
+    t,
+    updatePreviewTripMutation,
+  ]);
+
   const handleDismissActiveArrival = useCallback(() => {
     // Tạm ẩn popup cho điểm hiện tại, tránh bật lại liên tục khi vẫn ở gần.
     if (activeNextDestination) {
@@ -1055,7 +1220,6 @@ export default function MapScreen() {
     durationS: routeDurationS,
     isError: isRouteError,
     isFallback: isRouteFallback,
-    ferryAvoidanceFailed: routeFerryAvoidanceFailed,
     isFetching: isRouteFetching,
     error: routeError,
     refetch: refetchRoute,
@@ -1170,7 +1334,6 @@ export default function MapScreen() {
         distance: routeDistanceM ?? null,
         duration: routeDurationS ?? null,
         vehicleType: "motorcycle",
-        avoidFerry: false,
         timestamp: new Date().toISOString(),
       });
 
@@ -1266,24 +1429,6 @@ export default function MapScreen() {
     }
   }, [params, mapPlaces, router]);
 
-  const showFerryWarning = useMemo(() => {
-    if (isActiveTripMode) return activeTripAvoidFerry && Boolean(activeRouteFerryAvoidanceFailed);
-    return false;
-  }, [
-    activeTripAvoidFerry,
-    isActiveTripMode,
-    activeRouteFerryAvoidanceFailed,
-  ]);
-
-  const warningTargetName = useMemo(() => {
-    if (isActiveTripMode) return activeTargetPoint?.name;
-    return activePlace?.name;
-  }, [isActiveTripMode, activeTargetPoint, activePlace]);
-
-  const warningTopOffset = useMemo(() => {
-    return (insets.top || 0) + 106;
-  }, [insets.top]);
-
   return (
     <View
       className="flex-1"
@@ -1340,7 +1485,7 @@ export default function MapScreen() {
         {/* Always render MapView - pins should be visible even if there are errors */}
         <MapView
           ref={mapRef}
-          places={visiblePlaces}
+          places={isTripPreviewMode ? [] : visiblePlaces}
           selectedPlaceId={activePlace?.id ?? null}
           onSelectPlace={handleSelectPlace}
           onPressMap={handleMapPress}
@@ -1357,18 +1502,157 @@ export default function MapScreen() {
             allAreasKey={ALL_AREAS_KEY}
           />
 
-          <CurrentLocationMarker
-            location={isActiveTripMode ? activeTripLocation : currentLocation}
-            heading={
-              (isActiveTripMode ? activeTripLocation : currentLocation)?.heading
-            }
-            headingAccuracy={
-              (isActiveTripMode ? activeTripLocation : currentLocation)
-                ?.headingAccuracy
-            }
-          />
+          {!isTripPreviewMode ? (
+            <CurrentLocationMarker
+              location={isActiveTripMode ? activeTripLocation : currentLocation}
+              heading={
+                (isActiveTripMode ? activeTripLocation : currentLocation)?.heading
+              }
+              headingAccuracy={
+                (isActiveTripMode ? activeTripLocation : currentLocation)
+                  ?.headingAccuracy
+              }
+            />
+          ) : null}
 
-          {isActiveTripMode && activeRouteCoordinates.length > 1 ? (
+          {isTripPreviewMode && previewSegments.length > 0
+            ? previewSegments.map((segment) => (
+                <RoutePolyline
+                  key={segment.id}
+                  coordinates={segment.coordinates}
+                  source={segment.source}
+                  strokeWidth={6}
+                  isPrimary
+                  dashed={segment.dashed}
+                  color={segment.color}
+                  strokeOpacity={0.96}
+                />
+              ))
+            : null}
+
+          {isTripPreviewMode && previewSegments.length > 0
+            ? previewSegments.map((segment) =>
+                segment.labelCoordinate ? (
+                  <Marker
+                    key={`segment-label-${segment.id}`}
+                    coordinate={segment.labelCoordinate}
+                    anchor={{ x: 0.5, y: 0.5 }}
+                    tracksViewChanges={false}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                        paddingHorizontal: 8,
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: "rgba(17,24,39,0.9)",
+                        borderWidth: 1,
+                        borderColor: "rgba(255,255,255,0.82)",
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: segment.color,
+                        }}
+                      />
+                      <Text
+                        style={{
+                          color: "#FFFFFF",
+                          fontSize: 11,
+                          fontFamily: TOKENS.font.semibold,
+                        }}
+                      >
+                        {[segment.label, segment.distanceLabel].filter(Boolean).join(" • ")}
+                      </Text>
+                    </View>
+                  </Marker>
+                ) : null,
+              )
+            : null}
+
+          {isTripPreviewMode && previewStops.length > 0
+            ? previewStops.map((stop) => {
+                const imageUri = resolveMediaUrl(stop.thumbnail);
+                return (
+                  <Marker
+                    key={`preview-stop-${stop.id}`}
+                    coordinate={stop.coordinate}
+                    anchor={{ x: 0.5, y: 0.92 }}
+                    tracksViewChanges
+                  >
+                    <View style={{ alignItems: "center" }}>
+                      <View
+                        style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: 14,
+                          backgroundColor: "#FFFFFF",
+                          padding: 3,
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 3 },
+                          shadowOpacity: 0.22,
+                          shadowRadius: 5,
+                          elevation: 5,
+                        }}
+                      >
+                        {imageUri ? (
+                          <Image
+                            source={{ uri: imageUri }}
+                            style={{ width: "100%", height: "100%", borderRadius: 11 }}
+                            contentFit="cover"
+                          />
+                        ) : (
+                          <View
+                            style={{
+                              flex: 1,
+                              borderRadius: 11,
+                              alignItems: "center",
+                              justifyContent: "center",
+                              backgroundColor: "#F3F4F6",
+                            }}
+                          >
+                            <MaterialIconsRounded name="place" size={24} color="#6B7280" />
+                          </View>
+                        )}
+                      </View>
+                      <View
+                        style={{
+                          marginTop: -8,
+                          width: 26,
+                          height: 26,
+                          borderRadius: 13,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor:
+                            previewSegments[stop.sequence - 1]?.color ||
+                            previewSegments[stop.sequence - 2]?.color ||
+                            "#EF4444",
+                          borderWidth: 2,
+                          borderColor: "#FFFFFF",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: "#FFFFFF",
+                            fontSize: 12,
+                            fontFamily: TOKENS.font.bold,
+                          }}
+                        >
+                          {stop.sequence}
+                        </Text>
+                      </View>
+                    </View>
+                  </Marker>
+                );
+              })
+            : null}
+
+          {!isTripPreviewMode && isActiveTripMode && activeRouteCoordinates.length > 1 ? (
             <RoutePolyline
               coordinates={activeRouteCoordinates}
               source={activeRouteSource || "osrm"}
@@ -1378,7 +1662,7 @@ export default function MapScreen() {
               color="hsl(145, 63%, 38%)"
               strokeOpacity={navigationController.isGpsLost ? 0.4 : 0.95}
             />
-          ) : routeCoordinates.length > 1 ? (
+          ) : !isTripPreviewMode && routeCoordinates.length > 1 ? (
             <RoutePolyline
               coordinates={routeCoordinates}
               source={routeSource || "osrm"}
@@ -1488,8 +1772,72 @@ export default function MapScreen() {
         isVoiceMuted={isVoiceMuted}
         travelMode={activeTravelMode}
         onToggleVoice={handleToggleVoice}
-        onExit={handleExitActiveTrip}
+        onExit={handleRequestStopActiveTrip}
       />
+
+      {isActiveTripMode && !activeTrip.isPaused ? (
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            top: (insets.top || 0) + 116,
+            zIndex: 82,
+            alignItems: "flex-end",
+          }}
+        >
+          <BlurView
+            tint="dark"
+            intensity={34}
+            style={{
+              flexDirection: "row",
+              gap: 8,
+              padding: 6,
+              borderRadius: 22,
+              overflow: "hidden",
+              backgroundColor: "rgba(17,24,39,0.86)",
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.16)",
+            }}
+          >
+            <Pressable
+              onPress={handlePauseActiveTrip}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                height: 38,
+                paddingHorizontal: 12,
+                borderRadius: 19,
+                backgroundColor: "rgba(255,214,10,0.18)",
+              }}
+            >
+              <MaterialIconsRounded name="pause" size={17} color="#FFD60A" />
+              <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: TOKENS.font.semibold }}>
+                {t("mapScreen.pauseJourney")}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={handleRequestStopActiveTrip}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                height: 38,
+                paddingHorizontal: 12,
+                borderRadius: 19,
+                backgroundColor: "rgba(239,68,68,0.2)",
+              }}
+            >
+              <MaterialIconsRounded name="stop" size={17} color="#FCA5A5" />
+              <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: TOKENS.font.semibold }}>
+                {t("mapScreen.stopJourney")}
+              </Text>
+            </Pressable>
+          </BlurView>
+        </View>
+      ) : null}
 
       <NearbyWarningBanner
         visible={isActiveTripMode && !activeTrip.isPaused && nearbyTriggered}
@@ -1644,11 +1992,7 @@ export default function MapScreen() {
               </View>
             </View>
             <Pressable
-              onPress={async () => {
-                await activeTrip.resumeActiveTrip();
-                followCameraRef.current = true;
-                await locateActiveTripNow();
-              }}
+              onPress={handleResumeActiveTrip}
               style={{
                 paddingHorizontal: 14,
                 height: 36,
@@ -1662,9 +2006,148 @@ export default function MapScreen() {
                 {t("mapScreen.resume")}
               </Text>
             </Pressable>
+            <Pressable
+              onPress={handleRequestStopActiveTrip}
+              style={{
+                paddingHorizontal: 14,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "rgba(239,68,68,0.2)",
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1,
+                borderColor: "rgba(252,165,165,0.38)",
+              }}
+            >
+              <Text style={{ color: "#FCA5A5", fontSize: 12, fontFamily: TOKENS.font.semibold }}>
+                {t("mapScreen.stopJourney")}
+              </Text>
+            </Pressable>
           </BlurView>
         </View>
       )}
+
+      {isTripPreviewMode ? (
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            bottom: FLOATING_TAB_CLEARANCE + 14,
+            zIndex: 88,
+          }}
+        >
+          <BlurView
+            tint="light"
+            intensity={46}
+            style={{
+              borderRadius: 24,
+              overflow: "hidden",
+              backgroundColor: "rgba(255,255,255,0.94)",
+              borderWidth: 1,
+              borderColor: "rgba(17,24,39,0.08)",
+            }}
+          >
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14, gap: 12 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 14,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "rgba(16,185,129,0.12)",
+                  }}
+                >
+                  {isPreviewTripLoading || isPreviewRouteLoading ? (
+                    <ActivityIndicator size="small" color="#059669" />
+                  ) : (
+                    <MaterialIconsRounded name="route" size={20} color="#047857" />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: "#111827",
+                      fontSize: 16,
+                      fontFamily: TOKENS.font.bold,
+                    }}
+                  >
+                    {previewTrip?.title || t("mapScreen.previewTitle")}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      marginTop: 2,
+                      color: "#6B7280",
+                      fontSize: 12,
+                      fontFamily: TOKENS.font.medium,
+                    }}
+                  >
+                    {isPreviewRouteError
+                      ? t("mapScreen.previewFallback")
+                      : t("mapScreen.previewSummary", {
+                          count: previewStops.length,
+                          segments: previewSegments.length,
+                        })}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Pressable
+                  onPress={handleCancelTripPreview}
+                  style={{
+                    height: 46,
+                    paddingHorizontal: 16,
+                    borderRadius: 23,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#F3F4F6",
+                  }}
+                >
+                  <Text style={{ color: "#111827", fontSize: 13, fontFamily: TOKENS.font.semibold }}>
+                    {t("common.back")}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleConfirmTripPreview}
+                  disabled={
+                    previewStops.length === 0 ||
+                    updatePreviewTripMutation.isPending ||
+                    isPreviewTripLoading
+                  }
+                  style={{
+                    flex: 1,
+                    height: 46,
+                    borderRadius: 23,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#111827",
+                    opacity:
+                      previewStops.length === 0 ||
+                      updatePreviewTripMutation.isPending ||
+                      isPreviewTripLoading
+                        ? 0.55
+                        : 1,
+                  }}
+                >
+                  {updatePreviewTripMutation.isPending ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={{ color: "#FFFFFF", fontSize: 14, fontFamily: TOKENS.font.bold }}>
+                      {t("mapScreen.startGuidance")}
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </BlurView>
+        </View>
+      ) : null}
 
       <StartNavigationModal
         visible={startNavConfirmVisible}
@@ -1704,7 +2187,7 @@ export default function MapScreen() {
       />
 
       <NavigationStatusBanner
-        visible={routeEnabled && Boolean(routeStatus)}
+        visible={!isTripPreviewMode && routeEnabled && Boolean(routeStatus)}
         routeStatus={routeStatus}
         routeEtaLabel={routeEtaLabel}
         routeDistanceLabel={routeDistanceLabel}
@@ -1717,66 +2200,12 @@ export default function MapScreen() {
         }
       />
 
-      {showFerryWarning && (
-        <View
-          pointerEvents="box-none"
-          style={{
-            position: "absolute",
-            left: 14,
-            right: 14,
-            ...(isActiveTripMode
-              ? { top: warningTopOffset }
-              : {
-                  bottom: activePlace
-                    ? FLOATING_TAB_CLEARANCE + 196
-                    : FLOATING_TAB_CLEARANCE + 128,
-                }),
-            zIndex: 99,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 10,
-              backgroundColor: "#FEF2F2",
-              borderWidth: 1,
-              borderColor: "#FECACA",
-              borderRadius: 14,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 3,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-              <MaterialIconsRounded name="directions-boat" size={16} color="#B45309" />
-              <Text
-                style={{
-                  flex: 1,
-                  fontSize: 11,
-                  fontFamily: TOKENS.font.semibold,
-                  color: "#92400E",
-                  lineHeight: 15,
-                }}
-              >
-                {t("mapScreen.noFerryRoute")}
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
-
       <View
         className="flex-1 flex-col"
         style={{ paddingTop: (insets.top || 0) + 12 }}
         pointerEvents="box-none"
       >
-        {!isActiveTripMode ? (
+        {!isTripPreviewMode && !isActiveTripMode ? (
           <View
             className="flex-row items-center px-4 gap-3"
             pointerEvents="auto"
@@ -1929,7 +2358,7 @@ export default function MapScreen() {
           </View>
         ) : null}
 
-        {!isActiveTripMode ? (
+        {!isTripPreviewMode && !isActiveTripMode ? (
           <FilterGroupBar
             activeFilterGroup={activeFilterGroup}
             onSelectFilterGroup={handleSelectFilterGroup}
@@ -2078,7 +2507,7 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {activePlace && !isActiveTripMode ? (
+      {activePlace && !isTripPreviewMode && !isActiveTripMode ? (
         <View
           pointerEvents="box-none"
           style={{
@@ -2121,7 +2550,7 @@ export default function MapScreen() {
       ) : null}
 
       <FilterPickerModal
-        visible={filterPickerVisible}
+        visible={!isTripPreviewMode && filterPickerVisible}
         activeFilterGroupLabel={activeFilterGroupMeta.label}
         options={filterPickerOptions}
         onClose={handleCloseFilterPicker}

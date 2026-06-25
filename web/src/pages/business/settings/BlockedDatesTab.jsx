@@ -12,6 +12,7 @@ import {
   DialogFooter,
 } from "@/components/ui";
 import SettingsSection from "@/components/settings/SettingsSection";
+import { formatDate } from "@/components/business/dashboardWidgetHelpers";
 import { blockedDateApi } from "@/apis/blockedDateApi";
 
 const BlockedDatesTab = () => {
@@ -107,7 +108,7 @@ const BlockedDatesTab = () => {
             >
               <div className="min-w-0">
                 <span className="font-mono text-xs font-bold text-red-700">
-                  {new Date(bd.date).toLocaleDateString("vi-VN")}
+                  {formatDate(bd.date)}
                 </span>
                 {bd.reason && (
                   <span className="font-mono text-[10px] text-gray-500 ml-0 sm:ml-2 block sm:inline">

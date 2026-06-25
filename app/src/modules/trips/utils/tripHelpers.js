@@ -1,11 +1,15 @@
-import i18n from "@/i18n";
+import i18n from "../../../i18n";
 import { TRIP_STATUS_META } from "./tripTheme";
 
-export const FILTERS = [
-  { key: "all", label: i18n.t("tripHelpers.all") },
-  { key: "active", label: i18n.t("tripHelpers.upcoming") },
-  { key: "done", label: i18n.t("tripHelpers.completed") },
-];
+export function getTripFilters() {
+  return [
+    { key: "all", label: i18n.t("tripHelpers.all") },
+    { key: "active", label: i18n.t("tripHelpers.upcoming") },
+    { key: "done", label: i18n.t("tripHelpers.completed") },
+  ];
+}
+
+export const FILTERS = getTripFilters();
 
 export const STATUS_THEME = TRIP_STATUS_META;
 
@@ -131,6 +135,9 @@ export function getDisplayStatus(trip) {
   const rawStatus = String(trip.status || "").toLowerCase();
   if (rawStatus === "completed") return "completed";
   if (rawStatus === "cancelled") return "cancelled";
+  if (rawStatus === "in-progress" || rawStatus === "ongoing" || rawStatus === "active") {
+    return "ongoing";
+  }
 
   // Map draft to upcoming status
   if (rawStatus === "draft") return "upcoming";
@@ -202,6 +209,25 @@ export function getHeroTrip(trips) {
     });
 
   return candidates[0]?.trip || trips?.[0] || null;
+}
+
+export function sortTripsForDashboard(trips) {
+  const statusOrder = { ongoing: 0, upcoming: 1, completed: 2, cancelled: 3 };
+
+  return [...(trips || [])].sort((a, b) => {
+    const aStatus = getDisplayStatus(a);
+    const bStatus = getDisplayStatus(b);
+    const aOrder = statusOrder[aStatus] ?? 1;
+    const bOrder = statusOrder[bStatus] ?? 1;
+
+    if (aOrder !== bOrder) return aOrder - bOrder;
+
+    const aDate = getSafeDateTime(a.startDate, Number.MAX_SAFE_INTEGER);
+    const bDate = getSafeDateTime(b.startDate, Number.MAX_SAFE_INTEGER);
+
+    if (aOrder <= 1) return aDate - bDate;
+    return bDate - aDate;
+  });
 }
 
 export function buildSummary(trips) {

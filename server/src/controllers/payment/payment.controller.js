@@ -1,6 +1,7 @@
 import * as paymentService from "../../services/payment/payment.service.js";
 import * as vnpayService from "../../services/payment/vnpay.service.js";
 import * as sepayService from "../../services/payment/sepay.service.js";
+import * as cashflowService from "../../services/payment/cashflow.service.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import { rejectRefundSchema } from "../../models/schemas/payment/payment.schema.js";
 
@@ -324,6 +325,22 @@ export async function sepayBankWebhook(req, res, next) {
 }
 
 /**
+ * POST /api/payments/sepay-webhook-refund
+ * Auth: None (server-to-server outgoing bank webhook from SePay)
+ */
+export async function sepayRefundWebhook(req, res, next) {
+  try {
+    const result = await paymentService.processSePayRefundWebhook(
+      req.body,
+      req.headers,
+    );
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * GET /api/payments/:id
  * Auth: User (JWT)
  * User can only see their own payments; Admin sees all.
@@ -462,6 +479,30 @@ export async function getAdminPayments(req, res, next) {
         error.errorCode,
       );
     }
+    next(error);
+  }
+}
+
+export async function getAdminCashflow(req, res, next) {
+  try {
+    const result = await cashflowService.getCashflow(req.query);
+    return successResponse(
+      res,
+      result.rows,
+      "Lay dong tien thanh cong",
+      undefined,
+      result.pagination,
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAdminCashflowSummary(req, res, next) {
+  try {
+    const data = await cashflowService.getCashflowSummary(req.query);
+    return successResponse(res, data, "Lay tong quan dong tien thanh cong");
+  } catch (error) {
     next(error);
   }
 }

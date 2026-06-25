@@ -13,6 +13,11 @@ import { validateEnv } from "./config/validateEnv.js";
 import { registerApiRoutes, registerRateLimiters } from "./routes/index.js";
 import { startPendingBookingExpireScheduler } from "./schedulers/pendingBookingExpire.scheduler.js";
 import { startTripAutoCompleteScheduler } from "./schedulers/tripAutoComplete.scheduler.js";
+import { startSubscriptionRenewalReminderScheduler } from "./schedulers/subscriptionRenewalReminder.scheduler.js";
+import { startSubscriptionGracePeriodScheduler } from "./schedulers/subscriptionGracePeriod.scheduler.js";
+import { startSubscriptionPastDueScheduler } from "./schedulers/subscriptionPastDue.scheduler.js";
+import { startSubscriptionFeatureLockScheduler } from "./schedulers/subscriptionFeatureLock.scheduler.js";
+import { startSubscriptionStatsScheduler } from "./schedulers/subscriptionStats.scheduler.js";
 import { initContractGenerationListener } from "./services/contract/contractGenerationListener.js";
 
 const require = createRequire(import.meta.url);
@@ -181,6 +186,11 @@ httpServer.listen(PORT, () => {
   logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
   startPendingBookingExpireScheduler();
   startTripAutoCompleteScheduler();
+  startSubscriptionRenewalReminderScheduler();
+  startSubscriptionGracePeriodScheduler();
+  startSubscriptionPastDueScheduler();
+  startSubscriptionFeatureLockScheduler();
+  startSubscriptionStatsScheduler();
 });
 
 export default app;

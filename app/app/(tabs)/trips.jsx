@@ -18,7 +18,7 @@ import { TripCard } from "../../src/modules/trips/components/TripCard";
 import { TripSyncIndicator } from "../../src/modules/trips/components/TripSyncIndicator";
 import {
   getDisplayStatus,
-  getSafeDateTime,
+  sortTripsForDashboard,
 } from "../../src/modules/trips/utils/tripHelpers";
 import {
   LoadingState,
@@ -76,29 +76,11 @@ export default function TripsScreen() {
       return true;
     });
 
-    // Sắp xếp: chuyến sắp tới/đang đi lên đầu, hoàn thành/hết hạn xuống cuối
-    return [...list].sort((a, b) => {
-      const aStatus = getDisplayStatus(a);
-      const bStatus = getDisplayStatus(b);
+    return sortTripsForDashboard(list);
 
-      const statusOrder = { ongoing: 0, upcoming: 1, completed: 2, cancelled: 3 };
-      const aOrder = statusOrder[aStatus] ?? 1;
-      const bOrder = statusOrder[bStatus] ?? 1;
 
-      // Khác nhóm trạng thái → sắp xếp theo nhóm
-      if (aOrder !== bOrder) return aOrder - bOrder;
 
-      // Cùng nhóm: active sort theo startDate tăng dần, completed/cancelled sort theo startDate giảm dần
-      const aDate = getSafeDateTime(a.startDate, Number.MAX_SAFE_INTEGER);
-      const bDate = getSafeDateTime(b.startDate, Number.MAX_SAFE_INTEGER);
 
-      if (aOrder <= 1) {
-        // Sắp tới/đang đi: ngày gần nhất lên đầu
-        return aDate - bDate;
-      }
-      // Hoàn thành/hết hạn: gần nhất lên đầu (trong nhóm đó)
-      return bDate - aDate;
-    });
   }, [activeFilter, trips]);
 
   const saveTripMutation = useSaveTrip();
@@ -178,6 +160,7 @@ export default function TripsScreen() {
               <TripSyncIndicator />
               <TripsDashboard
                 trips={trips}
+                filteredCount={filteredTrips.length}
                 activeFilter={activeFilter}
                 onSelectFilter={setActiveFilter}
                 onOpenHero={handlePressTrip}

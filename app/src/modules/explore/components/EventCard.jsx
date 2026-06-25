@@ -2,6 +2,7 @@ import { memo, useCallback } from "react";
 import { Dimensions, Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
   useAnimatedStyle,
@@ -25,6 +26,7 @@ const CARD_H = 220;
 const SPRING_CONFIG = TOKENS.spring.press;
 
 function EventCardInner({ event, onPress }) {
+  const { t } = useTranslation();
   const scale = useSharedValue(1);
 
   const rawImage = event?.thumbnail || event?.imageUrl;
@@ -35,22 +37,21 @@ function EventCardInner({ event, onPress }) {
 
   const dateRange = startDateStr && endDateStr ? `${startDateStr} - ${endDateStr}` : "";
 
-  // Tính trạng thái
   const now = new Date();
   const start = event?.startDate ? new Date(event.startDate) : null;
   const end = event?.endDate ? new Date(event.endDate) : null;
 
-  let statusText = "Sắp diễn ra";
+  let statusText = t("explore.event.upcoming");
   let statusColor = APPLE_THEME.focusBlue;
   let statusBg = "rgba(0, 113, 227, 0.15)";
 
   if (start && end) {
     if (now >= start && now <= end) {
-      statusText = "Đang diễn ra";
+      statusText = t("explore.event.ongoing");
       statusColor = APPLE_THEME.success;
       statusBg = "rgba(52, 199, 89, 0.15)";
     } else if (now > end) {
-      statusText = "Đã kết thúc";
+      statusText = t("explore.event.ended");
       statusColor = APPLE_THEME.textMuted;
       statusBg = "rgba(142, 142, 147, 0.15)";
     }
@@ -108,7 +109,7 @@ function EventCardInner({ event, onPress }) {
           </Text>
         </View>
 
-        {/* Companion count (neon neon) */}
+        {/* Companion count */}
         {event?.activeCompanionCount > 0 ? (
           <View className="px-2 py-1 rounded-full bg-black/60 border border-white/10 flex-row items-center gap-1">
             <View className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
@@ -142,7 +143,7 @@ function EventCardInner({ event, onPress }) {
             <View className="flex-row items-center gap-0.5">
               <MaterialIconsRounded name="people" size={12} color="rgba(255,255,255,0.8)" />
               <Text className="text-white/90 text-[11px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
-                {participantCount} tham gia
+                {t("explore.event.participants", { count: participantCount })}
               </Text>
             </View>
 
@@ -150,7 +151,7 @@ function EventCardInner({ event, onPress }) {
               <View className="flex-row items-center gap-0.5">
                 <MaterialIconsRounded name="map" size={12} color="rgba(255,255,255,0.8)" />
                 <Text className="text-white/90 text-[11px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
-                  {event.trip.destinations.length} chặng
+                  {t("explore.event.legs", { count: event.trip.destinations.length })}
                 </Text>
               </View>
             ) : null}

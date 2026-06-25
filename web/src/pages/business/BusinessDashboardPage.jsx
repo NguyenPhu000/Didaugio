@@ -35,7 +35,7 @@ import {
   BusinessSectionCard,
   BusinessSectionCardSkeleton,
 } from "@/components/business/ui";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatVND, formatDateTime } from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
@@ -191,7 +191,6 @@ const BusinessDashboardPage = memo(() => {
               value={overview?.placesCount ?? stats?.placesCount ?? 0}
               icon={MapPin}
               iconColor="emerald"
-              trend="+8%"
               miniChart={statMiniCharts.places}
               description={t("business.dashboard.stat.placesDesc")}
             />
@@ -200,7 +199,6 @@ const BusinessDashboardPage = memo(() => {
               value={overview?.servicesCount ?? stats?.servicesCount ?? 0}
               icon={Ticket}
               iconColor="teal"
-              trend="+5%"
               miniChart={statMiniCharts.services}
               description={t("business.dashboard.stat.servicesDesc")}
               href={BUSINESS_ROUTES.SERVICES}
@@ -210,7 +208,6 @@ const BusinessDashboardPage = memo(() => {
               value={overview?.bookingsTotal ?? stats?.bookingsCount ?? 0}
               icon={CalendarCheck}
               iconColor="blue"
-              trend="+12%"
               miniChart={statMiniCharts.bookings}
               description={t("business.dashboard.stat.totalBookingsDesc")}
               href={BUSINESS_ROUTES.BOOKINGS}
@@ -220,7 +217,6 @@ const BusinessDashboardPage = memo(() => {
               value={formatVND(overview?.netRevenue ?? stats?.netRevenue)}
               icon={DollarSign}
               iconColor="amber"
-              trend="+9%"
               miniChart={statMiniCharts.revenue}
               description={t("business.dashboard.stat.netRevenueDesc")}
               href={BUSINESS_ROUTES.REVENUE}
@@ -347,9 +343,7 @@ const BusinessDashboardPage = memo(() => {
                   {business?.contractSignedAt && (
                     <p className="text-xs text-muted-foreground">
                       {t("business.dashboard.contract.signedAt")}{" "}
-                      {new Date(business.contractSignedAt).toLocaleString(
-                        "vi-VN"
-                      )}
+                      {formatDateTime(business.contractSignedAt)}
                     </p>
                   )}
                 </div>

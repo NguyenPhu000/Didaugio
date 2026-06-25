@@ -209,14 +209,14 @@ const BusinessSettingsPage = () => {
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-1 h-10 bg-[#F3E600]" />
+            <div className="w-1 h-10 bg-yellow-400" />
             <div>
               <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight flex items-center gap-2">
                 <Settings className="h-5 w-5 md:h-6 md:w-6" />
                 {t("business.settingsPage.title")}
               </h1>
-              <p className="text-[10px] md:text-xs text-gray-500 uppercase font-mono">
-                {t("business.settingsPage.title").toUpperCase()} // {t("common.business").toUpperCase()}
+              <p className="text-[10px] md:text-xs text-gray-500 font-mono">
+                {t("business.settingsPage.subtitle", { defaultValue: t("business.settingsPage.title") })}
               </p>
             </div>
           </div>
@@ -225,7 +225,7 @@ const BusinessSettingsPage = () => {
             type="button"
             onClick={() => setMobileSidebarOpen((v) => !v)}
             className="lg:hidden h-10 w-10 flex items-center justify-center border border-black"
-            aria-label="Toggle settings menu"
+            aria-label={t("business.settingsPage.toggleMenu", { defaultValue: "Bật/tắt menu cài đặt" })}
           >
             {mobileSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>

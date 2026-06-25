@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getTripDetailApi,
@@ -11,6 +10,7 @@ import {
 } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 import { TRIP_OFFLINE_GC_MS } from "../../../constants/trip-offline-cache";
+import { getTripCacheDestinations, mapTripCacheValue } from "../utils/tripCache";
 
 export function useTripDetail(id) {
   return useQuery({
@@ -76,16 +76,12 @@ export function useRemoveDestination(tripId) {
 
       // Optimistically remove the destination
       queryClient.setQueryData(queryKey, (old) => {
-        if (!old?.data) return old;
-        return {
-          ...old,
-          data: {
-            ...old.data,
-            destinations: (old.data.destinations || []).filter(
-              (dest) => String(dest.id) !== String(destId),
-            ),
-          },
-        };
+        return mapTripCacheValue(old, (trip) => ({
+          ...trip,
+          destinations: getTripCacheDestinations(trip).filter(
+            (dest) => String(dest.id) !== String(destId),
+          ),
+        }));
       });
 
       return { previousTrip };
@@ -122,11 +118,15 @@ export function useReorderDestinations(tripId) {
       await queryClient.cancelQueries({ queryKey });
       const previousTrip = queryClient.getQueryData(queryKey);
       queryClient.setQueryData(queryKey, (old) => {
-        if (!old?.data) return old;
-        const dayDests = (old.data.destinations || []).filter((d) => d.dayNumber === dayNumber);
-        const otherDests = (old.data.destinations || []).filter((d) => d.dayNumber !== dayNumber);
-        const reordered = orderedIds.map((id) => dayDests.find((d) => String(d.id) === String(id))).filter(Boolean);
-        return { ...old, data: { ...old.data, destinations: [...otherDests, ...reordered] } };
+        return mapTripCacheValue(old, (trip) => {
+          const destinations = getTripCacheDestinations(trip);
+          const dayDests = destinations.filter((d) => d.dayNumber === dayNumber);
+          const otherDests = destinations.filter((d) => d.dayNumber !== dayNumber);
+          const reordered = orderedIds
+            .map((id) => dayDests.find((d) => String(d.id) === String(id)))
+            .filter(Boolean);
+          return { ...trip, destinations: [...otherDests, ...reordered] };
+        });
       });
       return { previousTrip };
     },
@@ -156,16 +156,12 @@ export function useUpdateDestination(tripId) {
       await queryClient.cancelQueries({ queryKey });
       const previousTrip = queryClient.getQueryData(queryKey);
       queryClient.setQueryData(queryKey, (old) => {
-        if (!old?.data) return old;
-        return {
-          ...old,
-          data: {
-            ...old.data,
-            destinations: (old.data.destinations || []).map((d) =>
-              String(d.id) === String(destId) ? { ...d, ...data } : d,
-            ),
-          },
-        };
+        return mapTripCacheValue(old, (trip) => ({
+          ...trip,
+          destinations: getTripCacheDestinations(trip).map((d) =>
+            String(d.id) === String(destId) ? { ...d, ...data } : d,
+          ),
+        }));
       });
       return { previousTrip };
     },
@@ -195,12 +191,14 @@ export function useMoveDestination(tripId) {
       await queryClient.cancelQueries({ queryKey });
       const previousTrip = queryClient.getQueryData(queryKey);
       queryClient.setQueryData(queryKey, (old) => {
-        if (!old?.data) return old;
-        const dest = (old.data.destinations || []).find((d) => String(d.id) === String(destId));
-        if (!dest) return old;
-        const filtered = (old.data.destinations || []).filter((d) => String(d.id) !== String(destId));
-        const moved = { ...dest, dayNumber: newDayNumber, order: newOrder };
-        return { ...old, data: { ...old.data, destinations: [...filtered, moved] } };
+        return mapTripCacheValue(old, (trip) => {
+          const destinations = getTripCacheDestinations(trip);
+          const dest = destinations.find((d) => String(d.id) === String(destId));
+          if (!dest) return trip;
+          const filtered = destinations.filter((d) => String(d.id) !== String(destId));
+          const moved = { ...dest, dayNumber: newDayNumber, order: newOrder };
+          return { ...trip, destinations: [...filtered, moved] };
+        });
       });
       return { previousTrip };
     },

@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   confirmGeneratedTripApi,
@@ -20,30 +21,34 @@ function normalizePlaceIds(ids, fallbackPlaces = []) {
   return ids.map((id) => Number(id)).filter(Boolean);
 }
 
-function buildTripSummaryMessage(trip) {
+function buildTripSummaryMessage(trip, t) {
   const destCount = trip.destinations?.length || 0;
+  const costLine = trip.estimatedCost
+    ? `\n${t("aiPlanner.estimatedCost", { cost: trip.estimatedCost.toLocaleString("vi-VN") })}`
+    : "";
   return (
-    `Lịch trình **${trip.title}** đã sẵn sàng!\n` +
+    `${t("aiPlanner.tripReady", { title: trip.title })}\n` +
     `${trip.description || ""}\n\n` +
-    `• ${trip.totalDays} ngày | ${destCount} địa điểm` +
-    (trip.estimatedCost
-      ? ` | Chi phí ~${trip.estimatedCost.toLocaleString("vi-VN")} đ`
-      : "")
+    `• ${t("common.days")} ${trip.totalDays} | ${t("aiPlanner.destinationCount", { count: destCount })}` +
+    costLine
   );
 }
 
-function buildPreviewMessage(payload, selectedCount) {
+function buildPreviewMessage(payload, selectedCount, t) {
   const totalDays = payload?.itinerary?.totalDays || 1;
   const suggestedCount = payload?.suggestedPlaces?.length || 0;
   const estimatedCost = payload?.itinerary?.estimatedCost;
 
+  const selectedLine = selectedCount > 0 ? `\n\n${t("aiPlanner.selectingCountShort", { count: selectedCount })}` : "";
+  const costLine = estimatedCost
+    ? `\n${t("aiPlanner.estimatedCost", { cost: Number(estimatedCost).toLocaleString("vi-VN") })}`
+    : "";
+
   return (
-    `Em Nhi đã lên khung lịch trình ${totalDays} ngày và gợi ý ${suggestedCount} địa điểm.\n` +
-    `Bạn chọn địa điểm phía dưới rồi bấm **Chốt & tạo chuyến đi**.` +
-    (selectedCount > 0 ? `\n\nĐang chọn: ${selectedCount} địa điểm.` : "") +
-    (estimatedCost
-      ? `\nChi phí ước tính: ~${Number(estimatedCost).toLocaleString("vi-VN")} đ.`
-      : "")
+    `${t("aiPlanner.previewMessage", { totalDays, suggestedCount })}\n` +
+    `${t("aiPlanner.previewInstruction")}` +
+    selectedLine +
+    costLine
   );
 }
 
@@ -63,6 +68,7 @@ function inferPlannerPreferences(text = "") {
 }
 
 export function useAIPlanner() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const messages = useAIPlannerStore((s) => s.messages);
@@ -99,7 +105,7 @@ export function useAIPlanner() {
         const assistantMsg = {
           id: Date.now().toString(),
           role: "assistant",
-          text: buildPreviewMessage(payload, normalizedSelectedIds.length),
+          text: buildPreviewMessage(payload, normalizedSelectedIds.length, t),
           createdAt: new Date(),
           suggestedPlaces,
           selectedPlaceIds: normalizedSelectedIds,
@@ -113,7 +119,7 @@ export function useAIPlanner() {
         const assistantMsg = {
           id: Date.now().toString(),
           role: "assistant",
-          text: buildTripSummaryMessage(trip),
+          text: buildTripSummaryMessage(trip, t),
           plan: trip,
           createdAt: new Date(),
         };
@@ -145,7 +151,7 @@ export function useAIPlanner() {
       const assistantMsg = {
         id: Date.now().toString(),
         role: "assistant",
-        text: buildTripSummaryMessage(trip),
+        text: buildTripSummaryMessage(trip, t),
         plan: trip,
         createdAt: new Date(),
       };

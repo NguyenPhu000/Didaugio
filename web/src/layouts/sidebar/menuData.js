@@ -21,6 +21,8 @@ import {
   Wallet,
   Settings,
   Coins,
+  CreditCard,
+  User,
 } from "lucide-react";
 import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/constants";
@@ -113,6 +115,38 @@ export function getMenuData() {
       roles: [R.SUPER_ADMIN, R.ADMIN],
     },
   ],
+  businessAccount: [
+    {
+      key: "profile",
+      title: t("nav.business.profile"),
+      icon: User,
+      url: ADMIN_ROUTES.PROFILE,
+      roles: [R.BUSINESS],
+    },
+    {
+      key: "business-profile",
+      title: t("nav.business.businessProfile"),
+      icon: Store,
+      url: BUSINESS_ROUTES.PROFILE,
+      roles: [R.BUSINESS],
+    },
+  ],
+  businessServices: [
+    {
+      key: "sub-current",
+      title: t("nav.business.subscriptionCurrent"),
+      icon: CreditCard,
+      url: BUSINESS_ROUTES.SUBSCRIPTION,
+      roles: [R.BUSINESS],
+    },
+    {
+      key: "sub-plans",
+      title: t("nav.business.subscriptionPlans"),
+      icon: CreditCard,
+      url: BUSINESS_ROUTES.SUBSCRIPTION_PLANS,
+      roles: [R.BUSINESS],
+    },
+  ],
   business: [
     {
       key: "my-places",
@@ -181,6 +215,14 @@ export function getMenuData() {
       roles: [R.BUSINESS],
     },
     {
+      key: "cashflow",
+      title: t("nav.business.cashflow"),
+      icon: Wallet,
+      url: BUSINESS_ROUTES.CASHFLOW,
+      roles: [R.BUSINESS],
+      permission: PERMISSIONS.BUSINESS.VIEW_REVENUE,
+    },
+    {
       key: "reviews",
       title: t("nav.business.reviews"),
       icon: Star,
@@ -239,11 +281,29 @@ export function getMenuData() {
     },
     {
       key: "refunds",
-      title: "Quản lý hoàn tiền",
+      title: t("nav.adminBusiness.refunds"),
       icon: Coins,
       url: ADMIN_ROUTES.REFUNDS,
       roles: [R.SUPER_ADMIN, R.ADMIN],
       permission: PERMISSIONS.PAYMENTS.REFUND,
+    },
+    {
+      key: "cashflow",
+      title: t("nav.adminBusiness.cashflow"),
+      icon: Wallet,
+      url: ADMIN_ROUTES.CASHFLOW,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.PAYMENTS.VIEW_REVENUE,
+    },
+    {
+      key: "admin-subscriptions",
+      title: t("nav.adminBusiness.subscriptions"),
+      icon: CreditCard,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      items: [
+        { key: "admin-subs", title: t("nav.adminBusiness.subscriptionList"), url: ADMIN_ROUTES.SUBSCRIPTIONS },
+        { key: "admin-plans", title: t("nav.adminBusiness.subscriptionPlans"), url: ADMIN_ROUTES.SUBSCRIPTION_PLANS },
+      ],
     },
   ],
   users: [

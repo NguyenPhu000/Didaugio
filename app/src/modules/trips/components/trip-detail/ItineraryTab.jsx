@@ -3,9 +3,9 @@ import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-nati
 import { useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import DraggableFlatList from "react-native-draggable-flatlist";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { cn } from "@/lib/cn";
-import { formatDayMonth } from "@/utils/dateFormat";
+import { MaterialIconsRounded } from "../../../../components/primitives/MaterialIconsRounded";
+import { cn } from "../../../../lib/cn";
+import { formatDayMonth } from "../../../../utils/dateFormat";
 import {
   buildDestinationBookings,
   buildDayList,
@@ -37,7 +37,14 @@ function ItineraryTab({
 }) {
   const { t } = useTranslation();
   const tripId = trip?.id;
-  const destinations = trip?.destinations || [];
+  const destinations = useMemo(
+    () => (Array.isArray(trip?.destinations) ? trip.destinations : []),
+    [trip?.destinations],
+  );
+  const safeBookings = useMemo(
+    () => (Array.isArray(bookings) ? bookings : []),
+    [bookings],
+  );
 
   // Custom alert state
   const [alertConfig, setAlertConfig] = useState({
@@ -152,14 +159,18 @@ function ItineraryTab({
 
   // Filter destinations for selected day
   const dayDestinations = useMemo(
-    () => destinations.filter((d) => d.dayNumber === selectedDay).sort((a, b) => a.order - b.order),
+    () =>
+      destinations
+        .filter((d) => d.dayNumber === selectedDay)
+        .slice()
+        .sort((a, b) => a.order - b.order),
     [destinations, selectedDay],
   );
 
   // Build booking map
   const destBookings = useMemo(
-    () => buildDestinationBookings(bookings || [], destinations),
-    [destinations, bookings],
+    () => buildDestinationBookings(safeBookings, destinations),
+    [destinations, safeBookings],
   );
 
   // Drag end handler
@@ -486,8 +497,8 @@ function ItineraryTab({
       ) : null}
 
       {/* Action Header */}
-      <View className="flex-row items-center justify-between px-5 py-2.5 bg-[#F8FAFC]">
-        <Text className="text-[13px] font-semibold text-black/[0.45] tracking-tight">
+      <View className="flex-row items-center justify-between px-5 py-3 bg-white border-y border-black/[0.05]">
+        <Text className="text-[13px] font-semibold text-black/50">
           {t("trip.itinerary.destinationCount", { count: dayDestinations.length })}
         </Text>
         <Pressable
@@ -495,7 +506,7 @@ function ItineraryTab({
             pressed && { opacity: 0.8 },
           ]}
           onPress={() => onAddPlaceOpen?.()}
-          className="flex-row items-center gap-1 bg-ink px-3 py-2 rounded-full"
+          className="flex-row items-center gap-1 bg-ink px-3 py-2 rounded-lg"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Text className="text-white text-[12px] font-semibold tracking-tight">

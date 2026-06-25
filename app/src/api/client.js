@@ -2,6 +2,7 @@ import axios from "axios";
 import { API_BASE_URL, REQUEST_TIMEOUT } from "../constants/api";
 import { useAuthStore } from "../stores/authStore";
 import { ENDPOINTS } from "./endpoints";
+import i18n from "@/i18n";
 
 const client = axios.create({
   baseURL: API_BASE_URL,
@@ -58,7 +59,7 @@ const enqueueRequestWhileRefreshing = () =>
   new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
       reject({
-        message: "Hết thời gian chờ làm mới phiên. Vui lòng đăng nhập lại.",
+        message: i18n.t("client.refreshTimeout"),
         status: 401,
         code: "REFRESH_TIMEOUT",
       });
@@ -137,7 +138,7 @@ client.interceptors.response.use(
           .then((newToken) => {
             if (!newToken) {
               return Promise.reject({
-                message: "Phiên đăng nhập không còn hợp lệ.",
+                message: i18n.t("client.invalidSession"),
                 status: 401,
                 code: "INVALID_REFRESH_RESPONSE",
               });
@@ -194,7 +195,7 @@ client.interceptors.response.use(
 
 function buildError(error) {
   const message =
-    error?.response?.data?.message || "Đã có lỗi xảy ra. Vui lòng thử lại.";
+    error?.response?.data?.message || i18n.t("errors.unknown");
   return {
     message,
     status: error?.response?.status,

@@ -96,6 +96,8 @@
       "main": "CHÍNH",
       "management": "QUẢN LÝ",
       "business": "DOANH NGHIỆP",
+      "businessAccount": "TÀI KHOẢN",
+      "businessServices": "DỊCH VỤ",
       "adminBusiness": "ADMIN BUSINESS",
       "users": "NGƯỜI DÙNG",
       "system": "HỆ THỐNG",
@@ -112,6 +114,8 @@
     },
     "business": {
       "title": "Doanh nghiệp",
+      "profile": "Hồ sơ",
+      "businessProfile": "Hồ sơ doanh nghiệp",
       "myPlaces": "Địa điểm của tôi",
       "managePlaces": "Quản lý địa điểm",
       "addPlace": "Thêm địa điểm",
@@ -125,6 +129,11 @@
       "reports": "Báo cáo",
       "revenue": "Doanh thu",
       "earnings": "Thu nhập & Rút tiền",
+      "cashflow": "Dòng tiền",
+      "subscription": "Gói dịch vụ",
+      "subscriptionCurrent": "Gói hiện tại",
+      "subscriptionPlans": "Chọn gói",
+      "subscriptionInvoices": "Lịch sử hóa đơn",
       "reviews": "Đánh giá",
       "settings": "Cài đặt"
     },
@@ -136,7 +145,12 @@
       "analytics": "Thống kê nâng cao",
       "cms": "Quản lý nội dung",
       "reviewModeration": "Moderation đánh giá",
-      "payouts": "Quản lý rút tiền"
+      "payouts": "Quản lý rút tiền",
+      "refunds": "Quản lý hoàn tiền",
+      "cashflow": "Dòng tiền",
+      "subscriptions": "Quản lý Subscription",
+      "subscriptionList": "Danh sách",
+      "subscriptionPlans": "Quản lý gói"
     },
     "users": {
       "title": "Users",
@@ -1184,6 +1198,10 @@
       "pagination": "Trang {{page}} / {{totalPages}} ({{total}} yêu cầu)",
       "previous": "Trước",
       "next": "Sau"
+    },
+    "cashflow": {
+      "title": "Dòng tiền hệ thống",
+      "description": "Theo dõi tiền vào, hoàn tiền, payout và ledger để đối soát SePay."
     },
     "cms": {
       "events": "Sự kiện",
@@ -2507,7 +2525,8 @@
       "grid": "Lưới",
       "list": "Danh sách",
       "noResults": "Không tìm thấy kết quả",
-      "tryDifferentKeywords": "Thử từ khóa khác"
+      "tryDifferentKeywords": "Thử từ khóa khác",
+      "draft": "Bản nháp"
     },
     "services": {
       "title": "Dịch vụ",
@@ -2565,10 +2584,19 @@
       "noDataByPlace": "Chưa có dữ liệu doanh thu",
       "viewAll": "Xem tất cả",
       "noTransactions": "Chưa có giao dịch nào",
-      "amount": "Số tiền"
+      "amount": "Số tiền",
+      "revenueLabel": "Doanh thu",
+      "bookingLabel": "Booking",
+      "avgLabel": "TB",
+      "commissionLabel": "HH"
+    },
+    "cashflow": {
+      "title": "Dòng tiền",
+      "description": "Theo dõi tiền khách đã thanh toán, hoàn tiền và các lần rút tiền của doanh nghiệp."
     },
     "reviews": {
       "title": "Đánh giá",
+      "description": "Quản lý và phản hồi đánh giá từ khách hàng",
       "loadFailed": "Tải đánh giá thất bại",
       "replySuccess": "Đã phản hồi đánh giá",
       "replyFailed": "Phản hồi đánh giá thất bại",
@@ -2637,7 +2665,12 @@
     },
     "register": {
       "title": "Đăng ký doanh nghiệp",
+      "description": "Tạo tài khoản doanh nghiệp để bắt đầu kinh doanh trên nền tảng",
       "registrationInfo": "Thông tin đăng ký",
+      "stepInfo": "Thông tin doanh nghiệp",
+      "stepBank": "Thông tin ngân hàng",
+      "stepDocs": "Giấy tờ xác minh",
+      "bankInfoDesc": "Thông tin tài khoản ngân hàng để nhận thanh toán từ nền tảng (có thể bỏ qua và cập nhật sau)",
       "businessName": "Tên doanh nghiệp",
       "businessNamePlaceholder": "Tên doanh nghiệp / cửa hàng",
       "businessType": "Loại hình",
@@ -2888,7 +2921,8 @@
       "title": "Cài đặt doanh nghiệp",
       "loadFailed": "Tải cài đặt thất bại",
       "updateSuccess": "Cập nhật cài đặt thành công",
-      "updateFailed": "Cập nhật cài đặt thất bại"
+      "updateFailed": "Cập nhật cài đặt thất bại",
+      "toggleMenu": "Bật/tắt menu cài đặt"
     },
     "guard": {
       "pending": "Hồ sơ đang chờ duyệt",
@@ -3251,6 +3285,86 @@
   "imageUtils": {
     "invalidFormat": "Định dạng hình ảnh không hợp lệ",
     "cannotRead": "Không thể đọc file"
+  },
+  "subscription": {
+    "title": "Gói dịch vụ",
+    "currentPlan": "Gói hiện tại",
+    "upgradeBtn": "Nâng cấp",
+    "downgrade": "Hạ cấp",
+    "expiresAt": "Hết hạn vào",
+    "usage": "Sử dụng",
+    "billingCycle": "Chu kỳ",
+    "startDate": "Ngày bắt đầu",
+    "canceledNotice": "Gói dịch vụ đã bị hủy",
+    "cancelReason": "Lý do",
+    "cancel": {
+      "cancelPlan": "Hủy gói dịch vụ",
+      "title": "Hủy gói dịch vụ",
+      "confirm": "Bạn có chắc chắn muốn hủy gói {{planName}}?",
+      "warningLabel": "Lưu ý:",
+      "warningText": "Khi hủy gói, bạn sẽ mất quyền truy cập vào các tính năng premium. Gói sẽ vẫn hoạt động đến hết chu kỳ thanh toán hiện tại.",
+      "reasonLabel": "Lý do hủy (tùy chọn)",
+      "reasonPlaceholder": "Nhập lý do hủy...",
+      "keepPlan": "Giữ gói",
+      "confirmBtn": "Xác nhận hủy"
+    },
+    "status": {
+      "active": "Đang hoạt động",
+      "grace": "Gia hạn",
+      "past_due": "Quá hạn",
+      "canceled": "Đã hủy"
+    },
+    "plans": {
+      "title": "Chọn gói dịch vụ",
+      "subtitle": "Chọn gói phù hợp với doanh nghiệp của bạn",
+      "monthly": "Theo tháng",
+      "yearly": "Theo năm",
+      "popular": "Phổ biến nhất",
+      "current": "Gói hiện tại",
+      "select": "Chọn gói",
+      "compareFeatures": "So sánh tính năng",
+      "feature": "Tính năng"
+    },
+    "invoice": {
+      "title": "Lịch sử hóa đơn",
+      "empty": "Chưa có hóa đơn nào",
+      "status": {
+        "pending": "Chờ thanh toán",
+        "paid": "Đã thanh toán",
+        "overdue": "Quá hạn",
+        "canceled": "Đã hủy"
+      },
+      "table": {
+        "date": "Ngày",
+        "plan": "Gói",
+        "amount": "Số tiền",
+        "status": "Trạng thái",
+        "transactionRef": "Mã giao dịch"
+      },
+      "pagination": "Trang {{page}} / {{totalPages}} ({{total}})"
+    },
+    "usageItems": {
+      "places": "Địa điểm",
+      "bookingsPerMonth": "Đặt chỗ / tháng",
+      "staff": "Nhân viên",
+      "services": "Dịch vụ"
+    },
+    "upgrade": {
+      "title": "Nâng cấp gói dịch vụ",
+      "confirm": "Xác nhận thanh toán",
+      "scanQR": "Quét mã QR để thanh toán",
+      "waiting": "Đang chờ xác nhận..."
+    },
+    "grace": {
+      "warning": "Gói của bạn đã hết hạn. Còn {{days}} ngày để gia hạn."
+    },
+    "admin": {
+      "title": "Quản lý Subscription",
+      "mrr": "MRR",
+      "activeSubs": "Subscription đang hoạt động",
+      "churnRate": "Tỷ lệ churn",
+      "revenue": "Doanh thu"
+    }
   },
   "apiError": {
     "generic": "Không thể thực hiện thao tác. Vui lòng thử lại sau."

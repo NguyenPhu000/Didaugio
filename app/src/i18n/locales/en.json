@@ -51,6 +51,7 @@
       "sun": "Sun"
     }
   },
+  "tabs": {
     "map": "Map",
     "explore": "Explore",
     "saved": "Saved",
@@ -204,7 +205,34 @@
       "saveError": "Could not save place",
       "unsaveError": "Could not unsave place",
       "loginToSave": "Log in to save"
-    }
+    },
+    "event": {
+      "upcoming": "Upcoming",
+      "ongoing": "Ongoing",
+      "ended": "Ended",
+      "participants": "{{count}} joined",
+      "legs": "{{count}} legs",
+      "communityEvents": "Community events",
+      "viewAll": "View all"
+    },
+    "sampleTrip": {
+      "adventure": "Adventure",
+      "culture": "Culture",
+      "relax": "Relaxation",
+      "food": "Food",
+      "family": "Family",
+      "budget": "Budget",
+      "luxury": "Luxury",
+      "days": "{{count}} days",
+      "from": "From {{price}}"
+    },
+    "headerBrand": "Đi Đâu Giờ?",
+    "headerGreeting": "Hello, {{name}}",
+    "cmsBrandBadge": "ĐI ĐÂU GIỜ",
+    "cmsFallbackTitle": "Đi Đâu Giờ?",
+    "cmsFallbackDesc": "Discover hundreds of fascinating places in Can Tho",
+    "heroBadge": "RECOMMENDED FOR YOU",
+    "heroExplore": "Explore"
   },
   "saved": {
     "title": "Favorites",
@@ -262,6 +290,11 @@
     "upcomingTrips": "Upcoming trips",
     "noUpcomingTrips": "No upcoming trips",
     "memories": "Memories",
+    "memoriesSection": {
+      "noMemories": "No memories yet",
+      "journey": "Journey",
+      "moreCount": "+{{count}} more"
+    },
     "settingsItems": {
       "myBookings": "My Bookings",
       "savedPlaces": "Saved Places",
@@ -436,7 +469,10 @@
       "refundRejectedDesc": "Admin rejected the refund request for this booking.",
       "refundAmount": "Refunded amount",
       "redirecting": "Redirecting...",
-      "payNow": "Pay now"
+      "payNow": "Pay now",
+      "bankTransfer": "Bank transfer",
+      "bankTransferDesc": "Scan VietQR QR - Pay via banking app",
+      "methodTitle": "Payment method"
     },
     "cancel": {
       "cta": "Cancel booking & request refund",
@@ -445,12 +481,30 @@
       "alertErrorTitle": "Could not cancel booking",
       "alertErrorMessage": "Please try again later."
     },
-    "offline": "Offline"
+    "offline": "Offline",
+    "refund": {
+      "title": "Confirm cancel & request refund",
+      "bookingLabel": "Booking",
+      "defaultService": "Service",
+      "paidAmount": "Amount paid",
+      "policy": "Policy applied",
+      "currentTime": "Current time:",
+      "usageDate": "Usage date:",
+      "refundLevel": "Refund level: Admin will review and process according to the service policy",
+      "cancelReason": "Cancel reason (required, minimum 5 characters)",
+      "cancelReasonPlaceholder": "e.g: I have unexpected work and cannot attend on schedule.",
+      "refundNote": "Refund request will be sent to admin for manual review.",
+      "keepBooking": "Keep booking",
+      "processing": "Processing...",
+      "confirmCancel": "Confirm Cancel & Refund"
+    }
   },
   "booking": {
     "loginRequired": "Please log in to book",
     "loginDescription": "You need to be logged in to book services at this place.",
     "loginNow": "Log in now",
+    "quantity": "Quantity: {{count}}",
+    "subtotal": "Subtotal",
     "notSelected": "Not selected",
     "contactForPrice": "Contact",
     "noServices": "No services available at this place yet.",
@@ -586,6 +640,16 @@
     "dayNames": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     "bookNow": "Book now",
     "viewOnMap": "View on map",
+    "noImage": "No image",
+    "defaultPlace": "Place",
+    "newBadge": "New",
+    "million": "M",
+    "calculating": "Calculating...",
+    "viewDetail": "View details",
+    "selectedLabel": "Selected",
+    "selectLabel": "Select",
+    "addLeg": "Add leg",
+    "directionsLabel": "Directions",
     "detail": {
       "updatedLater": "Updated later",
       "closedToday": "Closed today",
@@ -729,8 +793,7 @@
       "complete": "Complete",
       "completeError": "Could not mark as completed",
       "duplicating": "Duplicating...",
-      "duplicateTrip": "Duplicate trip",
-      "markComplete": "Mark as completed"
+      "duplicateTrip": "Duplicate trip"
     },
     "itinerary": {
       "close": "Close",
@@ -801,8 +864,8 @@
       "createLinkError": "Could not create share link",
       "createdLinks": "Created links",
       "noLinks": "No share links yet",
-      "accessCount": "{{count}} accesses",
-      "newLink": "Create new share link"
+      "newLink": "Create new share link",
+      "accessCount": "{{count}} accesses"
     },
     "celebration": {
       "title": "Trip completed!",
@@ -865,7 +928,26 @@
       "other": "Other"
     },
     "selectGender": "Select gender",
-    "saveChanges": "Save Changes"
+    "saveChanges": "Save Changes",
+    "errors": {
+      "noPhotoAccess": "No photo access",
+      "grantPhotoPermission": "Please grant photo library access to select an avatar.",
+      "imageNotFound": "Image not found",
+      "trySelectAgain": "Please select an image again.",
+      "processImage": "Cannot process image",
+      "tryAgain": "Please try again.",
+      "missingInfo": "Missing information",
+      "nameMinChars": "Name must be at least 2 characters.",
+      "usernameRequired": "Please enter a username.",
+      "invalidUsername": "Invalid username",
+      "usernameFormat": "Username must be 3-30 characters and only contain letters, numbers, underscores.",
+      "updateFailed": "Update failed",
+      "tryAgainLater": "Please try again later."
+    },
+    "success": {
+      "title": "Success",
+      "message": "Profile has been updated."
+    }
   },
   "feedback": {
     "title": "Feedback & Support",
@@ -980,7 +1062,8 @@
       "hourUnit": "h",
       "minuteShortUnit": "m",
       "meterUnit": "m",
-      "kilometerUnit": "km"
+      "kilometerUnit": "km",
+      "interProvince": "Inter-province (~{{km}} km)"
     },
     "arrivalModal": {
       "title": "Arrived at destination",
@@ -1198,8 +1281,6 @@
     "startDate": "Start date",
     "selectDate": "Select date",
     "endDate": "End date",
-    "avoidFerry": "Avoid ferry",
-    "avoidFerryDesc": "Find routes without ferry crossings",
     "save": "Save"
   },
   "inlineAddPlace": {
@@ -1215,6 +1296,9 @@
     "tryDifferentKeyword": "Please try a different keyword",
     "searchingSystem": "Searching more on the system...",
     "yourSavedPlaces": "Your saved places",
+    "savedAndSuggested": "Saved and popular suggestions",
+    "suggestedPlaces": "Popular suggestions",
+    "noSuggestions": "No suggested places yet",
     "canTho": "Can Tho",
     "selectDay": "Select day",
     "dayLabel": "Day {{number}}",
@@ -1298,7 +1382,27 @@
     "creatingTrip": "Creating trip...",
     "suggestingPlaces": "Suggesting places...",
     "processing": "Processing...",
-    "inputPlaceholder": "Describe the plan you want..."
+    "inputPlaceholder": "Describe the plan you want...",
+    "quickSuggestions": {
+      "suggestion1": "Suggest good restaurants in Ninh Kieu",
+      "suggestion2": "Top 5 beautiful photo spots",
+      "suggestion3": "Can Tho evening plan",
+      "suggestion4": "Family day trip",
+      "suggestion5": "Nice cafe near city center"
+    },
+    "chatThinking": "Nhi is thinking...",
+    "loadingStep0": "Nhi is scanning nearby places...",
+    "loadingStep1": "Nhi is calculating the optimal route...",
+    "loadingStep2": "Nhi is preparing the cost estimate...",
+    "loadingWait": "Hang on a little longer...",
+    "chatErrorFallback": "Something went wrong, please try again.",
+    "botLabel": "Nhi (AI)",
+    "tripReady": "Itinerary **{{title}}** is ready!",
+    "destinationCount": "{{count}} destinations",
+    "estimatedCost": "Cost ~{{cost}} VND",
+    "selectingCountShort": "Selecting: {{count}} destinations.",
+    "previewMessage": "Nhi has prepared a {{totalDays}}-day itinerary with {{suggestedCount}} suggested places.",
+    "previewInstruction": "Select places below and press **Confirm & create trip**."
   },
   "chatPanel": {
     "confirmDelete": "Delete chat history?",
@@ -1318,6 +1422,18 @@
     "addFailedDesc": "Cannot add to trip",
     "selectTrip": "Select trip",
     "selectTripPrompt": "Which trip do you want to add \"{{name}}\" to?"
+  },
+  "aiChat": {
+    "rateLimit": "Nhi is answering too many requests, please wait a moment and try again.",
+    "serviceOverloaded": "AI service is temporarily overloaded. Please try again in a few minutes.",
+    "invalidItineraryData": "No valid itinerary data received.",
+    "itineraryReady": "Nhi has designed an optimal itinerary with budget estimation for you! Take a look:",
+    "noReplyContent": "No reply content received, please try again.",
+    "memorySummary": "[Summary of {{count}} previous messages: conversation is ongoing]"
+  },
+  "client": {
+    "refreshTimeout": "Session refresh timed out. Please log in again.",
+    "invalidSession": "Your session is no longer valid."
   },
   "exploreNearby": {
     "sortByDistance": "Sorted by distance from your current location.",
@@ -1460,7 +1576,11 @@
     "saved": "Saved",
     "collectionsLabel": "Collections",
     "areas": "Areas",
-    "hasNotesLabel": "Has notes"
+    "hasNotesLabel": "Has notes",
+    "priceFrom": "From",
+    "millionUnit": "M VND",
+    "thousandUnit": "K VND",
+    "currencyUnit": " VND"
   },
   "maneuver": {
     "left": "left",
@@ -1503,7 +1623,15 @@
     "journeyPaused": "Journey is paused",
     "journeyPausedDesc": "Navigation and GPS tracking have been stopped to save battery.",
     "resume": "Resume",
-    "noFerryRoute": "Cannot find ferry-free route. Accepted route with ferry.",
+    "previewTitle": "Review your route",
+    "previewSummary": "{{count}} places • {{segments}} route legs",
+    "previewFallback": "Some route legs are estimated. Check the path before starting.",
+    "previewNoStops": "This trip has no valid places to navigate.",
+    "startGuidance": "Start guidance",
+    "pauseJourney": "Pause",
+    "stopJourney": "Stop",
+    "stopJourneyTitle": "Stop journey?",
+    "stopJourneyMessage": "Navigation will stop, but the trip will not be marked as completed.",
     "map": "Map",
     "satellite": "Satellite",
     "complete": "Complete",
@@ -1514,9 +1642,7 @@
     "car": "Car",
     "bicycle": "Bicycle",
     "walking": "Walking",
-    "title": "Travel mode",
-    "avoidFerry": "Avoiding ferry",
-    "avoidFerryLabel": "Avoid ferry"
+    "title": "Travel mode"
   },
   "datePicker": {
     "cancel": "Cancel",

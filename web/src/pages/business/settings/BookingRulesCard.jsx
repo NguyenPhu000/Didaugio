@@ -27,7 +27,7 @@ const BookingRulesCard = ({ value, onChange }) => {
               min={1}
               max={365}
               value={value.maxAdvanceDays ?? 30}
-              onChange={(e) => onChange("maxAdvanceDays", e.target.value)}
+              onChange={(e) => onChange("maxAdvanceDays", parseInt(e.target.value, 10) || 0)}
               className="rounded-none border-black"
             />
           </div>
@@ -40,7 +40,7 @@ const BookingRulesCard = ({ value, onChange }) => {
               min={0}
               max={1440}
               value={value.minLeadMinutes ?? 0}
-              onChange={(e) => onChange("minLeadMinutes", e.target.value)}
+              onChange={(e) => onChange("minLeadMinutes", parseInt(e.target.value, 10) || 0)}
               className="rounded-none border-black"
             />
           </div>

@@ -26,12 +26,12 @@ import { PlacePreviewCard } from "../../components/composed/PlacePreviewCard";
 import { TAB_BAR_HEIGHT } from "../../../app/(tabs)/_layout";
 import CustomAlertModal from "../../components/composed/CustomAlertModal";
 
-const QUICK_SUGGESTIONS = [
-  { text: "Gợi ý quán ăn ngon ở Ninh Kiều", icon: "restaurant", color: "#F59E0B" },
-  { text: "Top 5 điểm chụp ảnh đẹp", icon: "photo-camera", color: "#EC4899" },
-  { text: "Kế hoạch buổi tối Cần Thơ", icon: "nightlife", color: "#8B5CF6" },
-  { text: "Đi chơi gia đình 1 ngày", icon: "family-restroom", color: "#10B981" },
-  { text: "Cà phê view đẹp gần trung tâm", icon: "local-cafe", color: "#3B82F6" },
+const QUICK_SUGGESTION_KEYS = [
+  { key: "aiPlanner.quickSuggestions.suggestion1", icon: "restaurant", color: "#F59E0B" },
+  { key: "aiPlanner.quickSuggestions.suggestion2", icon: "photo-camera", color: "#EC4899" },
+  { key: "aiPlanner.quickSuggestions.suggestion3", icon: "nightlife", color: "#8B5CF6" },
+  { key: "aiPlanner.quickSuggestions.suggestion4", icon: "family-restroom", color: "#10B981" },
+  { key: "aiPlanner.quickSuggestions.suggestion5", icon: "local-cafe", color: "#3B82F6" },
 ];
 
 const ACCENT = "#3478F6";
@@ -526,18 +526,18 @@ export function AIPlanner() {
   const allMessages = messages;
 
   const getLoadingMessage = () => {
-    if (isConfirming) return t('aiPlanner.creatingTrip') || "Nhi đang khởi tạo chuyến đi...";
-    if (isChatLoading) return "Nhi đang suy nghĩ...";
-    
+    if (isConfirming) return t('aiPlanner.creatingTrip');
+    if (isChatLoading) return t('aiPlanner.chatThinking');
+
     switch (loadingStep) {
       case 0:
-        return "Nhi đang quét các địa điểm quanh bạn...";
+        return t('aiPlanner.loadingStep0');
       case 1:
-        return "Nhi đang tính toán tuyến đường tối ưu...";
+        return t('aiPlanner.loadingStep1');
       case 2:
-        return "Nhi đang lập bảng dự toán chi phí...";
+        return t('aiPlanner.loadingStep2');
       default:
-        return "Chờ Nhi một chút xíu nữa nghen...";
+        return t('aiPlanner.loadingWait');
     }
   };
 
@@ -559,7 +559,7 @@ export function AIPlanner() {
         try {
           await sendChatMessage(message);
         } catch (err) {
-          setChatError(err?.message || "Đã xảy ra lỗi, bạn thử lại nhé.");
+          setChatError(err?.message || t('aiPlanner.chatErrorFallback'));
         } finally {
           setIsChatLoading(false);
         }
@@ -692,25 +692,28 @@ export function AIPlanner() {
             </Text>
 
             <View style={s.suggestionsWrap}>
-              {QUICK_SUGGESTIONS.map((item) => (
-                <Pressable
-                  key={item.text}
-                  onPress={() => handleSend(item.text)}
-                  style={s.suggestionBtn}
-                >
-                  <View
-                    style={[s.suggestionIconWrap, { backgroundColor: item.color + "15" }]}
+              {QUICK_SUGGESTION_KEYS.map((item) => {
+                const suggestionText = t(item.key);
+                return (
+                  <Pressable
+                    key={item.key}
+                    onPress={() => handleSend(suggestionText)}
+                    style={s.suggestionBtn}
                   >
-                    <MaterialIconsRounded name={item.icon} size={16} color={item.color} />
-                  </View>
-                  <Text
-                    style={[s.suggestionText, { fontFamily: TOKENS.font.medium }]}
-                  >
-                    {item.text}
-                  </Text>
-                  <MaterialIconsRounded name="chevron-right" size={16} color="#CBD5E1" />
-                </Pressable>
-              ))}
+                    <View
+                      style={[s.suggestionIconWrap, { backgroundColor: item.color + "15" }]}
+                    >
+                      <MaterialIconsRounded name={item.icon} size={16} color={item.color} />
+                    </View>
+                    <Text
+                      style={[s.suggestionText, { fontFamily: TOKENS.font.medium }]}
+                    >
+                      {suggestionText}
+                    </Text>
+                    <MaterialIconsRounded name="chevron-right" size={16} color="#CBD5E1" />
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
         ) : (
@@ -728,7 +731,7 @@ export function AIPlanner() {
                       <Text
                         style={[s.botLabelText, { fontFamily: TOKENS.font.semibold }]}
                       >
-                        Nhi (AI)
+                        {t('aiPlanner.botLabel')}
                       </Text>
                     </View>
                   ) : null}

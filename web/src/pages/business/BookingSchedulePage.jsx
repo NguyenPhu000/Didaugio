@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { formatVND } from "@/components/business/dashboardWidgetHelpers";
 
 // ─── Booking Models ───────────────────────────────────────────────────────────────
 
@@ -251,7 +252,6 @@ function EmptyCell({ showCapacity }) {
 
 function DayColumnGrid({ date, bookings, servicesMap, onViewBooking, t }) {
   const isToday = isSameDay(date, new Date());
-  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
   // Group bookings by time slot
   const getBookingsForSlot = (timeId) => {
@@ -303,7 +303,7 @@ function DayColumnGrid({ date, bookings, servicesMap, onViewBooking, t }) {
                 ))}
                 {slotBookings.length > 2 && (
                   <p className="text-[10px] text-gray-500 text-center">
-                    +{slotBookings.length - 2} more
+                    +{slotBookings.length - 2} {t("common.others", { defaultValue: "khác" })}
                   </p>
                 )}
               </div>
@@ -329,7 +329,6 @@ function DayColumnGrid({ date, bookings, servicesMap, onViewBooking, t }) {
 
 function DayColumnTimeline({ date, bookings, onViewBooking, t }) {
   const isToday = isSameDay(date, new Date());
-  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
   // Group by resource
   const bookingsByResource = useMemo(() => {
@@ -499,7 +498,7 @@ function BookingDetailModal({ booking, open, onClose, t }) {
               <div>
                 <p className="text-xs text-gray-500">{t("business.schedule.totalAmount")}</p>
                 <p className="font-bold text-lg">
-                  {(booking.finalPrice || 0).toLocaleString("vi-VN")} đ
+                  {formatVND(booking.finalPrice || 0)}
                 </p>
               </div>
             </div>
@@ -609,7 +608,7 @@ const BookingSchedulePage = memo(() => {
           setSelectedPlaceId(String(res.data[0].id));
         }
       })
-      .catch(() => {});
+      .catch((err) => console.error("Failed to load places:", err));
   }, []);
 
   // Load bookings for the week
@@ -621,7 +620,7 @@ const BookingSchedulePage = memo(() => {
 
       const [bookingRes, blockedRes] = await Promise.all([
         bookingApi.getAll({ fromDate, toDate, limit: 500 }),
-        blockedDateApi.getAll({ fromDate, toDate }).catch(() => ({ data: [] })),
+        blockedDateApi.getAll({ fromDate, toDate }).catch((err) => { console.error("Failed to load blocked dates:", err); return { data: [] }; }),
       ]);
 
       setAllBookings(bookingRes.data || []);

@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   Text,
@@ -8,7 +7,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { MaterialIconsRounded } from "../../src/components/primitives/MaterialIconsRounded";
 import {
   useTripDetail,
   useUpdateTrip,
@@ -27,12 +26,7 @@ import {
   computeBudgetSummary,
   canStartTrip,
 } from "../../src/modules/trips/utils/tripHelpers";
-import {
-  setActiveTripId,
-  resetVisitedDestinations,
-  useActiveTrip,
-} from "../../src/modules/trips/hooks/useActiveTrip";
-import { sendLocalNotification } from "../../src/lib/local-notifications";
+import { useActiveTrip } from "../../src/modules/trips/hooks/useActiveTrip";
 
 import { TripHeader } from "../../src/modules/trips/components/trip-detail/TripHeader";
 import { TripTabBar } from "../../src/modules/trips/components/trip-detail/TripTabBar";
@@ -41,7 +35,6 @@ import { ServicesTab } from "../../src/modules/trips/components/trip-detail/Serv
 import { BudgetTab } from "../../src/modules/trips/components/trip-detail/BudgetTab";
 import EditTripModal from "../../src/modules/trips/components/trip-detail/EditTripModal";
 import { ShareTripModal } from "../../src/modules/trips/components/trip-detail/ShareTripModal";
-import { TripCompleteCelebration } from "../../src/modules/trips/components/trip-detail/TripCompleteCelebration";
 import s, { T } from "../../src/modules/trips/utils/tripDetailTokens";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
@@ -58,10 +51,14 @@ export default function TripDetailScreen() {
   const [isEditTripOpen, setIsEditTripOpen] = useState(false);
   const [isAddPlaceOpen, setIsAddPlaceOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [showCelebration, setShowCelebration] = useState(false);
 
-  const activeTripState = useActiveTrip();
-  const isCurrentActiveTrip = activeTripState.isActive && String(activeTripState.activeTripId) === String(tripId);
+  const {
+    activeTripId,
+    isActive,
+    isPaused,
+    resumeActiveTrip,
+  } = useActiveTrip();
+  const isCurrentActiveTrip = isActive && String(activeTripId) === String(tripId);
 
   const { data: trip, isLoading, isError, refetch } = useTripDetail(tripId);
 
@@ -79,7 +76,7 @@ export default function TripDetailScreen() {
   const { data: bookingsPayload, isLoading: isBookingsLoading } =
     useMyBookings(BOOKINGS_FILTERS);
 
-  const bookings = bookingsPayload?.data || [];
+  const bookings = useMemo(() => bookingsPayload?.data || [], [bookingsPayload?.data]);
   const tripDays = useMemo(() => buildTripDays(trip), [trip]);
   const dayCount = tripDays.length;
 
@@ -132,7 +129,7 @@ export default function TripDetailScreen() {
         },
       ],
     );
-  }, [deleteTripMutation, router, trip?.id]);
+  }, [deleteTripMutation, router, t, trip?.id]);
 
   const handleSaveTrip = useCallback(
     (payload) => {
@@ -143,48 +140,29 @@ export default function TripDetailScreen() {
         },
       });
     },
-    [updateTripMutation],
+    [t, updateTripMutation],
   );
 
-  const handleResumeTrip = useCallback(() => {
+  const handleResumeTrip = useCallback(async () => {
     if (!trip?.id) return;
+    if (isPaused) {
+      await resumeActiveTrip();
+    }
     router.push({ pathname: "/(tabs)/map", params: { resumeNav: "true" } });
-  }, [trip?.id, router]);
+  }, [isPaused, resumeActiveTrip, trip?.id, router]);
 
   const handleStartTrip = useCallback(() => {
     if (!trip?.id || updateTripMutation.isPending) return;
+    if (!Array.isArray(trip.destinations) || trip.destinations.length === 0) {
+      Alert.alert(t("trip.detail.startTitle"), t("trip.itinerary.noDestinationsDesc"));
+      return;
+    }
 
-    Alert.alert(
-      t("trip.detail.startTitle"),
-      t("trip.detail.startMessage"),
-      [
-        { text: t("common.later"), style: "cancel" },
-        {
-          text: t("common.start"),
-          onPress: () => {
-            updateTripMutation.mutate(
-              { status: "in-progress" },
-              {
-                onSuccess: async () => {
-                  await setActiveTripId(trip.id);
-                  await resetVisitedDestinations(trip.id);
-                  await sendLocalNotification({
-                    title: t("trip.detail.startNotification"),
-                    body: t("trip.detail.startNotificationBody", { title: trip.title || t("trip.detail.defaultTitle") }),
-                    data: { tripId: trip.id },
-                  });
-                  router.push({ pathname: "/(tabs)/map", params: { startNav: "true" } });
-                },
-                onError: (error) => {
-                  Alert.alert(t("common.error"), error?.message || t("trip.detail.startError"));
-                },
-              },
-            );
-          },
-        },
-      ],
-    );
-  }, [trip?.id, trip?.title, updateTripMutation, router]);
+    router.push({
+      pathname: "/(tabs)/map",
+      params: { tripPreviewId: String(trip.id) },
+    });
+  }, [trip, updateTripMutation.isPending, router, t]);
 
   const handleToggleSave = useCallback(() => {
     if (!trip?.id) return;
@@ -201,7 +179,7 @@ export default function TripDetailScreen() {
         },
       });
     }
-  }, [trip?.id, trip?.isSaved, saveTripMutation, unsaveTripMutation]);
+  }, [saveTripMutation, t, trip?.id, trip?.isSaved, unsaveTripMutation]);
 
   const handleDuplicateTrip = useCallback(() => {
     if (!trip?.id || duplicateMutation.isPending) return;
@@ -222,35 +200,7 @@ export default function TripDetailScreen() {
         Alert.alert(t("common.error"), error?.message || t("trip.detail.duplicateError"));
       },
     });
-  }, [trip?.id, trip?.title, duplicateMutation, router]);
-
-  const handleMarkComplete = useCallback(() => {
-    if (!trip?.id || updateTripMutation.isPending) return;
-    Alert.alert(
-      t("trip.detail.completeTitle"),
-      t("trip.detail.completeMessage", { name: trip.title }),
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("trip.detail.complete"),
-          onPress: () => {
-            setIsEditTripOpen(false);
-            updateTripMutation.mutate(
-              { status: "completed" },
-              {
-                onSuccess: () => {
-                  setShowCelebration(true);
-                },
-                onError: (error) => {
-                  Alert.alert(t("common.error"), error?.message || t("trip.detail.completeError"));
-                },
-              },
-            );
-          },
-        },
-      ],
-    );
-  }, [trip?.id, trip?.title, updateTripMutation]);
+  }, [duplicateMutation, router, t, trip?.id, trip?.title]);
 
   /* ─── Loading ─── */
   if (isLoading) {
@@ -337,7 +287,7 @@ export default function TripDetailScreen() {
           onStartTrip={isCurrentActiveTrip ? handleResumeTrip : handleStartTrip}
           isStartingTrip={updateTripMutation.isPending}
           isCurrentActiveTrip={isCurrentActiveTrip}
-          isPaused={activeTripState.isPaused}
+          isPaused={isPaused}
         />
       ) : activeTab === "services" ? (
         <ServicesTab
@@ -360,7 +310,6 @@ export default function TripDetailScreen() {
         isSaving={updateTripMutation.isPending}
         onCancel={() => setIsEditTripOpen(false)}
         onSave={handleSaveTrip}
-        onComplete={handleMarkComplete}
       />
 
       <ShareTripModal
@@ -370,11 +319,6 @@ export default function TripDetailScreen() {
         onClose={() => setIsShareOpen(false)}
       />
 
-      <TripCompleteCelebration
-        visible={showCelebration}
-        tripTitle={trip?.title}
-        onDismiss={() => setShowCelebration(false)}
-      />
     </View>
   );
 }

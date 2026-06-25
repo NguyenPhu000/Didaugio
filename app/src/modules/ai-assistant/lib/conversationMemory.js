@@ -2,6 +2,7 @@
  * conversationMemory.js — pure helper functions for managing conversation state.
  * Does NOT manage state directly — state lives in aiContextStore.
  */
+import i18n from "@/i18n";
 
 const MAX_MESSAGES = 20;
 
@@ -39,5 +40,5 @@ export function buildApiPayload(history, newMessage) {
 export function buildMemorySummary(history) {
   const older = history.slice(0, -MAX_MESSAGES);
   if (older.length === 0) return "";
-  return `[Tóm tắt ${older.length} tin nhắn trước: cuộc trò chuyện đang tiếp diễn]`;
+  return i18n.t("aiChat.memorySummary", { count: older.length });
 }

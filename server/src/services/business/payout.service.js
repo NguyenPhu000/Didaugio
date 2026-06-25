@@ -273,12 +273,25 @@ export const markTransferred = async (payoutId, reviewerId) => {
     );
   }
 
-  return prisma.payout.update({
-    where: { id: payoutId },
-    data: {
-      status: "transferred",
-      transferredAt: new Date(),
-    },
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.payout.update({
+      where: { id: payoutId },
+      data: {
+        status: "transferred",
+        transferredAt: new Date(),
+      },
+    });
+
+    await tx.financialLedger.create({
+      data: {
+        payoutId: updated.id,
+        type: "WITHDRAW",
+        amount: updated.amount,
+        description: `Manual payout transfer #${updated.id}`,
+      },
+    });
+
+    return updated;
   });
 };
 

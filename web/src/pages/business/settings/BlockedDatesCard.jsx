@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui";
+import { formatDate } from "@/components/business/dashboardWidgetHelpers";
 import { blockedDateApi } from "@/apis/blockedDateApi";
 
 const BlockedDatesCard = () => {
@@ -119,7 +120,7 @@ const BlockedDatesCard = () => {
               >
                 <div>
                   <span className="font-mono text-xs font-bold text-red-700">
-                    {new Date(bd.date).toLocaleDateString("vi-VN")}
+                    {formatDate(bd.date)}
                   </span>
                   {bd.reason && (
                     <span className="font-mono text-[10px] text-gray-500 ml-2">

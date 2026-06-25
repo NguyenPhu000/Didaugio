@@ -23,11 +23,25 @@ router.get("/sepay-checkout-form/:paymentId", controller.sepayCheckoutForm);
 
 router.post("/sepay-webhook", controller.sepayBankWebhook);
 
+router.post("/sepay-webhook-refund", controller.sepayRefundWebhook);
+
 /* ── Authenticated endpoints ────────────────────────────────────────────── */
 
 router.use(authenticate);
 
 router.post("/checkout", controller.checkout);
+
+router.get(
+  "/admin/cashflow/summary",
+  hasPermission("payments.view_revenue"),
+  controller.getAdminCashflowSummary,
+);
+
+router.get(
+  "/admin/cashflow",
+  hasPermission("payments.view_revenue"),
+  controller.getAdminCashflow,
+);
 
 router.get("/admin", hasPermission("payments.refund"), controller.getAdminPayments);
 

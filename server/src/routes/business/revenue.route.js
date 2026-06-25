@@ -46,4 +46,18 @@ router.get(
   revenueController.exportCsv,
 );
 
+// GET /api/business/revenue/cashflow/summary
+router.get(
+  "/cashflow/summary",
+  hasPermission(revenueViewPermission),
+  revenueController.getCashflowSummary,
+);
+
+// GET /api/business/revenue/cashflow
+router.get(
+  "/cashflow",
+  hasPermission(revenueViewPermission),
+  revenueController.getCashflow,
+);
+
 export default router;

@@ -205,7 +205,34 @@
       "saveError": "Không thể lưu địa điểm",
       "unsaveError": "Không thể bỏ lưu địa điểm",
       "loginToSave": "Đăng nhập để lưu"
-    }
+    },
+    "event": {
+      "upcoming": "Sắp diễn ra",
+      "ongoing": "Đang diễn ra",
+      "ended": "Đã kết thúc",
+      "participants": "{{count}} tham gia",
+      "legs": "{{count}} chặng",
+      "communityEvents": "Sự kiện cộng đồng",
+      "viewAll": "Xem tất cả"
+    },
+    "sampleTrip": {
+      "adventure": "Phiêu lưu",
+      "culture": "Văn hóa",
+      "relax": "Nghỉ dưỡng",
+      "food": "Ẩm thực",
+      "family": "Gia đình",
+      "budget": "Tiết kiệm",
+      "luxury": "Cao cấp",
+      "days": "{{count}} ngày",
+      "from": "Từ {{price}}"
+    },
+    "headerBrand": "Đi Đâu Giờ?",
+    "headerGreeting": "Xin chào, {{name}}",
+    "cmsBrandBadge": "ĐI ĐÂU GIỜ",
+    "cmsFallbackTitle": "Đi Đâu Giờ?",
+    "cmsFallbackDesc": "Khám phá hàng trăm địa điểm hấp dẫn tại Cần Thơ",
+    "heroBadge": "ĐỀ XUẤT CHO BẠN",
+    "heroExplore": "Khám phá"
   },
   "saved": {
     "title": "Yêu thích",
@@ -263,6 +290,11 @@
     "upcomingTrips": "Chuyến đi sắp tới",
     "noUpcomingTrips": "Chưa có chuyến đi nào sắp tới",
     "memories": "Kỷ niệm",
+    "memoriesSection": {
+      "noMemories": "Bạn chưa có kỷ niệm nào",
+      "journey": "Hành trình",
+      "moreCount": "+{{count}} Nữa"
+    },
     "settingsItems": {
       "myBookings": "Booking của tôi",
       "savedPlaces": "Địa điểm đã lưu",
@@ -436,7 +468,10 @@
       "refundRejectedDesc": "Admin đã từ chối yêu cầu hoàn tiền cho booking này.",
       "refundAmount": "Số tiền đã hoàn",
       "redirecting": "Đang chuyển...",
-      "payNow": "Thanh toán ngay"
+      "payNow": "Thanh toán ngay",
+      "bankTransfer": "Chuyển khoản ngân hàng",
+      "bankTransferDesc": "Quét mã QR VietQR - Thanh toán qua ứng dụng ngân hàng",
+      "methodTitle": "Phương thức thanh toán"
     },
     "cancel": {
       "cta": "Hủy booking & gửi yêu cầu hoàn tiền",
@@ -445,12 +480,30 @@
       "alertErrorTitle": "Không thể hủy booking",
       "alertErrorMessage": "Vui lòng thử lại sau."
     },
-    "offline": "Offline"
+    "offline": "Offline",
+    "refund": {
+      "title": "Xác nhận hủy & yêu cầu hoàn tiền",
+      "bookingLabel": "Booking",
+      "defaultService": "Dịch vụ",
+      "paidAmount": "Số tiền đã thanh toán",
+      "policy": "Chính sách áp dụng",
+      "currentTime": "Thời gian hiện tại:",
+      "usageDate": "Ngày sử dụng:",
+      "refundLevel": "Mức hoàn trả: Admin sẽ xem xét và xử lý theo chính sách của dịch vụ",
+      "cancelReason": "Lý do hủy chuyến (bắt buộc, tối thiểu 5 ký tự)",
+      "cancelReasonPlaceholder": "Ví dụ: Tôi bận việc đột xuất nên không thể tham gia đúng lịch.",
+      "refundNote": "Yêu cầu hoàn tiền sẽ được gửi đến admin để duyệt thủ công.",
+      "keepBooking": "Giữ lại đơn",
+      "processing": "Đang xử lý...",
+      "confirmCancel": "Xác nhận Hủy & Đòi tiền"
+    }
   },
   "booking": {
     "loginRequired": "Hãy đăng nhập để booking",
     "loginDescription": "Bạn cần đăng nhập để đặt dịch vụ tại địa điểm này.",
     "loginNow": "Đăng nhập ngay",
+    "quantity": "Số lượng: {{count}}",
+    "subtotal": "Thành tiền",
     "notSelected": "Chưa chọn",
     "contactForPrice": "Liên hệ",
     "noServices": "Địa điểm này chưa có dịch vụ nào.",
@@ -586,6 +639,16 @@
     "dayNames": ["T2", "T3", "T4", "T5", "T6", "T7", "CN"],
     "bookNow": "Đặt ngay",
     "viewOnMap": "Xem trên bản đồ",
+    "noImage": "Không có ảnh",
+    "defaultPlace": "Địa điểm",
+    "newBadge": "Mới",
+    "million": "triệu",
+    "calculating": "Đang tính...",
+    "viewDetail": "Xem chi tiết",
+    "selectedLabel": "Đã chọn",
+    "selectLabel": "Chọn",
+    "addLeg": "Thêm chặng",
+    "directionsLabel": "Chỉ đường",
     "detail": {
       "updatedLater": "Cập nhật sau",
       "closedToday": "Đóng cửa hôm nay",
@@ -729,8 +792,7 @@
       "complete": "Hoàn thành",
       "completeError": "Không thể đánh dấu hoàn thành",
       "duplicating": "Đang nhân bản...",
-      "duplicateTrip": "Nhân bản chuyến đi",
-      "markComplete": "Đánh dấu hoàn thành"
+      "duplicateTrip": "Nhân bản chuyến đi"
     },
     "itinerary": {
       "close": "Đóng",
@@ -801,8 +863,8 @@
       "createLinkError": "Không thể tạo link chia sẻ",
       "createdLinks": "Link đã tạo",
       "noLinks": "Chưa có link chia sẻ nào",
-      "accessCount": "{{count}} lượt truy cập",
-      "newLink": "Tạo link chia sẻ mới"
+      "newLink": "Tạo link chia sẻ mới",
+      "accessCount": "{{count}} lượt truy cập"
     },
     "celebration": {
       "title": "Chuyến đi hoàn tất!",
@@ -865,7 +927,26 @@
       "other": "Khác"
     },
     "selectGender": "Chọn giới tính",
-    "saveChanges": "Lưu Thay Đổi"
+    "saveChanges": "Lưu Thay Đổi",
+    "errors": {
+      "noPhotoAccess": "Chưa có quyền truy cập ảnh",
+      "grantPhotoPermission": "Vui lòng cấp quyền truy cập thư viện ảnh để chọn ảnh đại diện.",
+      "imageNotFound": "Không tìm thấy ảnh",
+      "trySelectAgain": "Vui lòng chọn lại ảnh.",
+      "processImage": "Không thể xử lý ảnh",
+      "tryAgain": "Vui lòng thử lại.",
+      "missingInfo": "Thiếu thông tin",
+      "nameMinChars": "Họ tên phải có ít nhất 2 ký tự.",
+      "usernameRequired": "Vui lòng nhập username.",
+      "invalidUsername": "Username không hợp lệ",
+      "usernameFormat": "Username phải từ 3-30 ký tự và chỉ gồm chữ, số, dấu gạch dưới.",
+      "updateFailed": "Cập nhật thất bại",
+      "tryAgainLater": "Vui lòng thử lại sau."
+    },
+    "success": {
+      "title": "Thành công",
+      "message": "Hồ sơ đã được cập nhật."
+    }
   },
   "feedback": {
     "title": "Góp ý & Hỗ trợ",
@@ -980,7 +1061,8 @@
       "hourUnit": "h",
       "minuteShortUnit": "p",
       "meterUnit": "m",
-      "kilometerUnit": "km"
+      "kilometerUnit": "km",
+      "interProvince": "Liên tỉnh (~{{km}} km)"
     },
     "arrivalModal": {
       "title": "Đã đến điểm đến",
@@ -1198,8 +1280,6 @@
     "startDate": "Ngày bắt đầu",
     "selectDate": "Chọn ngày",
     "endDate": "Ngày kết thúc",
-    "avoidFerry": "Tránh đi phà",
-    "avoidFerryDesc": "Tìm đường không qua bến phà",
     "save": "Lưu"
   },
   "inlineAddPlace": {
@@ -1215,6 +1295,9 @@
     "tryDifferentKeyword": "Vui lòng thử từ khóa khác",
     "searchingSystem": "Đang tìm thêm trên hệ thống...",
     "yourSavedPlaces": "Địa điểm đã lưu của bạn",
+    "savedAndSuggested": "Đã lưu và gợi ý nổi bật",
+    "suggestedPlaces": "Gợi ý nổi bật",
+    "noSuggestions": "Chưa có gợi ý phù hợp",
     "canTho": "Cần Thơ",
     "selectDay": "Chọn ngày",
     "dayLabel": "Ngày {{number}}",
@@ -1298,7 +1381,27 @@
     "creatingTrip": "Đang tạo chuyến đi...",
     "suggestingPlaces": "Đang gợi ý địa điểm...",
     "processing": "Đang xử lý...",
-    "inputPlaceholder": "Mô tả kế hoạch bạn muốn..."
+    "inputPlaceholder": "Mô tả kế hoạch bạn muốn...",
+    "quickSuggestions": {
+      "suggestion1": "Gợi ý quán ăn ngon ở Ninh Kiều",
+      "suggestion2": "Top 5 điểm chụp ảnh đẹp",
+      "suggestion3": "Kế hoạch buổi tối Cần Thơ",
+      "suggestion4": "Đi chơi gia đình 1 ngày",
+      "suggestion5": "Cà phê view đẹp gần trung tâm"
+    },
+    "chatThinking": "Nhi đang suy nghĩ...",
+    "loadingStep0": "Nhi đang quét các địa điểm quanh bạn...",
+    "loadingStep1": "Nhi đang tính toán tuyến đường tối ưu...",
+    "loadingStep2": "Nhi đang lập bảng dự toán chi phí...",
+    "loadingWait": "Chờ Nhi một chút xíu nữa nghen...",
+    "chatErrorFallback": "Đã xảy ra lỗi, bạn thử lại nhé.",
+    "botLabel": "Nhi (AI)",
+    "tripReady": "Lịch trình **{{title}}** đã sẵn sàng!",
+    "destinationCount": "{{count}} địa điểm",
+    "estimatedCost": "Chi phí ~{{cost}} đ",
+    "selectingCountShort": "Đang chọn: {{count}} địa điểm.",
+    "previewMessage": "Em Nhi đã lên khung lịch trình {{totalDays}} ngày và gợi ý {{suggestedCount}} địa điểm.",
+    "previewInstruction": "Bạn chọn địa điểm phía dưới rồi bấm **Chốt & tạo chuyến đi**."
   },
   "chatPanel": {
     "confirmDelete": "Xóa lịch sử chat?",
@@ -1318,6 +1421,18 @@
     "addFailedDesc": "Không thể thêm vào chuyến đi",
     "selectTrip": "Chọn chuyến đi",
     "selectTripPrompt": "Bạn muốn thêm \"{{name}}\" vào chuyến đi nào?"
+  },
+  "aiChat": {
+    "rateLimit": "Nhi đang trả lời quá nhiều bạn rồi, bạn đợi một chút rồi thử lại nghen.",
+    "serviceOverloaded": "Dịch vụ AI tạm thời quá tải. Bạn thử lại sau vài phút ha.",
+    "invalidItineraryData": "Không nhận được dữ liệu lịch trình hợp lệ.",
+    "itineraryReady": "Nhi đã thiết kế xong lịch trình di chuyển tối ưu và dự toán ngân sách cho bạn rồi nè! Bạn xem qua thử ha:",
+    "noReplyContent": "Mình chưa nhận được nội dung phản hồi, bạn thử lại giúp mình nhé.",
+    "memorySummary": "[Tóm tắt {{count}} tin nhắn trước: cuộc trò chuyện đang tiếp diễn]"
+  },
+  "client": {
+    "refreshTimeout": "Hết thời gian chờ làm mới phiên. Vui lòng đăng nhập lại.",
+    "invalidSession": "Phiên đăng nhập không còn hợp lệ."
   },
   "exploreNearby": {
     "sortByDistance": "Sắp xếp theo khoảng cách từ vị trí hiện tại của bạn.",
@@ -1460,7 +1575,11 @@
     "saved": "Đã lưu",
     "collectionsLabel": "Bộ sưu tập",
     "areas": "Khu vực",
-    "hasNotesLabel": "Có ghi chú"
+    "hasNotesLabel": "Có ghi chú",
+    "priceFrom": "Từ",
+    "millionUnit": "trđ",
+    "thousandUnit": "kđ",
+    "currencyUnit": "đ"
   },
   "maneuver": {
     "left": "trái",
@@ -1503,7 +1622,15 @@
     "journeyPaused": "Hành trình đang tạm nghỉ",
     "journeyPausedDesc": "Dẫn đường và theo dõi GPS đã dừng để tiết kiệm pin.",
     "resume": "Tiếp tục",
-    "noFerryRoute": "Không tìm thấy đường tránh phà. Đã chấp nhận tuyến có phà.",
+    "previewTitle": "Xem trước cung đường",
+    "previewSummary": "{{count}} địa điểm • {{segments}} chặng đường",
+    "previewFallback": "Một vài chặng đang dùng tuyến ước tính. Hãy kiểm tra cung đường trước khi bắt đầu.",
+    "previewNoStops": "Chuyến đi này chưa có địa điểm hợp lệ để dẫn đường.",
+    "startGuidance": "Bắt đầu dẫn đường",
+    "pauseJourney": "Tạm nghỉ",
+    "stopJourney": "Dừng",
+    "stopJourneyTitle": "Dừng hành trình?",
+    "stopJourneyMessage": "Dẫn đường sẽ dừng, nhưng chuyến đi sẽ không bị đánh dấu hoàn thành.",
     "map": "Bản đồ",
     "satellite": "Vệ tinh",
     "complete": "Hoàn tất",
@@ -1514,9 +1641,7 @@
     "car": "Ô tô",
     "bicycle": "Xe đạp",
     "walking": "Đi bộ",
-    "title": "Phương thức di chuyển",
-    "avoidFerry": "Đang tránh đi phà",
-    "avoidFerryLabel": "Tránh đi phà"
+    "title": "Phương thức di chuyển"
   },
   "datePicker": {
     "cancel": "Hủy",

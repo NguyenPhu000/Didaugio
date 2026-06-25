@@ -45,6 +45,9 @@ const BusinessPendingPage = lazy(() => import("@/pages/admin/BusinessPendingPage
 const AdminReviewModerationPage = lazy(() => import("@/pages/admin/AdminReviewModerationPage"));
 const AdminPayoutManagementPage = lazy(() => import("@/pages/admin/AdminPayoutManagementPage"));
 const AdminRefundManagementPage = lazy(() => import("@/pages/admin/AdminRefundManagementPage"));
+const AdminCashflowPage = lazy(() => import("@/pages/admin/AdminCashflowPage"));
+const AdminSubscriptionPage = lazy(() => import("@/pages/admin/AdminSubscriptionPage"));
+const AdminPlanManagementPage = lazy(() => import("@/pages/admin/AdminPlanManagementPage"));
 const AdminAnalyticsPage = lazy(() => import("@/pages/admin/AdminAnalyticsPage"));
 const CMSContentPage = lazy(() => import("@/pages/admin/CMSContentPage"));
 const RoleManagePage = lazy(() => import("@/pages/RoleManagePage"));
@@ -66,7 +69,11 @@ const ReviewListPage = lazy(() => import("@/pages/business/ReviewListPage"));
 const BusinessPlacePage = lazy(() => import("@/pages/business/BusinessPlacePage"));
 const StaffManagementPage = lazy(() => import("@/pages/business/StaffManagementPage"));
 const EarningsPage = lazy(() => import("@/pages/business/EarningsPage"));
+const BusinessCashflowPage = lazy(() => import("@/pages/business/BusinessCashflowPage"));
 const BusinessSettingsPage = lazy(() => import("@/pages/business/BusinessSettingsPage"));
+const SubscriptionPage = lazy(() => import("@/pages/business/SubscriptionPage"));
+const PricingPage = lazy(() => import("@/pages/business/PricingPage"));
+const InvoiceHistoryPage = lazy(() => import("@/pages/business/InvoiceHistoryPage"));
 
 import BusinessGuard from "@/components/business/BusinessGuard";
 import { resolvePostLoginRoute, resolveRoleId } from "@/utils/authRouting";
@@ -400,6 +407,33 @@ const AppRoutes = () => {
         }
       />
 
+      <Route
+        path={ADMIN_ROUTES.CASHFLOW}
+        element={
+          <ProtectedAdmin roles={adminRoles}>
+            <AdminCashflowPage />
+          </ProtectedAdmin>
+        }
+      />
+
+      {/* Admin Subscription Management */}
+      <Route
+        path={ADMIN_ROUTES.SUBSCRIPTIONS}
+        element={
+          <ProtectedAdmin roles={adminRoles}>
+            <AdminSubscriptionPage />
+          </ProtectedAdmin>
+        }
+      />
+      <Route
+        path={ADMIN_ROUTES.SUBSCRIPTION_PLANS}
+        element={
+          <ProtectedAdmin roles={adminRoles}>
+            <AdminPlanManagementPage />
+          </ProtectedAdmin>
+        }
+      />
+
       {/* Admin Booking Operations */}
 
       {/* Admin Analytics */}
@@ -457,6 +491,7 @@ const AppRoutes = () => {
         },
         { path: BUSINESS_ROUTES.DASHBOARD, element: <BusinessDashboardPage /> },
         { path: BUSINESS_ROUTES.REVENUE, element: <RevenuePage /> },
+        { path: BUSINESS_ROUTES.CASHFLOW, element: <BusinessCashflowPage /> },
         { path: BUSINESS_ROUTES.REVIEWS, element: <ReviewListPage /> },
         { path: BUSINESS_ROUTES.VOUCHERS, element: <VoucherListPage /> },
         { path: BUSINESS_ROUTES.STAFF, element: <StaffManagementPage /> },
@@ -465,6 +500,9 @@ const AppRoutes = () => {
         { path: BUSINESS_ROUTES.SERVICES, element: <ServiceListPage /> },
         { path: BUSINESS_ROUTES.PLACES, element: <BusinessPlacePage /> },
         { path: BUSINESS_ROUTES.SETTINGS, element: <BusinessSettingsPage /> },
+        { path: BUSINESS_ROUTES.SUBSCRIPTION, element: <SubscriptionPage /> },
+        { path: BUSINESS_ROUTES.SUBSCRIPTION_PLANS, element: <PricingPage /> },
+        { path: BUSINESS_ROUTES.SUBSCRIPTION_INVOICES, element: <InvoiceHistoryPage /> },
       ].map(({ path, element }) => (
         <Route
           key={path}

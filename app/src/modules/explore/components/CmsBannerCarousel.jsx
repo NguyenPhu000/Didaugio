@@ -29,8 +29,8 @@ const AUTO_SCROLL_INTERVAL = 10000;
 
 const FALLBACK_BANNER = {
   id: "fallback",
-  title: "Đi Đâu Giờ?",
-  description: "Khám phá hàng trăm địa điểm hấp dẫn tại Cần Thơ",
+  title: null,
+  description: null,
   imageUrl: null,
   linkType: "none",
   linkValue: null,
@@ -130,13 +130,13 @@ function BannerSlide({ banner, width, onPress }) {
               letterSpacing: 1.5,
             }}
           >
-            ĐI ĐÂU GIỜ
+            {t("explore.cmsBrandBadge")}
           </Text>
         </View>
       ) : null}
 
       {/* Content - bottom left */}
-      {banner.title ? (
+      {(banner.title || banner.isFallback) ? (
         <View
           style={{
             position: "absolute",
@@ -155,10 +155,10 @@ function BannerSlide({ banner, width, onPress }) {
             }}
             numberOfLines={2}
           >
-            {banner.title}
+            {banner.title || t("explore.cmsFallbackTitle")}
           </Text>
 
-          {banner.description ? (
+          {(banner.description || banner.isFallback) ? (
             <Text
               style={{
                 color: "rgba(255,255,255,0.8)",
@@ -169,7 +169,7 @@ function BannerSlide({ banner, width, onPress }) {
               }}
               numberOfLines={2}
             >
-              {banner.description}
+              {banner.description || t("explore.cmsFallbackDesc")}
             </Text>
           ) : null}
 

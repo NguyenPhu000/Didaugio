@@ -819,6 +819,7 @@ model Business {
   blockedDates           BusinessBlockedDate[]
   sensitiveDocuments     SensitiveDocument[]
   settings               Json                    @default("{}") @map("settings")
+  subscription           Subscription?
 
   @@index([status])
   @@map("businesses")
@@ -1198,6 +1199,99 @@ model FinancialLedger {
   booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
   @@map("financial_ledgers")
+}
+
+// ─── Subscription System ─────────────────────────────────────────────────────
+
+model SubscriptionPlan {
+  id              Int      @id @default(autoincrement())
+  name            String   @unique
+  slug            String   @unique
+  description     String?
+  priceMonthly    Int      @map("price_monthly")   // VND
+  priceYearly     Int?     @map("price_yearly")    // VND, null = không hỗ trợ yearly
+  maxPlaces       Int      @default(5)             @map("max_places")
+  maxBookings     Int      @default(100)           @map("max_bookings_per_month")
+  maxStaff        Int      @default(2)             @map("max_staff")
+  features        Json     @default("[]")          // ["analytics", "priority_support", ...]
+  isActive        Boolean  @default(true)          @map("is_active")
+  sortOrder       Int      @default(0)             @map("sort_order")
+  createdAt       DateTime @default(now())          @map("created_at")
+  updatedAt       DateTime @updatedAt               @map("updated_at")
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id              Int      @id @default(autoincrement())
+  businessId      Int      @unique                  @map("business_id")
+  planId          Int                               @map("plan_id")
+  status          String   @default("active")        // active, grace, past_due, canceled, paused
+  billingCycle    String   @default("monthly")       @map("billing_cycle") // monthly, yearly
+  currentPeriodStart DateTime @map("current_period_start")
+  currentPeriodEnd   DateTime @map("current_period_end")
+  gracePeriodEnd     DateTime? @map("grace_period_end")
+  canceledAt         DateTime? @map("canceled_at")
+  cancelReason       String?   @map("cancel_reason")
+  trialEndsAt        DateTime? @map("trial_ends_at")
+  metadata           Json?     // { autoRenew: true, reminderSent: true, ... }
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt      @map("updated_at")
+
+  business Business          @relation(fields: [businessId], references: [id])
+  plan     SubscriptionPlan  @relation(fields: [planId], references: [id])
+  invoices SubscriptionInvoice[]
+
+  @@index([status])
+  @@index([currentPeriodEnd])
+  @@map("subscriptions")
+}
+
+model SubscriptionInvoice {
+  id              Int      @id @default(autoincrement())
+  subscriptionId  Int                               @map("subscription_id")
+  invoiceNumber   String   @unique                    @map("invoice_number") // DDG-INV-202606-001
+  amount          Int                                 // VND
+  currency        String   @default("VND")
+  status          String   @default("pending")        // pending, paid, overdue, canceled
+  paymentMethod   String?  @map("payment_method")     // sepay_qr, bank_transfer
+  transactionRef  String?  @unique @map("transaction_ref") // DDG-INV-xxx dùng làm nội dung CK
+  qrUrl           String?  @map("qr_url")
+  paidAt          DateTime? @map("paid_at")
+  dueDate         DateTime  @map("due_date")
+  periodStart     DateTime  @map("period_start")
+  periodEnd       DateTime  @map("period_end")
+  notes           String?
+  metadata        Json?                               // { type, previousPlanId, targetPlanId, ... }
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt      @map("updated_at")
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("subscription_invoices")
+}
+
+model SubscriptionStats {
+  id              Int      @id @default(autoincrement())
+  snapshotDate    DateTime @unique @map("snapshot_date") @db.Date
+  mrr             Int      @default(0)      // Monthly Recurring Revenue (VND)
+  arr             Int      @default(0)      // Annual Recurring Revenue (VND)
+  activeCount     Int      @default(0)      @map("active_count")
+  trialCount      Int      @default(0)      @map("trial_count")
+  graceCount      Int      @default(0)      @map("grace_count")
+  pastDueCount    Int      @default(0)      @map("past_due_count")
+  canceledCount   Int      @default(0)      @map("canceled_count")
+  churnRate       Decimal  @default(0)      @map("churn_rate") @db.Decimal(5, 2)
+  newCount        Int      @default(0)      @map("new_count")
+  revenueTotal    Int      @default(0)      @map("revenue_total") // Tổng đã thu thực tế
+  createdAt       DateTime @default(now())   @map("created_at")
+
+  @@map("subscription_stats")
 }
 
 enum BookingStatus {
