@@ -1383,6 +1383,53 @@
     "suggestingPlaces": "Suggesting places...",
     "processing": "Processing...",
     "inputPlaceholder": "Describe the plan you want...",
+    "voiceListening": "Listening. Nhi will send when you pause.",
+    "voiceTranscribing": "Nhi is turning your voice into text...",
+    "voiceSpeaking": "Nhi is speaking...",
+    "voiceError": "Voice is not available right now.",
+    "voicePermissionDenied": "Microphone permission is required for voice chat.",
+    "voiceEmptyRecording": "No voice was captured. Try speaking a little closer to the mic.",
+    "voiceWave": {
+      "idle": "Tap to Chat",
+      "idleHint": "Ask Nhi by voice",
+      "listening": "Listening",
+      "listeningHint": "Auto-sends when you pause",
+      "transcribing": "Writing it down",
+      "speaking": "Nhi is speaking",
+      "speakingHint": "Tap volume to stop",
+      "thinking": "Nhi is thinking"
+    },
+    "suggestionGroups": {
+      "saved": {
+        "title": "From your saved places",
+        "route": "Build a route from saved places"
+      },
+      "nearby": {
+        "title": "Near you now",
+        "food": "Good food nearby",
+        "hot": "Trending places today"
+      },
+      "trip": {
+        "title": "Plan a trip",
+        "oneDay": "One-day Can Tho route",
+        "family": "Family-friendly day"
+      },
+      "context": {
+        "morning": "Easy morning plan",
+        "afternoon": "Photo spots this afternoon",
+        "evening": "Evening food and walk"
+      }
+    },
+    "suggestionPrompts": {
+      "savedRoute": "Create a short route from my saved places and prioritize places that are close to each other.",
+      "foodNearby": "Suggest good food near me with realistic price and why each place is worth trying.",
+      "hotNow": "Suggest hot or trending places near me today, prioritize places with strong reviews and recent interest.",
+      "oneDayTrip": "Create a clean one-day Can Tho itinerary with travel order, time blocks, and estimated cost.",
+      "familyTrip": "Plan a relaxed family-friendly day trip in Can Tho.",
+      "morning": "Suggest an easy morning plan near me with breakfast or coffee first.",
+      "afternoon": "Suggest photo spots for this afternoon and the best order to visit them.",
+      "evening": "Suggest an evening food and walking plan in Can Tho."
+    },
     "quickSuggestions": {
       "suggestion1": "Suggest good restaurants in Ninh Kieu",
       "suggestion2": "Top 5 beautiful photo spots",

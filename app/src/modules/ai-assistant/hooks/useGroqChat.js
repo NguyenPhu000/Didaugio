@@ -4,6 +4,7 @@ import { useAIContextStore } from "../../../stores/aiContextStore";
 import { useAIPlannerStore } from "../../../stores/aiPlannerStore";
 import { buildApiPayload } from "../lib/conversationMemory";
 import { mapAIError } from "../lib/mapAIError";
+import { normalizeNhiResponse } from "../lib/nhiAssistantExperience";
 import { ENDPOINTS } from "../../../api/endpoints";
 import apiClient from "../../../api/client";
 import { AI_REQUEST_TIMEOUT } from "../../../constants/api";
@@ -43,7 +44,7 @@ function normalizePlaces(places = []) {
 
     result.push({
       id,
-      name: raw.name || t("place.defaultPlace"),
+      name: raw.name || "Địa điểm",
       address: raw.address || "",
       latitude: raw.latitude,
       longitude: raw.longitude,
@@ -105,7 +106,7 @@ export function useGroqChat() {
       }
       clearOldConversation();
     }
-  }, []);
+  }, [allMessages, appendMessage, clearOldConversation, oldConversationMemory]);
 
   const conversationMemory = allMessages.filter((m) => m.source === "chat");
 
@@ -181,18 +182,16 @@ export function useGroqChat() {
             },
           );
 
-          const reply =
-            extractReply(response) ||
-            t("aiChat.noReplyContent");
-
-          const relatedPlaces = normalizePlaces(
-            response?.data?.relatedPlaces,
-          );
+          const normalized = normalizeNhiResponse(response);
+          const reply = normalized.reply || extractReply(response) || t("aiChat.noReplyContent");
+          const relatedPlaces = normalizePlaces(normalized.suggestedPlaces);
 
           appendMessage({
             role: "assistant",
             content: reply,
             suggestedPlaces: relatedPlaces,
+            quickReplies: normalized.quickReplies,
+            actions: normalized.actions,
             source: "chat",
           });
 
@@ -205,7 +204,7 @@ export function useGroqChat() {
         throw new Error(getFriendlyErrorMessage(err, t));
       }
     },
-    [conversationMemory, sessionContext, appendMessage],
+    [conversationMemory, sessionContext, appendMessage, t],
   );
 
   const abort = useCallback(() => {

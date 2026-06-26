@@ -12,6 +12,13 @@
       "expo-secure-store",
       "expo-font",
       [
+        "expo-audio",
+        {
+          "microphonePermission": "Đi Đâu Giờ? cần micro để bạn trò chuyện bằng giọng nói với Nhi.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#0077b8",
@@ -50,7 +57,8 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION"
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "androidStatusBar": {

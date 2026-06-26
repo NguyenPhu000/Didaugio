@@ -1382,6 +1382,53 @@
     "suggestingPlaces": "Đang gợi ý địa điểm...",
     "processing": "Đang xử lý...",
     "inputPlaceholder": "Mô tả kế hoạch bạn muốn...",
+    "voiceListening": "Đang nghe. Nhi sẽ tự gửi khi bạn im lặng.",
+    "voiceTranscribing": "Nhi đang chuyển giọng nói thành chữ...",
+    "voiceSpeaking": "Nhi đang nói...",
+    "voiceError": "Chưa dùng được giọng nói lúc này.",
+    "voicePermissionDenied": "Bạn cần cấp quyền micro để trò chuyện bằng giọng nói.",
+    "voiceEmptyRecording": "Chưa ghi được giọng nói. Thử nói gần micro hơn một chút.",
+    "voiceWave": {
+      "idle": "Chạm để nói",
+      "idleHint": "Hỏi Nhi bằng giọng nói",
+      "listening": "Đang nghe",
+      "listeningHint": "Tự gửi khi bạn im lặng",
+      "transcribing": "Đang ghi lại",
+      "speaking": "Nhi đang nói",
+      "speakingHint": "Chạm loa để dừng",
+      "thinking": "Nhi đang nghĩ"
+    },
+    "suggestionGroups": {
+      "saved": {
+        "title": "Từ nơi đã lưu",
+        "route": "Xếp tuyến từ nơi đã lưu"
+      },
+      "nearby": {
+        "title": "Gần bạn lúc này",
+        "food": "Ăn gì ngon gần đây",
+        "hot": "Địa điểm đang hot hôm nay"
+      },
+      "trip": {
+        "title": "Lên chuyến đi",
+        "oneDay": "Lịch trình Cần Thơ 1 ngày",
+        "family": "Đi chơi nhẹ cho gia đình"
+      },
+      "context": {
+        "morning": "Kế hoạch buổi sáng nhẹ nhàng",
+        "afternoon": "Điểm chụp ảnh chiều nay",
+        "evening": "Ăn tối rồi đi dạo"
+      }
+    },
+    "suggestionPrompts": {
+      "savedRoute": "Tạo tuyến đi ngắn từ các địa điểm tôi đã lưu, ưu tiên các nơi gần nhau.",
+      "foodNearby": "Gợi ý món ngon gần tôi, có giá thực tế và lý do nên thử từng nơi.",
+      "hotNow": "Gợi ý các địa điểm hot hoặc đang được quan tâm gần tôi hôm nay, ưu tiên nơi có đánh giá tốt.",
+      "oneDayTrip": "Tạo lịch trình Cần Thơ 1 ngày gọn gàng, có thứ tự di chuyển, khung giờ và chi phí ước tính.",
+      "familyTrip": "Lên kế hoạch đi chơi Cần Thơ nhẹ nhàng, phù hợp gia đình.",
+      "morning": "Gợi ý kế hoạch buổi sáng gần tôi, ưu tiên ăn sáng hoặc cà phê trước.",
+      "afternoon": "Gợi ý điểm chụp ảnh cho chiều nay và thứ tự đi hợp lý.",
+      "evening": "Gợi ý lịch ăn tối và đi dạo ở Cần Thơ."
+    },
     "quickSuggestions": {
       "suggestion1": "Gợi ý quán ăn ngon ở Ninh Kiều",
       "suggestion2": "Top 5 điểm chụp ảnh đẹp",

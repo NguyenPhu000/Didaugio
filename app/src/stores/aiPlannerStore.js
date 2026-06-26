@@ -45,6 +45,19 @@ function normalizeMessage(message) {
   };
 }
 
+export function removeDraftPreviewMessages(messages) {
+  if (!Array.isArray(messages)) return [];
+  return messages.filter((message) => {
+    const isLegacyDraftPreview =
+      message?.role === "assistant" &&
+      (message?.source || "planner") === "planner" &&
+      Array.isArray(message?.suggestedPlaces) &&
+      message.suggestedPlaces.length > 0 &&
+      Array.isArray(message?.selectedPlaceIds);
+    return !message?.isDraftPreview && !isLegacyDraftPreview;
+  });
+}
+
 export const useAIPlannerStore = create(
   persist(
     (set) => ({
@@ -56,6 +69,21 @@ export const useAIPlannerStore = create(
           if (!normalized) return { messages: s.messages };
           return {
             messages: trimMessages([...s.messages, normalized]),
+          };
+        }),
+
+      replaceDraftPreviewMessage: (message) =>
+        set((s) => {
+          const normalized = normalizeMessage({
+            ...message,
+            isDraftPreview: true,
+          });
+          if (!normalized) return { messages: s.messages };
+          return {
+            messages: trimMessages([
+              ...removeDraftPreviewMessages(s.messages),
+              normalized,
+            ]),
           };
         }),
 

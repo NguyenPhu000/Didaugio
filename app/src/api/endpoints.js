@@ -80,6 +80,8 @@ export const ENDPOINTS = {
     chat: "/ai/chat",
     navigate: "/ai/navigate",
     groqChat: "/ai/groq-chat",
+    voiceTranscribe: "/ai/voice/transcribe",
+    voiceSpeech: "/ai/voice/speech",
   },
   routing: {
     health: "/routes/health",

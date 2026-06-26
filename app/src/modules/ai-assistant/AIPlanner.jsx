@@ -14,250 +14,31 @@ import {
 import { useTranslation } from "react-i18next";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from "react-native-reanimated";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { MaterialIconsRounded } from "../../components/primitives/MaterialIconsRounded";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAIPlanner } from "../ai/hooks/useAIPlanner";
 import { useGroqChat } from "./hooks/useGroqChat";
+import { useNhiVoice } from "./hooks/useNhiVoice";
+import { VoiceWaveIndicator } from "./components/VoiceWaveIndicator";
+import {
+  NHI_INTENT_TYPES,
+  buildNhiSuggestionGroups,
+  detectNhiIntent,
+} from "./lib/nhiAssistantExperience";
 import { TOKENS } from "../../constants/design-tokens";
 import { PlacePreviewCard } from "../../components/composed/PlacePreviewCard";
 import { TAB_BAR_HEIGHT } from "../../../app/(tabs)/_layout";
 import CustomAlertModal from "../../components/composed/CustomAlertModal";
 
-const QUICK_SUGGESTION_KEYS = [
-  { key: "aiPlanner.quickSuggestions.suggestion1", icon: "restaurant", color: "#F59E0B" },
-  { key: "aiPlanner.quickSuggestions.suggestion2", icon: "photo-camera", color: "#EC4899" },
-  { key: "aiPlanner.quickSuggestions.suggestion3", icon: "nightlife", color: "#8B5CF6" },
-  { key: "aiPlanner.quickSuggestions.suggestion4", icon: "family-restroom", color: "#10B981" },
-  { key: "aiPlanner.quickSuggestions.suggestion5", icon: "local-cafe", color: "#3B82F6" },
-];
-
 const ACCENT = "#3478F6";
-
-const ITINERARY_PATTERN = /(lịch trình|lên lịch|kế hoạch|itinerary|plan|lộ trình|chặng đi|tạo chuyến|tạo tour)/i;
-
-function detectIntent(text) {
-  return ITINERARY_PATTERN.test(text) ? "itinerary" : "chat";
-}
+const SUGGESTION_COLORS = ["#0EA5E9", "#F97316", "#10B981", "#8B5CF6"];
 
 const s = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderColor: "#F1F5F9",
-    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  headerIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 9999,
-    backgroundColor: "#EFF6FF",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#DBEAFE",
-    boxShadow: "0 -1px 2px rgba(0, 0, 0, 0.05)",
-  },
-  headerTitle: {
-    fontSize: 15.5,
-    color: "#1E293B",
-    lineHeight: 20,
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 4,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 9999,
-    backgroundColor: "#10B981",
-  },
-  statusText: {
-    fontSize: 10,
-    color: "#94A3B8",
-  },
-  deleteBtnBase: {
-    width: 36,
-    height: 36,
-    borderRadius: 9999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deleteBtnDisabled: {
-    opacity: 0.4,
-  },
   scrollView: {
     flex: 1,
-  },
-  emptyContainer: {
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    lineHeight: 32,
-    color: "#0F172A",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 13.5,
-    lineHeight: 20,
-    color: "#64748B",
-    textAlign: "center",
-    maxWidth: 280,
-    marginBottom: 32,
-  },
-  suggestionsWrap: {
-    width: "100%",
-    gap: 10,
-  },
-  suggestionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.02)",
-  },
-  suggestionIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  suggestionText: {
-    flex: 1,
-    fontSize: 13.5,
-    color: "#334155",
-  },
-  messagesWrap: {
-    gap: 16,
-  },
-  messageRow: {
-    gap: 6,
-  },
-  messageRowUser: {
-    alignItems: "flex-end",
-  },
-  messageRowBot: {
-    alignItems: "flex-start",
-  },
-  botLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginLeft: 4,
-  },
-  botLabelDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 9999,
-    backgroundColor: "#10B981",
-  },
-  botLabelText: {
-    color: "#71717A",
-    fontSize: 10,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  bubbleBase: {
-    maxWidth: "85%",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 20,
-  },
-  bubbleUser: {
-    backgroundColor: "#F4F4F5",
-    borderTopRightRadius: 2,
-  },
-  bubbleBot: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E4E4E7",
-    borderTopLeftRadius: 2,
-  },
-  bubbleTextBase: {
-    fontSize: 14.5,
-    lineHeight: 22,
-  },
-  bubbleTextUser: {
-    color: "#18181B",
-  },
-  bubbleTextBot: {
-    color: "#27272A",
-  },
-  draftCard: {
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-    boxShadow: "0 8px 30px rgba(0, 0, 0, 0.03)",
-    gap: 16,
-  },
-  draftHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  draftHeaderTextWrap: {
-    flex: 1,
-  },
-  draftTitle: {
-    fontSize: 14.5,
-    color: "#0F172A",
-  },
-  draftSubtitle: {
-    marginTop: 2,
-    fontSize: 12,
-    color: "#94A3B8",
-  },
-  draftActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  draftActionBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 9999,
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-    backgroundColor: "#F8FAFC",
-  },
-  draftSelectAllText: {
-    fontSize: 11,
-    color: "#2563EB",
-  },
-  draftDeselectText: {
-    fontSize: 11,
-    color: "#64748B",
-  },
-  draftPlacesWrap: {
-    gap: 12,
   },
   confirmBtn: {
     marginTop: 4,
@@ -276,15 +57,6 @@ const s = StyleSheet.create({
   confirmTextBase: {
     fontSize: 14.5,
   },
-  gradientIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-    transform: [{ rotate: "3deg" }],
-  },
   scrollContentEmpty: {
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -297,11 +69,6 @@ const s = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 24,
   },
-  chatPlacesWrap: {
-    gap: 8,
-    marginTop: 8,
-    width: "100%",
-  },
   confirmGradientInner: {
     height: 52,
     flexDirection: "row",
@@ -310,94 +77,11 @@ const s = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 16,
   },
-  typingBubble: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    alignSelf: "flex-start",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginTop: 8,
-    borderRadius: 16,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-    borderTopLeftRadius: 0,
-  },
-  typingText: {
-    color: "#475569",
-    fontSize: 13.5,
-  },
-  errorBubble: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    alignSelf: "center",
-    marginTop: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "#FEF2F2",
-    borderWidth: 1,
-    borderColor: "#FEE2E2",
-  },
-  errorText: {
-    flex: 1,
-    color: "#EF4444",
-    fontSize: 12,
-    marginLeft: 4,
-  },
-  inputBar: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    backgroundColor: "transparent",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 28,
-    backgroundColor: "#F1F5F9",
-  },
-  textInput: {
-    flex: 1,
-    minHeight: 38,
-    maxHeight: 120,
-    paddingHorizontal: 4,
-    paddingVertical: 6,
-    fontSize: 15,
-    color: "#1E293B",
-  },
-  inputIconBtn: {
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 16,
-    marginBottom: 2,
-  },
-  sendBtnBase: {
-    width: 36,
-    height: 36,
-    borderRadius: 9999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sendBtnActive: {
-    backgroundColor: "#3478F6",
-  },
-  sendBtnInactive: {
-    backgroundColor: "#F8FAFC",
-  },
 });
 
 export function AIPlanner() {
   const { t } = useTranslation();
   const [inputText, setInputText] = useState("");
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const insets = useSafeAreaInsets();
@@ -421,7 +105,7 @@ export function AIPlanner() {
       showSub.remove();
       hideSub.remove();
     };
-  }, [insets.bottom]);
+  }, [insets.bottom, paddingAnim]);
 
   const animatedInputBarStyle = useAnimatedStyle(() => {
     return {
@@ -461,27 +145,9 @@ export function AIPlanner() {
     });
   }, []);
 
-  useEffect(() => {
-    const showEvent =
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent =
-      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const showSub = Keyboard.addListener(showEvent, () =>
-      setKeyboardVisible(true),
-    );
-    const hideSub = Keyboard.addListener(hideEvent, () =>
-      setKeyboardVisible(false),
-    );
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
   const {
     messages,
     isLoading: isPlannerLoading,
-    isPreviewLoading,
     isConfirming,
     error: plannerError,
     sendMessage,
@@ -499,6 +165,17 @@ export function AIPlanner() {
     sendMessage: sendChatMessage,
     clearConversation: clearChatConversation,
   } = useGroqChat();
+  const {
+    status: voiceStatus,
+    transcript: voiceTranscript,
+    transcriptVersion,
+    error: voiceError,
+    isSpeaking,
+    startRecording,
+    speakText,
+    stopSpeaking,
+  } = useNhiVoice();
+  const lastVoiceTranscriptVersionRef = useRef(0);
 
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [chatError, setChatError] = useState(null);
@@ -524,6 +201,39 @@ export function AIPlanner() {
   }, [isLoading]);
 
   const allMessages = messages;
+  const suggestionGroups = useMemo(() => {
+    const hour = new Date().getHours();
+    const timeOfDay =
+      hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+    return buildNhiSuggestionGroups({
+      hasSavedPlaces: false,
+      timeOfDay,
+    });
+  }, []);
+
+  const getVoiceStatusText = () => {
+    if (voiceError === "VOICE_PERMISSION_DENIED") return t("aiPlanner.voicePermissionDenied");
+    if (voiceError === "VOICE_EMPTY_RECORDING") return t("aiPlanner.voiceEmptyRecording");
+    if (voiceStatus === "listening") return t("aiPlanner.voiceListening");
+    if (voiceStatus === "transcribing") return t("aiPlanner.voiceTranscribing");
+    if (voiceStatus === "speaking") return t("aiPlanner.voiceSpeaking");
+    if (voiceStatus === "error") return t("aiPlanner.voiceError");
+    return "";
+  };
+
+  const getVoiceWaveLabel = () => {
+    if (voiceStatus === "listening") return t("aiPlanner.voiceWave.listening");
+    if (voiceStatus === "transcribing") return t("aiPlanner.voiceWave.transcribing");
+    if (voiceStatus === "speaking") return t("aiPlanner.voiceWave.speaking");
+    if (isLoading) return t("aiPlanner.voiceWave.thinking");
+    return t("aiPlanner.voiceWave.idle");
+  };
+
+  const getVoiceWaveSublabel = () => {
+    if (voiceStatus === "listening") return t("aiPlanner.voiceWave.listeningHint");
+    if (voiceStatus === "speaking") return t("aiPlanner.voiceWave.speakingHint");
+    return t("aiPlanner.voiceWave.idleHint");
+  };
 
   const getLoadingMessage = () => {
     if (isConfirming) return t('aiPlanner.creatingTrip');
@@ -549,9 +259,9 @@ export function AIPlanner() {
       if (!message || isLoading) return;
       setInputText("");
 
-      const intent = detectIntent(message);
+      const intent = detectNhiIntent(message);
 
-      if (intent === "itinerary") {
+      if (intent === NHI_INTENT_TYPES.ITINERARY) {
         await sendMessage(message);
       } else {
         setIsChatLoading(true);
@@ -567,7 +277,7 @@ export function AIPlanner() {
 
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
     },
-    [inputText, isLoading, sendMessage, sendChatMessage],
+    [inputText, isLoading, sendMessage, sendChatMessage, t],
   );
 
   const handleConfirmSelection = useCallback(async () => {
@@ -595,6 +305,10 @@ export function AIPlanner() {
   const hasMessages = allMessages.length > 0;
   const canSend = inputText.trim().length > 0 && !isLoading;
   const hasPlannerHistory = hasMessages || !!draftPlan;
+  const isVoiceActive =
+    voiceStatus === "listening" ||
+    voiceStatus === "transcribing" ||
+    voiceStatus === "speaking";
 
   const handleClearPlannerHistory = useCallback(() => {
     if (!hasPlannerHistory || isLoading) return;
@@ -617,7 +331,29 @@ export function AIPlanner() {
       },
       onCancel: () => {},
     });
-  }, [hasPlannerHistory, isLoading, reset, clearChatConversation, showAlert]);
+  }, [hasPlannerHistory, isLoading, reset, clearChatConversation, showAlert, t]);
+
+  const handleVoicePress = useCallback(async () => {
+    if (isLoading) return;
+    try {
+      if (voiceStatus === "listening") {
+        return;
+      }
+      await startRecording();
+    } catch (err) {
+      setChatError(err?.message || t("aiPlanner.voiceError"));
+    }
+  }, [isLoading, startRecording, voiceStatus, t]);
+
+  useEffect(() => {
+    if (!transcriptVersion) return;
+    if (lastVoiceTranscriptVersionRef.current === transcriptVersion) return;
+    const text = String(voiceTranscript || "").trim();
+    if (!text) return;
+
+    lastVoiceTranscriptVersionRef.current = transcriptVersion;
+    void handleSend(text);
+  }, [handleSend, transcriptVersion, voiceTranscript]);
 
   return (
     <KeyboardAvoidingView
@@ -626,22 +362,28 @@ export function AIPlanner() {
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       <View
-        style={[s.header, { paddingTop: Math.max(insets.top, 8) }]}
+        className="flex-row items-center justify-between border-b border-slate-100 bg-white px-5 pb-3"
+        style={{ paddingTop: Math.max(insets.top, 8), boxShadow: "0 1px 10px rgba(15, 23, 42, 0.04)" }}
       >
-        <View style={s.headerLeft}>
-          <View style={s.headerIconWrap}>
+        <View className="flex-row items-center gap-3">
+          <View
+            className="h-10 w-10 items-center justify-center rounded-full border border-sky-100 bg-sky-50"
+            style={{ boxShadow: "0 6px 18px rgba(14, 165, 233, 0.12)" }}
+          >
             <MaterialIconsRounded name="assistant" size={22} color="#3478F6" />
           </View>
           <View>
             <Text
-              style={[s.headerTitle, { fontFamily: TOKENS.font.semibold }]}
+              className="text-[15.5px] leading-5 text-slate-800"
+              style={{ fontFamily: TOKENS.font.semibold }}
             >
               {t('aiPlanner.travelAssistant')}
             </Text>
-            <View style={s.statusRow}>
-              <View style={s.statusDot} />
+            <View className="mt-1 flex-row items-center gap-1">
+              <View className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               <Text
-                style={[s.statusText, { fontFamily: TOKENS.font.medium }]}
+                className="text-[10px] text-slate-400"
+                style={{ fontFamily: TOKENS.font.medium }}
               >
                 {t('aiPlanner.readyToHelp')}
               </Text>
@@ -653,7 +395,7 @@ export function AIPlanner() {
           <Pressable
             onPress={handleClearPlannerHistory}
             disabled={isLoading}
-            style={[s.deleteBtnBase, isLoading && s.deleteBtnDisabled]}
+            className={`h-9 w-9 items-center justify-center rounded-full ${isLoading ? "opacity-40" : "bg-slate-50"}`}
           >
             <MaterialIconsRounded name="delete-sweep" size={22} color="#64748B" />
           </Pressable>
@@ -673,88 +415,142 @@ export function AIPlanner() {
         }
       >
         {!hasMessages ? (
-          <View style={s.emptyContainer}>
-            <LinearGradient
-              colors={["#EFF6FF", "#DBEAFE"]}
-              style={s.gradientIconWrap}
+          <View className="items-center px-4 py-8">
+            <Pressable
+              onPress={handleVoicePress}
+              disabled={isLoading}
+              className="mb-6"
             >
-              <MaterialIconsRounded name="auto-awesome" size={28} color="#3478F6" />
-            </LinearGradient>
+              <VoiceWaveIndicator
+                active={isVoiceActive || isLoading}
+                label={getVoiceWaveLabel()}
+                sublabel={getVoiceWaveSublabel()}
+                size={236}
+              />
+            </Pressable>
             <Text
-              style={[s.emptyTitle, { fontFamily: TOKENS.font.heading }]}
+              className="text-center text-2xl leading-8 text-slate-950"
+              style={{ fontFamily: TOKENS.font.heading }}
             >
               {t('aiPlanner.planTravel')}
             </Text>
             <Text
-              style={[s.emptySubtitle, { fontFamily: TOKENS.font.body }]}
+              className="mb-8 mt-2 max-w-[300px] text-center text-[13.5px] leading-5 text-slate-500"
+              style={{ fontFamily: TOKENS.font.body }}
             >
               {t('aiPlanner.intro')}
             </Text>
 
-            <View style={s.suggestionsWrap}>
-              {QUICK_SUGGESTION_KEYS.map((item) => {
-                const suggestionText = t(item.key);
+            <View className="w-full gap-4">
+              {suggestionGroups.map((group, groupIndex) => (
+                <View key={group.id} className="gap-2">
+                  <Text
+                    className="px-1 text-[11px] uppercase tracking-[0.6px] text-slate-500"
+                    style={{ fontFamily: TOKENS.font.semibold }}
+                  >
+                    {t(group.titleKey)}
+                  </Text>
+                  {group.items.map((item, itemIndex) => {
+                    const suggestionText = t(item.textKey);
+                    const promptText = t(item.promptKey);
+                    const color = SUGGESTION_COLORS[(groupIndex + itemIndex) % SUGGESTION_COLORS.length];
                 return (
                   <Pressable
-                    key={item.key}
-                    onPress={() => handleSend(suggestionText)}
-                    style={s.suggestionBtn}
+                    key={item.id}
+                    onPress={() => handleSend(promptText)}
+                    className="flex-row items-center gap-3 rounded-[18px] border border-slate-100 bg-white px-4 py-4"
+                    style={{ boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)" }}
                   >
                     <View
-                      style={[s.suggestionIconWrap, { backgroundColor: item.color + "15" }]}
+                      className="h-9 w-9 items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: color + "16" }}
                     >
-                      <MaterialIconsRounded name={item.icon} size={16} color={item.color} />
+                      <MaterialIconsRounded name={item.icon} size={16} color={color} />
                     </View>
                     <Text
-                      style={[s.suggestionText, { fontFamily: TOKENS.font.medium }]}
+                      className="flex-1 text-[13.5px] leading-5 text-slate-700"
+                      style={{ fontFamily: TOKENS.font.medium }}
                     >
                       {suggestionText}
                     </Text>
                     <MaterialIconsRounded name="chevron-right" size={16} color="#CBD5E1" />
                   </Pressable>
                 );
-              })}
+                  })}
+                </View>
+              ))}
             </View>
           </View>
         ) : (
-          <View style={s.messagesWrap}>
+          <View className="gap-4">
+            {isVoiceActive ? (
+              <View className="items-center justify-center py-4">
+                <VoiceWaveIndicator
+                  active
+                  label={getVoiceWaveLabel()}
+                  sublabel={getVoiceWaveSublabel()}
+                  size={188}
+                  compact
+                />
+                <Text
+                  className="mt-3 overflow-hidden rounded-full bg-sky-100 px-4 py-2 text-xs text-sky-900"
+                  style={{ fontFamily: TOKENS.font.medium }}
+                >
+                  {getVoiceStatusText()}
+                </Text>
+              </View>
+            ) : null}
             {allMessages.map((message, index) => {
               const isUser = message.role === "user";
               return (
                 <View
                   key={message.id ?? index}
-                  style={[s.messageRow, isUser ? s.messageRowUser : s.messageRowBot]}
+                  className={`gap-1.5 ${isUser ? "items-end" : "items-start"}`}
                 >
                   {!isUser ? (
-                    <View style={s.botLabelRow}>
-                      <View style={s.botLabelDot} />
+                    <View className="ml-1 flex-row items-center gap-1.5">
+                      <View className="h-1.5 w-1.5 rounded-full bg-cyan-500" />
                       <Text
-                        style={[s.botLabelText, { fontFamily: TOKENS.font.semibold }]}
+                        className="text-[10px] uppercase tracking-[0.8px] text-zinc-500"
+                        style={{ fontFamily: TOKENS.font.semibold }}
                       >
                         {t('aiPlanner.botLabel')}
                       </Text>
+                      <Pressable
+                        onPress={() =>
+                          isSpeaking
+                            ? stopSpeaking()
+                            : speakText(message.text ?? message.content)
+                        }
+                        hitSlop={8}
+                      >
+                        <MaterialIconsRounded
+                          name={isSpeaking ? "stop-circle" : "volume-up"}
+                          size={14}
+                          color="#64748B"
+                        />
+                      </Pressable>
                     </View>
                   ) : null}
 
                   <View
-                    style={[
-                      s.bubbleBase,
-                      isUser ? s.bubbleUser : s.bubbleBot,
-                    ]}
+                    className={`max-w-[85%] px-4 py-3.5 ${
+                      isUser
+                        ? "rounded-[20px] rounded-tr-sm bg-slate-900"
+                        : "rounded-[20px] rounded-tl-sm border border-slate-200 bg-white"
+                    }`}
+                    style={!isUser ? { boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)" } : null}
                   >
                     <Text
-                      style={[
-                        s.bubbleTextBase,
-                        isUser ? s.bubbleTextUser : s.bubbleTextBot,
-                        { fontFamily: isUser ? TOKENS.font.medium : TOKENS.font.body },
-                      ]}
+                      className={`text-[14.5px] leading-[22px] ${isUser ? "text-white" : "text-zinc-800"}`}
+                      style={{ fontFamily: isUser ? TOKENS.font.medium : TOKENS.font.body }}
                     >
                       {message.text ?? message.content}
                     </Text>
                   </View>
 
                   {!isUser && message.source === "chat" && (message.suggestedPlaces?.length ?? 0) > 0 ? (
-                    <View style={s.chatPlacesWrap}>
+                    <View className="mt-2 w-full gap-2">
                       {message.suggestedPlaces.map((place, i) => (
                         <PlacePreviewCard
                           key={place.id || `chat-place-${i}`}
@@ -766,6 +562,25 @@ export function AIPlanner() {
                       ))}
                     </View>
                   ) : null}
+
+                  {!isUser && (message.quickReplies?.length ?? 0) > 0 ? (
+                    <View className="mt-2 max-w-[92%] flex-row flex-wrap gap-2">
+                      {message.quickReplies.slice(0, 4).map((reply) => (
+                        <Pressable
+                          key={reply}
+                          onPress={() => handleSend(reply)}
+                          className="rounded-full border border-sky-200 bg-sky-50 px-3 py-2"
+                        >
+                          <Text
+                            className="text-xs text-sky-800"
+                            style={{ fontFamily: TOKENS.font.semibold }}
+                          >
+                            {reply}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  ) : null}
                 </View>
               );
             })}
@@ -773,38 +588,45 @@ export function AIPlanner() {
         )}
 
         {(draftPlan?.suggestedPlaces?.length ?? 0) > 0 ? (
-          <View style={s.draftCard}>
-            <View style={s.draftHeader}>
-              <View style={s.draftHeaderTextWrap}>
+          <View
+            className="mt-4 gap-4 rounded-3xl border border-slate-100 bg-white p-4"
+            style={{ boxShadow: "0 12px 34px rgba(15, 23, 42, 0.06)" }}
+          >
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1">
                 <Text
-                  style={[s.draftTitle, { fontFamily: TOKENS.font.semibold }]}
+                  className="text-[14.5px] text-slate-950"
+                  style={{ fontFamily: TOKENS.font.semibold }}
                 >
                   {t('aiPlanner.selectPlaces')}
                 </Text>
                 <Text
-                  style={[s.draftSubtitle, { fontFamily: TOKENS.font.body }]}
+                  className="mt-0.5 text-xs text-slate-400"
+                  style={{ fontFamily: TOKENS.font.body }}
                 >
                   {t('aiPlanner.selectingCount', { selected: selectedPlaceIds.length, total: draftPlan.suggestedPlaces.length })}
                 </Text>
               </View>
 
-              <View style={s.draftActions}>
+              <View className="flex-row items-center gap-1.5">
                 <Pressable
                   onPress={selectAllPlaces}
-                  style={s.draftActionBtn}
+                  className="rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5"
                 >
                   <Text
-                    style={[s.draftSelectAllText, { fontFamily: TOKENS.font.semibold }]}
+                    className="text-[11px] text-sky-700"
+                    style={{ fontFamily: TOKENS.font.semibold }}
                   >
                     {t('aiPlanner.selectAll')}
                   </Text>
                 </Pressable>
                 <Pressable
                   onPress={clearSelectedPlaces}
-                  style={s.draftActionBtn}
+                  className="rounded-full border border-slate-100 bg-slate-50 px-3 py-1.5"
                 >
                   <Text
-                    style={[s.draftDeselectText, { fontFamily: TOKENS.font.semibold }]}
+                    className="text-[11px] text-slate-500"
+                    style={{ fontFamily: TOKENS.font.semibold }}
                   >
                     {t('aiPlanner.deselect')}
                   </Text>
@@ -812,7 +634,7 @@ export function AIPlanner() {
               </View>
             </View>
 
-            <View style={s.draftPlacesWrap}>
+            <View className="gap-3">
               {draftPlan.suggestedPlaces.map((place, index) => {
                 const placeId = Number(place?.id);
                 const isSelected = selectedPlaceIds.includes(placeId);
@@ -878,10 +700,14 @@ export function AIPlanner() {
         ) : null}
 
         {isLoading ? (
-          <View style={s.typingBubble}>
+          <View
+            className="mt-2 flex-row items-center self-start rounded-2xl rounded-tl-sm border border-slate-100 bg-white px-4 py-3"
+            style={{ boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)" }}
+          >
             <ActivityIndicator size="small" color={ACCENT} />
             <Text
-              style={[s.typingText, { fontFamily: TOKENS.font.medium }]}
+              className="ml-2.5 text-[13.5px] text-slate-600"
+              style={{ fontFamily: TOKENS.font.medium }}
             >
               {getLoadingMessage()}
             </Text>
@@ -889,12 +715,29 @@ export function AIPlanner() {
         ) : null}
 
         {error ? (
-          <View style={s.errorBubble}>
+          <View className="mt-2 flex-row items-center self-center rounded-xl border border-red-100 bg-red-50 px-4 py-2.5">
             <MaterialIconsRounded name="error-outline" size={14} color="#EF4444" />
             <Text
-              style={[s.errorText, { fontFamily: TOKENS.font.medium }]}
+              className="ml-2 flex-1 text-xs text-red-500"
+              style={{ fontFamily: TOKENS.font.medium }}
             >
               {error}
+            </Text>
+          </View>
+        ) : null}
+
+        {!isVoiceActive && getVoiceStatusText() ? (
+          <View className="mt-2 flex-row items-center self-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2">
+            <MaterialIconsRounded
+              name={voiceStatus === "listening" ? "mic" : voiceStatus === "speaking" ? "graphic-eq" : "mic-off"}
+              size={14}
+              color="#047857"
+            />
+            <Text
+              className="ml-2 text-xs text-emerald-700"
+              style={{ fontFamily: TOKENS.font.medium }}
+            >
+              {getVoiceStatusText()}
             </Text>
           </View>
         ) : null}
@@ -904,9 +747,12 @@ export function AIPlanner() {
         style={[
           animatedInputBarStyle,
         ]}
-        className="bg-transparent px-4 w-full"
+        className="w-full bg-transparent px-4"
       >
-        <View className="flex-row items-end gap-2.5 px-4 py-1.5 rounded-full bg-slate-100 shadow-sm mb-2">
+        <View
+          className="mb-2 flex-row items-end gap-2.5 rounded-[30px] border border-slate-200 bg-white px-3 py-2"
+          style={{ boxShadow: "0 10px 30px rgba(15, 23, 42, 0.10)" }}
+        >
           <TextInput
             ref={inputRef}
             placeholder={t('aiPlanner.inputPlaceholder')}
@@ -915,15 +761,29 @@ export function AIPlanner() {
             onChangeText={setInputText}
             multiline
             maxLength={500}
-            className="flex-1 min-h-[38px] max-h-[120px] px-1 py-1.5 text-[15px] text-slate-800"
+            className="min-h-[38px] max-h-[120px] flex-1 px-2 py-1.5 text-[15px] text-slate-800"
             style={{ fontFamily: TOKENS.font.body, textAlignVertical: "center" }}
           />
 
           <Pressable
+            onPress={handleVoicePress}
+            disabled={isLoading}
+            className={`h-9 w-9 items-center justify-center rounded-full ${
+              voiceStatus === "listening" ? "bg-cyan-500" : "bg-slate-100"
+            }`}
+          >
+            <MaterialIconsRounded
+              name={voiceStatus === "listening" ? "graphic-eq" : voiceStatus === "speaking" ? "graphic-eq" : "mic"}
+              size={18}
+              color={voiceStatus === "listening" ? "#FFFFFF" : voiceStatus === "speaking" ? "#10B981" : "#64748B"}
+            />
+          </Pressable>
+
+          <Pressable
             onPress={() => handleSend()}
             disabled={!canSend}
-            className={`w-9 h-9 items-center justify-center rounded-full ${
-              canSend ? "bg-blue-500" : "bg-slate-200"
+            className={`h-9 w-9 items-center justify-center rounded-full ${
+              canSend ? "bg-slate-950" : "bg-slate-100"
             }`}
           >
             {isLoading ? (

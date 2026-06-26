@@ -5,6 +5,10 @@ import {
 } from "../../services/ai/aiStreaming.service.js";
 import { chatWithGroq } from "../../services/ai/groq.service.js";
 import {
+  synthesizeSpeechWithGroq,
+  transcribeWithGroq,
+} from "../../services/ai/groqSpeech.service.js";
+import {
   buildVoiceIntroPrompt,
   buildChatSystemPrompt,
 } from "../../lib/promptBuilder.js";
@@ -135,6 +139,69 @@ export const handleChat = async (req, res) => {
       data: null,
       message: "Trợ lý AI đang gặp sự cố, vui lòng thử lại sau.",
       errorCode: "AI_ERROR",
+    });
+  }
+};
+
+/**
+ * POST /api/ai/voice/transcribe
+ * Transcribe user voice input with Groq Whisper.
+ */
+export const handleVoiceTranscribe = async (req, res) => {
+  try {
+    const result = await transcribeWithGroq({
+      file: req.file,
+      language: req.body?.language || "vi",
+      prompt: req.body?.prompt,
+    });
+
+    return res.json({
+      success: true,
+      data: result,
+      message: "Transcribed",
+    });
+  } catch (err) {
+    const status = err?.status || err?.statusCode || 500;
+    console.error("[VoiceTranscribe]", status, (err?.message || "").split("\n")[0]);
+    return res.status(status).json({
+      success: false,
+      data: null,
+      message:
+        status >= 500
+          ? "Không thể xử lý giọng nói lúc này."
+          : err?.message || "Dữ liệu âm thanh không hợp lệ.",
+      errorCode: err?.errorCode || "VOICE_TRANSCRIBE_ERROR",
+    });
+  }
+};
+
+/**
+ * POST /api/ai/voice/speech
+ * Generate assistant audio with Groq Orpheus TTS.
+ */
+export const handleVoiceSpeech = async (req, res) => {
+  try {
+    const result = await synthesizeSpeechWithGroq({
+      input: req.body?.input,
+      voice: req.body?.voice,
+    });
+
+    res.setHeader("Content-Type", result.contentType);
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Groq-TTS-Model", result.model);
+    res.setHeader("X-Groq-TTS-Voice", result.voice);
+    return res.send(result.buffer);
+  } catch (err) {
+    const status = err?.status || err?.statusCode || 500;
+    console.error("[VoiceSpeech]", status, (err?.message || "").split("\n")[0]);
+    return res.status(status).json({
+      success: false,
+      data: null,
+      message:
+        status >= 500
+          ? "Không thể tạo giọng nói lúc này."
+          : err?.message || "Nội dung giọng nói không hợp lệ.",
+      errorCode: err?.errorCode || "VOICE_SPEECH_ERROR",
     });
   }
 };

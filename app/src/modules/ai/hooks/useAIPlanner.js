@@ -77,6 +77,7 @@ export function useAIPlanner() {
   const lastPreferences = useAIPlannerStore((s) => s.lastPreferences);
 
   const appendMessage = useAIPlannerStore((s) => s.appendMessage);
+  const replaceDraftPreviewMessage = useAIPlannerStore((s) => s.replaceDraftPreviewMessage);
   const setDraftPlan = useAIPlannerStore((s) => s.setDraftPlan);
   const setSelectedPlaceIds = useAIPlannerStore((s) => s.setSelectedPlaceIds);
   const setLastPreferences = useAIPlannerStore((s) => s.setLastPreferences);
@@ -109,8 +110,9 @@ export function useAIPlanner() {
           createdAt: new Date(),
           suggestedPlaces,
           selectedPlaceIds: normalizedSelectedIds,
+          isDraftPreview: true,
         };
-        appendMessage(assistantMsg);
+        replaceDraftPreviewMessage(assistantMsg);
         return;
       }
 

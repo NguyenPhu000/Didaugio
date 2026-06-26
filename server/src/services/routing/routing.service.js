@@ -444,11 +444,11 @@ class RoutingService {
 
     const url = this._buildOsrmRouteUrl(profile, coords);
     const params = new URLSearchParams({
-      alternatives: String(options.alternatives ?? 3),
-      steps: String(options.steps ?? true),
+      alternatives: String(options.alternatives ?? 1),
+      steps: String(options.steps ?? false),
       overview: options.overview || "full",
       geometries: options.geometries || "polyline6",
-      annotations: "duration,distance",
+      annotations: options.annotations || "duration,distance",
     });
 
     if (options.exclude) {
@@ -491,11 +491,81 @@ class RoutingService {
     if (!Array.isArray(points) || points.length === 0) return [];
 
     const profile = this._mapModeToOsrm(mode);
-    const snapped = await Promise.all(
-      points.map((point) => this._snapPointToRoad(point, profile)),
-    );
 
-    return snapped;
+    // Check cache first for each point
+    const results = new Array(points.length);
+    const uncachedIndices = [];
+    const uncachedPoints = [];
+
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const cacheKey = `snap:${Number(p.lat).toFixed(6)},${Number(p.lng).toFixed(6)}`;
+      const cached = this.cache.get(cacheKey);
+      if (cached) {
+        results[i] = cached;
+      } else {
+        uncachedIndices.push(i);
+        uncachedPoints.push(p);
+      }
+    }
+
+    // Batch snap uncached points in a single OSRM request
+    if (uncachedPoints.length > 0) {
+      try {
+        const batchSnapped = await this._snapPointsBatch(uncachedPoints, profile);
+        for (let j = 0; j < uncachedIndices.length; j++) {
+          const idx = uncachedIndices[j];
+          const snapped = batchSnapped[j];
+          results[idx] = snapped;
+          // Cache snap result (TTL 10 min)
+          const cacheKey = `snap:${Number(points[idx].lat).toFixed(6)},${Number(points[idx].lng).toFixed(6)}`;
+          this.cache.set(cacheKey, snapped, 600);
+        }
+      } catch (err) {
+        // Fallback to individual snapping on batch failure
+        logger.warn("[snap-to-road] batch failed, falling back to individual", { error: err.message });
+        const individualResults = await Promise.all(
+          uncachedPoints.map((p) => this._snapPointToRoad(p, profile))
+        );
+        for (let j = 0; j < uncachedIndices.length; j++) {
+          results[uncachedIndices[j]] = individualResults[j];
+        }
+      }
+    }
+
+    return results;
+  }
+
+  async _snapPointsBatch(points, profile) {
+    const start = Date.now();
+    const coords = points.map((p) => `${p.lng},${p.lat}`).join(";");
+    const url = `${OSRM_URL.replace(/\/+$/, "")}/nearest/v1/${profile}/${coords}`;
+    const params = new URLSearchParams({ number: "1" });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+    try {
+      this.metrics.osrmNearestCalls += 1;
+      const res = await fetch(`${url}?${params.toString()}`, { signal: controller.signal });
+      if (!res.ok) throw new Error(`OSRM Nearest HTTP ${res.status}`);
+
+      const data = await res.json();
+      if (data?.code !== "Ok") throw new Error(`OSRM Nearest ${data.code}`);
+
+      const waypoints = data.waypoints || [];
+      return points.map((point, i) => {
+        const wp = waypoints[i];
+        if (!wp?.location) return point;
+        const snappedLng = Number(wp.location[0]);
+        const snappedLat = Number(wp.location[1]);
+        if (!Number.isFinite(snappedLat) || !Number.isFinite(snappedLng)) return point;
+        return { ...point, lat: snappedLat, lng: snappedLng };
+      });
+    } finally {
+      clearTimeout(timeoutId);
+      this._recordLatency("osrmNearestLatencyMs", Date.now() - start);
+    }
   }
 
   async _snapPointToRoad(point = {}, profile = "driving") {
@@ -506,6 +576,11 @@ class RoutingService {
       logger.warn("[snap-to-road] non-finite coordinates", { point });
       return point;
     }
+
+    // Check cache for individual snap
+    const snapCacheKey = `snap:${lat.toFixed(6)},${lng.toFixed(6)}`;
+    const cached = this.cache.get(snapCacheKey);
+    if (cached) return cached;
 
     const url = this._buildOsrmNearestUrl(profile, { lat, lng });
     const params = new URLSearchParams({ number: "1" });
@@ -564,11 +639,10 @@ class RoutingService {
         });
       }
 
-      return {
-        ...point,
-        lat: snappedLat,
-        lng: snappedLng,
-      };
+      const snappedPoint = { ...point, lat: snappedLat, lng: snappedLng };
+      // Cache snap result (10 min TTL)
+      this.cache.set(snapCacheKey, snappedPoint, 600);
+      return snappedPoint;
     } catch (err) {
       logger.warn("[snap-to-road] request failed", {
         error: err?.message,
@@ -900,10 +974,16 @@ class RoutingService {
   }
 
   _buildCacheKey(prefix, points, mode, options) {
-    const rounded = points
+    const coords = points
       .map((p) => `${Number(p.lat).toFixed(6)},${Number(p.lng).toFixed(6)}`)
       .join(";");
-    return `${prefix}:${mode}:${rounded}:${JSON.stringify(options || {})}`;
+    // Only include relevant options in cache key, skip empty/default values
+    const optParts = [];
+    if (options.exclude) optParts.push(`ex=${options.exclude}`);
+    if (options.alternatives != null && options.alternatives !== 1) optParts.push(`alt=${options.alternatives}`);
+    if (options.overview && options.overview !== "full") optParts.push(`ov=${options.overview}`);
+    const optStr = optParts.length > 0 ? `:${optParts.join(",")}` : "";
+    return `${prefix}:${mode}:${coords}${optStr}`;
   }
 
   _haversineMeters(lat1, lon1, lat2, lon2) {
