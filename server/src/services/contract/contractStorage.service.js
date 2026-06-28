@@ -395,3 +395,5 @@ export const getContractStatus = async (businessId) => {
     currentVersion: CURRENT_CONTRACT_VERSION,
   };
 };
+
+export { generateContractPdf };

@@ -49,8 +49,8 @@ export const getEarningsSummary = async (businessId) => {
     .filter((p) => p.status === "pending" || p.status === "approved")
     .reduce((sum, p) => sum + p.amount, 0);
 
-  // Wallet balance is already decremented on transfer, so only subtract pending payouts
-  const availableBalance = walletBalance.balance - totalPending;
+  // Pending/approved payouts are frozen at request time, so balance is already the spendable amount.
+  const availableBalance = walletBalance.balance;
 
   // Monthly breakdown (last 6 months)
   const sixMonthsAgo = new Date();
@@ -174,6 +174,14 @@ export const requestPayout = async (businessId, data) => {
       },
     });
 
+    await tx.partnerWallet.update({
+      where: { businessId },
+      data: {
+        balance: { decrement: amount },
+        frozenBalance: { increment: amount },
+      },
+    });
+
     return payout;
   });
 };
@@ -207,6 +215,51 @@ export const getPayoutHistory = async (businessId, query = {}) => {
 };
 
 // ─── Admin Operations ───────────────────────────────────────────
+
+/**
+ * Business cancels a pending payout request and releases frozen funds.
+ */
+export const cancelPayout = async (businessId, payoutId) => {
+  const payout = await prisma.payout.findUnique({
+    where: { id: payoutId },
+  });
+
+  if (!payout || payout.businessId !== businessId) {
+    throw new ServiceError("Yêu cầu rút tiền không tồn tại", 404, "NOT_FOUND");
+  }
+
+  if (payout.status !== "pending") {
+    throw new ServiceError("Chỉ có thể hủy yêu cầu đang chờ xử lý", 400, "INVALID_STATUS");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const [lockedPayout] = await tx.$queryRaw`
+      SELECT id, status, amount, business_id AS "businessId"
+      FROM payouts
+      WHERE id = ${payoutId}
+      FOR UPDATE
+    `;
+
+    if (!lockedPayout || lockedPayout.status !== "pending") {
+      throw new ServiceError("Chỉ có thể hủy yêu cầu đang chờ xử lý", 400, "INVALID_STATUS");
+    }
+
+    const updated = await tx.payout.update({
+      where: { id: payoutId },
+      data: { status: "cancelled" },
+    });
+
+    await tx.partnerWallet.update({
+      where: { businessId },
+      data: {
+        balance: { increment: Number(lockedPayout.amount) },
+        frozenBalance: { decrement: Number(lockedPayout.amount) },
+      },
+    });
+
+    return updated;
+  });
+};
 
 /**
  * Admin: get all payout requests
@@ -299,6 +352,21 @@ export const markTransferred = async (payoutId, reviewerId) => {
   }
 
   return prisma.$transaction(async (tx) => {
+    const [lockedPayout] = await tx.$queryRaw`
+      SELECT id, status, amount, business_id AS "businessId"
+      FROM payouts
+      WHERE id = ${payoutId}
+      FOR UPDATE
+    `;
+
+    if (!lockedPayout || lockedPayout.status !== "approved") {
+      throw new ServiceError(
+        "Chỉ có thể xác nhận chuyển khoản cho yêu cầu đã duyệt",
+        400,
+        "INVALID_STATUS",
+      );
+    }
+
     const updated = await tx.payout.update({
       where: { id: payoutId },
       data: {
@@ -307,11 +375,11 @@ export const markTransferred = async (payoutId, reviewerId) => {
       },
     });
 
-    // Decrement the business wallet balance
+    // Release the frozen payout amount after money is actually transferred.
     await tx.partnerWallet.update({
-      where: { businessId: payout.businessId },
+      where: { businessId: lockedPayout.businessId },
       data: {
-        balance: { decrement: payout.amount },
+        frozenBalance: { decrement: Number(lockedPayout.amount) },
       },
     });
 
@@ -321,7 +389,7 @@ export const markTransferred = async (payoutId, reviewerId) => {
       await tx.platformWallet.update({
         where: { id: platformWallet.id },
         data: {
-          totalPaidOut: { increment: payout.amount },
+          totalPaidOut: { increment: Number(lockedPayout.amount) },
         },
       });
     }
@@ -359,14 +427,41 @@ export const rejectPayout = async (payoutId, reviewerId, rejectReason) => {
     );
   }
 
-  return prisma.payout.update({
-    where: { id: payoutId },
-    data: {
-      status: "rejected",
-      reviewedAt: new Date(),
-      reviewedBy: reviewerId,
-      rejectReason: rejectReason || null,
-    },
+  return prisma.$transaction(async (tx) => {
+    const [lockedPayout] = await tx.$queryRaw`
+      SELECT id, status, amount, business_id AS "businessId"
+      FROM payouts
+      WHERE id = ${payoutId}
+      FOR UPDATE
+    `;
+
+    if (!lockedPayout || lockedPayout.status !== "pending") {
+      throw new ServiceError(
+        "Chỉ có thể từ chối yêu cầu đang chờ xử lý",
+        400,
+        "INVALID_STATUS",
+      );
+    }
+
+    const updated = await tx.payout.update({
+      where: { id: payoutId },
+      data: {
+        status: "rejected",
+        reviewedAt: new Date(),
+        reviewedBy: reviewerId,
+        rejectReason: rejectReason || null,
+      },
+    });
+
+    await tx.partnerWallet.update({
+      where: { businessId: lockedPayout.businessId },
+      data: {
+        balance: { increment: Number(lockedPayout.amount) },
+        frozenBalance: { decrement: Number(lockedPayout.amount) },
+      },
+    });
+
+    return updated;
   });
 };
 
@@ -449,6 +544,7 @@ export const getAdminPayoutStats = async () => {
 export default {
   getEarningsSummary,
   requestPayout,
+  cancelPayout,
   getPayoutHistory,
   getAllPayouts,
   approvePayout,

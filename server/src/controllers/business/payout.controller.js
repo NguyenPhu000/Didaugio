@@ -76,6 +76,33 @@ export const getPayouts = async (req, res, next) => {
 // ─── Admin Endpoints ───────────────────────────────────────────
 
 /**
+ * POST /api/business/payouts/:id/cancel
+ * Cancel a pending payout request
+ */
+export const cancelPayout = async (req, res, next) => {
+  try {
+    const businessId = req.business?.id || req.activeBusiness?.id;
+    if (!businessId) {
+      return res.status(403).json({
+        success: false,
+        data: null,
+        message: "Không tìm thấy doanh nghiệp",
+        errorCode: "NO_BUSINESS",
+      });
+    }
+
+    const payout = await payoutService.cancelPayout(businessId, req.params.id);
+    res.json({
+      success: true,
+      data: payout,
+      message: "Yêu cầu rút tiền đã được hủy",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * GET /api/admin/payouts
  * Admin: list all payout requests
  */
@@ -165,6 +192,7 @@ export const adminGetStats = async (req, res, next) => {
 export default {
   getEarnings,
   requestPayout,
+  cancelPayout,
   getPayouts,
   adminGetAll,
   adminApprove,

@@ -36,6 +36,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getTableSerialNumber } from "@/utils/tableSerial";
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
 
@@ -447,7 +448,7 @@ const AdminAnalyticsPage = () => {
                       i === 2 ? "bg-orange-100 text-orange-700" :
                       "bg-muted text-muted-foreground"
                     )}>
-                      {i + 1}
+                      {getTableSerialNumber(stats?.places?.topViewed?.length || 0, i)}
                     </span>
                     <div>
                       <p className="font-medium">{place.name}</p>

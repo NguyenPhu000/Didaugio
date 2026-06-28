@@ -13,7 +13,7 @@ const GoogleSignUpButton = ({ onSuccess, onError, disabled }) => {
         }}
         onError={onError}
         disabled={disabled}
-        width="100%"
+        width="320"
         shape="rectangular"
         text="signup_with"
         size="large"

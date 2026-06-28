@@ -4,6 +4,7 @@
  */
 import { Router } from "express";
 import multer from "multer";
+import prisma from "../../config/prismaClient.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { verifyCsrfToken } from "../../middlewares/csrfProtection.js";
@@ -19,6 +20,44 @@ import {
   ALLOWED_UPLOAD_MIME_TYPES,
   MAX_UPLOAD_FILE_SIZE_BYTES,
 } from "../../middlewares/uploadMiddleware.js";
+
+const canDeleteDocument = async (req, res, next) => {
+  try {
+    const businessId = parseInt(req.params.businessId, 10);
+    const userId = req.user.userId;
+    const roleId = req.user.roleId;
+
+    // Admin hoặc Superadmin luôn được phép
+    if (roleId <= 4) {
+      return next();
+    }
+
+    // Kiểm tra xem user hiện tại có phải là chủ sở hữu của doanh nghiệp này không
+    const business = await prisma.business.findFirst({
+      where: { id: businessId, ownerId: userId },
+      select: { id: true },
+    });
+
+    if (business) {
+      return next();
+    }
+
+    return res.status(403).json({
+      success: false,
+      data: null,
+      message: "Bạn không có quyền xóa tài liệu của doanh nghiệp này",
+      errorCode: "FORBIDDEN_NOT_OWNER",
+    });
+  } catch (error) {
+    console.error("Check delete document permission error:", error);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      message: "Lỗi hệ thống khi kiểm tra quyền xóa tài liệu",
+      errorCode: "INTERNAL_ERROR",
+    });
+  }
+};
 
 const router = Router();
 
@@ -69,7 +108,7 @@ router.get("/:businessId/status", getStatus);
 // Delete document (admin only)
 router.delete(
   "/:businessId/:documentId",
-  hasPermission("business.approve"),
+  canDeleteDocument,
   auditLog({
     action: "DELETE_DOCUMENT",
     tableName: "sensitive_documents",

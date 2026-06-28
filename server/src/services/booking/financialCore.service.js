@@ -105,11 +105,19 @@ export async function settleCompletedLedger(tx, bookingId, businessId, businessE
  * @param {number} [commissionAmount=0]
  */
 export async function refundLedger(tx, bookingId, businessId, businessEarned, commissionAmount = 0) {
-  // Decrement business frozen balance
+  const hasBeenSettled = await tx.financialLedger.findFirst({
+    where: {
+      bookingId,
+      type: "SETTLE",
+    },
+  });
+  const debitField = hasBeenSettled ? "balance" : "frozenBalance";
+
+  // Decrement the balance bucket that currently holds the business earnings.
   await tx.partnerWallet.update({
     where: { businessId },
     data: {
-      frozenBalance: { decrement: businessEarned },
+      [debitField]: { decrement: businessEarned },
     },
   });
 

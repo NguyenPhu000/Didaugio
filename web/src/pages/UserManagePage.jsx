@@ -62,6 +62,7 @@ import {
 } from "@/components/ui";
 import { useToast } from "@/hooks/use-toast";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
+import { getTableSerialNumber } from "@/utils/tableSerial";
 import { useTranslation } from "react-i18next";
 import { toast as sonnerToast } from "sonner";
 
@@ -77,6 +78,7 @@ const UserRow = memo(({
   onChangePassword,
   onToggleStatus,
   onDelete,
+  serial,
   t,
 }) => {
   const isActive = user.status === "active" || user.isActive;
@@ -125,7 +127,7 @@ const UserRow = memo(({
         />
       </td>
       <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5 hidden sm:table-cell">
-        #{user.id}
+        {serial}
       </td>
       <td className="p-4 border-r border-black/5">
         <div className="flex items-center gap-3">
@@ -755,7 +757,7 @@ const UserManagePage = () => {
                       </button>
                     </th>
                     <th className="p-4 border-r border-black/20 w-[60px] hidden sm:table-cell">
-                      {t("users.table.id")}
+                      STT
                     </th>
                     <th className="p-4 border-r border-black/20">
                       {t("users.table.basicInfo")}
@@ -768,10 +770,16 @@ const UserManagePage = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black/5">
-                  {users.map((user) => (
+                  {users.map((user, index) => (
                     <UserRow
                       key={user.id}
                       user={user}
+                      serial={getTableSerialNumber(
+                        pagination.total || users.length,
+                        index,
+                        filters.page,
+                        filters.limit,
+                      )}
                       selected={selectedIds.has(user.id)}
                       onSelect={handleSelectOne}
                       onDetail={handleDetail}

@@ -22,6 +22,7 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import * as districtService from "@/apis/districtService";
 import * as placeService from "@/apis/placeService";
 import { ADMIN_ROUTES } from "@/constants/routes";
+import { formatTableSerial } from "@/utils/tableSerial";
 
 const getStatusMap = (t) => ({
   approved: {
@@ -43,7 +44,7 @@ const STATUS_ICON = {
   draft: AlertCircle,
 };
 
-const PlaceRow = ({ place, idx }) => {
+const PlaceRow = ({ place, serial }) => {
   const { t } = useTranslation();
   const STATUS_MAP = getStatusMap(t);
   const badge = STATUS_MAP[place.status] || STATUS_MAP.draft;
@@ -51,7 +52,7 @@ const PlaceRow = ({ place, idx }) => {
   return (
     <div className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
       <span className="font-mono text-[10px] text-gray-400 w-6 shrink-0">
-        {String(idx + 1).padStart(2, "0")}
+        {serial}
       </span>
       <div className="flex-1 min-w-0">
         <Link
@@ -206,7 +207,11 @@ const DistrictRow = ({ district, placeCount, maxCount }) => {
                     </Link>
                   </div>
                   {sorted.map((place, i) => (
-                    <PlaceRow key={place.id} place={place} idx={i} />
+                    <PlaceRow
+                      key={place.id}
+                      place={place}
+                      serial={formatTableSerial(sorted.length, i)}
+                    />
                   ))}
                 </>
               );

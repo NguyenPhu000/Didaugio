@@ -1975,13 +1975,21 @@ export const refund = async (bookingId, payload = {}, userId) => {
       lastRefundAt: refundedAt,
     };
 
-    const refundRatio = paidAmount > 0 ? refundAmount / paidAmount : 0;
+    const refundRatio =
+      refundableAmount > 0 ? refundAmount / refundableAmount : 0;
     const commissionPortionRefunded = Math.floor(
       existing.commissionAmount * refundRatio,
+    );
+    const businessPortionRefunded = Math.floor(
+      existing.businessEarned * refundRatio,
     );
     const nextCommissionAmount = Math.max(
       0,
       existing.commissionAmount - commissionPortionRefunded,
+    );
+    const nextBusinessEarned = Math.max(
+      0,
+      existing.businessEarned - businessPortionRefunded,
     );
 
     // Debit platform wallet for commission reversal
@@ -1996,6 +2004,26 @@ export const refund = async (bookingId, payload = {}, userId) => {
           },
         });
       }
+    }
+
+    if (businessPortionRefunded > 0) {
+      const debitField =
+        existing.status === BOOKING_STATUS.COMPLETED ? "balance" : "frozenBalance";
+      await tx.partnerWallet.update({
+        where: { businessId: existing.businessId },
+        data: {
+          [debitField]: { decrement: businessPortionRefunded },
+        },
+      });
+
+      await tx.financialLedger.create({
+        data: {
+          bookingId: existing.id,
+          type: "REFUND",
+          amount: businessPortionRefunded,
+          description: `Hoan tien phan doanh thu doi tac cho booking #${existing.id}`,
+        },
+      });
     }
 
     await tx.payment.update({
@@ -2018,6 +2046,7 @@ export const refund = async (bookingId, payload = {}, userId) => {
       data: {
         paymentStatus: nextPaymentStatus,
         commissionAmount: nextCommissionAmount,
+        businessEarned: nextBusinessEarned,
       },
       include: {
         ...defaultInclude,

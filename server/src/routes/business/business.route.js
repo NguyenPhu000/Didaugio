@@ -10,6 +10,8 @@ import {
   getMyPlaces,
   signContract,
   downloadContract,
+  decryptProfile,
+  sendContractOtp,
 } from "../../controllers/business/businessProfile.controller.js";
 import {
   getAll,
@@ -62,6 +64,7 @@ router.use((req, res, next) => {
 
 // ========== Profile (Business Owner) ==========
 router.get("/profile", getProfile);
+router.post("/profile/decrypt", decryptProfile);
 
 router.post(
   "/register",
@@ -96,9 +99,13 @@ router.get("/dashboard", requireActiveBusiness(), getDashboard);
 // ========== My Places (Business Owner - for service creation) ==========
 router.get("/places", requireActiveBusiness(), getMyPlaces);
 
+router.post(
+  "/profile/contract-otp",
+  sendContractOtp
+);
+
 router.put(
   "/profile/contract-sign",
-  requireActiveBusiness(),
   validateBody(signBusinessContractSchema),
   auditLog({
     action: "SIGN_CONTRACT",

@@ -41,6 +41,7 @@ import {
   BUSINESS_STATUS,
   BUSINESS_TYPE_LABELS,
 } from "@/constants/businessConstants";
+import { getTableSerialNumber } from "@/utils/tableSerial";
 
 const getBusinessStatusBadge = (status) => {
   const config = {
@@ -605,7 +606,7 @@ const KYCProgress = ({ biz }) => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-black text-white font-mono text-[10px] uppercase tracking-wider">
-                      <th className="px-3 py-3 text-left border-r border-white/20 hidden sm:table-cell">#</th>
+                      <th className="px-3 py-3 text-left border-r border-white/20 hidden sm:table-cell">STT</th>
                       <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.businessName")}</th>
                       <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.type")}</th>
                       <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.status")}</th>
@@ -620,9 +621,16 @@ const KYCProgress = ({ biz }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black/10">
-                    {(businesses || []).map((biz) => (
+                    {(businesses || []).map((biz, index) => (
                       <tr key={biz.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground hidden sm:table-cell">{biz.id}</td>
+                        <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground hidden sm:table-cell">
+                          {getTableSerialNumber(
+                            pagination.total || businesses.length,
+                            index,
+                            page,
+                            pagination.limit || businesses.length,
+                          )}
+                        </td>
                         <td className="px-3 py-2 font-semibold text-xs uppercase max-w-[200px] truncate" title={biz.businessName}>
                           {biz.businessName}
                           <div className="lg:hidden text-[10px] text-muted-foreground font-mono font-normal mt-1 truncate max-w-[160px]" title={biz.owner?.email}>

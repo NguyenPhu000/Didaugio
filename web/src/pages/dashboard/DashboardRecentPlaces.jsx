@@ -4,6 +4,7 @@ import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import Star from "lucide-react/dist/esm/icons/star";
 import { ADMIN_ROUTES } from "@/constants/routes";
 import { useTranslation } from "react-i18next";
+import { formatTableSerial } from "@/utils/tableSerial";
 
 const formatDate = (d) =>
   d
@@ -82,7 +83,7 @@ const DashboardRecentPlaces = ({ places }) => {
                   className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors group"
                 >
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {String(idx + 1).padStart(2, "0")}
+                    {formatTableSerial(recent.length, idx)}
                   </td>
                   <td className="px-4 py-3">
                     <Link

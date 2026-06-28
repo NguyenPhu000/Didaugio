@@ -81,8 +81,14 @@ export const contractSign = async (data = {}) => {
   return response;
 };
 
-export const downloadContract = async (businessId) => {
+export const sendContractOtp = async () => {
+  const response = await api.post(`${BASE_URL}/profile/contract-otp`);
+  return response;
+};
+
+export const downloadContract = async (businessId, params = {}) => {
   const response = await api.get(`${BASE_URL}/${businessId}/contract`, {
+    params,
     responseType: "blob",
   });
   return response;
@@ -144,11 +150,17 @@ export const terminate = async (id, terminationReason) => {
   return response;
 };
 
+export const decryptProfile = async (data) => {
+  const response = await api.post(`${BASE_URL}/profile/decrypt`, data);
+  return response;
+};
+
 export default {
   getProfile,
   register,
   updateProfile,
   contractSign,
+  sendContractOtp,
   downloadContract,
   getDashboard,
   getMyPlaces,
@@ -159,4 +171,5 @@ export default {
   suspend,
   reactivate,
   terminate,
+  decryptProfile,
 };

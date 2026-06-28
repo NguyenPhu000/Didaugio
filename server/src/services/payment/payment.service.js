@@ -1156,10 +1156,10 @@ export async function processSePayRefundWebhook(body, headers = {}, rawBody = nu
             },
           });
 
-          // Decrement business wallet balance
+          // Release the frozen payout amount after SePay confirms money-out.
           await tx.partnerWallet.update({
             where: { businessId: updatedPayout.businessId },
-            data: { balance: { decrement: Number(payout.amount) } },
+            data: { frozenBalance: { decrement: Number(payout.amount) } },
           });
 
           // Update platform wallet totalPaidOut

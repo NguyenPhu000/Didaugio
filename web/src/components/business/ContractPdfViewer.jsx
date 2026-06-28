@@ -7,7 +7,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/utils";
 import { downloadContract } from "@/apis/businessApi";
 
-const ContractPdfViewer = memo(({ businessId, className }) => {
+const ContractPdfViewer = memo(({ businessId, className, adminSigned = false }) => {
   const { t } = useTranslation();
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ const ContractPdfViewer = memo(({ businessId, className }) => {
     setLoading(true);
     setError(null);
     try {
-      const blob = await downloadContract(businessId);
+      const blob = await downloadContract(businessId, adminSigned ? { adminSigned: true } : {});
       const url = URL.createObjectURL(blob);
       // Revoke URL cũ trước khi set URL mới
       if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
@@ -30,7 +30,7 @@ const ContractPdfViewer = memo(({ businessId, className }) => {
     } finally {
       setLoading(false);
     }
-  }, [businessId, t]);
+  }, [businessId, adminSigned, t]);
 
   useEffect(() => {
     fetchContract();

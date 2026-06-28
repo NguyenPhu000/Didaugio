@@ -115,6 +115,7 @@ export const registerApiRoutes = (app) => {
   app.use("/api/business/roles", businessRoleRoutes);
   app.use("/api/business/blocked-dates", businessBlockedDateRoutes);
   app.use("/api/business/settings", businessSettingsRoutes);
+  app.use("/api/business", businessRoutes);
   app.use("/api/business", businessPayoutRoutes);
   app.use("/api/admin/payouts", adminPayoutRoutes);
   app.use("/api/business/bookings", bookingRoutes);
@@ -125,7 +126,7 @@ export const registerApiRoutes = (app) => {
   app.use("/api/business/revenue", businessRevenueRoutes);
   app.use("/api/business/reviews", reviewRoutes);
   app.use("/api/admin/reviews", adminReviewRoutes);
-  app.use("/api/business", businessRoutes);
+
   app.use("/api/feedback", feedbackRoutes);
   app.use("/api/notifications", notificationRoutes);
   app.use("/api/events", eventRoutes);

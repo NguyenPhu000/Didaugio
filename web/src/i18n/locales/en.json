@@ -1691,6 +1691,7 @@
     "detailModal": {
       "title": "Business Details",
       "businessName": "Business Name",
+      "businessType": "Business Type",
       "ownerName": "Owner Name",
       "email": "Email",
       "phone": "Phone",

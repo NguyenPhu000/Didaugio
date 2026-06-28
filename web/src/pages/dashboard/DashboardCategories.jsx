@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import Filter from "lucide-react/dist/esm/icons/filter";
 import { ADMIN_ROUTES } from "@/constants/routes";
 import { useTranslation } from "react-i18next";
+import { formatTableSerial } from "@/utils/tableSerial";
 
 /**
  * DashboardCategories - Category list module in dashboard
@@ -24,7 +25,7 @@ const DashboardCategories = ({ categories, places }) => {
             className="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-yellow-50 transition-colors group"
           >
             <span className="font-mono text-xs text-gray-400 w-8">
-              {String(idx + 1).padStart(2, "0")}
+              {formatTableSerial(categories.length, idx)}
             </span>
             <span className="font-bold text-sm uppercase flex-1">
               {cat.name}

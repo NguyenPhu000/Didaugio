@@ -17,11 +17,15 @@ import {
   Edit3,
   X,
   Lock,
+  Eye,
+  EyeOff,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import {
   Select,
   SelectContent,
@@ -29,7 +33,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import useBusinessStore from "@/stores/businessStore";
+import {
+  useBusinessProfile,
+  useUpdateBusinessProfile,
+} from "@/hooks/queries/useBusinessQueries";
 import * as businessApi from "@/apis/businessApi";
 import { BUSINESS_STATUS } from "@/constants/businessConstants";
 import {
@@ -42,8 +49,7 @@ import ContractSignModal from "@/components/business/ContractSignModal";
 import ContractPdfViewer from "@/components/business/ContractPdfViewer";
 import DocumentUploadCard from "@/components/business/DocumentUploadCard";
 import DocumentImageUploadField from "@/components/business/DocumentImageUploadField";
-import { DOCUMENT_SAMPLE_IMAGES } from "@/components/business/documentImageConstants";
-import { isImageSource, resolveMediaUrl } from "@/utils/mediaUrl";
+
 
 // ─── Validation Schema ────────────────────────────────────────────────────────
 
@@ -136,24 +142,7 @@ const FormField = ({ label, error, required, children }) => (
   </div>
 );
 
-const resolveImagePreview = (raw) => {
-  const resolved = resolveMediaUrl(raw);
-  return isImageSource(resolved) ? resolved : null;
-};
 
-const DocumentPreviewCard = ({ label, src, alt, previewClassName }) => (
-  <div className="rounded-lg border border-border/60 p-3">
-    <p className="text-xs text-muted-foreground">{label}</p>
-    <div
-      className={cn(
-        "mt-2 overflow-hidden rounded-md border border-border/60 bg-muted/30",
-        previewClassName,
-      )}
-    >
-      <img src={src} alt={alt} className="h-full w-full object-cover" />
-    </div>
-  </div>
-);
 
 // ─── Loading Skeleton ─────────────────────────────────────────────────────────
 
@@ -173,7 +162,13 @@ const BusinessProfilePage = () => {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const contractSectionRef = useRef(null);
-  const { business, loading, updateProfile, fetchProfile } = useBusinessStore();
+  const { data: profileResponse, isLoading: loading, refetch: fetchProfile } = useBusinessProfile();
+  const business = profileResponse?.data || profileResponse;
+
+  const updateProfileMutation = useUpdateBusinessProfile();
+  const updateProfile = async (data) => {
+    return await updateProfileMutation.mutateAsync(data);
+  };
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [signOpen, setSignOpen] = useState(false);
@@ -183,6 +178,45 @@ const BusinessProfilePage = () => {
     idCardBack: [],
     businessLicense: [],
   });
+
+  const [decryptedData, setDecryptedData] = useState(null);
+  const [showDecrypted, setShowDecrypted] = useState(false);
+  const [confirmPasswordOpen, setConfirmPasswordOpen] = useState(false);
+  const [verifyPassword, setVerifyPassword] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+
+  const handleVerifyPassword = async () => {
+    setVerifying(true);
+    try {
+      const res = await businessApi.decryptProfile({ password: verifyPassword });
+      const decData = res.data || res;
+      setDecryptedData(decData);
+      setShowDecrypted(true);
+      setConfirmPasswordOpen(false);
+      setVerifyPassword("");
+      toast.success("Xác thực thành công. Đã hiển thị dữ liệu giải mã.");
+
+      if (pendingAction === "signContract") {
+        setSignOpen(true);
+        setPendingAction(null);
+      }
+    } catch (error) {
+      toast.error(error?.message || "Mật khẩu không chính xác");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const toggleShowDecrypted = () => {
+    if (showDecrypted) {
+      setShowDecrypted(false);
+    } else if (decryptedData) {
+      setShowDecrypted(true);
+    } else {
+      setConfirmPasswordOpen(true);
+    }
+  };
 
   const BUSINESS_TYPES = getBusinessTypes(t);
 
@@ -269,27 +303,47 @@ const BusinessProfilePage = () => {
     () => [
       { label: t("business.profile.displayBusinessName"), value: business?.businessName },
       { label: t("business.profile.displayBusinessType"), value: businessTypeLabel },
-      { label: t("business.profile.displayIdNumber"), value: business?.idCardNumber },
-      { label: t("business.profile.displayTaxCode"), value: business?.taxCode },
+      { 
+        label: t("business.profile.displayIdCardNumber"), 
+        value: showDecrypted ? decryptedData?.idCardNumber : business?.idCardNumberMasked,
+        isSensitive: true
+      },
+      { 
+        label: t("business.profile.displayTaxCode"), 
+        value: showDecrypted ? decryptedData?.taxCode : business?.taxCodeMasked,
+        isSensitive: true
+      },
     ],
     [
       business?.businessName,
-      business?.idCardNumber,
-      business?.taxCode,
+      business?.idCardNumberMasked,
+      business?.taxCodeMasked,
       businessTypeLabel,
+      showDecrypted,
+      decryptedData,
       t,
     ],
   );
   const bankInfoRows = useMemo(
     () => [
       { label: t("business.profile.displayBankName"), value: business?.bankName },
-      { label: t("business.profile.displayBankAccount"), value: business?.bankAccountNumber },
-      { label: t("business.profile.displayAccountHolder"), value: business?.bankAccountOwner },
+      { 
+        label: t("business.profile.displayBankAccount"), 
+        value: showDecrypted ? decryptedData?.bankAccountNumber : business?.bankAccountNumberMasked,
+        isSensitive: true
+      },
+      { 
+        label: t("business.profile.displayAccountHolder"), 
+        value: showDecrypted ? decryptedData?.bankAccountOwner : business?.bankAccountOwnerMasked,
+        isSensitive: true
+      },
     ],
     [
-      business?.bankAccountNumber,
-      business?.bankAccountOwner,
+      business?.bankAccountNumberMasked,
+      business?.bankAccountOwnerMasked,
       business?.bankName,
+      showDecrypted,
+      decryptedData,
       t,
     ],
   );
@@ -300,34 +354,14 @@ const BusinessProfilePage = () => {
       documentFiles.businessLicense.length > 0,
     [documentFiles],
   );
-  const existingDocumentPreviews = useMemo(
-    () => ({
-      idCardFront: resolveImagePreview(business?.idCardFront),
-      idCardBack: resolveImagePreview(business?.idCardBack),
-      businessLicense: resolveImagePreview(business?.businessLicense),
-    }),
-    [business?.businessLicense, business?.idCardBack, business?.idCardFront],
-  );
-  const previewSources = useMemo(
-    () => ({
-      portrait:
-        existingDocumentPreviews.businessLicense ||
-        DOCUMENT_SAMPLE_IMAGES.portrait,
-      idCardFront:
-        existingDocumentPreviews.idCardFront ||
-        DOCUMENT_SAMPLE_IMAGES.idCardFront,
-      idCardBack:
-        existingDocumentPreviews.idCardBack ||
-        DOCUMENT_SAMPLE_IMAGES.idCardBack,
-    }),
-    [existingDocumentPreviews],
-  );
+
 
   if (loading) return <ProfileSkeleton />;
 
   const isSuspended = business?.status === BUSINESS_STATUS.SUSPENDED;
   const canSignContract =
-    business?.status === BUSINESS_STATUS.APPROVED && !business?.contractSigned;
+    (business?.status === BUSINESS_STATUS.APPROVED || business?.status === BUSINESS_STATUS.PENDING) &&
+    !business?.contractSigned;
 
   const handleSignContract = async (payload) => {
     setSigning(true);
@@ -383,21 +417,37 @@ const BusinessProfilePage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <BusinessSectionCard title={t("business.profile.basicInfo")} titleIcon={Building2}>
             <div className="space-y-0">
-              {basicInfoRows.map(({ label, value }) => (
+              {basicInfoRows.map(({ label, value, isSensitive }) => (
                 <div
                   key={label}
-                  className="flex flex-col sm:flex-row sm:items-start sm:justify-between py-2.5 border-b border-border/50 last:border-0 gap-1"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-2.5 border-b border-border/50 last:border-0 gap-1"
                 >
                   <span className="text-xs text-muted-foreground sm:w-36 shrink-0">
                     {label}
                   </span>
-                  <span className="text-sm font-medium text-foreground sm:text-right">
-                    {value || (
-                      <span className="text-muted-foreground/50 italic text-xs">
-                        {t("business.profile.notUpdated")}
-                      </span>
+                  <div className="flex items-center gap-1.5 sm:text-right">
+                    <span className="text-sm font-medium text-foreground">
+                      {value || (
+                        <span className="text-muted-foreground/50 italic text-xs">
+                          {t("business.profile.notUpdated")}
+                        </span>
+                      )}
+                    </span>
+                    {isSensitive && value && (
+                      <button
+                        type="button"
+                        onClick={toggleShowDecrypted}
+                        className="text-slate-400 hover:text-slate-600 transition focus:outline-none"
+                        title={showDecrypted ? "Ẩn" : "Xem"}
+                      >
+                        {showDecrypted ? (
+                          <EyeOff className="w-3.5 h-3.5" />
+                        ) : (
+                          <Eye className="w-3.5 h-3.5" />
+                        )}
+                      </button>
                     )}
-                  </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -405,57 +455,43 @@ const BusinessProfilePage = () => {
 
           <BusinessSectionCard title={t("business.profile.bankInfo")} titleIcon={CreditCard}>
             <div className="space-y-0">
-              {bankInfoRows.map(({ label, value }) => (
+              {bankInfoRows.map(({ label, value, isSensitive }) => (
                 <div
                   key={label}
-                  className="flex flex-col sm:flex-row sm:items-start sm:justify-between py-2.5 border-b border-border/50 last:border-0 gap-1"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-2.5 border-b border-border/50 last:border-0 gap-1"
                 >
                   <span className="text-xs text-muted-foreground sm:w-36 shrink-0">
                     {label}
                   </span>
-                  <span className="text-sm font-medium text-foreground sm:text-right">
-                    {value || (
-                      <span className="text-muted-foreground/50 italic text-xs">
-                        {t("business.profile.notUpdated")}
-                      </span>
+                  <div className="flex items-center gap-1.5 sm:text-right">
+                    <span className="text-sm font-medium text-foreground">
+                      {value || (
+                        <span className="text-muted-foreground/50 italic text-xs">
+                          {t("business.profile.notUpdated")}
+                        </span>
+                      )}
+                    </span>
+                    {isSensitive && value && (
+                      <button
+                        type="button"
+                        onClick={toggleShowDecrypted}
+                        className="text-slate-400 hover:text-slate-600 transition focus:outline-none"
+                        title={showDecrypted ? "Ẩn" : "Xem"}
+                      >
+                        {showDecrypted ? (
+                          <EyeOff className="w-3.5 h-3.5" />
+                        ) : (
+                          <Eye className="w-3.5 h-3.5" />
+                        )}
+                      </button>
                     )}
-                  </span>
+                  </div>
                 </div>
               ))}
             </div>
           </BusinessSectionCard>
 
-          <BusinessSectionCard
-            title={t("business.profile.documents")}
-            titleIcon={CheckCircle2}
-            className="lg:col-span-2"
-          >
-            <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">
-                {t("business.profile.documentsDefaultNote")}
-              </p>
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-                <DocumentPreviewCard
-                  label={t("business.profile.businessLicense")}
-                  src={previewSources.portrait}
-                  alt={t("business.profile.altBusinessLicense")}
-                  previewClassName="h-[300px] sm:h-[360px]"
-                />
-                <DocumentPreviewCard
-                  label={t("business.profile.idFront")}
-                  src={previewSources.idCardFront}
-                  alt={t("business.profile.altIdFront")}
-                  previewClassName="h-[220px] sm:h-[260px]"
-                />
-                <DocumentPreviewCard
-                  label={t("business.profile.idBack")}
-                  src={previewSources.idCardBack}
-                  alt={t("business.profile.altIdBack")}
-                  previewClassName="h-[220px] sm:h-[260px]"
-                />
-              </div>
-            </div>
-          </BusinessSectionCard>
+
 
           <BusinessSectionCard
             title={t("business.profile.secureDocuments")}
@@ -502,7 +538,14 @@ const BusinessProfilePage = () => {
                 <Button
                   type="button"
                   className="w-full"
-                  onClick={() => setSignOpen(true)}
+                  onClick={() => {
+                    if (!decryptedData) {
+                      setPendingAction("signContract");
+                      setConfirmPasswordOpen(true);
+                    } else {
+                      setSignOpen(true);
+                    }
+                  }}
                   disabled={!canSignContract}
                 >
                   {business?.contractSigned
@@ -732,6 +775,57 @@ const BusinessProfilePage = () => {
         </form>
       )}
 
+      {/* Dialog xác thực mật khẩu để xem thông tin nhạy cảm */}
+      <Dialog open={confirmPasswordOpen} onOpenChange={setConfirmPasswordOpen}>
+        <DialogContent className="max-w-md w-[92vw] p-6 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <Lock className="w-4 h-4 text-blue-500" /> Xác thực mật khẩu
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-3">
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Vui lòng nhập mật khẩu tài khoản của bạn để giải mã và hiển thị các thông tin nhạy cảm (Số CCCD, Mã số thuế, Tài khoản ngân hàng).
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="verify-password">Mật khẩu</Label>
+              <Input
+                id="verify-password"
+                type="password"
+                value={verifyPassword}
+                onChange={(e) => setVerifyPassword(e.target.value)}
+                placeholder="Nhập mật khẩu của bạn"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && verifyPassword) {
+                    handleVerifyPassword();
+                  }
+                }}
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setConfirmPasswordOpen(false);
+                  setVerifyPassword("");
+                }}
+              >
+                Hủy
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleVerifyPassword}
+                disabled={verifying || !verifyPassword}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {verifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Xác nhận"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <ContractSignModal
         open={signOpen}
         onOpenChange={setSignOpen}
@@ -739,6 +833,7 @@ const BusinessProfilePage = () => {
         loading={signing}
         contractVersion={business?.contractVersion || "v1"}
         business={business}
+        decryptedData={decryptedData}
       />
     </div>
   );

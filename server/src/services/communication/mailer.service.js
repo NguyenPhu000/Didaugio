@@ -661,3 +661,89 @@ ${inviteUrl}
 
   return { provider: "smtp", to };
 };
+
+/**
+ * Gửi OTP xác thực hợp đồng điện tử qua email
+ */
+export const sendContractVerificationEmail = async ({ to, code, name }) => {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          line-height: 1.6;
+          color: #1e293b;
+          background: #f8fafc;
+          padding: 24px;
+        }
+        .container {
+          max-width: 500px;
+          margin: 0 auto;
+          background: #ffffff;
+          border-radius: 16px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+          overflow: hidden;
+        }
+        .header {
+          background: #0f172a;
+          color: #ffffff;
+          padding: 24px;
+          text-align: center;
+        }
+        .content {
+          padding: 32px 24px;
+        }
+        .otp-box {
+          background: #f1f5f9;
+          border-radius: 12px;
+          padding: 16px;
+          text-align: center;
+          font-size: 32px;
+          font-weight: 800;
+          letter-spacing: 6px;
+          color: #2563eb;
+          margin: 24px 0;
+          border: 1px dashed #cbd5e1;
+        }
+        .footer {
+          background: #f8fafc;
+          padding: 16px 24px;
+          font-size: 11px;
+          color: #64748b;
+          border-top: 1px solid #e2e8f0;
+          text-align: center;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h2 style="margin: 0;">Đi Đâu Giờ?</h2>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #94a3b8; text-transform: uppercase;">Xác thực hợp đồng điện tử</p>
+        </div>
+        <div class="content">
+          <p>Xin chào <strong>${escapeHtml(name)}</strong>,</p>
+          <p>Bạn đang thực hiện ký kết hợp đồng dịch vụ điện tử trên hệ thống Đi Đâu Giờ. Dưới đây là mã OTP để xác nhận và đóng dấu chữ ký điện tử của bạn:</p>
+          <div class="otp-box">${code}</div>
+          <p style="font-size: 13px; color: #64748b;">Mã OTP này có hiệu lực trong vòng 5 phút. Vui lòng không cung cấp mã xác thực này cho bất kỳ ai khác.</p>
+        </div>
+        <div class="footer">
+          Đây là email tự động từ hệ thống Đi Đâu Giờ. Vui lòng không phản hồi email này.
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await transporter.sendMail({
+    from: EMAIL_FROM,
+    to,
+    subject: "[Đi Đâu Giờ] Mã OTP xác nhận ký hợp đồng dịch vụ điện tử",
+    html,
+  });
+};

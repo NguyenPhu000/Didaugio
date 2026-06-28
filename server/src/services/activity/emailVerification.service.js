@@ -104,6 +104,11 @@ export const create = async (data) => {
     },
   });
 
+  // In link xác thực ra log console (tiện lợi cho việc dev/test khi SMTP lỗi)
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const verifyLink = `${frontendUrl}/verify-email?token=${encodeURIComponent(rawToken)}`;
+  console.log(`\n[DEV ONLY] Link xac thuc email cho user ${data.email}:\n${verifyLink}\n`);
+
   // Gửi email với raw token
   try {
     await sendVerificationEmail({

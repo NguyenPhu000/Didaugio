@@ -18,6 +18,7 @@ import {
 } from "@/components/ui";
 import { emailVerificationService } from "@/apis";
 import { formatDate } from "@/utils/dateUtils";
+import { getTableSerialNumber } from "@/utils/tableSerial";
 
 const EmailVerificationPage = () => {
   const [verifications, setVerifications] = useState([]);
@@ -33,6 +34,7 @@ const EmailVerificationPage = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 10;
 
   // Fetch verifications
@@ -48,6 +50,7 @@ const EmailVerificationPage = () => {
       if (response.success) {
         setVerifications(response.data || []);
         setTotalPages(response.pagination?.totalPages || 1);
+        setTotalItems(response.pagination?.total || response.data?.length || 0);
       }
     } catch (error) {
       toast.error("Lỗi khi tải danh sách xác thực email");
@@ -258,7 +261,7 @@ const EmailVerificationPage = () => {
                   <thead>
                     <tr className="bg-black text-white tim-table-header">
                       <th className="p-4 border-r border-black/20 w-[60px]">
-                        ID
+                        STT
                       </th>
                       <th className="p-4 border-r border-black/20">EMAIL</th>
                       <th className="p-4 border-r border-black/20">USER</th>
@@ -274,7 +277,7 @@ const EmailVerificationPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black/5">
-                    {verifications.map((verification) => {
+                    {verifications.map((verification, index) => {
                       const statusInfo = getStatusInfo(verification);
                       return (
                         <tr
@@ -282,7 +285,12 @@ const EmailVerificationPage = () => {
                           className="hover:bg-yellow-50 group transition-colors"
                         >
                           <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
-                            #{verification.id}
+                            {getTableSerialNumber(
+                              totalItems || verifications.length,
+                              index,
+                              currentPage,
+                              itemsPerPage,
+                            )}
                           </td>
                           <td className="p-4 border-r border-black/5">
                             <div className="font-mono text-sm font-medium">

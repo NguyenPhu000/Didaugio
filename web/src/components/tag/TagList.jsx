@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { formatTableSerial } from "@/utils/tableSerial";
 
 /**
  * TAG LIST - T.I.M Style Refactor (Vietnamese)
@@ -78,7 +79,7 @@ export default function TagList({ tags, onEdit, onDelete, loading }) {
 
             {/* Barcode/Index */}
             <div className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground/30 -rotate-90 hidden sm:block w-4">
-              {String(index + 1).padStart(3, "0")}
+              {formatTableSerial(tags.length, index, { pad: 3 })}
             </div>
 
             {/* Name */}

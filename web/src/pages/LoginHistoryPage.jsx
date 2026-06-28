@@ -27,6 +27,7 @@ import {
 } from "@/components/ui";
 import { loginHistoryService } from "@/apis";
 import { formatDate } from "@/utils/dateUtils";
+import { getTableSerialNumber } from "@/utils/tableSerial";
 import { useAuthStore } from "@/stores/authStore";
 import TimStatsCard from "@/components/admin/TimStatsCard";
 
@@ -48,6 +49,7 @@ const LoginHistoryPage = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 10;
 
   // Fetch sessions
@@ -64,6 +66,7 @@ const LoginHistoryPage = () => {
       if (response.success) {
         setSessions(response.data || []);
         setTotalPages(response.pagination?.totalPages || 1);
+        setTotalItems(response.pagination?.total || response.data?.length || 0);
       }
     } catch (error) {
       toast.error(t("loginHistory.loadingError"));
@@ -366,7 +369,7 @@ const LoginHistoryPage = () => {
                   <thead>
                     <tr className="bg-black text-white tim-table-header">
                       <th className="p-4 border-r border-black/20 w-[60px]">
-                        ID
+                        STT
                       </th>
                       <th className="p-4 border-r border-black/20">USER</th>
                       <th className="p-4 border-r border-black/20">{t("loginHistory.device").toUpperCase()}</th>
@@ -387,7 +390,7 @@ const LoginHistoryPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black/5">
-                    {sessions.map((session) => {
+                    {sessions.map((session, index) => {
                       const statusInfo = getStatusInfo(session);
                       return (
                         <tr
@@ -395,7 +398,12 @@ const LoginHistoryPage = () => {
                           className="hover:bg-yellow-50 group transition-colors"
                         >
                           <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
-                            #{session.id}
+                            {getTableSerialNumber(
+                              totalItems || sessions.length,
+                              index,
+                              currentPage,
+                              itemsPerPage,
+                            )}
                           </td>
                           <td className="p-4 border-r border-black/5">
                             <div>

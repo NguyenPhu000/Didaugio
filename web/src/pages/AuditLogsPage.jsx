@@ -27,6 +27,7 @@ import {
 import auditLogService from "@/apis/auditLogService";
 import { formatDateTime } from "@/utils/dateUtils";
 import { exportToCsv, fetchAllPages, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
+import { getTableSerialNumber } from "@/utils/tableSerial";
 import TimStatsCard from "@/components/admin/TimStatsCard";
 
 const AuditLogsPage = () => {
@@ -49,6 +50,7 @@ const AuditLogsPage = () => {
   const [endDate, setEndDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 15;
 
   // Fetch logs
@@ -67,6 +69,7 @@ const AuditLogsPage = () => {
       if (response.success) {
         setLogs(response.data || []);
         setTotalPages(response.pagination?.totalPages || 1);
+        setTotalItems(response.pagination?.total || response.data?.length || 0);
 
         const allLogs = response.data || [];
         setStats({
@@ -372,7 +375,7 @@ const AuditLogsPage = () => {
                   <thead>
                     <tr className="bg-black text-white tim-table-header">
                       <th className="p-3 border-r border-black/20 w-[50px] hidden sm:table-cell">
-                        ID
+                        STT
                       </th>
                       <th className="p-3 border-r border-black/20 min-w-[200px]">
                         {t("auditLogs.performer").toUpperCase()}
@@ -399,13 +402,18 @@ const AuditLogsPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black/5">
-                    {logs.map((log) => (
+                    {logs.map((log, index) => (
                       <tr
                         key={log.id}
                         className="hover:bg-yellow-50/50 group transition-colors"
                       >
                         <td className="p-3 font-mono text-sm text-gray-400 border-r border-black/5 hidden sm:table-cell">
-                          #{log.id}
+                          {getTableSerialNumber(
+                            totalItems || logs.length,
+                            index,
+                            currentPage,
+                            itemsPerPage,
+                          )}
                         </td>
                         <td className="p-3 border-r border-black/5">
                           <div className="flex items-center gap-2">

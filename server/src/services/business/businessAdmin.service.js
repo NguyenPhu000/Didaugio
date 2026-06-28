@@ -354,9 +354,9 @@ export const getById = async (id) => {
 
   const complianceChecklist = {
     hasTaxCode: Boolean(business.taxCode),
-    hasIdCardFront: docTypes.has("id_card_front"),
-    hasIdCardBack: docTypes.has("id_card_back"),
-    hasBusinessLicense: docTypes.has("business_license"),
+    hasIdCardFront: docTypes.has("id_card_front") || Boolean(business.idCardFront),
+    hasIdCardBack: docTypes.has("id_card_back") || Boolean(business.idCardBack),
+    hasBusinessLicense: docTypes.has("business_license") || Boolean(business.businessLicense),
     hasBankInfo: Boolean(
       business.bankName && business.bankAccount && business.bankOwner,
     ),

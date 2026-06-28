@@ -16,7 +16,7 @@ const STORAGE_DIR = path.resolve(
   process.env.SENSITIVE_STORAGE_DIR || "storage/sensitive",
 );
 
-const ALLOWED_TYPES = ["id_card_front", "id_card_back", "business_license"];
+const ALLOWED_TYPES = ["id_card_front", "id_card_back", "business_license", "certificate"];
 const ALLOWED_MIME = [
   "image/jpeg",
   "image/png",

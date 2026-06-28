@@ -1,6 +1,7 @@
 import express from "express";
 import authController from "../../controllers/auth/auth.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
+import { getCsrfToken } from "../../middlewares/csrfProtection.js";
 import { validateBody, validateParams } from "../../middlewares/validateSchema.js";
 import {
   changePasswordSchema,
@@ -82,6 +83,7 @@ router.delete(
   authController.revokeSession,
 );
 
+router.get("/csrf", authenticate, getCsrfToken);
 router.post("/ping", authenticate, authController.pingOnline);
 
 export default router;

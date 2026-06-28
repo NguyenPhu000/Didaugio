@@ -788,6 +788,10 @@ export async function processSubscriptionWebhook(body, headers = {}, rawBody = n
       return; // Đã được xử lý bởi request khác
     }
 
+    if (freshInvoice.status !== "pending") {
+      throw new ServiceError("HÃ³a Ä‘Æ¡n khÃ´ng á»Ÿ tráº¡ng thÃ¡i chá» thanh toÃ¡n", 400, "INVOICE_NOT_PAYABLE");
+    }
+
     await tx.subscriptionInvoice.update({
       where: { id: invoice.id, status: "pending" },
       data: { status: "paid", paidAt: now, notes: `SePay TX: ${sepayTransactionId}` },
@@ -1105,6 +1109,22 @@ export async function payInvoiceFromWallet(businessId, invoiceId) {
   }
 
   return prisma.$transaction(async (tx) => {
+    const [lockedInvoice] = await tx.$queryRaw`
+      SELECT id, status, amount FROM subscription_invoices WHERE id = ${invoiceId} FOR UPDATE
+    `;
+    if (!lockedInvoice) {
+      throw new ServiceError("HÃ³a Ä‘Æ¡n khÃ´ng tá»“n táº¡i", 404, "INVOICE_NOT_FOUND");
+    }
+    if (lockedInvoice.status === "paid") {
+      throw new ServiceError("HÃ³a Ä‘Æ¡n Ä‘Ã£ Ä‘Æ°á»£c thanh toÃ¡n", 400, "ALREADY_PAID");
+    }
+    if (lockedInvoice.status === "canceled") {
+      throw new ServiceError("HÃ³a Ä‘Æ¡n Ä‘Ã£ bá»‹ há»§y", 400, "INVOICE_CANCELED");
+    }
+    if (lockedInvoice.status !== "pending") {
+      throw new ServiceError("HÃ³a Ä‘Æ¡n khÃ´ng á»Ÿ tráº¡ng thÃ¡i chá» thanh toÃ¡n", 400, "INVOICE_NOT_PAYABLE");
+    }
+
     // Lock the wallet row
     const [wallet] = await tx.$queryRaw`
       SELECT * FROM partner_wallets WHERE business_id = ${businessId} FOR UPDATE
@@ -1115,9 +1135,10 @@ export async function payInvoiceFromWallet(businessId, invoiceId) {
     }
 
     const balance = Number(wallet.balance);
-    if (balance < invoice.amount) {
+    const payableAmount = Number(lockedInvoice.amount);
+    if (balance < payableAmount) {
       throw new ServiceError(
-        `Số dư ví không đủ. Cần: ${invoice.amount.toLocaleString("vi-VN")}đ, Hiện có: ${balance.toLocaleString("vi-VN")}đ`,
+        `Số dư ví không đủ. Cần: ${payableAmount.toLocaleString("vi-VN")}đ, Hiện có: ${balance.toLocaleString("vi-VN")}đ`,
         400,
         "INSUFFICIENT_WALLET_BALANCE",
       );
@@ -1126,7 +1147,16 @@ export async function payInvoiceFromWallet(businessId, invoiceId) {
     // Deduct from wallet
     await tx.partnerWallet.update({
       where: { businessId },
-      data: { balance: { decrement: invoice.amount } },
+      data: { balance: { decrement: payableAmount } },
+    });
+
+    // Create ledger entry to record wallet balance deduction
+    await tx.financialLedger.create({
+      data: {
+        type: "WITHDRAW",
+        amount: payableAmount,
+        description: `Thanh toán subscription từ ví: ${invoice.invoiceNumber}`,
+      },
     });
 
     // Mark invoice as paid
@@ -1167,18 +1197,9 @@ export async function payInvoiceFromWallet(businessId, invoiceId) {
       },
     });
 
-    // Create ledger entry
-    await tx.financialLedger.create({
-      data: {
-        type: "SUBSCRIPTION_PAYMENT",
-        amount: invoice.amount,
-        description: `Thanh toán subscription từ ví: ${invoice.invoiceNumber}`,
-      },
-    });
-
     invalidateFeatureLockCache();
     logger.info(`[subscription] Business ${businessId} paid invoice ${invoice.invoiceNumber} from wallet`);
 
-    return { success: true, deducted: invoice.amount };
+    return { success: true, deducted: payableAmount };
   });
 }

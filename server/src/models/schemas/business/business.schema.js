@@ -161,6 +161,9 @@ export const rejectBusinessSchema = z.object({
 
 export const signBusinessContractSchema = z
   .object({
+    otp: z
+      .string({ required_error: "Mã OTP là bắt buộc" })
+      .length(6, "Mã OTP phải có đúng 6 chữ số"),
     acceptedTerms: z.literal(true, {
       errorMap: () => ({ message: "Bạn cần đồng ý điều khoản hợp đồng" }),
     }),
@@ -174,10 +177,19 @@ export const signBusinessContractSchema = z
       ),
     signedAt: z.coerce.date().optional(),
     contractVersion: z.string().max(50).optional(),
+    fullName: z.string().max(100).optional(),
+    phone: z.string().max(20).optional(),
+    address: z.string().max(200).optional(),
+    idCard: z.string().max(30).optional(),
+    idCardIssuedDate: z.string().max(50).optional(),
+    idCardIssuedPlace: z.string().max(100).optional(),
     signerMetadata: z
       .object({
         userAgent: z.string().max(1000).optional(),
         timezone: z.string().max(120).optional(),
+        ip: z.string().max(45).optional(),
+        otpVerified: z.boolean().optional(),
+        phoneVerified: z.string().max(20).optional(),
       })
       .optional(),
   })

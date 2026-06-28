@@ -10,6 +10,8 @@ import {
   Loader2,
   MapPin,
   User,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { ADMIN_ROUTES } from "@/constants/routes";
 import * as businessApi from "@/apis/businessApi";
@@ -29,20 +31,37 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl, isPdfSource, isImageSource } from "@/utils/mediaUrl";
+import ContractPdfViewer from "@/components/business/ContractPdfViewer";
 
-const FieldRow = ({ label, value, mono }) => (
+const FieldRow = ({ label, value, mono, isSensitive, showSensitive, onToggle }) => (
   <div className="flex flex-col sm:flex-row sm:gap-3 sm:justify-between py-2.5 border-b border-border/40 last:border-0 first:pt-0 text-sm">
     <span className="text-muted-foreground shrink-0 w-44">{label}</span>
-    <span
-      className={cn(
-        "font-medium text-foreground text-right sm:text-left flex-1 break-words",
-        mono && "font-mono text-xs",
+    <div className="flex items-center gap-1.5 justify-end sm:justify-start flex-1 min-w-0">
+      <span
+        className={cn(
+          "font-medium text-foreground text-right sm:text-left break-all",
+          mono && "font-mono text-xs",
+        )}
+      >
+        {typeof value === "object" && value !== null 
+          ? value 
+          : (value !== undefined && value !== null && value !== "" ? String(value) : "—")}
+      </span>
+      {isSensitive && value && value !== "—" && (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="text-slate-400 hover:text-slate-600 transition focus:outline-none shrink-0"
+          title={showSensitive ? "Ẩn" : "Xem"}
+        >
+          {showSensitive ? (
+            <EyeOff className="h-3.5 w-3.5" />
+          ) : (
+            <Eye className="h-3.5 w-3.5" />
+          )}
+        </button>
       )}
-    >
-      {value !== undefined && value !== null && value !== ""
-        ? String(value)
-        : "—"}
-    </span>
+    </div>
   </div>
 );
 
@@ -53,6 +72,7 @@ function DocumentPreviewCard({ title, raw }) {
   const { t } = useTranslation();
   const resolved = useMemo(() => resolveMediaUrl(raw), [raw]);
   const [imgError, setImgError] = useState(false);
+  const [blobUrl, setBlobUrl] = useState(null);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setImgError(false));
@@ -61,6 +81,32 @@ function DocumentPreviewCard({ title, raw }) {
 
   const isPdf = resolved && isPdfSource(resolved);
   const isImgHint = resolved && isImageSource(resolved);
+
+  useEffect(() => {
+    if (isPdf && resolved && resolved.startsWith("data:application/pdf;base64,")) {
+      try {
+        const base64Data = resolved.split(",")[1];
+        const bstr = atob(base64Data);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        setBlobUrl(url);
+        return () => {
+          URL.revokeObjectURL(url);
+        };
+      } catch (e) {
+        console.error("Error converting base64 PDF to blob URL:", e);
+      }
+    } else {
+      setBlobUrl(null);
+    }
+  }, [isPdf, resolved]);
+
+  const previewUrl = blobUrl || resolved;
 
   if (!resolved) {
     return (
@@ -78,35 +124,32 @@ function DocumentPreviewCard({ title, raw }) {
   }
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-border/50 bg-card shadow-md ring-1 ring-black/[0.04] dark:ring-white/10">
-      <div className="flex items-center justify-between gap-2 rounded-t-2xl border-b border-border/40 bg-gradient-to-r from-muted/60 to-muted/30 px-4 py-3">
-        <p className="truncate text-sm font-semibold text-foreground">
+    <div className="flex flex-col overflow-hidden rounded-none border border-black bg-white">
+      <div className="flex items-center justify-between gap-2 border-b border-black bg-[#F4F4F4] px-4 py-2">
+        <p className="truncate text-xs font-bold uppercase tracking-wider text-black">
           {title}
         </p>
         <a
-          href={resolved}
+          href={previewUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-background/80 px-3 py-1.5 text-xs font-medium text-primary shadow-sm ring-1 ring-border/60 transition hover:bg-muted"
+          className="inline-flex shrink-0 items-center gap-1 rounded-none border border-black bg-white px-2 py-1 text-[10px] font-mono uppercase text-black hover:bg-muted"
         >
           {t("common.viewAll")}
-          <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+          <ExternalLink className="h-3 w-3" aria-hidden="true" />
         </a>
       </div>
 
-      <div className="flex min-h-[220px] flex-1 items-center justify-center rounded-b-2xl bg-muted/20 p-3">
+      <div className="flex min-h-[220px] flex-1 items-center justify-center bg-white p-3">
         {(() => {
           if (isPdf) {
             return (
               <div className="w-full space-y-2">
                 <iframe
                   title={title}
-                  src={resolved}
-                  className="h-[min(42vh,300px)] w-full rounded-xl border border-border/50 bg-background shadow-inner"
+                  src={previewUrl}
+                  className="h-[min(42vh,300px)] w-full rounded-none border border-black bg-background"
                 />
-                <p className="text-center text-[11px] leading-snug text-muted-foreground">
-                  {t("common.noData")}
-                </p>
               </div>
             );
           }
@@ -119,7 +162,7 @@ function DocumentPreviewCard({ title, raw }) {
                   <img
                     src={resolved}
                     alt={`${title} — đối chiếu`}
-                    className="max-h-[min(44vh,380px)] w-full rounded-xl border border-border/30 bg-background object-contain shadow-sm"
+                    className="max-h-[min(44vh,380px)] w-full rounded-none border border-black bg-background object-contain"
                     loading="lazy"
                     decoding="async"
                     referrerPolicy="no-referrer"
@@ -127,13 +170,13 @@ function DocumentPreviewCard({ title, raw }) {
                   />
                 ) : (
                   <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
-                    <ImageIcon className="h-10 w-10 text-muted-foreground/70" />
+                    <ImageIcon className="h-10 w-10 text-muted-foreground" />
                     <p className="text-xs text-muted-foreground">
                       {t("common.noData")}
                     </p>
-                    <Button variant="outline" size="sm" asChild>
+                    <Button variant="outline" size="sm" className="rounded-none border-black font-mono text-[10px] uppercase" asChild>
                       <a
-                        href={resolved}
+                        href={previewUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -148,12 +191,12 @@ function DocumentPreviewCard({ title, raw }) {
 
           return (
             <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-              <FileText className="h-10 w-10 text-muted-foreground/70" />
+              <FileText className="h-10 w-10 text-muted-foreground" />
               <p className="text-xs text-muted-foreground">
                 {t("common.noData")}
               </p>
-              <Button variant="outline" size="sm" asChild>
-                <a href={resolved} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" className="rounded-none border-black font-mono text-[10px] uppercase" asChild>
+                <a href={previewUrl} target="_blank" rel="noopener noreferrer">
                   {t("common.download")}
                 </a>
               </Button>
@@ -183,9 +226,21 @@ const BusinessReviewApproveModal = ({
   const [rejectReason, setRejectReason] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
   const [commissionRate, setCommissionRate] = useState("10");
+  const [previewPdfOpen, setPreviewPdfOpen] = useState(false);
+  const [showPlain, setShowPlain] = useState({
+    idCard: false,
+    bankAccount: false,
+    bankOwner: false,
+    taxCode: false,
+  });
+
+  const toggleShowPlain = (field) => {
+    setShowPlain((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
 
   useEffect(() => {
     if (!open || !businessId) return;
+    setShowPlain({ idCard: false, bankAccount: false, bankOwner: false, taxCode: false });
     let cancelled = false;
     setRejectMode(false);
     setRejectReason("");
@@ -262,27 +317,21 @@ const BusinessReviewApproveModal = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={cn(
-          "max-h-[min(92vh,920px)] max-w-4xl gap-0 overflow-hidden p-0 flex flex-col",
-          "rounded-3xl border-border/50 shadow-2xl ring-1 ring-black/[0.06] dark:ring-white/[0.08]",
-          "sm:rounded-3xl",
-        )}
+        className="max-h-[min(92vh,940px)] max-w-5xl overflow-hidden flex flex-col gap-0 rounded-none border-2 border-black p-0 sm:rounded-none"
       >
-        <div className="shrink-0 rounded-t-3xl border-b border-border/40 bg-gradient-to-br from-muted/70 via-muted/40 to-background px-6 pb-4 pt-7">
-          <DialogHeader className="space-y-2">
-            <DialogTitle className="flex items-center gap-3 pr-10 text-xl font-semibold tracking-tight">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <FileText className="h-5 w-5 shrink-0" aria-hidden="true" />
-              </span>
+        <div className="shrink-0 border-b-2 border-black bg-[#F4F4F4] px-5 py-4 text-left">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="flex items-center gap-2 font-black uppercase tracking-tight text-base">
+              <FileText className="h-5 w-5 shrink-0" aria-hidden="true" />
               {t("business.approveModal.title")}
             </DialogTitle>
-            <DialogDescription className="text-[13px] leading-relaxed">
+            <DialogDescription className="font-mono text-[11px] uppercase text-muted-foreground">
               {t("business.approveModal.confirmApprove")}
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-5 space-y-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {(() => {
             if (loading) {
               return (
@@ -300,8 +349,8 @@ const BusinessReviewApproveModal = ({
             return (
               <>
                 <div className="grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-2xl border border-border/50 bg-muted/30 p-5 shadow-sm">
-                    <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <div className="border border-black bg-white p-4 space-y-1 rounded-none">
+                    <p className="font-mono text-[10px] uppercase text-muted-foreground mb-2">
                       {t("business.detailModal.businessName")}
                     </p>
                     <div className="space-y-0">
@@ -309,16 +358,22 @@ const BusinessReviewApproveModal = ({
                         label={t("business.detailModal.businessName")}
                         value={detail.businessName}
                       />
-                      <FieldRow label={t("business.detailModal.businessName")} value={typeLabel} />
+                      <FieldRow label={t("business.detailModal.businessType")} value={typeLabel} />
                       <FieldRow
                         label={t("business.detailModal.taxCode")}
-                        value={detail.taxCode}
+                        value={showPlain.taxCode ? detail.taxCode : detail.taxCodeMasked || "—"}
                         mono
+                        isSensitive={true}
+                        showSensitive={showPlain.taxCode}
+                        onToggle={() => toggleShowPlain("taxCode")}
                       />
                       <FieldRow
                         label={t("business.detailModal.idNumber")}
-                        value={detail.idCardNumberMasked || detail.idCardNumber}
+                        value={showPlain.idCard ? detail.idCardNumber : detail.idCardNumberMasked || "—"}
                         mono
+                        isSensitive={true}
+                        showSensitive={showPlain.idCard}
+                        onToggle={() => toggleShowPlain("idCard")}
                       />
                       <FieldRow
                         label={t("business.detailModal.createdAt")}
@@ -335,11 +390,9 @@ const BusinessReviewApproveModal = ({
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-border/50 bg-muted/30 p-5 shadow-sm">
-                    <p className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-background shadow-sm">
-                        <User className="h-3.5 w-3.5" aria-hidden="true" />
-                      </span>
+                  <div className="border border-black bg-white p-4 space-y-1 rounded-none">
+                    <p className="font-mono text-[10px] uppercase text-muted-foreground mb-2 flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5" aria-hidden="true" />
                       {t("business.detailModal.accountHolder")}
                     </p>
                     <div className="space-y-0">
@@ -348,25 +401,38 @@ const BusinessReviewApproveModal = ({
                       <FieldRow label={t("business.detailModal.bankName")} value={detail.bankName} />
                       <FieldRow
                         label={t("business.detailModal.bankAccount")}
-                        value={
-                          detail.bankAccountNumberMasked ||
-                          detail.bankAccountNumber
-                        }
+                        value={showPlain.bankAccount ? detail.bankAccountNumber : detail.bankAccountNumberMasked || "—"}
                         mono
+                        isSensitive={true}
+                        showSensitive={showPlain.bankAccount}
+                        onToggle={() => toggleShowPlain("bankAccount")}
                       />
                       <FieldRow
                         label={t("business.detailModal.accountHolder")}
+                        value={showPlain.bankOwner ? detail.bankAccountOwner : detail.bankAccountOwnerMasked || "—"}
+                        isSensitive={true}
+                        showSensitive={showPlain.bankOwner}
+                        onToggle={() => toggleShowPlain("bankOwner")}
+                      />
+                      <FieldRow
+                        label={t("business.detailModal.contractStatus")}
                         value={
-                          detail.bankAccountOwnerMasked ||
-                          detail.bankAccountOwner
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="p-0 h-auto text-primary font-bold hover:underline flex items-center gap-1"
+                            onClick={() => setPreviewPdfOpen(true)}
+                          >
+                            {detail.contractSigned ? "Đã ký (Xem PDF)" : "Chưa ký (Xem bản nháp)"}
+                          </Button>
                         }
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border/50 bg-muted/20 p-5 shadow-sm">
-                  <p className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <div className="border border-black bg-white p-4 rounded-none">
+                  <p className="font-mono text-[10px] uppercase text-muted-foreground mb-2 flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5" aria-hidden />
                     {t("business.detailModal.places")}
                   </p>
@@ -380,7 +446,7 @@ const BusinessReviewApproveModal = ({
                       {detail.places.map((p) => (
                         <li
                           key={p.id}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/40 bg-background/80 px-3 py-2 text-sm"
+                          className="flex flex-wrap items-center justify-between gap-2 border border-black bg-white px-3 py-2 text-sm rounded-none"
                         >
                           <span className="font-medium truncate">{p.name}</span>
                           <Link
@@ -426,12 +492,12 @@ const BusinessReviewApproveModal = ({
 
                 {!rejectMode ? (
                   <>
-                    <div className="rounded-2xl border border-border/50 bg-muted/25 p-5 shadow-sm space-y-3">
+                    <div className="border border-black bg-white p-4 space-y-3 rounded-none">
                       <Label
                         htmlFor="commission-rate"
                         className="text-sm font-medium"
                       >
-                        {t("business.approveModal.title")}
+                        Tỷ lệ hoa hồng (%)
                       </Label>
                       <Input
                         id="commission-rate"
@@ -441,7 +507,7 @@ const BusinessReviewApproveModal = ({
                         step={0.5}
                         value={commissionRate}
                         onChange={(e) => setCommissionRate(e.target.value)}
-                        className="max-w-[200px] rounded-xl border-border/60 font-mono"
+                        className="max-w-[200px] rounded-none border-black font-mono"
                         autoComplete="off"
                       />
                       <p className="text-xs text-muted-foreground">
@@ -449,7 +515,7 @@ const BusinessReviewApproveModal = ({
                       </p>
                     </div>
 
-                    <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/60 bg-background/50 p-4 transition-colors hover:bg-muted/40">
+                    <label className="flex cursor-pointer items-start gap-3 border border-black bg-white p-4 hover:bg-muted/40 rounded-none">
                       <Checkbox
                         checked={acknowledged}
                         onCheckedChange={(c) => setAcknowledged(Boolean(c))}
@@ -457,15 +523,15 @@ const BusinessReviewApproveModal = ({
                         id="ack-compare"
                       />
                       <span className="text-sm leading-relaxed">
-                        <span className="font-medium text-foreground">
+                        <span className="font-bold text-foreground">
                           {t("business.approveModal.confirmApprove")}
                         </span>{" "}
-                        {t("business.approveModal.confirmApprove")}
+                        Xác nhận thông tin hồ sơ doanh nghiệp đã khớp với các giấy tờ đính kèm.
                       </span>
                     </label>
                   </>
                 ) : (
-                  <div className="space-y-2 rounded-2xl border border-destructive/20 bg-destructive/[0.03] p-4">
+                  <div className="space-y-2 border border-red-500 bg-red-50/20 p-4 rounded-none">
                     <Label
                       htmlFor="reject-reason-admin"
                       className="font-medium"
@@ -477,7 +543,7 @@ const BusinessReviewApproveModal = ({
                       placeholder={t("business.approveModal.rejectReasonPlaceholder")}
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
-                      className="min-h-[120px] rounded-xl border-border/60"
+                      className="min-h-[120px] rounded-none border-black"
                     />
                   </div>
                 )}
@@ -486,12 +552,13 @@ const BusinessReviewApproveModal = ({
           })()}
         </div>
 
-        <DialogFooter className="shrink-0 gap-2 rounded-b-3xl border-t border-border/40 bg-gradient-to-t from-muted/50 to-background p-4 sm:gap-3 sm:p-6 sm:pt-5">
+        <DialogFooter className="shrink-0 gap-2 border-t-2 border-black bg-[#F4F4F4] p-4 sm:gap-3">
           {!rejectMode ? (
             <>
               <Button
                 type="button"
                 variant="outline"
+                className="rounded-none border-black font-mono text-[10px] uppercase"
                 onClick={() => onOpenChange?.(false)}
                 disabled={submitting}
               >
@@ -500,6 +567,7 @@ const BusinessReviewApproveModal = ({
               <Button
                 type="button"
                 variant="destructive"
+                className="rounded-none font-mono text-[10px] uppercase"
                 onClick={() => setRejectMode(true)}
                 disabled={submitting || loading}
               >
@@ -507,9 +575,9 @@ const BusinessReviewApproveModal = ({
               </Button>
               <Button
                 type="button"
+                className="rounded-none border-black font-mono text-[10px] uppercase gap-1.5"
                 onClick={handleApprove}
                 disabled={submitting || loading || !detail || !acknowledged}
-                className="gap-1.5"
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -522,6 +590,7 @@ const BusinessReviewApproveModal = ({
               <Button
                 type="button"
                 variant="outline"
+                className="rounded-none border-black font-mono text-[10px] uppercase"
                 onClick={() => {
                   setRejectMode(false);
                   setRejectReason("");
@@ -533,6 +602,7 @@ const BusinessReviewApproveModal = ({
               <Button
                 type="button"
                 variant="destructive"
+                className="rounded-none font-mono text-[10px] uppercase"
                 onClick={handleReject}
                 disabled={submitting}
               >
@@ -545,6 +615,28 @@ const BusinessReviewApproveModal = ({
           )}
         </DialogFooter>
       </DialogContent>
+
+      <Dialog open={previewPdfOpen} onOpenChange={setPreviewPdfOpen}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden flex flex-col gap-0 rounded-none border-2 border-black sm:rounded-none max-h-[90vh]">
+          <div className="shrink-0 border-b-2 border-black bg-[#F4F4F4] px-5 py-4 text-left">
+            <DialogHeader className="space-y-1">
+              <DialogTitle className="flex items-center gap-2 font-black uppercase tracking-tight text-base">
+                <FileText className="h-5 w-5 shrink-0" aria-hidden="true" />
+                {t("business.documents.contractPreview")}
+              </DialogTitle>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-5 bg-white min-h-[60vh] flex flex-col justify-stretch">
+            {previewPdfOpen && (
+              <ContractPdfViewer
+                businessId={businessId}
+                className="w-full flex-1"
+                adminSigned={acknowledged}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };

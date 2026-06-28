@@ -1,6 +1,16 @@
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import { BUSINESS_ROUTES } from "@/constants/routes";
+import {
+  Button,
+  Card,
+  CardContent,
+  Alert,
+  AlertTitle,
+  AlertDescription,
+  Separator,
+} from "@/components/ui";
+import { Clock, FileText, Rocket, CheckCircle2, ArrowRight } from "lucide-react";
 
 export default function BusinessWelcomePage() {
   const navigate = useNavigate();
@@ -15,139 +25,128 @@ export default function BusinessWelcomePage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-blue-50 to-indigo-100 p-4">
-      <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4">
+      <Card className="max-w-lg w-full shadow-2xl border-none overflow-hidden rounded-2xl bg-white dark:bg-slate-950">
         {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-green-500 to-blue-600 p-8 text-center">
-          <div className="w-20 h-20 mx-auto mb-4 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-            <svg
-              className="w-10 h-10 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-8 text-center text-white relative">
+          <div className="w-16 h-16 mx-auto mb-4 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center shadow-inner">
+            <CheckCircle2 className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">
-            Chào mừng bạn! 🎉
+          <h1 className="text-3xl font-extrabold uppercase tracking-tight mb-2">
+            Chào mừng bạn
           </h1>
-          <p className="text-white/90 text-lg">
+          <p className="text-emerald-50 text-sm font-medium tracking-wide">
             Đăng ký doanh nghiệp thành công
           </p>
         </div>
 
-        {/* Content */}
-        <div className="p-8">
-          <div className="text-center mb-6">
-            <p className="text-gray-600 mb-2">
+        <CardContent className="p-8 space-y-6">
+          <div className="text-center space-y-2">
+            <p className="text-slate-600 dark:text-slate-300 text-sm">
               Xin chào{" "}
-              <span className="font-semibold text-gray-800">
+              <span className="font-bold text-slate-800 dark:text-white">
                 {user?.profile?.fullName || user?.username}
               </span>
               !
             </p>
-            <p className="text-gray-500 text-sm">
-              Hồ sơ doanh nghiệp của bạn đã được gửi và đang chờ phê duyệt từ
-              quản trị viên. Chúng tôi sẽ thông báo cho bạn khi hồ sơ được duyệt.
+            <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed max-w-sm mx-auto">
+              Hồ sơ doanh nghiệp của bạn đã được gửi và đang chờ phê duyệt từ quản trị viên. Chúng tôi sẽ thông báo cho bạn khi hồ sơ được duyệt.
             </p>
           </div>
 
-          {/* Status Card */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+          {/* Status Alert */}
+          <Alert className="bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg
-                  className="w-5 h-5 text-amber-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
+              <Clock className="w-5 h-5 text-amber-600 dark:text-amber-500 mt-0.5" />
               <div>
-                <p className="font-semibold text-amber-800 text-sm">
+                <AlertTitle className="font-semibold text-amber-800 dark:text-amber-400 text-sm">
                   Trạng thái: Chờ phê duyệt
-                </p>
-                <p className="text-amber-600 text-xs mt-1">
-                  Hồ sơ đang được xem xét. Thời gian xử lý thường từ 1-3 ngày
-                  làm việc.
-                </p>
+                </AlertTitle>
+                <AlertDescription className="text-amber-600 dark:text-amber-500 text-xs mt-1">
+                  Hồ sơ đang được xem xét. Thời gian xử lý thường từ 1-3 ngày làm việc.
+                </AlertDescription>
               </div>
             </div>
-          </div>
+          </Alert>
 
-          {/* What's Next */}
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-800 mb-3">
+          {/* Next Steps */}
+          <div className="space-y-4">
+            <h3 className="font-bold text-slate-800 dark:text-white text-sm tracking-wide uppercase">
               Các bước tiếp theo:
             </h3>
-            <ul className="space-y-3">
+            <div className="space-y-4">
               {[
                 {
                   step: 1,
                   title: "Chờ phê duyệt",
-                  desc: "Quản trị viên sẽ xem xét hồ sơ của bạn",
-                  icon: "⏳",
+                  desc: "Quản trị viên sẽ xem xét thông tin và hồ sơ pháp lý của bạn.",
+                  icon: Clock,
+                  iconColor: "text-blue-500 bg-blue-50 dark:bg-blue-950/30",
                 },
                 {
                   step: 2,
-                  title: "Ký hợp đồng",
-                  desc: "Sau khi được duyệt, bạn cần ký hợp đồng điện tử",
-                  icon: "📝",
+                  title: "Ký hợp đồng điện tử",
+                  desc: "Sau khi được duyệt, bạn sẽ nhận được thông báo để ký hợp đồng dịch vụ điện tử.",
+                  icon: FileText,
+                  iconColor: "text-indigo-500 bg-indigo-50 dark:bg-indigo-950/30",
                 },
                 {
                   step: 3,
                   title: "Bắt đầu kinh doanh",
-                  desc: "Quản lý dịch vụ, đặt chỗ và doanh thu",
-                  icon: "🚀",
+                  desc: "Bạn có thể đăng dịch vụ, quản lý đặt chỗ và theo dõi doanh thu trên Dashboard.",
+                  icon: Rocket,
+                  iconColor: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30",
                 },
-              ].map((item) => (
-                <li key={item.step} className="flex items-start gap-3">
-                  <span className="text-xl">{item.icon}</span>
-                  <div>
-                    <p className="font-medium text-gray-800 text-sm">
-                      {item.title}
-                    </p>
-                    <p className="text-gray-500 text-xs">{item.desc}</p>
+              ].map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <div key={item.step} className="flex gap-4 items-start">
+                    <div className={`p-2.5 rounded-xl shrink-0 ${item.iconColor}`}>
+                      <IconComponent className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-semibold text-slate-800 dark:text-white text-sm">
+                        {item.step}. {item.title}
+                      </h4>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">
+                        {item.desc}
+                      </p>
+                    </div>
                   </div>
-                </li>
-              ))}
-            </ul>
+                );
+              })}
+            </div>
           </div>
+
+          <Separator className="my-6 bg-slate-100 dark:bg-slate-800" />
 
           {/* Buttons */}
-          <div className="space-y-3">
-            <button
+          <div className="flex flex-col gap-3">
+            <Button
               onClick={handleGetStarted}
-              className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors duration-200"
+              size="lg"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl h-12 shadow-md hover:shadow-lg transition-all"
             >
-              Vào Dashboard
-            </button>
-            <button
+              Vào Dashboard <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+            <Button
               onClick={handleViewProfile}
-              className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors duration-200"
+              variant="outline"
+              size="lg"
+              className="w-full border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-xl h-12 hover:bg-slate-50 dark:hover:bg-slate-900"
             >
               Xem hồ sơ doanh nghiệp
-            </button>
+            </Button>
           </div>
 
-          <p className="text-xs text-gray-400 text-center mt-4">
-            Nếu có thắc mắc, vui lòng liên hệ hỗ trợ qua email support@didaugio.vn
+          <p className="text-[11px] text-slate-400 text-center">
+            Nếu có thắc mắc, vui lòng liên hệ hỗ trợ qua email{" "}
+            <a href="mailto:support@didaugio.vn" className="underline hover:text-slate-600 dark:hover:text-slate-300">
+              support@didaugio.vn
+            </a>
           </p>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

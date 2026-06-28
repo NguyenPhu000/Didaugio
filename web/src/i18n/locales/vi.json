@@ -1692,6 +1692,7 @@
     "detailModal": {
       "title": "Chi tiết doanh nghiệp",
       "businessName": "Tên doanh nghiệp",
+      "businessType": "Loại hình",
       "ownerName": "Tên chủ sở hữu",
       "email": "Email",
       "phone": "Điện thoại",

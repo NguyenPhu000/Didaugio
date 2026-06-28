@@ -28,6 +28,7 @@ import {
   Wallet,
   Phone,
   Eye,
+  EyeOff,
   AlertOctagon,
   BellRing,
   Ticket,
@@ -38,6 +39,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import ContractPdfViewer from "@/components/business/ContractPdfViewer";
 
 const getPlaceStatusLabels = (t) => ({
   draft: t("places.statusFilters.draft"),
@@ -96,12 +98,58 @@ export default function BusinessDetailModal({
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+  const [previewPdfOpen, setPreviewPdfOpen] = useState(false);
+  const [pdfPreviewBlobUrl, setPdfPreviewBlobUrl] = useState(null);
   const [activeTab, setActiveTab] = useState("detail");
   const [auditLogs, setAuditLogs] = useState([]);
+
+  useEffect(() => {
+    if (!previewData?.url) {
+      setPdfPreviewBlobUrl(null);
+      return;
+    }
+    const url = previewData.url.startsWith("http") || previewData.url.startsWith("data:") 
+      ? previewData.url 
+      : `data:image/jpeg;base64,${previewData.url}`;
+
+    const isPdf = url.startsWith("data:application/pdf") || url.toLowerCase().endsWith(".pdf") || url.toLowerCase().includes(".pdf?");
+    if (isPdf && url.startsWith("data:application/pdf;base64,")) {
+      try {
+        const base64Data = url.split(",")[1];
+        const bstr = atob(base64Data);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: "application/pdf" });
+        const blobUrl = URL.createObjectURL(blob);
+        setPdfPreviewBlobUrl(blobUrl);
+        return () => {
+          URL.revokeObjectURL(blobUrl);
+        };
+      } catch (e) {
+        console.error("Error converting base64 PDF to blob URL:", e);
+      }
+    } else {
+      setPdfPreviewBlobUrl(null);
+    }
+  }, [previewData]);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [showPlain, setShowPlain] = useState({
+    idCard: false,
+    bankAccount: false,
+    bankOwner: false,
+    taxCode: false,
+  });
+
+  const toggleShowPlain = (field) => {
+    setShowPlain((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
 
   useEffect(() => {
     if (!open || !businessId) return;
+    setShowPlain({ idCard: false, bankAccount: false, bankOwner: false, taxCode: false });
     let cancelled = false;
     setDetail(null);
     setActiveTab("detail");
@@ -291,10 +339,39 @@ export default function BusinessDetailModal({
                         {detail.owner?.address || t("common.noData")}
                       </span>
                     </div>
-                    <div className="col-span-full font-mono text-xs mt-2 border-t border-dashed border-border/50 pt-2 flex flex-wrap gap-4">
-                      <span>CCCD: <strong>{detail.idCardNumberMasked || "—"}</strong></span>
-                      <span>TK NH: <strong>{detail.bankAccountNumberMasked || "—"}</strong></span>
-                      <span>Chủ TK: <strong>{detail.bankAccountOwnerMasked || "—"}</strong></span>
+                    <div className="col-span-full font-mono text-xs mt-2 border-t border-dashed border-border/50 pt-2 flex flex-wrap gap-x-6 gap-y-2">
+                      <span className="flex items-center gap-1.5">
+                        CCCD: <strong>{showPlain.idCard ? detail.idCardNumber : detail.idCardNumberMasked || "—"}</strong>
+                        {(detail.idCardNumber || detail.idCardNumberMasked) && (
+                          <button onClick={() => toggleShowPlain("idCard")} className="text-muted-foreground hover:text-black focus:outline-none" title={showPlain.idCard ? "Ẩn" : "Xem"}>
+                            {showPlain.idCard ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        TK NH: <strong>{showPlain.bankAccount ? detail.bankAccountNumber : detail.bankAccountNumberMasked || "—"}</strong>
+                        {(detail.bankAccountNumber || detail.bankAccountNumberMasked) && (
+                          <button onClick={() => toggleShowPlain("bankAccount")} className="text-muted-foreground hover:text-black focus:outline-none" title={showPlain.bankAccount ? "Ẩn" : "Xem"}>
+                            {showPlain.bankAccount ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        Chủ TK: <strong>{showPlain.bankOwner ? detail.bankAccountOwner : detail.bankAccountOwnerMasked || "—"}</strong>
+                        {(detail.bankAccountOwner || detail.bankAccountOwnerMasked) && (
+                          <button onClick={() => toggleShowPlain("bankOwner")} className="text-muted-foreground hover:text-black focus:outline-none" title={showPlain.bankOwner ? "Ẩn" : "Xem"}>
+                            {showPlain.bankOwner ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        MST: <strong>{showPlain.taxCode ? detail.taxCode : detail.taxCodeMasked || "—"}</strong>
+                        {(detail.taxCode || detail.taxCodeMasked) && (
+                          <button onClick={() => toggleShowPlain("taxCode")} className="text-muted-foreground hover:text-black focus:outline-none" title={showPlain.taxCode ? "Ẩn" : "Xem"}>
+                            {showPlain.taxCode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        )}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -383,6 +460,16 @@ export default function BusinessDetailModal({
                         {contract.commissionRate ?? detail.commissionRate ?? 0}%
                       </strong>
                     </p>
+                    <div className="pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full rounded-none border-black font-mono text-[10px] uppercase h-7 gap-1"
+                        onClick={() => setPreviewPdfOpen(true)}
+                      >
+                        <FileSignature className="h-3 w-3" /> Xem hợp đồng PDF
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -579,18 +666,57 @@ export default function BusinessDetailModal({
         <DialogContent className="max-w-4xl p-0 bg-transparent border-none shadow-none flex items-center justify-center">
           <div className="relative bg-white p-4 w-full max-h-[90vh] overflow-auto flex flex-col">
             <h3 className="font-semibold text-lg border-b pb-2 mb-4">{previewData?.title}</h3>
-            <div className="flex-1 flex items-center justify-center min-h-[50vh]">
-              {previewData?.url && (
-                <img 
-                  src={previewData.url.startsWith("http") || previewData.url.startsWith("data:") ? previewData.url : `data:image/jpeg;base64,${previewData.url}`}
-                  alt={previewData.title}
-                  className="max-w-full max-h-full object-contain"
-                />
-              )}
+            <div className="flex-1 flex items-center justify-center min-h-[50vh] w-full">
+              {previewData?.url && (() => {
+                const rawUrl = previewData.url.startsWith("http") || previewData.url.startsWith("data:") 
+                  ? previewData.url 
+                  : `data:image/jpeg;base64,${previewData.url}`;
+                
+                const isPdf = rawUrl.startsWith("data:application/pdf") || rawUrl.toLowerCase().endsWith(".pdf") || rawUrl.toLowerCase().includes(".pdf?");
+                
+                if (isPdf) {
+                  return (
+                    <iframe
+                      src={pdfPreviewBlobUrl || rawUrl}
+                      title={previewData.title}
+                      className="w-full min-h-[60vh] border border-black"
+                    />
+                  );
+                }
+
+                return (
+                  <img 
+                    src={rawUrl}
+                    alt={previewData.title}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                );
+              })()}
             </div>
             <div className="mt-4 flex justify-end">
               <Button onClick={() => setPreviewData(null)} variant="outline">{t("common.close")}</Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={previewPdfOpen} onOpenChange={setPreviewPdfOpen}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden flex flex-col gap-0 rounded-none border-2 border-black sm:rounded-none max-h-[90vh]">
+          <div className="shrink-0 border-b-2 border-black bg-[#F4F4F4] px-5 py-4 text-left">
+            <DialogHeader className="space-y-1">
+              <DialogTitle className="flex items-center gap-2 font-black uppercase tracking-tight text-base">
+                <FileSignature className="h-5 w-5 shrink-0" aria-hidden="true" />
+                {t("business.documents.contractPreview")}
+              </DialogTitle>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-5 bg-white min-h-[60vh] flex flex-col justify-stretch">
+            {previewPdfOpen && (
+              <ContractPdfViewer
+                businessId={businessId}
+                className="w-full flex-1"
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>
