@@ -20,12 +20,15 @@ export const useMapData = () => {
       setLoading(true);
       setError(null);
 
+      const ngrokHeader = { "ngrok-skip-browser-warning": "true" };
       const [districtsRes, wardsRes] = await Promise.all([
         fetch(`${API_BASE_URL}${MAP_API_PATHS.DISTRICTS_GEOJSON}`, {
           signal: controller.signal,
+          headers: ngrokHeader,
         }),
         fetch(`${API_BASE_URL}${MAP_API_PATHS.WARDS_GEOJSON}`, {
           signal: controller.signal,
+          headers: ngrokHeader,
         }),
       ]);
 

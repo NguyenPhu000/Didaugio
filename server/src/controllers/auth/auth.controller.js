@@ -47,6 +47,30 @@ export const register = async (req, res, next) => {
 };
 
 /**
+ * POST /api/auth/register-business
+ * Đăng ký tài khoản doanh nghiệp trên web
+ * Kết hợp đăng ký user + auto-login trong một bước
+ */
+export const registerBusiness = async (req, res, next) => {
+  try {
+    const clientInfo = {
+      ipAddress: req.ip || req.connection.remoteAddress,
+      deviceId: req.headers["x-device-id"],
+      deviceName: req.headers["x-device-name"] || req.headers["user-agent"],
+    };
+
+    const result = await authService.registerBusiness(req.body, clientInfo);
+    res.status(201).json({
+      success: true,
+      data: result,
+      message: "Đăng ký doanh nghiệp thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * POST /api/auth/login
  * Đăng nhập
  */
@@ -213,7 +237,7 @@ export const resendVerificationPublic = async (req, res, next) => {
 export const logout = async (req, res, next) => {
   try {
     const { refreshToken } = req.body;
-    const result = await authService.logout(refreshToken);
+    const result = await authService.logout(refreshToken, req.user?.userId);
     if (req.user?.userId) {
       setOffline(req.user.userId);
     }
@@ -299,8 +323,43 @@ export const pingOnline = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/auth/upgrade-to-business
+ * Nâng cấp tài khoản USER lên BUSINESS role
+ * Dành cho user mobile muốn đăng ký business trên web
+ */
+export const upgradeToBusiness = async (req, res, next) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Chưa đăng nhập",
+        errorCode: "UNAUTHORIZED",
+      });
+    }
+
+    const result = await authService.upgradeToBusinessRole(userId);
+    res.json({
+      success: true,
+      data: result,
+      message: "Nâng cấp lên tài khoản doanh nghiệp thành công",
+    });
+  } catch (error) {
+    if (error.errorCode === "ALREADY_BUSINESS") {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+        errorCode: error.errorCode,
+      });
+    }
+    next(error);
+  }
+};
+
 export default {
   register,
+  registerBusiness,
   login,
   loginGoogle,
   refreshToken,
@@ -316,4 +375,5 @@ export default {
   getSessions,
   revokeSession,
   pingOnline,
+  upgradeToBusiness,
 };

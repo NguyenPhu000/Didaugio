@@ -36,5 +36,9 @@ export const resolvePostLoginRoute = (user) => {
     return ADMIN_ROUTES.DASHBOARD;
   }
 
+  if (roleId === ROLES.USER) {
+    return BUSINESS_ROUTES.REGISTER;
+  }
+
   return AUTH_ROUTES.LOGIN;
 };

@@ -666,6 +666,15 @@ export async function processSePayIPN(body) {
         return { type: "ALREADY_PROCESSED", status: payment.status };
       }
 
+      if (Number(payment.amount) !== Number(amount)) {
+        logger.warn("SePay IPN amount mismatch", {
+          transactionRef,
+          expected: Number(payment.amount),
+          received: Number(amount),
+        });
+        return { type: "AMOUNT_MISMATCH" };
+      }
+
       const updatedPayment = await tx.payment.update({
         where: { id: payment.id },
         data: {
@@ -729,7 +738,7 @@ export async function processSePayIPN(body) {
       };
     });
 
-    if (result.type && result.type !== "NOT_FOUND") {
+    if (result.type && !["NOT_FOUND", "AMOUNT_MISMATCH"].includes(result.type)) {
       await webhookLogService.markProcessed({ transactionRef, webhookLogId });
     }
 
@@ -739,6 +748,15 @@ export async function processSePayIPN(body) {
 
     if (result.type === "ALREADY_PROCESSED") {
       return sepayService.buildIpnSuccess();
+    }
+
+    if (result.type === "AMOUNT_MISMATCH") {
+      await webhookLogService.markError({
+        transactionRef,
+        webhookLogId,
+        errorMsg: "Amount mismatch",
+      });
+      return sepayService.buildIpnError("Amount mismatch");
     }
 
     if (result.type === "SUCCESS") {
@@ -793,7 +811,7 @@ export async function processSePayIPN(body) {
  * @param {Object} headers - Request headers (for signature verification)
  * @returns {Promise<{ success: boolean, message?: string }>}
  */
-export async function processSePayBankWebhook(body, headers = {}) {
+export async function processSePayBankWebhook(body, headers = {}, rawBody = null) {
   const webhookLogId = await webhookLogService.logWebhook({
     gateway: "SEPAY_BANK",
     payload: body,
@@ -804,10 +822,10 @@ export async function processSePayBankWebhook(body, headers = {}) {
     // Verify HMAC-SHA256 signature if configured
     const signature = headers["x-sepay-signature"] || "";
     const timestamp = headers["x-sepay-timestamp"] || "";
-    const rawBody = typeof body === "string" ? body : JSON.stringify(body);
+    const bodyForSignature = rawBody || (typeof body === "string" ? body : JSON.stringify(body));
 
     const sigResult = sepayWebhookService.verifyWebhookSignature(
-      rawBody,
+      bodyForSignature,
       signature,
       timestamp,
     );
@@ -1034,7 +1052,7 @@ export async function processSePayBankWebhook(body, headers = {}) {
  * Process SePay outgoing bank transaction webhook.
  * Matches money-out events to payout transfers or refunded payments.
  */
-export async function processSePayRefundWebhook(body, headers = {}) {
+export async function processSePayRefundWebhook(body, headers = {}, rawBody = null) {
   const webhookLogId = await webhookLogService.logWebhook({
     gateway: "SEPAY_BANK_REFUND",
     payload: body,
@@ -1044,10 +1062,10 @@ export async function processSePayRefundWebhook(body, headers = {}) {
   try {
     const signature = headers["x-sepay-signature"] || "";
     const timestamp = headers["x-sepay-timestamp"] || "";
-    const rawBody = typeof body === "string" ? body : JSON.stringify(body);
+    const bodyForSignature = rawBody || (typeof body === "string" ? body : JSON.stringify(body));
 
     const sigResult = sepayWebhookService.verifyWebhookSignature(
-      rawBody,
+      bodyForSignature,
       signature,
       timestamp,
     );
@@ -1137,6 +1155,21 @@ export async function processSePayRefundWebhook(body, headers = {}) {
                 .join(" | "),
             },
           });
+
+          // Decrement business wallet balance
+          await tx.partnerWallet.update({
+            where: { businessId: updatedPayout.businessId },
+            data: { balance: { decrement: Number(payout.amount) } },
+          });
+
+          // Update platform wallet totalPaidOut
+          const platformWallet = await tx.platformWallet.findFirst();
+          if (platformWallet) {
+            await tx.platformWallet.update({
+              where: { id: platformWallet.id },
+              data: { totalPaidOut: { increment: Number(payout.amount) } },
+            });
+          }
 
           await tx.financialLedger.create({
             data: {

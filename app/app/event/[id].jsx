@@ -250,14 +250,20 @@ export default function EventDetailScreen() {
   }
 
   const rawImage = event.thumbnail || event.imageUrl;
-  const imageUri = rawImage ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 800) : "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80";
+  const imageUri = rawImage ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 800) : null;
 
   return (
     <View className="flex-1 bg-[#F4F7FB]">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
         {/* Banner Image */}
         <View className="w-full h-[280px] relative bg-[#EDEDF2]">
-          <Image source={{ uri: imageUri }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
+          ) : (
+            <View className="w-full h-full bg-gradient-to-br from-emerald-900 via-teal-800 to-cyan-900 items-center justify-center">
+              <MaterialIconsRounded name="celebration" size={56} color="rgba(255,255,255,0.3)" />
+            </View>
+          )}
           <View className="absolute inset-0 bg-black/20" />
           <LinearGradient
             colors={["rgba(0,0,0,0.6)", "transparent"]}
@@ -275,13 +281,13 @@ export default function EventDetailScreen() {
               onPress={() => router.back()}
               className="w-10 h-10 rounded-full items-center justify-center bg-black/40 overflow-hidden"
             >
-              <BlurView intensity={30} style={{ position: "absolute", inset: 0 }} />
+              <BlurView intensity={30} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
               <MaterialIconsRounded name="arrow-back" size={22} color="#FFFFFF" />
             </Pressable>
 
             {event.totalActiveCompanionCount > 0 ? (
               <View className="px-3 py-1.5 rounded-full bg-[#34C759] border border-white/20 flex-row items-center gap-1.5 shadow-sm">
-                <View className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                <View className="w-2 h-2 rounded-full bg-white" />
                 <Text className="text-white text-[11px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>
                   {event.totalActiveCompanionCount} {t("event.online")}
                 </Text>
@@ -633,7 +639,7 @@ export default function EventDetailScreen() {
           onPress={() => setSelectedMoment(null)}
           className="flex-1 bg-black/90 items-center justify-center px-4"
         >
-          <View className="w-full bg-white rounded-3xl overflow-hidden shadow-2xl" onStartShouldSetResponder={() => true}>
+          <View className="w-full bg-white rounded-3xl overflow-hidden shadow-xl" onStartShouldSetResponder={() => true}>
             <View className="p-4 flex-row justify-between items-center border-b border-black/[0.05]">
               <View className="flex-row items-center gap-1.5">
                 <View className="w-6 h-6 rounded-full bg-black/5 items-center justify-center">

@@ -50,6 +50,16 @@ export const useAuthStore = create(
         set({ accessToken });
       },
 
+      setSession: ({ user, accessToken, refreshToken }) => {
+        set((state) => ({
+          user: user ?? state.user,
+          accessToken: accessToken ?? state.accessToken,
+          refreshToken: refreshToken ?? state.refreshToken,
+          isAuthenticated: Boolean(accessToken ?? state.accessToken),
+          isLoading: false,
+        }));
+      },
+
       setUser: (user) => {
         set({ user });
       },

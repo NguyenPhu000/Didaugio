@@ -2,6 +2,7 @@
  * Business Profile Controller - SRP: Xử lý request hồ sơ doanh nghiệp
  */
 import * as businessProfileService from "../../services/business/businessProfile.service.js";
+import * as contractStorageService from "../../services/contract/contractStorage.service.js";
 import {
   ALLOWED_UPLOAD_MIME_TYPES,
   MAX_BASE64_DATA_URI_LENGTH,
@@ -145,15 +146,73 @@ export const getMyPlaces = async (req, res, next) => {
 
 export const signContract = async (req, res, next) => {
   try {
-    const business = await businessProfileService.signContract(
-      req.user.userId,
-      req.body,
+    // Lấy businessId từ userId trước
+    const profile = await businessProfileService.getProfile(req.user.userId);
+    const businessId = profile?.id;
+    if (!businessId) {
+      return res.status(404).json({
+        success: false,
+        data: null,
+        message: "Bạn chưa đăng ký doanh nghiệp",
+      });
+    }
+
+    // Gọi contractStorage.signContract để embed chữ ký vào PDF
+    const signerMetadata = {
+      ip: req.ip || req.headers["x-forwarded-for"],
+      userAgent: req.headers["user-agent"],
+      signedAt: req.body.signedAt,
+      ...(req.body.signerMetadata || {}),
+    };
+
+    const result = await contractStorageService.signContract(
+      businessId,
+      req.body.signatureData,
+      signerMetadata,
     );
+
     res.json({
       success: true,
-      data: business,
+      data: {
+        contractSigned: result.contractSigned,
+        contractSignedAt: result.contractSignedAt,
+        contractVersion: result.contractVersion,
+      },
       message: "Ký hợp đồng doanh nghiệp thành công",
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const downloadContract = async (req, res, next) => {
+  try {
+    const businessId = parseInt(req.params.id, 10);
+    if (Number.isNaN(businessId)) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID doanh nghiệp không hợp lệ",
+      });
+    }
+
+    // Kiểm tra quyền: chỉ chủ doanh nghiệp hoặc admin mới được download
+    const profile = await businessProfileService.getProfile(req.user.userId);
+    const isAdmin = req.user?.roleId <= 4; // admin/superadmin
+    if (profile?.id !== businessId && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        data: null,
+        message: "Bạn không có quyền tải hợp đồng này",
+      });
+    }
+
+    const { buffer, filename } = await contractStorageService.downloadContract(businessId);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Length", buffer.length);
+    res.send(buffer);
   } catch (error) {
     next(error);
   }

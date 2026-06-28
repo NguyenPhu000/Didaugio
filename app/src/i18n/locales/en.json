@@ -213,7 +213,10 @@
       "participants": "{{count}} joined",
       "legs": "{{count}} legs",
       "communityEvents": "Community events",
-      "viewAll": "View all"
+      "viewAll": "View all",
+      "featuredBadge": "FEATURED EVENT",
+      "onlineCount": "{{count}} ONLINE",
+      "viewNow": "View now"
     },
     "sampleTrip": {
       "adventure": "Adventure",
@@ -1383,17 +1386,19 @@
     "suggestingPlaces": "Suggesting places...",
     "processing": "Processing...",
     "inputPlaceholder": "Describe the plan you want...",
-    "voiceListening": "Listening. Nhi will send when you pause.",
+    "voiceListening": "Listening. Tap the mic again to send.",
     "voiceTranscribing": "Nhi is turning your voice into text...",
     "voiceSpeaking": "Nhi is speaking...",
     "voiceError": "Voice is not available right now.",
     "voicePermissionDenied": "Microphone permission is required for voice chat.",
     "voiceEmptyRecording": "No voice was captured. Try speaking a little closer to the mic.",
+    "voiceTranscriptLabel": "Nhi heard",
+    "voiceItineraryQueued": "I prepared a trip preview. Review the places and choose the ones you want to keep.",
     "voiceWave": {
       "idle": "Tap to Chat",
       "idleHint": "Ask Nhi by voice",
       "listening": "Listening",
-      "listeningHint": "Auto-sends when you pause",
+      "listeningHint": "Tap again to send",
       "transcribing": "Writing it down",
       "speaking": "Nhi is speaking",
       "speakingHint": "Tap volume to stop",

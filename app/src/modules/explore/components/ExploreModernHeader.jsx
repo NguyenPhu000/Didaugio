@@ -49,7 +49,11 @@ function ExploreModernHeaderInner({ user, onPressSearch }) {
   return (
     <View
       className="px-5 pt-3 pb-4"
-      style={{ backgroundColor: APPLE_THEME.background }}
+      style={{
+        backgroundColor: APPLE_THEME.surface,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: "rgba(0,0,0,0.06)",
+      }}
     >
       <View className="flex-row justify-between items-center mb-4">
         <View className="flex-row items-center gap-3">
@@ -81,16 +85,19 @@ function ExploreModernHeaderInner({ user, onPressSearch }) {
           </View>
           <View>
             <Text
-              className="text-xs font-medium"
-              style={{ color: TAB_THEME.textMuted }}
+              className="text-xs font-semibold tracking-wide"
+              style={{
+                color: TAB_THEME.textMuted,
+                fontFamily: TOKENS.font.semibold,
+              }}
             >
               {getGreeting()},
             </Text>
             <Text
-              className="text-base font-semibold"
+              className="text-[17px] font-bold tracking-tight"
               style={{
                 color: APPLE_THEME.text,
-                fontFamily: TOKENS.font.semibold,
+                fontFamily: TOKENS.font.bold,
               }}
             >
               {userName}

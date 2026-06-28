@@ -2,6 +2,7 @@ import { memo, useCallback, useState, useMemo } from "react";
 import { FlatList, Pressable, Text, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
   useAnimatedStyle,
@@ -21,10 +22,13 @@ const BANNER_H = 170;
 const SPRING_CONFIG = TOKENS.spring.press;
 
 function BannerItem({ event, onPress, bannerWidth }) {
+  const { t } = useTranslation();
   const scale = useSharedValue(1);
+  const [imgError, setImgError] = useState(false);
 
   const rawImage = event?.thumbnail || event?.imageUrl;
-  const imageUri = rawImage ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 800) : "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=800&q=80";
+  const resolvedUri = rawImage ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 800) : null;
+  const imageUri = imgError ? null : resolvedUri;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -49,11 +53,11 @@ function BannerItem({ event, onPress, bannerWidth }) {
     const start = event?.startDate ? new Date(event.startDate).getTime() : null;
     const end = event?.endDate ? new Date(event.endDate).getTime() : null;
     if (start && end) {
-      if (now >= start && now <= end) return "Đang diễn ra";
-      if (now > end) return "Đã kết thúc";
+      if (now >= start && now <= end) return t("explore.event.ongoing");
+      if (now > end) return t("explore.event.ended");
     }
-    return "Sắp diễn ra";
-  }, [event?.startDate, event?.endDate]);
+    return t("explore.event.upcoming");
+  }, [event?.startDate, event?.endDate, t]);
 
   return (
     <AnimatedPressable
@@ -64,13 +68,20 @@ function BannerItem({ event, onPress, bannerWidth }) {
       className="rounded-[24px] overflow-hidden bg-[#EDEDF2] shadow-sm relative border border-black/5"
     >
       {/* Background Image */}
-      <Image
-        source={{ uri: imageUri }}
-        contentFit="cover"
-        transition={250}
-        cachePolicy="memory-disk"
-        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
-      />
+      {imageUri ? (
+        <Image
+          source={{ uri: imageUri }}
+          contentFit="cover"
+          transition={250}
+          cachePolicy="memory-disk"
+          onError={() => setImgError(true)}
+          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
+        />
+      ) : (
+        <View className="absolute inset-0 bg-gradient-to-br from-emerald-900 via-teal-800 to-cyan-900 items-center justify-center">
+          <MaterialIconsRounded name="celebration" size={48} color="rgba(255,255,255,0.3)" />
+        </View>
+      )}
 
       {/* Shadows */}
       <View className="absolute inset-0 bg-black/10" pointerEvents="none" />
@@ -81,7 +92,7 @@ function BannerItem({ event, onPress, bannerWidth }) {
         <View className="px-2.5 py-1 rounded-full bg-red-600 border border-red-500 flex-row items-center gap-1 shadow-sm">
           <MaterialIconsRounded name="campaign" size={12} color="#FFFFFF" />
           <Text className="text-white text-[10px] font-bold tracking-wider" style={{ fontFamily: TOKENS.font.bold }}>
-            SỰ KIỆN NỔI BẬT
+            {t("explore.event.featuredBadge")}
           </Text>
         </View>
 
@@ -95,9 +106,9 @@ function BannerItem({ event, onPress, bannerWidth }) {
       {/* Companion Neon Dot */}
       {event?.activeCompanionCount > 0 ? (
         <View className="absolute top-3.5 right-3.5 z-[2] px-2 py-1 rounded-full bg-black/60 border border-white/10 flex-row items-center gap-1">
-          <View className="w-1.5 h-1.5 rounded-full bg-[#34C759] animate-pulse" />
+          <View className="w-1.5 h-1.5 rounded-full bg-[#34C759]" />
           <Text className="text-white text-[9px] font-bold" style={{ fontFamily: TOKENS.font.semibold }}>
-            {event.activeCompanionCount} ĐANG ONLINE
+            {t("explore.event.onlineCount", { count: event.activeCompanionCount })}
           </Text>
         </View>
       ) : null}
@@ -119,15 +130,15 @@ function BannerItem({ event, onPress, bannerWidth }) {
             <View className="flex-row items-center gap-1">
               <MaterialIconsRounded name="people" size={13} color="rgba(255,255,255,0.8)" />
               <Text className="text-white/90 text-[11px] font-bold" style={{ fontFamily: TOKENS.font.semibold }}>
-                {event?._count?.participants || event?.participantCount || 0} đã tham gia
+                {t("explore.event.participants", { count: event?._count?.participants || event?.participantCount || 0 })}
               </Text>
             </View>
-            
+
             {event?.trip?.destinations?.length > 0 ? (
               <View className="flex-row items-center gap-1">
                 <MaterialIconsRounded name="navigation" size={13} color="rgba(255,255,255,0.8)" />
                 <Text className="text-white/90 text-[11px] font-bold" style={{ fontFamily: TOKENS.font.semibold }}>
-                  {event.trip.destinations.length} chặng
+                  {t("explore.event.legs", { count: event.trip.destinations.length })}
                 </Text>
               </View>
             ) : null}
@@ -136,7 +147,7 @@ function BannerItem({ event, onPress, bannerWidth }) {
           {/* Action Button */}
           <View className="px-3.5 h-7 rounded-full bg-white flex-row items-center justify-center gap-1 shadow-sm">
             <Text className="text-black text-[11px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>
-              Xem ngay
+              {t("explore.event.viewNow")}
             </Text>
             <MaterialIconsRounded name="arrow-forward" size={12} color="#000000" />
           </View>

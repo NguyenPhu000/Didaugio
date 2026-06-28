@@ -124,14 +124,14 @@ const AdminLayout = ({ children }) => {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent className="px-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {/* ─── Common ─── */}
           {menuDataView.main && (
             <NavMain items={menuDataView.main} label={t("nav.section.main")} />
           )}
+
+          {/* ─── Admin sections ─── */}
           {menuDataView.management && (
             <NavMain items={menuDataView.management} label={t("nav.section.management")} />
-          )}
-          {menuDataView.business && (
-            <NavMain items={menuDataView.business} label={t("nav.section.business")} />
           )}
           {menuDataView.adminBusiness && (
             <NavMain items={menuDataView.adminBusiness} label={t("nav.section.adminBusiness")} />
@@ -141,6 +141,20 @@ const AdminLayout = ({ children }) => {
           )}
           {menuDataView.system && (
             <NavMain items={menuDataView.system} label={t("nav.section.system")} />
+          )}
+
+          {/* ─── Business sections ─── */}
+          {menuDataView.business && (
+            <NavMain items={menuDataView.business} label={t("nav.section.business")} />
+          )}
+          {menuDataView.businessFinance && (
+            <NavMain items={menuDataView.businessFinance} label={t("nav.section.finance")} />
+          )}
+          {menuDataView.businessReviews && (
+            <NavMain items={menuDataView.businessReviews} label={t("nav.section.reviews")} />
+          )}
+          {menuDataView.businessAccount && (
+            <NavMain items={menuDataView.businessAccount} label={t("nav.section.account")} />
           )}
         </SidebarContent>
       </Sidebar>

@@ -87,7 +87,7 @@ router.delete(
 router.post(
   "/",
   authenticate,
-  hasPermission("settings.manage"),
+  hasPermission("system.manage_banners"),
   validateBody(createEventSchema),
   eventController.createEvent
 );
@@ -96,7 +96,7 @@ router.post(
 router.put(
   "/:id",
   authenticate,
-  hasPermission("settings.manage"),
+  hasPermission("system.manage_banners"),
   validateParams(eventIdParamSchema),
   validateBody(updateEventSchema),
   eventController.updateEvent
@@ -106,7 +106,7 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  hasPermission("settings.manage"),
+  hasPermission("system.manage_banners"),
   validateParams(eventIdParamSchema),
   eventController.deleteEvent
 );
@@ -115,7 +115,7 @@ router.delete(
 router.put(
   "/:id/broadcast",
   authenticate,
-  hasPermission("settings.manage"),
+  hasPermission("system.manage_banners"),
   validateParams(eventIdParamSchema),
   validateBody(updateBroadcastSchema),
   eventController.updateBroadcast

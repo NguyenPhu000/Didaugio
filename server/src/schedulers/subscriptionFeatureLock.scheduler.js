@@ -1,6 +1,10 @@
 import cron from "node-cron";
 import logger from "../config/logger.js";
-import { getLockedBusinessIds, invalidateFeatureLockCache } from "../services/subscription/subscription.service.js";
+import {
+  getLockedBusinessIds,
+  invalidateFeatureLockCache,
+  processScheduledDowngrades,
+} from "../services/subscription/subscription.service.js";
 
 const CRON_EXPRESSION = process.env.SUBSCRIPTION_FEATURE_LOCK_CRON || "0 * * * *"; // Every hour
 
@@ -26,6 +30,13 @@ export function startSubscriptionFeatureLockScheduler() {
 
   const task = cron.schedule(CRON_EXPRESSION, async () => {
     try {
+      const downgraded = await processScheduledDowngrades();
+      if (downgraded.processed > 0 || downgraded.errors > 0) {
+        logger.info(
+          `[scheduler] subscription downgrade: processed=${downgraded.processed}, errors=${downgraded.errors}`,
+        );
+      }
+
       invalidateFeatureLockCache();
       const lockedIds = await getLockedBusinessIds();
       if (lockedIds.length > 0) {

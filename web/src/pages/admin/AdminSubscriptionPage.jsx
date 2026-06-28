@@ -59,6 +59,7 @@ const STATUS_STYLES = {
   grace: "bg-amber-50 text-amber-700 border-amber-200",
   past_due: "bg-rose-50 text-rose-700 border-rose-200",
   canceled: "bg-zinc-50 text-zinc-700 border-zinc-200",
+  paused: "bg-orange-50 text-orange-700 border-orange-200",
   trialing: "bg-blue-50 text-blue-700 border-blue-200",
 };
 
@@ -67,6 +68,7 @@ const STATUS_LABELS = {
   grace: "Gia hạn",
   past_due: "Quá hạn",
   canceled: "Đã hủy",
+  paused: "Tạm ngưng",
   trialing: "Dùng thử",
 };
 
@@ -324,13 +326,13 @@ export default function AdminSubscriptionPage() {
                             {sub.status === "active" && (
                               <DropdownMenuItem
                                 onClick={() =>
-                                  handleStatusChange(sub.id, "suspended")
+                                  handleStatusChange(sub.id, "paused")
                                 }
                               >
                                 Tạm ngưng
                               </DropdownMenuItem>
                             )}
-                            {(sub.status === "suspended" ||
+                            {(sub.status === "paused" ||
                               sub.status === "past_due") && (
                               <DropdownMenuItem
                                 onClick={() =>

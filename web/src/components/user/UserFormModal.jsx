@@ -32,7 +32,6 @@ import {
 
 const UserFormModal = ({ open, onClose, user, onSuccess, mode = "create" }) => {
   const { t } = useTranslation();
-  const isEdit = mode === "edit" || mode === "change-password";
   const isChangePasswordMode = mode === "change-password";
   const [loading, setLoading] = useState(false);
 
@@ -65,6 +64,22 @@ const UserFormModal = ({ open, onClose, user, onSuccess, mode = "create" }) => {
         {t("user.form.addUser")}
       </>
     );
+  }
+
+  let headerIcon = <Plus className="w-4.5 h-4.5 text-white" />;
+  let dialogTitle = t("user.form.addNewUser");
+  let dialogDescription = t("user.form.createDescription");
+  if (isChangePasswordMode) {
+    headerIcon = <Lock className="w-4.5 h-4.5 text-white" />;
+    dialogTitle = t("users.actions.changePassword");
+    dialogDescription = t(
+      "user.form.changePasswordDescription",
+      "Nhập mật khẩu mới cho tài khoản",
+    );
+  } else if (mode === "edit") {
+    headerIcon = <User className="w-4.5 h-4.5 text-white" />;
+    dialogTitle = t("user.form.editUser");
+    dialogDescription = t("user.form.editDescription");
   }
 
   const {
@@ -151,6 +166,9 @@ const UserFormModal = ({ open, onClose, user, onSuccess, mode = "create" }) => {
         if (mode === "edit" && !cleanData.password) {
           delete cleanData.password;
         }
+        if (mode === "edit") {
+          delete cleanData.roleId;
+        }
 
         if (mode === "create" && !cleanData.password) {
           throw new Error(t("user.form.passwordRequired"));
@@ -211,28 +229,14 @@ const UserFormModal = ({ open, onClose, user, onSuccess, mode = "create" }) => {
           <div className="absolute left-0 top-0 h-full w-1 bg-yellow-400" />
           <div className="flex items-center gap-3 pr-8 pl-2">
             <div className="w-9 h-9 border border-black bg-black flex items-center justify-center shrink-0">
-              {isChangePasswordMode ? (
-                <Lock className="w-4.5 h-4.5 text-white" />
-              ) : mode === "edit" ? (
-                <User className="w-4.5 h-4.5 text-white" />
-              ) : (
-                <Plus className="w-4.5 h-4.5 text-white" />
-              )}
+              {headerIcon}
             </div>
             <div>
               <DialogTitle className="text-xl font-black text-black leading-tight uppercase tracking-tight">
-                {isChangePasswordMode
-                  ? t("users.actions.changePassword")
-                  : mode === "edit"
-                  ? t("user.form.editUser")
-                  : t("user.form.addNewUser")}
+                {dialogTitle}
               </DialogTitle>
               <DialogDescription className="text-[11px] font-semibold text-gray-500 mt-0.5 uppercase tracking-wider">
-                {isChangePasswordMode
-                  ? t("user.form.changePasswordDescription", "Nhập mật khẩu mới cho tài khoản")
-                  : mode === "edit"
-                  ? t("user.form.editDescription")
-                  : t("user.form.createDescription")}
+                {dialogDescription}
               </DialogDescription>
             </div>
           </div>
@@ -324,7 +328,11 @@ const UserFormModal = ({ open, onClose, user, onSuccess, mode = "create" }) => {
                   {/* Role + Gender — 2 col */}
                   <div className="grid grid-cols-2 gap-3">
                     <Field label={t("user.form.role")} required icon={ShieldCheck}>
-                      <select {...register("roleId")} className={selectCls}>
+                      <select
+                        {...register("roleId")}
+                        className={selectCls}
+                        disabled={mode === "edit"}
+                      >
                         <option value={ROLES.STAFF}>{t("roles.names.staff")}</option>
                         <option value={ROLES.BUSINESS}>{t("roles.names.business")}</option>
                         <option value={ROLES.ADMIN}>{t("roles.names.admin")}</option>

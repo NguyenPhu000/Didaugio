@@ -29,6 +29,11 @@ validateEnv();
 const app = express();
 const PORT = process.env.PORT || 8080;
 const BODY_LIMIT = process.env.BODY_LIMIT || "2mb";
+const RAW_BODY_CAPTURE_PATHS = [
+  "/api/payments/sepay-webhook",
+  "/api/payments/sepay-webhook-refund",
+  "/api/subscriptions/webhook/sepay",
+];
 
 const CORS_ALLOW_ALL = String(process.env.CORS_ALLOW_ALL || "false") === "true";
 const configuredOrigins = (process.env.CORS_ORIGINS || "")
@@ -89,6 +94,17 @@ const isOriginAllowed = (origin) => {
 
 app.disable("x-powered-by");
 
+const shouldCaptureRawBody = (req) => {
+  const requestUrl = req.originalUrl || req.url || "";
+  return RAW_BODY_CAPTURE_PATHS.some((path) => requestUrl.startsWith(path));
+};
+
+const captureRawBody = (req, _res, buffer) => {
+  if (shouldCaptureRawBody(req) && buffer?.length) {
+    req.rawBody = buffer.toString("utf8");
+  }
+};
+
 const cloudinaryDomains = CLOUDINARY_CLOUD_NAME
   ? ["https://res.cloudinary.com"]
   : [];
@@ -132,8 +148,8 @@ app.use(
       : false,
   }),
 );
-app.use(express.json({ limit: BODY_LIMIT }));
-app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true }));
+app.use(express.json({ limit: BODY_LIMIT, verify: captureRawBody }));
+app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true, verify: captureRawBody }));
 app.use(
   cors({
     origin(origin, callback) {

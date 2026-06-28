@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import {
   ArrowUpRight,
   Calendar,
+  CalendarClock,
   CreditCard,
   FileText,
   MapPin,
@@ -46,7 +47,12 @@ import {
 import { cn } from "@/lib/utils";
 import { formatVND, formatDate, formatDateTime } from "@/components/business/dashboardWidgetHelpers";
 import { BUSINESS_ROUTES } from "@/constants/routes";
-import { useCurrentSubscription, useSubscriptionInvoices, useCancelSubscription } from "@/hooks/queries/useSubscriptionQueries";
+import {
+  useCancelScheduledDowngrade,
+  useCancelSubscription,
+  useCurrentSubscription,
+  useSubscriptionInvoices,
+} from "@/hooks/queries/useSubscriptionQueries";
 import PlanBadge from "@/components/subscription/PlanBadge";
 import GracePeriodBanner from "@/components/subscription/GracePeriodBanner";
 
@@ -167,10 +173,12 @@ export default function SubscriptionPage() {
 
   const { data: invoiceData, isLoading: invoiceLoading } = useSubscriptionInvoices(invoiceFilters);
   const cancelMutation = useCancelSubscription();
+  const cancelDowngradeMutation = useCancelScheduledDowngrade();
 
   const sub = data?.data?.data || data?.data || {};
   const plan = sub.plan || {};
   const usage = sub.usage || {};
+  const scheduledDowngrade = sub.metadata?.scheduledDowngrade;
 
   const invoices = invoiceData?.data?.data || invoiceData?.data || [];
   const invoicePagination = invoiceData?.data?.pagination || { page: 1, totalPages: 1, total: 0 };
@@ -179,6 +187,10 @@ export default function SubscriptionPage() {
     cancelMutation.mutate(reason, {
       onSuccess: () => setCancelDialogOpen(false),
     });
+  };
+
+  const handleCancelDowngrade = () => {
+    cancelDowngradeMutation.mutate();
   };
 
   if (isLoading) {
@@ -229,6 +241,41 @@ export default function SubscriptionPage() {
       </div>
 
       <GracePeriodBanner subscription={sub} />
+
+      {scheduledDowngrade && !isCanceled && (
+        <Card className="border-sky-200 bg-sky-50">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg bg-white p-2 text-sky-700">
+                <CalendarClock className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-medium text-sky-950">
+                  {t("subscription.pendingDowngrade.title", {
+                    plan: scheduledDowngrade.targetPlanName || scheduledDowngrade.targetPlanSlug,
+                  })}
+                </p>
+                <p className="text-sm text-sky-800">
+                  {t("subscription.pendingDowngrade.description", {
+                    date: formatDate(scheduledDowngrade.effectiveAt),
+                  })}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              className="border-sky-300 bg-white text-sky-800 hover:bg-sky-100"
+              onClick={handleCancelDowngrade}
+              disabled={cancelDowngradeMutation.isPending}
+            >
+              {cancelDowngradeMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {t("subscription.pendingDowngrade.cancel")}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Plan info card */}

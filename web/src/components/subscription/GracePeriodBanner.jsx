@@ -27,11 +27,11 @@ export default function GracePeriodBanner({ subscription }) {
 
   const config = STATUS_CONFIG[subscription.status];
   const Icon = config.icon;
-  const daysLeft = subscription.graceEndsAt
+  const daysLeft = subscription.gracePeriodEnd
     ? Math.max(
         0,
         Math.ceil(
-          (new Date(subscription.graceEndsAt) - new Date()) / (1000 * 60 * 60 * 24),
+          (new Date(subscription.gracePeriodEnd) - new Date()) / (1000 * 60 * 60 * 24),
         ),
       )
     : null;

@@ -2,7 +2,8 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import { ADMIN_ROUTES, AUTH_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/constants";
-import { isNonAdminRole, resolveRoleId } from "@/utils/authRouting";
+import { resolveRoleId } from "@/utils/authRouting";
+import BusinessUpgradePrompt from "@/components/auth/BusinessUpgradePrompt";
 
 const ProtectedRoute = ({ allowedRoles = [], roles = [], children }) => {
   const { isAuthenticated, user } = useAuthStore();
@@ -14,7 +15,13 @@ const ProtectedRoute = ({ allowedRoles = [], roles = [], children }) => {
     return <Navigate to={AUTH_ROUTES.LOGIN} replace />;
   }
 
-  if (isNonAdminRole(roleId)) {
+  // USER role trying to access business pages -> show upgrade prompt
+  if (roleId === ROLES.USER && effectiveRoles.includes(ROLES.BUSINESS)) {
+    return <BusinessUpgradePrompt />;
+  }
+
+  // GUEST role -> block from admin/business areas
+  if (roleId === ROLES.GUEST) {
     return (
       <Navigate
         to={AUTH_ROUTES.LOGIN}

@@ -6,7 +6,7 @@ import {
   generateTripPreviewApi,
   getMyTripsApi,
 } from "../api/aiApi";
-import { mapAIError } from "../../ai-assistant/lib/mapAIError";
+import { mapAIError } from "../lib/mapAIError";
 import { useAIPlannerStore } from "../../../stores/aiPlannerStore";
 
 function normalizePlaceIds(ids, fallbackPlaces = []) {

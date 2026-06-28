@@ -1,17 +1,15 @@
 import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { userService } from "@/apis/userService";
 import { auditLogService } from "@/apis/auditLogService";
-import { ROLES, ROLE_NAMES } from "@/constants/constants";
+import { ROLES } from "@/constants/constants";
 import UserFormModal from "@/components/user/UserFormModal";
 import UserDetailModal from "@/components/user/UserDetailModal";
 import TimStatsCard from "@/components/admin/TimStatsCard";
 import {
   Users,
   Search,
-  Filter,
   Plus,
   MoreHorizontal,
-  Shield,
   Trash2,
   Edit,
   Eye,
@@ -29,7 +27,6 @@ import {
   MinusSquare,
   UserCog,
   Clock,
-  ChevronDown,
 } from "lucide-react";
 import {
   exportToCsv,
@@ -66,11 +63,12 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { useTranslation } from "react-i18next";
+import { toast as sonnerToast } from "sonner";
 
 /**
  * UserRow — memoized table row for a single user.
  */
-const UserRow = memo(function UserRow({
+const UserRow = memo(({
   user,
   selected,
   onSelect,
@@ -80,10 +78,14 @@ const UserRow = memo(function UserRow({
   onToggleStatus,
   onDelete,
   t,
-}) {
+}) => {
   const isActive = user.status === "active" || user.isActive;
 
   const isOnline = user.isOnline || false;
+
+  const fullName = user.profile?.fullName || user.fullName;
+  const phone = user.profile?.phone || user.phone;
+  const avatar = user.profile?.avatar || user.avatar;
 
   const roleConfig = {
     [ROLES.SUPER_ADMIN]: {
@@ -130,7 +132,7 @@ const UserRow = memo(function UserRow({
           <div className="relative shrink-0">
             <Avatar className="h-10 w-10 border border-black rounded-none">
               <AvatarImage
-                src={resolveMediaUrl(user.avatar || user.profile?.avatar) || undefined}
+                src={resolveMediaUrl(avatar) || undefined}
               />
               <AvatarFallback className="rounded-none bg-gray-200 font-bold font-mono">
                 {(user.username || user.email || "?").substring(0, 2).toUpperCase()}
@@ -145,7 +147,7 @@ const UserRow = memo(function UserRow({
           </div>
           <div className="min-w-0 flex-1">
             <div className="font-bold uppercase text-base leading-none mb-1 truncate">
-              {user.profile?.fullName || user.fullName || user.username || user.email?.split("@")[0] || "UNKNOWN"}
+              {fullName || user.username || user.email?.split("@")[0] || "UNKNOWN"}
             </div>
             <div className="font-mono text-xs text-gray-500 flex items-center gap-1">
               <Calendar className="w-3 h-3" />
@@ -158,9 +160,9 @@ const UserRow = memo(function UserRow({
                   <Mail className="w-3 h-3 shrink-0" /> {user.email}
                 </div>
               )}
-              {user.profile?.phone && (
+              {phone && (
                 <div className="flex items-center gap-1.5 text-xs font-mono text-gray-500">
-                  <Phone className="w-3 h-3 shrink-0" /> {user.profile.phone}
+                  <Phone className="w-3 h-3 shrink-0" /> {phone}
                 </div>
               )}
             </div>
@@ -174,9 +176,9 @@ const UserRow = memo(function UserRow({
               <Mail className="w-3 h-3" /> {user.email}
             </div>
           )}
-          {user.profile?.phone && (
+          {phone && (
             <div className="flex items-center gap-2 text-sm font-mono text-gray-600">
-              <Phone className="w-3 h-3" /> {user.profile.phone}
+              <Phone className="w-3 h-3" /> {phone}
             </div>
           )}
         </div>
@@ -257,6 +259,7 @@ const UserRow = memo(function UserRow({
     </tr>
   );
 });
+UserRow.displayName = "UserRow";
 
 /**
  * UserManagePage — Admin user management with bulk operations and activity log.
@@ -466,7 +469,7 @@ const UserManagePage = () => {
         variant: "destructive",
         title: t("common.error"),
         description:
-          error.response?.data?.message ||
+          error.data?.message ||
           error.message ||
           t("users.errors.saveFailed"),
       });
@@ -498,7 +501,7 @@ const UserManagePage = () => {
       setBulkSubmitting(true);
       await Promise.all(
         Array.from(selectedIds).map((id) =>
-          userService.update(id, { roleId: parseInt(bulkRoleId) }),
+          userService.updateRole(id, parseInt(bulkRoleId, 10)),
         ),
       );
       toast({
@@ -524,7 +527,7 @@ const UserManagePage = () => {
   // ─── CSV export ────────────────────────────────────────────────────────────
   const handleExportCsv = async () => {
     try {
-      toast.loading(t("users.export.loading"), { id: "csv-export" });
+      sonnerToast.loading(t("users.export.loading"), { id: "csv-export" });
       const allData = await fetchAllPages(async (params) => {
         const res = await userService.getAll(params);
         const users = res.data.users || res.data || [];
@@ -566,9 +569,9 @@ const UserManagePage = () => {
         filename: slugifyFilename("danh_sach_nguoi_dung"),
       });
 
-      toast.success(t("users.export.success", { count: allData.length }), { id: "csv-export" });
+      sonnerToast.success(t("users.export.success", { count: allData.length }), { id: "csv-export" });
     } catch {
-      toast.error(t("users.export.error"), { id: "csv-export" });
+      sonnerToast.error(t("users.export.error"), { id: "csv-export" });
     }
   };
 
@@ -585,6 +588,12 @@ const UserManagePage = () => {
 
   const allSelected = users.length > 0 && selectedIds.size === users.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < users.length;
+  let SelectAllIcon = Square;
+  if (allSelected) {
+    SelectAllIcon = CheckSquare;
+  } else if (someSelected) {
+    SelectAllIcon = MinusSquare;
+  }
 
   const roleOptions = [
     { value: String(ROLES.SUPER_ADMIN), label: t("roles.names.superAdmin").toUpperCase() },
@@ -593,6 +602,9 @@ const UserManagePage = () => {
     { value: String(ROLES.STAFF), label: t("roles.names.staff").toUpperCase() },
     { value: String(ROLES.USER), label: t("roles.names.user").toUpperCase() },
   ];
+  const assignableRoleOptions = roleOptions.filter(
+    (option) => ![String(ROLES.USER), String(ROLES.GUEST)].includes(option.value),
+  );
 
   return (
     <div className="min-h-screen p-8 bg-background relative">
@@ -739,13 +751,7 @@ const UserManagePage = () => {
                         className="flex items-center justify-center text-white"
                         aria-label="Chọn tất cả"
                       >
-                        {allSelected ? (
-                          <CheckSquare className="h-4 w-4" />
-                        ) : someSelected ? (
-                          <MinusSquare className="h-4 w-4" />
-                        ) : (
-                          <Square className="h-4 w-4" />
-                        )}
+                        <SelectAllIcon className="h-4 w-4" />
                       </button>
                     </th>
                     <th className="p-4 border-r border-black/20 w-[60px] hidden sm:table-cell">
@@ -876,7 +882,7 @@ const UserManagePage = () => {
                 <SelectValue placeholder="Chọn vai trò mới" />
               </SelectTrigger>
               <SelectContent className="rounded-none border-black">
-                {roleOptions.map((opt) => (
+                {assignableRoleOptions.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>

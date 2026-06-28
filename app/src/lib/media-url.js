@@ -27,12 +27,13 @@ const MEDIA_ORIGINS = API_BASE_CANDIDATES.map((base) =>
   });
 
 function maybeBase64Image(value) {
-  // Strip ALL whitespace (including \n from multi-line base64 strings)
-  const compact = value.replace(/\s/g, "");
-  // Must be long enough to represent an image (minimum ~200 bytes)
-  if (compact.length <= 200) return null;
-  // Must only contain valid Base64 characters
-  if (!/^[A-Za-z0-9+/]+=*$/.test(compact)) return null;
+  if (typeof value !== "string") return null;
+  // Strip ALL whitespace, newlines, carriage returns
+  const compact = value.replace(/[\s\r\n]/g, "");
+  // Must be long enough to represent an image (minimum ~100 bytes)
+  if (compact.length <= 100) return null;
+  // Allow Standard Base64 and Base64Url characters
+  if (!/^[A-Za-z0-9+/=\-_]+$/.test(compact)) return null;
 
   // Detect MIME type from Base64 prefix (first 8 chars encode the magic bytes)
   // JPEG starts with /9j/ in Base64 (FF D8 FF)
@@ -113,43 +114,63 @@ export function resolveMediaUrl(raw) {
   return escapeUrl(cleaned);
 }
 
-export function getCategoryPlaceholder(categoryName = "") {
+/**
+ * Tr\u1ea3 v\u1ec1 icon name + m\u00e0u s\u1eafc d\u1ef1a tr\u00ean category \u0111\u1ec3 hi\u1ec3n th\u1ecb placeholder
+ * khi \u0111\u1ecba \u0111i\u1ec3m kh\u00f4ng c\u00f3 \u1ea3nh th\u1eadt. Kh\u00f4ng d\u00f9ng \u1ea3nh picsum random n\u1eefa.
+ */
+export function getCategoryIcon(categoryName = "") {
   const name = String(categoryName || "").toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
   if (name.includes("an") || name.includes("uong") || name.includes("food") || name.includes("cafe") || name.includes("nha hang") || name.includes("quan")) {
-    return "https://picsum.photos/id/292/600/400";
+    return { icon: "restaurant", color: "#F97316" }; // orange
   }
   if (name.includes("khach san") || name.includes("hotel") || name.includes("resort") || name.includes("homestay") || name.includes("luu tru")) {
-    return "https://picsum.photos/id/838/600/400";
+    return { icon: "hotel", color: "#8B5CF6" }; // violet
   }
   if (name.includes("mua sam") || name.includes("shopping") || name.includes("cho") || name.includes("market") || name.includes("cua hang")) {
-    return "https://picsum.photos/id/102/600/400";
+    return { icon: "shopping-bag", color: "#EC4899" }; // pink
   }
   if (name.includes("chua") || name.includes("dinh") || name.includes("pagoda") || name.includes("van hoa") || name.includes("bao tang") || name.includes("museum") || name.includes("lich su")) {
-    return "https://picsum.photos/id/1040/600/400";
+    return { icon: "account-balance", color: "#A16207" }; // amber
   }
   if (name.includes("giai tri") || name.includes("vui choi") || name.includes("attractions") || name.includes("thien nhien") || name.includes("sinh thai") || name.includes("nature") || name.includes("kdl")) {
-    return "https://picsum.photos/id/10/600/400";
+    return { icon: "park", color: "#16A34A" }; // green
   }
-  return "https://picsum.photos/id/408/600/400";
+  return { icon: "place", color: "#64748B" }; // slate
+}
+
+/**
+ * @deprecated D\u00f9ng getCategoryIcon() thay v\u00ec picsum random.
+ * Gi\u1eef l\u1ea1i \u0111\u1ec3 kh\u00f4ng break c\u00e1c import c\u0169 nh\u01b0ng lu\u00f4n tr\u1ea3 null.
+ */
+export function getCategoryPlaceholder() {
+  return null;
 }
 
 export function resolvePlaceImageUri(place) {
+  if (!place) return getCategoryPlaceholder();
+  
   const firstImage = place?.images?.[0];
+  const firstImageUrl = typeof firstImage === "string" ? firstImage : null;
+
   const raw =
+    firstImageUrl ||
     firstImage?.secureUrl ||
     firstImage?.thumbnailUrl ||
     firstImage?.imageData ||
+    firstImage?.image_data ||
     firstImage?.url ||
     place?.thumbnailUrl ||
     place?.thumbnail ||
+    place?.imageUrl ||
+    place?.image ||
     null;
 
   const resolved = resolveMediaUrl(raw);
   if (resolved) return resolved;
-  return getCategoryPlaceholder(place?.category?.name);
+  return getCategoryPlaceholder(place?.category?.name || place?.categoryName);
 }
 
 /**

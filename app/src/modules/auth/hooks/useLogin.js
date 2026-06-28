@@ -73,6 +73,14 @@ export function useLogin() {
           return false;
         }
 
+        // Show helpful message for inactive accounts
+        if (err?.code === "ACCOUNT_INACTIVE") {
+          setError(
+            err?.message || "Tài khoản chưa được kích hoạt. Vui lòng đăng nhập bằng Google để kích hoạt.",
+          );
+          return false;
+        }
+
         setError(err?.message || i18n.t("authValidation.loginFailed"));
         return false;
       } finally {

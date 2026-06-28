@@ -20,6 +20,7 @@ const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage"))
 const ResetPasswordPage = lazy(() => import("@/pages/auth/ResetPasswordPage"));
 const VerifyEmailPublicPage = lazy(() => import("@/pages/auth/VerifyEmailPublicPage"));
 const ResendVerificationPage = lazy(() => import("@/pages/auth/ResendVerificationPage"));
+const CheckEmailPage = lazy(() => import("@/pages/auth/CheckEmailPage"));
 const StaffInvitePage = lazy(() => import("@/pages/auth/StaffInvitePage"));
 
 // Admin pages - lazy loaded
@@ -56,6 +57,7 @@ const PermissionManagePage = lazy(() => import("@/pages/PermissionManagePage"));
 // Business pages - lazy loaded
 const BusinessProfilePage = lazy(() => import("@/pages/business/BusinessProfilePage"));
 const BusinessRegisterPage = lazy(() => import("@/pages/business/BusinessRegisterPage"));
+const BusinessWelcomePage = lazy(() => import("@/pages/business/BusinessWelcomePage"));
 const ServiceListPage = lazy(() => import("@/pages/business/ServiceListPage"));
 const BookingListPage = lazy(() => import("@/pages/business/BookingListPage"));
 const BookingDetailPage = lazy(() => import("@/pages/business/BookingDetailPage"));
@@ -105,7 +107,7 @@ const DashboardGate = () => {
 /**
  * Route configuration helpers
  *
- * SECURITY NOTE: GUEST (role 5) is NEVER included in any admin role arrays
+ * SECURITY NOTE: GUEST (role 6) is NEVER included in any admin role arrays
  */
 const adminRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 const allStaffRoles = [
@@ -159,6 +161,10 @@ const AppRoutes = () => {
       <Route
         path={AUTH_ROUTES.VERIFY_EMAIL}
         element={<VerifyEmailPublicPage />}
+      />
+      <Route
+        path="/check-email"
+        element={<CheckEmailPage />}
       />
       <Route
         path={AUTH_ROUTES.RESEND_VERIFICATION}
@@ -462,6 +468,14 @@ const AppRoutes = () => {
         element={
           <ProtectedBusiness skipBusinessGuard>
             <BusinessRegisterPage />
+          </ProtectedBusiness>
+        }
+      />
+      <Route
+        path={BUSINESS_ROUTES.WELCOME}
+        element={
+          <ProtectedBusiness skipBusinessGuard>
+            <BusinessWelcomePage />
           </ProtectedBusiness>
         }
       />

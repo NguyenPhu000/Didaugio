@@ -469,7 +469,7 @@ export async function quickRejectBooking(
 
     // Refund frozen balance if booking was paid
     if (existing.paymentStatus === "paid" && existing.businessEarned > 0) {
-      await refundLedger(tx, existing.id, existing.businessId, existing.businessEarned);
+      await refundLedger(tx, existing.id, existing.businessId, existing.businessEarned, existing.commissionAmount || 0);
     }
 
     await appendBookingActionLog(tx, {

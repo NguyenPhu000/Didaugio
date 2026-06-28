@@ -1,4 +1,4 @@
-import { memo, useCallback } from "react";
+import { memo, useCallback, useState } from "react";
 import { Dimensions, Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
@@ -28,9 +28,11 @@ const SPRING_CONFIG = TOKENS.spring.press;
 function EventCardInner({ event, onPress }) {
   const { t } = useTranslation();
   const scale = useSharedValue(1);
+  const [imgError, setImgError] = useState(false);
 
   const rawImage = event?.thumbnail || event?.imageUrl;
-  const imageUri = rawImage ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 600) : "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80";
+  const resolvedUri = rawImage ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 600) : null;
+  const imageUri = imgError ? null : resolvedUri;
 
   const startDateStr = event?.startDate ? formatDayMonthNumeric(event.startDate) : "";
   const endDateStr = event?.endDate ? formatDayMonth(event.endDate) : "";
@@ -85,13 +87,20 @@ function EventCardInner({ event, onPress }) {
       className="rounded-[24px] overflow-hidden bg-[#EDEDF2] shadow-sm relative border border-black/5"
     >
       {/* Background Image */}
-      <Image
-        source={{ uri: imageUri }}
-        contentFit="cover"
-        transition={200}
-        cachePolicy="memory-disk"
-        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
-      />
+      {imageUri ? (
+        <Image
+          source={{ uri: imageUri }}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
+          onError={() => setImgError(true)}
+          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
+        />
+      ) : (
+        <View className="absolute inset-0 bg-gradient-to-br from-emerald-900 via-teal-800 to-cyan-900 items-center justify-center">
+          <MaterialIconsRounded name="celebration" size={36} color="rgba(255,255,255,0.3)" />
+        </View>
+      )}
 
       {/* Shadows */}
       <View className="absolute inset-0 bg-black/20" pointerEvents="none" />
@@ -112,7 +121,7 @@ function EventCardInner({ event, onPress }) {
         {/* Companion count */}
         {event?.activeCompanionCount > 0 ? (
           <View className="px-2 py-1 rounded-full bg-black/60 border border-white/10 flex-row items-center gap-1">
-            <View className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+            <View className="w-1.5 h-1.5 rounded-full bg-success" />
             <Text className="text-white text-[10px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
               {event.activeCompanionCount} online
             </Text>

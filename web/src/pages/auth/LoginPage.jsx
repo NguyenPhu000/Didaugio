@@ -24,7 +24,7 @@ import { authService } from "@/apis/authService";
 import { loginSchema } from "@/schemas/auth";
 import GoogleLoginButton from "@/components/auth/GoogleLoginButton";
 import { resolvePostLoginRoute } from "@/utils/authRouting";
-import { AUTH_ROUTES } from "@/constants/routes";
+import { AUTH_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 
 const HAS_GOOGLE_OAUTH = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const REMEMBER_KEY = "ddg_remember_login";
@@ -32,7 +32,7 @@ const REMEMBER_KEY = "ddg_remember_login";
 const LoginPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { setAuth, logout } = useAuthStore();
+  const { setAuth } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
 
   const savedLogin = (() => {
@@ -59,7 +59,7 @@ const LoginPage = () => {
 
   useEffect(() => {
     document.title = t("auth.login.pageTitle");
-  }, []);
+  }, [t]);
 
   const handleGoogleSuccess = async (credentialResponse) => {
     setIsLoading(true);
@@ -72,20 +72,17 @@ const LoginPage = () => {
       }
       const response = await authService.googleLogin(idToken);
       if (response.success) {
-        const dashboardUrl = resolvePostLoginRoute(response.data.user);
-        if (dashboardUrl === AUTH_ROUTES.LOGIN) {
-          logout();
-          toast.error(t("auth.login.noPermission"));
-          return;
-        }
-
-        setAuth(
-          response.data.user,
-          response.data.accessToken,
-          response.data.refreshToken,
-        );
+        const user = response.data.user;
+        setAuth(user, response.data.accessToken, response.data.refreshToken);
         toast.success(t("auth.login.googleSuccess"));
-        navigate(dashboardUrl, { replace: true });
+
+        const dashboardUrl = resolvePostLoginRoute(user);
+        navigate(
+          dashboardUrl === AUTH_ROUTES.LOGIN
+            ? BUSINESS_ROUTES.REGISTER
+            : dashboardUrl,
+          { replace: true },
+        );
       }
     } catch (error) {
       toast.error(error.message || t("auth.login.googleFailed"));
@@ -102,12 +99,6 @@ const LoginPage = () => {
       });
       if (response.success) {
         const dashboardUrl = resolvePostLoginRoute(response.data.user);
-        if (dashboardUrl === AUTH_ROUTES.LOGIN) {
-          logout();
-          toast.error(t("auth.login.noPermission"));
-          return;
-        }
-
         // Save identifier to localStorage for "Remember me"
         if (rememberMe) {
           localStorage.setItem(REMEMBER_KEY, JSON.stringify({ identifier: data.identifier }));
@@ -139,7 +130,12 @@ const LoginPage = () => {
           response.data.refreshToken,
         );
         toast.success(t("auth.login.success"));
-        navigate(dashboardUrl, { replace: true });
+        navigate(
+          dashboardUrl === AUTH_ROUTES.LOGIN
+            ? BUSINESS_ROUTES.REGISTER
+            : dashboardUrl,
+          { replace: true },
+        );
       }
     } catch (error) {
       if (error?.errorCode === "EMAIL_NOT_VERIFIED") {
@@ -150,6 +146,12 @@ const LoginPage = () => {
           : "";
         toast.error(t("auth.login.emailNotVerified"));
         navigate(`/resend-verification${query}`);
+        return;
+      }
+
+      // Show helpful message for inactive accounts
+      if (error?.errorCode === "ACCOUNT_INACTIVE") {
+        toast.error(error.message || "Tài khoản chưa được kích hoạt. Vui lòng đăng nhập bằng Google để kích hoạt.");
         return;
       }
 

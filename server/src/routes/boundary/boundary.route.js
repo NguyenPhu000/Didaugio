@@ -33,7 +33,7 @@ router.get(
 router.post(
   "/cache/invalidate",
   authenticate,
-  hasPermission("settings.manage"),
+  hasPermission("system.edit_config"),
   validateBody(invalidateBoundaryCacheSchema),
   boundaryController.invalidateCache,
 );

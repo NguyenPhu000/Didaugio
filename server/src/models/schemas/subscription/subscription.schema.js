@@ -8,6 +8,8 @@ export const upgradeSchema = z.object({
     .positive("Plan đích không hợp lệ"),
 });
 
+export const downgradeSchema = upgradeSchema;
+
 export const createPlanSchema = z.object({
   name: z
     .string({ required_error: "Tên plan không được để trống" })

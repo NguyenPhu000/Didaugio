@@ -1,8 +1,5 @@
 import prisma from "../config/prismaClient.js";
-import { ROLES, BUSINESS_STATUS } from "../config/constants.js";
-
-/** Current contract version — bump to force re-signing */
-const CURRENT_CONTRACT_VERSION = "v1";
+import { ROLES, BUSINESS_STATUS, CURRENT_CONTRACT_VERSION } from "../config/constants.js";
 
 /**
  * Gate business-owner operations by profile existence, status, and contract state.
@@ -27,6 +24,21 @@ export const requireActiveBusiness = (options = {}) => {
 
       if (roleId <= ROLES.ADMIN) {
         return next();
+      }
+
+      // Kiểm tra xác thực email trước khi kiểm tra business
+      const userRecord = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { emailVerified: true },
+      });
+
+      if (!userRecord?.emailVerified) {
+        return res.status(403).json({
+          success: false,
+          data: null,
+          message: "Vui lòng xác thực email trước khi sử dụng tính năng này",
+          errorCode: "EMAIL_NOT_VERIFIED",
+        });
       }
 
       let business;

@@ -3,8 +3,13 @@ import { API_BASE_URL } from "./constants";
 import { useAuthStore } from "@/stores/authStore";
 import { AUTH_ROUTES } from "./routes";
 import { API_TIMEOUT } from "./timing";
-import { applyBusinessApiErrorUx } from "@/utils/businessApiErrorUx";
+import {
+  BUSINESS_GATE_ERROR_CODES,
+  applyBusinessApiErrorUx,
+} from "@/utils/businessApiErrorUx";
 import { toast } from "sonner";
+
+axios.defaults.headers.common["ngrok-skip-browser-warning"] = "true";
 
 /**
  * Instance axios dùng chung. Trên response lỗi, có thể truyền:
@@ -20,6 +25,7 @@ const api = axios.create({
 const PUBLIC_AUTH_PATHS = new Set([
   "/auth/login",
   "/auth/register",
+  "/auth/register-business",
   "/auth/forgot-password",
   "/auth/reset-password",
   "/auth/verify-email",
@@ -154,13 +160,25 @@ api.interceptors.response.use(
         );
 
         if (refreshResponse.data.success) {
-          const newAccessToken = refreshResponse.data.data.accessToken;
+          const {
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken,
+            user: refreshedUser,
+          } = refreshResponse.data.data || {};
 
           if (useAuthStore.getState().isLoggingOut) {
             throw new Error("Logout in progress");
           }
 
-          useAuthStore.getState().setAccessToken(newAccessToken);
+          if (!newAccessToken) {
+            throw new Error("Missing refreshed token");
+          }
+
+          useAuthStore.getState().setSession({
+            user: refreshedUser,
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken || refreshToken,
+          });
           processQueue(null, newAccessToken);
           originalRequest.headers = originalRequest.headers || {};
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
@@ -206,7 +224,17 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      if (!originalRequest?.skipPermissionToast && !originalRequest?._403Shown) {
+      const isDomainGateError = [
+        ...BUSINESS_GATE_ERROR_CODES,
+        "EMAIL_NOT_VERIFIED",
+        "ACCOUNT_INACTIVE",
+      ].includes(errorCode);
+
+      if (
+        !isDomainGateError &&
+        !originalRequest?.skipPermissionToast &&
+        !originalRequest?._403Shown
+      ) {
         originalRequest._403Shown = true;
         toast.error(
           "Quyền truy cập của bạn đã thay đổi, vui lòng tải lại trang.",

@@ -49,7 +49,8 @@ export const getEarningsSummary = async (businessId) => {
     .filter((p) => p.status === "pending" || p.status === "approved")
     .reduce((sum, p) => sum + p.amount, 0);
 
-  const availableBalance = walletBalance.balance - totalPaidOut - totalPending;
+  // Wallet balance is already decremented on transfer, so only subtract pending payouts
+  const availableBalance = walletBalance.balance - totalPending;
 
   // Monthly breakdown (last 6 months)
   const sixMonthsAgo = new Date();
@@ -112,45 +113,69 @@ export const requestPayout = async (businessId, data) => {
     throw new ServiceError("Số tiền rút phải lớn hơn 0", 400, "INVALID_AMOUNT");
   }
 
-  // Check available balance from PartnerWallet
-  const walletBalance = await getAvailableBalance(businessId);
-  if (amount > walletBalance.balance) {
-    throw new ServiceError(
-      `Số dư khả dụng không đủ. Hiện tại: ${walletBalance.balance.toLocaleString("vi-VN")}đ`,
-      400,
-      "INSUFFICIENT_BALANCE",
-    );
-  }
+  return prisma.$transaction(async (tx) => {
+    // Check subscription status - block payouts if past_due or canceled
+    const subscription = await tx.subscription.findUnique({
+      where: { businessId },
+      select: { status: true },
+    });
 
-  // Check for existing pending payouts
-  const existingPending = await prisma.payout.findFirst({
-    where: {
-      businessId,
-      status: { in: ["pending", "approved"] },
-    },
+    if (subscription && (subscription.status === "past_due" || subscription.status === "canceled")) {
+      throw new ServiceError(
+        "Không thể rút tiền khi subscription đang quá hạn hoặc đã hủy. Vui lòng gia hạn subscription trước.",
+        400,
+        "SUBSCRIPTION_INACTIVE",
+      );
+    }
+
+    // Lock the wallet row to prevent race conditions
+    const [wallet] = await tx.$queryRaw`
+      SELECT * FROM partner_wallets WHERE business_id = ${businessId} FOR UPDATE
+    `;
+
+    if (!wallet) {
+      throw new ServiceError("Ví đối tác không tồn tại", 404, "WALLET_NOT_FOUND");
+    }
+
+    const balance = Number(wallet.balance);
+    if (amount > balance) {
+      throw new ServiceError(
+        `Số dư khả dụng không đủ. Hiện tại: ${balance.toLocaleString("vi-VN")}đ`,
+        400,
+        "INSUFFICIENT_BALANCE",
+      );
+    }
+
+    // Check for existing pending payouts
+    const existingPending = await tx.payout.findFirst({
+      where: {
+        businessId,
+        status: { in: ["pending", "approved"] },
+      },
+    });
+
+    if (existingPending) {
+      throw new ServiceError(
+        "Bạn đã có yêu cầu rút tiền đang chờ xử lý",
+        400,
+        "PENDING_PAYOUT_EXISTS",
+      );
+    }
+
+    const payout = await tx.payout.create({
+      data: {
+        businessId,
+        amount,
+        bankName: bankName || null,
+        bankAccount: bankAccount || null,
+        bankOwner: bankOwner || null,
+        note: note || null,
+        status: "pending",
+      },
+    });
+
+    return payout;
   });
-
-  if (existingPending) {
-    throw new ServiceError(
-      "Bạn đã có yêu cầu rút tiền đang chờ xử lý",
-      400,
-      "PENDING_PAYOUT_EXISTS",
-    );
-  }
-
-  const payout = await prisma.payout.create({
-    data: {
-      businessId,
-      amount,
-      bankName: bankName || null,
-      bankAccount: bankAccount || null,
-      bankOwner: bankOwner || null,
-      note: note || null,
-      status: "pending",
-    },
-  });
-
-  return payout;
 };
 
 /**
@@ -281,6 +306,25 @@ export const markTransferred = async (payoutId, reviewerId) => {
         transferredAt: new Date(),
       },
     });
+
+    // Decrement the business wallet balance
+    await tx.partnerWallet.update({
+      where: { businessId: payout.businessId },
+      data: {
+        balance: { decrement: payout.amount },
+      },
+    });
+
+    // Update platform wallet totalPaidOut
+    const platformWallet = await tx.platformWallet.findFirst();
+    if (platformWallet) {
+      await tx.platformWallet.update({
+        where: { id: platformWallet.id },
+        data: {
+          totalPaidOut: { increment: payout.amount },
+        },
+      });
+    }
 
     await tx.financialLedger.create({
       data: {

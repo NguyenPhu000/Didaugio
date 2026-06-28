@@ -8,9 +8,9 @@ import {
 import { ERROR_MESSAGES, ERROR_CODES } from "../../config/messages.js";
 import {
   idSchema,
-  paginationSchema,
   createUserSchema,
   updateUserSchema,
+  userQuerySchema,
 } from "../../models/index.js";
 import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
@@ -18,7 +18,7 @@ import { generateUniqueUsername } from "../../utils/username.js";
 import { isOnline as checkOnlineStatus } from "../../utils/onlineManager.js";
 
 export const getAllUsers = async (query = {}) => {
-  const { page, limit } = paginationSchema.parse(query);
+  const { page, limit, search, roleId, status } = userQuerySchema.parse(query);
   const skip = (page - 1) * Math.min(limit, PAGINATION.MAX_LIMIT);
   const take = Math.min(limit, PAGINATION.MAX_LIMIT);
 
@@ -26,24 +26,24 @@ export const getAllUsers = async (query = {}) => {
     deletedAt: null,
   };
 
-  if (query.search && query.search.trim()) {
+  if (search) {
     where.OR = [
-      { email: { contains: query.search.trim(), mode: "insensitive" } },
-      { username: { contains: query.search.trim(), mode: "insensitive" } },
+      { email: { contains: search, mode: "insensitive" } },
+      { username: { contains: search, mode: "insensitive" } },
       {
         profile: {
-          fullName: { contains: query.search.trim(), mode: "insensitive" },
+          fullName: { contains: search, mode: "insensitive" },
         },
       },
     ];
   }
 
-  if (query.roleId && !isNaN(Number(query.roleId))) {
-    where.roleId = Number(query.roleId);
+  if (roleId) {
+    where.roleId = roleId;
   }
 
-  if (query.status && query.status.trim()) {
-    where.status = query.status.trim();
+  if (status) {
+    where.status = status;
   }
 
   const [users, total] = await Promise.all([
@@ -131,6 +131,19 @@ export const getUserById = async (id) => {
       failedLoginCount: true,
       createdAt: true,
       updatedAt: true,
+      profile: {
+        select: {
+          fullName: true,
+          nickname: true,
+          phone: true,
+          avatar: true,
+          gender: true,
+          address: true,
+          dateOfBirth: true,
+          provinceCode: true,
+          districtCode: true,
+        },
+      },
     },
   });
 
@@ -213,6 +226,7 @@ export const createUser = async (userData) => {
         password: hashedPassword,
         roleId,
         status: USER_STATUS.ACTIVE,
+        emailVerified: true,
       },
       select: {
         id: true,
@@ -255,11 +269,18 @@ export const createUser = async (userData) => {
 
 export const updateUser = async (id, updateData) => {
   const userId = idSchema.parse(id);
+  if (Object.prototype.hasOwnProperty.call(updateData, "roleId")) {
+    throw new ServiceError(
+      "Vui lòng dùng endpoint cập nhật vai trò chuyên dụng",
+      400,
+      "USE_ROLE_UPDATE_ENDPOINT",
+    );
+  }
   const validatedData = updateUserSchema.parse(updateData);
 
   const existingUser = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, deletedAt: true },
+    select: { id: true, email: true, deletedAt: true },
   });
 
   if (!existingUser || existingUser.deletedAt) {
@@ -283,6 +304,16 @@ export const updateUser = async (id, updateData) => {
     password,
     ...userData
   } = validatedData;
+
+  if (userData.email && userData.email !== existingUser.email) {
+    const existingEmail = await prisma.user.findUnique({
+      where: { email: userData.email },
+      select: { id: true },
+    });
+    if (existingEmail) {
+      throw new ServiceError(ERROR_MESSAGES.EXISTED, 400, ERROR_CODES.EXISTED);
+    }
+  }
 
   if (password) {
     const bcrypt = await import("bcrypt");

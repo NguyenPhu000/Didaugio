@@ -26,7 +26,7 @@ export function LoadingState() {
         >
           {/* Thêm animate-pulse để tạo hiệu ứng nhịp đập khi loading */}
           <View
-            className="w-full h-[220px] bg-[#F2F2F7] px-3 py-3 justify-between animate-pulse"
+            className="w-full h-[220px] bg-[#F2F2F7] px-3 py-3 justify-between"
             style={{ borderRadius: 28, borderCurve: "continuous" }}
           >
             {/* Top Row: Category and Actions */}

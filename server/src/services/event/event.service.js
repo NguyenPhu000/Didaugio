@@ -266,6 +266,10 @@ export const getEvents = async (filters = {}) => {
     // Default: only return active events for public/mobile consumers
     // Admin users with showAll=true can see all statuses
     where.status = "active";
+    // Loại trừ sự kiện đã kết thúc (endDate < hôm nay)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    where.endDate = { gte: today };
   }
 
   if (isFeaturedBanner !== undefined) {
@@ -306,7 +310,11 @@ export const getEvents = async (filters = {}) => {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      // Public: sắp xếp theo ngày bắt đầu tăng dần (sự kiện sắp diễn ra lên trước)
+      // Admin (showAll): giữ nguyên theo createdAt để dễ quản lý
+      orderBy: showAll
+        ? { createdAt: "desc" }
+        : [{ startDate: "asc" }, { createdAt: "desc" }],
       skip,
       take: limitNum,
     }),

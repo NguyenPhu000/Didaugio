@@ -32,16 +32,21 @@ import i18n from "@/i18n";
 const R = ROLES;
 
 /**
- * SIDEBAR MENU DATA
- * Each item can have an optional `roles` array.
- * If omitted, the item is visible to all authenticated roles.
- * Sub-items inherit parent visibility unless they define their own `roles`.
+ * SIDEBAR MENU DATA — Tái cấu trúc thành 5 nhóm rõ ràng
+ *
+ * Admin:  Tổng quan | Nội dung | Kinh doanh | Người dùng | Hệ thống
+ * Business: Tổng quan | Kinh doanh | Tài chính | Đánh giá | Cài đặt
  *
  * Call getMenuData() to get the current menu with translated strings.
  */
 export function getMenuData() {
   const t = i18n.t.bind(i18n);
   return {
+
+  // ═══════════════════════════════════════════════════════════
+  // ADMIN SIDEBAR
+  // ═══════════════════════════════════════════════════════════
+
   main: [
     {
       key: "dashboard",
@@ -49,7 +54,6 @@ export function getMenuData() {
       icon: Home,
       url: ADMIN_ROUTES.DASHBOARD,
       roles: [R.SUPER_ADMIN, R.ADMIN, R.STAFF],
-      badge: null,
     },
     {
       key: "dashboard-business",
@@ -57,7 +61,6 @@ export function getMenuData() {
       icon: Home,
       url: BUSINESS_ROUTES.DASHBOARD,
       roles: [R.BUSINESS],
-      badge: null,
     },
     {
       key: "map",
@@ -68,6 +71,8 @@ export function getMenuData() {
       badge: { text: t("nav.badge.new"), variant: "default" },
     },
   ],
+
+  // ─── Admin: Quản lý nội dung ─────────────────────────────
   management: [
     {
       key: "places",
@@ -114,39 +119,132 @@ export function getMenuData() {
       url: ADMIN_ROUTES.DISTRICTS,
       roles: [R.SUPER_ADMIN, R.ADMIN],
     },
-  ],
-  businessAccount: [
     {
-      key: "profile",
-      title: t("nav.business.profile"),
-      icon: User,
-      url: ADMIN_ROUTES.PROFILE,
-      roles: [R.BUSINESS],
+      key: "cms",
+      title: t("nav.adminBusiness.cms"),
+      icon: FileText,
+      url: ADMIN_ROUTES.CMS,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
     },
     {
-      key: "business-profile",
-      title: t("nav.business.businessProfile"),
-      icon: Store,
-      url: BUSINESS_ROUTES.PROFILE,
-      roles: [R.BUSINESS],
+      key: "review-moderation",
+      title: t("nav.adminBusiness.reviewModeration"),
+      icon: Star,
+      url: ADMIN_ROUTES.REVIEWS_MODERATION,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.REVIEWS.VIEW,
     },
   ],
-  businessServices: [
+
+  // ─── Admin: Kinh doanh & Tài chính ───────────────────────
+  adminBusiness: [
     {
-      key: "sub-current",
-      title: t("nav.business.subscriptionCurrent"),
+      key: "manage-business",
+      title: t("nav.adminBusiness.title"),
+      icon: Briefcase,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.BUSINESS.VIEW,
+      items: [
+        { key: "business-list", title: t("nav.adminBusiness.list"), url: ADMIN_ROUTES.BUSINESS_LIST },
+        { key: "business-pending", title: t("nav.adminBusiness.pending"), url: ADMIN_ROUTES.BUSINESS_PENDING, permission: PERMISSIONS.BUSINESS.APPROVE },
+      ],
+    },
+    {
+      key: "admin-subscriptions",
+      title: t("nav.adminBusiness.subscriptions"),
       icon: CreditCard,
-      url: BUSINESS_ROUTES.SUBSCRIPTION,
-      roles: [R.BUSINESS],
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      items: [
+        { key: "admin-subs", title: t("nav.adminBusiness.subscriptionList"), url: ADMIN_ROUTES.SUBSCRIPTIONS },
+        { key: "admin-plans", title: t("nav.adminBusiness.subscriptionPlans"), url: ADMIN_ROUTES.SUBSCRIPTION_PLANS },
+      ],
     },
     {
-      key: "sub-plans",
-      title: t("nav.business.subscriptionPlans"),
-      icon: CreditCard,
-      url: BUSINESS_ROUTES.SUBSCRIPTION_PLANS,
-      roles: [R.BUSINESS],
+      key: "analytics",
+      title: t("nav.adminBusiness.analytics"),
+      icon: TrendingUp,
+      url: ADMIN_ROUTES.ANALYTICS,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+    },
+    {
+      key: "payouts",
+      title: t("nav.adminBusiness.payouts"),
+      icon: Wallet,
+      url: ADMIN_ROUTES.PAYOUTS,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.PAYOUTS.VIEW,
+    },
+    {
+      key: "refunds",
+      title: t("nav.adminBusiness.refunds"),
+      icon: Coins,
+      url: ADMIN_ROUTES.REFUNDS,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.PAYMENTS.REFUND,
+    },
+    {
+      key: "cashflow",
+      title: t("nav.adminBusiness.cashflow"),
+      icon: Wallet,
+      url: ADMIN_ROUTES.CASHFLOW,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.PAYMENTS.VIEW_REVENUE,
     },
   ],
+
+  // ─── Admin: Người dùng & Phân quyền ─────────────────────
+  users: [
+    {
+      key: "user-list",
+      title: t("nav.users.title"),
+      icon: Users,
+      url: ADMIN_ROUTES.USERS,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.USERS.VIEW,
+    },
+    {
+      key: "permissions",
+      title: t("nav.users.roles"),
+      icon: Shield,
+      roles: [R.SUPER_ADMIN],
+      permission: PERMISSIONS.ROLES.VIEW,
+      items: [
+        { key: "roles", title: t("nav.users.rolesList"), url: ADMIN_ROUTES.ROLES },
+        { key: "perms", title: t("nav.users.permissions"), url: ADMIN_ROUTES.PERMISSIONS, permission: PERMISSIONS.ROLES.MANAGE_PERMISSIONS },
+      ],
+    },
+  ],
+
+  // ─── Admin: Hệ thống ─────────────────────────────────────
+  system: [
+    {
+      key: "email-security",
+      title: t("nav.system.title"),
+      icon: Mail,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      items: [
+        { key: "email-verification", title: t("nav.system.emailVerification"), url: ADMIN_ROUTES.EMAIL_VERIFICATIONS },
+        { key: "password-reset", title: t("nav.system.passwordReset"), url: ADMIN_ROUTES.PASSWORD_RESETS },
+      ],
+    },
+    {
+      key: "activity",
+      title: t("nav.system.activity"),
+      icon: FileText,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.AUDIT_LOG.VIEW,
+      items: [
+        { key: "audit-logs", title: t("nav.system.auditLogs"), url: ADMIN_ROUTES.AUDIT_LOGS, permission: PERMISSIONS.AUDIT_LOG.VIEW },
+        { key: "login-history", title: t("nav.system.loginHistory"), url: ADMIN_ROUTES.LOGIN_HISTORY, permission: PERMISSIONS.LOGIN_HISTORY.VIEW },
+      ],
+    },
+  ],
+
+  // ═══════════════════════════════════════════════════════════
+  // BUSINESS SIDEBAR
+  // ═══════════════════════════════════════════════════════════
+
+  // ─── Business: Kinh doanh (địa điểm, dịch vụ, đặt chỗ) ──
   business: [
     {
       key: "my-places",
@@ -157,7 +255,6 @@ export function getMenuData() {
         { key: "manage-places", title: t("nav.business.managePlaces"), url: BUSINESS_ROUTES.PLACES },
         { key: "add-place", title: t("nav.business.addPlace"), url: BUSINESS_ROUTES.PLACES_NEW },
       ],
-      badge: null,
     },
     {
       key: "services",
@@ -193,6 +290,10 @@ export function getMenuData() {
       url: BUSINESS_ROUTES.VOUCHERS,
       roles: [R.BUSINESS],
     },
+  ],
+
+  // ─── Business: Tài chính (doanh thu, dòng tiền, subscription) ──
+  businessFinance: [
     {
       key: "reports",
       title: t("nav.business.reports"),
@@ -223,10 +324,46 @@ export function getMenuData() {
       permission: PERMISSIONS.BUSINESS.VIEW_REVENUE,
     },
     {
+      key: "sub-current",
+      title: t("nav.business.subscriptionCurrent"),
+      icon: CreditCard,
+      url: BUSINESS_ROUTES.SUBSCRIPTION,
+      roles: [R.BUSINESS],
+    },
+    {
+      key: "sub-plans",
+      title: t("nav.business.subscriptionPlans"),
+      icon: CreditCard,
+      url: BUSINESS_ROUTES.SUBSCRIPTION_PLANS,
+      roles: [R.BUSINESS],
+    },
+  ],
+
+  // ─── Business: Đánh giá ──────────────────────────────────
+  businessReviews: [
+    {
       key: "reviews",
       title: t("nav.business.reviews"),
       icon: Star,
       url: BUSINESS_ROUTES.REVIEWS,
+      roles: [R.BUSINESS],
+    },
+  ],
+
+  // ─── Business: Tài khoản & Cài đặt ──────────────────────
+  businessAccount: [
+    {
+      key: "profile",
+      title: t("nav.business.profile"),
+      icon: User,
+      url: ADMIN_ROUTES.PROFILE,
+      roles: [R.BUSINESS],
+    },
+    {
+      key: "business-profile",
+      title: t("nav.business.businessProfile"),
+      icon: Store,
+      url: BUSINESS_ROUTES.PROFILE,
       roles: [R.BUSINESS],
     },
     {
@@ -237,119 +374,7 @@ export function getMenuData() {
       roles: [R.BUSINESS],
     },
   ],
-  adminBusiness: [
-    {
-      key: "manage-business",
-      title: t("nav.adminBusiness.title"),
-      icon: Briefcase,
-      roles: [R.SUPER_ADMIN, R.ADMIN],
-      permission: PERMISSIONS.BUSINESS.VIEW,
-      items: [
-        { key: "business-list", title: t("nav.adminBusiness.list"), url: ADMIN_ROUTES.BUSINESS_LIST },
-        { key: "business-pending", title: t("nav.adminBusiness.pending"), url: ADMIN_ROUTES.BUSINESS_PENDING, permission: PERMISSIONS.BUSINESS.APPROVE },
-      ],
-    },
-    {
-      key: "analytics",
-      title: t("nav.adminBusiness.analytics"),
-      icon: TrendingUp,
-      url: ADMIN_ROUTES.ANALYTICS,
-      roles: [R.SUPER_ADMIN, R.ADMIN],
-    },
-    {
-      key: "cms",
-      title: t("nav.adminBusiness.cms"),
-      icon: FileText,
-      url: ADMIN_ROUTES.CMS,
-      roles: [R.SUPER_ADMIN, R.ADMIN],
-    },
-    {
-      key: "review-moderation",
-      title: t("nav.adminBusiness.reviewModeration"),
-      icon: Star,
-      url: ADMIN_ROUTES.REVIEWS_MODERATION,
-      roles: [R.SUPER_ADMIN, R.ADMIN],
-      permission: PERMISSIONS.REVIEWS.VIEW,
-    },
-    {
-      key: "payouts",
-      title: t("nav.adminBusiness.payouts"),
-      icon: Wallet,
-      url: ADMIN_ROUTES.PAYOUTS,
-      roles: [R.SUPER_ADMIN, R.ADMIN],
-      permission: PERMISSIONS.PAYOUTS.VIEW,
-    },
-    {
-      key: "refunds",
-      title: t("nav.adminBusiness.refunds"),
-      icon: Coins,
-      url: ADMIN_ROUTES.REFUNDS,
-      roles: [R.SUPER_ADMIN, R.ADMIN],
-      permission: PERMISSIONS.PAYMENTS.REFUND,
-    },
-    {
-      key: "cashflow",
-      title: t("nav.adminBusiness.cashflow"),
-      icon: Wallet,
-      url: ADMIN_ROUTES.CASHFLOW,
-      roles: [R.SUPER_ADMIN, R.ADMIN],
-      permission: PERMISSIONS.PAYMENTS.VIEW_REVENUE,
-    },
-    {
-      key: "admin-subscriptions",
-      title: t("nav.adminBusiness.subscriptions"),
-      icon: CreditCard,
-      roles: [R.SUPER_ADMIN, R.ADMIN],
-      items: [
-        { key: "admin-subs", title: t("nav.adminBusiness.subscriptionList"), url: ADMIN_ROUTES.SUBSCRIPTIONS },
-        { key: "admin-plans", title: t("nav.adminBusiness.subscriptionPlans"), url: ADMIN_ROUTES.SUBSCRIPTION_PLANS },
-      ],
-    },
-  ],
-  users: [
-    {
-      key: "user-list",
-      title: t("nav.users.title"),
-      icon: Users,
-      url: ADMIN_ROUTES.USERS,
-      roles: [R.SUPER_ADMIN, R.ADMIN],
-      permission: PERMISSIONS.USERS.VIEW,
-    },
-    {
-      key: "permissions",
-      title: t("nav.users.roles"),
-      icon: Shield,
-      roles: [R.SUPER_ADMIN],
-      permission: PERMISSIONS.ROLES.VIEW,
-      items: [
-        { key: "roles", title: t("nav.users.rolesList"), url: ADMIN_ROUTES.ROLES },
-        { key: "perms", title: t("nav.users.permissions"), url: ADMIN_ROUTES.PERMISSIONS, permission: PERMISSIONS.ROLES.MANAGE_PERMISSIONS },
-      ],
-    },
-  ],
-  system: [
-    {
-      key: "email-security",
-      title: t("nav.system.title"),
-      icon: Mail,
-      roles: [R.SUPER_ADMIN, R.ADMIN],
-      items: [
-        { key: "email-verification", title: t("nav.system.emailVerification"), url: ADMIN_ROUTES.EMAIL_VERIFICATIONS },
-        { key: "password-reset", title: t("nav.system.passwordReset"), url: ADMIN_ROUTES.PASSWORD_RESETS },
-      ],
-    },
-    {
-      key: "activity",
-      title: t("nav.system.activity"),
-      icon: FileText,
-      roles: [R.SUPER_ADMIN, R.ADMIN],
-      permission: PERMISSIONS.AUDIT_LOG.VIEW,
-      items: [
-        { key: "audit-logs", title: t("nav.system.auditLogs"), url: ADMIN_ROUTES.AUDIT_LOGS, permission: PERMISSIONS.AUDIT_LOG.VIEW },
-        { key: "login-history", title: t("nav.system.loginHistory"), url: ADMIN_ROUTES.LOGIN_HISTORY, permission: PERMISSIONS.LOGIN_HISTORY.VIEW },
-      ],
-    },
-  ],
+
 };
 }
 

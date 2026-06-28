@@ -129,6 +129,11 @@ const BusinessGuard = ({ children, allowWhenPendingOrRejected = false }) => {
   if (user?.roleId === ROLES.STAFF) return children;
   if (user?.roleId !== ROLES.BUSINESS) return children;
 
+  // Kiểm tra xác thực email — nếu chưa xác thực → redirect đến trang check-email
+  if (user && !user.emailVerified) {
+    return <Navigate to="/check-email" replace />;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

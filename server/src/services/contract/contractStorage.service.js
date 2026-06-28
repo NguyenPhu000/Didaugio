@@ -11,6 +11,7 @@ import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import prisma from "../../config/prismaClient.js";
+import { CURRENT_CONTRACT_VERSION } from "../../config/constants.js";
 import { encryptFile, decryptFile, computeChecksum } from "../document/fileEncryption.service.js";
 import { generateContractPdf, embedSignatureInPdf } from "./contractTemplate.service.js";
 import {
@@ -24,8 +25,6 @@ const STORAGE_DIR = path.resolve(
   process.cwd(),
   process.env.SENSITIVE_STORAGE_DIR || "storage/sensitive",
 );
-
-const CURRENT_CONTRACT_VERSION = "v1";
 
 /**
  * Đảm bảo thư mục storage tồn tại

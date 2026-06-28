@@ -19,9 +19,6 @@ const keyExtractor = (item, index) =>
   item?.id != null ? String(item.id) : `sample-trip-${index}`;
 
 function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
-  // Empty state — ẩn toàn bộ section kể cả header
-  if (!sampleTrips?.length) return null;
-
   const renderItem = useCallback(
     ({ item }) => {
       const handlePress = () => onPressTrip?.(item);
@@ -29,6 +26,9 @@ function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
     },
     [onPressTrip]
   );
+
+  // Empty state — ẩn toàn bộ section kể cả header
+  if (!sampleTrips?.length) return null;
 
   return (
     <View className="mt-[26px]">
@@ -80,10 +80,6 @@ function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
       />
     </View>
   );
-}
-
-function Separator() {
-  return <View className="w-3" />;
 }
 
 export const SampleTripSection = memo(SampleTripSectionInner);

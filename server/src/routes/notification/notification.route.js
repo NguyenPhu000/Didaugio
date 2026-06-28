@@ -14,10 +14,10 @@ router.post("/subscribe", webPushController.saveSubscription);
 router.delete("/subscribe", webPushController.removeSubscription);
 
 // Announcements (admin — trước route /:id để tránh conflict)
-router.get("/announcements", hasPermission("settings.manage"), controller.getAnnouncements);
-router.post("/announcements", hasPermission("settings.manage"), controller.createAnnouncement);
-router.put("/announcements/:id", hasPermission("settings.manage"), controller.updateAnnouncement);
-router.delete("/announcements/:id", hasPermission("settings.manage"), controller.deleteAnnouncement);
+router.get("/announcements", hasPermission("system.send_notifications"), controller.getAnnouncements);
+router.post("/announcements", hasPermission("system.send_notifications"), controller.createAnnouncement);
+router.put("/announcements/:id", hasPermission("system.send_notifications"), controller.updateAnnouncement);
+router.delete("/announcements/:id", hasPermission("system.send_notifications"), controller.deleteAnnouncement);
 
 // Notifications CRUD
 router.get("/", controller.getNotifications);

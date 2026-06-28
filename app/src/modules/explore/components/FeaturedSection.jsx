@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from "react";
-import { FlatList, Pressable, Text, View, useWindowDimensions } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useTranslation } from "react-i18next";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
@@ -67,25 +67,15 @@ function FeaturedSectionInner({ places, onPressPlace, onPressViewAll, onSavePlac
   return (
     <View className="mt-6">
       <View
-        style={{ paddingHorizontal: TAB_SCREEN_PADDING }}
+        style={{
+          paddingHorizontal: TAB_SCREEN_PADDING,
+          paddingBottom: 14,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: "rgba(0,0,0,0.06)",
+        }}
         className="flex-row justify-between items-center mb-3.5"
       >
         <SectionTitle title={t("explore.sections.featured")} />
-        {onPressViewAll ? (
-          <Pressable onPress={onPressViewAll} hitSlop={8}>
-            <Text
-              className="text-[13px] font-semibold px-3.5 h-8 rounded-full overflow-hidden text-center"
-              style={{
-                color: APPLE_THEME.focusBlue,
-                backgroundColor: TOKENS.color.overlay.blue,
-                fontFamily: TOKENS.font.semibold,
-                lineHeight: 32,
-              }}
-            >
-              {t("common.viewAll")}
-            </Text>
-          </Pressable>
-        ) : null}
       </View>
 
       <FlatList

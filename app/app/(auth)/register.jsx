@@ -10,20 +10,18 @@ import {
   View,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { Link, useRouter } from "expo-router";
+import { Link } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { MaterialIcons } from "@expo/vector-icons";
-import { Image } from "expo-image";
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
+import { MaterialIconsRounded } from "../../src/components/primitives/MaterialIconsRounded";
 import { useRegister } from "../../src/modules/auth/hooks/useRegister";
 import { cn } from "../../src/lib/cn";
 import { useTranslation } from "react-i18next";
+import { GridBackground } from "../../src/components/ui/GridBackground";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { register, isLoading, error, successMessage } = useRegister();
   const { t } = useTranslation();
 
@@ -52,29 +50,13 @@ export default function RegisterScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#020617]">
+    <GridBackground 
+      backgroundColor="#020617" 
+      cellSize={48} 
+      lineColor="rgba(255,255,255,0.04)"
+      backgroundImage={require("../../assets/sky.jpg")}
+    >
       <StatusBar style="light" />
-
-      {/* Background Image */}
-      <Image
-        source={require("../../assets/sky.jpg")}
-        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
-        contentFit="cover"
-        transition={1000}
-      />
-
-      {/* Deep Blur for background depth */}
-      <BlurView 
-        intensity={45} 
-        tint="dark" 
-        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }} 
-      />
-
-      {/* Dark gradient overlay */}
-      <LinearGradient
-        colors={["rgba(2, 6, 23, 0.3)", "rgba(2, 6, 23, 0.75)"]}
-        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
-      />
 
       <KeyboardAvoidingView
         className="flex-1"
@@ -104,7 +86,7 @@ export default function RegisterScreen() {
                 shadowRadius: 12,
               } : null}
             >
-              <MaterialIcons name="travel-explore" size={32} color="#007AFF" />
+              <MaterialIconsRounded name="travel-explore" size={32} color="#007AFF" />
             </View>
             <Text className="text-[28px] font-extrabold text-white tracking-[-0.5px]">{t("common.appName")}</Text>
             <Text className="text-sm text-white/60 mt-1 font-medium">{t("auth.register.subtitle")}</Text>
@@ -351,6 +333,6 @@ export default function RegisterScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </GridBackground>
   );
 }

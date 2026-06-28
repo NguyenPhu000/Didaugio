@@ -23,6 +23,12 @@ const getProration = (targetPlanId) =>
 const upgrade = (targetPlanId) =>
   api.post(`${SUBSCRIPTIONS_URL}/upgrade`, { targetPlanId });
 
+const downgrade = (targetPlanId) =>
+  api.post(`${SUBSCRIPTIONS_URL}/downgrade`, { targetPlanId });
+
+const cancelScheduledDowngrade = () =>
+  api.post(`${SUBSCRIPTIONS_URL}/downgrade/cancel`);
+
 const getInvoices = (params = {}) =>
   api.get(`${SUBSCRIPTIONS_URL}/invoices`, {
     params: sanitizeParams(params),
@@ -56,6 +62,8 @@ const subscriptionService = {
   getPlans,
   getProration,
   upgrade,
+  downgrade,
+  cancelScheduledDowngrade,
   getInvoices,
   cancelSubscription,
   getAdminSubscriptions,

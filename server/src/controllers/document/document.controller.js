@@ -5,6 +5,12 @@
 import * as documentStorage from "../../services/document/documentStorage.service.js";
 import logger from "../../config/logger.js";
 
+const toSafeHeaderFilename = (value) =>
+  String(value || "document")
+    .replace(/[\r\n"]/g, "_")
+    .replace(/[\\/]/g, "_")
+    .slice(0, 180);
+
 /**
  * Upload tài liệu nhạy cảm (business owner)
  * POST /api/documents/:businessId/upload
@@ -60,7 +66,7 @@ export const download = async (req, res, next) => {
     res.setHeader("Content-Type", result.mimeType);
     res.setHeader(
       "Content-Disposition",
-      `inline; filename="${result.originalName}"`,
+      `inline; filename="${toSafeHeaderFilename(result.originalName)}"`,
     );
     res.send(result.buffer);
   } catch (error) {

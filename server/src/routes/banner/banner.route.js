@@ -15,7 +15,7 @@ import {
 const router = express.Router();
 
 // Tất cả routes đều yêu cầu authentication + permission
-router.use(authenticate, hasPermission("settings.manage"));
+router.use(authenticate, hasPermission("system.manage_banners"));
 
 // GET /api/banners — Lấy danh sách banner
 router.get("/", bannerController.getBanners);

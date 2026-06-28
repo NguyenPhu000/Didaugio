@@ -24,10 +24,24 @@ export async function processPaymentLedger(tx, bookingId, totalAmount, commissio
     },
   });
 
+  // Credit business wallet (frozen until booking completes)
   await tx.partnerWallet.upsert({
     where: { businessId },
     update: { frozenBalance: { increment: netAmount } },
     create: { businessId, balance: 0, frozenBalance: netAmount },
+  });
+
+  // Credit platform wallet with commission
+  let platformWallet = await tx.platformWallet.findFirst();
+  if (!platformWallet) {
+    platformWallet = await tx.platformWallet.create({ data: { balance: 0 } });
+  }
+  await tx.platformWallet.update({
+    where: { id: platformWallet.id },
+    data: {
+      balance: { increment: commissionAmount },
+      totalEarned: { increment: commissionAmount },
+    },
   });
 
   await tx.financialLedger.create({
@@ -35,7 +49,7 @@ export async function processPaymentLedger(tx, bookingId, totalAmount, commissio
       bookingId,
       type: "COMMISSION",
       amount: commissionAmount,
-      description: `Hoa hep platform cho booking #${bookingId}`,
+      description: `Hoa hong platform cho booking #${bookingId}`,
     },
   });
 
@@ -81,14 +95,17 @@ export async function settleCompletedLedger(tx, bookingId, businessId, businessE
 
 /**
  * Refund ledger: decrement frozen balance for cancelled/rejected paid bookings.
+ * Also decrements platform wallet for the commission portion.
  * Called INSIDE an existing Prisma $transaction (tx is passed in).
  *
  * @param {import("@prisma/client").Prisma.TransactionClient} tx
  * @param {number} bookingId
  * @param {number} businessId
  * @param {number} businessEarned
+ * @param {number} [commissionAmount=0]
  */
-export async function refundLedger(tx, bookingId, businessId, businessEarned) {
+export async function refundLedger(tx, bookingId, businessId, businessEarned, commissionAmount = 0) {
+  // Decrement business frozen balance
   await tx.partnerWallet.update({
     where: { businessId },
     data: {
@@ -96,11 +113,25 @@ export async function refundLedger(tx, bookingId, businessId, businessEarned) {
     },
   });
 
+  // Decrement platform wallet for commission reversal
+  if (commissionAmount > 0) {
+    const platformWallet = await tx.platformWallet.findFirst();
+    if (platformWallet) {
+      await tx.platformWallet.update({
+        where: { id: platformWallet.id },
+        data: {
+          balance: { decrement: commissionAmount },
+          totalEarned: { decrement: commissionAmount },
+        },
+      });
+    }
+  }
+
   await tx.financialLedger.create({
     data: {
       bookingId,
       type: "REFUND",
-      amount: businessEarned,
+      amount: businessEarned + commissionAmount,
       description: `Hoan tra cho booking #${bookingId}`,
     },
   });

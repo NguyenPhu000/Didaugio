@@ -2,7 +2,7 @@
  * Business Profile Service - SRP: Quản lý hồ sơ doanh nghiệp (đăng ký, cập nhật, xem)
  */
 import prisma from "../../config/prismaClient.js";
-import { BUSINESS_STATUS } from "../../config/constants.js";
+import { BUSINESS_STATUS, CURRENT_CONTRACT_VERSION } from "../../config/constants.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import {
   serializeBusiness,
@@ -153,6 +153,7 @@ export const getProfile = async (userId) => {
   if (!userId) {
     const error = new Error("Chưa xác thực người dùng");
     error.statusCode = 401;
+    error.errorCode = "UNAUTHORIZED";
     throw error;
   }
 
@@ -167,6 +168,7 @@ export const getProfile = async (userId) => {
   if (!business) {
     const error = new Error("Bạn chưa đăng ký doanh nghiệp");
     error.statusCode = 404;
+    error.errorCode = "NO_BUSINESS_PROFILE";
     throw error;
   }
 
@@ -182,6 +184,7 @@ export const register = async (data, userId) => {
   if (!user || user.deletedAt) {
     const error = new Error("Người dùng không tồn tại hoặc đã bị xóa");
     error.statusCode = 404;
+    error.errorCode = "USER_NOT_FOUND";
     throw error;
   }
 
@@ -190,12 +193,14 @@ export const register = async (data, userId) => {
       "Vui lòng xác thực email trước khi đăng ký doanh nghiệp",
     );
     error.statusCode = 422;
+    error.errorCode = "EMAIL_NOT_VERIFIED";
     throw error;
   }
 
   if (user.status !== "active") {
     const error = new Error("Tài khoản hiện không ở trạng thái hoạt động");
     error.statusCode = 422;
+    error.errorCode = "ACCOUNT_INACTIVE";
     throw error;
   }
 
@@ -206,6 +211,7 @@ export const register = async (data, userId) => {
   if (existing) {
     const error = new Error("Bạn đã có hồ sơ doanh nghiệp");
     error.statusCode = 400;
+    error.errorCode = "BUSINESS_PROFILE_EXISTS";
     throw error;
   }
 
@@ -495,7 +501,6 @@ export const signContract = async (userId, payload = {}) => {
   }
 
   // Allow re-signing if contract version is outdated
-  const CURRENT_CONTRACT_VERSION = "v1";
   if (business.contractSigned && business.contractVersion === CURRENT_CONTRACT_VERSION) {
     return mapProfileResponse(business);
   }

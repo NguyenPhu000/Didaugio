@@ -317,6 +317,7 @@ export async function sepayBankWebhook(req, res, next) {
     const result = await paymentService.processSePayBankWebhook(
       req.body,
       req.headers,
+      req.rawBody,
     );
     return res.status(200).json(result);
   } catch (error) {
@@ -333,6 +334,7 @@ export async function sepayRefundWebhook(req, res, next) {
     const result = await paymentService.processSePayRefundWebhook(
       req.body,
       req.headers,
+      req.rawBody,
     );
     return res.status(200).json(result);
   } catch (error) {

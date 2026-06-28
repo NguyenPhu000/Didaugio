@@ -83,15 +83,6 @@ export const updateUserSchema = z.object({
 
   status: userStatusEnum.optional(),
 
-  roleId: z.coerce
-    .number()
-    .int()
-    .positive()
-    .refine((val) => !NON_ASSIGNABLE_ROLES.includes(val), {
-      message: "USER/GUEST role không thể gán qua admin",
-    })
-    .optional(),
-
   emailVerified: z.boolean().optional(),
   fullName: z.preprocess(emptyToNull, z.string().max(100).optional()).nullable(),
   nickname: z.preprocess(emptyToNull, z.string().min(2).max(50).optional()).nullable(),
@@ -110,5 +101,15 @@ export const userQuerySchema = paginationSchema.extend({
   status: userStatusEnum.optional(),
   roleId: z.coerce.number().int().positive().optional(),
   search: z.string().trim().max(100).optional(),
+});
+
+export const updateUserRoleSchema = z.object({
+  roleId: z.coerce
+    .number()
+    .int()
+    .positive()
+    .refine((val) => !NON_ASSIGNABLE_ROLES.includes(val), {
+      message: "USER/GUEST role không thể gán qua admin",
+    }),
 });
 

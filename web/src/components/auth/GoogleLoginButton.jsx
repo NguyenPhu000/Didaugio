@@ -17,7 +17,7 @@ const GoogleLoginButton = ({ onSuccess, onError, disabled }) => {
         }}
         onError={onError}
         disabled={disabled}
-        width="100%"
+        width="320"
         shape="rectangular"
         text="signin_with"
         size="large"

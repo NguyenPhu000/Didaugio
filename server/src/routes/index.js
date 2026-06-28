@@ -64,6 +64,8 @@ export const registerRateLimiters = (app) => {
   app.use("/api/staff/invite/accept", authLimiter);
   app.use("/api/auth/login", authLimiter);
   app.use("/api/auth/register", authLimiter);
+  app.use("/api/auth/register-business", authLimiter);
+  app.use("/api/auth/upgrade-to-business", authLimiter);
   app.use("/api/auth/google", authLimiter);
   app.use("/api/auth/refresh", refreshLimiter);
   app.use("/api/auth/forgot-password", recoveryLimiter);

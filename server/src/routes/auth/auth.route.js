@@ -19,7 +19,11 @@ import {
 const router = express.Router();
 
 router.post("/register", validateBody(registerSchema), authController.register);
+router.post("/register-business", validateBody(registerSchema), authController.registerBusiness);
 router.post("/login", validateBody(loginSchema), authController.login);
+
+// Upgrade USER role to BUSINESS role (for mobile users registering business on web)
+router.post("/upgrade-to-business", authenticate, authController.upgradeToBusiness);
 router.post(
   "/google",
   validateBody(loginGoogleSchema),

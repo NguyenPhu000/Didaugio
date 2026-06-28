@@ -73,7 +73,7 @@ const UserDetailModal = ({
   useEffect(() => {
     const buildAddress = async () => {
       if (!user || !open) {
-        setFullAddress("—");
+        setFullAddress("â€”");
         return;
       }
 
@@ -87,7 +87,7 @@ const UserDetailModal = ({
       const districtCode = user.profile?.districtCode || user.districtCode;
 
       if (!provinceCode) {
-        setFullAddress(parts.length > 0 ? parts.join(", ") : "—");
+        setFullAddress(parts.length > 0 ? parts.join(", ") : "â€”");
         setLoadingAddress(false);
         return;
       }
@@ -113,7 +113,7 @@ const UserDetailModal = ({
         console.error("Error fetching location names:", error);
       }
 
-      setFullAddress(parts.length > 0 ? parts.join(", ") : "—");
+      setFullAddress(parts.length > 0 ? parts.join(", ") : "â€”");
       setLoadingAddress(false);
     };
 
@@ -140,7 +140,7 @@ const UserDetailModal = ({
       female: t("user.detailModal.female"),
       other: t("user.detailModal.other"),
     };
-    return genderMap[gender] || "—";
+    return genderMap[gender] || "â€”";
   };
 
   const getStatusInfo = (status) => {
@@ -169,7 +169,7 @@ const UserDetailModal = ({
 
   const displayName =
     user.profile?.fullName || user.fullName || t("user.detailModal.notUpdated");
-  const displayPhone = user.profile?.phone || user.phone || "—";
+  const displayPhone = user.profile?.phone || user.phone || "â€”";
   const displayGender = getGenderName(user.profile?.gender || user.gender);
   const displayDob = formatDate(user.profile?.dateOfBirth || user.dateOfBirth);
   const statusInfo = getStatusInfo(user.status);
@@ -177,6 +177,59 @@ const UserDetailModal = ({
     displayName !== t("user.detailModal.notUpdated")
       ? displayName.charAt(0).toUpperCase()
       : user.email.charAt(0).toUpperCase();
+  let activityContent;
+  if (activityLoading) {
+    activityContent = (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={`activity-skeleton-${i}`} className="flex items-center gap-3">
+            <Skeleton className="h-6 w-6 rounded-full" />
+            <div className="flex-1 space-y-1">
+              <Skeleton className="h-3 w-3/4" />
+              <Skeleton className="h-2.5 w-1/2" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  } else if (activityLog.length === 0) {
+    activityContent = (
+      <p className="text-sm text-gray-500 text-center py-4">
+        Chua co hoat dong nao
+      </p>
+    );
+  } else {
+    activityContent = (
+      <div className="space-y-3">
+        {activityLog.slice(0, 10).map((entry, index) => {
+          const actionColor = auditLogService.getActionColor(entry.action);
+          return (
+            <div key={entry.id || `activity-${index}`} className="flex items-start gap-3">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white border mt-0.5">
+                <Activity className="h-3 w-3 text-gray-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium text-gray-900">
+                    {entry.description || entry.action}
+                  </span>
+                  <Badge variant="outline" className={`text-[10px] ${actionColor}`}>
+                    {entry.action}
+                  </Badge>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {entry.createdAt
+                    ? new Date(entry.createdAt).toLocaleString("vi-VN")
+                    : ""}
+                  {entry.tableName && ` - ${entry.tableName}`}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -333,56 +386,9 @@ const UserDetailModal = ({
           <div>
             <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-800">
               <Activity className="w-4 h-4 text-blue-500" />
-              Hoạt động gần đây
+              Hoat dong gan day
             </h4>
-            <div className="bg-gray-50 rounded-lg p-4">
-              {activityLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <Skeleton className="h-6 w-6 rounded-full" />
-                      <div className="flex-1 space-y-1">
-                        <Skeleton className="h-3 w-3/4" />
-                        <Skeleton className="h-2.5 w-1/2" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : activityLog.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  Chưa có hoạt động nào
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {activityLog.slice(0, 10).map((entry, index) => {
-                    const actionColor = auditLogService.getActionColor(entry.action);
-                    return (
-                      <div key={entry.id || index} className="flex items-start gap-3">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white border mt-0.5">
-                          <Activity className="h-3 w-3 text-gray-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium text-gray-900">
-                              {entry.description || entry.action}
-                            </span>
-                            <Badge variant="outline" className={`text-[10px] ${actionColor}`}>
-                              {entry.action}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            {entry.createdAt
-                              ? new Date(entry.createdAt).toLocaleString("vi-VN")
-                              : ""}
-                            {entry.tableName && ` · ${entry.tableName}`}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <div className="bg-gray-50 rounded-lg p-4">{activityContent}</div>
           </div>
         </div>
 

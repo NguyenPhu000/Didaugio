@@ -6,6 +6,7 @@ import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { validateBody, validateQuery } from "../../middlewares/validateSchema.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
 import {
+  downgradeSchema,
   upgradeSchema,
   createPlanSchema,
   updatePlanSchema,
@@ -76,10 +77,35 @@ businessRouter.post(
 );
 
 businessRouter.post(
+  "/downgrade",
+  requireContractSigned,
+  hasPermission(subscriptionViewPermission),
+  validateBody(downgradeSchema),
+  auditLog({ action: "UPDATE", tableName: "subscriptions" }),
+  controller.downgrade,
+);
+
+businessRouter.post(
+  "/downgrade/cancel",
+  requireContractSigned,
+  hasPermission(subscriptionViewPermission),
+  auditLog({ action: "UPDATE", tableName: "subscriptions" }),
+  controller.cancelScheduledDowngrade,
+);
+
+businessRouter.post(
   "/cancel",
   hasPermission(subscriptionViewPermission),
   auditLog({ action: "CANCEL", tableName: "subscriptions" }),
   controller.cancelSubscription,
+);
+
+businessRouter.post(
+  "/invoices/:invoiceId/pay-from-wallet",
+  requireContractSigned,
+  hasPermission(subscriptionViewPermission),
+  auditLog({ action: "PAY", tableName: "subscription_invoices" }),
+  controller.payInvoiceFromWallet,
 );
 
 // ─── Admin Routes ────────────────────────────────────────────────────────────

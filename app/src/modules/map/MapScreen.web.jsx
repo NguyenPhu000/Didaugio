@@ -45,7 +45,7 @@ const toSearchableText = (place) =>
     .join(" ")
     .toLowerCase();
 
-const CategoryChip = memo(({ category, active, onToggle }) => {
+function CategoryChipInner({ category, active, onToggle }) {
   const meta =
     category.id === null
       ? { ...DEFAULT_CATEGORY_ICON, icon: "apps" }
@@ -74,9 +74,12 @@ const CategoryChip = memo(({ category, active, onToggle }) => {
       </Text>
     </Pressable>
   );
-});
+}
 
-const QuickFilterChip = memo(({ option, active, onToggle }) => (
+const CategoryChip = memo(CategoryChipInner);
+
+function QuickFilterChipInner({ option, active, onToggle }) {
+  return (
   <Pressable
     onPress={() => onToggle(option.key)}
     className={cn(
@@ -98,7 +101,10 @@ const QuickFilterChip = memo(({ option, active, onToggle }) => (
       {option.label}
     </Text>
   </Pressable>
-));
+  );
+}
+
+const QuickFilterChip = memo(QuickFilterChipInner);
 
 export default function MapScreenWeb() {
   const insets = useSafeAreaInsets();

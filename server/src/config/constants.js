@@ -96,6 +96,9 @@ export const BUSINESS_STATUS = {
   SUSPICIOUS: "suspicious",
 };
 
+/** Phiên bản hợp đồng hiện tại — bump để buộc ký lại */
+export const CURRENT_CONTRACT_VERSION = "v1";
+
 export const SERVICE_TYPES = {
   ENTRY_TICKET: "entry_ticket",
   TOUR: "tour",

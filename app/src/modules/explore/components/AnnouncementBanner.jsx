@@ -21,9 +21,6 @@ function AnnouncementBannerInner({ announcement }) {
     transform: [{ translateY: translateY.value }],
   }));
 
-  // Ẩn hoàn toàn nếu không có thông báo
-  if (!announcement || dismissed) return null;
-
   const handleDismiss = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     opacity.value = withTiming(0, { duration: 250 });
@@ -31,6 +28,9 @@ function AnnouncementBannerInner({ announcement }) {
       runOnJS(setDismissed)(true);
     });
   }, [opacity, translateY]);
+
+  // Ẩn hoàn toàn nếu không có thông báo
+  if (!announcement || dismissed) return null;
 
   // Format ngày tháng gọn
   const dateText = announcement.sentAt

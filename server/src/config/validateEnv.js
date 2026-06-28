@@ -49,6 +49,12 @@ export function validateEnv() {
     );
   }
 
+  if (isProd && !process.env.SEPAY_WEBHOOK_SECRET) {
+    throw new Error(
+      "[ENV] SEPAY_WEBHOOK_SECRET bat buoc trong production de xac thuc webhook SePay",
+    );
+  }
+
   const missingAuthOAuth = REQUIRED_AUTH_OAUTH.filter(
     (key) => !process.env[key],
   );

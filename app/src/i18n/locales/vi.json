@@ -213,7 +213,10 @@
       "participants": "{{count}} tham gia",
       "legs": "{{count}} chặng",
       "communityEvents": "Sự kiện cộng đồng",
-      "viewAll": "Xem tất cả"
+      "viewAll": "Xem tất cả",
+      "featuredBadge": "SỰ KIỆN NỔI BẬT",
+      "onlineCount": "{{count}} ĐANG ONLINE",
+      "viewNow": "Xem ngay"
     },
     "sampleTrip": {
       "adventure": "Phiêu lưu",
@@ -1382,17 +1385,19 @@
     "suggestingPlaces": "Đang gợi ý địa điểm...",
     "processing": "Đang xử lý...",
     "inputPlaceholder": "Mô tả kế hoạch bạn muốn...",
-    "voiceListening": "Đang nghe. Nhi sẽ tự gửi khi bạn im lặng.",
+    "voiceListening": "Đang nghe. Chạm mic lần nữa để gửi.",
     "voiceTranscribing": "Nhi đang chuyển giọng nói thành chữ...",
     "voiceSpeaking": "Nhi đang nói...",
     "voiceError": "Chưa dùng được giọng nói lúc này.",
     "voicePermissionDenied": "Bạn cần cấp quyền micro để trò chuyện bằng giọng nói.",
     "voiceEmptyRecording": "Chưa ghi được giọng nói. Thử nói gần micro hơn một chút.",
+    "voiceTranscriptLabel": "Nhi nghe được",
+    "voiceItineraryQueued": "Nhi đã chuẩn bị bản nháp lịch trình. Bạn xem lại các địa điểm rồi chọn nơi muốn giữ nhé.",
     "voiceWave": {
       "idle": "Chạm để nói",
       "idleHint": "Hỏi Nhi bằng giọng nói",
       "listening": "Đang nghe",
-      "listeningHint": "Tự gửi khi bạn im lặng",
+      "listeningHint": "Chạm lần nữa để gửi",
       "transcribing": "Đang ghi lại",
       "speaking": "Nhi đang nói",
       "speakingHint": "Chạm loa để dừng",

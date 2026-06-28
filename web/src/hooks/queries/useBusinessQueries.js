@@ -8,8 +8,32 @@ import businessApi from "@/apis/businessApi";
  * Fetch business profile (current user's business).
  */
 export function useBusinessProfile() {
-  return useApiQuery(queryKeys.business.profile(), () =>
-    businessApi.getProfile()
+  return useApiQuery(
+    queryKeys.business.profile(),
+    async () => {
+      try {
+        return await businessApi.getProfile();
+      } catch (error) {
+        if (
+          error?.status === 404 ||
+          error?.errorCode === "NO_BUSINESS_PROFILE"
+        ) {
+          return null;
+        }
+        throw error;
+      }
+    },
+    {
+      retry: (failureCount, error) => {
+        if (
+          error?.status === 404 ||
+          error?.errorCode === "NO_BUSINESS_PROFILE"
+        ) {
+          return false;
+        }
+        return failureCount < 2;
+      },
+    },
   );
 }
 

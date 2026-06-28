@@ -77,10 +77,6 @@ export default function TripsScreen() {
     });
 
     return sortTripsForDashboard(list);
-
-
-
-
   }, [activeFilter, trips]);
 
   const saveTripMutation = useSaveTrip();

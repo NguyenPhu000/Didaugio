@@ -23,7 +23,7 @@ const POPULAR_PROVINCES = [
 ];
 
 export const BottomSheetPicker = forwardRef(
-  ({ data = [], selectedValue, onSelect, title, snapPoints = ["60%", "90%"], isLoading = false, showSearch = true }, ref) => {
+  function BottomSheetPickerInner({ data = [], selectedValue, onSelect, title, snapPoints = ["60%", "90%"], isLoading = false, showSearch = true }, ref) {
     const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = useState("");
 

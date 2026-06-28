@@ -9,7 +9,6 @@ import {
 import { Image } from "expo-image";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { Pressable } from "@/components/primitives/Pressable";
-import { useTranslation } from "react-i18next";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -99,24 +98,19 @@ function CategoryPlaceCard({ place, onPress }) {
 }
 
 function ViewMoreButton({ onPress }) {
-  const { t } = useTranslation();
-
   return (
     <Pressable
       haptic="light"
       onPress={onPress}
-      style={styles.viewMoreContainer}
+      className="w-[148px] h-[190px] rounded-[20px] items-center justify-center bg-slate-100"
     >
-      <View style={styles.viewMoreIconWrapper}>
+      <View className="w-12 h-12 rounded-full bg-white items-center justify-center shadow-sm">
         <MaterialIconsRounded
           name="arrow-forward"
           size={20}
           color={APPLE_THEME.text}
         />
       </View>
-      <Text style={styles.viewMoreText}>
-        {t("common.viewAll") || "Xem tất cả"}
-      </Text>
     </Pressable>
   );
 }
@@ -133,7 +127,6 @@ function CategoryPlacesSectionInner({
   onPressViewAll,
   icon,
 }) {
-  const { t } = useTranslation();
   const categoryIcon = icon || getCategoryIcon(categoryName);
 
   const renderItem = useCallback(
@@ -157,27 +150,20 @@ function CategoryPlacesSectionInner({
 
   return (
     <View style={styles.sectionContainer}>
-      {/* 4. Section Header siêu tối giản, bỏ các khối màu nặng nề */}
+      {/* Section Header */}
       <View style={styles.headerRow}>
         <View style={styles.headerTitleGroup}>
-          <MaterialIconsRounded
-            name={categoryIcon}
-            size={22}
-            color={APPLE_THEME.text}
-          />
+          <View style={styles.headerIconCircle}>
+            <MaterialIconsRounded
+              name={categoryIcon}
+              size={16}
+              color={APPLE_THEME.focusBlue}
+            />
+          </View>
           <Text style={styles.headerTitle} numberOfLines={1}>
             {categoryName}
           </Text>
         </View>
-
-        <Pressable
-          haptic="light"
-          onPress={onPressViewAll}
-          hitSlop={8}
-          style={styles.headerAction}
-        >
-          <Text style={styles.headerActionText}>{t("common.viewAll")}</Text>
-        </Pressable>
       </View>
 
       {/* Danh sách cuộn ngang */}
@@ -206,27 +192,29 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: TAB_SCREEN_PADDING,
     marginBottom: 16,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(0,0,0,0.06)",
   },
   headerTitleGroup: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
     flex: 1,
+  },
+  headerIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,113,227,0.08)",
   },
   headerTitle: {
     fontSize: 20,
-    fontFamily: TOKENS.font.bold,
+    fontFamily: TOKENS.font.heading,
     color: APPLE_THEME.text,
     letterSpacing: -0.5,
-  },
-  headerAction: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  headerActionText: {
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-    color: APPLE_THEME.textMuted, // Dùng xám thay vì xanh dương chói mắt
   },
   listContent: {
     paddingHorizontal: TAB_SCREEN_PADDING,
@@ -294,34 +282,6 @@ const styles = StyleSheet.create({
     fontFamily: TOKENS.font.medium,
     color: APPLE_THEME.textMuted,
     flex: 1,
-  },
-  viewMoreContainer: {
-    width: CARD_W,
-    height: IMAGE_H, // Bằng đúng chiều cao ảnh, không cộng thêm phần text
-    borderRadius: 20,
-    borderCurve: "continuous",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_THEME.surfaceMuted, // Thay nét đứt bằng nền xám khối đặc
-    gap: 12,
-  },
-  viewMoreIconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_THEME.white,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  viewMoreText: {
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-    color: APPLE_THEME.text,
   },
 });
 

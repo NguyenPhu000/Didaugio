@@ -50,14 +50,20 @@ export async function findRelatedPlacesByKeywords(userMessage) {
         priceFrom: true,
         priceTo: true,
         ratingAvg: true,
-        category: { select: { name: true } },
+        category: { select: { name: true, slug: true } },
+        images: {
+          select: { secureUrl: true, thumbnailUrl: true, imageData: true },
+          orderBy: { order: "asc" },
+          take: 3,
+        },
       },
     });
     if (results.length > 0) {
       return results.map(r => ({
         ...r,
         ratingAvg: r.ratingAvg ? parseFloat(r.ratingAvg) : 0,
-        categoryName: r.category?.name || "Khác"
+        categoryName: r.category?.name || "Khác",
+        categorySlug: r.category?.slug || "",
       }));
     }
   }
@@ -79,13 +85,19 @@ export async function findRelatedPlacesByKeywords(userMessage) {
       priceFrom: true,
       priceTo: true,
       ratingAvg: true,
-      category: { select: { name: true } },
+      category: { select: { name: true, slug: true } },
+      images: {
+        select: { secureUrl: true, thumbnailUrl: true, imageData: true },
+        orderBy: { order: "asc" },
+        take: 3,
+      },
     },
   });
   const mappedFeatured = featured.map(r => ({
     ...r,
     ratingAvg: r.ratingAvg ? parseFloat(r.ratingAvg) : 0,
-    categoryName: r.category?.name || "Khác"
+    categoryName: r.category?.name || "Khác",
+    categorySlug: r.category?.slug || "",
   }));
   placeCache.set(cacheKey, mappedFeatured);
   return mappedFeatured;
@@ -121,8 +133,8 @@ export async function findPlacesNearby(lat, lng, radiusKm = 10, limit = 10) {
   // Query raw SQL trên Postgres để tận dụng Index kinh vĩ độ và tính Haversine
   const rawPlaces = await prisma.$queryRaw`
     SELECT p.id, p.name, p.address, p.description, p.short_description AS "shortDescription",
-           p.price_from AS "priceFrom", p.price_to AS "priceTo", p.rating_avg AS "ratingAvg", 
-           p.latitude, p.longitude, p.thumbnail, c.name AS "categoryName",
+           p.price_from AS "priceFrom", p.price_to AS "priceTo", p.rating_avg AS "ratingAvg",
+           p.latitude, p.longitude, p.thumbnail, c.name AS "categoryName", c.slug AS "categorySlug",
            (6371 * acos(
              cos(radians(${latitude})) * cos(radians(p.latitude)) * 
              cos(radians(p.longitude) - radians(${longitude})) + 
@@ -139,6 +151,30 @@ export async function findPlacesNearby(lat, lng, radiusKm = 10, limit = 10) {
   `;
 
   // Trích xuất và định dạng kiểu dữ liệu Decimal thành Number để tránh lỗi JSON
+  const placeIds = rawPlaces.map((p) => p.id);
+
+  // Fetch images riêng cho các place vừa tìm được
+  const placeImages = placeIds.length > 0
+    ? await prisma.placeImage.findMany({
+        where: { placeId: { in: placeIds } },
+        select: { placeId: true, secureUrl: true, thumbnailUrl: true, imageData: true },
+        orderBy: { order: "asc" },
+      })
+    : [];
+
+  // Gom images theo placeId
+  const imagesByPlace = {};
+  for (const img of placeImages) {
+    if (!imagesByPlace[img.placeId]) imagesByPlace[img.placeId] = [];
+    if (imagesByPlace[img.placeId].length < 3) {
+      imagesByPlace[img.placeId].push({
+        secureUrl: img.secureUrl,
+        thumbnailUrl: img.thumbnailUrl,
+        imageData: img.imageData,
+      });
+    }
+  }
+
   return rawPlaces.map((p) => ({
     id: p.id,
     name: p.name,
@@ -151,7 +187,9 @@ export async function findPlacesNearby(lat, lng, radiusKm = 10, limit = 10) {
     latitude: p.latitude ? parseFloat(p.latitude) : null,
     longitude: p.longitude ? parseFloat(p.longitude) : null,
     thumbnail: p.thumbnail,
+    images: imagesByPlace[p.id] || [],
     categoryName: p.categoryName || "Khác",
+    categorySlug: p.categorySlug || "",
     distance: p.distance ? parseFloat(p.distance) : 0,
   }));
 }

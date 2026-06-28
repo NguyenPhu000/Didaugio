@@ -93,12 +93,15 @@
     },
     "section": {
       "main": "MAIN",
-      "management": "MANAGEMENT",
+      "management": "CONTENT MANAGEMENT",
       "business": "BUSINESS",
       "businessAccount": "ACCOUNT",
       "businessServices": "SERVICES",
-      "adminBusiness": "ADMIN BUSINESS",
-      "users": "USERS",
+      "adminBusiness": "FINANCE & BUSINESS",
+      "finance": "FINANCE",
+      "reviews": "REVIEWS",
+      "account": "ACCOUNT & SETTINGS",
+      "users": "USERS & PERMISSIONS",
       "system": "SYSTEM",
       "operations": "OPERATIONS"
     },
@@ -3192,6 +3195,13 @@
         "step3": "Coordinates will be auto-filled into the form",
         "step4": "You can still manually adjust after selection"
       }
+    },
+    "prices": {
+      "free": "Free",
+      "budget": "Budget",
+      "moderate": "Moderate",
+      "expensive": "Expensive",
+      "luxury": "Luxury"
     }
   },
   "placePicker": {
@@ -3298,6 +3308,29 @@
       "confirm": "Confirm Payment",
       "scanQR": "Scan QR code to pay",
       "waiting": "Waiting for confirmation..."
+    },
+    "changePlan": {
+      "downgradeTitle": "Downgrade at period end",
+      "newPlan": "New plan",
+      "effectiveAt": "Effective",
+      "endOfCycle": "period end",
+      "remainingCredit": "Remaining credit",
+      "payNow": "Pay now",
+      "totalPayment": "Total payment",
+      "downgradeNote": "Your current plan stays active until the period ends. No new invoice is created for a downgrade.",
+      "remainingDaysNote": "Calculated from {{days}} remaining days in the current period.",
+      "scheduleDowngrade": "Schedule downgrade",
+      "qrUnavailable": "Could not create QR",
+      "amount": "Amount",
+      "transferContent": "Transfer content",
+      "waitingPayment": "Waiting for payment confirmation...",
+      "downgradeSuccess": "The new plan has been scheduled for the end of the current period.",
+      "upgradeSuccess": "The service plan has been upgraded successfully."
+    },
+    "pendingDowngrade": {
+      "title": "Downgrade to {{plan}} scheduled",
+      "description": "Applies on {{date}}. Your current plan stays active until the period ends.",
+      "cancel": "Cancel downgrade"
     },
     "grace": {
       "warning": "Your plan has expired. {{days}} days remaining to renew."

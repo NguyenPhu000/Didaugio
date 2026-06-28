@@ -24,6 +24,7 @@ import { resolveMediaUrl } from "../../src/lib/media-url";
 import { NotificationBell } from "../../src/components/composed/NotificationBell";
 import { locationService } from "../../src/apis/locationService";
 import { useTranslation } from "react-i18next";
+import * as Settings from "../../src/components/reacticx/settings-v1/components";
 
 const ACCENT_BLUE = "#3478F6";
 
@@ -232,60 +233,58 @@ function SettingsSection({ onSoonFeature }) {
   const settingsItems = [
     {
       icon: "confirmation-number",
+      iconColor: "#8E8E93",
       label: t("profile.settingsItems.myBookings"),
       route: "/profile/bookings",
     },
     {
       icon: "bookmark",
+      iconColor: "#8E8E93",
       label: t("profile.settingsItems.savedPlaces"),
       route: "/(tabs)/saved",
     },
     {
       icon: "credit-card",
+      iconColor: "#8E8E93",
       label: t("profile.settingsItems.paymentMethods"),
       onPress: () => onSoonFeature(t("profile.settingsItems.paymentMethods")),
     },
     {
       icon: "notifications",
+      iconColor: "#8E8E93",
       label: t("profile.settingsItems.notifications"),
       route: "/profile/notifications",
     },
   ];
 
   return (
-    <View className="mt-2">
-      <Text
-        style={{ fontFamily: TOKENS.font.semibold }}
-        className="text-xl text-[#0F172A]"
-      >
+    <View style={{ marginTop: 8 }}>
+      <Text style={{ fontFamily: TOKENS.font.semibold, fontSize: 20, color: "#0F172A" }}>
         {t("profile.settings")}
       </Text>
-      <View
-        className="bg-white rounded-[20px] py-1 mt-3"
-        style={{
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 4,
-        }}
-      >
-        {settingsItems.map((item, index) => (
-          <Pressable
-            key={index}
-            className="flex-row items-center py-4 px-5 gap-4"
-            onPress={item.onPress || (() => router.push(item.route))}
-          >
-            <MaterialIconsRounded name={item.icon} size={24} color="#64748B" />
-            <Text
-              style={{ fontFamily: TOKENS.font.medium }}
-              className="flex-grow text-base text-[#0F172A]"
+      <View style={{ marginTop: 12 }}>
+        <Settings.Group style={{ backgroundColor: "#FFFFFF", borderRadius: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}>
+          {settingsItems.map((item) => (
+            <Settings.Item
+              key={item.label}
+              onPress={item.onPress || (() => router.push(item.route))}
+              style={{ minHeight: 52, paddingVertical: 4 }}
             >
-              {item.label}
-            </Text>
-            <MaterialIconsRounded name="chevron-right" size={24} color="#64748B" />
-          </Pressable>
-        ))}
+              <Settings.Icon
+                icon={<MaterialIconsRounded name={item.icon} size={18} color="#FFFFFF" />}
+                color={item.iconColor}
+                size={30}
+                borderRadius={8}
+              />
+              <Settings.Content>
+                <Settings.Title style={{ color: "#0F172A", fontSize: 16, fontFamily: TOKENS.font.medium }}>
+                  {item.label}
+                </Settings.Title>
+              </Settings.Content>
+              <Settings.Chevron color="#C7C7CC" size={14} />
+            </Settings.Item>
+          ))}
+        </Settings.Group>
       </View>
     </View>
   );

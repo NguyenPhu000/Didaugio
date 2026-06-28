@@ -94,12 +94,15 @@
     },
     "section": {
       "main": "CHÍNH",
-      "management": "QUẢN LÝ",
-      "business": "DOANH NGHIỆP",
+      "management": "QUẢN LÝ NỘI DUNG",
+      "business": "KINH DOANH",
       "businessAccount": "TÀI KHOẢN",
       "businessServices": "DỊCH VỤ",
-      "adminBusiness": "ADMIN BUSINESS",
-      "users": "NGƯỜI DÙNG",
+      "adminBusiness": "TÀI CHÍNH & DOANH NGHIỆP",
+      "finance": "TÀI CHÍNH",
+      "reviews": "ĐÁNH GIÁ",
+      "account": "TÀI KHOẢN & CÀI ĐẶT",
+      "users": "NGƯỜI DÙNG & PHÂN QUYỀN",
       "system": "HỆ THỐNG",
       "operations": "VẬN HÀNH"
     },
@@ -3248,6 +3251,13 @@
         "step3": "Tọa độ sẽ được tự động điền vào form",
         "step4": "Bạn vẫn có thể chỉnh sửa thủ công sau khi chọn"
       }
+    },
+    "prices": {
+      "free": "Miễn phí",
+      "budget": "Rẻ",
+      "moderate": "Trung bình",
+      "expensive": "Đắt",
+      "luxury": "Sang trọng"
     }
   },
   "placePicker": {
@@ -3354,6 +3364,29 @@
       "confirm": "Xác nhận thanh toán",
       "scanQR": "Quét mã QR để thanh toán",
       "waiting": "Đang chờ xác nhận..."
+    },
+    "changePlan": {
+      "downgradeTitle": "Hạ gói cuối chu kỳ",
+      "newPlan": "Gói mới",
+      "effectiveAt": "Có hiệu lực",
+      "endOfCycle": "cuối chu kỳ",
+      "remainingCredit": "Tín dụng còn lại",
+      "payNow": "Thanh toán ngay",
+      "totalPayment": "Tổng thanh toán",
+      "downgradeNote": "Gói hiện tại vẫn được giữ đến hết chu kỳ. Hệ thống không tạo hóa đơn mới cho thao tác hạ gói.",
+      "remainingDaysNote": "Tính theo {{days}} ngày còn lại của chu kỳ hiện tại.",
+      "scheduleDowngrade": "Lên lịch hạ gói",
+      "qrUnavailable": "Không tạo được QR",
+      "amount": "Số tiền",
+      "transferContent": "Nội dung chuyển khoản",
+      "waitingPayment": "Đang chờ xác nhận thanh toán...",
+      "downgradeSuccess": "Gói mới đã được lên lịch áp dụng vào cuối chu kỳ hiện tại.",
+      "upgradeSuccess": "Gói dịch vụ đã được nâng cấp thành công."
+    },
+    "pendingDowngrade": {
+      "title": "Đã lên lịch hạ xuống {{plan}}",
+      "description": "Áp dụng vào {{date}}. Gói hiện tại vẫn hoạt động đến hết chu kỳ.",
+      "cancel": "Hủy lịch hạ gói"
     },
     "grace": {
       "warning": "Gói của bạn đã hết hạn. Còn {{days}} ngày để gia hạn."

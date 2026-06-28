@@ -1,10 +1,11 @@
-import React, { memo } from "react";
+import React, { memo, useState, useCallback } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { Star, MapPin } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { resolvePlaceImageUri } from "../../lib/media-url";
-import { TOKENS } from "../../constants/design-tokens";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { resolvePlaceImageUri, getCategoryIcon } from "../../lib/media-url";
+import { TOKENS, CATEGORY_COLORS } from "../../constants/design-tokens";
 
 const formatCompactPrice = (value) => {
   const parsed = Number(value);
@@ -18,8 +19,9 @@ const formatCompactPrice = (value) => {
   return `${parsed}đ`;
 };
 
-export const HorizontalPlaceCard = memo(({ place, onPressDetail }) => {
+function HorizontalPlaceCardInner({ place, onPressDetail }) {
   const { t } = useTranslation();
+  const [imgError, setImgError] = useState(false);
 
   const PRICE_RANGE_LABELS = {
     FREE: t("place.priceRange.free"),
@@ -29,10 +31,18 @@ export const HorizontalPlaceCard = memo(({ place, onPressDetail }) => {
     LUXURY: t("place.priceRange.luxury"),
   };
 
+  const handleImageError = useCallback(() => setImgError(true), []);
+
   if (!place) return null;
 
-  const previewImg = resolvePlaceImageUri(place);
+  const rawImg = resolvePlaceImageUri(place);
+  const previewImg = imgError ? null : rawImg;
   const rating = Number(place?.ratingAvg ?? place?.averageRating ?? 0);
+
+  const categoryName = place?.categoryName || place?.category?.name || "";
+  const categorySlug = place?.category?.slug || "";
+  const categoryColor = CATEGORY_COLORS[categorySlug] || CATEGORY_COLORS.default;
+  const categoryIcon = getCategoryIcon(categoryName);
 
   const getPreviewPriceLabel = (p) => {
     const compactFrom = formatCompactPrice(p?.priceFrom ?? p?.price_from);
@@ -47,12 +57,12 @@ export const HorizontalPlaceCard = memo(({ place, onPressDetail }) => {
     [place?.ward?.name, place?.district?.name].filter(Boolean).join(", ") ||
     t("place.defaultLocation");
 
-  const shortAddress = locationLabel.length > 28 
-    ? locationLabel.substring(0, 26) + "..." 
+  const shortAddress = locationLabel.length > 28
+    ? locationLabel.substring(0, 26) + "..."
     : locationLabel;
 
   return (
-    <Pressable 
+    <Pressable
       onPress={() => onPressDetail && onPressDetail(place.id)}
       className="bg-white rounded-2xl overflow-hidden border border-zinc-100 shadow-sm mr-3"
       style={styles.card}
@@ -65,10 +75,18 @@ export const HorizontalPlaceCard = memo(({ place, onPressDetail }) => {
             style={StyleSheet.absoluteFillObject}
             transition={200}
             contentFit="cover"
+            onError={handleImageError}
           />
         ) : (
-          <View className="flex-1 items-center justify-center bg-zinc-200">
-            <Text className="text-zinc-400 text-xs">{t("place.noImage")}</Text>
+          <View
+            className="flex-1 items-center justify-center"
+            style={{ backgroundColor: `${categoryColor}16` }}
+          >
+            <MaterialIconsRounded
+              name={categoryIcon.icon}
+              size={32}
+              color={categoryColor}
+            />
           </View>
         )}
         {/* Category Tag */}
@@ -110,7 +128,9 @@ export const HorizontalPlaceCard = memo(({ place, onPressDetail }) => {
       </View>
     </Pressable>
   );
-});
+}
+
+export const HorizontalPlaceCard = memo(HorizontalPlaceCardInner);
 
 const styles = StyleSheet.create({
   card: {

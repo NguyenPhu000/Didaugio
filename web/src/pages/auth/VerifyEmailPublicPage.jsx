@@ -6,12 +6,15 @@ import { CheckCircle2, XCircle, Loader2, Mail } from "lucide-react";
 import { authService } from "@/apis";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { useAuthStore } from "@/stores/authStore";
+import { ROLES } from "@/constants/constants";
 
 const VerifyEmailPublicPage = () => {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
+  const { user, setUser } = useAuthStore();
 
   const [status, setStatus] = useState("verifying"); // verifying | success | error
   const [message, setMessage] = useState("");
@@ -30,11 +33,21 @@ const VerifyEmailPublicPage = () => {
       setMessage(response.message || t("auth.verifyEmail.verifySuccess"));
       toast.success(t("auth.verifyEmail.verifySuccess"));
 
+      // Cập nhật trạng thái emailVerified trong store
+      if (user) {
+        setUser({ ...user, emailVerified: true });
+      }
+
       // Auto redirect sau 3 giây
       setTimeout(() => {
-        navigate("/login", {
-          state: { message: t("auth.verifyEmail.redirectMessage") },
-        });
+        if (user?.roleId === ROLES.BUSINESS) {
+          // Đã login + là business → đi thẳng đăng ký doanh nghiệp
+          navigate("/business/register", { replace: true });
+        } else {
+          navigate("/login", {
+            state: { message: t("auth.verifyEmail.redirectMessage") },
+          });
+        }
       }, 3000);
     } catch (error) {
       setStatus("error");
@@ -43,7 +56,7 @@ const VerifyEmailPublicPage = () => {
       setMessage(errorMsg);
       toast.error(`❌ ${errorMsg}`);
     }
-  }, [navigate, token]);
+  }, [navigate, token, user, setUser]);
 
   useEffect(() => {
     const id = setTimeout(() => {

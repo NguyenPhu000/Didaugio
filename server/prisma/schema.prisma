@@ -161,6 +161,7 @@ model UserSession {
   createdAt    DateTime @default(now()) @map("created_at")
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("user_sessions")
 }
 
@@ -509,6 +510,7 @@ model PlaceImage {
   thumbnailUrl String?  @map("thumbnail_url")
   place        Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
 
+  @@index([placeId])
   @@map("place_images")
 }
 
@@ -598,6 +600,7 @@ model ReviewMedia {
   createdAt DateTime @default(now()) @map("created_at")
   review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
+  @@index([reviewId])
   @@map("review_media")
 }
 
@@ -613,6 +616,8 @@ model ReviewReply {
   user           User                  @relation(fields: [userId], references: [id])
   moderationLogs ReviewModerationLog[]
 
+  @@index([reviewId])
+  @@index([userId])
   @@map("review_replies")
 }
 
@@ -677,6 +682,8 @@ model UserCheckin {
   place     Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([placeId])
   @@map("user_checkins")
 }
 
@@ -732,6 +739,8 @@ model TripDestination {
   place           Place     @relation(fields: [placeId], references: [id])
   trip            Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
+  @@index([tripId])
+  @@index([placeId])
   @@map("trip_destinations")
 }
 
@@ -923,6 +932,8 @@ model BusinessService {
   place        Place                 @relation(fields: [placeId], references: [id])
   blockedDates BusinessBlockedDate[]
 
+  @@index([businessId])
+  @@index([placeId])
   @@map("business_services")
 }
 
@@ -961,6 +972,8 @@ model PlaceResource {
   service      BusinessService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   bookings     Booking[]
 
+  @@index([placeId])
+  @@index([serviceId])
   @@map("place_resources")
 }
 
@@ -1167,7 +1180,8 @@ model Payout {
   transferredAt DateTime? @map("transferred_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
-  business      Business  @relation(fields: [businessId], references: [id])
+  business      Business           @relation(fields: [businessId], references: [id])
+  ledgerEntries FinancialLedger[]
 
   @@index([businessId])
   @@index([status])
@@ -1187,6 +1201,17 @@ model PartnerWallet {
   @@map("partner_wallets")
 }
 
+model PlatformWallet {
+  id            Int      @id @default(autoincrement())
+  balance       Int      @default(0)
+  totalEarned   Int      @default(0) @map("total_earned")
+  totalPaidOut  Int      @default(0) @map("total_paid_out")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_wallets")
+}
+
 model FinancialLedger {
   id          Int      @id @default(autoincrement())
   bookingId   Int?     @map("booking_id")
@@ -1197,7 +1222,10 @@ model FinancialLedger {
   createdAt   DateTime @default(now()) @map("created_at")
 
   booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  payout  Payout?  @relation(fields: [payoutId], references: [id], onDelete: SetNull)
 
+  @@index([bookingId])
+  @@index([payoutId])
   @@map("financial_ledgers")
 }
 
@@ -1359,6 +1387,8 @@ model Event {
   moments        EventMoment[]
   activeSessions ActiveSession[]
 
+  @@index([tripId])
+  @@index([createdBy])
   @@map("events")
 }
 

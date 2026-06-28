@@ -1,5 +1,5 @@
 import { memo, useCallback } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
@@ -34,7 +34,15 @@ function EventSectionInner({ events, onPressEvent, onPressViewAll }) {
 
   return (
     <View className="mt-[26px]">
-      <View style={{ paddingHorizontal: TAB_SCREEN_PADDING }} className="flex-row justify-between items-center mb-3.5">
+      <View
+        style={{
+          paddingHorizontal: TAB_SCREEN_PADDING,
+          paddingBottom: 14,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: "rgba(0,0,0,0.06)",
+        }}
+        className="flex-row justify-between items-center mb-3.5"
+      >
         <View className="flex-row items-center gap-1.5">
           <Text className="text-ink text-[22px] leading-7 tracking-[-0.5px] font-bold" style={{ fontFamily: TOKENS.font.heading }}>
             {t("explore.event.communityEvents")}
@@ -43,13 +51,6 @@ function EventSectionInner({ events, onPressEvent, onPressViewAll }) {
             <Text className="text-red-600 text-[10px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>HOT</Text>
           </View>
         </View>
-        {onPressViewAll ? (
-          <Pressable onPress={onPressViewAll} hitSlop={8}>
-            <Text className="text-primary text-[13px] font-semibold px-3.5 h-8 rounded-full bg-primary/[0.08] overflow-hidden text-center" style={{ fontFamily: TOKENS.font.semibold, lineHeight: 32 }}>
-              {t("explore.event.viewAll")}
-            </Text>
-          </Pressable>
-        ) : null}
       </View>
 
       <FlatList

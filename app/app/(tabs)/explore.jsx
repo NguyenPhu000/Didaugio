@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -52,6 +53,12 @@ import { CmsBannerCarousel } from "../../src/modules/explore/components/CmsBanne
 import { SampleTripSection } from "../../src/modules/explore/components/SampleTripSection";
 import { AnnouncementBanner } from "../../src/modules/explore/components/AnnouncementBanner";
 
+import { BlurCarousel } from "../../src/components/reacticx/blur-carousel";
+import { Accordion, AccordionThemes } from "../../src/components/reacticx/accordion";
+
+import { Image } from "expo-image";
+import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../src/lib/media-url";
+
 import { useSavePlace, useUnsavePlace, useSavedPlaces } from "../../src/modules/saved/hooks/useSaved";
 
 const FOOD_HINTS = ["ẩm thực", "food", "restaurant", "ăn", "quán", "bánh"].map(
@@ -59,6 +66,15 @@ const FOOD_HINTS = ["ẩm thực", "food", "restaurant", "ăn", "quán", "bánh"
 );
 
 const FLOATING_TAB_CLEARANCE = TAB_BAR_HEIGHT + 84;
+const TAB_SCREEN_PADDING = 16;
+
+const EXPLORE_ACCORDION_THEME = {
+  backgroundColor: "transparent",
+  borderColor: "rgba(0,0,0,0.06)",
+  headlineColor: APPLE_THEME.text,
+  subtitleColor: APPLE_THEME.textMuted,
+  iconColor: APPLE_THEME.textMuted,
+};
 
 export default function ExploreScreen() {
   const { t } = useTranslation();
@@ -97,11 +113,24 @@ export default function ExploreScreen() {
   } = cmsData ?? {};
 
   const featuredEvents = useMemo(() => {
-    return Array.isArray(events) ? events.filter((e) => e?.isFeaturedBanner) : [];
+    if (!Array.isArray(events)) return [];
+    const now = Date.now();
+    return events
+      .filter((e) => e?.isFeaturedBanner)
+      .sort((a, b) => {
+        // Ưu tiên sự kiện đang diễn ra lên đầu
+        const aOngoing = new Date(a.startDate).getTime() <= now && now <= new Date(a.endDate).getTime();
+        const bOngoing = new Date(b.startDate).getTime() <= now && now <= new Date(b.endDate).getTime();
+        if (aOngoing && !bOngoing) return -1;
+        if (!aOngoing && bOngoing) return 1;
+        // Sau đó theo startDate tăng dần
+        return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+      });
   }, [events]);
 
   const regularEvents = useMemo(() => {
-    return Array.isArray(events) ? events.filter((e) => !e?.isFeaturedBanner) : [];
+    if (!Array.isArray(events)) return [];
+    return events.filter((e) => !e?.isFeaturedBanner);
   }, [events]);
 
   const handlePressEvent = useCallback((eventItem) => {
@@ -263,6 +292,59 @@ export default function ExploreScreen() {
   const isInitialLoading = isLoading || isLoadingEvents || isLoadingCms;
   const showEmpty = allPlaces.length === 0 && !isInitialLoading;
 
+  const { width: screenWidth } = useWindowDimensions();
+
+  const renderEventBanner = useCallback(
+    ({ item: event }) => {
+      const rawImage = event?.thumbnail || event?.imageUrl;
+      const imageUri = rawImage ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 800) : null;
+      return (
+        <Pressable
+          haptic="light"
+          onPress={() => handlePressEvent(event)}
+          style={{ width: "100%", height: 170, borderRadius: 20, overflow: "hidden", backgroundColor: APPLE_THEME.surfaceMuted }}
+        >
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} contentFit="cover" transition={250} cachePolicy="memory-disk" style={StyleSheet.absoluteFillObject} />
+          ) : (
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#064e3b" }}>
+              <MaterialIconsRounded name="celebration" size={48} color="rgba(255,255,255,0.3)" />
+            </View>
+          )}
+          <View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.1)" }} pointerEvents="none" />
+          <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "70%", backgroundColor: "rgba(0,0,0,0.55)" }} pointerEvents="none" />
+          <View style={{ position: "absolute", top: 14, left: 14, flexDirection: "row", alignItems: "center", gap: 8, zIndex: 2 }}>
+            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: "#DC2626", flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <MaterialIconsRounded name="campaign" size={12} color="#FFFFFF" />
+              <Text style={{ color: "#FFF", fontSize: 10, fontFamily: TOKENS.font.bold, letterSpacing: 1.5 }}>{t("explore.event.featuredBadge")}</Text>
+            </View>
+          </View>
+          <View style={{ position: "absolute", bottom: 16, left: 16, right: 16, zIndex: 2, gap: 6 }}>
+            <Text style={{ color: "#FFF", fontSize: 18, lineHeight: 22, fontFamily: TOKENS.font.heading, letterSpacing: -0.4 }} numberOfLines={2}>{event?.title}</Text>
+            {event?.description ? (
+              <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontFamily: TOKENS.font.medium }} numberOfLines={1}>{event.description}</Text>
+            ) : null}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <MaterialIconsRounded name="people" size={13} color="rgba(255,255,255,0.8)" />
+                  <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 11, fontFamily: TOKENS.font.semibold }}>
+                    {t("explore.event.participants", { count: event?._count?.participants || event?.participantCount || 0 })}
+                  </Text>
+                </View>
+              </View>
+              <View style={{ paddingHorizontal: 14, height: 28, borderRadius: 999, backgroundColor: "#FFF", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                <Text style={{ color: "#000", fontSize: 11, fontFamily: TOKENS.font.bold }}>{t("explore.event.viewNow")}</Text>
+                <MaterialIconsRounded name="arrow-forward" size={12} color="#000" />
+              </View>
+            </View>
+          </View>
+        </Pressable>
+      );
+    },
+    [handlePressEvent, t],
+  );
+
   const emptyOpacity = useSharedValue(0);
 
   useEffect(() => {
@@ -308,7 +390,15 @@ export default function ExploreScreen() {
           {selectedCategory === null ? <CmsBannerCarousel banners={banners} /> : null}
 
           {selectedCategory === null && featuredEvents.length > 0 ? (
-            <EventBannerCarousel events={featuredEvents} onPressEvent={handlePressEvent} />
+            <View style={{ marginTop: 12, marginBottom: 4 }}>
+              <BlurCarousel
+                data={featuredEvents}
+                renderItem={renderEventBanner}
+                itemWidth={screenWidth - 32}
+                horizontalSpacing={16}
+                spacing={6}
+              />
+            </View>
           ) : null}
 
           {selectedCategoryName ? (
@@ -348,8 +438,9 @@ export default function ExploreScreen() {
               <ExperienceBentoSection places={culinaryPlaces} onPressPlace={handlePressPlace} />
             ) : null}
 
-            {selectedCategory === null
-              ? placesByCategory.map((category) => (
+            {selectedCategory === null && placesByCategory.length > 0 ? (
+              <View style={{ marginTop: 16 }}>
+                {placesByCategory.map((category) => (
                   <CategoryPlacesSection
                     key={category.id}
                     categoryName={category.name}
@@ -359,8 +450,9 @@ export default function ExploreScreen() {
                     onPressPlace={handlePressPlace}
                     onPressViewAll={() => handleViewCategoryPlaces(category)}
                   />
-                ))
-              : null}
+                ))}
+              </View>
+            ) : null}
 
             {selectedCategory != null && popularPlaces.length > 0 ? (
               <CategoryPlacesSection

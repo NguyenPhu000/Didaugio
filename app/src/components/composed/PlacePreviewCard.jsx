@@ -1,11 +1,11 @@
-import { memo } from "react";
+import { memo, useState, useCallback } from "react";
 import { View, Text, Pressable, Platform, ActivityIndicator, StyleSheet } from "react-native";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { cn } from "../../lib/cn";
-import { resolvePlaceImageUri } from "../../lib/media-url";
+import { resolvePlaceImageUri, getCategoryIcon } from "../../lib/media-url";
 import { TOKENS, CATEGORY_COLORS } from "../../constants/design-tokens";
 
 export const getPlaceRatingValue = (place) => {
@@ -18,8 +18,7 @@ export const getPlaceReviewCount = (place) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-export const PlacePreviewCard = memo(
-  ({
+function PlacePreviewCardInner({
     place,
     onClose,
     onViewDetail,
@@ -41,8 +40,10 @@ export const PlacePreviewCard = memo(
     showSelectionAction = false,
     showAddToTripAction = false,
     showRouteAction = false,
-  }) => {
+  }) {
     const { t } = useTranslation();
+    const [imgError, setImgError] = useState(false);
+    const handleImageError = useCallback(() => setImgError(true), []);
 
     const PRICE_RANGE_LABELS = {
       FREE: t("place.priceRange.free"),
@@ -88,7 +89,8 @@ export const PlacePreviewCard = memo(
 
     if (!place) return null;
 
-    const previewImg = resolvePlaceImageUri(place);
+    const rawImg = resolvePlaceImageUri(place);
+    const previewImg = imgError ? null : rawImg;
     const rating = getPlaceRatingValue(place);
     const reviewCount = getPlaceReviewCount(place);
     const locationLabel =
@@ -122,12 +124,13 @@ export const PlacePreviewCard = memo(
     const categorySlug = place?.category?.slug || "";
     const categoryName = place?.category?.name || "";
     const categoryColor = CATEGORY_COLORS[categorySlug] || CATEGORY_COLORS.default;
+    const categoryIcon = getCategoryIcon(categoryName);
 
     return (
       <View
         className={cn(
-          "flex-row items-center p-3 rounded-[24px] overflow-hidden relative",
-          selected ? "bg-blue-50/90 border border-blue-200/60" : "bg-white/95",
+          "flex-row items-center p-3 rounded-[24px] overflow-hidden relative border",
+          selected ? "bg-blue-50/90 border-blue-200/60" : "bg-white border-slate-100",
           compact && "rounded-2xl p-2.5"
         )}
         style={TOKENS.shadow.sm}
@@ -154,10 +157,18 @@ export const PlacePreviewCard = memo(
               style={{ width: "100%", height: "100%" }}
               contentFit="cover"
               transition={200}
+              onError={handleImageError}
             />
           ) : (
-            <View className="flex-1 items-center justify-center bg-slate-100">
-              <MaterialIconsRounded name="place" size={24} color="#94A3B8" />
+            <View
+              className="flex-1 items-center justify-center"
+              style={{ backgroundColor: `${categoryColor}16` }}
+            >
+              <MaterialIconsRounded
+                name={categoryIcon.icon}
+                size={24}
+                color={categoryColor}
+              />
             </View>
           )}
         </View>
@@ -285,7 +296,7 @@ export const PlacePreviewCard = memo(
                 onPress={() => onToggleSelection(place)}
                 className={cn(
                   "flex-row items-center gap-1 rounded-full px-3.5 h-8 border active:scale-95 transition-all",
-                  selected ? "bg-slate-800 border-slate-800" : "bg-white/70 border-ink/12"
+                  selected ? "bg-slate-800 border-slate-800" : "bg-slate-50 border-slate-200"
                 )}
               >
                 <MaterialIconsRounded
@@ -318,5 +329,6 @@ export const PlacePreviewCard = memo(
         </View>
       </View>
     );
-  }
-);
+}
+
+export const PlacePreviewCard = memo(PlacePreviewCardInner);

@@ -41,9 +41,11 @@
           "isAndroidForegroundServiceEnabled": true
         }
       ],
-      "expo-web-browser",
-      "@react-native-community/datetimepicker"
+      "expo-web-browser"
     ],
+    "updates": {
+      "enabled": false
+    },
     "experiments": {
       "typedRoutes": false
     },
@@ -52,24 +54,46 @@
         "backgroundColor": "#0077b8"
       },
       "package": "vn.didaugio.app",
+      "softwareKeyboardLayoutMode": "resize",
+      "usesCleartextTraffic": true,
+      "navigationBar": {
+        "backgroundColor": "#ffffff",
+        "barStyle": "dark-content"
+      },
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "androidStatusBar": {
-      "translucent": true,
-      "backgroundColor": "#0077b8"
+      "translucent": false,
+      "backgroundColor": "#0077b8",
+      "barStyle": "light-content"
     },
     "ios": {
       "bundleIdentifier": "vn.didaugio.app",
       "supportsTablet": false,
+      "deploymentTarget": "14.0",
       "infoPlist": {
-        "LSApplicationQueriesSchemes": ["momo"]
+        "LSApplicationQueriesSchemes": ["momo"],
+        "UIBackgroundModes": [
+          "location",
+          "audio",
+          "remote-notification"
+        ],
+        "NSLocationWhenInUseUsageDescription": "Đi Đâu Giờ? cần vị trí để hiển thị địa điểm gần bạn.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Đi Đâu Giờ? cần vị trí chạy nền để dẫn đường và nhắc nhở di chuyển trong hành trình của bạn.",
+        "NSLocationAlwaysUsageDescription": "Đi Đâu Giờ? cần vị trí chạy nền để dẫn đường.",
+        "NSMicrophoneUsageDescription": "Đi Đâu Giờ? cần micro để bạn trò chuyện bằng giọng nói với Nhi.",
+        "NSPhotoLibraryUsageDescription": "Đi Đâu Giờ? cần truy cập thư viện ảnh để bạn tải lên ảnh đại diện và bài viết.",
+        "NSCameraUsageDescription": "Đi Đâu Giờ? cần truy cập máy ảnh để bạn chụp hình trực tiếp."
       }
     },
     "extra": {

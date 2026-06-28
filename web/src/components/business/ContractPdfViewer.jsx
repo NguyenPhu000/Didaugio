@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, FileText, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ const ContractPdfViewer = memo(({ businessId, className }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const pdfUrlRef = useRef(null);
 
   const fetchContract = useCallback(async () => {
     if (!businessId) return;
@@ -20,6 +21,9 @@ const ContractPdfViewer = memo(({ businessId, className }) => {
     try {
       const blob = await downloadContract(businessId);
       const url = URL.createObjectURL(blob);
+      // Revoke URL cũ trước khi set URL mới
+      if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
+      pdfUrlRef.current = url;
       setPdfUrl(url);
     } catch (err) {
       setError(err?.message || t("business.documents.loadFailed"));
@@ -31,7 +35,11 @@ const ContractPdfViewer = memo(({ businessId, className }) => {
   useEffect(() => {
     fetchContract();
     return () => {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      // Dùng ref để revoke URL mới nhất, tránh stale closure
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current);
+        pdfUrlRef.current = null;
+      }
     };
   }, [fetchContract]);
 

@@ -83,6 +83,39 @@ export function useUpgradeSubscription() {
   );
 }
 
+export function useDowngradeSubscription() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation(
+    (targetPlanId) => subscriptionService.downgrade(targetPlanId),
+    {
+      onSuccess: () => {
+        invalidateQueries(queryClient, [
+          queryKeys.subscriptions.current(),
+          queryKeys.subscriptions.invoices(),
+        ]);
+        toast.success("ÄÃ£ lÃªn lá»‹ch háº¡ gÃ³i cuá»‘i chu ká»³");
+      },
+    },
+  );
+}
+
+export function useCancelScheduledDowngrade() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation(
+    () => subscriptionService.cancelScheduledDowngrade(),
+    {
+      onSuccess: () => {
+        invalidateQueries(queryClient, [
+          queryKeys.subscriptions.current(),
+        ]);
+        toast.success("ÄÃ£ há»§y lá»‹ch háº¡ gÃ³i");
+      },
+    },
+  );
+}
+
 export function useCancelSubscription() {
   const queryClient = useQueryClient();
 

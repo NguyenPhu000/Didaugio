@@ -1244,7 +1244,7 @@ export const cancel = async (bookingId, cancelReason, userId, actorType = "user"
 
     // Refund frozen balance if booking was paid
     if (existing.paymentStatus === PAYMENT_STATUS.PAID && existing.businessEarned > 0) {
-      await refundLedger(tx, existing.id, existing.businessId, existing.businessEarned);
+      await refundLedger(tx, existing.id, existing.businessId, existing.businessEarned, existing.commissionAmount || 0);
     }
 
     // Decrement voucher usage count if this booking used a voucher
@@ -1359,7 +1359,7 @@ export const cancelMyBooking = async (bookingId, userId, cancelReason) => {
 
     // Refund frozen balance if booking was paid
     if (existing.paymentStatus === PAYMENT_STATUS.PAID && existing.businessEarned > 0) {
-      await refundLedger(tx, existing.id, existing.businessId, existing.businessEarned);
+      await refundLedger(tx, existing.id, existing.businessId, existing.businessEarned, existing.commissionAmount || 0);
     }
 
     if (existing.voucherId) {
@@ -1983,6 +1983,20 @@ export const refund = async (bookingId, payload = {}, userId) => {
       0,
       existing.commissionAmount - commissionPortionRefunded,
     );
+
+    // Debit platform wallet for commission reversal
+    if (commissionPortionRefunded > 0) {
+      const platformWallet = await tx.platformWallet.findFirst();
+      if (platformWallet) {
+        await tx.platformWallet.update({
+          where: { id: platformWallet.id },
+          data: {
+            balance: { decrement: commissionPortionRefunded },
+            totalEarned: { decrement: commissionPortionRefunded },
+          },
+        });
+      }
+    }
 
     await tx.payment.update({
       where: { bookingId: id },

@@ -28,8 +28,7 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { authService } from "@/apis/authService";
 import GoogleSignUpButton from "@/components/auth/GoogleSignUpButton";
-import { resolvePostLoginRoute } from "@/utils/authRouting";
-import { AUTH_ROUTES } from "@/constants/routes";
+import { BUSINESS_ROUTES } from "@/constants/routes";
 
 const registerSchema = z
   .object({
@@ -48,9 +47,9 @@ const registerSchema = z
       .regex(/^[a-zA-Z0-9_]+$/, i18n.t("validation.usernamePattern")),
     password: z
       .string()
-      .min(6, i18n.t("validation.passwordMin", { min: 6 }))
+      .min(8, i18n.t("validation.passwordMin", { min: 8 }))
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+=[\]{};':"\\|,.<>/?-])/,
         i18n.t("validation.passwordPattern"),
       ),
     confirmPassword: z.string().min(1, i18n.t("validation.confirmPasswordRequired")),
@@ -63,7 +62,7 @@ const registerSchema = z
 const RegisterPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { setAuth, logout } = useAuthStore();
+  const { setAuth } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -73,7 +72,7 @@ const RegisterPage = () => {
 
   useEffect(() => {
     document.title = t("auth.register.pageTitle");
-  }, []);
+  }, [t]);
 
   const handleGoogleSuccess = async (credentialResponse) => {
     setIsGoogleLoading(true);
@@ -85,20 +84,14 @@ const RegisterPage = () => {
       }
       const response = await authService.googleRegister(idToken);
       if (response.success) {
-        const dashboardUrl = resolvePostLoginRoute(response.data.user);
-        if (dashboardUrl === AUTH_ROUTES.LOGIN) {
-          logout();
-          toast.error(t("auth.register.googleNoPermission"));
-          return;
-        }
-
         setAuth(
           response.data.user,
           response.data.accessToken,
           response.data.refreshToken,
         );
         toast.success(t("auth.register.googleSuccess"));
-        navigate(dashboardUrl, { replace: true });
+        // Google is already email-verified, then the business onboarding handles role/profile unlock.
+        navigate(BUSINESS_ROUTES.REGISTER, { replace: true });
       }
     } catch (error) {
       toast.error(error.message || t("auth.register.googleFailed"));
@@ -118,7 +111,7 @@ const RegisterPage = () => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      const response = await authService.register({
+      const response = await authService.registerBusiness({
         email: data.email,
         username: data.username,
         password: data.password,
@@ -127,6 +120,8 @@ const RegisterPage = () => {
       });
 
       if (response.success) {
+        const { emailVerificationRequired } = response.data;
+
         // Trigger browser's "Save password?" dialog
         if ("credentials" in navigator && navigator.credentials.create) {
           try {
@@ -145,10 +140,16 @@ const RegisterPage = () => {
           }
         }
 
-        toast.success(t("auth.register.success"));
-        navigate(
-          `/resend-verification?email=${encodeURIComponent(data.email)}&from=register`,
-        );
+        if (emailVerificationRequired) {
+          toast.success("Đăng ký thành công! Vui lòng kiểm tra email để xác thực.");
+          navigate(`/check-email?email=${encodeURIComponent(data.email.toLowerCase())}`, {
+            replace: true,
+          });
+          return;
+        }
+
+        toast.success("Đăng ký thành công! Vui lòng đăng ký doanh nghiệp.");
+        navigate(BUSINESS_ROUTES.REGISTER, { replace: true });
       }
     } catch (error) {
       toast.error(error.message || t("auth.register.failed"));

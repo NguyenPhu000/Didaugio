@@ -9,6 +9,7 @@ import {
   updateProfile,
   getMyPlaces,
   signContract,
+  downloadContract,
 } from "../../controllers/business/businessProfile.controller.js";
 import {
   getAll,
@@ -106,6 +107,9 @@ router.put(
   }),
   signContract,
 );
+
+// Download contract PDF (business owner or admin)
+router.get("/:id/contract", downloadContract);
 
 // ========== Admin (business.view, business.approve) ==========
 router.get(

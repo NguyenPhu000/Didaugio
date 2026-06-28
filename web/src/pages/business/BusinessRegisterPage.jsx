@@ -1,7 +1,7 @@
-import { useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -24,8 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRegisterBusiness } from "@/hooks/queries/useBusinessQueries";
+import {
+  useBusinessProfile,
+  useRegisterBusiness,
+} from "@/hooks/queries/useBusinessQueries";
 import { BUSINESS_ROUTES } from "@/constants/routes";
+import { BUSINESS_STATUS } from "@/constants/businessConstants";
 import {
   BusinessPageHeader,
   BusinessSectionCard,
@@ -69,17 +73,19 @@ function StepIndicator({ currentStep, steps }) {
         const Icon = step.icon;
         const isActive = idx === currentStep;
         const isCompleted = idx < currentStep;
+        const stepClassName = isActive
+          ? "bg-primary text-primary-foreground shadow-md"
+          : "";
+        const completedClassName = isCompleted
+          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+          : "bg-muted text-muted-foreground";
 
         return (
           <div key={step.key} className="flex items-center">
             <div
               className={`
                 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all
-                ${isActive
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : isCompleted
-                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                    : "bg-muted text-muted-foreground"}
+                ${stepClassName || completedClassName}
               `}
             >
               {isCompleted ? (
@@ -107,6 +113,8 @@ const BusinessRegisterPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const registerMutation = useRegisterBusiness();
+  const { data: businessProfile, isLoading: isProfileLoading } =
+    useBusinessProfile();
   const [currentStep, setCurrentStep] = useState(0);
   const [documents, setDocuments] = useState({
     idCardFront: [],
@@ -124,7 +132,7 @@ const BusinessRegisterPage = () => {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     trigger,
     formState: { errors },
@@ -132,8 +140,21 @@ const BusinessRegisterPage = () => {
     resolver: zodResolver(registerSchema),
     defaultValues: { businessType: "individual" },
   });
+  const selectedBusinessType = useWatch({ control, name: "businessType" });
 
   const isLoading = registerMutation.isPending;
+
+  useEffect(() => {
+    const profile = businessProfile?.data || businessProfile;
+    if (!profile) return;
+
+    if (profile.status === BUSINESS_STATUS.APPROVED) {
+      navigate(BUSINESS_ROUTES.DASHBOARD, { replace: true });
+      return;
+    }
+
+    navigate(BUSINESS_ROUTES.WELCOME, { replace: true });
+  }, [businessProfile, navigate]);
 
   const canGoNext = useCallback(async () => {
     if (currentStep === 0) {
@@ -188,14 +209,33 @@ const BusinessRegisterPage = () => {
         businessLicense: documents.businessLicense[0],
       });
       toast.success(t("business.register.title"));
-      navigate(BUSINESS_ROUTES.PROFILE);
+      navigate(BUSINESS_ROUTES.WELCOME);
     } catch (error) {
-      toastApiErrorIfNeeded(error, t("common.operationFailed"));
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        t("common.operationFailed");
+      const errorCode = error?.errorCode || error?.response?.data?.errorCode;
+
+      console.error("Business registration error:", {
+        message: errorMessage,
+        errorCode,
+        status: error?.status || error?.response?.status,
+        data: error?.data || error?.response?.data,
+      });
+
+      toastApiErrorIfNeeded(error, errorMessage);
     }
   };
 
   return (
     <div className="space-y-4 md:space-y-6 p-4 md:p-6 lg:p-8 min-h-screen">
+      {isProfileLoading ? (
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-black" />
+        </div>
+      ) : (
+        <>
       <BusinessPageHeader
         title={t("business.register.title")}
         description={t("business.register.description")}
@@ -226,7 +266,7 @@ const BusinessRegisterPage = () => {
 
               <FormField label={t("business.register.businessType")} required>
                 <Select
-                  value={watch("businessType")}
+                  value={selectedBusinessType}
                   onValueChange={(v) =>
                     setValue("businessType", v, { shouldDirty: true })
                   }
@@ -391,6 +431,8 @@ const BusinessRegisterPage = () => {
           )}
         </div>
       </form>
+        </>
+      )}
     </div>
   );
 };
