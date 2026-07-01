@@ -126,7 +126,7 @@ export const uploadDocument = async ({
 export const downloadDocument = async ({
   documentId,
   requesterId,
-  requesterRole,
+  requesterRoleId,
 }) => {
   const record = await prisma.sensitiveDocument.findUnique({
     where: { id: documentId },
@@ -139,7 +139,7 @@ export const downloadDocument = async ({
     throw err;
   }
 
-  const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(requesterRole);
+  const isAdmin = requesterRoleId === 1 || requesterRoleId === 2;
   const isOwner = record.business.ownerId === requesterId;
   if (!isAdmin && !isOwner) {
     const err = new Error("Không có quyền truy cập tài liệu này");

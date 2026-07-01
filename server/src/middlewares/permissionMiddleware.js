@@ -87,8 +87,8 @@ export const hasPermission = (requiredPermission) => {
         return res.status(403).json({
           success: false,
           data: null,
-          message: "Ban khong co quyen truy cap trang quan tri",
-          errorCode: "FORBIDDEN_ROLE",
+          message: ERROR_MESSAGES.FORBIDDEN,
+          errorCode: ERROR_CODES.FORBIDDEN,
         });
       }
 
@@ -174,8 +174,8 @@ export const requireAllPermissions = (requiredPermissions) => {
         return res.status(403).json({
           success: false,
           data: null,
-          message: "Ban khong co quyen truy cap trang quan tri",
-          errorCode: "FORBIDDEN_ROLE",
+          message: ERROR_MESSAGES.FORBIDDEN,
+          errorCode: ERROR_CODES.FORBIDDEN,
         });
       }
 

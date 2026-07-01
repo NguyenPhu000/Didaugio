@@ -76,7 +76,7 @@ export function buildGroqTranscriptionRequest({
     language,
     prompt:
       prompt ||
-      "Cuộc trò chuyện tiếng Việt với Nhi, trợ lý du lịch của ứng dụng Đi Đâu Giờ.",
+      "Cuộc trò chuyện tiếng Việt với Nhi, trợ lý du lịch của ứng dụng iPoint Genie.",
     response_format: "json",
     temperature: 0,
   };

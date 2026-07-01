@@ -54,7 +54,6 @@ import { useTripDetail, useUpdateTrip } from "../trips/hooks/useTripDetail";
 import { sendLocalNotification } from "../../lib/local-notifications";
 import FilterGroupBar from "./components/filters/FilterGroupBar";
 import FilterPickerModal from "./components/filters/FilterPickerModal";
-import CurrentLocationMarker from "./components/map-overlays/CurrentLocationMarker";
 import { useMapRouting } from "./hooks/useMapRouting";
 import { mapRoutingResponse } from "./hooks/routeMapping";
 import { calculateRouteApi } from "../../api/routingApi";
@@ -395,7 +394,11 @@ export default function MapScreen() {
     mapRef.current?.flyTo([CAN_THO_CENTER.lng, CAN_THO_CENTER.lat], 12);
   }, []);
 
-  const { currentLocation, locateNow } = useMapLocationTracker({
+  const {
+    currentLocation,
+    heading: mapHeading,
+    locateNow,
+  } = useMapLocationTracker({
     watchEnabled: false,
   });
 
@@ -439,6 +442,7 @@ export default function MapScreen() {
   // GPS thời gian thực riêng cho active trip. Dừng định vị khi paused.
   const {
     currentLocation: activeTripLocation,
+    heading: activeTripHeading,
     locateNow: locateActiveTripNow,
   } = useMapLocationTracker({
     watchEnabled: isActiveTripMode && !activeTrip.isPaused,
@@ -446,6 +450,19 @@ export default function MapScreen() {
     distanceInterval: gpsIntervals.distanceInterval,
     onLocationUpdate: handleActiveLocationUpdate,
   });
+  const userMapLocation = isActiveTripMode ? activeTripLocation : currentLocation;
+  const liveUserHeading = isActiveTripMode ? activeTripHeading : mapHeading;
+  const userHeading = Number.isFinite(liveUserHeading)
+    ? liveUserHeading
+    : Number.isFinite(userMapLocation?.heading)
+    ? userMapLocation.heading
+    : null;
+  const shouldShowUserHeadingHat =
+    !isTripPreviewMode &&
+    userMapLocation &&
+    Number.isFinite(userMapLocation.latitude) &&
+    Number.isFinite(userMapLocation.longitude);
+  const userHeadingOpacity = userHeading === null ? 0.45 : 1;
 
   const [activeArrivalVisible, setActiveArrivalVisible] = useState(false);
   const followCameraRef = useRef(false);
@@ -1497,6 +1514,9 @@ export default function MapScreen() {
           useNativeCleanStyle={mapStyle.useNativeCleanStyle === true}
           mapPadding={activeMapPadding}
           courseUpEnabled={isActiveTripMode && !activeTrip.isPaused}
+          showsUserLocation={!isTripPreviewMode}
+          showsUserHeadingIndicator={false}
+          showsMyLocationButton={false}
           style={MAP_CANVAS_STYLE}
         >
           <ContextualBoundaryLayer
@@ -1505,17 +1525,34 @@ export default function MapScreen() {
             allAreasKey={ALL_AREAS_KEY}
           />
 
-          {!isTripPreviewMode ? (
-            <CurrentLocationMarker
-              location={isActiveTripMode ? activeTripLocation : currentLocation}
-              heading={
-                (isActiveTripMode ? activeTripLocation : currentLocation)?.heading
-              }
-              headingAccuracy={
-                (isActiveTripMode ? activeTripLocation : currentLocation)
-                  ?.headingAccuracy
-              }
-            />
+          {shouldShowUserHeadingHat ? (
+            <Marker
+              coordinate={userMapLocation}
+              anchor={{ x: 0.5, y: 0.56 }}
+              rotation={userHeading ?? 0}
+              tracksViewChanges={false}
+              zIndex={1205}
+            >
+              <View className="h-[64px] w-[64px] items-center justify-center">
+                <View
+                  className="absolute h-[64px] w-[64px] items-center justify-start pt-1"
+                  style={{
+                    opacity: userHeadingOpacity,
+                  }}
+                >
+                  <MaterialIconsRounded
+                    name="navigation"
+                    size={44}
+                    color="#1A73E8"
+                    style={{
+                      textShadowColor: "rgba(255,255,255,0.96)",
+                      textShadowOffset: { width: 0, height: 0 },
+                      textShadowRadius: 3,
+                    }}
+                  />
+                </View>
+              </View>
+            </Marker>
           ) : null}
 
           {isTripPreviewMode && previewSegments.length > 0

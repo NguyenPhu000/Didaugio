@@ -7,7 +7,7 @@ const API_BASE =
 // Cache để giảm số lần gọi API
 const cache = new Map();
 
-// Mã Cần Thơ - dùng cho dự án Đi Đâu Giờ
+// Mã Cần Thơ - dùng cho dự án iPoint Genie
 // CAN_THO_PROVINCE_CODE imported from constants/timing
 
 const setCacheWithTTL = (key, data) => {
@@ -106,7 +106,7 @@ export const locationService = {
   },
 
   /**
-   * Lấy thông tin Cần Thơ (dùng cho dự án Đi Đâu Giờ)
+   * Lấy thông tin Cần Thơ (dùng cho dự án iPoint Genie)
    */
   getCanThoWards: async () => {
     return await locationService.getWardsByProvince(CAN_THO_PROVINCE_CODE);

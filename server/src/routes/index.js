@@ -109,23 +109,26 @@ export const registerApiRoutes = (app) => {
   app.use("/api/wards", wardRoutes);
   app.use("/api/boundaries", boundaryRoutes);
   app.use("/api/settings", settingsRoutes);
+  // Register specific /api/business/* sub-routes BEFORE the generic /api/business
+  // to prevent Express from matching sub-paths as :id params in businessRoutes
   app.use("/api/business/services", businessOfferingRoutes);
   app.use("/api/business/staff", staffInvitationRoutes);
   app.use("/api/business/staff", businessStaffRoutes);
   app.use("/api/business/roles", businessRoleRoutes);
   app.use("/api/business/blocked-dates", businessBlockedDateRoutes);
   app.use("/api/business/settings", businessSettingsRoutes);
-  app.use("/api/business", businessRoutes);
-  app.use("/api/business", businessPayoutRoutes);
-  app.use("/api/admin/payouts", adminPayoutRoutes);
   app.use("/api/business/bookings", bookingRoutes);
-  app.use("/api/bookings", bookingPublicRoutes);
-  app.use("/api/services", serviceBookingRoutes);
   app.use("/api/business/booking-auto-rules", autoApproveRuleRoutes);
   app.use("/api/business/vouchers", voucherRoutes);
   app.use("/api/business/revenue", businessRevenueRoutes);
   app.use("/api/business/reviews", reviewRoutes);
+  // Generic /api/business routes (profile, register, admin list/detail) — must come AFTER sub-routes
+  app.use("/api/business", businessPayoutRoutes);
+  app.use("/api/business", businessRoutes);
+  app.use("/api/admin/payouts", adminPayoutRoutes);
   app.use("/api/admin/reviews", adminReviewRoutes);
+  app.use("/api/bookings", bookingPublicRoutes);
+  app.use("/api/services", serviceBookingRoutes);
 
   app.use("/api/feedback", feedbackRoutes);
   app.use("/api/notifications", notificationRoutes);

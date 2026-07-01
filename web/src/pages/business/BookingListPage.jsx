@@ -32,6 +32,7 @@ import {
   CircleDollarSign,
   Loader2,
   Download,
+  QrCode,
 } from "lucide-react";
 import * as bookingApi from "@/apis/bookingService";
 import { getMyPlaces } from "@/apis/businessApi";
@@ -72,6 +73,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/Label";
 import { cn } from "@/lib/utils";
 import BulkActionBar from "@/components/business/BulkActionBar";
+import BookingQrScannerDialog from "@/components/business/BookingQrScannerDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 // ─── Time Slot Config ───────────────────────────────────────────────────────────
@@ -144,7 +146,11 @@ const COLOR_MAP = {
 
 // ─── Status Badge ───────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }) {
+import { memo } from "react";
+
+// ─── Status Badge ───────────────────────────────────────────────────────────────
+
+const StatusBadge = memo(function StatusBadge({ status }) {
   const { t } = useTranslation();
   const statusConfig = getStatusConfig(t);
   const config = statusConfig[status] || statusConfig.pending;
@@ -154,7 +160,7 @@ function StatusBadge({ status }) {
       {config.label}
     </span>
   );
-}
+});
 
 // ─── Place Section Header ────────────────────────────────────────────────────────
 
@@ -222,7 +228,7 @@ function TimeSlotHeader({ slot, count, isExpanded, onToggle }) {
 
 // ─── Payment Method Badge ───────────────────────────────────────────────────────
 
-function PaymentMethodBadge({ payment }) {
+const PaymentMethodBadge = memo(function PaymentMethodBadge({ payment }) {
   const { t } = useTranslation();
   if (!payment) {
     return (
@@ -248,11 +254,11 @@ function PaymentMethodBadge({ payment }) {
       {payment.paymentMethod}
     </span>
   );
-}
+});
 
 // ─── Booking Card ─────────────────────────────────────────────────────────────
 
-function BookingCard({
+const BookingCard = memo(function BookingCard({
   booking,
   selected,
   onSelect,
@@ -468,7 +474,7 @@ function BookingCard({
       </div>
     </motion.div>
   );
-}
+});
 
 // ─── Reject Modal ──────────────────────────────────────────────────────────────
 
@@ -789,6 +795,7 @@ const BookingListPage = () => {
   const [rescheduleModal, setRescheduleModal] = useState(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
 
   // Expanded states for sections
   const [expandedPlaces, setExpandedPlaces] = useState({});
@@ -1109,6 +1116,14 @@ const BookingListPage = () => {
             </div>
             <div className="flex gap-2 shrink-0">
               <Button
+                type="button"
+                onClick={() => setQrScannerOpen(true)}
+                className="h-9 gap-1.5 rounded-xl bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200"
+              >
+                <QrCode className="h-4 w-4" />
+                {t("business.bookings.scanQr", { defaultValue: "Quét QR" })}
+              </Button>
+              <Button
                 onClick={handleExportCsv}
                 variant="outline"
                 className="h-9 border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
@@ -1412,6 +1427,14 @@ const BookingListPage = () => {
         onConfirm={handleRescheduleConfirmed}
         onCancel={() => setRescheduleModal(null)}
         loading={actionLoading === "reschedule"}
+      />
+      <BookingQrScannerDialog
+        open={qrScannerOpen}
+        onOpenChange={setQrScannerOpen}
+        onSuccess={() => {
+          setSelected([]);
+          refresh();
+        }}
       />
 
       <BulkActionBar

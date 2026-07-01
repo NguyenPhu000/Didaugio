@@ -339,7 +339,7 @@ const ContractSignModal = ({
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <title>Bản nháp hợp đồng dịch vụ - Đi Đâu Giờ</title>
+  <title>Bản nháp hợp đồng dịch vụ - iPoint Genie</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #1e293b; background: #fff; padding: 2cm; line-height: 1.6; }
@@ -434,7 +434,7 @@ const ContractSignModal = ({
   <div class="clauses">
     <div class="clause">
       <p class="clause-title">ĐIỀU 1: NỘI DUNG CUNG CẤP DỊCH VỤ</p>
-      <p>Bên A đồng ý sử dụng Nền tảng Du lịch thông minh Đi Đâu Giờ của Bên B để quảng bá địa điểm, dịch vụ du lịch tại Cần Thơ với các tính năng:</p>
+      <p>Bên A đồng ý sử dụng Nền tảng Du lịch thông minh iPoint Genie của Bên B để quảng bá địa điểm, dịch vụ du lịch tại Cần Thơ với các tính năng:</p>
       <table>
         <thead><tr><th>Mục tiêu cung cấp</th><th>Chi tiết dịch vụ</th></tr></thead>
         <tbody>
@@ -799,7 +799,7 @@ const ContractSignModal = ({
                   <div>
                     <h3 className="font-bold text-slate-900 text-xs uppercase tracking-tight">ĐIỀU 1: NỘI DUNG CUNG CẤP DỊCH VỤ</h3>
                     <p className="text-[11px] mt-1 text-slate-600 leading-relaxed">
-                      Bên A đồng ý sử dụng Nền tảng Du lịch thông minh Đi Đâu Giờ của Bên B để quảng bá địa điểm, dịch vụ du lịch tại Cần Thơ với các tính năng:
+                      Bên A đồng ý sử dụng Nền tảng Du lịch thông minh iPoint Genie của Bên B để quảng bá địa điểm, dịch vụ du lịch tại Cần Thơ với các tính năng:
                     </p>
                     <table className="min-w-full border mt-2 text-[11px] text-slate-700">
                       <thead>
@@ -1000,7 +1000,7 @@ const ContractSignModal = ({
                   className="mt-0.5"
                 />
                 <span className="leading-normal font-medium text-slate-700">
-                  Tôi đã đọc và đồng ý ký kết hợp đồng cung cấp và sử dụng dịch vụ điện tử này của Đi Đâu Giờ.
+                  Tôi đã đọc và đồng ý ký kết hợp đồng cung cấp và sử dụng dịch vụ điện tử này của iPoint Genie.
                 </span>
               </label>
             </div>

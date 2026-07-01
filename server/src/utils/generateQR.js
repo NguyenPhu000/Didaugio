@@ -16,9 +16,22 @@ export const generateQRBuffer = async (data) => {
   });
 };
 
-export const generateBookingQR = async (bookingCode, baseUrl) => {
-  const verifyUrl = `${baseUrl}/booking/verify/${bookingCode}`;
-  return generateQRDataUrl(verifyUrl);
+export const buildBookingQRPayload = (bookingCode, action = "checkin") => {
+  return JSON.stringify({
+    type: "didaugio.booking",
+    version: 1,
+    action,
+    bookingCode: String(bookingCode || "").trim().toUpperCase(),
+  });
 };
 
-export default { generateQRDataUrl, generateQRBuffer, generateBookingQR };
+export const generateBookingQR = async (bookingCode, _baseUrl, action = "checkin") => {
+  return generateQRDataUrl(buildBookingQRPayload(bookingCode, action));
+};
+
+export default {
+  generateQRDataUrl,
+  generateQRBuffer,
+  buildBookingQRPayload,
+  generateBookingQR,
+};

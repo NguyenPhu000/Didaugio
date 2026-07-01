@@ -1,16 +1,37 @@
-import { useState, useEffect } from "react";
-import { DollarSign } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { AlertCircle, Banknote } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { PRICE_RANGES } from "@/constants/placeConstants";
 
-/**
- * PRICE RANGE SLIDER V2
- * Component để chọn mức giá với thanh slider interactive
- * Updated: Vietnamese Denomination Support (suffix .000)
- */
+const MAX_PRICE = 2000000;
+const STEP_PRICE = 10000;
+
+const QUICK_AMOUNTS = [20000, 50000, 100000, 200000, 500000, 1000000];
+
+const formatVnd = (value) => {
+  const numericValue = Number(value || 0);
+  if (!numericValue) return "0 VND";
+  return `${numericValue.toLocaleString("vi-VN")} VND`;
+};
+
+const normalizeAmount = (value) => {
+  const raw = String(value ?? "");
+  const digitsOnly = raw.replace(/\D/g, "");
+
+  return {
+    value: digitsOnly ? Number(digitsOnly) : null,
+    rejected: raw !== digitsOnly,
+  };
+};
+
+const clampAmount = (value) => {
+  if (!value) return 0;
+  return Math.min(Math.max(Number(value), 0), MAX_PRICE);
+};
 
 const PriceRangeSlider = ({
   priceRange,
@@ -19,234 +40,247 @@ const PriceRangeSlider = ({
   onChange,
   error,
 }) => {
+  const { t } = useTranslation();
   const [showCustom, setShowCustom] = useState(!!priceFrom || !!priceTo);
-
-  // Slider range: 0đ to 2,000,000đ with 10,000đ steps
-  const MAX_PRICE = 2000000;
-
-  // Convert prices to slider values
+  const [inputWarning, setInputWarning] = useState("");
   const [sliderValues, setSliderValues] = useState([
-    priceFrom || 0,
-    priceTo || 500000,
+    clampAmount(priceFrom),
+    clampAmount(priceTo || 500000),
   ]);
 
-  // Update slider visual when props change externally
   useEffect(() => {
-    if (priceFrom !== undefined && priceTo !== undefined) {
-      const id = requestAnimationFrame(() => {
-        setSliderValues([priceFrom || 0, priceTo || 500000]);
-      });
-      return () => cancelAnimationFrame(id);
-    }
+    const id = requestAnimationFrame(() => {
+      setSliderValues([clampAmount(priceFrom), clampAmount(priceTo || 500000)]);
+    });
+    return () => cancelAnimationFrame(id);
   }, [priceFrom, priceTo]);
 
+  const rangeError = useMemo(() => {
+    if (priceFrom && priceTo && Number(priceTo) < Number(priceFrom)) {
+      return t("admin.placeWizard.price.maxLessThanMin", {
+        defaultValue: "Giá tối đa phải lớn hơn hoặc bằng giá tối thiểu.",
+      });
+    }
+    return "";
+  }, [priceFrom, priceTo, t]);
+
+  const emitChange = (from, to) => {
+    onChange({
+      priceRange: priceRange || "MODERATE",
+      priceFrom: from || null,
+      priceTo: to || null,
+    });
+  };
+
   const handleRangeChange = (range) => {
-    onChange({ priceRange: range, priceFrom: 0, priceTo: 0 }); // Reset custom amounts
+    setInputWarning("");
     setShowCustom(false);
+    onChange({ priceRange: range, priceFrom: null, priceTo: null });
   };
 
   const handleSliderChange = (values) => {
-    setSliderValues(values);
-    onChange({
-      priceRange: priceRange || "MODERATE",
-      priceFrom: values[0],
-      priceTo: values[1],
-    });
+    const nextValues = [clampAmount(values[0]), clampAmount(values[1])];
+    setInputWarning("");
+    setSliderValues(nextValues);
+    emitChange(nextValues[0], nextValues[1]);
   };
 
-  const handleInputChange = (field, thousandValue) => {
-    // User inputs 50 -> means 50,000
-    const realValue = thousandValue ? parseInt(thousandValue) * 1000 : 0;
+  const handleInputChange = (field, rawValue) => {
+    const parsed = normalizeAmount(rawValue);
+    setInputWarning(
+      parsed.rejected
+        ? t("admin.placeWizard.price.numericOnly", {
+            defaultValue:
+              "Chỉ nhập số tiền VND đầy đủ, ví dụ 10000. Không dùng 100k/200kd.",
+          })
+        : "",
+    );
 
-    // Ensure logical constraint
-    let newValues;
+    const realValue = clampAmount(parsed.value);
+    let nextValues;
+
     if (field === "priceFrom") {
-      newValues = [realValue, Math.max(realValue, sliderValues[1])];
+      nextValues = [realValue, Math.max(realValue, sliderValues[1])];
     } else {
-      newValues = [Math.min(realValue, sliderValues[0]), realValue];
+      nextValues = [Math.min(realValue, sliderValues[0]), realValue];
     }
 
-    setSliderValues(newValues);
-    onChange({
-      priceRange: priceRange || "MODERATE",
-      priceFrom: newValues[0],
-      priceTo: newValues[1],
-    });
+    setSliderValues(nextValues);
+    emitChange(nextValues[0], nextValues[1]);
   };
 
-  const QUICK_SUGGESTIONS = [
-    { label: "20k", val: 20 },
-    { label: "50k", val: 50 },
-    { label: "100k", val: 100 },
-    { label: "200k", val: 200 },
-    { label: "500k", val: 500 },
-    { label: "1tr", val: 1000 },
-  ];
-
-  const setManualValue = (field, kValue) => {
-    handleInputChange(field, kValue);
+  const setQuickAmount = (field, amount) => {
+    handleInputChange(field, String(amount));
   };
+
+  const displayError = error || inputWarning || rangeError;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <label className="text-xs font-bold uppercase tracking-wider mb-3 block">
-          MỨC GIÁ DỰ KIẾN
-        </label>
-
-        {/* Price Range Quick Select */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-0 border border-black bg-white">
-          {PRICE_RANGES.map((range) => (
-            <button
-              key={range.value}
-              type="button"
-              onClick={() => handleRangeChange(range.value)}
-              className={cn(
-                "p-4 text-center transition-all border-r last:border-r-0 border-black hover:bg-black hover:text-white group relative",
-                priceRange === range.value && !showCustom
-                  ? "bg-black text-white"
-                  : "bg-white text-black",
-              )}
-            >
-              <div className="text-sm font-mono font-bold mb-1">
-                {range.icon}
-              </div>
-              <div className="font-bold text-[10px] uppercase tracking-wider mb-1">
-                {range.label}
-              </div>
-              <div
-                className={cn(
-                  "text-[10px] font-mono opacity-60",
-                  priceRange === range.value && !showCustom
-                    ? "text-gray-300"
-                    : "text-gray-500 group-hover:text-gray-300",
-                )}
-              >
-                {range.description}
-              </div>
-
-              {/* Active Indicator */}
-              {priceRange === range.value && !showCustom && (
-                <div className="absolute top-0 right-0 w-2 h-2 bg-white"></div>
-              )}
-            </button>
-          ))}
+    <div className="space-y-5">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-zinc-950">
+              {t("admin.placeWizard.details.priceRange")}
+            </p>
+            <p className="text-xs text-zinc-500">
+              {t("admin.placeWizard.price.helper", {
+                defaultValue:
+                  "Nhập giá trị VND thật, ví dụ 10000 cho 10.000 VND.",
+              })}
+            </p>
+          </div>
+          <Banknote className="h-5 w-5 text-black" />
         </div>
 
-        {error && (
-          <p className="text-sm text-red-500 mt-2 font-mono uppercase">
-            ERROR: {error}
-          </p>
-        )}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {PRICE_RANGES.map((range) => {
+            const isActive = priceRange === range.value && !showCustom;
+
+            return (
+              <button
+                key={range.value}
+                type="button"
+                onClick={() => handleRangeChange(range.value)}
+                className={cn(
+                  "rounded-xl border px-3 py-3 text-left transition-colors",
+                  isActive
+                    ? "border-black bg-black text-white"
+                    : "border-zinc-200 bg-white text-zinc-950 hover:border-zinc-400",
+                )}
+              >
+                <span className="block text-xs font-semibold uppercase tracking-wide">
+                  {range.label}
+                </span>
+                <span
+                  className={cn(
+                    "mt-1 block text-[11px]",
+                    isActive ? "text-zinc-200" : "text-zinc-500",
+                  )}
+                >
+                  {range.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Custom Price Button */}
-      <div className="space-y-4">
-        <Button
-          type="button"
-          variant={showCustom ? "default" : "outline"}
-          onClick={() => setShowCustom(!showCustom)}
-          className={cn(
-            "w-full rounded-none border border-black font-mono text-xs uppercase tracking-widest h-10 transition-all",
-            showCustom
-              ? "bg-black text-white hover:bg-black/90"
-              : "bg-white text-black hover:bg-gray-100",
-          )}
-        >
-          {showCustom
-            ? "[-] ẨN TÙY CHỈNH GIÁ"
-            : "[+] CHỌN KHOẢNG GIÁ TÙY CHỈNH"}
-        </Button>
+      <Button
+        type="button"
+        variant={showCustom ? "default" : "outline"}
+        onClick={() => {
+          setShowCustom((value) => !value);
+          setInputWarning("");
+        }}
+        className={cn(
+          "h-11 w-full rounded-xl border border-black text-sm font-semibold",
+          showCustom
+            ? "bg-black text-white hover:bg-black/90"
+            : "bg-white text-black hover:bg-zinc-50",
+        )}
+      >
+        {showCustom
+          ? t("admin.placeWizard.price.hideCustom", {
+              defaultValue: "Ẩn khoảng giá tùy chỉnh",
+            })
+          : t("admin.placeWizard.price.showCustom", {
+              defaultValue: "Nhập khoảng giá tùy chỉnh",
+            })}
+      </Button>
 
-        {showCustom && (
-          <div className="p-6 border border-black bg-gray-50 animate-in slide-in-from-top-2">
-            {/* Inputs */}
-            <div className="flex items-center gap-6 mb-6">
-              <div className="flex-1 space-y-2">
-                <label className="text-[10px] uppercase font-bold text-gray-500 flex justify-between">
-                  <span>TỐI THIỂU (Min)</span>
-                  <span className="text-black font-mono">
-                    {sliderValues[0].toLocaleString("vi-VN")} đ
-                  </span>
-                </label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    value={sliderValues[0] > 0 ? sliderValues[0] / 1000 : ""}
-                    placeholder="0"
-                    onChange={(e) =>
-                      handleInputChange("priceFrom", e.target.value)
-                    }
-                    className="rounded-none border-black font-mono text-right pr-12 text-lg h-12 bg-white"
-                  />
-                  <span className="absolute right-3 top-3 text-gray-400 font-mono text-base pointer-events-none select-none bg-white pl-1">
-                    .000
-                  </span>
-                </div>
-                {/* Quick Set Min */}
-                <div className="flex gap-1 flex-wrap">
-                  {QUICK_SUGGESTIONS.slice(0, 3).map((opt) => (
-                    <button
-                      key={`min-${opt.val}`}
-                      type="button"
-                      onClick={() => setManualValue("priceFrom", opt.val)}
-                      className="px-2 py-1 bg-gray-200 hover:bg-black hover:text-white text-[10px] font-mono transition-colors"
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+      {showCustom && (
+        <div className="space-y-5 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 sm:p-5">
+          <div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-start">
+            <div className="space-y-2">
+              <label className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                <span>
+                  {t("admin.placeWizard.price.min", { defaultValue: "Tối thiểu" })}
+                </span>
+                <span className="text-zinc-950">{formatVnd(sliderValues[0])}</span>
+              </label>
+              <div className="relative">
+                <Input
+                  inputMode="numeric"
+                  value={sliderValues[0] || ""}
+                  placeholder="10000"
+                  onChange={(event) =>
+                    handleInputChange("priceFrom", event.target.value)
+                  }
+                  className="h-12 rounded-xl border-zinc-300 bg-white pr-16 text-right font-mono text-base"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-zinc-500">
+                  VND
+                </span>
               </div>
-
-              <div className="font-mono pt-4 text-gray-400">-</div>
-
-              <div className="flex-1 space-y-2">
-                <label className="text-[10px] uppercase font-bold text-gray-500 flex justify-between">
-                  <span>TỐI ĐA (Max)</span>
-                  <span className="text-black font-mono">
-                    {sliderValues[1].toLocaleString("vi-VN")} đ
-                  </span>
-                </label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    value={sliderValues[1] > 0 ? sliderValues[1] / 1000 : ""}
-                    placeholder="0"
-                    onChange={(e) =>
-                      handleInputChange("priceTo", e.target.value)
-                    }
-                    className="rounded-none border-black font-mono text-right pr-12 text-lg h-12 bg-white"
-                  />
-                  <span className="absolute right-3 top-3 text-gray-400 font-mono text-base pointer-events-none select-none bg-white pl-1">
-                    .000
-                  </span>
-                </div>
-                {/* Quick Set Max */}
-                <div className="flex gap-1 flex-wrap">
-                  {QUICK_SUGGESTIONS.slice(1).map((opt) => (
-                    <button
-                      key={`max-${opt.val}`}
-                      type="button"
-                      onClick={() => setManualValue("priceTo", opt.val)}
-                      className="px-2 py-1 bg-gray-200 hover:bg-black hover:text-white text-[10px] font-mono transition-colors"
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_AMOUNTS.slice(0, 4).map((amount) => (
+                  <button
+                    key={`min-${amount}`}
+                    type="button"
+                    onClick={() => setQuickAmount("priceFrom", amount)}
+                    className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-black hover:text-black"
+                  >
+                    {formatVnd(amount)}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <Slider
-              value={sliderValues}
-              max={MAX_PRICE}
-              step={10000}
-              minStepsBetweenThumbs={1}
-              onValueChange={handleSliderChange}
-            />
+            <div className="hidden pt-10 text-zinc-300 md:block">-</div>
+
+            <div className="space-y-2">
+              <label className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                <span>
+                  {t("admin.placeWizard.price.max", { defaultValue: "Tối đa" })}
+                </span>
+                <span className="text-zinc-950">{formatVnd(sliderValues[1])}</span>
+              </label>
+              <div className="relative">
+                <Input
+                  inputMode="numeric"
+                  value={sliderValues[1] || ""}
+                  placeholder="200000"
+                  onChange={(event) =>
+                    handleInputChange("priceTo", event.target.value)
+                  }
+                  className="h-12 rounded-xl border-zinc-300 bg-white pr-16 text-right font-mono text-base"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-zinc-500">
+                  VND
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_AMOUNTS.slice(2).map((amount) => (
+                  <button
+                    key={`max-${amount}`}
+                    type="button"
+                    onClick={() => setQuickAmount("priceTo", amount)}
+                    className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-black hover:text-black"
+                  >
+                    {formatVnd(amount)}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+
+          <Slider
+            value={sliderValues}
+            max={MAX_PRICE}
+            step={STEP_PRICE}
+            minStepsBetweenThumbs={1}
+            onValueChange={handleSliderChange}
+          />
+
+          {displayError && (
+            <p className="flex items-start gap-2 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{displayError}</span>
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 };

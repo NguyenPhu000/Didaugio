@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
+import { Separator } from "@/components/ui/Separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/Label";
 import {
@@ -55,6 +55,8 @@ import {
 } from "@/hooks/queries/useSubscriptionQueries";
 import PlanBadge from "@/components/subscription/PlanBadge";
 import GracePeriodBanner from "@/components/subscription/GracePeriodBanner";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
+import PricingPage from "./PricingPage";
 
 const STATUS_LABELS = {
   active: "subscription.status.active",
@@ -208,287 +210,305 @@ export default function SubscriptionPage() {
   const isCanceled = sub.status === "canceled";
 
   return (
-    <div className="space-y-6 p-4 md:p-6 lg:p-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {t("subscription.title")}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {t("subscription.currentPlan")}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {!isCanceled && (
-            <>
-              <Button asChild className="gap-1.5">
-                <Link to={BUSINESS_ROUTES.SUBSCRIPTION_PLANS}>
-                  <ArrowUpRight className="h-4 w-4" />
-                  {t("subscription.upgradeBtn")}
-                </Link>
-              </Button>
-              <Button
-                variant="outline"
-                className="gap-1.5 text-destructive hover:text-destructive"
-                onClick={() => setCancelDialogOpen(true)}
-              >
-                <XCircle className="h-4 w-4" />
-                {t("subscription.cancel.cancelPlan")}
-              </Button>
-            </>
-          )}
-        </div>
+    <div className="space-y-6 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {t("subscription.title")}
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          {t("subscription.description")}
+        </p>
       </div>
 
-      <GracePeriodBanner subscription={sub} />
+      <Tabs defaultValue="plans" className="w-full space-y-6">
+        <TabsList className="bg-zinc-100 dark:bg-zinc-900 p-1 rounded-xl">
+          <TabsTrigger value="plans" className="rounded-lg px-4 py-2 text-sm font-semibold tracking-wide uppercase transition-all">
+            {t("subscription.tabPlans")}
+          </TabsTrigger>
+          <TabsTrigger value="current" className="rounded-lg px-4 py-2 text-sm font-semibold tracking-wide uppercase transition-all">
+            {t("subscription.tabCurrent")}
+          </TabsTrigger>
+        </TabsList>
 
-      {scheduledDowngrade && !isCanceled && (
-        <Card className="border-sky-200 bg-sky-50">
-          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-white p-2 text-sky-700">
-                <CalendarClock className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-medium text-sky-950">
-                  {t("subscription.pendingDowngrade.title", {
-                    plan: scheduledDowngrade.targetPlanName || scheduledDowngrade.targetPlanSlug,
-                  })}
-                </p>
-                <p className="text-sm text-sky-800">
-                  {t("subscription.pendingDowngrade.description", {
-                    date: formatDate(scheduledDowngrade.effectiveAt),
-                  })}
-                </p>
-              </div>
+        <TabsContent value="plans" className="focus-visible:ring-0">
+          <PricingPage />
+        </TabsContent>
+
+        <TabsContent value="current" className="space-y-6 focus-visible:ring-0">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight">
+                {t("subscription.currentPlan")}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {t("subscription.currentPlanDesc")}
+              </p>
             </div>
-            <Button
-              variant="outline"
-              className="border-sky-300 bg-white text-sky-800 hover:bg-sky-100"
-              onClick={handleCancelDowngrade}
-              disabled={cancelDowngradeMutation.isPending}
-            >
-              {cancelDowngradeMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <div className="flex gap-2">
+              {!isCanceled && (
+                <Button
+                  variant="outline"
+                  className="gap-1.5 text-destructive hover:text-destructive"
+                  onClick={() => setCancelDialogOpen(true)}
+                >
+                  <XCircle className="h-4 w-4" />
+                  {t("subscription.cancel.cancelPlan")}
+                </Button>
               )}
-              {t("subscription.pendingDowngrade.cancel")}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Plan info card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              {t("subscription.currentPlan")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <PlanBadge planSlug={plan.slug} />
-                <span className="text-lg font-semibold">{plan.name}</span>
-              </div>
-              <span className="text-xl font-bold">
-                {formatVND(plan.priceMonthly)}
-                <span className="text-sm font-normal text-muted-foreground">
-                  /{t("subscription.plans.monthly")}
-                </span>
-              </span>
             </div>
-
-            <Separator />
-
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-muted-foreground">{t("common.status")}</p>
-                <p className="font-medium capitalize">
-                  {t(STATUS_LABELS[sub.status] || "common.statusActive")}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">{t("subscription.expiresAt")}</p>
-                <p className="font-medium">{formatDate(sub.currentPeriodEnd)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">{t("subscription.billingCycle")}</p>
-                <p className="font-medium capitalize">
-                  {sub.billingCycle || "monthly"}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">{t("subscription.startDate")}</p>
-                <p className="font-medium">{formatDate(sub.createdAt)}</p>
-              </div>
-            </div>
-
-            {isCanceled && (
-              <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3">
-                <p className="text-sm text-destructive font-medium">
-                  {t("subscription.canceledNotice")}
-                </p>
-                {sub.cancelReason && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("subscription.cancelReason")}: {sub.cancelReason}
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Usage card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("subscription.usage")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <UsageItem
-              icon={MapPin}
-              label={t("subscription.usageItems.places")}
-              used={usage.places ?? 0}
-              limit={plan.maxPlaces}
-            />
-            <UsageItem
-              icon={Calendar}
-              label={t("subscription.usageItems.bookingsPerMonth")}
-              used={usage.bookings ?? 0}
-              limit={plan.maxBookingsPerMonth}
-            />
-            <UsageItem
-              icon={Users}
-              label={t("subscription.usageItems.staff")}
-              used={usage.staff ?? 0}
-              limit={plan.maxStaff}
-            />
-            <UsageItem
-              icon={Building2}
-              label={t("subscription.usageItems.services")}
-              used={usage.services ?? 0}
-              limit={plan.maxServices}
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Invoice History */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            {t("subscription.invoice.title")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Select
-              value={invoiceFilters.status}
-              onValueChange={(value) =>
-                setInvoiceFilters((prev) => ({ ...prev, status: value, page: 1 }))
-              }
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder={t("common.filter")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("common.all")}</SelectItem>
-                <SelectItem value="pending">{t(INVOICE_STATUS_KEYS.pending)}</SelectItem>
-                <SelectItem value="paid">{t(INVOICE_STATUS_KEYS.paid)}</SelectItem>
-                <SelectItem value="overdue">{t(INVOICE_STATUS_KEYS.overdue)}</SelectItem>
-                <SelectItem value="canceled">{t(INVOICE_STATUS_KEYS.canceled)}</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
-          {invoiceLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 rounded-lg" />
-              ))}
-            </div>
-          ) : invoices.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center">
-              <Receipt className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                {t("subscription.invoice.empty")}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("subscription.invoice.table.date")}</TableHead>
-                  <TableHead>{t("subscription.invoice.table.plan")}</TableHead>
-                  <TableHead className="text-right">{t("subscription.invoice.table.amount")}</TableHead>
-                  <TableHead>{t("subscription.invoice.table.status")}</TableHead>
-                  <TableHead>{t("subscription.invoice.table.transactionRef")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoices.map((invoice) => (
-                  <TableRow key={invoice.id}>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDateTime(invoice.issuedAt || invoice.createdAt)}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {invoice.plan?.name || invoice.description || "-"}
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-semibold">
-                      {formatVND(invoice.amount)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          INVOICE_STATUS_STYLES[invoice.status] || INVOICE_STATUS_STYLES.pending,
-                        )}
-                      >
-                        {t(INVOICE_STATUS_KEYS[invoice.status] || "subscription.invoice.status.pending")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {invoice.transactionRef || invoice.id?.slice(0, 8) || "-"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <GracePeriodBanner subscription={sub} />
+
+          {scheduledDowngrade && !isCanceled && (
+            <Card className="border-sky-200 bg-sky-50">
+              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-lg bg-white p-2 text-sky-700">
+                    <CalendarClock className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sky-950">
+                      {t("subscription.pendingDowngrade.title", {
+                        plan: scheduledDowngrade.targetPlanName || scheduledDowngrade.targetPlanSlug,
+                      })}
+                    </p>
+                    <p className="text-sm text-sky-800">
+                      {t("subscription.pendingDowngrade.description", {
+                        date: formatDate(scheduledDowngrade.effectiveAt),
+                      })}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  className="border-sky-300 bg-white text-sky-800 hover:bg-sky-100"
+                  onClick={handleCancelDowngrade}
+                  disabled={cancelDowngradeMutation.isPending}
+                >
+                  {cancelDowngradeMutation.isPending && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {t("subscription.pendingDowngrade.cancel")}
+                </Button>
+              </CardContent>
+            </Card>
           )}
 
-          {invoicePagination.totalPages > 1 && (
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-sm text-muted-foreground">
-                {t("subscription.invoice.pagination", { page: invoicePagination.page, totalPages: invoicePagination.totalPages, total: invoicePagination.total })}
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={invoiceFilters.page <= 1}
-                  onClick={() =>
-                    setInvoiceFilters((prev) => ({ ...prev, page: prev.page - 1 }))
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Plan info card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  {t("subscription.currentPlan")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <PlanBadge planSlug={plan.slug} />
+                    <span className="text-lg font-semibold">{plan.name}</span>
+                  </div>
+                  <span className="text-xl font-bold">
+                    {formatVND(plan.priceMonthly)}
+                    <span className="text-sm font-normal text-muted-foreground">
+                      /{t("subscription.plans.monthly")}
+                    </span>
+                  </span>
+                </div>
+
+                <Separator />
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">{t("common.status")}</p>
+                    <p className="font-medium capitalize">
+                      {t(STATUS_LABELS[sub.status] || "common.statusActive")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">{t("subscription.expiresAt")}</p>
+                    <p className="font-medium">{formatDate(sub.currentPeriodEnd)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">{t("subscription.billingCycle")}</p>
+                    <p className="font-medium capitalize">
+                      {sub.billingCycle || "monthly"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">{t("subscription.startDate")}</p>
+                    <p className="font-medium">{formatDate(sub.createdAt)}</p>
+                  </div>
+                </div>
+
+                {isCanceled && (
+                  <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3">
+                    <p className="text-sm text-destructive font-medium">
+                      {t("subscription.canceledNotice")}
+                    </p>
+                    {sub.cancelReason && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t("subscription.cancelReason")}: {sub.cancelReason}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Usage card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("subscription.usage")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <UsageItem
+                  icon={MapPin}
+                  label={t("subscription.usageItems.places")}
+                  used={usage.places ?? 0}
+                  limit={plan.maxPlaces}
+                />
+                <UsageItem
+                  icon={Calendar}
+                  label={t("subscription.usageItems.bookingsPerMonth")}
+                  used={usage.bookings ?? 0}
+                  limit={plan.maxBookingsPerMonth}
+                />
+                <UsageItem
+                  icon={Users}
+                  label={t("subscription.usageItems.staff")}
+                  used={usage.staff ?? 0}
+                  limit={plan.maxStaff}
+                />
+                <UsageItem
+                  icon={Building2}
+                  label={t("subscription.usageItems.services")}
+                  used={usage.services ?? 0}
+                  limit={plan.maxServices}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Invoice History */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                {t("subscription.invoice.title")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Select
+                  value={invoiceFilters.status}
+                  onValueChange={(value) =>
+                    setInvoiceFilters((prev) => ({ ...prev, status: value, page: 1 }))
                   }
                 >
-                  {t("common.previous")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={invoiceFilters.page >= invoicePagination.totalPages}
-                  onClick={() =>
-                    setInvoiceFilters((prev) => ({ ...prev, page: prev.page + 1 }))
-                  }
-                >
-                  {t("common.nextPage")}
-                </Button>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder={t("common.filter")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("common.all")}</SelectItem>
+                    <SelectItem value="pending">{t(INVOICE_STATUS_KEYS.pending)}</SelectItem>
+                    <SelectItem value="paid">{t(INVOICE_STATUS_KEYS.paid)}</SelectItem>
+                    <SelectItem value="overdue">{t(INVOICE_STATUS_KEYS.overdue)}</SelectItem>
+                    <SelectItem value="canceled">{t(INVOICE_STATUS_KEYS.canceled)}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
+              {invoiceLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-14 rounded-lg" />
+                  ))}
+                </div>
+              ) : invoices.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-10 text-center">
+                  <Receipt className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    {t("subscription.invoice.empty")}
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("subscription.invoice.table.date")}</TableHead>
+                      <TableHead>{t("subscription.invoice.table.plan")}</TableHead>
+                      <TableHead className="text-right">{t("subscription.invoice.table.amount")}</TableHead>
+                      <TableHead>{t("subscription.invoice.table.status")}</TableHead>
+                      <TableHead>{t("subscription.invoice.table.transactionRef")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices.map((invoice) => (
+                      <TableRow key={invoice.id}>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDateTime(invoice.issuedAt || invoice.createdAt)}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {invoice.plan?.name || invoice.description || "-"}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-semibold">
+                          {formatVND(invoice.amount)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              INVOICE_STATUS_STYLES[invoice.status] || INVOICE_STATUS_STYLES.pending,
+                            )}
+                          >
+                            {t(INVOICE_STATUS_KEYS[invoice.status] || "subscription.invoice.status.pending")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {invoice.transactionRef || invoice.id?.slice(0, 8) || "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+
+              {invoicePagination.totalPages > 1 && (
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-sm text-muted-foreground">
+                    {t("subscription.invoice.pagination", { page: invoicePagination.page, totalPages: invoicePagination.totalPages, total: invoicePagination.total })}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={invoiceFilters.page <= 1}
+                      onClick={() =>
+                        setInvoiceFilters((prev) => ({ ...prev, page: prev.page - 1 }))
+                      }
+                    >
+                      {t("common.previous")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={invoiceFilters.page >= invoicePagination.totalPages}
+                      onClick={() =>
+                        setInvoiceFilters((prev) => ({ ...prev, page: prev.page + 1 }))
+                      }
+                    >
+                      {t("common.nextPage")}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <CancelDialog
         open={cancelDialogOpen}

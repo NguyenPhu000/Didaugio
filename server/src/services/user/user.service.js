@@ -3,7 +3,9 @@ import {
   USER_STATUS,
   PAGINATION,
   ROLES,
-  ROLE_HIERARCHY,
+  canAssignRoleId,
+  canManageRoleId,
+  isSuperAdminRole,
 } from "../../config/constants.js";
 import { ERROR_MESSAGES, ERROR_CODES } from "../../config/messages.js";
 import {
@@ -14,6 +16,7 @@ import {
 } from "../../models/index.js";
 import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
+import { invalidateUserCache } from "../../utils/permissionCache.js";
 
 import { isOnline as checkOnlineStatus } from "../../utils/onlineManager.js";
 
@@ -505,27 +508,40 @@ export const updateUserRole = async (userId, newRoleId, currentUser) => {
   }
 
   // Check hierarchy
-  const currentRole = ROLE_HIERARCHY[currentUser.roleId];
+  if (!currentUser?.roleId) {
+    throw new ServiceError(
+      "Khong xac dinh duoc quyen cua nguoi thuc hien",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
+  }
   
   // Super Admin bypass: Super Admin can do anything except demote another Super Admin
-  if (currentUser.roleId === ROLES.SUPER_ADMIN) {
-    if (targetUser.roleId === ROLES.SUPER_ADMIN && targetUser.id !== currentUser.id) {
+  if (isSuperAdminRole(currentUser.roleId)) {
+    if (isSuperAdminRole(targetUser.roleId) && targetUser.id !== currentUser.id) {
       throw new ServiceError(
         "Không thể chỉnh sửa vai trò của Super Admin khác",
         403,
         ERROR_CODES.FORBIDDEN,
       );
     }
+    if (isSuperAdminRole(validRoleId) && targetUser.id !== currentUser.id) {
+      throw new ServiceError(
+        "Khong the gan them vai tro Super Admin tu man quan ly user",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
   } else {
     // Normal hierarchy check for Admin and below
-    if (!currentRole.canManage.includes(targetUser.roleId)) {
+    if (!canManageRoleId(currentUser.roleId, targetUser.roleId)) {
       throw new ServiceError(
         "Bạn không có quyền chỉnh sửa người dùng này",
         403,
         ERROR_CODES.FORBIDDEN,
       );
     }
-    if (!currentRole.canManage.includes(validRoleId)) {
+    if (!canAssignRoleId(currentUser.roleId, validRoleId)) {
       throw new ServiceError(
         "Bạn không có quyền gán vai trò này",
         403,
@@ -560,6 +576,8 @@ export const updateUserRole = async (userId, newRoleId, currentUser) => {
       },
     },
   });
+
+  invalidateUserCache(validUserId);
 
   return updatedUser;
 };

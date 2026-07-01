@@ -207,306 +207,357 @@ const ServiceFormModal = ({
         <form
           id="service-form"
           onSubmit={handleSubmit}
-          className="space-y-4 overflow-y-auto py-2 pr-1"
+          className="flex-1 overflow-y-auto space-y-6 py-4 pr-1"
         >
-          <div className="space-y-1.5">
-            <Label htmlFor="svc-name">
-              Tên dịch vụ <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="svc-name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
-              minLength={2}
-              placeholder="Nhập tên dịch vụ"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="svc-desc">Mô tả</Label>
-            <Textarea
-              id="svc-desc"
-              value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
-              placeholder="Nhập mô tả dịch vụ"
-              className="min-h-[80px]"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="svc-place">
-              {t("business.places.title")} <span className="text-destructive">*</span>
-            </Label>
-            {places.length === 0 ? (
-              <div className="flex items-center gap-2 h-10 border border-destructive/50 rounded-md px-3 bg-destructive/5 text-sm text-destructive">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                {t("business.places.noPlacesYet")}
-              </div>
-            ) : (
-              <Select
-                value={form.placeId}
-                onValueChange={(v) => setForm({ ...form, placeId: v })}
-                required
-              >
-                <SelectTrigger id="svc-place">
-                  <SelectValue placeholder={t("business.bookings.allPlaces")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {places.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Loại dịch vụ</Label>
-              <Select
-                value={form.serviceType}
-                onValueChange={(v) => setForm({ ...form, serviceType: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(SERVICE_TYPE_LABELS).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>
-                      {v}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="svc-price">
-                Giá (VND) <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="svc-price"
-                type="number"
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })}
-                min="0"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="svc-discount">Giá khuyến mãi (VND)</Label>
-              <Input
-                id="svc-discount"
-                type="number"
-                value={form.discountPrice}
-                onChange={(e) =>
-                  setForm({ ...form, discountPrice: e.target.value })
-                }
-                min="0"
-                placeholder={t("common.optional")}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="svc-duration">Thời lượng (phút)</Label>
-              <Input
-                id="svc-duration"
-                type="number"
-                value={form.duration}
-                onChange={(e) => setForm({ ...form, duration: e.target.value })}
-                min="1"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="svc-capacity">Sức chứa tối đa</Label>
-              <Input
-                id="svc-capacity"
-                type="number"
-                value={form.maxCapacity}
-                onChange={(e) =>
-                  setForm({ ...form, maxCapacity: e.target.value })
-                }
-                min="1"
-                placeholder={t("common.optional")}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-border/60 p-4 space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <Label htmlFor="svc-require-deposit" className="font-medium">
-                  Yêu cầu đặt cọc
+          {/* Group 1: Basic Info */}
+          <fieldset className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/30 p-5 dark:border-zinc-800 dark:bg-zinc-900/30">
+            <legend className="text-sm font-bold text-zinc-950 dark:text-zinc-100 flex items-center gap-2 px-1">
+              <Ticket className="h-4 w-4 text-zinc-500" />
+              Thông tin cơ bản
+            </legend>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="svc-name">
+                  Tên dịch vụ <span className="text-destructive">*</span>
                 </Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("common.optional")}
-                </p>
+                <Input
+                  id="svc-name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                  minLength={2}
+                  placeholder="Nhập tên dịch vụ"
+                  className="bg-white dark:bg-zinc-950"
+                />
               </div>
-              <Checkbox
-                id="svc-require-deposit"
-                checked={form.requireDeposit}
-                onCheckedChange={(checked) =>
-                  setForm({ ...form, requireDeposit: !!checked })
-                }
-              />
-            </div>
 
-            {form.requireDeposit ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="svc-desc">Mô tả</Label>
+                <Textarea
+                  id="svc-desc"
+                  value={form.description}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
+                  placeholder="Nhập mô tả chi tiết về dịch vụ..."
+                  className="min-h-[80px] bg-white dark:bg-zinc-950"
+                />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Loại đặt cọc</Label>
+                  <Label htmlFor="svc-place">
+                    {t("business.places.title")} <span className="text-destructive">*</span>
+                  </Label>
+                  {places.length === 0 ? (
+                    <div className="flex items-center gap-2 h-10 border border-destructive/50 rounded-md px-3 bg-destructive/5 text-sm text-destructive">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      {t("business.places.noPlacesYet")}
+                    </div>
+                  ) : (
+                    <Select
+                      value={form.placeId}
+                      onValueChange={(v) => setForm({ ...form, placeId: v })}
+                      required
+                    >
+                      <SelectTrigger id="svc-place" className="bg-white dark:bg-zinc-950">
+                        <SelectValue placeholder={t("business.bookings.allPlaces")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {places.map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Loại dịch vụ</Label>
                   <Select
-                    value={form.depositType}
-                    onValueChange={(v) => setForm({ ...form, depositType: v })}
+                    value={form.serviceType}
+                    onValueChange={(v) => setForm({ ...form, serviceType: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white dark:bg-zinc-950">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="PERCENT">
-                        Theo phần trăm
-                      </SelectItem>
-                      <SelectItem value="FIXED">
-                        Số tiền cố định
-                      </SelectItem>
+                      {Object.entries(SERVICE_TYPE_LABELS).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>
+                          {v}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="svc-deposit-amount">
-                    {form.depositType === "PERCENT"
-                      ? "Phần trăm đặt cọc (%)"
-                      : "Số tiền đặt cọc (VND)"}
-                  </Label>
-                  <Input
-                    id="svc-deposit-amount"
-                    type="number"
-                    min="0"
-                    max={form.depositType === "PERCENT" ? "100" : undefined}
-                    value={form.depositAmount}
-                    onChange={(e) =>
-                      setForm({ ...form, depositAmount: e.target.value })
-                    }
-                    placeholder={
-                      form.depositType === "PERCENT"
-                        ? "30"
-                        : "200000"
-                    }
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="svc-refundable">Hoàn cọc</Label>
-                  <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2">
-                    <Checkbox
-                      id="svc-refundable"
-                      checked={form.depositRefundable}
-                      onCheckedChange={(checked) =>
-                        setForm({ ...form, depositRefundable: !!checked })
-                      }
-                    />
-                    <Label htmlFor="svc-refundable" className="cursor-pointer">
-                      Cho phép hoàn cọc
-                    </Label>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="svc-refund-percent">Phần trăm hoàn (%)</Label>
-                  <Input
-                    id="svc-refund-percent"
-                    type="number"
-                    min="0"
-                    max="100"
-                    disabled={!form.depositRefundable}
-                    value={form.depositRefundPercent}
-                    onChange={(e) =>
-                      setForm({ ...form, depositRefundPercent: e.target.value })
-                    }
-                    placeholder="50"
-                  />
-                </div>
               </div>
-            ) : null}
+            </div>
+          </fieldset>
 
-            {form.requireDeposit && depositPreview != null ? (
-              <div className="text-xs rounded-md bg-primary/10 border border-primary/20 px-3 py-2">
-                <span className="text-muted-foreground">
-                  Tiền cọc:{" "}
-                </span>
-                <span className="font-semibold text-foreground">
-                  {formatVND(depositPreview)}
-                </span>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="space-y-3">
-            <FileUploader
-              label="Ảnh đại diện"
-              hint={t("common.optional")}
-              maxFiles={1}
-              maxFileSize={5 * 1024 * 1024}
-              acceptTypes={["image/jpeg", "image/png", "image/webp"]}
-              value={thumbnailFiles}
-              onChange={setThumbnailFiles}
-              disabled={saving}
-            />
-            {!thumbnailFiles.length && !!service?.thumbnail && (
-              <div className="rounded-lg border border-border/60 p-2">
-                <p className="text-[11px] text-muted-foreground mb-1">
-                  Ảnh đại diện hiện tại
-                </p>
-                <img
-                  src={service.thumbnail}
-                  alt={service.name || "thumbnail"}
-                  className="h-28 w-full object-cover rounded-md"
+          {/* Group 2: Pricing & Duration */}
+          <fieldset className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/30 p-5 dark:border-zinc-800 dark:bg-zinc-900/30">
+            <legend className="text-sm font-bold text-zinc-950 dark:text-zinc-100 flex items-center gap-2 px-1">
+              <Clock className="h-4 w-4 text-zinc-500" />
+              Thiết lập giá & Quy mô
+            </legend>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="svc-price">
+                  Giá bán (VND) <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="svc-price"
+                  type="number"
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  min="0"
+                  required
+                  className="bg-white dark:bg-zinc-950"
                 />
               </div>
-            )}
-          </div>
 
-          <div className="space-y-3">
-            <FileUploader
-              label="Thư viện ảnh"
-              hint={t("common.optional")}
-              maxFiles={6}
-              maxFileSize={5 * 1024 * 1024}
-              acceptTypes={["image/jpeg", "image/png", "image/webp"]}
-              value={galleryFiles}
-              onChange={setGalleryFiles}
-              disabled={saving}
-            />
-            {!galleryFiles.length &&
-              Array.isArray(service?.images) &&
-              service.images.length > 0 && (
-                <div className="rounded-lg border border-border/60 p-2">
-                  <p className="text-[11px] text-muted-foreground mb-2">
-                    Ảnh hiện tại ({service.images.length})
+              <div className="space-y-1.5">
+                <Label htmlFor="svc-discount">Giá khuyến mãi (VND)</Label>
+                <Input
+                  id="svc-discount"
+                  type="number"
+                  value={form.discountPrice}
+                  onChange={(e) =>
+                    setForm({ ...form, discountPrice: e.target.value })
+                  }
+                  min="0"
+                  placeholder={t("common.optional")}
+                  className="bg-white dark:bg-zinc-950"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="svc-duration">Thời lượng</Label>
+                <Select
+                  value={form.duration ? String(form.duration) : "60"}
+                  onValueChange={(v) => setForm({ ...form, duration: v })}
+                >
+                  <SelectTrigger id="svc-duration" className="bg-white dark:bg-zinc-950">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 phút</SelectItem>
+                    <SelectItem value="30">30 phút</SelectItem>
+                    <SelectItem value="45">45 phút</SelectItem>
+                    <SelectItem value="60">1 giờ (60 phút)</SelectItem>
+                    <SelectItem value="90">1.5 giờ (90 phút)</SelectItem>
+                    <SelectItem value="120">2 giờ (120 phút)</SelectItem>
+                    <SelectItem value="180">3 giờ (180 phút)</SelectItem>
+                    <SelectItem value="240">4 giờ (240 phút)</SelectItem>
+                    <SelectItem value="360">6 giờ (360 phút)</SelectItem>
+                    <SelectItem value="1440">Cả ngày (24 giờ)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="svc-capacity">Sức chứa tối đa</Label>
+                <Select
+                  value={form.maxCapacity ? String(form.maxCapacity) : "unlimited"}
+                  onValueChange={(v) => setForm({ ...form, maxCapacity: v === "unlimited" ? "" : v })}
+                >
+                  <SelectTrigger id="svc-capacity" className="bg-white dark:bg-zinc-950">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unlimited">Không giới hạn</SelectItem>
+                    <SelectItem value="1">1 người (Cá nhân)</SelectItem>
+                    <SelectItem value="2">2 người</SelectItem>
+                    <SelectItem value="5">Nhóm nhỏ (Tối đa 5 người)</SelectItem>
+                    <SelectItem value="10">Nhóm trung bình (Tối đa 10 người)</SelectItem>
+                    <SelectItem value="20">Nhóm lớn (Tối đa 20 người)</SelectItem>
+                    <SelectItem value="50">Sự kiện nhỏ (Tối đa 50 người)</SelectItem>
+                    <SelectItem value="100">Sự kiện lớn (Tối đa 100 người)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </fieldset>
+
+          {/* Group 3: Deposit Settings */}
+          <fieldset className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/30 p-5 dark:border-zinc-800 dark:bg-zinc-900/30">
+            <legend className="text-sm font-bold text-zinc-950 dark:text-zinc-100 flex items-center gap-2 px-1">
+              <CalendarCheck className="h-4 w-4 text-zinc-500" />
+              Đặt cọc & Đảm bảo
+            </legend>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white border border-zinc-150 dark:bg-zinc-950 dark:border-zinc-800 shadow-sm">
+                <div>
+                  <Label htmlFor="svc-require-deposit" className="font-semibold cursor-pointer">
+                    Yêu cầu khách hàng đặt cọc trước
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Hạn chế việc khách hủy đặt chỗ không báo trước
                   </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {service.images.slice(0, 6).map((image, idx) => (
-                      <img
-                        key={`${idx}-${image.slice(0, 24)}`}
-                        src={image}
-                        alt={`service-${idx + 1}`}
-                        className="h-20 w-full object-cover rounded-md"
+                </div>
+                <Checkbox
+                  id="svc-require-deposit"
+                  checked={form.requireDeposit}
+                  onCheckedChange={(checked) =>
+                    setForm({ ...form, requireDeposit: !!checked })
+                  }
+                />
+              </div>
+
+              {form.requireDeposit && (
+                <div className="space-y-4 pt-2 border-t border-dashed border-zinc-200 dark:border-zinc-800">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Loại đặt cọc</Label>
+                      <Select
+                        value={form.depositType}
+                        onValueChange={(v) => setForm({ ...form, depositType: v })}
+                      >
+                        <SelectTrigger className="bg-white dark:bg-zinc-950">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="PERCENT">Theo phần trăm (%)</SelectItem>
+                          <SelectItem value="FIXED">Số tiền cố định (VND)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="svc-deposit-amount">
+                        {form.depositType === "PERCENT"
+                          ? "Phần trăm đặt cọc (%)"
+                          : "Số tiền đặt cọc (VND)"}
+                      </Label>
+                      <Input
+                        id="svc-deposit-amount"
+                        type="number"
+                        min="0"
+                        max={form.depositType === "PERCENT" ? "100" : undefined}
+                        value={form.depositAmount}
+                        onChange={(e) =>
+                          setForm({ ...form, depositAmount: e.target.value })
+                        }
+                        placeholder={form.depositType === "PERCENT" ? "30" : "200000"}
+                        className="bg-white dark:bg-zinc-950"
                       />
-                    ))}
+                    </div>
                   </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="svc-refundable">Chính sách hoàn cọc</Label>
+                      <div className="flex items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 py-2 h-10 dark:border-zinc-800 dark:bg-zinc-950">
+                        <Checkbox
+                          id="svc-refundable"
+                          checked={form.depositRefundable}
+                          onCheckedChange={(checked) =>
+                            setForm({ ...form, depositRefundable: !!checked })
+                          }
+                        />
+                        <Label htmlFor="svc-refundable" className="cursor-pointer text-sm">
+                          Cho phép hoàn cọc
+                        </Label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="svc-refund-percent">Phần trăm hoàn trả (%)</Label>
+                      <Input
+                        id="svc-refund-percent"
+                        type="number"
+                        min="0"
+                        max="100"
+                        disabled={!form.depositRefundable}
+                        value={form.depositRefundPercent}
+                        onChange={(e) =>
+                          setForm({ ...form, depositRefundPercent: e.target.value })
+                        }
+                        placeholder="50"
+                        className="bg-white dark:bg-zinc-950"
+                      />
+                    </div>
+                  </div>
+
+                  {depositPreview != null && (
+                    <div className="text-xs rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-100 p-3 flex justify-between items-center dark:bg-emerald-950/30 dark:border-emerald-900/30 dark:text-emerald-400">
+                      <span>Mức tiền đặt cọc tính toán dự kiến:</span>
+                      <span className="font-bold text-sm">{formatVND(depositPreview)}</span>
+                    </div>
+                  )}
                 </div>
               )}
-          </div>
+            </div>
+          </fieldset>
 
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+          {/* Group 4: Media Uploads */}
+          <fieldset className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/30 p-5 dark:border-zinc-800 dark:bg-zinc-900/30">
+            <legend className="text-sm font-bold text-zinc-950 dark:text-zinc-100 flex items-center gap-2 px-1">
+              <ImageIcon className="h-4 w-4 text-zinc-500" />
+              Hình ảnh & Thư viện
+            </legend>
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <FileUploader
+                  label="Ảnh đại diện dịch vụ"
+                  hint={t("common.optional")}
+                  maxFiles={1}
+                  maxFileSize={5 * 1024 * 1024}
+                  acceptTypes={["image/jpeg", "image/png", "image/webp"]}
+                  value={thumbnailFiles}
+                  onChange={setThumbnailFiles}
+                  disabled={saving}
+                />
+                {!thumbnailFiles.length && !!service?.thumbnail && (
+                  <div className="rounded-lg border border-zinc-200 p-3 bg-white dark:bg-zinc-950 dark:border-zinc-800">
+                    <p className="text-[11px] text-muted-foreground mb-1.5">Ảnh đại diện hiện tại</p>
+                    <img
+                      src={service.thumbnail}
+                      alt={service.name || "thumbnail"}
+                      className="h-28 w-full object-cover rounded-md border"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <FileUploader
+                  label="Thư viện ảnh chi tiết"
+                  hint={t("common.optional")}
+                  maxFiles={6}
+                  maxFileSize={5 * 1024 * 1024}
+                  acceptTypes={["image/jpeg", "image/png", "image/webp"]}
+                  value={galleryFiles}
+                  onChange={setGalleryFiles}
+                  disabled={saving}
+                />
+                {!galleryFiles.length &&
+                  Array.isArray(service?.images) &&
+                  service.images.length > 0 && (
+                    <div className="rounded-lg border border-zinc-200 p-3 bg-white dark:bg-zinc-950 dark:border-zinc-800">
+                      <p className="text-[11px] text-muted-foreground mb-2">
+                        Ảnh hiện tại trong thư viện ({service.images.length})
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {service.images.slice(0, 6).map((image, idx) => (
+                          <img
+                            key={`${idx}-${image.slice(0, 24)}`}
+                            src={image}
+                            alt="Gallery preview"
+                            className="h-20 w-full object-cover rounded-md border"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+              </div>
+            </div>
+          </fieldset>
+
+          {/* Active status */}
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-zinc-50 border border-zinc-150 shadow-sm dark:bg-zinc-900/30 dark:border-zinc-800">
             <Checkbox
               id="svc-active"
               checked={form.isActive}

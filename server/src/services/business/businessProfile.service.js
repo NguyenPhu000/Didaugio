@@ -12,6 +12,7 @@ import {
   mapBusinessDataToPrisma,
 } from "./business.serializer.js";
 import { uploadImage } from "../../utils/cloudinaryService.js";
+import { buildSubscriptionEntitlements } from "../subscription/subscriptionEntitlement.service.js";
 
 const uploadLegalDocument = async (fileData) => {
   if (!fileData) return null;
@@ -128,6 +129,18 @@ const mapProfileResponse = async (business) => {
 
   return {
     ...serialized,
+    subscription: business.subscription
+      ? {
+          id: business.subscription.id,
+          status: business.subscription.status,
+          billingCycle: business.subscription.billingCycle,
+          currentPeriodStart: business.subscription.currentPeriodStart,
+          currentPeriodEnd: business.subscription.currentPeriodEnd,
+          gracePeriodEnd: business.subscription.gracePeriodEnd,
+          plan: business.subscription.plan,
+          entitlements: buildSubscriptionEntitlements(business.subscription),
+        }
+      : null,
     businessInfo: {
       businessName: serialized.businessName,
       businessType: serialized.businessType,
@@ -164,6 +177,9 @@ export const getProfile = async (userId) => {
     where: { ownerId: userId },
     include: {
       ...defaultInclude,
+      subscription: {
+        include: { plan: true },
+      },
       _count: { select: { places: true, services: true, vouchers: true } },
     },
   });

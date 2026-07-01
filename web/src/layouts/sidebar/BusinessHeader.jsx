@@ -10,6 +10,7 @@ import {
   Check,
   ExternalLink,
   Store,
+  CreditCard,
 } from "lucide-react";
 import {
   Button,
@@ -317,7 +318,7 @@ function BusinessHeader() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="w-52 mt-2 bg-white border-zinc-200/80 text-zinc-950 shadow-lg rounded-xl dark:bg-zinc-950 dark:border-zinc-800 dark:text-zinc-100"
+            className="w-52 mt-2 bg-white border-zinc-200/80 text-zinc-950 shadow-lg rounded-2xl dark:bg-zinc-950 dark:border-zinc-800 dark:text-zinc-100 [--accent:transparent]"
           >
             <DropdownMenuLabel className="text-xs uppercase tracking-widest text-zinc-400 dark:text-zinc-600">
               {t("header.account")}
@@ -325,22 +326,36 @@ function BusinessHeader() {
             <DropdownMenuSeparator className="bg-zinc-100 dark:bg-zinc-800" />
             <DropdownMenuItem
               onClick={() => navigate(ADMIN_ROUTES.PROFILE)}
-              className="focus:bg-zinc-50 gap-2 cursor-pointer dark:focus:bg-zinc-900"
+              className="border border-transparent focus:border-zinc-950 focus:bg-transparent focus:text-zinc-950 dark:focus:border-zinc-100 dark:focus:text-zinc-100 gap-2 cursor-pointer rounded-lg"
             >
               <User className="h-4 w-4" /> {t("header.profile")}
             </DropdownMenuItem>
             {currentRoleId === ROLES.BUSINESS && (
-              <DropdownMenuItem
-                onClick={() => navigate(BUSINESS_ROUTES.PROFILE)}
-                className="focus:bg-zinc-50 gap-2 cursor-pointer dark:focus:bg-zinc-900"
-              >
-                <Store className="h-4 w-4" /> {t("header.businessProfile")}
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuItem
+                  onClick={() => navigate(BUSINESS_ROUTES.PROFILE)}
+                  className="border border-transparent focus:border-zinc-950 focus:bg-transparent focus:text-zinc-950 dark:focus:border-zinc-100 dark:focus:text-zinc-100 gap-2 cursor-pointer rounded-lg"
+                >
+                  <Store className="h-4 w-4" /> {t("header.businessProfile") || t("nav.business.businessProfile")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate(BUSINESS_ROUTES.SUBSCRIPTION)}
+                  className="border border-transparent focus:border-zinc-950 focus:bg-transparent focus:text-zinc-950 dark:focus:border-zinc-100 dark:focus:text-zinc-100 gap-2 cursor-pointer rounded-lg"
+                >
+                  <CreditCard className="h-4 w-4" /> {t("nav.business.subscription") || "Gói dịch vụ"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate(BUSINESS_ROUTES.SETTINGS)}
+                  className="border border-transparent focus:border-zinc-950 focus:bg-transparent focus:text-zinc-950 dark:focus:border-zinc-100 dark:focus:text-zinc-100 gap-2 cursor-pointer rounded-lg"
+                >
+                  <Settings className="h-4 w-4" /> {t("nav.business.settings") || "Cài đặt"}
+                </DropdownMenuItem>
+              </>
             )}
             {[ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(user?.roleId) && (
               <DropdownMenuItem
                 onClick={() => navigate(ADMIN_ROUTES.SETTINGS)}
-                className="focus:bg-zinc-50 gap-2 cursor-pointer dark:focus:bg-zinc-900"
+                className="border border-transparent focus:border-zinc-950 focus:bg-transparent focus:text-zinc-950 dark:focus:border-zinc-100 dark:focus:text-zinc-100 gap-2 cursor-pointer rounded-lg"
               >
                 <Settings className="h-4 w-4" /> {t("header.systemSettings")}
               </DropdownMenuItem>
@@ -349,7 +364,7 @@ function BusinessHeader() {
             <DropdownMenuItem
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="text-red-600 focus:text-red-600 focus:bg-red-50 gap-2 cursor-pointer dark:text-red-400 dark:focus:bg-red-950"
+              className="text-red-600 focus:text-red-600 focus:bg-transparent border border-transparent focus:border-red-600 gap-2 cursor-pointer dark:text-red-400 dark:focus:border-red-400 rounded-lg"
             >
               <LogOut className="h-4 w-4" /> {t("header.logout")}
             </DropdownMenuItem>

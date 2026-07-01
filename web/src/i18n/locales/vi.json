@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Đi Đâu Giờ?",
+    "appName": "iPoint Genie",
     "adminPanel": "Admin Panel",
     "save": "Lưu",
     "cancel": "Hủy",
@@ -267,7 +267,7 @@
       "passwordMismatch": "Mật khẩu không khớp"
     },
     "login": {
-      "pageTitle": "Đăng nhập — Đi Đâu Giờ?",
+      "pageTitle": "Đăng nhập — iPoint Genie",
       "adminSubtitle": "CỔNG QUẢN TRỊ",
       "mobileSubtitle": "CỔNG DOANH NGHIỆP",
       "heroTitle1": "QUẢN LÝ",
@@ -300,7 +300,7 @@
       "secureNote": "BẢO MẬT BỞI RSA-256 · PHIÊN ĐĂNG NHẬP TỰ ĐỘNG HẾT HẠN"
     },
     "register": {
-      "pageTitle": "Đăng ký — Đi Đâu Giờ?",
+      "pageTitle": "Đăng ký — iPoint Genie",
       "businessTitle": "CỔNG DOANH NGHIỆP",
       "mobileSubtitle": "ĐĂNG KÝ DOANH NGHIỆP",
       "heroTitle": "TRỞ THÀNH\nĐỐI TÁC\nDOANH NGHIỆP",
@@ -332,7 +332,7 @@
       "termsNote": "BẰNG VIỆC ĐĂNG KÝ, BẠN ĐỒNG Ý VỚI ĐIỀU KHOẢN SỬ DỤNG & CHÍNH SÁCH BẢO MẬT CỦA CHÚNG TÔI."
     },
     "forgotPassword": {
-      "pageTitle": "Khôi phục mật khẩu — Đi Đâu Giờ?",
+      "pageTitle": "Khôi phục mật khẩu — iPoint Genie",
       "subtitle": "KHÔI PHỤC MẬT KHẨU",
       "mobileSubtitle": "HỆ THỐNG",
       "heroTitle1": "KHÔI PHỤC",
@@ -1315,7 +1315,7 @@
       "broadcastOptional": "(tùy chọn)",
       "broadcastHint": "Thông báo khẩn cấp sẽ hiển thị ngay lập tức cho tất cả người đang tham gia sự kiện",
       "broadcastPlaceholder": "Ví dụ: Mưa lớn, đoàn di chuyển chậm 30 phút, vui lòng chờ tại điểm 2...",
-      "editDescription": "Điền thông tin để {{action}} sự kiện cộng đồng cho app Đi Đâu Giờ",
+      "editDescription": "Điền thông tin để {{action}} sự kiện cộng đồng cho app iPoint Genie",
       "editAction": "cập nhật",
       "createAction": "tạo",
       "temporaryHide": "Tạm ẩn",
@@ -1722,7 +1722,13 @@
       "businessLicense": "Giấy phép kinh doanh",
       "idFront": "Ảnh mặt trước CC/CCCD",
       "idBack": "Ảnh mặt sau CC/CCCD",
-      "close": "Đóng"
+      "close": "Đóng",
+      "viewContractPdf": "Xem hợp đồng PDF",
+      "highRiskReview": "Rủi ro cần rà soát",
+      "signedViewPdf": "Đã ký (Xem PDF)",
+      "unsignedViewDraft": "Chưa ký (Xem bản nháp)",
+      "commissionRatePercent": "Tỷ lệ hoa hồng (%)",
+      "confirmCheckDocuments": "Xác nhận thông tin hồ sơ doanh nghiệp đã khớp với các giấy tờ đính kèm."
     },
     "schedule": {
       "title": "Lịch đặt chỗ",
@@ -1915,7 +1921,7 @@
       "updateDocuments": "Cập nhật giấy tờ xác minh",
       "uploadTitle": "Upload hình ảnh giấy tờ",
       "uploadDesc": "Mặc định hệ thống hiển thị ảnh mẫu. Khi bạn chọn ảnh mới, preview sẽ cập nhật ngay theo ảnh của bạn.",
-      "businessNameExample": "VD: Cửa hàng Đi Đâu Giờ",
+      "businessNameExample": "VD: Cửa hàng iPoint Genie",
       "idCardPlaceholder": "Số CCCD",
       "taxCodePlaceholder": "Mã số thuế",
       "bankNamePlaceholder": "VD: Vietcombank, TPBank...",
@@ -3299,7 +3305,11 @@
   },
   "subscription": {
     "title": "Gói dịch vụ",
+    "description": "Quản lý gói dịch vụ và xem chi tiết đăng ký của doanh nghiệp",
     "currentPlan": "Gói hiện tại",
+    "currentPlanDesc": "Thông tin chi tiết về gói dịch vụ đang hoạt động",
+    "tabPlans": "Gói dịch vụ",
+    "tabCurrent": "Gói hiện tại",
     "upgradeBtn": "Nâng cấp",
     "downgrade": "Hạ cấp",
     "expiresAt": "Hết hạn vào",

@@ -65,6 +65,7 @@ import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { getTableSerialNumber } from "@/utils/tableSerial";
 import { useTranslation } from "react-i18next";
 import { toast as sonnerToast } from "sonner";
+import { useAuthStore } from "@/stores/authStore";
 
 /**
  * UserRow — memoized table row for a single user.
@@ -267,6 +268,7 @@ UserRow.displayName = "UserRow";
  * UserManagePage — Admin user management with bulk operations and activity log.
  */
 const UserManagePage = () => {
+  const currentUser = useAuthStore((state) => state.user);
   const { toast } = useToast();
   const { t } = useTranslation();
 
@@ -604,8 +606,26 @@ const UserManagePage = () => {
     { value: String(ROLES.STAFF), label: t("roles.names.staff").toUpperCase() },
     { value: String(ROLES.USER), label: t("roles.names.user").toUpperCase() },
   ];
+  const canAssignRole = useCallback(
+    (roleId) => {
+      const targetRoleId = Number(roleId);
+      if (currentUser?.roleId === ROLES.SUPER_ADMIN) {
+        return targetRoleId !== ROLES.SUPER_ADMIN;
+      }
+      if (currentUser?.roleId === ROLES.ADMIN) {
+        return [ROLES.BUSINESS, ROLES.STAFF, ROLES.USER].includes(targetRoleId);
+      }
+      if (currentUser?.roleId === ROLES.BUSINESS) {
+        return targetRoleId === ROLES.STAFF;
+      }
+      return false;
+    },
+    [currentUser?.roleId],
+  );
   const assignableRoleOptions = roleOptions.filter(
-    (option) => ![String(ROLES.USER), String(ROLES.GUEST)].includes(option.value),
+    (option) =>
+      ![String(ROLES.GUEST)].includes(option.value) &&
+      canAssignRole(option.value),
   );
 
   return (
@@ -922,6 +942,7 @@ const UserManagePage = () => {
         user={selectedUser}
         onSuccess={handleSaveUser}
         mode={formMode}
+        currentUser={currentUser}
       />
 
       <UserDetailModal

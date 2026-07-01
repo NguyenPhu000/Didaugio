@@ -7,6 +7,7 @@ import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import { serializeBusiness } from "./business.serializer.js";
 import { sanitizeText } from "../../utils/sanitizeText.js";
 import { decryptField, isEncrypted } from "../../utils/fieldEncryption.js";
+import { invalidateUserCache } from "../../utils/permissionCache.js";
 
 const defaultInclude = {
   owner: {
@@ -42,7 +43,16 @@ const adminListSelect = {
   createdAt: true,
   updatedAt: true,
   owner: defaultInclude.owner,
-  sensitiveDocuments: { select: { type: true } },
+  sensitiveDocuments: {
+    select: {
+      id: true,
+      type: true,
+      mimeType: true,
+      originalName: true,
+      fileSize: true,
+      createdAt: true,
+    },
+  },
   _count: { select: { places: true, services: true, vouchers: true } },
 };
 
@@ -258,7 +268,16 @@ export const getById = async (id) => {
       include: {
         ...defaultInclude,
         _count: { select: { places: true, services: true, vouchers: true } },
-        sensitiveDocuments: { select: { type: true } },
+        sensitiveDocuments: {
+          select: {
+            id: true,
+            type: true,
+            mimeType: true,
+            originalName: true,
+            fileSize: true,
+            createdAt: true,
+          },
+        },
         places: {
           orderBy: [{ updatedAt: "desc" }],
           select: {
@@ -492,6 +511,9 @@ export const approve = async (id, data = {}, approvedBy) => {
   };
 
   eventEmitter.emit(EVENTS.BUSINESS.APPROVED, approvedEventPayload);
+
+  // Invalidate permissions cache to apply new business permissions instantly
+  invalidateUserCache(business.ownerId);
 
   return serializeBusiness(business);
 };

@@ -5,6 +5,7 @@ import * as businessProfileService from "../../services/business/businessProfile
 import * as contractStorageService from "../../services/contract/contractStorage.service.js";
 import { decryptField, isEncrypted } from "../../utils/fieldEncryption.js";
 import prisma from "../../config/prismaClient.js";
+import { isAdminOrSuperAdminRole } from "../../config/constants.js";
 import {
   ALLOWED_UPLOAD_MIME_TYPES,
   MAX_BASE64_DATA_URI_LENGTH,
@@ -248,7 +249,7 @@ export const downloadContract = async (req, res, next) => {
     }
 
     // Kiểm tra quyền: chỉ chủ doanh nghiệp hoặc admin mới được download
-    const isAdmin = req.user?.roleId <= 4;
+    const isAdmin = isAdminOrSuperAdminRole(req.user?.roleId);
     if (!isAdmin) {
       const profile = await businessProfileService.getProfile(req.user.userId);
       if (profile?.id !== businessId) {

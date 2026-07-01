@@ -23,6 +23,7 @@ import {
 import AnimatedIcon from "@/components/ui/animated-icon";
 import { Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { usePermission } from "@/hooks/usePermission";
 import {
   Collapsible,
   CollapsibleContent,
@@ -49,7 +50,20 @@ function navTargetMatchesLocation(targetUrl, location) {
 function BusinessNavMain({ items, label }) {
   const location = useLocation();
   const { state } = useSidebar();
+  const { user, hasPermission, hasFeature, entitlements } = usePermission();
   const isCollapsed = state === "collapsed";
+  const canShowItem = (item) => {
+    if (item.roles?.length && !item.roles.includes(user?.roleId)) return false;
+    if (item.permission && !hasPermission(item.permission)) return false;
+    if (item.feature && entitlements && !hasFeature(item.feature)) return false;
+    return true;
+  };
+  const visibleItems = items
+    .map((item) => ({
+      ...item,
+      items: item.items?.filter(canShowItem),
+    }))
+    .filter((item) => canShowItem(item) && (!item.items || item.items.length > 0));
 
   return (
     <SidebarGroup>
@@ -58,7 +72,7 @@ function BusinessNavMain({ items, label }) {
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
-          {items.map((item) => {
+          {visibleItems.map((item) => {
             const isActive =
               navTargetMatchesLocation(item.url, location) ||
               item.items?.some((sub) =>
@@ -187,7 +201,7 @@ function BusinessExpandedMenuItem({ item, isActive, location }) {
               className="size-4"
               type={isActive ? "pulse" : "hover"}
             />
-            <span className="group-data-[collapsible=icon]:hidden text-zinc-700 dark:text-zinc-300">
+            <span className="group-data-[collapsible=icon]:hidden">
               {item.title}
             </span>
             <AnimatedIcon
@@ -218,7 +232,7 @@ function BusinessExpandedMenuItem({ item, isActive, location }) {
                           type={isSubActive ? "pulse" : "hover"}
                         />
                       )}
-                      <span className="flex-1 text-zinc-600 dark:text-zinc-400">{subItem.title}</span>
+                      <span className="flex-1">{subItem.title}</span>
                       {subItem.badge?.text && (
                         <Badge
                           variant="secondary"
@@ -256,7 +270,7 @@ function BusinessSimpleMenuItem({ item, isActive }) {
             className="size-4 shrink-0"
             type={isActive ? "pulse" : "hover"}
           />
-          <span className="flex-1 group-data-[collapsible=icon]:hidden text-zinc-700 dark:text-zinc-300">
+          <span className="flex-1 group-data-[collapsible=icon]:hidden">
             {item.title}
           </span>
           {item.badge && (

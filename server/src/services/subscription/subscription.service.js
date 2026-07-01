@@ -13,6 +13,7 @@ import {
   getSubscriptionPrice,
 } from "./subscriptionPlanChange.service.js";
 import { recordSubscriptionRevenue } from "./subscriptionRevenue.service.js";
+import { buildSubscriptionEntitlements } from "./subscriptionEntitlement.service.js";
 
 const GRACE_PERIOD_DAYS = 3;
 const RENEWAL_REMINDER_DAYS = 3;
@@ -409,10 +410,16 @@ export async function getCurrentSubscription(businessId) {
       include: { plan: true, invoices: true },
     });
 
-    return created;
+    return {
+      ...created,
+      entitlements: buildSubscriptionEntitlements(created),
+    };
   }
 
-  return subscription;
+  return {
+    ...subscription,
+    entitlements: buildSubscriptionEntitlements(subscription),
+  };
 }
 
 export async function getPlans() {

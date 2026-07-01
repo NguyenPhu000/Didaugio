@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/stores/authStore";
@@ -5,14 +6,15 @@ import { useBusinessProfile } from "@/hooks/queries/useBusinessQueries";
 import { ROLES } from "@/constants/constants";
 import { BUSINESS_STATUS } from "@/constants/businessConstants";
 import { BUSINESS_ROUTES } from "@/constants/routes";
+import { Hourglass } from "lucide-react";
 
 const BusinessPendingView = () => {
   const { t } = useTranslation();
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-8 text-center space-y-4">
-        <div className="w-16 h-16 mx-auto bg-yellow-100 rounded-full flex items-center justify-center">
-          <span className="text-3xl">⏳</span>
+        <div className="w-16 h-16 mx-auto bg-amber-50 rounded-full flex items-center justify-center border border-amber-200 shadow-inner">
+          <Hourglass className="w-8 h-8 text-amber-600 animate-spin [animation-duration:3s]" />
         </div>
         <h1 className="text-2xl font-bold">{t("business.guard.pending")}</h1>
         <p className="text-gray-600">
@@ -122,8 +124,31 @@ const BusinessSuspiciousView = () => {
  * @param {boolean} [props.allowWhenPendingOrRejected] - Cho phép trang (vd: Hồ sơ) khi pending/rejected/suspended để xem hoặc cập nhật
  */
 const BusinessGuard = ({ children, allowWhenPendingOrRejected = false }) => {
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const { data: business, isLoading } = useBusinessProfile();
+  const biz = business?.data || business;
+
+  useEffect(() => {
+    if (!biz?.subscription || !user) return;
+    const currentSubscription = user?.business?.subscription || user?.subscription;
+    if (
+      currentSubscription?.id === biz.subscription.id &&
+      currentSubscription?.updatedAt === biz.subscription.updatedAt
+    ) {
+      return;
+    }
+    setUser({
+      ...user,
+      business: {
+        ...(user.business || {}),
+        id: biz.id,
+        status: biz.status,
+        subscription: biz.subscription,
+      },
+      subscription: biz.subscription,
+      entitlements: biz.subscription.entitlements,
+    });
+  }, [biz?.id, biz?.status, biz?.subscription, setUser, user]);
 
   // Staff bypass business status checks — they just need to be linked to a business
   if (user?.roleId === ROLES.STAFF) return children;
@@ -146,9 +171,6 @@ const BusinessGuard = ({ children, allowWhenPendingOrRejected = false }) => {
   if (!business) {
     return <Navigate to={BUSINESS_ROUTES.REGISTER} replace />;
   }
-
-  // Extract business data from API envelope
-  const biz = business?.data || business;
 
   if (!allowWhenPendingOrRejected) {
     if (biz?.status === BUSINESS_STATUS.PENDING)

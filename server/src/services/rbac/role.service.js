@@ -1,5 +1,5 @@
 import prisma from "../../config/prismaClient.js";
-import { ROLES, ROLE_HIERARCHY } from "../../config/constants.js";
+import { ROLES, canEditRolePermissions } from "../../config/constants.js";
 import {
   validateRoleId,
   validateRoleQuery,
@@ -302,8 +302,8 @@ export const updateRolePermissions = async (roleId, permissionData, currentUser 
   }
 
   // Check hierarchy
-  const currentUserLevel = ROLE_HIERARCHY[currentUser?.roleId]?.level || 999;
-  const targetRoleLevel = ROLE_HIERARCHY[role.id]?.level || 999;
+  const currentUserLevel = canEditRolePermissions(currentUser?.roleId, role.id) ? 1 : 999;
+  const targetRoleLevel = 2;
 
   if (currentUser?.roleId !== ROLES.SUPER_ADMIN) {
     if (currentUserLevel >= targetRoleLevel) {

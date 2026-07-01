@@ -32,6 +32,70 @@ export const ROLE_HIERARCHY = {
   [ROLES.GUEST]: { name: "guest", level: 6, canManage: [] },
 };
 
+export const ADMIN_ROLE_IDS = new Set([ROLES.SUPER_ADMIN, ROLES.ADMIN]);
+export const BACK_OFFICE_ROLE_IDS = new Set([
+  ROLES.SUPER_ADMIN,
+  ROLES.ADMIN,
+  ROLES.STAFF,
+]);
+export const BUSINESS_PORTAL_ROLE_IDS = new Set([ROLES.BUSINESS, ROLES.STAFF]);
+
+export function isSuperAdminRole(roleId) {
+  return Number(roleId) === ROLES.SUPER_ADMIN;
+}
+
+export function isAdminRole(roleId) {
+  return Number(roleId) === ROLES.ADMIN;
+}
+
+export function isAdminOrSuperAdminRole(roleId) {
+  return ADMIN_ROLE_IDS.has(Number(roleId));
+}
+
+export function isBackOfficeRole(roleId) {
+  return BACK_OFFICE_ROLE_IDS.has(Number(roleId));
+}
+
+export function isBusinessScopedRole(roleId) {
+  return BUSINESS_PORTAL_ROLE_IDS.has(Number(roleId));
+}
+
+export function canManageRoleId(managerRoleId, targetRoleId) {
+  const manager = ROLE_HIERARCHY[Number(managerRoleId)];
+  const targetId = Number(targetRoleId);
+
+  if (!manager || !ROLE_HIERARCHY[targetId]) return false;
+  if (Number(managerRoleId) === targetId) return false;
+  if (isSuperAdminRole(managerRoleId)) {
+    return targetId !== ROLES.SUPER_ADMIN;
+  }
+
+  return manager.canManage.includes(targetId);
+}
+
+export function canAssignRoleId(managerRoleId, targetRoleId) {
+  const manager = ROLE_HIERARCHY[Number(managerRoleId)];
+  const targetId = Number(targetRoleId);
+
+  if (!manager || !ROLE_HIERARCHY[targetId]) return false;
+  if (isSuperAdminRole(managerRoleId)) {
+    return targetId !== ROLES.SUPER_ADMIN;
+  }
+
+  return manager.canManage.includes(targetId);
+}
+
+export function getRoleLevel(roleId) {
+  return ROLE_HIERARCHY[Number(roleId)]?.level || 999;
+}
+
+export function canEditRolePermissions(managerRoleId, targetRoleId) {
+  const targetId = Number(targetRoleId);
+  if (targetId === ROLES.SUPER_ADMIN) return false;
+  if (isSuperAdminRole(managerRoleId)) return true;
+  return canManageRoleId(managerRoleId, targetId);
+}
+
 // Helper: name-based role comparison
 export function canManageRole(managerRoleName, targetRoleName) {
   const managerEntry = Object.values(ROLE_HIERARCHY).find(

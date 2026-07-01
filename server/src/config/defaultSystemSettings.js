@@ -3,7 +3,7 @@
  */
 export const DEFAULT_SYSTEM_SETTINGS = {
   general: {
-    siteName: "Đi Đâu Giờ?",
+    siteName: "iPoint Genie",
     siteDescription: "Khám phá Cần Thơ",
     logoUrl: "",
     faviconUrl: "",
@@ -66,7 +66,7 @@ export const DEFAULT_SYSTEM_SETTINGS = {
     offlinePageMessage: "Hệ thống đang bảo trì, vui lòng quay lại sau.",
   },
   seo: {
-    metaTitleDefault: "Đi Đâu Giờ - Khám phá Cần Thơ",
+    metaTitleDefault: "iPoint Genie - Khám phá Cần Thơ",
     metaDescriptionDefault: "Nền tảng khám phá địa điểm nổi bật tại Cần Thơ",
     robotsPolicy: "index,follow",
     sitemapEnabled: true,

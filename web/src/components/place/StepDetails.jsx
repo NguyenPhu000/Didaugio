@@ -6,14 +6,11 @@ import {
   Image as ImageIcon,
   MapPin,
   Phone,
-  Mail,
   Globe,
-  Facebook,
   DollarSign,
   Tags,
   Clock,
   Info,
-  CheckCircle2,
   AlertCircle,
 } from "lucide-react";
 import usePlaceStore from "@/stores/placeStore";
@@ -43,8 +40,31 @@ import { cn } from "@/lib/utils";
 const MapPicker = lazy(() => import("./MapPicker"));
 
 const MapSkeleton = () => (
-  <div className="w-full h-[400px] rounded-lg bg-muted animate-pulse flex items-center justify-center">
-    <MapPin className="h-10 w-10 text-muted-foreground/50" />
+  <div className="flex h-[400px] w-full animate-pulse items-center justify-center rounded-2xl bg-zinc-100">
+    <MapPin className="h-10 w-10 text-black/30" />
+  </div>
+);
+
+const TAB_ITEMS = [
+  { value: "description", icon: Info, labelKey: "admin.placeWizard.details.title" },
+  { value: "images", icon: ImageIcon, labelKey: "admin.placeWizard.preview.images" },
+  { value: "location", icon: MapPin, labelKey: "admin.placeWizard.preview.location" },
+  { value: "contact", icon: Phone, labelKey: "admin.placeWizard.preview.phone" },
+];
+
+const SectionHeader = ({ icon: Icon, title, description }) => (
+  <div className="flex items-start justify-between gap-4">
+    <div>
+      <CardTitle className="flex items-center gap-2 text-base font-semibold text-zinc-950">
+        <Icon className="h-5 w-5 text-black" />
+        {title}
+      </CardTitle>
+      {description && (
+        <CardDescription className="mt-1 text-sm text-zinc-500">
+          {description}
+        </CardDescription>
+      )}
+    </div>
   </div>
 );
 
@@ -70,6 +90,16 @@ const StepDetails = () => {
 
     if (!wizardData.description?.trim()) {
       newErrors.description = t("admin.placeWizard.basicInfo.descriptionPlaceholder");
+    }
+
+    if (
+      wizardData.priceFrom &&
+      wizardData.priceTo &&
+      Number(wizardData.priceTo) < Number(wizardData.priceFrom)
+    ) {
+      newErrors.priceRange = t("admin.placeWizard.price.maxLessThanMin", {
+        defaultValue: "Giá tối đa phải lớn hơn hoặc bằng giá tối thiểu.",
+      });
     }
 
     if (
@@ -104,6 +134,7 @@ const StepDetails = () => {
     const lng = wizardData.longitude;
 
     if (!lat || !lng) return;
+    if (wizardData.districtId) return;
 
     if (
       lastLookupRef.current.lat === lat &&
@@ -127,7 +158,7 @@ const StepDetails = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [wizardData.latitude, wizardData.longitude, toast]);
+  }, [wizardData.latitude, wizardData.longitude, wizardData.districtId, toast, t]);
 
   const handleNext = () => {
     if (validate()) {
@@ -146,50 +177,36 @@ const StepDetails = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-500">
+    <div className="animate-in fade-in slide-in-from-bottom-6 space-y-6 pb-12 duration-500">
       <Tabs defaultValue="description" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-auto p-0 bg-muted/50 rounded-lg">
-          <TabsTrigger
-            value="description"
-            className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm py-3 gap-2"
-          >
-            <Info className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("admin.placeWizard.details.title")}</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="images"
-            className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm py-3 gap-2"
-          >
-            <ImageIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("admin.placeWizard.preview.images")}</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="location"
-            className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm py-3 gap-2"
-          >
-            <MapPin className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("admin.placeWizard.preview.location")}</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="contact"
-            className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm py-3 gap-2"
-          >
-            <Phone className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("admin.placeWizard.preview.phone")}</span>
-          </TabsTrigger>
-        </TabsList>
+        <div className="rounded-3xl border border-zinc-200 bg-white p-2 shadow-sm">
+          <TabsList className="grid h-auto w-full grid-cols-4 gap-2 bg-transparent p-0">
+            {TAB_ITEMS.map(({ value, icon: Icon, labelKey }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="min-h-14 rounded-2xl border border-transparent px-2 py-3 text-zinc-500 transition-all data-[state=active]:border-black data-[state=active]:bg-zinc-50 data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm"
+              >
+                <span className="flex flex-col items-center gap-1.5 sm:flex-row sm:gap-2">
+                  <Icon className="h-4 w-4 text-black" />
+                  <span className="text-xs font-semibold sm:text-sm">
+                    {t(labelKey)}
+                  </span>
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {/* Tab 1: Description */}
         <TabsContent value="description" className="space-y-6 mt-6">
-          <Card>
+          <Card className="overflow-hidden rounded-3xl border-zinc-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Info className="h-5 w-5 text-primary" />
-                {t("admin.placeWizard.details.title")}
-              </CardTitle>
-              <CardDescription>
-                {t("admin.placeWizard.basicInfo.descriptionPlaceholder")}
-              </CardDescription>
+              <SectionHeader
+                icon={Info}
+                title={t("admin.placeWizard.details.title")}
+                description={t("admin.placeWizard.basicInfo.descriptionPlaceholder")}
+              />
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
@@ -205,7 +222,7 @@ const StepDetails = () => {
                     updateWizardData({ description: e.target.value })
                   }
                   className={cn(
-                    "resize-none",
+                    "min-h-36 resize-none rounded-2xl border-zinc-200 bg-zinc-50/70 p-4 focus-visible:bg-white",
                     errors.description && "border-destructive focus-visible:ring-destructive"
                   )}
                 />
@@ -218,9 +235,9 @@ const StepDetails = () => {
               </div>
 
               {/* Price Range */}
-              <div className="border-t pt-6">
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <DollarSign className="h-5 w-5 text-primary" />
+                  <DollarSign className="h-5 w-5 text-black" />
                   <h4 className="font-semibold">{t("admin.placeWizard.details.priceRange")}</h4>
                 </div>
                 <PriceRangeSlider
@@ -228,13 +245,14 @@ const StepDetails = () => {
                   priceFrom={wizardData.priceFrom}
                   priceTo={wizardData.priceTo}
                   onChange={(data) => updateWizardData(data)}
+                  error={errors.priceRange}
                 />
               </div>
 
               {/* Tags */}
-              <div className="border-t pt-6">
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50/60 p-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <Tags className="h-5 w-5 text-primary" />
+                  <Tags className="h-5 w-5 text-black" />
                   <h4 className="font-semibold">{t("admin.placeWizard.details.tags")}</h4>
                 </div>
                 <TagSelector
@@ -244,9 +262,9 @@ const StepDetails = () => {
               </div>
 
               {/* Opening Hours */}
-              <div className="border-t pt-6">
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <Clock className="h-5 w-5 text-primary" />
+                  <Clock className="h-5 w-5 text-black" />
                   <h4 className="font-semibold">{t("admin.placeWizard.details.openingHours")}</h4>
                 </div>
                 <OpeningHoursEditor
@@ -260,15 +278,13 @@ const StepDetails = () => {
 
         {/* Tab 2: Images */}
         <TabsContent value="images" className="mt-6">
-          <Card>
+          <Card className="overflow-hidden rounded-3xl border-zinc-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <ImageIcon className="h-5 w-5 text-primary" />
-                {t("admin.placeWizard.preview.images")}
-              </CardTitle>
-              <CardDescription>
-                {t("admin.placeWizard.preview.noImages")}
-              </CardDescription>
+              <SectionHeader
+                icon={ImageIcon}
+                title={t("admin.placeWizard.preview.images")}
+                description={t("admin.placeWizard.preview.noImages")}
+              />
             </CardHeader>
             <CardContent>
               <ImageUploader
@@ -281,15 +297,13 @@ const StepDetails = () => {
 
         {/* Tab 3: Location */}
         <TabsContent value="location" className="mt-6">
-          <Card>
+          <Card className="overflow-hidden rounded-3xl border-zinc-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <MapPin className="h-5 w-5 text-primary" />
-                {t("admin.placeWizard.preview.location")}
-              </CardTitle>
-              <CardDescription>
-                {t("admin.placeWizard.details.selectOnMap")}
-              </CardDescription>
+              <SectionHeader
+                icon={MapPin}
+                title={t("admin.placeWizard.preview.location")}
+                description={t("admin.placeWizard.details.selectOnMap")}
+              />
             </CardHeader>
             <CardContent className="space-y-4">
               {errors.location && (
@@ -302,6 +316,7 @@ const StepDetails = () => {
                 <MapPicker
                   latitude={wizardData.latitude}
                   longitude={wizardData.longitude}
+                  districtId={wizardData.districtId}
                   onChange={(lat, lng) =>
                     updateWizardData({ latitude: lat, longitude: lng })
                   }
@@ -315,15 +330,13 @@ const StepDetails = () => {
         {/* Tab 4: Contact Info */}
         <TabsContent value="contact" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
+            <Card className="rounded-3xl border-zinc-200 shadow-sm">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Phone className="h-5 w-5 text-primary" />
-                  {t("admin.placeWizard.basicInfo.phone")}
-                </CardTitle>
-                <CardDescription>
-                  {t("admin.placeWizard.basicInfo.email")}
-                </CardDescription>
+                <SectionHeader
+                  icon={Phone}
+                  title={t("admin.placeWizard.basicInfo.phone")}
+                  description={t("admin.placeWizard.basicInfo.email")}
+                />
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -339,7 +352,7 @@ const StepDetails = () => {
                       updateWizardData({ phone: e.target.value })
                     }
                     className={cn(
-                      "h-11",
+                      "h-11 rounded-xl border-zinc-200",
                       errors.phone && "border-destructive focus-visible:ring-destructive"
                     )}
                   />
@@ -363,7 +376,7 @@ const StepDetails = () => {
                       updateWizardData({ email: e.target.value })
                     }
                     className={cn(
-                      "h-11",
+                      "h-11 rounded-xl border-zinc-200",
                       errors.email && "border-destructive focus-visible:ring-destructive"
                     )}
                   />
@@ -377,15 +390,15 @@ const StepDetails = () => {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-3xl border-zinc-200 shadow-sm">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Globe className="h-5 w-5 text-primary" />
-                  {t("admin.placeWizard.basicInfo.website")}
-                </CardTitle>
-                <CardDescription>
-                  {t("admin.placeWizard.basicInfo.website")}
-                </CardDescription>
+                <SectionHeader
+                  icon={Globe}
+                  title={t("admin.placeWizard.basicInfo.website")}
+                  description={t("admin.placeWizard.details.onlinePresence", {
+                    defaultValue: "Website, Facebook",
+                  })}
+                />
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -401,7 +414,7 @@ const StepDetails = () => {
                       updateWizardData({ website: e.target.value })
                     }
                     className={cn(
-                      "h-11",
+                      "h-11 rounded-xl border-zinc-200",
                       errors.website && "border-destructive focus-visible:ring-destructive"
                     )}
                   />
@@ -423,7 +436,7 @@ const StepDetails = () => {
                     onChange={(e) =>
                       updateWizardData({ facebook: e.target.value })
                     }
-                    className="h-11"
+                    className="h-11 rounded-xl border-zinc-200"
                   />
                 </div>
               </CardContent>

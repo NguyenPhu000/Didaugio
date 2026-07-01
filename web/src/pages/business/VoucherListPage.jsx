@@ -222,12 +222,12 @@ const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
         <form
           id="voucher-form"
           onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto space-y-6 py-2 pr-1"
+          className="flex-1 overflow-y-auto space-y-6 py-4 pr-1"
         >
           {/* ── Section: Basic Info ── */}
-          <fieldset className="space-y-3">
-            <legend className="text-sm font-semibold text-zinc-950 dark:text-zinc-100 flex items-center gap-2">
-              <Ticket className="h-3.5 w-3.5 text-zinc-400" />
+          <fieldset className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/30 p-5 dark:border-zinc-800 dark:bg-zinc-900/30">
+            <legend className="text-sm font-bold text-zinc-950 dark:text-zinc-100 flex items-center gap-2 px-1">
+              <Ticket className="h-4 w-4 text-zinc-500" />
               {t("business.vouchers.form.basicInfo")}
             </legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -241,7 +241,7 @@ const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
                   onChange={(e) => updateField("code", e.target.value.toUpperCase())}
                   required
                   disabled={!!voucher}
-                  className={cn("uppercase", errors.code && "border-destructive")}
+                  className={cn("uppercase bg-white dark:bg-zinc-950", errors.code && "border-destructive")}
                   placeholder="VD: SUMMER2026"
                 />
                 {errors.code && <p className="text-xs text-destructive">{errors.code}</p>}
@@ -253,6 +253,7 @@ const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
                   value={form.name}
                   onChange={(e) => updateField("name", e.target.value)}
                   placeholder={t("business.vouchers.form.namePlaceholder")}
+                  className="bg-white dark:bg-zinc-950"
                 />
               </div>
             </div>
@@ -264,26 +265,26 @@ const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
                 onChange={(e) => updateField("description", e.target.value)}
                 rows={2}
                 placeholder={t("business.vouchers.form.descriptionPlaceholder")}
-                className={cn(errors.description && "border-destructive")}
+                className={cn("bg-white dark:bg-zinc-950", errors.description && "border-destructive")}
               />
               {errors.description && <p className="text-xs text-destructive">{errors.description}</p>}
             </div>
           </fieldset>
 
           {/* ── Section: Discount ── */}
-          <fieldset className="space-y-3">
-            <legend className="text-sm font-semibold text-zinc-950 dark:text-zinc-100 flex items-center gap-2">
-              <TrendingUp className="h-3.5 w-3.5 text-zinc-400" />
+          <fieldset className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/30 p-5 dark:border-zinc-800 dark:bg-zinc-900/30">
+            <legend className="text-sm font-bold text-zinc-950 dark:text-zinc-100 flex items-center gap-2 px-1">
+              <TrendingUp className="h-4 w-4 text-zinc-500" />
               {t("business.vouchers.form.discountSection")}
             </legend>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 col-span-1">
                 <Label>{t("business.vouchers.form.discountType")}</Label>
                 <Select
                   value={form.discountType}
                   onValueChange={(v) => updateField("discountType", v)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white dark:bg-zinc-950">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -295,34 +296,74 @@ const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 col-span-2">
                 <Label htmlFor="vc-val">
                   {t("business.vouchers.form.discountValue")} <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="vc-val"
-                  type="number"
-                  value={form.discountValue}
-                  onChange={(e) => updateField("discountValue", e.target.value)}
-                  min="0"
-                  required
-                  className={cn(errors.discountValue && "border-destructive")}
-                />
+                <div className="flex gap-2">
+                  <Select
+                    value={["5","10","15","20","25","30","50","75","100","10000","20000","30000","50000","100000","150000","200000","500000"].includes(String(form.discountValue)) ? String(form.discountValue) : "custom"}
+                    onValueChange={(v) => {
+                      if (v !== "custom") {
+                        updateField("discountValue", v);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-36 shrink-0 bg-white dark:bg-zinc-950">
+                      <SelectValue placeholder="Chọn nhanh" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="custom">Tùy chỉnh</SelectItem>
+                      {form.discountType === "percentage" ? (
+                        <>
+                          <SelectItem value="5">5%</SelectItem>
+                          <SelectItem value="10">10%</SelectItem>
+                          <SelectItem value="15">15%</SelectItem>
+                          <SelectItem value="20">20%</SelectItem>
+                          <SelectItem value="25">25%</SelectItem>
+                          <SelectItem value="30">30%</SelectItem>
+                          <SelectItem value="50">50%</SelectItem>
+                          <SelectItem value="75">75%</SelectItem>
+                          <SelectItem value="100">100%</SelectItem>
+                        </>
+                      ) : (
+                        <>
+                          <SelectItem value="10000">10k</SelectItem>
+                          <SelectItem value="20000">20k</SelectItem>
+                          <SelectItem value="30000">30k</SelectItem>
+                          <SelectItem value="50000">50k</SelectItem>
+                          <SelectItem value="100000">100k</SelectItem>
+                          <SelectItem value="150000">150k</SelectItem>
+                          <SelectItem value="200000">200k</SelectItem>
+                          <SelectItem value="500000">500k</SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    id="vc-val"
+                    type="number"
+                    value={form.discountValue}
+                    onChange={(e) => updateField("discountValue", e.target.value)}
+                    min="0"
+                    required
+                    placeholder="Nhập giá trị"
+                    className={cn("flex-1 bg-white dark:bg-zinc-950", errors.discountValue && "border-destructive")}
+                  />
+                </div>
                 {errors.discountValue && <p className="text-xs text-destructive">{errors.discountValue}</p>}
               </div>
-              <div className="space-y-1.5">
-                <Label>{t("business.vouchers.form.preview")}</Label>
-                <div className="flex h-9 items-center rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 text-sm font-semibold text-emerald-600 dark:bg-zinc-900 dark:border-zinc-700 dark:text-emerald-400">
-                  -{preview}
-                </div>
-              </div>
+            </div>
+            <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3 flex justify-between items-center dark:bg-emerald-950/30 dark:border-emerald-900/30">
+              <span className="text-xs text-emerald-800 dark:text-emerald-400">Xem trước mức giảm giá:</span>
+              <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">-{preview}</span>
             </div>
           </fieldset>
 
           {/* ── Section: Limits ── */}
-          <fieldset className="space-y-3">
-            <legend className="text-sm font-semibold text-zinc-950 dark:text-zinc-100 flex items-center gap-2">
-              <Users className="h-3.5 w-3.5 text-zinc-400" />
+          <fieldset className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/30 p-5 dark:border-zinc-800 dark:bg-zinc-900/30">
+            <legend className="text-sm font-bold text-zinc-950 dark:text-zinc-100 flex items-center gap-2 px-1">
+              <Users className="h-4 w-4 text-zinc-500" />
               {t("business.vouchers.form.limitsSection")}
             </legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -335,6 +376,7 @@ const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
                   onChange={(e) => updateField("minOrderValue", e.target.value)}
                   min="0"
                   placeholder="0"
+                  className="bg-white dark:bg-zinc-950"
                 />
               </div>
               <div className="space-y-1.5">
@@ -346,37 +388,86 @@ const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
                   onChange={(e) => updateField("maxDiscount", e.target.value)}
                   min="0"
                   placeholder={t("business.vouchers.form.maxDiscountPlaceholder")}
+                  className="bg-white dark:bg-zinc-950"
                 />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="vc-maxu">{t("business.vouchers.form.maxUsage")}</Label>
-                <Input
-                  id="vc-maxu"
-                  type="number"
-                  value={form.maxUsage}
-                  onChange={(e) => updateField("maxUsage", e.target.value)}
-                  min="1"
-                />
+                <div className="flex gap-2">
+                  <Select
+                    value={["10","50","100","200","500","1000"].includes(String(form.maxUsage)) ? String(form.maxUsage) : "custom"}
+                    onValueChange={(v) => {
+                      if (v !== "custom") {
+                        updateField("maxUsage", v);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-28 shrink-0 bg-white dark:bg-zinc-950">
+                      <SelectValue placeholder="Chọn" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="custom">Tự nhập</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="200">200</SelectItem>
+                      <SelectItem value="500">500</SelectItem>
+                      <SelectItem value="1000">1.000</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    id="vc-maxu"
+                    type="number"
+                    value={form.maxUsage}
+                    onChange={(e) => updateField("maxUsage", e.target.value)}
+                    min="1"
+                    placeholder="Số lượng"
+                    className="flex-1 bg-white dark:bg-zinc-950"
+                  />
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="vc-peruser">{t("business.vouchers.form.maxPerUser")}</Label>
-                <Input
-                  id="vc-peruser"
-                  type="number"
-                  value={form.maxUsagePerUser}
-                  onChange={(e) => updateField("maxUsagePerUser", e.target.value)}
-                  min="1"
-                />
+                <div className="flex gap-2">
+                  <Select
+                    value={["1","2","5","10"].includes(String(form.maxUsagePerUser)) ? String(form.maxUsagePerUser) : "custom"}
+                    onValueChange={(v) => {
+                      if (v !== "custom") {
+                        updateField("maxUsagePerUser", v);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-28 shrink-0 bg-white dark:bg-zinc-950">
+                      <SelectValue placeholder="Chọn" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="custom">Tự nhập</SelectItem>
+                      <SelectItem value="1">1 lần</SelectItem>
+                      <SelectItem value="2">2 lần</SelectItem>
+                      <SelectItem value="5">5 lần</SelectItem>
+                      <SelectItem value="10">10 lần</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    id="vc-peruser"
+                    type="number"
+                    value={form.maxUsagePerUser}
+                    onChange={(e) => updateField("maxUsagePerUser", e.target.value)}
+                    min="1"
+                    placeholder="Số lần"
+                    className="flex-1 bg-white dark:bg-zinc-950"
+                  />
+                </div>
               </div>
             </div>
           </fieldset>
 
           {/* ── Section: Schedule & Places ── */}
-          <fieldset className="space-y-3">
-            <legend className="text-sm font-semibold text-zinc-950 dark:text-zinc-100 flex items-center gap-2">
-              <Calendar className="h-3.5 w-3.5 text-zinc-400" />
+          <fieldset className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/30 p-5 dark:border-zinc-800 dark:bg-zinc-900/30">
+            <legend className="text-sm font-bold text-zinc-950 dark:text-zinc-100 flex items-center gap-2 px-1">
+              <Calendar className="h-4 w-4 text-zinc-500" />
               {t("business.vouchers.form.scheduleSection")}
             </legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -387,7 +478,7 @@ const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
                   type="date"
                   value={form.startDate}
                   onChange={(e) => updateField("startDate", e.target.value)}
-                  className={cn(errors.startDate && "border-destructive")}
+                  className={cn("bg-white dark:bg-zinc-950", errors.startDate && "border-destructive")}
                 />
                 {errors.startDate && <p className="text-xs text-destructive">{errors.startDate}</p>}
               </div>
@@ -398,7 +489,7 @@ const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
                   type="date"
                   value={form.endDate}
                   onChange={(e) => updateField("endDate", e.target.value)}
-                  className={cn(errors.endDate && "border-destructive")}
+                  className={cn("bg-white dark:bg-zinc-950", errors.endDate && "border-destructive")}
                 />
                 {errors.endDate && <p className="text-xs text-destructive">{errors.endDate}</p>}
               </div>
@@ -409,7 +500,7 @@ const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
                 value={form.appliesToPlaceId}
                 onValueChange={(v) => updateField("appliesToPlaceId", v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-white dark:bg-zinc-950">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -424,14 +515,13 @@ const VoucherFormModal = ({ open, voucher, places = [], onSave, onClose }) => {
             </div>
           </fieldset>
 
-          {/* ── Active toggle ── */}
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-zinc-50 border border-zinc-150 shadow-sm dark:bg-zinc-900/30 dark:border-zinc-800">
             <Checkbox
               id="vc-active"
               checked={form.isActive}
               onCheckedChange={(checked) => updateField("isActive", !!checked)}
             />
-            <Label htmlFor="vc-active" className="cursor-pointer text-sm">
+            <Label htmlFor="vc-active" className="cursor-pointer text-sm font-semibold">
               {t("business.vouchers.form.activateImmediately")}
             </Label>
           </div>

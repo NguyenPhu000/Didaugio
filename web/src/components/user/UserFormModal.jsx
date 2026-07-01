@@ -30,7 +30,14 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-const UserFormModal = ({ open, onClose, user, onSuccess, mode = "create" }) => {
+const UserFormModal = ({
+  open,
+  onClose,
+  user,
+  onSuccess,
+  mode = "create",
+  currentUser = null,
+}) => {
   const { t } = useTranslation();
   const isChangePasswordMode = mode === "change-password";
   const [loading, setLoading] = useState(false);
@@ -107,6 +114,24 @@ const UserFormModal = ({ open, onClose, user, onSuccess, mode = "create" }) => {
 
   const provinceCode = watch("provinceCode");
   const districtCode = watch("districtCode");
+  const roleOptions = [
+    { value: ROLES.STAFF, label: t("roles.names.staff") },
+    { value: ROLES.BUSINESS, label: t("roles.names.business") },
+    { value: ROLES.ADMIN, label: t("roles.names.admin") },
+    { value: ROLES.SUPER_ADMIN, label: t("roles.names.superAdmin") },
+  ].filter((option) => {
+    if (mode === "edit" && user?.roleId === option.value) return true;
+    if (currentUser?.roleId === ROLES.SUPER_ADMIN) {
+      return option.value !== ROLES.SUPER_ADMIN;
+    }
+    if (currentUser?.roleId === ROLES.ADMIN) {
+      return [ROLES.BUSINESS, ROLES.STAFF].includes(option.value);
+    }
+    if (currentUser?.roleId === ROLES.BUSINESS) {
+      return option.value === ROLES.STAFF;
+    }
+    return false;
+  });
 
   // Reset form when modal opens/closes or user changes
   useEffect(() => {
@@ -333,10 +358,11 @@ const UserFormModal = ({ open, onClose, user, onSuccess, mode = "create" }) => {
                         className={selectCls}
                         disabled={mode === "edit"}
                       >
-                        <option value={ROLES.STAFF}>{t("roles.names.staff")}</option>
-                        <option value={ROLES.BUSINESS}>{t("roles.names.business")}</option>
-                        <option value={ROLES.ADMIN}>{t("roles.names.admin")}</option>
-                        <option value={ROLES.SUPER_ADMIN}>{t("roles.names.superAdmin")}</option>
+                        {roleOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
                     </Field>

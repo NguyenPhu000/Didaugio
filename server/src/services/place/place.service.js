@@ -7,6 +7,7 @@ import {
   generateMapMarkerUrl,
   deleteMapMarkerImage,
 } from "../../utils/cloudinaryHelper.js";
+import { assertBusinessLimit } from "../subscription/subscriptionEntitlement.service.js";
 
 /**
  * Generate slug từ tên
@@ -485,6 +486,17 @@ export const createPlace = async (data, userId) => {
   const resolvedBusinessId = businessId
     ? parseInt(businessId)
     : ownedBusiness?.id || null;
+
+  if (resolvedBusinessId) {
+    const currentPlaceCount = await prisma.place.count({
+      where: { businessId: resolvedBusinessId },
+    });
+    await assertBusinessLimit(
+      resolvedBusinessId,
+      "maxPlaces",
+      currentPlaceCount,
+    );
+  }
 
   // Basic Validation
   if (

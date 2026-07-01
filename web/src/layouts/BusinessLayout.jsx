@@ -21,7 +21,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { resolveRoleId } from "@/utils/authRouting";
 import { useTranslation } from "react-i18next";
-import { CustomSidebarRail, BusinessHeader, NavMain, getMenuData } from "./sidebar";
+import { CustomSidebarRail, BusinessHeader, BusinessNavMain, getMenuData } from "./sidebar";
 
 /**
  * BusinessLayout — dedicated layout for `/business/*`.
@@ -84,42 +84,23 @@ const BusinessLayout = ({ children }) => {
         </SidebarHeader>
 
         <SidebarContent className="px-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <NavMain
+          <BusinessNavMain
             items={businessMainMenu}
             label={t("nav.section.main")}
           />
-          <NavMain
-            items={menuData.businessAccount || []}
-            label={t("nav.section.businessAccount")}
-          />
-          <NavMain
-            items={menuData.businessServices || []}
-            label={t("nav.section.businessServices")}
-          />
-          <NavMain
+          <BusinessNavMain
             items={menuData.business || []}
             label={t("nav.section.operations")}
           />
+          <BusinessNavMain
+            items={menuData.businessFinance || []}
+            label={t("nav.section.finance")}
+          />
+          <BusinessNavMain
+            items={menuData.businessReviews || []}
+            label={t("nav.section.reviews")}
+          />
         </SidebarContent>
-
-        <SidebarFooter className="border-t border-sidebar-border p-3">
-          <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-            <Avatar className="h-9 w-9 shrink-0 border border-sidebar-border">
-              <AvatarImage src={avatarSrc || undefined} />
-              <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
-                {getInitials(user?.fullName || user?.email)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden min-w-0">
-              <span className="text-sm font-semibold truncate text-sidebar-foreground">
-                {user?.fullName || "Doanh nghiệp"}
-              </span>
-              <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
-                {roleLabel}
-              </span>
-            </div>
-          </div>
-        </SidebarFooter>
       </Sidebar>
       <CustomSidebarRail />
       <SidebarInset>

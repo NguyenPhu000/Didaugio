@@ -1,4 +1,5 @@
 import * as eventService from "../../services/event/event.service.js";
+import { isBackOfficeRole } from "../../config/constants.js";
 
 // Helper lấy userId từ request
 const getUserId = (req) => req.user?.userId || req.user?.id || null;
@@ -53,7 +54,7 @@ export const getEvents = async (req, res, next) => {
   try {
     const { status, isFeaturedBanner, search, page, limit } = req.query;
     // Admin/Staff có thể xem tất cả events kể cả inactive
-    const isAdmin = req.user && req.user.roleId <= 4;
+    const isAdmin = req.user && isBackOfficeRole(req.user.roleId);
     const result = await eventService.getEvents({
       status,
       isFeaturedBanner,
@@ -161,7 +162,7 @@ export const deleteMoment = async (req, res, next) => {
   try {
     const momentId = parseInt(req.params.momentId, 10);
     const userId = getUserId(req);
-    const isAdmin = req.user && req.user.roleId <= 4;
+    const isAdmin = req.user && isBackOfficeRole(req.user.roleId);
     await eventService.deleteMoment(momentId, userId, isAdmin);
     return res.json({
       success: true,

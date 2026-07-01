@@ -22,6 +22,15 @@ export function usePermission() {
     [user?.roleId, permissionSet],
   );
 
+  const entitlements = useMemo(
+    () =>
+      user?.subscription?.entitlements ||
+      user?.business?.subscription?.entitlements ||
+      user?.entitlements ||
+      null,
+    [user?.subscription, user?.business, user?.entitlements],
+  );
+
   const hasPermission = (permission) => {
     if (!user) return false;
     if (isWildcard) return true;
@@ -44,15 +53,43 @@ export function usePermission() {
   const isAdmin = () => user?.roleId === ROLES.SUPER_ADMIN || user?.roleId === ROLES.ADMIN;
   const isBusiness = () => user?.roleId === ROLES.BUSINESS;
   const isStaff = () => user?.roleId === ROLES.STAFF;
+  const hasFeature = (featureKey, sourceEntitlements = entitlements) => {
+    if (isWildcard) return true;
+    if (!sourceEntitlements?.usable) return false;
+    return Boolean(sourceEntitlements.featureMap?.[featureKey]);
+  };
+  const canUseLimit = (
+    limitKey,
+    currentCount = 0,
+    sourceEntitlements = entitlements,
+  ) => {
+    if (isWildcard) return true;
+    if (!sourceEntitlements?.usable) return false;
+    const limit = sourceEntitlements.limits?.[limitKey];
+    return typeof limit !== "number" || limit < 0 || currentCount < limit;
+  };
+  const canAssignRole = (roleId) => {
+    const targetRoleId = Number(roleId);
+    if (user?.roleId === ROLES.SUPER_ADMIN) return targetRoleId !== ROLES.SUPER_ADMIN;
+    if (user?.roleId === ROLES.ADMIN) {
+      return [ROLES.BUSINESS, ROLES.STAFF, ROLES.USER].includes(targetRoleId);
+    }
+    if (user?.roleId === ROLES.BUSINESS) return targetRoleId === ROLES.STAFF;
+    return false;
+  };
 
   return {
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
+    hasFeature,
+    canUseLimit,
+    canAssignRole,
     isSuperAdmin,
     isAdmin,
     isBusiness,
     isStaff,
+    entitlements,
     isLoading,
     user,
   };

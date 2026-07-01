@@ -5,6 +5,7 @@ import { ROLES, USER_STATUS } from "../../config/constants.js";
 import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
 import { sendStaffInvitationEmail } from "../communication/mailer.service.js";
+import { assertBusinessLimit } from "../subscription/subscriptionEntitlement.service.js";
 
 const INVITATION_EXPIRY_DAYS = 7;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
@@ -21,6 +22,24 @@ function hashToken(token) {
  */
 export const createInvitation = async (businessId, createdById, data) => {
   const { email, roleId } = data;
+
+  const [activeStaffCount, pendingInvitationCount] = await Promise.all([
+    prisma.user.count({
+      where: { businessId, roleId: ROLES.STAFF, deletedAt: null },
+    }),
+    prisma.staffInvitation.count({
+      where: {
+        businessId,
+        status: "pending",
+        expiresAt: { gt: new Date() },
+      },
+    }),
+  ]);
+  await assertBusinessLimit(
+    businessId,
+    "maxStaff",
+    activeStaffCount + pendingInvitationCount,
+  );
 
   // Validate roleId nếu được cung cấp
   if (roleId) {

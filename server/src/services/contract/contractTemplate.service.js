@@ -248,7 +248,7 @@ export const generateContractPdf = async (businessData) => {
   line(rgb(0.85, 0.87, 0.9));
   txt("ĐIỀU 1: NỘI DUNG CUNG CẤP DỊCH VỤ", margin, { size: 10, bold: true });
   gap(2);
-  txt(`Bên A đồng ý sử dụng Nền tảng Du lịch thông minh Đi Đâu Giờ của Bên B để quảng bá địa điểm, dịch vụ du lịch tại Cần Thơ với các tính năng:`, margin + 10, { size: 9.5, lh: 13 });
+  txt(`Bên A đồng ý sử dụng Nền tảng Du lịch thông minh iPoint Genie của Bên B để quảng bá địa điểm, dịch vụ du lịch tại Cần Thơ với các tính năng:`, margin + 10, { size: 9.5, lh: 13 });
   gap(4);
   const serviceRows = [
     ["1. Địa điểm hiển thị", "Quảng bá thông tin chi tiết, hình ảnh trên Nền tảng web/app"],
@@ -375,7 +375,7 @@ export const generateContractPdf = async (businessData) => {
   // ── FOOTER ───────────────────────────────────────────────────────────────
   const allPages = pdfDoc.getPages();
   const lastPage = allPages[allPages.length - 1];
-  lastPage.drawText("Hợp đồng này được tạo tự động bởi hệ thống Đi Đâu Giờ.", {
+  lastPage.drawText("Hợp đồng này được tạo tự động bởi hệ thống iPoint Genie.", {
     x: margin,
     y: 28,
     size: 7.5,

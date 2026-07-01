@@ -24,6 +24,7 @@ import * as passwordResetService from "../activity/passwordReset.service.js";
 import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
 import { OAuth2Client } from "google-auth-library";
+import { invalidateUserCache } from "../../utils/permissionCache.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -1045,6 +1046,9 @@ export const upgradeToBusinessRole = async (userId) => {
     roleId: updatedUser.roleId,
     roleName: updatedUser.role.name,
   });
+
+  // Invalidate old permissions cache for user to get new business permissions
+  invalidateUserCache(userId);
 
   return {
     user: {

@@ -300,6 +300,7 @@ export function getMenuData() {
       icon: BarChart3,
       url: BUSINESS_ROUTES.REPORTS,
       roles: [R.BUSINESS],
+      feature: "analytics",
     },
     {
       key: "revenue",
@@ -307,6 +308,7 @@ export function getMenuData() {
       icon: BarChart3,
       url: BUSINESS_ROUTES.REVENUE,
       roles: [R.BUSINESS],
+      feature: "analytics",
     },
     {
       key: "earnings",
@@ -322,20 +324,6 @@ export function getMenuData() {
       url: BUSINESS_ROUTES.CASHFLOW,
       roles: [R.BUSINESS],
       permission: PERMISSIONS.BUSINESS.VIEW_REVENUE,
-    },
-    {
-      key: "sub-current",
-      title: t("nav.business.subscriptionCurrent"),
-      icon: CreditCard,
-      url: BUSINESS_ROUTES.SUBSCRIPTION,
-      roles: [R.BUSINESS],
-    },
-    {
-      key: "sub-plans",
-      title: t("nav.business.subscriptionPlans"),
-      icon: CreditCard,
-      url: BUSINESS_ROUTES.SUBSCRIPTION_PLANS,
-      roles: [R.BUSINESS],
     },
   ],
 

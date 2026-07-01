@@ -144,6 +144,21 @@ const ProtectedBusiness = ({
   </ProtectedRoute>
 );
 
+const ProtectedShared = ({ children }) => {
+  const user = useAuthStore((state) => state.user);
+  const currentRoleId = resolveRoleId(user);
+
+  return (
+    <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF, ROLES.BUSINESS]}>
+      {currentRoleId === ROLES.BUSINESS ? (
+        <BusinessLayout>{children}</BusinessLayout>
+      ) : (
+        <AdminLayout>{children}</AdminLayout>
+      )}
+    </ProtectedRoute>
+  );
+};
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -202,17 +217,17 @@ const AppRoutes = () => {
       <Route
         path={ADMIN_ROUTES.PROFILE}
         element={
-          <ProtectedAdmin>
+          <ProtectedShared>
             <ProfilePage />
-          </ProtectedAdmin>
+          </ProtectedShared>
         }
       />
       <Route
         path={ADMIN_ROUTES.NOTIFICATIONS}
         element={
-          <ProtectedRoute>
+          <ProtectedShared>
             <NotificationsPage />
-          </ProtectedRoute>
+          </ProtectedShared>
         }
       />
       <Route

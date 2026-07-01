@@ -57,7 +57,7 @@ export function buildChatSystemPrompt(context = {}) {
       d: p.description ? p.description.substring(0, 120) : "",
     }));
     parts.push(
-      `\nQUAN TRỌNG: Bạn CHỈ ĐƯỢC PHÉP giới thiệu/gợi ý các địa điểm có trong danh sách dưới đây (danh sách JSON rút gọn: i = ID, n = Tên, c = Danh mục, a = Địa chỉ, r = Điểm đánh giá trung bình, p = Khoảng giá, d = Mô tả ngắn). Tuyệt đối KHÔNG tự ý bịa tên hoặc lấy địa điểm khác bên ngoài. Nếu khách hỏi địa điểm ngoài danh sách, hãy trả lời lịch sự rằng "Hiện tại hệ thống Đi Đâu Giờ chưa cập nhật địa điểm này" và gợi ý sang địa điểm có sẵn dưới đây.\nDanh sách địa điểm hệ thống:\n${JSON.stringify(minifiedPlaces)}`
+      `\nQUAN TRỌNG: Bạn CHỈ ĐƯỢC PHÉP giới thiệu/gợi ý các địa điểm có trong danh sách dưới đây (danh sách JSON rút gọn: i = ID, n = Tên, c = Danh mục, a = Địa chỉ, r = Điểm đánh giá trung bình, p = Khoảng giá, d = Mô tả ngắn). Tuyệt đối KHÔNG tự ý bịa tên hoặc lấy địa điểm khác bên ngoài. Nếu khách hỏi địa điểm ngoài danh sách, hãy trả lời lịch sự rằng "Hiện tại hệ thống iPoint Genie chưa cập nhật địa điểm này" và gợi ý sang địa điểm có sẵn dưới đây.\nDanh sách địa điểm hệ thống:\n${JSON.stringify(minifiedPlaces)}`
     );
     parts.push(
       `Khi bạn gợi ý hay nhắc đến bất kỳ địa điểm nào trong câu trả lời, hãy LUÔN kết thúc câu trả lời bằng một dòng định dạng chính xác sau (thay các ID thật vào):

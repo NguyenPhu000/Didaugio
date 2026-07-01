@@ -2,14 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   Text,
   View,
 } from "react-native";
-import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -17,7 +15,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import safeAsyncStorage from "../../../src/utils/safeAsyncStorage";
 import {
   BOOKING_APPLE_THEME as THEME,
-  TOKENS,
 } from "../../../src/constants/design-tokens";
 import {
   useMyBookingDetail,
@@ -25,6 +22,7 @@ import {
   useLinkBookingToTrip,
   useCancelBooking,
 } from "../../../src/modules/booking/hooks/useBooking";
+import BookingTicketCard from "../../../src/modules/booking/components/BookingTicketCard";
 import RefundPolicyModal from "../../../src/modules/booking/components/RefundPolicyModal";
 import {
   useCreateTrip,
@@ -34,7 +32,7 @@ import { useSavePlace } from "../../../src/modules/saved/hooks/useSaved";
 import { useOffline } from "../../../src/hooks/useOffline";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
-import { getI18nLocale, formatShortDate, formatDateTimeLocale } from "../../../src/utils/dateFormat";
+import { formatShortDate, formatDateTimeLocale } from "../../../src/utils/dateFormat";
 
 
 const QR_CACHE_KEY = "@booking_qr_cache";
@@ -48,22 +46,6 @@ const TerminalStatuses = new Set([
   "expired",
   "no_show",
 ]);
-
-const STATUS_META_KEYS = {
-  pending: { color: "#1D1D1F", bg: "#EDEDF2" },
-  confirmed: { color: "#FFFFFF", bg: "#1D1D1F" },
-  completed: { color: "#1D1D1F", bg: "#DFDFE4" },
-  cancelled: { color: "#5A5A5E", bg: "#ECECEF" },
-  rejected: { color: "#5A5A5E", bg: "#F2E8DF" },
-  expired: { color: "#5A5A5E", bg: "#ECECEF" },
-  no_show: { color: "#5A5A5E", bg: "#ECECEF" },
-};
-
-const getStatusMeta = (status, t) => {
-  const meta = STATUS_META_KEYS[status];
-  if (!meta) return { label: status || t("bookingDetail.status.unknown"), color: "#1D1D1F", bg: "#ECECEF" };
-  return { ...meta, label: t(`bookingDetail.status.${status}`) };
-};
 
 const formatCurrency = (value) => {
   const amount = Number(value || 0);
@@ -352,7 +334,6 @@ export default function BookingDetailScreen() {
     );
   }
 
-  const statusMeta = getStatusMeta(booking.status, t);
   const placeId = booking?.service?.place?.id;
 
   return (
@@ -382,50 +363,25 @@ export default function BookingDetailScreen() {
           />
         }
       >
-        <View className="bg-white rounded-[20px] border border-[#D2D2D7] p-[15px]">
-          <View className="flex-row items-center justify-between gap-3">
-            <View className="flex-1">
-              <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium">{t("bookingDetail.bookingCode")}</Text>
-              <Text className="text-[15px] text-[#1D1D1F] font-semibold">{booking.bookingCode}</Text>
-            </View>
+        <BookingTicketCard
+          booking={booking}
+          qrCode={activeQrCode}
+          qrLoading={qrLoading}
+          qrError={qrError}
+          offline={isOffline}
+          variant="detail"
+        />
 
-            <View
-              className="rounded-full px-[10px] py-[5px] border border-[rgba(0,0,0,0.08)]"
-              style={{ backgroundColor: statusMeta.bg }}
-            >
-              <Text className="text-[11px] font-semibold" style={{ color: statusMeta.color }}>
-                {statusMeta.label}
-              </Text>
-            </View>
-          </View>
-
-          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">{t("bookingDetail.service")}</Text>
-          <Text className="text-[14px] text-[#1D1D1F] font-sans">{booking?.service?.name || "--"}</Text>
-
-          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">{t("bookingDetail.place")}</Text>
-          <Text className="text-[14px] text-[#1D1D1F] font-sans">
-            {booking?.service?.place?.name || "--"}
-          </Text>
-
-          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">{t("bookingDetail.usageTime")}</Text>
-          <Text className="text-[14px] text-[#1D1D1F] font-sans">{formatDateTime(booking, t("bookingDetail.notDetermined"))}</Text>
-
-          <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-medium mt-3">{t("bookingDetail.totalPayment")}</Text>
-          <Text className="text-[15px] text-[#1D1D1F] font-semibold">
-            {formatCurrency(booking?.finalPrice)}
-          </Text>
-
-          {canCancelBooking ? (
-            <Pressable
-              className="mt-4 rounded-full border border-[#FCA5A5] bg-[#FEF2F2] py-3 items-center"
-              onPress={() => setShowRefundPolicyModal(true)}
-            >
-              <Text className="text-[#DC2626] text-[14px] font-semibold">
-                {t("bookingDetail.cancel.cta")}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
+        {canCancelBooking ? (
+          <Pressable
+            className="rounded-full border border-[#FCA5A5] bg-[#FEF2F2] py-3 items-center"
+            onPress={() => setShowRefundPolicyModal(true)}
+          >
+            <Text className="text-[#DC2626] text-[14px] font-semibold">
+              {t("bookingDetail.cancel.cta")}
+            </Text>
+          </Pressable>
+        ) : null}
 
         {paymentStatusConfig ? (
           <View
@@ -477,132 +433,6 @@ export default function BookingDetailScreen() {
             </View>
           </View>
         ) : null}
-
-        {/* QR Check-in Card */}
-        {canShowQr ? (
-          <View
-            className="bg-white rounded-[20px] border border-[#D2D2D7] p-[18px]"
-            style={Platform.select({
-              ios: {
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.08,
-                shadowRadius: 16,
-              },
-              android: { elevation: 4 },
-            })}
-          >
-            <View className="flex-row items-center gap-2">
-              <Ionicons name="qr-code" size={18} color={THEME.primary} />
-              <Text className="text-[16px] text-[#1D1D1F] font-semibold">{t("bookingDetail.qrCheckin")}</Text>
-            </View>
-            <Text className="mt-[6px] text-[13px] leading-5 text-[rgba(0,0,0,0.8)] font-sans">
-              {t("bookingDetail.qrInstructions")}
-            </Text>
-
-            {qrLoading && !activeQrCode ? (
-              <View className="mt-5 h-[200px] rounded-2xl bg-[#EDEDF2] items-center justify-center gap-[10px]">
-                <ActivityIndicator size="small" color={THEME.primary} />
-                <Text className="text-[13px] text-[rgba(0,0,0,0.48)] font-medium">{t("bookingDetail.loadingQR")}</Text>
-              </View>
-            ) : activeQrCode ? (
-              <View className="mt-4 items-center relative">
-                <Image
-                  source={{ uri: activeQrCode }}
-                  className="w-[220px] h-[220px] rounded-2xl bg-white border border-[#D2D2D7]"
-                  contentFit="contain"
-                />
-                {/* Offline indicator */}
-                {isOffline && (
-                  <View className="absolute top-2 right-2 flex-row items-center gap-1 bg-black/60 rounded-full px-2 py-1">
-                    <Ionicons name="cloud-offline" size={12} color="#fff" />
-                    <Text className="text-white text-[10px] font-semibold">{t("bookingDetail.offline")}</Text>
-                  </View>
-                )}
-              </View>
-            ) : (
-              <View className="mt-4 h-40 rounded-2xl bg-[#EDEDF2] items-center justify-center gap-2">
-                <Ionicons
-                  name="alert-circle-outline"
-                  size={20}
-                  color={THEME.danger}
-                />
-                <Text className="text-[#FF3B30] text-[13px] font-medium text-center px-4">
-                  {qrError?.message || t("bookingDetail.qrLoadFailed")}
-                </Text>
-                <Pressable className="mt-1 bg-[#1D1D1F] rounded-full px-4 py-2" onPress={() => refetchQr()}>
-                  <Text className="text-white text-[12px] font-semibold">{t("common.retry")}</Text>
-                </Pressable>
-              </View>
-            )}
-
-            {/* Booking code below QR */}
-            {activeQrCode && (
-              <View className="mt-3 self-center bg-[#EDEDF2] rounded-full px-[14px] py-[6px]">
-                <Text className="text-[13px] text-[#1D1D1F] font-semibold tracking-[1.5px]">
-                  {booking.bookingCode}
-                </Text>
-              </View>
-            )}
-
-            {/* Expired overlay for terminal statuses */}
-            {isTerminal && (
-              <View
-                className="rounded-[20px] bg-white/82 items-center justify-center"
-                style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
-              >
-                <View className="items-center gap-[6px] bg-black/70 rounded-2xl px-5 py-[14px]">
-                  <Ionicons
-                    name={
-                      booking.status === "completed"
-                        ? "checkmark-circle"
-                        : "close-circle"
-                    }
-                    size={28}
-                    color="#fff"
-                  />
-                  <Text className="text-white text-[14px] font-semibold">
-                    {booking.status === "completed"
-                      ? t("bookingDetail.statusUsed")
-                      : statusMeta.label}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </View>
-        ) : (
-          <View
-            className="bg-white rounded-[20px] border border-[#D2D2D7] p-[18px]"
-            style={Platform.select({
-              ios: {
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.08,
-                shadowRadius: 16,
-              },
-              android: { elevation: 4 },
-            })}
-          >
-            <View className="flex-row items-center gap-2">
-              <Ionicons name="qr-code" size={18} color={THEME.textMuted} />
-              <Text className="text-[16px] font-semibold" style={{ color: THEME.textMuted }}>
-                {t("bookingDetail.qrCheckin")}
-              </Text>
-            </View>
-            <View className="mt-4 h-[120px] rounded-2xl bg-[#EDEDF2] items-center justify-center gap-2">
-              <Ionicons
-                name="time-outline"
-                size={32}
-                color={THEME.textMuted}
-              />
-              <Text className="text-[13px] text-[rgba(0,0,0,0.48)] font-sans text-center px-5">
-                {isTerminal
-                  ? t("bookingDetail.qrUnavailable")
-                  : t("bookingDetail.qrPendingConfirm")}
-              </Text>
-            </View>
-          </View>
-        )}
 
         <View className="bg-white rounded-[20px] border border-[#D2D2D7] p-[15px]">
           <Text className="text-[16px] text-[#1D1D1F] font-semibold">{t("bookingDetail.linkTrip")}</Text>

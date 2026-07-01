@@ -9,7 +9,10 @@ import {
 } from "../../config/constants.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
-import { generateBookingQR } from "../../utils/generateQR.js";
+import {
+  buildBookingQRPayload,
+  generateBookingQR,
+} from "../../utils/generateQR.js";
 import ServiceError from "../../utils/serviceError.js";
 import { combineUseDateAndTime } from "../../utils/bookingTimeSlot.js";
 import {
@@ -730,8 +733,10 @@ export const getMyBookingQR = async (bookingId, userId) => {
     );
   }
 
-  const qrCode = await generateBookingQR(booking.bookingCode, baseUrl);
-  return { bookingCode: booking.bookingCode, qrCode };
+  const qrAction = "checkin";
+  const qrPayload = buildBookingQRPayload(booking.bookingCode, qrAction);
+  const qrCode = await generateBookingQR(booking.bookingCode, baseUrl, qrAction);
+  return { bookingCode: booking.bookingCode, qrAction, qrPayload, qrCode };
 };
 
 export const linkMyBookingToTrip = async (bookingId, userId, payload = {}) => {
@@ -1580,19 +1585,70 @@ export const getQR = async (bookingId) => {
     );
   }
 
-  const qrCode = await generateBookingQR(booking.bookingCode, baseUrl);
+  const qrAction = "checkin";
+  const qrPayload = buildBookingQRPayload(booking.bookingCode, qrAction);
+  const qrCode = await generateBookingQR(booking.bookingCode, baseUrl, qrAction);
 
-  return { bookingCode: booking.bookingCode, qrCode };
+  return { bookingCode: booking.bookingCode, qrAction, qrPayload, qrCode };
 };
 
 /**
  * Verify/check-in booking QR for business-side scanning flow.
  */
-export const verifyQR = async (payload = {}, actorUserId, actorRoleId) => {
-  const bookingCode = String(payload.bookingCode || "")
+const parseBookingQrPayload = (payload = {}) => {
+  const raw =
+    payload.qrPayload ||
+    payload.payload ||
+    payload.data ||
+    payload.text ||
+    payload.bookingCode ||
+    "";
+  let parsed = null;
+
+  if (raw && typeof raw === "object") {
+    parsed = raw;
+  } else if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith("{")) {
+      try {
+        parsed = JSON.parse(trimmed);
+      } catch {
+        parsed = null;
+      }
+    }
+
+    if (!parsed && trimmed) {
+      const urlMatch = trimmed.match(/\/booking\/verify\/([^/?#]+)/i);
+      return {
+        bookingCode: decodeURIComponent(urlMatch?.[1] || trimmed)
+          .trim()
+          .toUpperCase(),
+        action: payload.action,
+      };
+    }
+  }
+
+  const bookingCode = String(
+    parsed?.bookingCode ||
+      parsed?.code ||
+      payload.bookingCode ||
+      "",
+  )
     .trim()
     .toUpperCase();
-  const requestedAction = String(payload.action || "checkin").toLowerCase();
+
+  return {
+    bookingCode,
+    action: payload.action || parsed?.action,
+    qrType: parsed?.type,
+    qrVersion: parsed?.version,
+  };
+};
+
+export const verifyQR = async (payload = {}, actorUserId, actorRoleId) => {
+  const parsedPayload = parseBookingQrPayload(payload);
+  const bookingCode = parsedPayload.bookingCode;
+  const requestedAction = String(parsedPayload.action || "checkin").toLowerCase();
   const action =
     requestedAction === "verify" || requestedAction === "checkin"
       ? requestedAction
@@ -1601,6 +1657,14 @@ export const verifyQR = async (payload = {}, actorUserId, actorRoleId) => {
   if (!bookingCode) {
     throw new ServiceError(
       "Mã booking không hợp lệ",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+
+  if (parsedPayload.qrType && parsedPayload.qrType !== "didaugio.booking") {
+    throw new ServiceError(
+      "QR khÃ´ng pháº£i mÃ£ booking cá»§a há»‡ thá»‘ng",
       400,
       ERROR_CODES.VALIDATION_ERROR,
     );

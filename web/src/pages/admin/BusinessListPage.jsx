@@ -47,41 +47,35 @@ const getBusinessStatusBadge = (status) => {
   const config = {
     [BUSINESS_STATUS.PENDING]: {
       label: "PENDING",
-      className:
-        "bg-yellow-400 text-black border-2 border-yellow-600 animate-pulse font-black",
+      className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50 animate-pulse",
     },
     [BUSINESS_STATUS.APPROVED]: {
       label: "APPROVED",
-      className: "bg-[#F3E600] text-black border-2 border-black font-black",
+      className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50",
     },
     [BUSINESS_STATUS.REJECTED]: {
       label: "REJECTED",
-      className: "bg-red-500 text-white border-2 border-red-700 font-black",
+      className: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50",
     },
     [BUSINESS_STATUS.SUSPENDED]: {
       label: "SUSPENDED",
-      className:
-        "bg-gray-800 text-gray-300 border-2 border-gray-600 font-black",
+      className: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
     },
     [BUSINESS_STATUS.TERMINATED]: {
       label: "TERMINATED",
-      className:
-        "bg-red-900 text-red-200 border-2 border-red-700 font-black",
+      className: "bg-red-100 text-red-800 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30",
     },
     [BUSINESS_STATUS.SUSPICIOUS]: {
       label: "SUSPICIOUS",
-      className:
-        "bg-amber-600 text-white border-2 border-amber-800 font-black animate-pulse",
+      className: "bg-orange-50 text-orange-700 border-orange-200 animate-pulse dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900/50",
     },
   };
   const c = config[status] || {
     label: String(status).toUpperCase(),
-    className: "bg-gray-200 text-gray-800 border-2 border-gray-400",
+    className: "bg-zinc-100 text-zinc-700 border-zinc-200",
   };
   return (
-    <div
-      className={`px-3 py-1.5 text-[10px] uppercase font-mono ${c.className} backdrop-blur-sm shadow-sm`}
-    >
+    <div className={cn("px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded-full border shadow-sm backdrop-blur-sm", c.className)}>
       {c.label}
     </div>
   );
@@ -128,29 +122,27 @@ const BusinessListPage = ({ initialStatus = "all" }) => {
 
 const KYCProgress = ({ biz }) => {
   const items = [
-    { label: "MST", ok: Boolean(biz.taxCode) },
-    { label: "CCCD", ok: Boolean(biz.idCardFront || biz.idCardBack) },
-    { label: "GPL", ok: Boolean(biz.businessLicense) },
-    { label: "NH", ok: Boolean(biz.bankName && biz.bankAccount) },
+    { label: "MST", ok: Boolean(biz.taxCode || biz.taxCodeMasked) },
+    { label: "CCCD", ok: Boolean(biz.idCardFront || biz.idCardBack || biz.hasIdCardFront || biz.hasIdCardBack) },
+    { label: "GPL", ok: Boolean(biz.businessLicense || biz.hasBusinessLicense) },
+    { label: "NH", ok: Boolean(biz.bankName && (biz.bankAccountNumber || biz.bankAccountNumberMasked || biz.bankAccount)) },
     { label: "HĐ", ok: Boolean(biz.contractSigned) },
     { label: "CK", ok: Boolean(biz.commissionRate != null) },
   ];
   const done = items.filter((i) => i.ok).length;
+  const percentage = Math.round((done / items.length) * 100);
   return (
-    <div className="flex items-center gap-1" title={`KYC: ${done}/6`}>
-      <div className="flex gap-0.5">
-        {items.map((item) => (
-          <div
-            key={item.label}
-            className={cn(
-              "w-2 h-2 border",
-              item.ok ? "bg-emerald-500 border-emerald-600" : "bg-red-100 border-red-400",
-            )}
-            title={item.label}
-          />
-        ))}
+    <div className="flex items-center gap-2" title={`KYC: ${done}/6`}>
+      <div className="w-24 h-1.5 bg-zinc-100 rounded-full overflow-hidden dark:bg-zinc-800 border border-zinc-200/50">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all duration-500",
+            done === 6 ? "bg-emerald-500" : done >= 3 ? "bg-amber-500" : "bg-red-500"
+          )}
+          style={{ width: `${percentage}%` }}
+        />
       </div>
-      <span className="font-mono text-[9px] text-muted-foreground">{done}/6</span>
+      <span className="font-mono text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">{done}/6</span>
     </div>
   );
 };
@@ -444,111 +436,117 @@ const KYCProgress = ({ biz }) => {
             <>
               {viewMode === "card" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {(businesses || []).map((biz) => (
+                {(businesses || []).map((biz, index) => (
                   <div
                     key={biz.id}
-                    className="relative group bg-white border-2 border-black transition-all hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden flex flex-col"
+                    className="relative group bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1 overflow-hidden flex flex-col"
                   >
                     <div className="absolute inset-0 bg-grid-dots opacity-25 pointer-events-none" />
 
-                    <div className="h-36 bg-gradient-to-br from-neutral-800 to-neutral-950 relative border-b-2 border-black overflow-hidden shrink-0">
+                    <div className="h-32 bg-gradient-to-br from-zinc-800 to-zinc-950 relative border-b border-zinc-100 dark:border-zinc-800 overflow-hidden shrink-0 rounded-t-2xl">
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <Briefcase className="h-14 w-14 text-white/25 group-hover:text-[#F3E600]/60 transition-colors" />
-                        <span className="font-mono text-[10px] text-white/40 uppercase tracking-widest mt-2">
+                        <Briefcase className="h-10 w-10 text-white/20 group-hover:text-[#F3E600]/80 transition-colors" />
+                        <span className="font-sans text-[10px] text-white/40 uppercase tracking-widest font-semibold mt-2">
                           PARTNER
                         </span>
                       </div>
-                      <div className="absolute top-3 left-3 bg-black/85 backdrop-blur-sm border border-white/20 px-2 py-1">
-                        <span className="font-mono text-[10px] text-white">
-                          #{biz.id}
+                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-0.5 rounded-full">
+                        <span className="font-mono text-[10px] text-white font-semibold">
+                          {getTableSerialNumber(
+                            pagination.total || businesses.length,
+                            index,
+                            page,
+                            pagination.limit || businesses.length,
+                          )}
                         </span>
                       </div>
                       <div className="absolute top-3 right-3">
                         {getBusinessStatusBadge(biz.status)}
                       </div>
-                      <div className="absolute bottom-0 left-0 w-1 h-full bg-[#F3E600] group-hover:w-2 transition-all" />
+                      <div className="absolute bottom-0 left-0 w-1 h-full bg-[#F3E600] group-hover:w-1.5 transition-all" />
                     </div>
 
-                    <div className="p-5 relative bg-white flex-1 flex flex-col">
+                    <div className="p-5 relative bg-white dark:bg-zinc-900 flex-1 flex flex-col">
                       <h3
-                        className="font-black text-base leading-tight uppercase mb-2 tracking-tight line-clamp-2 min-h-[2.5rem]"
+                        className="font-bold text-base text-zinc-900 dark:text-zinc-100 leading-tight uppercase mb-2 tracking-tight line-clamp-2 min-h-[2.5rem]"
                         title={biz.businessName}
                       >
                         {biz.businessName}
                       </h3>
 
-                      <div className="flex items-center gap-2 text-[10px] font-mono text-gray-500 mb-4 uppercase flex-wrap">
-                        <span className="bg-gray-100 px-2 py-0.5 border border-gray-300">
+                      <div className="flex items-center gap-2 text-[10px] text-zinc-500 dark:text-zinc-400 mb-4 flex-wrap">
+                        <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full font-medium">
                           {BUSINESS_TYPE_LABELS[biz.businessType] ||
                             biz.businessType}
                         </span>
                         <span
-                          className={`px-2 py-0.5 border ${
+                          className={cn(
+                            "px-2 py-0.5 rounded-full font-medium border",
                             biz.contractSigned
-                              ? "bg-emerald-50 border-emerald-400 text-emerald-700"
-                              : "bg-red-50 border-red-400 text-red-700"
-                          }`}
+                              ? "bg-emerald-50/50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400"
+                              : "bg-red-50/50 border-red-100 text-red-700 dark:bg-red-950/20 dark:border-red-900/30 dark:text-red-400"
+                          )}
                         >
                           {biz.contractSigned ? t("admin.business.contractSigned") : t("admin.business.contractUnsigned")}
                         </span>
-                        <span className="text-gray-300">//</span>
+                        <span className="text-zinc-300 dark:text-zinc-700">•</span>
                         <span
-                          className="truncate max-w-[180px]"
+                          className="truncate max-w-[150px] font-mono text-zinc-400"
                           title={biz.owner?.email}
                         >
                           {biz.owner?.email || "—"}
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 border-t-2 border-black pt-4 mb-4">
-                        <div className="text-center bg-gray-50 border border-gray-200 p-2">
-                          <div className="text-[10px] text-gray-400 font-mono uppercase mb-1 flex items-center justify-center gap-1">
-                            <MapPin className="w-3 h-3" /> {t("admin.business.places")}
+                      <div className="grid grid-cols-2 gap-2.5 border-t border-zinc-100 dark:border-zinc-800 pt-4 mb-4">
+                        <div className="text-center bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl p-2.5 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-zinc-400" /> {t("admin.business.places")}
                           </div>
-                          <div className="font-black text-xl tracking-tighter">
+                          <div className="font-bold text-lg text-zinc-800 dark:text-zinc-200">
                             {biz._count?.places ?? 0}
                           </div>
                         </div>
-                        <div className="text-center bg-yellow-50 border border-yellow-200 p-2">
-                          <div className="text-[10px] text-gray-500 font-mono uppercase mb-1 flex items-center justify-center gap-1">
-                            <Layers className="w-3 h-3" /> {t("admin.business.services")}
+                        <div className="text-center bg-amber-50/30 dark:bg-amber-950/10 border border-amber-100/50 dark:border-amber-950/30 rounded-xl p-2.5 transition-all hover:bg-amber-50/50">
+                          <div className="text-[10px] text-amber-600/80 dark:text-amber-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+                            <Layers className="w-3.5 h-3.5 text-amber-500" /> {t("admin.business.services")}
                           </div>
-                          <div className="font-black text-xl tracking-tighter text-yellow-800">
+                          <div className="font-bold text-lg text-amber-700 dark:text-amber-400">
                             {biz._count?.services ?? 0}
                           </div>
                         </div>
-                        <div className="text-center bg-gray-50 border border-gray-200 p-2">
-                          <div className="text-[10px] text-gray-400 font-mono uppercase mb-1 flex items-center justify-center gap-1">
-                            <Ticket className="w-3 h-3" /> {t("admin.business.vouchers")}
+                        <div className="text-center bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl p-2.5 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+                            <Ticket className="w-3.5 h-3.5 text-zinc-400" /> {t("admin.business.vouchers")}
                           </div>
-                          <div className="font-black text-xl tracking-tighter">
+                          <div className="font-bold text-lg text-zinc-800 dark:text-zinc-200">
                             {biz._count?.vouchers ?? 0}
                           </div>
                         </div>
-                        <div className="text-center bg-slate-50 border border-slate-200 p-2">
-                          <div className="text-[10px] text-gray-500 font-mono uppercase mb-1 flex items-center justify-center gap-1">
-                            <CalendarCheck className="w-3 h-3" /> {t("admin.business.bookings")}
+                        <div className="text-center bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl p-2.5 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+                            <CalendarCheck className="w-3.5 h-3.5 text-zinc-400" /> {t("admin.business.bookings")}
                           </div>
-                          <div className="font-black text-xl tracking-tighter">
+                          <div className="font-bold text-lg text-zinc-800 dark:text-zinc-200">
                             {biz._count?.bookings ?? 0}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between border-t border-black/10 pt-2">
+                      <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3 pb-4">
                         <KYCProgress biz={biz} />
-                        <span className={cn("font-mono text-[10px] uppercase px-1.5 py-0.5 border", biz.contractSigned ? "bg-emerald-50 border-emerald-400 text-emerald-700" : "bg-red-50 border-red-400 text-red-700")}>
+                        <span className={cn("text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border", biz.contractSigned ? "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400" : "bg-red-50 border-red-100 text-red-700 dark:bg-red-950/20 dark:border-red-900/30 dark:text-red-400")}>
                           {biz.contractSigned ? t("admin.business.contractSigned") : t("admin.business.contractUnsigned")}
                         </span>
                       </div>
 
-                      <div className="mt-auto flex flex-wrap gap-2 justify-end">
+                      <div className="mt-auto flex flex-wrap gap-2 justify-end pt-2 border-t border-zinc-100 dark:border-zinc-800">
                         <Button
                           size="sm"
                           variant="outline"
                           type="button"
                           onClick={() => setDetailBusinessId(biz.id)}
-                          className="rounded-none border-black font-mono text-[11px] uppercase font-bold gap-1.5"
+                          className="rounded-xl border-zinc-200 dark:border-zinc-800 font-semibold text-[11px] gap-1.5 h-9"
                         >
                           <MapPin className="h-4 w-4" />
                           {t("admin.business.detailsAndPlaces")}
@@ -557,7 +555,7 @@ const KYCProgress = ({ biz }) => {
                           <Button
                             size="sm"
                             onClick={() => setReviewBusinessId(biz.id)}
-                            className="rounded-none border-black bg-black text-white hover:bg-[#F3E600] hover:text-black font-mono text-[11px] uppercase font-bold gap-1.5"
+                            className="rounded-xl bg-zinc-950 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 dark:text-zinc-950 text-white font-semibold text-[11px] gap-1.5 h-9 shadow-sm"
                           >
                             <ClipboardCheck className="h-4 w-4" />
                             {t("admin.business.crossCheckApprove")}
@@ -568,9 +566,9 @@ const KYCProgress = ({ biz }) => {
                             size="sm"
                             variant="outline"
                             onClick={() => handleSuspend(biz.id)}
-                            className="rounded-none border-amber-600 text-amber-900 hover:bg-amber-50 font-mono text-[11px] uppercase font-bold"
+                            className="rounded-xl border-amber-200 text-amber-700 dark:border-amber-900/30 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 font-semibold text-[11px] h-9 gap-1.5"
                           >
-                            <Pause className="h-4 w-4 mr-1" />
+                            <Pause className="h-4 w-4" />
                             {t("admin.business.suspend")}
                           </Button>
                         )}
@@ -579,9 +577,9 @@ const KYCProgress = ({ biz }) => {
                             size="sm"
                             variant="outline"
                             onClick={() => handleReactivate(biz.id)}
-                            className="rounded-none border-emerald-600 text-emerald-900 hover:bg-emerald-50 font-mono text-[11px] uppercase font-bold"
+                            className="rounded-xl border-emerald-200 text-emerald-700 dark:border-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 font-semibold text-[11px] h-9 gap-1.5"
                           >
-                            <RotateCcw className="h-4 w-4 mr-1" />
+                            <RotateCcw className="h-4 w-4" />
                             {t("admin.business.reactivate")}
                           </Button>
                         )}
@@ -590,9 +588,9 @@ const KYCProgress = ({ biz }) => {
                             size="sm"
                             variant="outline"
                             onClick={() => handleTerminate(biz.id)}
-                            className="rounded-none border-red-700 text-red-800 hover:bg-red-50 font-mono text-[11px] uppercase font-bold"
+                            className="rounded-xl border-red-200 text-red-700 dark:border-red-900/30 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-semibold text-[11px] h-9 gap-1.5"
                           >
-                            <XCircle className="h-4 w-4 mr-1" />
+                            <XCircle className="h-4 w-4" />
                             {t("admin.business.terminateContract")}
                           </Button>
                         )}

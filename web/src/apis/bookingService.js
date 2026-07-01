@@ -2,6 +2,7 @@ import api from "@/constants/api";
 
 const BUSINESS_BOOKINGS_URL = "/business/bookings";
 const PUBLIC_BOOKINGS_URL = "/booking/public";
+const BOOKING_VERIFY_URL = "/bookings/verify";
 
 // ─── Business Booking APIs ───────────────────────────────────────────────────────
 
@@ -107,6 +108,11 @@ export const getPublicBookingByCode = async (bookingCode) => {
   return response;
 };
 
+export const verifyQR = async (payload) => {
+  const response = await api.post(BOOKING_VERIFY_URL, payload);
+  return response;
+};
+
 export default {
   getAll,
   getStats,
@@ -125,4 +131,5 @@ export default {
   markPaid,
   refund,
   getPublicBookingByCode,
+  verifyQR,
 };

@@ -60,7 +60,7 @@ export const download = async (req, res, next) => {
     const result = await documentStorage.downloadDocument({
       documentId: parseInt(documentId, 10),
       requesterId: req.user.userId,
-      requesterRole: req.user.roleName,
+      requesterRoleId: req.user.roleId,
     });
 
     res.setHeader("Content-Type", result.mimeType);

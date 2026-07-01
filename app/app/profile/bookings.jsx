@@ -12,41 +12,17 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   BOOKING_APPLE_THEME as THEME,
-  TOKENS,
 } from "../../src/constants/design-tokens";
 import { useMyBookings } from "../../src/modules/booking/hooks/useBooking";
+import BookingTicketCard from "../../src/modules/booking/components/BookingTicketCard";
 import { NotificationBell } from "../../src/components/composed/NotificationBell";
 import { useTranslation } from "react-i18next";
-import { getI18nLocale, formatShortDate } from "../../src/utils/dateFormat";
-
-const formatCurrency = (value) => {
-  const amount = Number(value || 0);
-  return `${amount.toLocaleString(getI18nLocale())}đ`;
-};
-
-const formatDate = (value) => {
-  if (!value) return "--";
-  return formatShortDate(value) || String(value);
-};
 
 export default function MyBookingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useTranslation();
   const { data, isLoading, refetch, isRefetching } = useMyBookings();
-
-  const statusMeta = useMemo(
-    () => ({
-      pending: { label: t("bookings.status.pending"), color: "#1D1D1F", bg: "#EDEDF2" },
-      confirmed: { label: t("bookings.status.confirmed"), color: "#FFFFFF", bg: "#1D1D1F" },
-      completed: { label: t("bookings.status.completed"), color: "#1D1D1F", bg: "#DFDFE4" },
-      cancelled: { label: t("bookings.status.cancelled"), color: "#5A5A5E", bg: "#ECECEF" },
-      rejected: { label: t("bookings.status.rejected"), color: "#5A5A5E", bg: "#F2E8DF" },
-      expired: { label: t("bookings.status.expired"), color: "#5A5A5E", bg: "#ECECEF" },
-      no_show: { label: t("bookings.status.noShow"), color: "#5A5A5E", bg: "#ECECEF" },
-    }),
-    [t],
-  );
 
   const bookings = useMemo(() => data?.data || [], [data?.data]);
   const stats = useMemo(() => {
@@ -133,103 +109,14 @@ export default function MyBookingsScreen() {
               </Pressable>
             </View>
           ) : (
-            bookings.map((booking) => {
-              const status = statusMeta[booking?.status] || {
-                label: booking?.status || t("bookings.status.unknown"),
-                color: THEME.text,
-                bg: "#ECECEF",
-              };
-
-              return (
-                <Pressable
-                  key={booking.id}
-                  className="bg-white rounded-[20px] border border-[#D2D2D7] p-[15px] gap-[6px]"
-                  style={({ pressed }) => [
-                    pressed && { opacity: 0.92, backgroundColor: "#FAFAFC" },
-                  ]}
-                  onPress={() => router.push(`/profile/booking/${booking.id}`)}
-                >
-                  <View className="flex-row items-center justify-between gap-2">
-                    <Text className="text-[rgba(0,0,0,0.48)] text-[12px] font-medium">
-                      {booking.bookingCode}
-                    </Text>
-                    <View
-                      className="rounded-full px-[10px] py-1 border border-[rgba(0,0,0,0.08)]"
-                      style={{ backgroundColor: status.bg }}
-                    >
-                      <Text className="text-[11px] font-semibold" style={{ color: status.color }}>
-                        {status.label}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <Text className="mt-0.5 text-[16px] text-[#1D1D1F] font-semibold">
-                    {booking?.service?.name || t("bookings.defaultService")}
-                  </Text>
-                  <Text className="text-[13px] text-[rgba(0,0,0,0.8)] font-medium">
-                    {booking?.service?.place?.name || t("bookings.defaultPlace")}
-                  </Text>
-
-                  <View className="mt-[6px] flex-row flex-wrap gap-[10px]">
-                    <View className="flex-row items-center gap-1">
-                      <MaterialIconsRounded
-                        name="event"
-                        size={14}
-                        color={THEME.textMuted}
-                      />
-                      <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-sans">
-                        {formatDate(booking?.useDate)}
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center gap-1">
-                      <MaterialIconsRounded
-                        name="schedule"
-                        size={14}
-                        color={THEME.textMuted}
-                      />
-                      <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-sans">
-                        {booking?.useTime || "--:--"}
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center gap-1">
-                      <MaterialIconsRounded
-                        name="payments"
-                        size={14}
-                        color={THEME.textMuted}
-                      />
-                      <Text className="text-[12px] text-[rgba(0,0,0,0.48)] font-sans">
-                        {formatCurrency(booking?.finalPrice)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {booking?.status === "confirmed" ? (
-                    <Text className="mt-[6px] text-[12px] text-[#34C759] font-medium">
-                      {t("bookings.qrReady")}
-                    </Text>
-                  ) : null}
-
-                  {booking?.linkedTrip?.id ? (
-                    <Text className="mt-1 text-[12px] text-[#0071E3] font-medium">
-                      {t("bookings.linkedTrip")}:{" "}
-                      {booking.linkedTrip.title || `#${booking.linkedTrip.id}`}{" "}
-                      ({t("bookings.linkedTripDay", { day: booking.linkedTrip.dayNumber || 1 })})
-                    </Text>
-                  ) : null}
-
-                  <View className="mt-2 pt-[10px] border-t border-t-[#D2D2D7] flex-row items-center justify-between">
-                    <Text className="text-[rgba(0,0,0,0.8)] text-[12px] font-medium">
-                      {t("bookings.viewDetail")}
-                    </Text>
-                    <MaterialIconsRounded
-                      name="arrow-forward-ios"
-                      size={14}
-                      color={THEME.textSecondary}
-                    />
-                  </View>
-                </Pressable>
-              );
-            })
+            bookings.map((booking) => (
+              <BookingTicketCard
+                key={booking.id}
+                booking={booking}
+                variant="compact"
+                onPress={() => router.push(`/profile/booking/${booking.id}`)}
+              />
+            ))
           )}
         </ScrollView>
       )}

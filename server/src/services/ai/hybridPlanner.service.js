@@ -51,7 +51,7 @@ export async function generateHybridPlan(coords, preferences, places) {
       : "Chưa cập nhật",
   }));
 
-  const systemPrompt = `Bạn là "Nhi" — trợ lý du lịch của ứng dụng "Đi Đâu Giờ?".
+  const systemPrompt = `Bạn là "Nhi" — trợ lý du lịch của ứng dụng "iPoint Genie".
 Nhiệm vụ: sắp xếp lịch trình du lịch trong ngày thông minh, tối ưu tuyến đường, và ước lượng chi phí dựa trên danh sách địa điểm có thật từ cơ sở dữ liệu.
 
 QUY TẮC BẮT BUỘC:

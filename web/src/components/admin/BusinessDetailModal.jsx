@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import * as businessApi from "@/apis/businessApi";
 import auditLogService from "@/apis/auditLogService";
 import { ADMIN_ROUTES } from "@/constants/routes";
+import { downloadDocument } from "@/apis/documentApi";
 import {
   BUSINESS_STATUS,
   BUSINESS_STATUS_LABELS,
@@ -100,6 +101,7 @@ export default function BusinessDetailModal({
   const [previewData, setPreviewData] = useState(null);
   const [previewPdfOpen, setPreviewPdfOpen] = useState(false);
   const [pdfPreviewBlobUrl, setPdfPreviewBlobUrl] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("detail");
   const [auditLogs, setAuditLogs] = useState([]);
 
@@ -108,31 +110,60 @@ export default function BusinessDetailModal({
       setPdfPreviewBlobUrl(null);
       return;
     }
-    const url = previewData.url.startsWith("http") || previewData.url.startsWith("data:") 
-      ? previewData.url 
-      : `data:image/jpeg;base64,${previewData.url}`;
 
-    const isPdf = url.startsWith("data:application/pdf") || url.toLowerCase().endsWith(".pdf") || url.toLowerCase().includes(".pdf?");
-    if (isPdf && url.startsWith("data:application/pdf;base64,")) {
-      try {
-        const base64Data = url.split(",")[1];
-        const bstr = atob(base64Data);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) {
-          u8arr[n] = bstr.charCodeAt(n);
-        }
-        const blob = new Blob([u8arr], { type: "application/pdf" });
-        const blobUrl = URL.createObjectURL(blob);
-        setPdfPreviewBlobUrl(blobUrl);
-        return () => {
-          URL.revokeObjectURL(blobUrl);
-        };
-      } catch (e) {
-        console.error("Error converting base64 PDF to blob URL:", e);
-      }
-    } else {
+    const rawUrl = previewData.url;
+    const isSecureDocObj = rawUrl && typeof rawUrl === "object" && rawUrl.id != null;
+
+    if (isSecureDocObj) {
+      let active = true;
+      setPreviewLoading(true);
       setPdfPreviewBlobUrl(null);
+      downloadDocument(rawUrl.id)
+        .then((res) => {
+          if (!active) return;
+          const blob = res instanceof Blob ? res : new Blob([res], { type: rawUrl.mimeType });
+          const url = URL.createObjectURL(blob);
+          setPdfPreviewBlobUrl(url);
+          setPreviewLoading(false);
+        })
+        .catch((err) => {
+          console.error("Error downloading secure document in detail modal:", err);
+          if (!active) return;
+          setPreviewLoading(false);
+        });
+      return () => {
+        active = false;
+        if (pdfPreviewBlobUrl) {
+          URL.revokeObjectURL(pdfPreviewBlobUrl);
+        }
+      };
+    } else {
+      const url = rawUrl.startsWith("http") || rawUrl.startsWith("data:") 
+        ? rawUrl 
+        : `data:image/jpeg;base64,${rawUrl}`;
+
+      const isPdf = url.startsWith("data:application/pdf") || url.toLowerCase().endsWith(".pdf") || url.toLowerCase().includes(".pdf?");
+      if (isPdf && url.startsWith("data:application/pdf;base64,")) {
+        try {
+          const base64Data = url.split(",")[1];
+          const bstr = atob(base64Data);
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          const blob = new Blob([u8arr], { type: "application/pdf" });
+          const blobUrl = URL.createObjectURL(blob);
+          setPdfPreviewBlobUrl(blobUrl);
+          return () => {
+            URL.revokeObjectURL(blobUrl);
+          };
+        } catch (e) {
+          console.error("Error converting base64 PDF to blob URL:", e);
+        }
+      } else {
+        setPdfPreviewBlobUrl(null);
+      }
     }
   }, [previewData]);
   const [auditLoading, setAuditLoading] = useState(false);
@@ -293,7 +324,7 @@ export default function BusinessDetailModal({
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="font-mono text-[10px] uppercase text-muted-foreground">
-                        Tên doanh nghiệp
+                        {t("business.detailModal.businessName")}
                       </p>
                       <p className="font-black text-lg uppercase tracking-tight">
                         {detail.businessName || "—"}
@@ -343,7 +374,7 @@ export default function BusinessDetailModal({
                       <span className="flex items-center gap-1.5">
                         CCCD: <strong>{showPlain.idCard ? detail.idCardNumber : detail.idCardNumberMasked || "—"}</strong>
                         {(detail.idCardNumber || detail.idCardNumberMasked) && (
-                          <button onClick={() => toggleShowPlain("idCard")} className="text-muted-foreground hover:text-black focus:outline-none" title={showPlain.idCard ? "Ẩn" : "Xem"}>
+                          <button onClick={() => toggleShowPlain("idCard")} className="text-muted-foreground hover:text-black focus:outline-none" title={showPlain.idCard ? t("common.hide") || "Ẩn" : t("common.view") || "Xem"}>
                             {showPlain.idCard ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                           </button>
                         )}
@@ -351,7 +382,7 @@ export default function BusinessDetailModal({
                       <span className="flex items-center gap-1.5">
                         TK NH: <strong>{showPlain.bankAccount ? detail.bankAccountNumber : detail.bankAccountNumberMasked || "—"}</strong>
                         {(detail.bankAccountNumber || detail.bankAccountNumberMasked) && (
-                          <button onClick={() => toggleShowPlain("bankAccount")} className="text-muted-foreground hover:text-black focus:outline-none" title={showPlain.bankAccount ? "Ẩn" : "Xem"}>
+                          <button onClick={() => toggleShowPlain("bankAccount")} className="text-muted-foreground hover:text-black focus:outline-none" title={showPlain.bankAccount ? t("common.hide") || "Ẩn" : t("common.view") || "Xem"}>
                             {showPlain.bankAccount ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                           </button>
                         )}
@@ -359,7 +390,7 @@ export default function BusinessDetailModal({
                       <span className="flex items-center gap-1.5">
                         Chủ TK: <strong>{showPlain.bankOwner ? detail.bankAccountOwner : detail.bankAccountOwnerMasked || "—"}</strong>
                         {(detail.bankAccountOwner || detail.bankAccountOwnerMasked) && (
-                          <button onClick={() => toggleShowPlain("bankOwner")} className="text-muted-foreground hover:text-black focus:outline-none" title={showPlain.bankOwner ? "Ẩn" : "Xem"}>
+                          <button onClick={() => toggleShowPlain("bankOwner")} className="text-muted-foreground hover:text-black focus:outline-none" title={showPlain.bankOwner ? t("common.hide") || "Ẩn" : t("common.view") || "Xem"}>
                             {showPlain.bankOwner ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                           </button>
                         )}
@@ -367,7 +398,7 @@ export default function BusinessDetailModal({
                       <span className="flex items-center gap-1.5">
                         MST: <strong>{showPlain.taxCode ? detail.taxCode : detail.taxCodeMasked || "—"}</strong>
                         {(detail.taxCode || detail.taxCodeMasked) && (
-                          <button onClick={() => toggleShowPlain("taxCode")} className="text-muted-foreground hover:text-black focus:outline-none" title={showPlain.taxCode ? "Ẩn" : "Xem"}>
+                          <button onClick={() => toggleShowPlain("taxCode")} className="text-muted-foreground hover:text-black focus:outline-none" title={showPlain.taxCode ? t("common.hide") || "Ẩn" : t("common.view") || "Xem"}>
                             {showPlain.taxCode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                           </button>
                         )}
@@ -467,7 +498,7 @@ export default function BusinessDetailModal({
                         className="w-full rounded-none border-black font-mono text-[10px] uppercase h-7 gap-1"
                         onClick={() => setPreviewPdfOpen(true)}
                       >
-                        <FileSignature className="h-3 w-3" /> Xem hợp đồng PDF
+                        <FileSignature className="h-3 w-3" /> {t("business.detailModal.viewContractPdf") || "Xem hợp đồng PDF"}
                       </Button>
                     </div>
                   </div>
@@ -482,24 +513,49 @@ export default function BusinessDetailModal({
                       label={t("business.detailModal.taxCode")}
                       checked={Boolean(compliance.hasTaxCode)}
                     />
-                    <ChecklistItem
-                      label={t("business.detailModal.idFront")}
-                      checked={Boolean(compliance.hasIdCardFront)}
-                      previewUrl={compliance.idCardFrontUrl}
-                      onPreview={(url, label) => setPreviewData({ url, title: label })}
-                    />
-                    <ChecklistItem
-                      label={t("business.detailModal.idBack")}
-                      checked={Boolean(compliance.hasIdCardBack)}
-                      previewUrl={compliance.idCardBackUrl}
-                      onPreview={(url, label) => setPreviewData({ url, title: label })}
-                    />
-                    <ChecklistItem
-                      label={t("business.detailModal.businessLicense")}
-                      checked={Boolean(compliance.hasBusinessLicense)}
-                      previewUrl={compliance.businessLicenseUrl}
-                      onPreview={(url, label) => setPreviewData({ url, title: label })}
-                    />
+                    {(() => {
+                      const getDocSource = (type, fallbackField) => {
+                        const doc = (detail?.sensitiveDocuments || []).find((d) => d.type === type);
+                        if (doc) return doc;
+                        return fallbackField || null;
+                      };
+
+                      const idFrontSource = getDocSource("id_card_front", detail.idCardFront);
+                      const idBackSource = getDocSource("id_card_back", detail.idCardBack);
+                      const licenseSource = getDocSource("business_license", detail.businessLicense);
+                      const certSource = getDocSource("certificate", null);
+
+                      return (
+                        <>
+                          <ChecklistItem
+                            label={t("business.detailModal.idFront")}
+                            checked={Boolean(compliance.hasIdCardFront)}
+                            previewUrl={idFrontSource}
+                            onPreview={(url, label) => setPreviewData({ url, title: label })}
+                          />
+                          <ChecklistItem
+                            label={t("business.detailModal.idBack")}
+                            checked={Boolean(compliance.hasIdCardBack)}
+                            previewUrl={idBackSource}
+                            onPreview={(url, label) => setPreviewData({ url, title: label })}
+                          />
+                          <ChecklistItem
+                            label={t("business.detailModal.businessLicense")}
+                            checked={Boolean(compliance.hasBusinessLicense)}
+                            previewUrl={licenseSource}
+                            onPreview={(url, label) => setPreviewData({ url, title: label })}
+                          />
+                          {certSource && (
+                            <ChecklistItem
+                              label={t("business.documents.certificate") || "Chứng nhận / Giấy tờ khác"}
+                              checked={true}
+                              previewUrl={certSource}
+                              onPreview={(url, label) => setPreviewData({ url, title: label })}
+                            />
+                          )}
+                        </>
+                      );
+                    })()}
                     <ChecklistItem
                       label={t("business.detailModal.bankName")}
                       checked={Boolean(compliance.hasBankInfo)}
@@ -512,7 +568,7 @@ export default function BusinessDetailModal({
 
                   <div className="border border-black bg-white p-4 space-y-2">
                     <p className="font-mono text-[10px] uppercase text-muted-foreground flex items-center gap-1">
-                      <ShieldAlert className="h-3.5 w-3.5" /> Rủi ro cần rà soát
+                      <ShieldAlert className="h-3.5 w-3.5" /> {t("business.detailModal.highRiskReview") || "Rủi ro cần rà soát"}
                     </p>
                     {risks.length === 0 ? (
                       <p className="text-sm text-emerald-700">
@@ -667,17 +723,42 @@ export default function BusinessDetailModal({
           <div className="relative bg-white p-4 w-full max-h-[90vh] overflow-auto flex flex-col">
             <h3 className="font-semibold text-lg border-b pb-2 mb-4">{previewData?.title}</h3>
             <div className="flex-1 flex items-center justify-center min-h-[50vh] w-full">
-              {previewData?.url && (() => {
-                const rawUrl = previewData.url.startsWith("http") || previewData.url.startsWith("data:") 
-                  ? previewData.url 
-                  : `data:image/jpeg;base64,${previewData.url}`;
+              {previewLoading ? (
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              ) : previewData?.url && (() => {
+                const rawUrl = previewData.url;
+                const isSecureDocObj = rawUrl && typeof rawUrl === "object" && rawUrl.id != null;
+
+                if (isSecureDocObj) {
+                  const isPdf = rawUrl.mimeType === "application/pdf" || rawUrl.mimeType?.includes("pdf");
+                  if (isPdf) {
+                    return (
+                      <iframe
+                        src={pdfPreviewBlobUrl}
+                        title={previewData.title}
+                        className="w-full min-h-[60vh] border border-black"
+                      />
+                    );
+                  }
+                  return (
+                    <img 
+                      src={pdfPreviewBlobUrl}
+                      alt={previewData.title}
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  );
+                }
+
+                const resolvedUrl = rawUrl.startsWith("http") || rawUrl.startsWith("data:") 
+                  ? rawUrl 
+                  : `data:image/jpeg;base64,${rawUrl}`;
                 
-                const isPdf = rawUrl.startsWith("data:application/pdf") || rawUrl.toLowerCase().endsWith(".pdf") || rawUrl.toLowerCase().includes(".pdf?");
+                const isPdf = resolvedUrl.startsWith("data:application/pdf") || resolvedUrl.toLowerCase().endsWith(".pdf") || resolvedUrl.toLowerCase().includes(".pdf?");
                 
                 if (isPdf) {
                   return (
                     <iframe
-                      src={pdfPreviewBlobUrl || rawUrl}
+                      src={pdfPreviewBlobUrl || resolvedUrl}
                       title={previewData.title}
                       className="w-full min-h-[60vh] border border-black"
                     />
@@ -686,7 +767,7 @@ export default function BusinessDetailModal({
 
                 return (
                   <img 
-                    src={rawUrl}
+                    src={resolvedUrl}
                     alt={previewData.title}
                     className="max-w-full max-h-full object-contain"
                   />

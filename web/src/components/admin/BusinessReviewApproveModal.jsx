@@ -16,6 +16,7 @@ import {
 import { ADMIN_ROUTES } from "@/constants/routes";
 import * as businessApi from "@/apis/businessApi";
 import { BUSINESS_TYPE_LABELS } from "@/constants/businessConstants";
+import { downloadDocument } from "@/apis/documentApi";
 import {
   Dialog,
   DialogContent,
@@ -33,82 +34,142 @@ import { cn } from "@/lib/utils";
 import { resolveMediaUrl, isPdfSource, isImageSource } from "@/utils/mediaUrl";
 import ContractPdfViewer from "@/components/business/ContractPdfViewer";
 
-const FieldRow = ({ label, value, mono, isSensitive, showSensitive, onToggle }) => (
-  <div className="flex flex-col sm:flex-row sm:gap-3 sm:justify-between py-2.5 border-b border-border/40 last:border-0 first:pt-0 text-sm">
-    <span className="text-muted-foreground shrink-0 w-44">{label}</span>
-    <div className="flex items-center gap-1.5 justify-end sm:justify-start flex-1 min-w-0">
-      <span
-        className={cn(
-          "font-medium text-foreground text-right sm:text-left break-all",
-          mono && "font-mono text-xs",
-        )}
-      >
-        {typeof value === "object" && value !== null 
-          ? value 
-          : (value !== undefined && value !== null && value !== "" ? String(value) : "—")}
-      </span>
-      {isSensitive && value && value !== "—" && (
-        <button
-          type="button"
-          onClick={onToggle}
-          className="text-slate-400 hover:text-slate-600 transition focus:outline-none shrink-0"
-          title={showSensitive ? "Ẩn" : "Xem"}
-        >
-          {showSensitive ? (
-            <EyeOff className="h-3.5 w-3.5" />
-          ) : (
-            <Eye className="h-3.5 w-3.5" />
+const FieldRow = ({ label, value, mono, isSensitive, showSensitive, onToggle }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col sm:flex-row sm:gap-3 sm:justify-between py-2.5 border-b border-border/40 last:border-0 first:pt-0 text-sm">
+      <span className="text-muted-foreground shrink-0 w-44">{label}</span>
+      <div className="flex items-center gap-1.5 justify-end sm:justify-start flex-1 min-w-0">
+        <span
+          className={cn(
+            "font-medium text-foreground text-right sm:text-left break-all",
+            mono && "font-mono text-xs",
           )}
-        </button>
-      )}
+        >
+          {typeof value === "object" && value !== null 
+            ? value 
+            : (value !== undefined && value !== null && value !== "" ? String(value) : "—")}
+        </span>
+        {isSensitive && value && value !== "—" && (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="text-slate-400 hover:text-slate-600 transition focus:outline-none shrink-0"
+            title={showSensitive ? t("common.hide") || "Ẩn" : t("common.view") || "Xem"}
+          >
+            {showSensitive ? (
+              <EyeOff className="h-3.5 w-3.5" />
+            ) : (
+              <Eye className="h-3.5 w-3.5" />
+            )}
+          </button>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /**
  * Thẻ xem nhanh giấy tờ: hỗ trợ URL https, data URI ảnh/PDF, đường dẫn /... ghép origin API.
  */
 function DocumentPreviewCard({ title, raw }) {
   const { t } = useTranslation();
-  const resolved = useMemo(() => resolveMediaUrl(raw), [raw]);
   const [imgError, setImgError] = useState(false);
   const [blobUrl, setBlobUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const isSecureDocObj = raw && typeof raw === "object" && raw.id != null;
+  const mimeType = isSecureDocObj ? raw.mimeType : null;
+  const isPdf = isSecureDocObj 
+    ? (mimeType === "application/pdf" || mimeType?.includes("pdf"))
+    : (raw && isPdfSource(resolveMediaUrl(raw)));
+  
+  const isImgHint = isSecureDocObj
+    ? (mimeType?.startsWith("image/"))
+    : (raw && isImageSource(resolveMediaUrl(raw)));
+
+  const resolved = useMemo(() => {
+    if (isSecureDocObj) return null;
+    return resolveMediaUrl(raw);
+  }, [raw, isSecureDocObj]);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setImgError(false));
     return () => cancelAnimationFrame(id);
   }, [resolved]);
 
-  const isPdf = resolved && isPdfSource(resolved);
-  const isImgHint = resolved && isImageSource(resolved);
-
   useEffect(() => {
-    if (isPdf && resolved && resolved.startsWith("data:application/pdf;base64,")) {
-      try {
-        const base64Data = resolved.split(",")[1];
-        const bstr = atob(base64Data);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) {
-          u8arr[n] = bstr.charCodeAt(n);
-        }
-        const blob = new Blob([u8arr], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
-        setBlobUrl(url);
-        return () => {
-          URL.revokeObjectURL(url);
-        };
-      } catch (e) {
-        console.error("Error converting base64 PDF to blob URL:", e);
-      }
-    } else {
+    if (!raw) {
       setBlobUrl(null);
+      return;
     }
-  }, [isPdf, resolved]);
+
+    if (isSecureDocObj) {
+      let active = true;
+      setLoading(true);
+      downloadDocument(raw.id)
+        .then((res) => {
+          if (!active) return;
+          const blob = res instanceof Blob ? res : new Blob([res], { type: mimeType });
+          const url = URL.createObjectURL(blob);
+          setBlobUrl(url);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error("Error downloading secure document:", err);
+          if (!active) return;
+          setLoading(false);
+          setImgError(true);
+        });
+      return () => {
+        active = false;
+        if (blobUrl) {
+          URL.revokeObjectURL(blobUrl);
+        }
+      };
+    } else {
+      if (isPdf && resolved && resolved.startsWith("data:application/pdf;base64,")) {
+        try {
+          const base64Data = resolved.split(",")[1];
+          const bstr = atob(base64Data);
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          const blob = new Blob([u8arr], { type: "application/pdf" });
+          const url = URL.createObjectURL(blob);
+          setBlobUrl(url);
+          return () => {
+            URL.revokeObjectURL(url);
+          };
+        } catch (e) {
+          console.error("Error converting base64 PDF to blob URL:", e);
+        }
+      } else {
+        setBlobUrl(null);
+      }
+    }
+  }, [raw, isSecureDocObj, resolved, isPdf, mimeType]);
 
   const previewUrl = blobUrl || resolved;
 
-  if (!resolved) {
+  if (loading) {
+    return (
+      <div className="flex flex-col overflow-hidden rounded-none border border-black bg-white">
+        <div className="flex items-center justify-between gap-2 border-b border-black bg-[#F4F4F4] px-4 py-2">
+          <p className="truncate text-xs font-bold uppercase tracking-wider text-black">
+            {title}
+          </p>
+        </div>
+        <div className="flex min-h-[220px] flex-1 items-center justify-center bg-white p-3">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!previewUrl) {
     return (
       <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-muted-foreground/25 bg-muted/20 p-5 text-center shadow-inner">
         <FileText
@@ -160,7 +221,7 @@ function DocumentPreviewCard({ title, raw }) {
               <div className="relative flex w-full justify-center">
                 {!imgError ? (
                   <img
-                    src={resolved}
+                    src={previewUrl}
                     alt={`${title} — đối chiếu`}
                     className="max-h-[min(44vh,380px)] w-full rounded-none border border-black bg-background object-contain"
                     loading="lazy"
@@ -423,7 +484,9 @@ const BusinessReviewApproveModal = ({
                             className="p-0 h-auto text-primary font-bold hover:underline flex items-center gap-1"
                             onClick={() => setPreviewPdfOpen(true)}
                           >
-                            {detail.contractSigned ? "Đã ký (Xem PDF)" : "Chưa ký (Xem bản nháp)"}
+                            {detail.contractSigned 
+                              ? t("business.detailModal.signedViewPdf") || "Đã ký (Xem PDF)" 
+                              : t("business.detailModal.unsignedViewDraft") || "Chưa ký (Xem bản nháp)"}
                           </Button>
                         }
                       />
@@ -463,32 +526,53 @@ const BusinessReviewApproveModal = ({
                   )}
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <p className="text-base font-semibold text-foreground">
-                        {t("business.detailModal.documents")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("business.approveModal.confirmApprove")}
-                      </p>
+                {(() => {
+                  const getDocSource = (type, fallbackField) => {
+                    const doc = (detail?.sensitiveDocuments || []).find((d) => d.type === type);
+                    if (doc) return doc;
+                    return fallbackField || null;
+                  };
+
+                  const idFrontSource = getDocSource("id_card_front", detail.idCardFront);
+                  const idBackSource = getDocSource("id_card_back", detail.idCardBack);
+                  const licenseSource = getDocSource("business_license", detail.businessLicense);
+                  const certSource = getDocSource("certificate", null);
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                          <p className="text-base font-semibold text-foreground">
+                            {t("business.detailModal.documents")}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {t("business.approveModal.confirmApprove")}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                        <DocumentPreviewCard
+                          title={t("business.detailModal.idFront")}
+                          raw={idFrontSource}
+                        />
+                        <DocumentPreviewCard
+                          title={t("business.detailModal.idBack")}
+                          raw={idBackSource}
+                        />
+                        <DocumentPreviewCard
+                          title={t("business.detailModal.businessLicense")}
+                          raw={licenseSource}
+                        />
+                        {certSource && (
+                          <DocumentPreviewCard
+                            title={t("business.documents.certificate") || "Chứng nhận / Giấy tờ khác"}
+                            raw={certSource}
+                          />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                    <DocumentPreviewCard
-                      title={t("business.detailModal.idFront")}
-                      raw={detail.idCardFront}
-                    />
-                    <DocumentPreviewCard
-                      title={t("business.detailModal.idBack")}
-                      raw={detail.idCardBack}
-                    />
-                    <DocumentPreviewCard
-                      title={t("business.detailModal.businessLicense")}
-                      raw={detail.businessLicense}
-                    />
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {!rejectMode ? (
                   <>
@@ -497,7 +581,7 @@ const BusinessReviewApproveModal = ({
                         htmlFor="commission-rate"
                         className="text-sm font-medium"
                       >
-                        Tỷ lệ hoa hồng (%)
+                        {t("business.detailModal.commissionRatePercent") || "Tỷ lệ hoa hồng (%)"}
                       </Label>
                       <Input
                         id="commission-rate"
@@ -526,7 +610,7 @@ const BusinessReviewApproveModal = ({
                         <span className="font-bold text-foreground">
                           {t("business.approveModal.confirmApprove")}
                         </span>{" "}
-                        Xác nhận thông tin hồ sơ doanh nghiệp đã khớp với các giấy tờ đính kèm.
+                        {t("business.detailModal.confirmCheckDocuments") || "Xác nhận thông tin hồ sơ doanh nghiệp đã khớp với các giấy tờ đính kèm."}
                       </span>
                     </label>
                   </>

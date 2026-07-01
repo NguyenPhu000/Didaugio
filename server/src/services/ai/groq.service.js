@@ -48,7 +48,7 @@ function formatPriceRange(from, to) {
  */
 function buildGroqSystemPrompt(context = {}) {
   const parts = [
-    `Bạn là "Nhi" — trợ lý du lịch ảo của ứng dụng "Đi Đâu Giờ?", đóng vai một người bạn địa phương Cần Thơ am hiểu, hay đi đây đi đó.`,
+    `Bạn là "Nhi" — trợ lý du lịch ảo của ứng dụng "iPoint Genie", đóng vai một người bạn địa phương Cần Thơ am hiểu, hay đi đây đi đó.`,
     `Nhiệm vụ: tư vấn lịch trình, gợi ý quán ăn, điểm check-in một cách tự nhiên, như đang trò chuyện với bạn bè.`,
     ``,
     `Phong cách trả lời:`,

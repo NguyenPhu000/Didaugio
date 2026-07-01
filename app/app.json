@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Đi Đâu Giờ?",
+    "name": "iPoint Genie",
     "slug": "didaugio-app",
     "scheme": "didaugio",
     "version": "1.0.0",
@@ -14,7 +14,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Đi Đâu Giờ? cần micro để bạn trò chuyện bằng giọng nói với Nhi.",
+          "microphonePermission": "iPoint Genie cần micro để bạn trò chuyện bằng giọng nói với Nhi.",
           "recordAudioAndroid": true
         }
       ],
@@ -35,8 +35,8 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Đi Đâu Giờ? cần vị trí để hiển thị địa điểm gần bạn.",
-          "locationAlwaysAndWhenInUsePermission": "Đi Đâu Giờ? cần vị trí chạy nền để dẫn đường và nhắc nhở di chuyển trong hành trình của bạn.",
+          "locationWhenInUsePermission": "iPoint Genie cần vị trí để hiển thị địa điểm gần bạn.",
+          "locationAlwaysAndWhenInUsePermission": "iPoint Genie cần vị trí chạy nền để dẫn đường và nhắc nhở di chuyển trong hành trình của bạn.",
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
         }
@@ -88,12 +88,12 @@
           "audio",
           "remote-notification"
         ],
-        "NSLocationWhenInUseUsageDescription": "Đi Đâu Giờ? cần vị trí để hiển thị địa điểm gần bạn.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Đi Đâu Giờ? cần vị trí chạy nền để dẫn đường và nhắc nhở di chuyển trong hành trình của bạn.",
-        "NSLocationAlwaysUsageDescription": "Đi Đâu Giờ? cần vị trí chạy nền để dẫn đường.",
-        "NSMicrophoneUsageDescription": "Đi Đâu Giờ? cần micro để bạn trò chuyện bằng giọng nói với Nhi.",
-        "NSPhotoLibraryUsageDescription": "Đi Đâu Giờ? cần truy cập thư viện ảnh để bạn tải lên ảnh đại diện và bài viết.",
-        "NSCameraUsageDescription": "Đi Đâu Giờ? cần truy cập máy ảnh để bạn chụp hình trực tiếp."
+        "NSLocationWhenInUseUsageDescription": "iPoint Genie cần vị trí để hiển thị địa điểm gần bạn.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "iPoint Genie cần vị trí chạy nền để dẫn đường và nhắc nhở di chuyển trong hành trình của bạn.",
+        "NSLocationAlwaysUsageDescription": "iPoint Genie cần vị trí chạy nền để dẫn đường.",
+        "NSMicrophoneUsageDescription": "iPoint Genie cần micro để bạn trò chuyện bằng giọng nói với Nhi.",
+        "NSPhotoLibraryUsageDescription": "iPoint Genie cần truy cập thư viện ảnh để bạn tải lên ảnh đại diện và bài viết.",
+        "NSCameraUsageDescription": "iPoint Genie cần truy cập máy ảnh để bạn chụp hình trực tiếp."
       }
     },
     "extra": {

@@ -32,7 +32,7 @@
     "required": "Required",
     "optional": "Optional",
     "free": "Free",
-    "appName": "Đi Đâu Giờ?",
+    "appName": "iPoint Genie",
     "offline": "You are offline — Showing saved data",
     "days": "days",
     "people": "people",
@@ -229,10 +229,10 @@
       "days": "{{count}} days",
       "from": "From {{price}}"
     },
-    "headerBrand": "Đi Đâu Giờ?",
+    "headerBrand": "iPoint Genie",
     "headerGreeting": "Hello, {{name}}",
-    "cmsBrandBadge": "ĐI ĐÂU GIỜ",
-    "cmsFallbackTitle": "Đi Đâu Giờ?",
+    "cmsBrandBadge": "iPoint Genie",
+    "cmsFallbackTitle": "iPoint Genie",
     "cmsFallbackDesc": "Discover hundreds of fascinating places in Can Tho",
     "heroBadge": "RECOMMENDED FOR YOU",
     "heroExplore": "Explore"
@@ -306,7 +306,7 @@
     },
     "settings": "Settings",
     "comingSoon": "{feature} will be available in the next update!",
-    "shareMessage": "Check out {{name}}'s profile on Đi Đâu Giờ?"
+    "shareMessage": "Check out {{name}}'s profile on iPoint Genie"
   },
   "settings": {
     "title": "SETTINGS",
@@ -406,6 +406,18 @@
     },
     "qrReady": "QR is ready, tap to view",
     "viewDetail": "View booking details"
+  },
+  "bookingTicket": {
+    "notAvailable": "Not available",
+    "quantityValue": "{{count}} guest",
+    "quantityValue_plural": "{{count}} guests",
+    "location": "Location",
+    "date": "Date",
+    "time": "Time",
+    "quantity": "Guests",
+    "address": "Address",
+    "total": "Total",
+    "qrPending": "QR unlocks after confirmation"
   },
   "bookingDetail": {
     "title": "Booking Details",
@@ -956,7 +968,7 @@
     "title": "Feedback & Support",
     "subtitle": "Your feedback helps us improve",
     "weListen": "We listen to you",
-    "description": "Help Đi Đâu Giờ? get better for the Can Tho community",
+    "description": "Help iPoint Genie get better for the Can Tho community",
     "typeLabel": "Feedback type *",
     "titleLabel": "Title *",
     "titlePlaceholder": "Briefly describe the issue...",

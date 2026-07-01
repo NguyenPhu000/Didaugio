@@ -36,11 +36,14 @@ const INITIAL_REGION = {
   longitudeDelta: 0.12,
 };
 
+const MAP_EDGE_PADDING = { top: 120, right: 120, bottom: 120, left: 120 };
 const MIN_DELTA = 0.004;
 const MAX_DELTA = 0.5;
 const ZOOM_FACTOR = 0.5;
 const FLY_DURATION = 800;
 const ZOOM_DURATION = 300;
+const TILE_ERROR_RESET_DELAY_MS = 0;
+
 const CLUSTER_COLORS = {
   low: {
     halo: "rgba(56, 189, 248, 0.22)",
@@ -66,17 +69,13 @@ const CLUSTER_COLORS = {
 };
 
 const zoomToDelta = (zoom) => (zoom >= 15 ? 0.01 : zoom >= 13 ? 0.03 : 0.08);
+
 const normalizeCoord = (value) =>
   typeof value === "string" ? parseFloat(value) : value;
 
 const getClusterVisual = (pointCount) => {
   if (pointCount >= 50) {
-    return {
-      size: 64,
-      ringSize: 52,
-      coreSize: 40,
-      colors: CLUSTER_COLORS.high,
-    };
+    return { size: 64, ringSize: 52, coreSize: 40, colors: CLUSTER_COLORS.high };
   }
 
   if (pointCount >= 20) {
@@ -88,18 +87,82 @@ const getClusterVisual = (pointCount) => {
     };
   }
 
-  return {
-    size: 52,
-    ringSize: 40,
-    coreSize: 30,
-    colors: CLUSTER_COLORS.low,
-  };
+  return { size: 52, ringSize: 40, coreSize: 30, colors: CLUSTER_COLORS.low };
 };
 
-/**
- * PlaceMarker — Image marker with always-visible label.
- * Uses custom view children for label display.
- */
+const ClusterMarker = memo(function ClusterMarker({ cluster, onPress }) {
+  const {
+    id,
+    geometry: { coordinates },
+    properties,
+  } = cluster;
+  const pointCount = properties?.point_count || 0;
+  const pointLabel =
+    properties?.point_count_abbreviated ||
+    (pointCount > 99 ? "99+" : String(pointCount));
+  const { size, ringSize, coreSize, colors } = getClusterVisual(pointCount);
+
+  return (
+    <Marker
+      key={`cluster-${id}`}
+      coordinate={{ latitude: coordinates[1], longitude: coordinates[0] }}
+      onPress={onPress}
+      anchor={{ x: 0.5, y: 0.5 }}
+      tracksViewChanges={false}
+    >
+      <View
+        className="items-center justify-center"
+        style={[
+          styles.clusterHalo,
+          {
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            backgroundColor: colors.halo,
+          },
+        ]}
+      >
+        <View
+          className="items-center justify-center border border-white/90"
+          style={[
+            styles.clusterRing,
+            {
+              width: ringSize,
+              height: ringSize,
+              borderRadius: ringSize / 2,
+              backgroundColor: colors.shell,
+            },
+          ]}
+        >
+          <View
+            className="items-center justify-center overflow-hidden"
+            style={{
+              width: coreSize,
+              height: coreSize,
+              borderRadius: coreSize / 2,
+              backgroundColor: colors.core,
+            }}
+          >
+            <View
+              className="absolute left-px top-px h-[38%] w-[62%] -rotate-[18deg] rounded-full opacity-90"
+              style={{ backgroundColor: colors.accent }}
+            />
+          </View>
+        </View>
+
+        <View className="absolute items-center justify-center">
+          <Text
+            className="text-[14px] font-bold tracking-[-0.2px]"
+            style={{ color: colors.text }}
+          >
+            {pointLabel}
+          </Text>
+        </View>
+      </View>
+    </Marker>
+  );
+});
+
 const PlaceMarker = memo(
   ({ place, isActive, onSelectPlace, onLongPressPlace }) => {
     const handlePress = useCallback(() => {
@@ -115,49 +178,49 @@ const PlaceMarker = memo(
       : place?.isFeatured
         ? "#f59e0b"
         : CATEGORY_MARKER_STYLES[place?.categoryId]?.color || "#ef4444";
+    const coordinate = {
+      latitude: place.latitude,
+      longitude: place.longitude,
+    };
+    const markerImage = place.markerImageUri
+      ? { uri: place.markerImageUri }
+      : undefined;
 
-    if (place?.name) {
-      return (
-        <Marker
-          coordinate={{ latitude: place.latitude, longitude: place.longitude }}
-          onPress={handlePress}
-          onLongPress={handleLongPress}
-          anchor={{ x: 0.5, y: 1 }}
-          image={
-            place.markerImageUri ? { uri: place.markerImageUri } : undefined
-          }
-          pinColor={markerColor}
-          tracksViewChanges={false}
-        >
-          <View style={styles.placeLabelWrap} pointerEvents="none">
+    return (
+      <Marker
+        coordinate={coordinate}
+        onPress={handlePress}
+        onLongPress={handleLongPress}
+        anchor={{ x: 0.5, y: 1 }}
+        image={markerImage}
+        pinColor={markerColor}
+        tracksViewChanges={false}
+      >
+        {place?.name ? (
+          <View
+            className="absolute left-full top-1/2 ml-1.5 -translate-y-[7px]"
+            pointerEvents="none"
+          >
             <Text
-              style={styles.placeLabelText}
+              className="text-[11px] font-semibold tracking-[0.1px] text-black"
               numberOfLines={1}
               ellipsizeMode="tail"
             >
               {place.name}
             </Text>
           </View>
-        </Marker>
-      );
-    }
-
-    return (
-      <Marker
-        coordinate={{ latitude: place.latitude, longitude: place.longitude }}
-        onPress={handlePress}
-        onLongPress={handleLongPress}
-        anchor={{ x: 0.5, y: 1 }}
-        image={place.markerImageUri ? { uri: place.markerImageUri } : undefined}
-        pinColor={markerColor}
-        tracksViewChanges={false}
-      />
+        ) : null}
+      </Marker>
     );
   },
   (prev, next) =>
     prev.place?.id === next.place?.id &&
     prev.place?.name === next.place?.name &&
     prev.place?.categoryId === next.place?.categoryId &&
+    prev.place?.isFeatured === next.place?.isFeatured &&
+    prev.place?.latitude === next.place?.latitude &&
+    prev.place?.longitude === next.place?.longitude &&
+    prev.place?.markerImageUri === next.place?.markerImageUri &&
     prev.isActive === next.isActive,
 );
 
@@ -180,48 +243,44 @@ const MapView = memo(
         useNativeCleanStyle = false,
         mapPadding,
         courseUpEnabled = false,
+        showsUserLocation = false,
+        showsUserHeadingIndicator = false,
+        showsMyLocationButton = false,
         children,
       },
       ref,
     ) => {
       const mapRef = useRef(null);
       const regionRef = useRef(INITIAL_REGION);
+      const tileErrorTimerRef = useRef(null);
       const [tileError, setTileError] = useState(false);
       const [, setCurrentZoom] = useState(() =>
-        Math.round(Math.log2(360 / INITIAL_REGION.latitudeDelta)),
+        Math.round(Math.log2(360 / INITIAL_REGION.latitudeDelta))
       );
-      const tileErrorTimerRef = useRef(null);
 
       useImperativeHandle(ref, () => ({
         flyTo: ([lng, lat], zoom = 14) => {
           const delta = zoomToDelta(zoom);
-          regionRef.current = {
+          const nextRegion = {
             latitude: lat,
             longitude: lng,
             latitudeDelta: delta,
             longitudeDelta: delta,
           };
-          mapRef.current?.animateToRegion(regionRef.current, FLY_DURATION);
+          regionRef.current = nextRegion;
+          mapRef.current?.animateToRegion(nextRegion, FLY_DURATION);
         },
         zoomIn: () => {
           const region = regionRef.current;
           const delta = Math.max(region.latitudeDelta * ZOOM_FACTOR, MIN_DELTA);
-          const next = {
-            ...region,
-            latitudeDelta: delta,
-            longitudeDelta: delta,
-          };
+          const next = { ...region, latitudeDelta: delta, longitudeDelta: delta };
           regionRef.current = next;
           mapRef.current?.animateToRegion(next, ZOOM_DURATION);
         },
         zoomOut: () => {
           const region = regionRef.current;
           const delta = Math.min(region.latitudeDelta / ZOOM_FACTOR, MAX_DELTA);
-          const next = {
-            ...region,
-            latitudeDelta: delta,
-            longitudeDelta: delta,
-          };
+          const next = { ...region, latitudeDelta: delta, longitudeDelta: delta };
           regionRef.current = next;
           mapRef.current?.animateToRegion(next, ZOOM_DURATION);
         },
@@ -231,112 +290,48 @@ const MapView = memo(
       }));
 
       const resolvedTileUrls = useMemo(
-        () => (Array.isArray(tileUrls) ? tileUrls : DEFAULT_MAP_STYLE.urls),
+        () =>
+          Array.isArray(tileUrls)
+            ? tileUrls.filter((tileUrl) => typeof tileUrl === "string" && tileUrl)
+            : DEFAULT_MAP_STYLE.urls,
         [tileUrls],
       );
-      const mapStyleArray = useMemo(() => ["flex-1", style], [style]);
+      const tileUrlsKey = resolvedTileUrls.join("|");
       const preparedPlaces = useMemo(() => {
         if (!Array.isArray(places) || places.length === 0) return [];
 
         const nextPlaces = [];
         for (const place of places) {
-          const lat = normalizeCoord(place.latitude);
-          const lng = normalizeCoord(place.longitude);
-
-          if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          const latitude = normalizeCoord(place.latitude);
+          const longitude = normalizeCoord(place.longitude);
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
             continue;
           }
 
           nextPlaces.push({
             ...place,
-            latitude: lat,
-            longitude: lng,
+            latitude,
+            longitude,
             markerImageUri: place?.markerUrl || resolvePlaceImageUri(place),
           });
         }
 
         return nextPlaces;
       }, [places]);
-      const hasTileSource = resolvedTileUrls.length > 0;
-      const shouldUseTiles = hasTileSource && !tileError;
+
+      const shouldUseTiles = resolvedTileUrls.length > 0 && !tileError;
       const customMapStyle = useNativeCleanStyle
         ? CLEAN_NATIVE_MAP_STYLE
         : undefined;
-      const renderCluster = useCallback((cluster, onPress) => {
-        const {
-          id,
-          geometry: { coordinates },
-          properties,
-        } = cluster;
-        const pointCount = properties?.point_count || 0;
-        const pointLabel =
-          properties?.point_count_abbreviated ||
-          (pointCount > 99 ? "99+" : String(pointCount));
-        const { size, ringSize, coreSize, colors } =
-          getClusterVisual(pointCount);
+      const mapStyle = style ? [styles.map, style] : styles.map;
 
-        return (
-          <Marker
-            key={`cluster-${id}`}
-            coordinate={{
-              latitude: coordinates[1],
-              longitude: coordinates[0],
-            }}
-            onPress={onPress}
-            anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={false}
-          >
-            <View
-              style={[
-                styles.clusterHalo,
-                {
-                  width: size,
-                  height: size,
-                  borderRadius: size / 2,
-                  backgroundColor: colors.halo,
-                },
-              ]}
-            >
-              <View
-                style={[
-                  styles.clusterRing,
-                  {
-                    width: ringSize,
-                    height: ringSize,
-                    borderRadius: ringSize / 2,
-                    backgroundColor: colors.shell,
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.clusterCore,
-                    {
-                      width: coreSize,
-                      height: coreSize,
-                      borderRadius: coreSize / 2,
-                      backgroundColor: colors.core,
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.clusterAccent,
-                      { backgroundColor: colors.accent },
-                    ]}
-                  />
-                </View>
-              </View>
+      const renderCluster = useCallback(
+        (cluster, onPress) => (
+          <ClusterMarker cluster={cluster} onPress={onPress} />
+        ),
+        [],
+      );
 
-              <View style={styles.clusterTextContainer}>
-                <Text style={[styles.clusterText, { color: colors.text }]}>
-                  {pointLabel}
-                </Text>
-              </View>
-            </View>
-          </Marker>
-        );
-      }, []);
       const handleRegionChangeComplete = useCallback(
         (region) => {
           regionRef.current = region;
@@ -353,13 +348,13 @@ const MapView = memo(
       );
 
       const handleTileError = useCallback(() => {
-        if (tileError || tileErrorTimerRef.current) return;
-
-        // Defer fallback state update to avoid mutating tile requests in Glide callbacks.
+        if (tileError || tileErrorTimerRef.current) {
+          return;
+        }
         tileErrorTimerRef.current = setTimeout(() => {
           tileErrorTimerRef.current = null;
           setTileError(true);
-        }, 0);
+        }, TILE_ERROR_RESET_DELAY_MS);
       }, [tileError]);
 
       useEffect(() => {
@@ -368,7 +363,7 @@ const MapView = memo(
           tileErrorTimerRef.current = null;
         }
         setTileError(false);
-      }, [tileUrls]);
+      }, [tileUrlsKey]);
 
       useEffect(() => {
         return () => {
@@ -382,7 +377,7 @@ const MapView = memo(
       return (
         <ClusteredMapView
           ref={mapRef}
-          style={mapStyleArray}
+          style={mapStyle}
           provider={PROVIDER_DEFAULT}
           initialRegion={INITIAL_REGION}
           clusteringEnabled={preparedPlaces.length > 1}
@@ -397,9 +392,14 @@ const MapView = memo(
           renderCluster={renderCluster}
           mapType={shouldUseTiles ? "none" : mapType}
           customMapStyle={customMapStyle}
+          showsUserLocation={showsUserLocation}
+          showsUserHeadingIndicator={showsUserHeadingIndicator}
+          showsMyLocationButton={showsMyLocationButton}
+          userLocationUpdateInterval={3000}
+          userLocationFastestInterval={2000}
           rotateEnabled={courseUpEnabled}
           pitchEnabled={courseUpEnabled}
-          showsCompass={false}
+          showsCompass={courseUpEnabled}
           showsScale={false}
           showsBuildings={false}
           showsTraffic={false}
@@ -409,7 +409,7 @@ const MapView = memo(
           onPress={onPressMap}
           onLongPress={onLongPressMap}
           onRegionChangeComplete={handleRegionChangeComplete}
-          edgePadding={{ top: 120, right: 120, bottom: 120, left: 120 }}
+          edgePadding={MAP_EDGE_PADDING}
           mapPadding={mapPadding}
         >
           {shouldUseTiles
@@ -446,58 +446,22 @@ const MapView = memo(
 MapView.displayName = "MapView";
 
 const styles = StyleSheet.create({
-  clusterHalo: {
-    alignItems: "center",
-    justifyContent: "center",
+  map: {
+    flex: 1,
   },
-  clusterRing: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.9)",
+  clusterHalo: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 10,
   },
-  clusterCore: {
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  clusterAccent: {
-    position: "absolute",
-    top: 1,
-    left: 1,
-    width: "62%",
-    height: "38%",
-    borderRadius: 9999,
-    opacity: 0.92,
-    transform: [{ rotate: "-18deg" }],
-  },
-  clusterTextContainer: {
-    position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  clusterText: {
-    fontSize: 14,
-    fontWeight: "bold",
-    letterSpacing: -0.2,
-  },
-  placeLabelWrap: {
-    position: "absolute",
-    left: "100%",
-    top: "50%",
-    marginLeft: 6,
-    transform: [{ translateY: -7 }],
-  },
-  placeLabelText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#000000",
-    letterSpacing: 0.1,
+  clusterRing: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.14,
+    shadowRadius: 6,
+    elevation: 6,
   },
 });
 

@@ -2,6 +2,7 @@ import prisma from "../../config/prismaClient.js";
 import { ROLES, USER_STATUS } from "../../config/constants.js";
 import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
+import { assertBusinessLimit } from "../subscription/subscriptionEntitlement.service.js";
 
 const STAFF_SELECT = {
   id: true,
@@ -70,6 +71,11 @@ export const getStaffList = async (businessId, query = {}) => {
  */
 export const createStaff = async (businessId, data) => {
   const { email, password, fullName, phone, roleId } = data;
+
+  const activeStaffCount = await prisma.user.count({
+    where: { businessId, roleId: ROLES.STAFF, deletedAt: null },
+  });
+  await assertBusinessLimit(businessId, "maxStaff", activeStaffCount);
 
   if (!email || !password) {
     throw new ServiceError("Email và mật khẩu là bắt buộc", 400, "MISSING_FIELDS");

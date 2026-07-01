@@ -18,6 +18,7 @@ import {
   CircleCheck,
   CircleX,
   Lock,
+  X,
 } from "lucide-react";
 import * as bookingApi from "@/apis/bookingService";
 import { getMyPlaces } from "@/apis/businessApi";
@@ -124,7 +125,7 @@ const getServiceFromBooking = (booking) => {
 
 // ─── Capacity Indicator ─────────────────────────────────────────────────────────
 
-function CapacityIndicator({ used, capacity, className }) {
+const CapacityIndicator = memo(function CapacityIndicator({ used, capacity, className }) {
   if (capacity === null || capacity === undefined) return null;
 
   const percentage = Math.min((used / capacity) * 100, 100);
@@ -150,11 +151,11 @@ function CapacityIndicator({ used, capacity, className }) {
       </span>
     </div>
   );
-}
+});
 
 // ─── Booking Card ───────────────────────────────────────────────────────────────
 
-function BookingCard({ booking, onClick, compact = false, t }) {
+const BookingCard = memo(function BookingCard({ booking, onClick, compact = false, t }) {
   const colors = STATUS_COLORS[booking.status] || STATUS_COLORS[BOOKING_STATUS.PENDING];
 
   return (
@@ -201,11 +202,11 @@ function BookingCard({ booking, onClick, compact = false, t }) {
       )}
     </button>
   );
-}
+});
 
 // ─── Resource Timeline Card (for RESOURCE model) ─────────────────────────────────
 
-function ResourceTimelineCard({ booking, onClick, t }) {
+const ResourceTimelineCard = memo(function ResourceTimelineCard({ booking, onClick, t }) {
   const colors = STATUS_COLORS[booking.status] || STATUS_COLORS[BOOKING_STATUS.PENDING];
   const service = getServiceFromBooking(booking);
 
@@ -236,17 +237,17 @@ function ResourceTimelineCard({ booking, onClick, t }) {
       )}
     </button>
   );
-}
+});
 
 // ─── Empty Cell ────────────────────────────────────────────────────────────────
 
-function EmptyCell({ showCapacity }) {
+const EmptyCell = memo(function EmptyCell({ showCapacity }) {
   return (
     <div className="w-full h-full flex items-center justify-center opacity-30">
       <div className="w-4 h-4 rounded-full border-2 border-dashed border-gray-300" />
     </div>
   );
-}
+});
 
 // ─── Day Column (Grid View) ─────────────────────────────────────────────────────
 
@@ -433,9 +434,7 @@ function BookingDetailModal({ booking, open, onClose, t }) {
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Đóng"
           >
-            <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="h-5 w-5 text-gray-500" />
           </button>
         </div>
 
@@ -739,11 +738,6 @@ const BookingSchedulePage = memo(() => {
               </Link>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">{t("business.schedule.title")}</h1>
-                <p className="text-sm text-gray-500">
-                  {activeBookingModel === BOOKING_MODELS.RESOURCE
-                    ? t("business.schedule.resourceModel")
-                    : t("business.schedule.capacityModel")}
-                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">

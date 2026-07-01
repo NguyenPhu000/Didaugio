@@ -106,9 +106,19 @@ export const serializeBusiness = (business, options = {}) => {
 
   // Include document URLs only for authorized contexts (owner viewing own profile)
   if (includeDocumentUrls) {
-    result.idCardFront = idCardFront || null;
-    result.idCardBack = idCardBack || null;
-    result.businessLicense = businessLicense || null;
+    result.idCardFront = getDecryptedValue(idCardFront);
+    result.idCardBack = getDecryptedValue(idCardBack);
+    result.businessLicense = getDecryptedValue(businessLicense);
+    if (sensitiveDocuments) {
+      result.sensitiveDocuments = sensitiveDocuments.map((doc) => ({
+        id: doc.id,
+        type: doc.type,
+        mimeType: doc.mimeType,
+        originalName: doc.originalName,
+        fileSize: doc.fileSize,
+        createdAt: doc.createdAt,
+      }));
+    }
   }
   
   if (result.owner) {

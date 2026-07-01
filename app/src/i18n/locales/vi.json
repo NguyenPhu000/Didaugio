@@ -32,7 +32,7 @@
     "required": "Bắt buộc",
     "optional": "Tùy chọn",
     "free": "Miễn phí",
-    "appName": "Đi Đâu Giờ?",
+    "appName": "iPoint Genie",
     "offline": "Bạn đang offline — Hiển thị dữ liệu đã lưu",
     "days": "ngày",
     "people": "người",
@@ -229,10 +229,10 @@
       "days": "{{count}} ngày",
       "from": "Từ {{price}}"
     },
-    "headerBrand": "Đi Đâu Giờ?",
+    "headerBrand": "iPoint Genie",
     "headerGreeting": "Xin chào, {{name}}",
-    "cmsBrandBadge": "ĐI ĐÂU GIỜ",
-    "cmsFallbackTitle": "Đi Đâu Giờ?",
+    "cmsBrandBadge": "iPoint Genie",
+    "cmsFallbackTitle": "iPoint Genie",
     "cmsFallbackDesc": "Khám phá hàng trăm địa điểm hấp dẫn tại Cần Thơ",
     "heroBadge": "ĐỀ XUẤT CHO BẠN",
     "heroExplore": "Khám phá"
@@ -306,7 +306,7 @@
     },
     "settings": "Cài đặt",
     "comingSoon": "{feature} sẽ có trong bản cập nhật tới!",
-    "shareMessage": "Xem hồ sơ {{name}} trên Đi Đâu Giờ?"
+    "shareMessage": "Xem hồ sơ {{name}} trên iPoint Genie"
   },
   "settings": {
     "title": "CÀI ĐẶT",
@@ -406,6 +406,17 @@
     },
     "qrReady": "QR đã sẵn sàng, chạm để xem",
     "viewDetail": "Xem chi tiết booking"
+  },
+  "bookingTicket": {
+    "notAvailable": "Chua co thong tin",
+    "quantityValue": "{{count}} khach",
+    "location": "Dia diem",
+    "date": "Ngay",
+    "time": "Gio",
+    "quantity": "So khach",
+    "address": "Dia chi",
+    "total": "Tong tien",
+    "qrPending": "QR mo sau khi booking duoc xac nhan"
   },
   "bookingDetail": {
     "title": "Chi tiết booking",
@@ -955,7 +966,7 @@
     "title": "Góp ý & Hỗ trợ",
     "subtitle": "Ý kiến của bạn giúp chúng tôi cải thiện",
     "weListen": "Chúng tôi lắng nghe bạn",
-    "description": "Góp ý giúp Đi Đâu Giờ? ngày càng tốt hơn cho cộng đồng Cần Thơ",
+    "description": "Góp ý giúp iPoint Genie ngày càng tốt hơn cho cộng đồng Cần Thơ",
     "typeLabel": "Loại góp ý *",
     "titleLabel": "Tiêu đề *",
     "titlePlaceholder": "Mô tả ngắn gọn vấn đề...",

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -114,7 +114,13 @@ const SettingsPageContent = () => {
   const [activeTab, setActiveTab] = useState("general");
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
 
-  const { isLoading } = useSettings();
+  const { data: remoteSettings, isLoading } = useSettings();
+
+  useEffect(() => {
+    if (remoteSettings?.data) {
+      setSettings((prev) => mergeRemoteSettings(prev, remoteSettings.data));
+    }
+  }, [remoteSettings]);
   const updateSettingsMutation = useUpdateSettings();
   const { data: featureFlagsData } = useFeatureFlags();
   const updateFeatureFlagMutation = useUpdateFeatureFlag();

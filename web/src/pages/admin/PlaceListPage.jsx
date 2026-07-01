@@ -18,6 +18,7 @@ import Activity from "lucide-react/dist/esm/icons/activity";
 import List from "lucide-react/dist/esm/icons/list";
 import GridIcon from "lucide-react/dist/esm/icons/grid";
 import AnimatedIcon from "@/components/ui/animated-icon";
+import { cn } from "@/lib/utils";
 import { lazy, Suspense } from "react";
 import {
   usePlaces,
@@ -73,6 +74,7 @@ import { Textarea } from "@/components/ui/textarea";
 import TimStatsCard from "@/components/admin/TimStatsCard";
 import BusinessDetailModal from "@/components/admin/BusinessDetailModal";
 import { useTranslation } from "react-i18next";
+import { getTableSerialNumber } from "@/utils/tableSerial";
 
 /**
  * PLACE LIST PAGE - T.I.M STYLE OVERHAUL
@@ -361,31 +363,30 @@ const PlaceListPage = ({
     const statusConfig = {
       draft: {
         label: "DRAFT",
-        className: "bg-gray-200 text-gray-700 border-2 border-gray-400",
+        className: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
       },
       pending: {
         label: "PENDING",
-        className:
-          "bg-yellow-400 text-black border-2 border-yellow-600 animate-pulse font-black",
+        className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50 animate-pulse",
       },
       approved: {
         label: "APPROVED",
-        className: "bg-[#F3E600] text-black border-2 border-black font-black",
+        className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50",
       },
       rejected: {
         label: "REJECTED",
-        className: "bg-red-500 text-white border-2 border-red-700 font-black",
+        className: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50",
       },
       hidden: {
         label: "HIDDEN",
-        className: "bg-gray-800 text-gray-300 border-2 border-gray-600",
+        className: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
       },
     };
 
     const config = statusConfig[status] || statusConfig.draft;
     return (
       <div
-        className={`px-3 py-1.5 text-[10px] uppercase font-mono ${config.className} backdrop-blur-sm shadow-sm`}
+        className={cn("px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded-full border shadow-sm backdrop-blur-sm", config.className)}
       >
         {config.label}
       </div>
@@ -544,18 +545,18 @@ const PlaceListPage = ({
                 : "space-y-2"
             }
           >
-            {places.map((place) =>
+            {places.map((place, index) =>
               viewMode === "grid" ? (
                 // GRID VIEW CARD - ENHANCED T.I.M STYLE
                 <div
                   key={place.id}
-                  className="relative group bg-white border-2 border-black transition-all hover:-translate-y-2 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden"
+                  className="relative group bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1 overflow-hidden flex flex-col"
                 >
                   {/* Grid Background Overlay */}
                   <div className="absolute inset-0 bg-grid-dots opacity-30 pointer-events-none"></div>
 
                   {/* Image Container */}
-                  <div className="h-52 bg-gray-900 relative overflow-hidden border-b-2 border-black">
+                  <div className="h-52 bg-zinc-900 relative overflow-hidden border-b border-zinc-100 dark:border-zinc-800 rounded-t-2xl shrink-0">
                     {place.images?.[0] ? (
                       <>
                         <img
@@ -564,7 +565,7 @@ const PlaceListPage = ({
                           alt={place.name}
                         />
                         {/* Accent Bar on Image */}
-                        <div className="absolute bottom-0 left-0 w-1 h-full bg-[#F3E600] group-hover:w-2 transition-all"></div>
+                        <div className="absolute bottom-0 left-0 w-1 h-full bg-[#F3E600] group-hover:w-1.5 transition-all"></div>
                       </>
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
@@ -579,41 +580,44 @@ const PlaceListPage = ({
                     <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
                       {getStatusBadge(place.status)}
                       {place.isFeatured && (
-                        <div className="bg-[#F3E600] border-2 border-black text-black px-2 py-1 text-[10px] uppercase font-black flex items-center gap-1">
+                        <div className="bg-[#F3E600] text-black px-2.5 py-1 text-[10px] uppercase font-bold flex items-center gap-1 rounded-full shadow-sm">
                           <Star className="w-3 h-3 fill-black" /> FEATURED
                         </div>
                       )}
                     </div>
 
                     {/* ID Badge */}
-                    <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm border border-white/20 px-2 py-1">
-                      <span className="font-mono text-[10px] text-white">
-                        #{place.id}
+                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-0.5 rounded-full">
+                      <span className="font-mono text-[10px] text-white font-semibold">
+                        {getTableSerialNumber(
+                          pagination.total || places.length,
+                          index,
+                          pagination.page || filters.page,
+                          pagination.limit || filters.limit,
+                        )}
                       </span>
                     </div>
                   </div>
 
                   {/* Content Section */}
-                  <div className="p-5 relative bg-white">
+                  <div className="p-5 relative bg-white dark:bg-zinc-900 flex-1 flex flex-col">
                     {/* Title */}
                     <h3
-                      className="font-black text-lg leading-tight uppercase mb-2 tracking-tight hover:text-[#F3E600] transition-colors cursor-pointer"
+                      className="font-bold text-base text-zinc-900 dark:text-zinc-100 leading-tight uppercase mb-2 tracking-tight hover:text-[#F3E600] transition-colors cursor-pointer line-clamp-2 min-h-[2.5rem]"
                       title={place.name}
                       onClick={() => handleViewDetails(place)}
                     >
-                      {place.name.length > 30
-                        ? `${place.name.substring(0, 30)}...`
-                        : place.name}
+                      {place.name}
                     </h3>
 
                     {/* Meta Info */}
-                    <div className="flex items-center gap-2 text-[10px] font-mono text-gray-500 mb-4 uppercase">
-                      <span className="bg-gray-100 px-2 py-0.5 border border-gray-300">
+                    <div className="flex items-center gap-2 text-[10px] text-zinc-500 dark:text-zinc-400 mb-4 flex-wrap">
+                      <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full font-medium">
                         {place.category?.name || "UNCATEGORIZED"}
                       </span>
-                      <span className="text-gray-300">//</span>
+                      <span className="text-zinc-300 dark:text-zinc-700">•</span>
                       <span
-                        className="truncate max-w-[120px]"
+                        className="truncate max-w-[120px] font-medium"
                         title={place.district?.name}
                       >
                         {place.district?.name || "NO_DISTRICT"}
@@ -621,22 +625,20 @@ const PlaceListPage = ({
                     </div>
 
                     {/* Stats Grid - Enhanced */}
-                    <div className="grid grid-cols-2 gap-3 border-t-2 border-black pt-4 mb-4">
-                      <div className="text-center bg-gray-50 border border-gray-200 p-2">
-                        <div className="text-[10px] text-gray-400 font-mono uppercase mb-1 tracking-wider">
-                          <Eye className="w-3 h-3 inline mr-1" />
-                          VIEWS
+                    <div className="grid grid-cols-2 gap-2.5 border-t border-zinc-100 dark:border-zinc-800 pt-4 mb-4">
+                      <div className="text-center bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl p-2.5 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                        <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+                          <Eye className="w-3.5 h-3.5 text-zinc-400" /> VIEWS
                         </div>
-                        <div className="font-black text-xl tracking-tighter">
+                        <div className="font-bold text-lg text-zinc-800 dark:text-zinc-200">
                           {place.viewCount || 0}
                         </div>
                       </div>
-                      <div className="text-center bg-yellow-50 border border-yellow-200 p-2">
-                        <div className="text-[10px] text-gray-400 font-mono uppercase mb-1 tracking-wider">
-                          <Star className="w-3 h-3 inline mr-1" />
-                          RATING
+                      <div className="text-center bg-amber-50/30 dark:bg-amber-950/10 border border-amber-100/50 dark:border-amber-950/30 rounded-xl p-2.5 transition-all hover:bg-amber-50/50">
+                        <div className="text-[10px] text-amber-600/80 dark:text-amber-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> RATING
                         </div>
-                        <div className="font-black text-xl tracking-tighter text-yellow-600">
+                        <div className="font-bold text-lg text-amber-700 dark:text-amber-400">
                           {place.ratingAvg
                             ? parseFloat(place.ratingAvg).toFixed(1)
                             : "N/A"}
@@ -645,26 +647,26 @@ const PlaceListPage = ({
                     </div>
 
                     {/* Action Buttons - Tactical Style */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 mt-auto pt-2 border-t border-zinc-100 dark:border-zinc-800">
                       <Button
                         size="sm"
-                        className="flex-1 rounded-none border-2 border-black bg-white text-black hover:bg-[#F3E600] hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] uppercase font-black text-xs h-10 transition-all"
+                        className="flex-1 rounded-xl bg-zinc-950 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 dark:text-zinc-950 text-white font-semibold text-[11px] gap-1.5 h-10 shadow-sm"
                         onClick={() => handleEdit(place)}
                       >
-                        <Edit className="w-4 h-4 mr-1.5" /> EDIT
+                        <Edit className="w-4 h-4" /> EDIT
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="icon"
-                            className="h-10 w-10 rounded-none border-2 border-black bg-black text-[#F3E600] hover:bg-[#F3E600] hover:text-black transition-all"
+                            className="h-10 w-10 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
                           >
                             <MoreHorizontal className="w-5 h-5" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           align="end"
-                          className="rounded-none border border-black w-48 font-mono text-xs uppercase"
+                          className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-950 w-48 font-sans text-xs [--accent:transparent]"
                         >
                           <DropdownMenuLabel>{t("places.card.actions")}</DropdownMenuLabel>
                           <DropdownMenuSeparator />

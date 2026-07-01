@@ -393,7 +393,7 @@ export default function GroqChatScreen() {
 
             <Text style={s.heroTitle}>Chào bạn, mình là Nhi!</Text>
             <Text style={s.heroSubtitle}>
-              Mình là trợ lý du lịch ảo của bạn. Bạn muốn Đi Đâu Giờ? Hãy để mình lên lịch trình hoặc gợi ý điểm ăn chơi Cần Thơ nghen.
+              Mình là trợ lý du lịch ảo của bạn. Bạn muốn đi đâu bây giờ? Hãy để iPoint Genie lên lịch trình hoặc gợi ý điểm ăn chơi Cần Thơ nghen.
             </Text>
 
             <QuickSuggestions

@@ -5,6 +5,7 @@
 import { Router } from "express";
 import multer from "multer";
 import prisma from "../../config/prismaClient.js";
+import { isAdminOrSuperAdminRole } from "../../config/constants.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { verifyCsrfToken } from "../../middlewares/csrfProtection.js";
@@ -28,7 +29,7 @@ const canDeleteDocument = async (req, res, next) => {
     const roleId = req.user.roleId;
 
     // Admin hoặc Superadmin luôn được phép
-    if (roleId <= 4) {
+    if (isAdminOrSuperAdminRole(roleId)) {
       return next();
     }
 

@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Đi Đâu Giờ?",
+    "appName": "iPoint Genie",
     "adminPanel": "Admin Panel",
     "save": "Save",
     "cancel": "Cancel",
@@ -266,7 +266,7 @@
       "passwordMismatch": "Passwords do not match"
     },
     "login": {
-      "pageTitle": "Login — Đi Đâu Giờ?",
+      "pageTitle": "Login — iPoint Genie",
       "adminSubtitle": "ADMIN PORTAL",
       "mobileSubtitle": "BUSINESS PORTAL",
       "heroTitle1": "MANAGE",
@@ -299,7 +299,7 @@
       "secureNote": "SECURED BY RSA-256 · SESSION AUTO-EXPIRES"
     },
     "register": {
-      "pageTitle": "Register — Đi Đâu Giờ?",
+      "pageTitle": "Register — iPoint Genie",
       "businessTitle": "BUSINESS PORTAL",
       "mobileSubtitle": "BUSINESS REGISTRATION",
       "heroTitle": "BECOME\nA BUSINESS\nPARTNER",
@@ -331,7 +331,7 @@
       "termsNote": "BY REGISTERING, YOU AGREE TO OUR TERMS OF SERVICE & PRIVACY POLICY."
     },
     "forgotPassword": {
-      "pageTitle": "Forgot Password — Đi Đâu Giờ?",
+      "pageTitle": "Forgot Password — iPoint Genie",
       "subtitle": "PASSWORD RECOVERY",
       "mobileSubtitle": "SYSTEM",
       "heroTitle1": "ACCOUNT",
@@ -3243,7 +3243,11 @@
   },
   "subscription": {
     "title": "Subscription",
+    "description": "Manage service plans and view your business subscription details",
     "currentPlan": "Current Plan",
+    "currentPlanDesc": "Detailed information about the active service plan",
+    "tabPlans": "Service Plans",
+    "tabCurrent": "Current Plan",
     "upgradeBtn": "Upgrade",
     "downgrade": "Downgrade",
     "expiresAt": "Expires at",
