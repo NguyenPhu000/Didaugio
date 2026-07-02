@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
+import { BlurView } from "expo-blur";
 import { Box, Text, Pressable as PrimitivePressable } from "../../../components/primitives";
 import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
 import Animated, {
@@ -36,18 +37,26 @@ function dateLabel(dateDisplay) {
 }
 
 function SaveButton({ onPress, isSaved, label }) {
+  const handlePress = useCallback(
+    (event) => {
+      event?.stopPropagation?.();
+      onPress?.();
+    },
+    [onPress],
+  );
+
   return (
     <PrimitivePressable
-      onPress={onPress}
+      onPress={handlePress}
       hitSlop={10}
       accessibilityRole="button"
       accessibilityLabel={label}
       haptic="light"
-      className="w-[34px] h-[34px] rounded-[17px] items-center justify-center bg-white/90"
+      className="w-10 h-10 rounded-full items-center justify-center overflow-hidden border border-white/50 bg-white/85"
     >
       <MaterialIconsRounded
         name={isSaved ? "bookmark" : "bookmark-border"}
-        size={18}
+        size={19}
         color={isSaved ? "#FF9F0A" : APPLE_THEME.text}
       />
     </PrimitivePressable>
@@ -56,8 +65,8 @@ function SaveButton({ onPress, isSaved, label }) {
 
 function StatusPill({ status }) {
   return (
-    <Box className="rounded-full overflow-hidden bg-white/90">
-      <Box className="flex-row items-center gap-1.5 px-[11px] py-1.5">
+    <BlurView intensity={70} tint="light" className="rounded-full overflow-hidden border border-white/50">
+      <Box className="flex-row items-center gap-1.5 px-3 py-2 bg-white/35">
         <Box
           className="w-1.5 h-1.5 rounded-[3px]"
           style={{ backgroundColor: status.accent || status.text }}
@@ -70,11 +79,26 @@ function StatusPill({ status }) {
           {status.label}
         </Text>
       </Box>
-    </Box>
+    </BlurView>
   );
 }
 
 /* ── Card chính cho tất cả chuyến đi ── */
+function MetaChip({ icon, label }) {
+  return (
+    <Box className="flex-1 flex-row items-center gap-1.5 rounded-full bg-white/[0.14] border border-white/15 px-3 py-2">
+      <MaterialIconsRounded name={icon} size={13} color="#FFFFFF" />
+      <Text
+        className="flex-1 text-xs font-semibold text-white"
+        style={{ fontVariant: ["tabular-nums"] }}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </Box>
+  );
+}
+
 function ImmersiveCard({
   trip,
   status,
@@ -87,8 +111,15 @@ function ImmersiveCard({
   saveLabel,
   t,
 }) {
+  const firstStops = Array.isArray(trip.destinations)
+    ? trip.destinations
+        .slice(0, 2)
+        .map((destination) => destination?.place?.name)
+        .filter(Boolean)
+    : [];
+
   return (
-    <Box className="flex-1">
+    <Box className="flex-1 bg-[#F6F7F9]">
       {displayUri ? (
         <Image
           source={{ uri: displayUri }}
@@ -100,14 +131,15 @@ function ImmersiveCard({
           onError={onImageError}
         />
       ) : (
-        <Box className="absolute inset-0 bg-[#25272D]" />
+        <Box className="absolute inset-0 bg-[#E9EEF5]" />
       )}
 
       {/* Overlay gradient mặc định */}
-      <Box className="absolute inset-0 bg-black/35" pointerEvents="none" />
+      <Box className="absolute inset-0 bg-black/15" pointerEvents="none" />
+      <Box className="absolute left-0 right-0 bottom-0 h-[58%] bg-black/38" pointerEvents="none" />
 
       {/* Overlay theo trạng thái (completed/cancelled) */}
-      <Box className="absolute top-3 left-3 right-3 flex-row items-center justify-between">
+      <Box className="absolute top-4 left-4 right-4 flex-row items-center justify-between">
         <StatusPill status={status} />
         {onSave ? (
           <SaveButton
@@ -118,48 +150,56 @@ function ImmersiveCard({
         ) : null}
       </Box>
 
-      <Box className="absolute left-0 right-0 bottom-0 px-4 pb-[15px] gap-2.5">
-        <Text
-          className="text-[20px] font-semibold text-white leading-[25px]"
-          style={TITLE_TEXT_SHADOW}
-          numberOfLines={2}
-        >
-          {trip.title || t("tripCard.newTrip")}
-        </Text>
+      <BlurView
+        intensity={34}
+        tint="dark"
+        className="absolute left-4 right-4 bottom-4 rounded-[20px] overflow-hidden border border-white/15"
+      >
+        <Box className="gap-2.5 bg-black/20 px-3.5 py-3">
+          <Box className="gap-1.5">
+            <Text
+              className="text-[22px] font-semibold text-white leading-[27px]"
+              style={TITLE_TEXT_SHADOW}
+              numberOfLines={2}
+            >
+              {trip.title || t("tripCard.newTrip")}
+            </Text>
 
-        <Box className="flex-row items-center flex-wrap gap-[7px]">
-          {dateText ? (
-            <Box className="flex-row items-center gap-[5px] bg-white/[0.18] px-[9px] py-[5px] rounded-full">
-              <MaterialIconsRounded name="event" size={13} color="#FFFFFF" />
-              <Text
-                className="text-xs font-semibold text-white"
-                style={{ fontVariant: ["tabular-nums"] }}
-                numberOfLines={1}
-              >
-                {dateText}
-              </Text>
-            </Box>
-          ) : null}
-          <Box className="flex-row items-center gap-[5px] bg-white/[0.18] px-[9px] py-[5px] rounded-full">
-            <MaterialIconsRounded name="today" size={13} color="#FFFFFF" />
-            <Text
-              className="text-xs font-semibold text-white"
-              style={{ fontVariant: ["tabular-nums"] }}
-            >
-              {t("tripCard.dayCount", { count: trip.totalDays ?? 1 })}
-            </Text>
+            {firstStops.length > 0 ? (
+              <Box className="flex-row items-center gap-2">
+                <Box className="w-7 h-7 rounded-full bg-white/90 items-center justify-center">
+                  <MaterialIconsRounded name="route" size={15} color="#111827" />
+                </Box>
+                <Text
+                  className="flex-1 text-white/90 text-[13px] font-medium"
+                  numberOfLines={1}
+                >
+                  {firstStops.join(" -> ")}
+                </Text>
+              </Box>
+            ) : null}
           </Box>
-          <Box className="flex-row items-center gap-[5px] bg-white/[0.18] px-[9px] py-[5px] rounded-full">
-            <MaterialIconsRounded name="place" size={13} color="#FFFFFF" />
-            <Text
-              className="text-xs font-semibold text-white"
-              style={{ fontVariant: ["tabular-nums"] }}
-            >
-              {t("tripCard.placeCount", { count: destinationCount })}
-            </Text>
+
+          <Box className="h-px bg-white/15" />
+
+          <Box className="gap-1.5">
+            {dateText ? <MetaChip icon="event" label={dateText} /> : null}
+            <Box className="flex-row items-center gap-1.5">
+              <MetaChip
+                icon="today"
+                label={t("tripCard.dayCount", { count: trip.totalDays ?? 1 })}
+              />
+              <MetaChip
+                icon="place"
+                label={t("tripCard.placeCount", { count: destinationCount })}
+              />
+              <Box className="w-10 h-10 rounded-full bg-white items-center justify-center">
+                <MaterialIconsRounded name="arrow-forward" size={20} color="#111827" />
+              </Box>
+            </Box>
           </Box>
         </Box>
-      </Box>
+      </BlurView>
     </Box>
   );
 }
@@ -235,7 +275,7 @@ export const TripCard = memo(function TripCard({
           }
         }}
         style={[cardAnimStyle, SHADOW_IMMERSIVE]}
-        className="rounded-2xl overflow-hidden h-[188px] bg-[#1C1F25]"
+        className="rounded-[28px] overflow-hidden h-[246px] bg-[#F6F7F9] border border-white"
       >
         <ImmersiveCard
           trip={trip}
@@ -256,10 +296,10 @@ export const TripCard = memo(function TripCard({
 
 const SHADOW_IMMERSIVE = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 5 },
-  shadowOpacity: 0.1,
-  shadowRadius: 12,
-  elevation: 3,
+  shadowOffset: { width: 0, height: 14 },
+  shadowOpacity: 0.16,
+  shadowRadius: 24,
+  elevation: 7,
 };
 
 const TITLE_TEXT_SHADOW = {

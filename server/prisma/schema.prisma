@@ -13,6 +13,54 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum TripPlanStatus {
+  draft
+  planned
+  active
+  paused
+  completed
+  cancelled
+  archived
+}
+
+enum TripPlanSource {
+  manual
+  ai_generated
+  imported
+  cloned
+  booking_seeded
+}
+
+enum TripStopFulfillmentStatus {
+  pending
+  scheduled
+  checked_in
+  visited
+  skipped
+  cancelled
+}
+
+enum TripExecutionSessionStatus {
+  active
+  paused
+  stopped
+  completed
+  abandoned
+}
+
+enum BookingTripLinkStatus {
+  linked
+  detached
+  cancelled
+}
+
+enum DomainJobStatus {
+  pending
+  processing
+  done
+  failed
+}
+
 model Role {
   id              Int              @id @default(autoincrement())
   name            String           @unique
@@ -106,6 +154,9 @@ model User {
   reviewModerationActions ReviewModerationLog[]   @relation("ReviewModerationActor")
   systemConfigs           SystemConfig[]
   trips                   Trip[]
+  tripPlans               TripPlan[]
+  tripExecutionSessions   TripExecutionSession[]
+  bookingTripLinksActor   BookingTripLink[]       @relation("BookingTripLinkActor")
   savedTrips              SavedTrip[]
   checkins                UserCheckin[]
   createdEvents           Event[]                 @relation("EventCreator")
@@ -480,6 +531,7 @@ model Place {
   ward             WardCantho?        @relation(fields: [wardId], references: [id])
   reviews          Review[]
   tripDestinations TripDestination[]
+  tripStops        TripStop[]
   checkins         UserCheckin[]
 
   @@index([categoryId])
@@ -742,6 +794,136 @@ model TripDestination {
   @@index([tripId])
   @@index([placeId])
   @@map("trip_destinations")
+}
+
+model TripPlan {
+  id                Int                    @id @default(autoincrement())
+  userId            Int                    @map("user_id")
+  title             String
+  description       String?
+  coverImage        String?                @map("cover_image")
+  startDate         DateTime               @map("start_date") @db.Date
+  endDate           DateTime               @map("end_date") @db.Date
+  totalDays         Int                    @map("total_days")
+  status            TripPlanStatus         @default(draft)
+  source            TripPlanSource         @default(manual)
+  estimatedCost     Int?                   @map("estimated_cost")
+  totalDistanceM    Int?                   @map("total_distance_m")
+  metadata          Json?
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
+  user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stops             TripStop[]
+  bookingLinks      BookingTripLink[]
+  executionSessions TripExecutionSession[]
+
+  @@index([userId, status])
+  @@index([userId, startDate, endDate])
+  @@index([source])
+  @@map("trip_plans")
+}
+
+model TripStop {
+  id                  Int                       @id @default(autoincrement())
+  tripId              Int                       @map("trip_id")
+  placeId             Int                       @map("place_id")
+  dayNumber           Int                       @map("day_number")
+  sequence            Int
+  title               String?
+  note                String?
+  plannedDate         DateTime?                 @map("planned_date") @db.Date
+  arrivalTime         String?                   @map("arrival_time")
+  departureTime       String?                   @map("departure_time")
+  durationMinutes     Int?                      @map("duration_minutes")
+  estimatedCost       Int?                      @map("estimated_cost")
+  transportToNext     String?                   @map("transport_to_next")
+  routeDistanceM      Int?                      @map("route_distance_m")
+  routeDurationSec    Int?                      @map("route_duration_sec")
+  routeGeometry       Json?                     @map("route_geometry")
+  routeMetricsVersion Int                       @default(0) @map("route_metrics_version")
+  fulfillmentStatus   TripStopFulfillmentStatus @default(pending) @map("fulfillment_status")
+  fulfilledAt         DateTime?                 @map("fulfilled_at")
+  metadata            Json?
+  createdAt           DateTime                  @default(now()) @map("created_at")
+  updatedAt           DateTime                  @updatedAt @map("updated_at")
+  trip                TripPlan                  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  place               Place                     @relation(fields: [placeId], references: [id], onDelete: Restrict)
+  bookingLinks        BookingTripLink[]
+  sessionPointers     TripExecutionSession[]    @relation("SessionCurrentStop")
+
+  @@unique([tripId, dayNumber, sequence])
+  @@index([tripId, dayNumber])
+  @@index([placeId])
+  @@index([tripId, fulfillmentStatus])
+  @@map("trip_stops")
+}
+
+model BookingTripLink {
+  id         Int                   @id @default(autoincrement())
+  bookingId  Int                   @unique @map("booking_id")
+  tripId     Int                   @map("trip_id")
+  stopId     Int?                  @map("stop_id")
+  status     BookingTripLinkStatus @default(linked)
+  linkedAt   DateTime              @default(now()) @map("linked_at")
+  unlinkedAt DateTime?             @map("unlinked_at")
+  linkedById Int?                  @map("linked_by_id")
+  metadata   Json?
+  booking    Booking               @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  trip       TripPlan              @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  stop       TripStop?             @relation(fields: [stopId], references: [id], onDelete: SetNull)
+  linkedBy   User?                 @relation("BookingTripLinkActor", fields: [linkedById], references: [id], onDelete: SetNull)
+
+  @@index([tripId, status])
+  @@index([stopId])
+  @@index([linkedById])
+  @@map("booking_trip_links")
+}
+
+model TripExecutionSession {
+  id                 Int                        @id @default(autoincrement())
+  tripId             Int                        @map("trip_id")
+  userId             Int                        @map("user_id")
+  deviceId           String?                    @map("device_id")
+  status             TripExecutionSessionStatus @default(active)
+  startedAt          DateTime                   @default(now()) @map("started_at")
+  pausedAt           DateTime?                  @map("paused_at")
+  resumedAt          DateTime?                  @map("resumed_at")
+  endedAt            DateTime?                  @map("ended_at")
+  currentStopId      Int?                       @map("current_stop_id")
+  lastKnownLat       Decimal?                   @map("last_known_lat") @db.Decimal(10, 7)
+  lastKnownLng       Decimal?                   @map("last_known_lng") @db.Decimal(10, 7)
+  lastKnownHeading   Decimal?                   @map("last_known_heading") @db.Decimal(6, 2)
+  lastSyncAt         DateTime?                  @map("last_sync_at")
+  clientStateVersion Int                        @default(1) @map("client_state_version")
+  metadata           Json?
+  createdAt          DateTime                   @default(now()) @map("created_at")
+  updatedAt          DateTime                   @updatedAt @map("updated_at")
+  trip               TripPlan                   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentStop        TripStop?                  @relation("SessionCurrentStop", fields: [currentStopId], references: [id], onDelete: SetNull)
+
+  @@index([tripId, status])
+  @@index([userId, status])
+  @@index([deviceId])
+  @@index([lastSyncAt])
+  @@map("trip_execution_sessions")
+}
+
+model DomainJob {
+  id          Int             @id @default(autoincrement())
+  type        String
+  aggregate   String
+  aggregateId Int             @map("aggregate_id")
+  payload     Json
+  status      DomainJobStatus @default(pending)
+  attempts    Int             @default(0)
+  runAfter    DateTime        @default(now()) @map("run_after")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@index([type, status, runAfter])
+  @@index([aggregate, aggregateId])
+  @@map("domain_jobs")
 }
 
 model AiPromptHistory {
@@ -1081,6 +1263,7 @@ model Booking {
   resource         PlaceResource?      @relation(fields: [resourceId], references: [id])
   payment          Payment?
   transaction      BookingTransaction?
+  tripLink         BookingTripLink?
   financialLedgers FinancialLedger[]
   reviews          Review[]
 

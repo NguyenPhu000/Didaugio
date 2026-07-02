@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { View, RefreshControl } from "react-native";
-import { FlashList } from "@shopify/flash-list";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import VerticalFlowCarousel from "../../src/components/reacticx/vertical-flow-carousel";
 import { useTripsCached, useOfflineSync } from "../../src/modules/trips/hooks/useTripsOffline";
 import {
   useSaveTrip,
@@ -26,10 +26,6 @@ import {
   ErrorState,
 } from "../../src/modules/trips/components/TripsStates";
 import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../src/constants/design-tokens";
-
-function ItemSeparator() {
-  return <View className="h-3.5" />;
-}
 
 export default function TripsScreen() {
   const { t } = useTranslation();
@@ -102,7 +98,7 @@ export default function TripsScreen() {
   );
 
   const renderTripCard = useCallback(
-    ({ item }) => (
+    (item) => (
       <TripCard
         trip={item}
         onPress={() => handlePressTrip(item.id)}
@@ -134,14 +130,19 @@ export default function TripsScreen() {
       }}
     >
       <OfflineBanner />
-      <FlashList
+      <VerticalFlowCarousel
         data={!isLoading && !isError ? filteredTrips : []}
         renderItem={renderTripCard}
         keyExtractor={keyExtractor}
-        extraData={trips}
-        showsVerticalScrollIndicator={false}
-        estimatedItemSize={200}
-        contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 24 }}
+        itemHeight={246}
+        spacing={18}
+        rotationAngle={3.5}
+        scaleInactive={0.93}
+        opacityInactive={0.72}
+        blurIntensity={8}
+        showBlur={filteredTrips.length > 1}
+        endSpacing={0}
+        contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 30 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -165,7 +166,6 @@ export default function TripsScreen() {
             </>
           ) : null
         }
-        ItemSeparatorComponent={ItemSeparator}
         ListEmptyComponent={
           isLoading ? (
             <LoadingState />

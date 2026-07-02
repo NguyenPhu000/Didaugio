@@ -42,6 +42,9 @@ export const ENDPOINTS = {
     removeDestination: (tripId, destId) =>
       `/profile/trips/${tripId}/destinations/${destId}`,
     reorderDestinations: (tripId) => `/profile/trips/${tripId}/destinations/reorder`,
+    linkBookingToTrip: (tripId, bookingId) =>
+      `/profile/trips/${tripId}/bookings/${bookingId}/link`,
+    reorderTripStops: (tripId) => `/profile/trips/${tripId}/stops/reorder`,
     updateDestination: (tripId, destId) => `/profile/trips/${tripId}/destinations/${destId}`,
     moveDestination: (tripId, destId) => `/profile/trips/${tripId}/destinations/${destId}/move`,
     tripShare: (id) => `/profile/trips/${id}/share`,

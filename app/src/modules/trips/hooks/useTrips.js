@@ -5,7 +5,6 @@ import {
   deleteTripApi,
   saveTripApi,
   unsaveTripApi,
-  getSavedTripsApi,
   duplicateTripApi,
   createTripShareApi,
   getTripSharesApi,
@@ -45,20 +44,32 @@ export function useDeleteTrip() {
   });
 }
 
-function setTripSavedFlag(qc, tripId, isSaved) {
-  qc.setQueriesData({ queryKey: ["trips"] }, (old) => {
-    if (!Array.isArray(old)) return old;
-    return old.map((t) =>
-      String(t.id) === String(tripId) ? { ...t, isSaved } : t,
+const updateTripSavedFlag = (value, tripId, isSaved) => {
+  if (!value) return value;
+  if (Array.isArray(value)) {
+    return value.map((trip) =>
+      String(trip.id) === String(tripId) ? { ...trip, isSaved } : trip,
     );
-  });
+  }
+  if (Array.isArray(value.data)) {
+    return {
+      ...value,
+      data: updateTripSavedFlag(value.data, tripId, isSaved),
+    };
+  }
+  if (String(value.id) === String(tripId)) {
+    return { ...value, isSaved };
+  }
+  return value;
+};
+
+function setTripSavedFlag(qc, tripId, isSaved) {
+  qc.setQueriesData({ queryKey: QUERY_KEYS.trips.all() }, (old) =>
+    updateTripSavedFlag(old, tripId, isSaved),
+  );
   qc.setQueriesData({ queryKey: QUERY_KEYS.trips.detail(tripId) }, (old) => {
     if (!old) return old;
-    return {
-      ...old,
-      isSaved,
-      data: old.data ? { ...old.data, isSaved } : undefined,
-    };
+    return updateTripSavedFlag(old, tripId, isSaved);
   });
 }
 

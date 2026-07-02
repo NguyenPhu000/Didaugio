@@ -25,6 +25,12 @@ export const removeDestinationApi = (tripId, destId) =>
 export const reorderDestinationsApi = (tripId, data) =>
   client.patch(ENDPOINTS.profile.reorderDestinations(tripId), data);
 
+export const linkBookingToTripApi = (tripId, bookingId, data = {}) =>
+  client.post(ENDPOINTS.profile.linkBookingToTrip(tripId, bookingId), data);
+
+export const reorderTripStopsApi = (tripId, updates) =>
+  client.patch(ENDPOINTS.profile.reorderTripStops(tripId), { updates });
+
 export const updateDestinationApi = (tripId, destId, data) =>
   client.patch(ENDPOINTS.profile.updateDestination(tripId, destId), data);
 

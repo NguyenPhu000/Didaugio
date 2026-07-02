@@ -1,6 +1,7 @@
 import profileService from "../../services/profile/profile.service.js";
 import appService from "../../services/app/app.service.js";
 import tripService from "../../services/trip/trip.service.js";
+import tripPlanService from "../../services/trip/tripPlan.service.js";
 import * as bookingService from "../../services/booking/booking.service.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import prisma from "../../config/prismaClient.js";
@@ -609,6 +610,66 @@ export const reorderDestinations = async (req, res, next) => {
   }
 };
 
+export const linkBookingToTripPlan = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.tripId);
+    const bookingId = parseId(req.params.bookingId);
+    if (!tripId || !bookingId) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    const result = await tripPlanService.linkBookingToTrip({
+      bookingId,
+      tripId,
+      actorUserId: getUserId(req),
+      ...req.body,
+    });
+
+    return res.json({
+      success: true,
+      data: result,
+      message: "Liên kết booking vào chuyến đi thành công",
+      errorCode: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const reorderTripStops = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.tripId);
+    if (!tripId) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    const result = await tripPlanService.reorderDestinations({
+      tripId,
+      actorUserId: getUserId(req),
+      updates: req.body.updates,
+    });
+
+    return res.json({
+      success: true,
+      data: result,
+      message: "Sắp xếp lịch trình thành công",
+      errorCode: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateDestination = async (req, res, next) => {
   try {
     const tripId = parseId(req.params.id);
@@ -750,6 +811,8 @@ export default {
   addDestination,
   removeDestination,
   reorderDestinations,
+  linkBookingToTripPlan,
+  reorderTripStops,
   updateDestination,
   moveDestination,
   createTripShare,

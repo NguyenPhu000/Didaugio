@@ -4,10 +4,8 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start --go --tunnel --port 8083",
-    "dev": "expo start --go --tunnel --port 8083",
-    "start:lan": "expo start --go --lan --port 8083",
-    "dev:lan": "expo start --go --lan --port 8083",
+    "start": "expo start --go --port 8083",
+    "dev": "expo start --go --port 8083",
     "android": "expo run:android --port 8083",
     "ios": "expo run:ios --port 8083",
     "web": "expo start --web --port 8083",

@@ -5,6 +5,10 @@ thunder-collection.json
 scripts
 /generated/prisma
 prisma/migrations
+!prisma/migrations/
+prisma/migrations/*
+!prisma/migrations/20260702000000_trip_plan_refactor/
+!prisma/migrations/20260702000000_trip_plan_refactor/migration.sql
 tests
 storage/sensitive/*
 !storage/sensitive/.gitkeep
@@ -18,3 +22,5 @@ test_lookup.js
 scripts
 thunder-collection.json
 scripts
+!src/scripts/
+!src/scripts/backfillTripPlans.js

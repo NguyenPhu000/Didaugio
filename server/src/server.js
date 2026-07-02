@@ -18,6 +18,7 @@ import { startSubscriptionGracePeriodScheduler } from "./schedulers/subscription
 import { startSubscriptionPastDueScheduler } from "./schedulers/subscriptionPastDue.scheduler.js";
 import { startSubscriptionFeatureLockScheduler } from "./schedulers/subscriptionFeatureLock.scheduler.js";
 import { startSubscriptionStatsScheduler } from "./schedulers/subscriptionStats.scheduler.js";
+import { startDomainJobScheduler } from "./schedulers/domainJob.scheduler.js";
 import { initContractGenerationListener } from "./services/contract/contractGenerationListener.js";
 
 const require = createRequire(import.meta.url);
@@ -207,6 +208,7 @@ httpServer.listen(PORT, () => {
   startSubscriptionPastDueScheduler();
   startSubscriptionFeatureLockScheduler();
   startSubscriptionStatsScheduler();
+  startDomainJobScheduler();
 });
 
 export default app;

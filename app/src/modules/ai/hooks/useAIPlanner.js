@@ -8,6 +8,7 @@ import {
 } from "../api/aiApi";
 import { mapAIError } from "../lib/mapAIError";
 import { useAIPlannerStore } from "../../../stores/aiPlannerStore";
+import { TRIP_QUERY_KEYS } from "../../../constants/trip-query-keys";
 
 function normalizePlaceIds(ids, fallbackPlaces = []) {
   const fallbackIds = Array.isArray(fallbackPlaces)
@@ -128,7 +129,7 @@ export function useAIPlanner() {
         setDraftPlan(null);
         setSelectedPlaceIds([]);
         appendMessage(assistantMsg);
-        queryClient.invalidateQueries({ queryKey: ["my-trips"] });
+        queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.lists() });
       }
     },
     onError: (err) => {
@@ -162,7 +163,7 @@ export function useAIPlanner() {
       setSelectedPlaceIds([]);
       setLastPreferences(null);
       appendMessage(assistantMsg);
-      queryClient.invalidateQueries({ queryKey: ["my-trips"] });
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.lists() });
     },
     onError: (err) => {
       const errorMessage = mapAIError(err);
@@ -291,7 +292,7 @@ export function useAIPlanner() {
 
 export function useMyTrips(params = {}) {
   return useQuery({
-    queryKey: ["my-trips", params],
+    queryKey: TRIP_QUERY_KEYS.list(params),
     queryFn: () => getMyTripsApi(params),
     select: (res) => res?.data,
     staleTime: 2 * 60 * 1000,

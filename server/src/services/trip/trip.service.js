@@ -43,6 +43,14 @@ const approvedPlaceWhere = {
   status: "approved",
 };
 
+export const withSavedTripFlags = (items = [], savedTrips = []) => {
+  const savedTripIds = new Set(savedTrips.map((saved) => saved.tripId));
+  return items.map((trip) => ({
+    ...trip,
+    isSaved: savedTripIds.has(trip.id),
+  }));
+};
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -54,6 +62,11 @@ export const TRIP_PLACE_SELECT = {
   latitude: true,
   longitude: true,
   thumbnail: true,
+  images: {
+    take: 1,
+    orderBy: [{ isCover: "desc" }, { order: "asc" }],
+    select: { secureUrl: true, thumbnailUrl: true, imageData: true },
+  },
   ratingAvg: true,
   category: { select: { id: true, name: true } },
   district: { select: { id: true, name: true, code: true } },
@@ -394,7 +407,7 @@ export const getMySavedTrips = async (userId) => {
     orderBy: { createdAt: "desc" },
   });
 
-  return saved.map((s) => ({ ...s.trip, savedAt: s.createdAt }));
+  return saved.map((s) => ({ ...s.trip, savedAt: s.createdAt, isSaved: true }));
 };
 
 export const getMyTrips = async (userId, query = {}) => {
@@ -442,8 +455,17 @@ export const getMyTrips = async (userId, query = {}) => {
     prisma.trip.count({ where }),
   ]);
 
+  const tripIds = items.map((trip) => trip.id);
+  const savedTrips =
+    tripIds.length > 0
+      ? await prisma.savedTrip.findMany({
+          where: { userId, tripId: { in: tripIds } },
+          select: { tripId: true },
+        })
+      : [];
+
   return {
-    data: items,
+    data: withSavedTripFlags(items, savedTrips),
     pagination: {
       page,
       limit,

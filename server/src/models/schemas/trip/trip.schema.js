@@ -114,6 +114,52 @@ export const reorderDestinationsSchema = z.object({
 
 // ─── AI Trip Generation schema ──────────────────────────────────────────────
 
+export const linkBookingToTripSchema = z.object({
+  attachMode: z
+    .enum(["link_only", "create_stop_if_missing"])
+    .default("create_stop_if_missing"),
+  dateRangeMode: z
+    .enum(["reject_outside_range", "expand_trip_range"])
+    .default("reject_outside_range"),
+});
+
+export const reorderTripStopsSchema = z.object({
+  updates: z
+    .array(
+      z.object({
+        stopId: z.coerce.number().int().positive("ID điểm dừng không hợp lệ"),
+        dayNumber: z.coerce.number().int().min(1, "Ngày phải từ ngày 1 trở đi"),
+        sequence: z.coerce.number().int().min(1, "Thứ tự phải từ 1 trở đi"),
+      }),
+    )
+    .min(1, "Danh sách cập nhật không được trống")
+    .superRefine((updates, ctx) => {
+      const stopIds = new Set();
+      const targetSlots = new Set();
+
+      updates.forEach((item, index) => {
+        if (stopIds.has(item.stopId)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [index, "stopId"],
+            message: "Không được cập nhật trùng điểm dừng",
+          });
+        }
+        stopIds.add(item.stopId);
+
+        const targetSlot = `${item.dayNumber}:${item.sequence}`;
+        if (targetSlots.has(targetSlot)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [index, "sequence"],
+            message: "Không được xếp hai điểm vào cùng một vị trí",
+          });
+        }
+        targetSlots.add(targetSlot);
+      });
+    }),
+});
+
 export const generateTripSchema = z.object({
   totalDays: z.coerce.number().int().min(1).max(30).default(1),
   travelStyle: z.string().max(50).optional(),

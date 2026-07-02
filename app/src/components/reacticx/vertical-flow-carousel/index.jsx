@@ -1,6 +1,6 @@
 import { BlurView } from "expo-blur";
 import React from "react";
-import { Dimensions, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -9,10 +9,7 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
 function AnimatedItem({
-  item,
   index,
   scrollY,
   itemHeight,
@@ -24,6 +21,7 @@ function AnimatedItem({
   blurIntensity,
   children,
   totalItems,
+  endSpacing,
 }) {
   const animatedStyle = useAnimatedStyle(() => {
     const inputRange = [
@@ -88,7 +86,7 @@ function AnimatedItem({
         styles.itemContainer,
         animatedStyle,
         {
-          marginBottom: index === totalItems - 1 ? 400 : spacing,
+          marginBottom: index === totalItems - 1 ? endSpacing : spacing,
         },
       ]}
     >
@@ -101,6 +99,7 @@ function AnimatedItem({
               blurOpacity,
               { overflow: "hidden" },
             ]}
+            pointerEvents="none"
           >
             <BlurView
               intensity={blurIntensity}
@@ -120,20 +119,33 @@ function AnimatedItem({
 }
 
 export default function VerticalFlowCarousel({
-  data,
+  data = [],
   renderItem,
+  keyExtractor,
   itemHeight = 120,
   spacing = 50,
   containerStyle,
   contentContainerStyle,
+  ListHeaderComponent,
+  ListEmptyComponent,
+  ListFooterComponent,
+  refreshControl,
   showBlur = true,
   blurIntensity = 16,
   rotationAngle = 12,
   scaleInactive = 0.85,
   opacityInactive = 0.5,
   snapEnabled = true,
+  endSpacing = 400,
 }) {
   const scrollY = useSharedValue(0);
+  const [headerHeight, setHeaderHeight] = React.useState(0);
+  const hasHeader = Boolean(ListHeaderComponent);
+
+  const snapToOffsets = React.useMemo(() => {
+    if (!snapEnabled || !hasHeader || data.length === 0) return undefined;
+    return data.map((_, index) => headerHeight + index * (itemHeight + spacing));
+  }, [data, hasHeader, headerHeight, itemHeight, snapEnabled, spacing]);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -146,15 +158,39 @@ export default function VerticalFlowCarousel({
       <Animated.ScrollView
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        snapToInterval={snapEnabled ? itemHeight + spacing : undefined}
+        snapToInterval={
+          snapEnabled && !hasHeader ? itemHeight + spacing : undefined
+        }
+        snapToOffsets={snapToOffsets}
         decelerationRate="fast"
         showsVerticalScrollIndicator={false}
+        refreshControl={refreshControl}
         contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
       >
+        {ListHeaderComponent ? (
+          <View
+            onLayout={(event) => {
+              const nextHeight = event.nativeEvent.layout.height;
+              if (Math.abs(nextHeight - headerHeight) > 1) {
+                setHeaderHeight(nextHeight);
+              }
+            }}
+          >
+            {typeof ListHeaderComponent === "function" ? (
+              <ListHeaderComponent />
+            ) : (
+              ListHeaderComponent
+            )}
+          </View>
+        ) : null}
+        {data.length === 0 && ListEmptyComponent
+          ? typeof ListEmptyComponent === "function"
+            ? <ListEmptyComponent />
+            : ListEmptyComponent
+          : null}
         {data.map((item, index) => (
           <AnimatedItem
-            key={index}
-            item={item}
+            key={keyExtractor ? keyExtractor(item, index) : index}
             index={index}
             scrollY={scrollY}
             itemHeight={itemHeight}
@@ -165,10 +201,18 @@ export default function VerticalFlowCarousel({
             showBlur={showBlur}
             blurIntensity={blurIntensity}
             totalItems={data.length}
+            endSpacing={endSpacing}
           >
             {renderItem(item, index)}
           </AnimatedItem>
         ))}
+        {ListFooterComponent ? (
+          typeof ListFooterComponent === "function" ? (
+            <ListFooterComponent />
+          ) : (
+            ListFooterComponent
+          )
+        ) : null}
       </Animated.ScrollView>
     </View>
   );

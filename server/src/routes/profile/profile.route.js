@@ -10,6 +10,8 @@ import {
   updateDestinationSchema,
   moveDestinationSchema,
   reorderDestinationsSchema,
+  linkBookingToTripSchema,
+  reorderTripStopsSchema,
   generateTripSchema,
   createTripShareSchema,
   accessTripShareSchema,
@@ -90,6 +92,18 @@ router.post(
 );
 router.post("/trips/generate", authenticate, validateBody(generateTripSchema), profileController.generateTrip);
 router.post("/trips", authenticate, validateBody(createTripSchema), profileController.createTrip);
+router.post(
+  "/trips/:tripId/bookings/:bookingId/link",
+  authenticate,
+  validateBody(linkBookingToTripSchema),
+  profileController.linkBookingToTripPlan,
+);
+router.patch(
+  "/trips/:tripId/stops/reorder",
+  authenticate,
+  validateBody(reorderTripStopsSchema),
+  profileController.reorderTripStops,
+);
 router.get("/trips/:id", authenticate, profileController.getTripDetail);
 router.patch("/trips/:id", authenticate, validateBody(updateTripSchema), profileController.updateTrip);
 router.delete("/trips/:id", authenticate, profileController.deleteTrip);

@@ -1,3 +1,7 @@
+import { TRIP_QUERY_KEYS } from "./trip-query-keys";
+
+export { TRIP_QUERY_KEYS };
+
 export const QUERY_KEYS = {
   places: {
     all: () => ["places"],
@@ -27,10 +31,11 @@ export const QUERY_KEYS = {
     savedCollections: () => ["saved-collections"],
   },
   trips: {
-    all: () => ["trips"],
-    list: () => ["trips", "list"],
-    detail: (id) => ["trips", "detail", id],
-    shares: (tripId) => ["trips", "shares", tripId],
+    all: TRIP_QUERY_KEYS.all,
+    list: TRIP_QUERY_KEYS.list,
+    detail: TRIP_QUERY_KEYS.detail,
+    shares: (tripId) =>
+      tripId === undefined ? ["trips", "shares"] : TRIP_QUERY_KEYS.shares(tripId),
   },
   notifications: {
     all: () => ["notifications"],

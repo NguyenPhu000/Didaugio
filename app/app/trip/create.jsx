@@ -27,16 +27,15 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useCreateTrip } from "../../src/modules/trips/hooks/useTrips";
-import { addDestinationApi } from "../../src/modules/trips/api/tripsApi";
 import { useSavedPlacesCached } from "../../src/modules/saved/hooks/useSavedOffline";
 import { CustomDatePicker } from "../../src/components/ui/CustomDatePicker";
 import { compressImageToDataUrl } from "../../src/lib/image-compress";
 import { toYmdString } from "../../src/modules/trips/utils/tripHelpers";
 import { QUERY_KEYS } from "../../src/constants/query-keys";
-import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../src/constants/design-tokens";
+import { TOKENS } from "../../src/constants/design-tokens";
 import { HeroSection } from "../../src/modules/trips/components/create-trip/HeroSection";
 import { SavedPlacesGrid } from "../../src/modules/trips/components/create-trip/SavedPlacesGrid";
-import s, { T } from "../../src/modules/trips/utils/tripDetailTokens";
+import { T } from "../../src/modules/trips/utils/tripDetailTokens";
 import { useTranslation } from "react-i18next";
 
 function calcTotalDays(start, end) {
@@ -89,7 +88,6 @@ export default function CreateTripScreen() {
   const [endDate, setEndDate] = useState(null);
   const [totalDays, setTotalDays] = useState(null);
   const [selectedSavedPlaceIds, setSelectedSavedPlaceIds] = useState([]);
-  const [isAddingDestinations, setIsAddingDestinations] = useState(false);
   const [destinationError, setDestinationError] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
   const [pendingThumbnail, setPendingThumbnail] = useState(undefined);
@@ -111,14 +109,12 @@ export default function CreateTripScreen() {
     [endDate],
   );
 
-  const selectedSavedCount = selectedSavedPlaceIds.length;
   const isDateRangeInvalid = startDate && endDate && endDate < startDate;
 
   const canSubmit =
     title.trim().length > 0 &&
     !isDateRangeInvalid &&
     !createMutation.isPending &&
-    !isAddingDestinations &&
     !isProcessingThumbnail;
 
   const savedPlacesPreview = useMemo(
@@ -216,7 +212,7 @@ export default function CreateTripScreen() {
     });
 
     return unsubscribe;
-  }, [navigation, isFormDirty]);
+  }, [navigation, isFormDirty, t]);
 
   const handleCreate = useCallback(async () => {
     if (!canSubmit) return;
@@ -231,51 +227,22 @@ export default function CreateTripScreen() {
         endDate: endDate ? toYmdString(endDate) : undefined,
         totalDays: totalDays ?? 1,
         status: "planned",
+        ...(selectedSavedPlaceIds.length > 0 && {
+          placeIds: selectedSavedPlaceIds,
+        }),
         ...(pendingThumbnail !== undefined && { thumbnail: pendingThumbnail }),
       });
       const newId = result?.data?.id;
       if (newId) {
-        let destinationsAdded = true;
-        if (selectedSavedPlaceIds.length > 0) {
-          setIsAddingDestinations(true);
-          try {
-            await Promise.all(
-              selectedSavedPlaceIds.map((placeId, index) =>
-                addDestinationApi(newId, {
-                  placeId,
-                  dayNumber: 1,
-                  order: index,
-                  note: t("trip.create.addFromSaved"),
-                }),
-              ),
-            );
-          } catch (destError) {
-            destinationsAdded = false;
-          }
-          await Promise.all([
-            queryClient.invalidateQueries({
-              queryKey: QUERY_KEYS.trips.all(),
-            }),
-            queryClient.invalidateQueries({
-              queryKey: QUERY_KEYS.trips.detail(newId),
-            }),
-          ]);
-        }
-
-        if (!destinationsAdded) {
-          Alert.alert(
-            t("trip.create.success"),
-            t("trip.create.partialSuccessMessage"),
-            [
-              {
-                text: t("common.ok"),
-                onPress: () => router.replace(`/trip/${newId}`),
-              },
-            ]
-          );
-        } else {
-          router.replace(`/trip/${newId}`);
-        }
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: QUERY_KEYS.trips.all(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: QUERY_KEYS.trips.detail(newId),
+          }),
+        ]);
+        router.replace(`/trip/${newId}`);
       } else {
         router.back();
       }
@@ -285,8 +252,6 @@ export default function CreateTripScreen() {
       setDestinationError(
         serverMessage || error?.message || t("common.genericError"),
       );
-    } finally {
-      setIsAddingDestinations(false);
     }
   }, [
     canSubmit,
@@ -300,6 +265,7 @@ export default function CreateTripScreen() {
     pendingThumbnail,
     queryClient,
     router,
+    t,
   ]);
 
   const daysLabel =
@@ -321,7 +287,7 @@ export default function CreateTripScreen() {
     ctaScale.value = withSpring(1, TOKENS.spring.press);
   }, [ctaScale]);
 
-  const isSubmitting = createMutation.isPending || isAddingDestinations;
+  const isSubmitting = createMutation.isPending;
 
   return (
     <KeyboardAvoidingView
@@ -525,9 +491,7 @@ export default function CreateTripScreen() {
                     !canSubmit && styles.createBtnTextDisabled,
                   ]}
                 >
-                  {isAddingDestinations
-                    ? t("trip.create.addingPlaces")
-                    : t("trip.create.submit")}
+                  {t("trip.create.submit")}
                 </Text>
               </View>
             )}
