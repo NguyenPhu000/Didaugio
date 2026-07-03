@@ -1,24 +1,28 @@
 import api from "@/constants/api";
 
-const BASE_URL = "/business/bookings";
+const BUSINESS_BOOKINGS_URL = "/business/bookings";
+const PUBLIC_BOOKINGS_URL = "/booking/public";
+const BOOKING_VERIFY_URL = "/bookings/verify";
+
+// ─── Business Booking APIs ───────────────────────────────────────────────────────
 
 export const getAll = async (params = {}) => {
-  const response = await api.get(BASE_URL, { params });
+  const response = await api.get(BUSINESS_BOOKINGS_URL, { params });
   return response;
 };
 
 export const getStats = async () => {
-  const response = await api.get(`${BASE_URL}/stats`);
+  const response = await api.get(`${BUSINESS_BOOKINGS_URL}/stats`);
   return response;
 };
 
 export const getSchedule = async (params = {}) => {
-  const response = await api.get(`${BASE_URL}/schedule`, { params });
+  const response = await api.get(`${BUSINESS_BOOKINGS_URL}/schedule`, { params });
   return response;
 };
 
 export const reschedule = async (id, bookingTime, data = {}) => {
-  const response = await api.patch(`${BASE_URL}/${id}/reschedule`, {
+  const response = await api.patch(`${BUSINESS_BOOKINGS_URL}/${id}/reschedule`, {
     bookingTime,
     ...data,
   });
@@ -26,12 +30,12 @@ export const reschedule = async (id, bookingTime, data = {}) => {
 };
 
 export const quickApprove = async (id) => {
-  const response = await api.post(`${BASE_URL}/${id}/quick-approve`);
+  const response = await api.post(`${BUSINESS_BOOKINGS_URL}/${id}/quick-approve`);
   return response;
 };
 
 export const quickReject = async (id, cancelReason, data = {}) => {
-  const response = await api.post(`${BASE_URL}/${id}/quick-reject`, {
+  const response = await api.post(`${BUSINESS_BOOKINGS_URL}/${id}/quick-reject`, {
     cancelReason,
     ...data,
   });
@@ -39,42 +43,42 @@ export const quickReject = async (id, cancelReason, data = {}) => {
 };
 
 export const getById = async (id) => {
-  const response = await api.get(`${BASE_URL}/${id}`);
+  const response = await api.get(`${BUSINESS_BOOKINGS_URL}/${id}`);
   return response;
 };
 
 export const confirm = async (id, data = {}) => {
-  const response = await api.put(`${BASE_URL}/${id}/confirm`, data);
+  const response = await api.put(`${BUSINESS_BOOKINGS_URL}/${id}/confirm`, data);
   return response;
 };
 
 export const cancel = async (id, cancelReason) => {
-  const response = await api.put(`${BASE_URL}/${id}/cancel`, { cancelReason });
+  const response = await api.put(`${BUSINESS_BOOKINGS_URL}/${id}/cancel`, { cancelReason });
   return response;
 };
 
 export const complete = async (id) => {
-  const response = await api.put(`${BASE_URL}/${id}/complete`);
+  const response = await api.put(`${BUSINESS_BOOKINGS_URL}/${id}/complete`);
   return response;
 };
 
 export const markNoShow = async (id) => {
-  const response = await api.put(`${BASE_URL}/${id}/no-show`);
+  const response = await api.put(`${BUSINESS_BOOKINGS_URL}/${id}/no-show`);
   return response;
 };
 
 export const getQR = async (id) => {
-  const response = await api.get(`${BASE_URL}/${id}/qr`);
+  const response = await api.get(`${BUSINESS_BOOKINGS_URL}/${id}/qr`);
   return response;
 };
 
 export const bulkConfirm = async (bookingIds) => {
-  const response = await api.post(`${BASE_URL}/bulk-confirm`, { bookingIds });
+  const response = await api.post(`${BUSINESS_BOOKINGS_URL}/bulk-confirm`, { bookingIds });
   return response;
 };
 
 export const bulkCancel = async (bookingIds, cancelReason) => {
-  const response = await api.post(`${BASE_URL}/bulk-cancel`, {
+  const response = await api.post(`${BUSINESS_BOOKINGS_URL}/bulk-cancel`, {
     bookingIds,
     cancelReason,
   });
@@ -82,7 +86,7 @@ export const bulkCancel = async (bookingIds, cancelReason) => {
 };
 
 export const markPaid = async (id, data = {}) => {
-  const response = await api.put(`${BASE_URL}/${id}/payment`, {
+  const response = await api.put(`${BUSINESS_BOOKINGS_URL}/${id}/payment`, {
     status: "paid",
     ...data,
   });
@@ -90,7 +94,22 @@ export const markPaid = async (id, data = {}) => {
 };
 
 export const refund = async (id, data = {}) => {
-  const response = await api.put(`${BASE_URL}/${id}/refund`, data);
+  const response = await api.put(`${BUSINESS_BOOKINGS_URL}/${id}/refund`, data);
+  return response;
+};
+
+// ─── Public Booking APIs ────────────────────────────────────────────────────────
+
+/**
+ * Get public booking details by booking code
+ */
+export const getPublicBookingByCode = async (bookingCode) => {
+  const response = await api.get(`${PUBLIC_BOOKINGS_URL}/${bookingCode}`);
+  return response;
+};
+
+export const verifyQR = async (payload) => {
+  const response = await api.post(BOOKING_VERIFY_URL, payload);
   return response;
 };
 
@@ -111,4 +130,6 @@ export default {
   bulkCancel,
   markPaid,
   refund,
+  getPublicBookingByCode,
+  verifyQR,
 };

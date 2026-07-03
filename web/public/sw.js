@@ -8,10 +8,10 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data?.json() || {};
   } catch {
-    data = { title: "Di Đâu Giờ", body: "Bạn có thông báo mới" };
+    data = { title: "iPoint Genie", body: "Bạn có thông báo mới" };
   }
 
-  const title = data.title || "Di Đâu Giờ";
+  const title = data.title || "iPoint Genie";
   const options = {
     body: data.body || "",
     icon: data.icon || "/logo192.png",

@@ -3,15 +3,23 @@ import {
   FlatList,
   Platform,
   Pressable,
-  StyleSheet,
   Text,
-  View,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../../constants/design-tokens";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const SPRING_CONFIG = TOKENS.spring.snappy;
 
 const PillItem = memo(function PillItem({
   categoryId,
@@ -20,34 +28,64 @@ const PillItem = memo(function PillItem({
   label,
   onPressCategory,
 }) {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.94, SPRING_CONFIG);
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, SPRING_CONFIG);
+  }, [scale]);
+
   const handlePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPressCategory(categoryId);
   }, [categoryId, onPressCategory]);
-  const resolvedActive = Boolean(isActive);
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={handlePress}
-      style={({ pressed }) => [
-        styles.pill,
-        resolvedActive ? styles.pillActive : styles.pillInactive,
-        pressed && styles.pillPressed,
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      className="flex-row items-center gap-2 min-h-[40px] px-4 py-2 rounded-full border"
+      style={[
+        animatedStyle,
+        {
+          backgroundColor: isActive ? APPLE_THEME.focusBlue : APPLE_THEME.surface,
+          borderColor: isActive ? APPLE_THEME.focusBlue : APPLE_THEME.border,
+          borderCurve: "continuous",
+        },
+        isActive
+          ? Platform.select({
+              ios: TOKENS.shadow.sm,
+              android: { elevation: 2 },
+            })
+          : null,
       ]}
     >
-      <MaterialIcons
+      <MaterialIconsRounded
         name={icon}
-        size={17}
-        color={resolvedActive ? APPLE_THEME.white : APPLE_THEME.text}
+        size={16}
+        color={isActive ? APPLE_THEME.white : APPLE_THEME.text}
       />
       <Text
-        style={[styles.pillText, resolvedActive ? styles.pillTextActive : null]}
+        className="text-sm font-semibold"
+        style={{
+          color: isActive ? APPLE_THEME.white : APPLE_THEME.text,
+          fontFamily: TOKENS.font.semibold,
+        }}
         numberOfLines={1}
       >
         {label}
       </Text>
-    </Pressable>
+    </AnimatedPressable>
   );
-}, arePillItemPropsEqual);
+});
 
 const keyExtractor = (item) => item.key;
 
@@ -80,19 +118,14 @@ function CategoryPillsInner({
       keyExtractor={keyExtractor}
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.listContent}
+      contentContainerStyle={{
+        gap: 8,
+        paddingHorizontal: 20,
+        paddingTop: 4,
+        paddingBottom: 8,
+      }}
       keyboardShouldPersistTaps="handled"
     />
-  );
-}
-
-function arePillItemPropsEqual(prev, next) {
-  return (
-    prev.categoryId === next.categoryId &&
-    prev.icon === next.icon &&
-    prev.isActive === next.isActive &&
-    prev.label === next.label &&
-    prev.onPressCategory === next.onPressCategory
   );
 }
 
@@ -121,46 +154,3 @@ export const CategoryPills = memo(
   CategoryPillsInner,
   areCategoryPillsPropsEqual,
 );
-
-const styles = StyleSheet.create({
-  listContent: {
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 6,
-  },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    minHeight: 42,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-  },
-  pillActive: {
-    backgroundColor: APPLE_THEME.primary,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APPLE_THEME.primary,
-    ...Platform.select({
-      ios: TOKENS.shadow.sm,
-      android: { elevation: 2 },
-    }),
-  },
-  pillInactive: {
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APPLE_THEME.border,
-  },
-  pillPressed: {
-    opacity: 0.85,
-  },
-  pillText: {
-    color: APPLE_THEME.text,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  pillTextActive: {
-    color: APPLE_THEME.white,
-  },
-});

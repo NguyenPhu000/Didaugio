@@ -28,10 +28,29 @@ export const createBookingSchema = z.object({
   note: z.string().max(500).optional().nullable(),
 });
 
-export const verifyQRSchema = z.object({
-  bookingCode: z.string().min(5).max(100),
-  action: z.enum(["verify", "checkin"]).default("checkin"),
-});
+export const verifyQRSchema = z
+  .object({
+    bookingCode: z.string().min(5).max(500).optional(),
+    qrPayload: z.union([z.string().min(5).max(1000), z.record(z.any())]).optional(),
+    payload: z.union([z.string().min(5).max(1000), z.record(z.any())]).optional(),
+    data: z.union([z.string().min(5).max(1000), z.record(z.any())]).optional(),
+    text: z.string().min(5).max(1000).optional(),
+    action: z.enum(["verify", "checkin"]).default("checkin"),
+  })
+  .refine(
+    (value) =>
+      Boolean(
+        value.bookingCode ||
+          value.qrPayload ||
+          value.payload ||
+          value.data ||
+          value.text,
+      ),
+    {
+      message: "Thiáº¿u dá»¯ liá»‡u QR booking",
+      path: ["bookingCode"],
+    },
+  );
 
 export const confirmBookingSchema = z.object({
   note: z.string().max(500).optional().nullable(),
@@ -78,4 +97,15 @@ export const rescheduleBookingSchema = z.object({
 export const quickRejectSchema = z.object({
   cancelReason: z.string().min(5).max(500).optional(),
   businessNote: z.string().max(500).optional().nullable(),
+});
+
+export const bookingListQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+  status: z.string().optional(),
+  placeId: z.coerce.number().int().positive().optional(),
+  businessId: z.coerce.number().int().positive().optional(),
+  search: z.string().optional(),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional(),
 });

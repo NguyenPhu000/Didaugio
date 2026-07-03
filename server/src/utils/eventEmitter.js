@@ -22,10 +22,12 @@ export const EVENTS = {
   },
   BOOKING: {
     CREATED: "booking:created",
+    PAID: "booking:paid",
     CONFIRMED: "booking:confirmed",
     CANCELLED: "booking:cancelled",
     REJECTED: "booking:rejected",
     EXPIRED: "booking:expired",
+    RESCHEDULED: "booking:rescheduled",
     COMPLETED: "booking:completed",
     NO_SHOW: "booking:no_show",
   },
@@ -38,6 +40,7 @@ export const EVENTS = {
     REACTIVATED: "business:reactivated",
     TERMINATED: "business:terminated",
     DOCUMENT_UPDATED: "business:document_updated",
+    CONTRACT_SIGNED: "business:contract_signed",
   },
 };
 

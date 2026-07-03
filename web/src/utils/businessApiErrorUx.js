@@ -1,20 +1,27 @@
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { appNavigate } from "@/lib/appNavigation";
+import i18n from "@/i18n";
 
 /** Mã từ requireActiveBusiness (server) — chỉ xử lý UX thống nhất cho các mã này */
 export const BUSINESS_GATE_ERROR_CODES = [
   "NO_BUSINESS_PROFILE",
   "BUSINESS_SUSPENDED",
+  "BUSINESS_TERMINATED",
+  "BUSINESS_SUSPICIOUS",
   "BUSINESS_NOT_APPROVED",
   "CONTRACT_REQUIRED",
+  "CONTRACT_RENEWAL_REQUIRED",
 ];
 
 const REDIRECT_BY_CODE = {
   NO_BUSINESS_PROFILE: BUSINESS_ROUTES.REGISTER,
   BUSINESS_SUSPENDED: BUSINESS_ROUTES.PROFILE,
+  BUSINESS_TERMINATED: BUSINESS_ROUTES.PROFILE,
+  BUSINESS_SUSPICIOUS: BUSINESS_ROUTES.PROFILE,
   BUSINESS_NOT_APPROVED: BUSINESS_ROUTES.PROFILE,
   CONTRACT_REQUIRED: BUSINESS_ROUTES.PROFILE_CONTRACT,
+  CONTRACT_RENEWAL_REQUIRED: BUSINESS_ROUTES.PROFILE_CONTRACT,
 };
 
 const TOAST_ID = "business-api-gate-error";
@@ -36,7 +43,9 @@ function shouldSkipRedirect(errorCode) {
   }
   if (
     errorCode === "BUSINESS_NOT_APPROVED" ||
-    errorCode === "BUSINESS_SUSPENDED"
+    errorCode === "BUSINESS_SUSPENDED" ||
+    errorCode === "BUSINESS_TERMINATED" ||
+    errorCode === "BUSINESS_SUSPICIOUS"
   ) {
     return path === "/business/profile";
   }
@@ -56,7 +65,7 @@ export function applyBusinessApiErrorUx(error) {
   error.globalBusinessUxHandled = true;
 
   const message =
-    error.message || "Không thể thực hiện thao tác. Vui lòng thử lại sau.";
+    error.message || i18n.t("apiError.generic");
 
   toast.error(message, {
     id: TOAST_ID,

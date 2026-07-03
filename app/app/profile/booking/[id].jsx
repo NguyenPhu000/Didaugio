@@ -5,84 +5,64 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
-import { Image } from "expo-image";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import safeAsyncStorage from "../../../src/utils/safeAsyncStorage";
 import {
   BOOKING_APPLE_THEME as THEME,
-  TOKENS,
 } from "../../../src/constants/design-tokens";
 import {
   useMyBookingDetail,
   useMyBookingQR,
   useLinkBookingToTrip,
+  useCancelBooking,
 } from "../../../src/modules/booking/hooks/useBooking";
-import { useSavePlace } from "../../../src/modules/saved/hooks/useSaved";
+import BookingTicketCard from "../../../src/modules/booking/components/BookingTicketCard";
+import RefundPolicyModal from "../../../src/modules/booking/components/RefundPolicyModal";
 import {
   useCreateTrip,
   useTrips,
 } from "../../../src/modules/trips/hooks/useTrips";
+import { useSavePlace } from "../../../src/modules/saved/hooks/useSaved";
+import { useOffline } from "../../../src/hooks/useOffline";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
+import { formatShortDate, formatDateTimeLocale } from "../../../src/utils/dateFormat";
 
-const STATUS_META = {
-  pending: {
-    label: "Chờ xác nhận",
-    color: "#1D1D1F",
-    bg: "#EDEDF2",
-  },
-  confirmed: {
-    label: "Đã xác nhận",
-    color: "#FFFFFF",
-    bg: "#1D1D1F",
-  },
-  completed: {
-    label: "Hoàn thành",
-    color: "#1D1D1F",
-    bg: "#DFDFE4",
-  },
-  cancelled: {
-    label: "Đã hủy",
-    color: "#5A5A5E",
-    bg: "#ECECEF",
-  },
-  rejected: {
-    label: "Bị từ chối",
-    color: "#5A5A5E",
-    bg: "#F2E8DF",
-  },
-  expired: {
-    label: "Hết hạn",
-    color: "#5A5A5E",
-    bg: "#ECECEF",
-  },
-  no_show: {
-    label: "Không đến",
-    color: "#5A5A5E",
-    bg: "#ECECEF",
-  },
-};
+
+const QR_CACHE_KEY = "@booking_qr_cache";
+const QR_CACHE_VERSION = "v1";
+const QR_CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+const TerminalStatuses = new Set([
+  "completed",
+  "cancelled",
+  "rejected",
+  "expired",
+  "no_show",
+]);
 
 const formatCurrency = (value) => {
   const amount = Number(value || 0);
-  return `${amount.toLocaleString("vi-VN")}đ`;
+  const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
+  return `${amount.toLocaleString(locale)}đ`;
 };
 
-const formatDateTime = (booking) => {
+const formatDateTime = (booking, notDeterminedLabel) => {
   if (booking?.useDate || booking?.useTime) {
-    const date = booking?.useDate
-      ? new Date(booking.useDate).toLocaleDateString("vi-VN")
-      : "--/--/----";
+    const date = formatShortDate(booking?.useDate) || "--/--/----";
     return `${date} • ${booking?.useTime || "--:--"}`;
   }
 
   if (booking?.bookingAt) {
     const at = new Date(booking.bookingAt);
     if (!Number.isNaN(at.getTime())) {
-      return at.toLocaleString("vi-VN", {
+      return formatDateTimeLocale(at, {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -92,10 +72,11 @@ const formatDateTime = (booking) => {
     }
   }
 
-  return "Chưa xác định";
+  return notDeterminedLabel || "Not determined";
 };
 
 export default function BookingDetailScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams();
@@ -108,24 +89,65 @@ export default function BookingDetailScreen() {
     isRefetching,
   } = useMyBookingDetail(bookingId);
 
+  const { isOffline } = useOffline();
+  const [cachedQr, setCachedQr] = useState(null);
+
   const canShowQr = booking?.status === "confirmed";
+  const isTerminal = TerminalStatuses.has(booking?.status);
   const {
     data: qrData,
     isLoading: qrLoading,
     error: qrError,
     refetch: refetchQr,
-  } = useMyBookingQR(bookingId, { enabled: canShowQr });
+  } = useMyBookingQR(bookingId, { enabled: canShowQr && !isOffline });
 
-  const { data: trips = [] } = useTrips(true);
+  const activeQrCode = qrData?.qrCode || cachedQr?.qrCode || null;
+
+  // Cache QR to safeAsyncStorage when fetched successfully
+  useEffect(() => {
+    if (!qrData?.qrCode || !bookingId) return;
+    const cacheEntry = {
+      data: { qrCode: qrData.qrCode, bookingCode: qrData.bookingCode },
+      timestamp: Date.now(),
+      version: QR_CACHE_VERSION,
+    };
+    safeAsyncStorage.setItem(
+      `${QR_CACHE_KEY}:${bookingId}`,
+      JSON.stringify(cacheEntry),
+    ).catch(() => {});
+    setCachedQr(cacheEntry.data);
+  }, [qrData, bookingId]);
+
+  // Load cached QR on mount (for offline support)
+  useEffect(() => {
+    if (!bookingId || !canShowQr) return;
+    safeAsyncStorage.getItem(`${QR_CACHE_KEY}:${bookingId}`)
+      .then((raw) => {
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (
+          parsed?.version === QR_CACHE_VERSION &&
+          Date.now() - parsed.timestamp < QR_CACHE_EXPIRY_MS
+        ) {
+          setCachedQr(parsed.data);
+        }
+      })
+      .catch(() => {});
+  }, [bookingId, canShowQr]);
+
+  const { data: trips = [] } = useTrips(!isTerminal);
   const createTripMutation = useCreateTrip();
   const linkBookingToTripMutation = useLinkBookingToTrip();
+  const cancelBookingMutation = useCancelBooking();
   const savePlaceMutation = useSavePlace();
   const [selectedTripId, setSelectedTripId] = useState(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [showRefundPolicyModal, setShowRefundPolicyModal] = useState(false);
 
   const bookingDateYmd = useMemo(() => {
     const raw = String(booking?.useDate || "").slice(0, 10);
     if (raw) return raw;
-    return new Date().toISOString().slice(0, 10);
+    return null;
   }, [booking?.useDate]);
 
   useEffect(() => {
@@ -140,11 +162,11 @@ export default function BookingDetailScreen() {
 
     try {
       await savePlaceMutation.mutateAsync({ placeId });
-      Alert.alert("Đã lưu", "Địa điểm đã được thêm vào danh sách đã lưu.");
+      Alert.alert(t("bookingDetail.alerts.saved.title"), t("bookingDetail.alerts.saved.message"));
     } catch (error) {
       Alert.alert(
-        "Không thể lưu địa điểm",
-        error?.message || "Vui lòng thử lại sau.",
+        t("bookingDetail.alerts.saveFailed.title"),
+        error?.message || t("bookingDetail.alerts.saveFailed.message"),
       );
     }
   };
@@ -152,7 +174,7 @@ export default function BookingDetailScreen() {
   const handleLinkBookingToTrip = async (tripId) => {
     const normalizedTripId = Number(tripId);
     if (!Number.isInteger(normalizedTripId) || normalizedTripId <= 0) {
-      Alert.alert("Chọn Trip", "Vui lòng chọn một trip hợp lệ để liên kết.");
+      Alert.alert(t("bookingDetail.alerts.selectTrip.title"), t("bookingDetail.alerts.selectTrip.message"));
       return;
     }
 
@@ -162,11 +184,11 @@ export default function BookingDetailScreen() {
         tripId: normalizedTripId,
       });
       await refetch();
-      Alert.alert("Thành công", "Booking đã được liên kết vào trip.");
+      Alert.alert(t("bookingDetail.alerts.linkSuccess.title"), t("bookingDetail.alerts.linkSuccess.message"));
     } catch (error) {
       Alert.alert(
-        "Không thể liên kết trip",
-        error?.message || "Vui lòng thử lại sau.",
+        t("bookingDetail.alerts.linkFailed.title"),
+        error?.message || t("bookingDetail.alerts.linkFailed.message"),
       );
     }
   };
@@ -175,13 +197,13 @@ export default function BookingDetailScreen() {
     try {
       const title = booking?.service?.place?.name
         ? `Trip ${booking.service.place.name} ${bookingDateYmd}`
-        : `Trip từ booking ${bookingDateYmd}`;
+        : t("bookingDetail.tripFromBooking", { date: bookingDateYmd });
 
       const createdTripRes = await createTripMutation.mutateAsync({
         title,
         description: booking?.service?.name
-          ? `Tạo từ booking dịch vụ ${booking.service.name}`
-          : "Tạo từ booking dịch vụ",
+          ? t("bookingDetail.tripDescription.withService", { service: booking.service.name })
+          : t("bookingDetail.tripDescription.default"),
         startDate: bookingDateYmd,
         endDate: bookingDateYmd,
         totalDays: 1,
@@ -191,7 +213,7 @@ export default function BookingDetailScreen() {
       const tripId = Number(createdTripRes?.data?.id || createdTripRes?.id);
       if (!Number.isInteger(tripId) || tripId <= 0) {
         throw {
-          message: "Không thể tạo trip mới",
+          message: t("bookingDetail.errors.tripCreateFailed"),
           code: "TRIP_CREATE_FAILED",
         };
       }
@@ -199,16 +221,95 @@ export default function BookingDetailScreen() {
       await handleLinkBookingToTrip(tripId);
     } catch (error) {
       Alert.alert(
-        "Không thể tạo trip",
-        error?.message || "Vui lòng thử lại sau.",
+        t("bookingDetail.errors.tripCreateTitle"),
+        error?.message || t("bookingDetail.errors.generic"),
       );
     }
   };
 
+  const handleRetryPayment = () => {
+    setIsRetrying(true);
+    try {
+      router.replace(`/payment/checkout?bookingId=${bookingId}`);
+    } catch {
+      setIsRetrying(false);
+    }
+    // Reset after 3s in case navigation doesn't complete
+    setTimeout(() => setIsRetrying(false), 3000);
+  };
+
+  const handleCancelBooking = async ({ cancelReason }) => {
+    try {
+      await cancelBookingMutation.mutateAsync({ bookingId, cancelReason });
+      setShowRefundPolicyModal(false);
+      await refetch();
+      Alert.alert(
+        t("bookingDetail.cancel.alertSuccessTitle"),
+        t("bookingDetail.cancel.alertSuccessMessage"),
+      );
+    } catch (error) {
+      Alert.alert(
+        t("bookingDetail.cancel.alertErrorTitle"),
+        error?.message || t("bookingDetail.cancel.alertErrorMessage"),
+      );
+    }
+  };
+
+  const paymentStatusConfig = (() => {
+    const refundReason = booking?.payment?.refundReason || null;
+    const isRejected = refundReason?.startsWith("REJECTED:");
+    const rejectedReason = isRejected
+      ? refundReason.replace(/^REJECTED:/, "").trim()
+      : null;
+
+    if (isRejected) {
+      return {
+        tone: { bg: "#FEF2F2", border: "#FECACA", iconBg: "#FEE2E2", icon: "#DC2626" },
+        icon: "close-circle-outline",
+        title: t("bookingDetail.payment.refundRejected"),
+        description: rejectedReason || t("bookingDetail.payment.refundRejectedDesc"),
+      };
+    }
+
+    if (booking?.paymentStatus === "fully_refunded") {
+      return {
+        tone: { bg: "#ECFDF5", border: "#A7F3D0", iconBg: "#D1FAE5", icon: "#059669" },
+        icon: "checkmark-circle-outline",
+        title: t("bookingDetail.payment.refunded"),
+        description: t("bookingDetail.payment.refundedDesc"),
+      };
+    }
+
+    if (booking?.paymentStatus === "partially_refunded") {
+      return {
+        tone: { bg: "#EFF6FF", border: "#BFDBFE", iconBg: "#DBEAFE", icon: "#2563EB" },
+        icon: "swap-horizontal-outline",
+        title: t("bookingDetail.payment.partialRefund"),
+        description: t("bookingDetail.payment.partialRefundDesc"),
+      };
+    }
+
+    if (booking?.paymentStatus === "paid") {
+      return {
+        tone: { bg: "#F9FAFB", border: "#E5E7EB", iconBg: "#F3F4F6", icon: "#111827" },
+        icon: "card-outline",
+        title: t("bookingDetail.payment.paid"),
+        description: t("bookingDetail.payment.paidDesc"),
+      };
+    }
+
+    return null;
+  })();
+
+  const canCancelBooking =
+    ["pending", "confirmed"].includes(booking?.status) &&
+    !cancelBookingMutation.isPending;
+
   if (isLoading) {
     return (
       <View
-        style={[styles.screen, styles.centerWrap, { paddingTop: insets.top }]}
+        className="flex-1 bg-[#F5F5F7] items-center justify-center"
+        style={{ paddingTop: insets.top }}
       >
         <ActivityIndicator size="large" color={THEME.primary} />
       </View>
@@ -217,43 +318,38 @@ export default function BookingDetailScreen() {
 
   if (!booking) {
     return (
-      <View style={[styles.screen, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.iconBtn}>
-            <MaterialIcons name="arrow-back" size={22} color={THEME.text} />
+      <View className="flex-1 bg-[#F5F5F7]" style={{ paddingTop: insets.top }}>
+        <View className="flex-row items-center justify-between px-4 py-[14px] border-b border-b-[#D2D2D7]">
+          <Pressable onPress={() => router.back()} className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]">
+            <MaterialIconsRounded name="arrow-back" size={22} color={THEME.text} />
           </Pressable>
-          <Text style={styles.title}>Chi tiết booking</Text>
-          <View style={styles.iconBtn} />
+          <Text className="text-[19px] text-[#1D1D1F] font-semibold">{t("bookingDetail.title")}</Text>
+          <View className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]" />
         </View>
 
-        <View style={styles.centerWrap}>
-          <Text style={styles.emptyText}>Không tìm thấy booking.</Text>
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-medium">{t("bookingDetail.notFound")}</Text>
         </View>
       </View>
     );
   }
 
-  const statusMeta = STATUS_META[booking.status] || {
-    label: booking.status || "Không xác định",
-    color: THEME.text,
-    bg: "#ECECEF",
-  };
   const placeId = booking?.service?.place?.id;
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.iconBtn}>
-          <MaterialIcons name="arrow-back" size={22} color={THEME.text} />
+    <View className="flex-1 bg-[#F5F5F7]" style={{ paddingTop: insets.top }}>
+      <View className="flex-row items-center justify-between px-4 py-[14px] border-b border-b-[#D2D2D7]">
+        <Pressable onPress={() => router.back()} className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]">
+          <MaterialIconsRounded name="arrow-back" size={22} color={THEME.text} />
         </Pressable>
-        <Text style={styles.title}>Chi tiết booking</Text>
-        <Pressable onPress={() => refetch()} style={styles.iconBtn}>
-          <MaterialIcons name="refresh" size={20} color={THEME.textSecondary} />
+        <Text className="text-[19px] text-[#1D1D1F] font-semibold">{t("bookingDetail.title")}</Text>
+        <Pressable onPress={() => refetch()} className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white border border-[#D2D2D7]">
+          <MaterialIconsRounded name="refresh" size={20} color={THEME.text} />
         </Pressable>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 26, gap: 12 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -267,94 +363,97 @@ export default function BookingDetailScreen() {
           />
         }
       >
-        <View style={styles.card}>
-          <View style={styles.cardTopRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Mã booking</Text>
-              <Text style={styles.valueBold}>{booking.bookingCode}</Text>
-            </View>
+        <BookingTicketCard
+          booking={booking}
+          qrCode={activeQrCode}
+          qrLoading={qrLoading}
+          qrError={qrError}
+          offline={isOffline}
+          variant="detail"
+        />
 
-            <View
-              style={[styles.statusBadge, { backgroundColor: statusMeta.bg }]}
-            >
-              <Text
-                style={[styles.statusBadgeText, { color: statusMeta.color }]}
+        {canCancelBooking ? (
+          <Pressable
+            className="rounded-full border border-[#FCA5A5] bg-[#FEF2F2] py-3 items-center"
+            onPress={() => setShowRefundPolicyModal(true)}
+          >
+            <Text className="text-[#DC2626] text-[14px] font-semibold">
+              {t("bookingDetail.cancel.cta")}
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {paymentStatusConfig ? (
+          <View
+            style={{
+              backgroundColor: paymentStatusConfig.tone.bg,
+              borderRadius: 20,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: paymentStatusConfig.tone.border,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+              <View
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 14,
+                  backgroundColor: paymentStatusConfig.tone.iconBg,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
-                {statusMeta.label}
-              </Text>
+                <Ionicons
+                  name={paymentStatusConfig.icon}
+                  size={20}
+                  color={paymentStatusConfig.tone.icon}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#1D1D1F", fontSize: 14, fontWeight: "700" }}>
+                  {paymentStatusConfig.title}
+                </Text>
+                <Text
+                  style={{
+                    color: "rgba(0,0,0,0.62)",
+                    fontSize: 12,
+                    marginTop: 4,
+                    lineHeight: 18,
+                  }}
+                >
+                  {paymentStatusConfig.description}
+                </Text>
+                {booking?.payment?.refundAmount ? (
+                  <Text style={{ color: "#111827", fontSize: 13, fontWeight: "600", marginTop: 10 }}>
+                    {t("bookingDetail.payment.refundAmount")}: {formatCurrency(booking.payment.refundAmount)}
+                  </Text>
+                ) : null}
+              </View>
             </View>
           </View>
+        ) : null}
 
-          <Text style={[styles.label, styles.mt12]}>Dịch vụ</Text>
-          <Text style={styles.value}>{booking?.service?.name || "--"}</Text>
-
-          <Text style={[styles.label, styles.mt12]}>Địa điểm</Text>
-          <Text style={styles.value}>
-            {booking?.service?.place?.name || "--"}
-          </Text>
-
-          <Text style={[styles.label, styles.mt12]}>Thời gian sử dụng</Text>
-          <Text style={styles.value}>{formatDateTime(booking)}</Text>
-
-          <Text style={[styles.label, styles.mt12]}>Tổng thanh toán</Text>
-          <Text style={styles.valueBold}>
-            {formatCurrency(booking?.finalPrice)}
-          </Text>
-        </View>
-
-        {canShowQr ? (
-          <View style={styles.card}>
-            <Text style={styles.qrTitle}>Mã QR check-in</Text>
-            <Text style={styles.qrHint}>
-              Đưa mã này cho phía doanh nghiệp quét khi bạn đến sử dụng dịch vụ.
-            </Text>
-
-            {qrLoading ? (
-              <View style={styles.qrLoading}>
-                <ActivityIndicator size="small" color={THEME.primary} />
-              </View>
-            ) : qrData?.qrCode ? (
-              <Image
-                source={{ uri: qrData.qrCode }}
-                style={styles.qrImage}
-                contentFit="contain"
-              />
-            ) : (
-              <Text style={styles.qrErrorText}>
-                {qrError?.message || "Chưa tải được mã QR, vui lòng thử lại."}
-              </Text>
-            )}
-          </View>
-        ) : (
-          <View style={styles.card}>
-            <Text style={styles.qrTitle}>Mã QR check-in</Text>
-            <Text style={styles.qrHint}>
-              QR sẽ xuất hiện khi booking chuyển sang trạng thái "Đã xác nhận".
-            </Text>
-          </View>
-        )}
-
-        <View style={styles.card}>
-          <Text style={styles.qrTitle}>Liên kết Trip</Text>
+        <View className="bg-white rounded-[20px] border border-[#D2D2D7] p-[15px]">
+          <Text className="text-[16px] text-[#1D1D1F] font-semibold">{t("bookingDetail.linkTrip")}</Text>
           {booking?.linkedTrip ? (
-            <View style={{ marginTop: 8, gap: 6 }}>
-              <Text style={styles.valueBold}>
+            <View className="mt-2 gap-[6px]">
+              <Text className="text-[15px] text-[#1D1D1F] font-semibold">
                 {booking.linkedTrip.title || `Trip #${booking.linkedTrip.id}`}
               </Text>
-              <Text style={styles.qrHint}>
-                Đang ở ngày {booking.linkedTrip.dayNumber || 1} của trip.
+              <Text className="mt-[6px] text-[13px] leading-5 text-[rgba(0,0,0,0.8)] font-sans">
+                {t("bookingDetail.currentTripDay", { day: booking.linkedTrip.dayNumber || 1 })}
               </Text>
               <Pressable
-                style={[styles.outlineBtn, { marginTop: 6 }]}
+                className="mt-[6px] flex-1 border border-[#D2D2D7] rounded-full py-3 items-center bg-[#EDEDF2]"
                 onPress={() => router.push(`/trip/${booking.linkedTrip.id}`)}
               >
-                <Text style={styles.outlineBtnText}>Mở trip đã liên kết</Text>
+                <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-semibold">{t("bookingDetail.openLinkedTrip")}</Text>
               </Pressable>
             </View>
           ) : (
-            <Text style={[styles.qrHint, { marginTop: 6 }]}>
-              Booking này chưa liên kết trip. Bạn có thể chọn trip có sẵn hoặc
-              tạo trip mới để thêm địa điểm vào đúng ngày booking.
+            <Text className="mt-[6px] text-[13px] leading-5 text-[rgba(0,0,0,0.8)] font-sans">
+              {t("bookingDetail.noLinkedTripDesc")}
             </Text>
           )}
 
@@ -383,24 +482,17 @@ export default function BookingDetailScreen() {
                     }}
                   >
                     <Text
-                      style={{
-                        color: THEME.text,
-                        fontSize: 12,
-                        fontFamily: TOKENS.font.semibold,
-                      }}
+                      className="text-[12px] font-semibold"
+                      style={{ color: THEME.text }}
                       numberOfLines={1}
                     >
                       {trip.title || `Trip #${trip.id}`}
                     </Text>
                     <Text
-                      style={{
-                        marginTop: 2,
-                        color: THEME.textMuted,
-                        fontSize: 11,
-                        fontFamily: TOKENS.font.regular,
-                      }}
+                      className="mt-0.5 text-[11px] font-sans"
+                      style={{ color: THEME.textMuted }}
                     >
-                      {trip.totalDays || 1} ngày
+                      {t("bookingDetail.daysCount", { count: trip.totalDays || 1 })}
                     </Text>
                   </Pressable>
                 );
@@ -408,210 +500,124 @@ export default function BookingDetailScreen() {
             </ScrollView>
           ) : null}
 
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+          <View className="flex-row gap-[10px] mt-3">
             <Pressable
-              style={styles.outlineBtn}
+              className="flex-1 border border-[#D2D2D7] rounded-full py-3 items-center bg-[#EDEDF2]"
               onPress={() => handleLinkBookingToTrip(selectedTripId)}
               disabled={linkBookingToTripMutation.isPending || !selectedTripId}
             >
-              <Text style={styles.outlineBtnText}>Liên kết trip đã chọn</Text>
+              <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-semibold">{t("bookingDetail.linkSelectedTrip")}</Text>
             </Pressable>
 
             <Pressable
-              style={styles.primaryBtn}
+              className="flex-1 bg-[#1D1D1F] rounded-full py-3 items-center"
               onPress={handleCreateTripAndLink}
               disabled={
                 createTripMutation.isPending ||
                 linkBookingToTripMutation.isPending
               }
             >
-              <Text style={styles.primaryBtnText}>
+              <Text className="text-white text-[14px] font-semibold">
                 {createTripMutation.isPending ||
                 linkBookingToTripMutation.isPending
-                  ? "Đang xử lý..."
-                  : "Tạo trip và liên kết"}
+                  ? t("common.processing")
+                  : t("bookingDetail.createTripAndLink")}
               </Text>
             </Pressable>
           </View>
         </View>
 
-        <View style={styles.actionRow}>
+        {/* Payment retry — shown when booking is pending and explicitly unpaid */}
+        {booking?.status === "pending" &&
+        booking?.paymentStatus === "unpaid" ? (
+          <View
+            style={{
+              backgroundColor: "#FFFFFF",
+              borderRadius: 20,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: "#D2D2D7",
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: "#FEF9C3",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <MaterialIconsRounded name="payment" size={20} color="#CA8A04" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#1D1D1F", fontSize: 14, fontWeight: "700" }}>
+                  {t("bookingDetail.payment.unpaid")}
+                </Text>
+                <Text style={{ color: "rgba(0,0,0,0.48)", fontSize: 12, marginTop: 2 }}>
+                  {t("bookingDetail.payment.unpaidDesc")}
+                </Text>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={handleRetryPayment}
+              disabled={isRetrying}
+              style={{
+                backgroundColor: "#1D1D1F",
+                borderRadius: 999,
+                paddingVertical: 12,
+                alignItems: "center",
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              {isRetrying ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <MaterialIconsRounded name="qr-code" size={16} color="#FFFFFF" />
+              )}
+              <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "700" }}>
+                {isRetrying ? t("bookingDetail.payment.redirecting") : t("bookingDetail.payment.payNow")}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        <View className="flex-row gap-[10px]">
           {placeId ? (
             <Pressable
-              style={styles.outlineBtn}
+              className="flex-1 border border-[#D2D2D7] rounded-full py-3 items-center bg-[#EDEDF2]"
               onPress={() => router.push(`/place/${placeId}`)}
             >
-              <Text style={styles.outlineBtnText}>Xem địa điểm</Text>
+              <Text className="text-[rgba(0,0,0,0.8)] text-[14px] font-semibold">{t("bookingDetail.viewPlace")}</Text>
             </Pressable>
           ) : null}
 
           {placeId ? (
             <Pressable
-              style={styles.primaryBtn}
+              className="flex-1 bg-[#1D1D1F] rounded-full py-3 items-center"
               onPress={handleSavePlace}
               disabled={savePlaceMutation.isPending}
             >
-              <Text style={styles.primaryBtnText}>
-                {savePlaceMutation.isPending ? "Đang lưu..." : "Lưu địa điểm"}
+              <Text className="text-white text-[14px] font-semibold">
+                {savePlaceMutation.isPending ? t("common.saving") : t("bookingDetail.savePlace")}
               </Text>
             </Pressable>
           ) : null}
         </View>
       </ScrollView>
+
+      <RefundPolicyModal
+        visible={showRefundPolicyModal}
+        onClose={() => setShowRefundPolicyModal(false)}
+        onConfirm={handleCancelBooking}
+        booking={booking}
+        isLoading={cancelBookingMutation.isPending}
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: THEME.background,
-  },
-  centerWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyText: {
-    color: THEME.textSecondary,
-    fontSize: 14,
-    fontFamily: TOKENS.font.medium,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.border,
-  },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: THEME.surface,
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  title: {
-    fontSize: 19,
-    color: THEME.text,
-    fontFamily: TOKENS.font.semibold,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 26,
-    gap: 12,
-  },
-  card: {
-    backgroundColor: THEME.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    padding: 15,
-  },
-  cardTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  statusBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: THEME.borderSoft,
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  label: {
-    fontSize: 12,
-    color: THEME.textMuted,
-    fontFamily: TOKENS.font.medium,
-  },
-  value: {
-    fontSize: 14,
-    color: THEME.text,
-    fontFamily: TOKENS.font.regular,
-  },
-  valueBold: {
-    fontSize: 15,
-    color: THEME.text,
-    fontFamily: TOKENS.font.semibold,
-  },
-  mt12: {
-    marginTop: 12,
-  },
-  qrTitle: {
-    fontSize: 16,
-    color: THEME.text,
-    fontFamily: TOKENS.font.semibold,
-  },
-  qrHint: {
-    marginTop: 6,
-    fontSize: 13,
-    lineHeight: 20,
-    color: THEME.textSecondary,
-    fontFamily: TOKENS.font.regular,
-  },
-  qrLoading: {
-    marginTop: 16,
-    height: 210,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    backgroundColor: THEME.surfaceMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  qrImage: {
-    marginTop: 12,
-    width: "100%",
-    height: 220,
-    borderRadius: 12,
-    backgroundColor: THEME.white,
-  },
-  qrErrorText: {
-    marginTop: 10,
-    color: THEME.danger,
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  primaryBtn: {
-    flex: 1,
-    backgroundColor: THEME.primary,
-    borderRadius: 999,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  primaryBtnText: {
-    color: THEME.white,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  outlineBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    borderRadius: 999,
-    paddingVertical: 12,
-    alignItems: "center",
-    backgroundColor: THEME.surfaceMuted,
-  },
-  outlineBtnText: {
-    color: THEME.textSecondary,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-});

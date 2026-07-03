@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -29,33 +30,63 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-// Schema definition removed
-
-const UserFormModal = ({ open, onClose, user, onSuccess }) => {
-  const isEdit = !!user;
+const UserFormModal = ({
+  open,
+  onClose,
+  user,
+  onSuccess,
+  mode = "create",
+  currentUser = null,
+}) => {
+  const { t } = useTranslation();
+  const isChangePasswordMode = mode === "change-password";
   const [loading, setLoading] = useState(false);
+
   let submitActionContent;
   if (loading) {
     submitActionContent = (
       <>
         <Loader2 className="w-4 h-4 animate-spin" />
-        Đang xử lý...
+        {t("user.form.processing")}
       </>
     );
-  } else if (isEdit) {
+  } else if (isChangePasswordMode) {
     submitActionContent = (
       <>
         <Check className="w-4 h-4" />
-        Cập nhật
+        {t("common.save")}
+      </>
+    );
+  } else if (mode === "edit") {
+    submitActionContent = (
+      <>
+        <Check className="w-4 h-4" />
+        {t("user.form.update")}
       </>
     );
   } else {
     submitActionContent = (
       <>
         <Plus className="w-4 h-4" />
-        Thêm người dùng
+        {t("user.form.addUser")}
       </>
     );
+  }
+
+  let headerIcon = <Plus className="w-4.5 h-4.5 text-white" />;
+  let dialogTitle = t("user.form.addNewUser");
+  let dialogDescription = t("user.form.createDescription");
+  if (isChangePasswordMode) {
+    headerIcon = <Lock className="w-4.5 h-4.5 text-white" />;
+    dialogTitle = t("users.actions.changePassword");
+    dialogDescription = t(
+      "user.form.changePasswordDescription",
+      "Nhập mật khẩu mới cho tài khoản",
+    );
+  } else if (mode === "edit") {
+    headerIcon = <User className="w-4.5 h-4.5 text-white" />;
+    dialogTitle = t("user.form.editUser");
+    dialogDescription = t("user.form.editDescription");
   }
 
   const {
@@ -71,7 +102,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
       email: "",
       fullName: "",
       phone: "",
-      roleId: ROLES.BUSINESS, // Default to BUSINESS (GUEST is mobile-only)
+      roleId: ROLES.BUSINESS,
       password: "",
       gender: "male",
       address: "",
@@ -83,18 +114,34 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
 
   const provinceCode = watch("provinceCode");
   const districtCode = watch("districtCode");
+  const roleOptions = [
+    { value: ROLES.STAFF, label: t("roles.names.staff") },
+    { value: ROLES.BUSINESS, label: t("roles.names.business") },
+    { value: ROLES.ADMIN, label: t("roles.names.admin") },
+    { value: ROLES.SUPER_ADMIN, label: t("roles.names.superAdmin") },
+  ].filter((option) => {
+    if (mode === "edit" && user?.roleId === option.value) return true;
+    if (currentUser?.roleId === ROLES.SUPER_ADMIN) {
+      return option.value !== ROLES.SUPER_ADMIN;
+    }
+    if (currentUser?.roleId === ROLES.ADMIN) {
+      return [ROLES.BUSINESS, ROLES.STAFF].includes(option.value);
+    }
+    if (currentUser?.roleId === ROLES.BUSINESS) {
+      return option.value === ROLES.STAFF;
+    }
+    return false;
+  });
 
   // Reset form when modal opens/closes or user changes
   useEffect(() => {
     if (open) {
       if (user) {
-        // Edit mode - populate form with user data
-        // Backend returns flattened profile data at root level
         reset({
           email: user.email || "",
           fullName: user.profile?.fullName || user.fullName || "",
           phone: user.profile?.phone || user.phone || "",
-          roleId: user.roleId || ROLES.BUSINESS, // Fallback to BUSINESS (GUEST is mobile-only)
+          roleId: user.roleId || ROLES.BUSINESS,
           password: "",
           gender: user.profile?.gender || user.gender || "male",
           address: user.profile?.address || user.address || "",
@@ -105,12 +152,11 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
           districtCode: user.profile?.districtCode || user.districtCode || "",
         });
       } else {
-        // Create mode - reset to defaults
         reset({
           email: "",
           fullName: "",
           phone: "",
-          roleId: ROLES.BUSINESS, // Default to BUSINESS (GUEST is mobile-only)
+          roleId: ROLES.BUSINESS,
           password: "",
           gender: "male",
           address: "",
@@ -125,25 +171,36 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      // Clean data - remove empty strings
       const cleanData = {};
       Object.entries(data).forEach(([key, value]) => {
-        if (value !== "" && value !== null && value !== undefined) {
-          cleanData[key] = value;
+        if (key === "password") {
+          if (value !== "" && value !== null && value !== undefined) {
+            cleanData[key] = value;
+          }
+        } else {
+          cleanData[key] = value === "" ? null : value;
         }
       });
 
-      // For edit mode, password is optional - remove if empty
-      if (isEdit && !cleanData.password) {
-        delete cleanData.password;
-      }
+      if (isChangePasswordMode) {
+        if (!cleanData.password) {
+          throw new Error(t("user.form.passwordRequired"));
+        }
+        await onSuccess({ password: cleanData.password }, true);
+      } else {
+        if (mode === "edit" && !cleanData.password) {
+          delete cleanData.password;
+        }
+        if (mode === "edit") {
+          delete cleanData.roleId;
+        }
 
-      // For create mode, password is required
-      if (!isEdit && !cleanData.password) {
-        throw new Error("Mật khẩu là bắt buộc khi tạo người dùng mới");
-      }
+        if (mode === "create" && !cleanData.password) {
+          throw new Error(t("user.form.passwordRequired"));
+        }
 
-      await onSuccess(cleanData, isEdit);
+        await onSuccess(cleanData, mode === "edit");
+      }
       onClose();
     } catch (error) {
       console.error("Form submit error:", error);
@@ -151,8 +208,6 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
       setLoading(false);
     }
   };
-
-  // ─── field helpers ─────────────────────────────────────────────────────────
 
   const Field = ({ label, required, error, icon: Icon, children }) => (
     <div className="space-y-1.5">
@@ -194,25 +249,19 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-[560px] max-h-[92vh] overflow-hidden p-0 gap-0 rounded-none border border-black bg-white">
-        {/* ── Header ── */}
+        {/* Header */}
         <DialogHeader className="relative px-6 py-5 border-b border-black bg-white">
           <div className="absolute left-0 top-0 h-full w-1 bg-yellow-400" />
           <div className="flex items-center gap-3 pr-8 pl-2">
             <div className="w-9 h-9 border border-black bg-black flex items-center justify-center shrink-0">
-              {isEdit ? (
-                <User className="w-4.5 h-4.5 text-white" />
-              ) : (
-                <Plus className="w-4.5 h-4.5 text-white" />
-              )}
+              {headerIcon}
             </div>
             <div>
               <DialogTitle className="text-xl font-black text-black leading-tight uppercase tracking-tight">
-                {isEdit ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}
+                {dialogTitle}
               </DialogTitle>
               <DialogDescription className="text-[11px] font-semibold text-gray-500 mt-0.5 uppercase tracking-wider">
-                {isEdit
-                  ? "Cập nhật thông tin tài khoản"
-                  : "Điền thông tin để tạo tài khoản mới"}
+                {dialogDescription}
               </DialogDescription>
             </div>
           </div>
@@ -225,30 +274,13 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
           </button>
         </DialogHeader>
 
-        {/* ── Scrollable form body ── */}
+        {/* Scrollable form body */}
         <div className="overflow-y-auto max-h-[calc(92vh-190px)] px-6 py-5 bg-white">
           <form id="user-form" onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-4">
-              {/* Email */}
-              <Field
-                label="Email"
-                required
-                error={errors.email?.message}
-                icon={Mail}
-              >
-                <input
-                  type="email"
-                  {...register("email")}
-                  disabled={isEdit}
-                  placeholder="example@didaugio.vn"
-                  className={inputCls(!!errors.email, true, isEdit)}
-                />
-              </Field>
-
-              {/* Password — create only */}
-              {!isEdit && (
+              {isChangePasswordMode ? (
                 <Field
-                  label="Mật khẩu"
+                  label={t("user.form.newPassword")}
                   required
                   error={errors.password?.message}
                   icon={Lock}
@@ -256,91 +288,131 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
                   <input
                     type="password"
                     {...register("password")}
-                    placeholder="Tối thiểu 6 ký tự"
+                    placeholder={t("user.form.passwordPlaceholder")}
                     className={inputCls(!!errors.password)}
                   />
                 </Field>
+              ) : (
+                <>
+                  {/* Email */}
+                  <Field
+                    label="Email"
+                    required
+                    error={errors.email?.message}
+                    icon={Mail}
+                  >
+                    <input
+                      type="email"
+                      {...register("email")}
+                      disabled={mode === "edit"}
+                      placeholder="example@didaugio.vn"
+                      className={inputCls(!!errors.email, true, mode === "edit")}
+                    />
+                  </Field>
+
+                  {/* Password — create or edit (optional) */}
+                  {(mode === "create" || mode === "edit") && (
+                    <Field
+                      label={mode === "edit" ? t("user.form.newPassword") : t("user.form.password")}
+                      required={mode === "create"}
+                      error={errors.password?.message}
+                      icon={Lock}
+                    >
+                      <input
+                        type="password"
+                        {...register("password")}
+                        placeholder={mode === "edit" ? t("user.form.newPasswordPlaceholder") : t("user.form.passwordPlaceholder")}
+                        className={inputCls(!!errors.password)}
+                      />
+                    </Field>
+                  )}
+
+                  {/* Full Name + Phone — 2 col */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label={t("user.form.fullName")} icon={User}>
+                      <input
+                        {...register("fullName")}
+                        placeholder={t("user.form.fullNamePlaceholder")}
+                        className={inputCls(false)}
+                      />
+                    </Field>
+
+                    <Field
+                      label={t("user.form.phone")}
+                      error={errors.phone?.message}
+                      icon={Phone}
+                    >
+                      <input
+                        {...register("phone")}
+                        placeholder="0123456789"
+                        className={inputCls(!!errors.phone)}
+                      />
+                    </Field>
+                  </div>
+
+                  {/* Role + Gender — 2 col */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label={t("user.form.role")} required icon={ShieldCheck}>
+                      <select
+                        {...register("roleId")}
+                        className={selectCls}
+                        disabled={mode === "edit"}
+                      >
+                        {roleOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                    </Field>
+
+                    <Field label={t("user.form.gender")} icon={Users}>
+                      <select {...register("gender")} className={selectCls}>
+                        <option value="male">{t("user.form.male")}</option>
+                        <option value="female">{t("user.form.female")}</option>
+                        <option value="other">{t("user.form.other")}</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                    </Field>
+                  </div>
+
+                  {/* Date of Birth */}
+                  <Field label={t("user.form.dateOfBirth")} icon={CalendarDays}>
+                    <input
+                      type="date"
+                      {...register("dateOfBirth")}
+                      className={inputCls(false)}
+                    />
+                  </Field>
+
+                  {/* Province / District */}
+                  <ProvinceDistrictSelect
+                    provinceCode={provinceCode}
+                    districtCode={districtCode}
+                    onProvinceChange={(code) => setValue("provinceCode", code)}
+                    onDistrictChange={(code) => setValue("districtCode", code)}
+                    errors={{
+                      provinceCode: errors.provinceCode?.message,
+                      districtCode: errors.districtCode?.message,
+                    }}
+                  />
+
+                  {/* Address */}
+                  <Field label={t("user.form.address")} icon={Home}>
+                    <input
+                      {...register("address")}
+                      placeholder={t("user.form.addressPlaceholder")}
+                      className={inputCls(false)}
+                    />
+                  </Field>
+                </>
               )}
-
-              {/* Full Name + Phone — 2 col */}
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Họ và tên" icon={User}>
-                  <input
-                    {...register("fullName")}
-                    placeholder="Nguyễn Văn A"
-                    className={inputCls(false)}
-                  />
-                </Field>
-
-                <Field
-                  label="Số điện thoại"
-                  error={errors.phone?.message}
-                  icon={Phone}
-                >
-                  <input
-                    {...register("phone")}
-                    placeholder="0123456789"
-                    className={inputCls(!!errors.phone)}
-                  />
-                </Field>
-              </div>
-
-              {/* Role + Gender — 2 col */}
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Vai trò" required icon={ShieldCheck}>
-                  <select {...register("roleId")} className={selectCls}>
-                    <option value={ROLES.STAFF}>Staff</option>
-                    <option value={ROLES.BUSINESS}>Business Owner</option>
-                    <option value={ROLES.ADMIN}>Admin</option>
-                    <option value={ROLES.SUPER_ADMIN}>Super Admin</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                </Field>
-
-                <Field label="Giới tính" icon={Users}>
-                  <select {...register("gender")} className={selectCls}>
-                    <option value="male">Nam</option>
-                    <option value="female">Nữ</option>
-                    <option value="other">Khác</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                </Field>
-              </div>
-
-              {/* Date of Birth */}
-              <Field label="Ngày sinh" icon={CalendarDays}>
-                <input
-                  type="date"
-                  {...register("dateOfBirth")}
-                  className={inputCls(false)}
-                />
-              </Field>
-
-              {/* Province / District */}
-              <ProvinceDistrictSelect
-                provinceCode={provinceCode}
-                districtCode={districtCode}
-                onProvinceChange={(code) => setValue("provinceCode", code)}
-                onDistrictChange={(code) => setValue("districtCode", code)}
-                errors={{
-                  provinceCode: errors.provinceCode?.message,
-                  districtCode: errors.districtCode?.message,
-                }}
-              />
-
-              {/* Address */}
-              <Field label="Địa chỉ chi tiết" icon={Home}>
-                <input
-                  {...register("address")}
-                  placeholder="Số nhà, tên đường..."
-                  className={inputCls(false)}
-                />
-              </Field>
             </div>
           </form>
         </div>
 
-        {/* ── Footer ── */}
+        {/* Footer */}
         <div className="px-6 py-4 border-t border-black bg-white flex items-center justify-end gap-3">
           <button
             type="button"
@@ -348,7 +420,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
             disabled={loading}
             className="px-4 py-2 rounded-none border border-black bg-white text-black text-sm font-bold uppercase tracking-wide hover:bg-gray-100 transition-all disabled:opacity-50"
           >
-            Hủy bỏ
+            {t("user.form.cancel")}
           </button>
           <button
             type="submit"
@@ -365,3 +437,4 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
 };
 
 export default UserFormModal;
+

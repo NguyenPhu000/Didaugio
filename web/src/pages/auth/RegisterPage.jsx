@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import EyeOff from "lucide-react/dist/esm/icons/eye-off";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
@@ -23,42 +25,80 @@ import {
   CardDescription,
   Label,
 } from "@/components/ui";
+import { useAuthStore } from "@/stores/authStore";
 import { authService } from "@/apis/authService";
+import GoogleSignUpButton from "@/components/auth/GoogleSignUpButton";
+import { BUSINESS_ROUTES } from "@/constants/routes";
 
 const registerSchema = z
   .object({
     fullName: z
       .string()
-      .min(2, "Ho ten phai co it nhat 2 ky tu")
-      .max(100, "Ho ten qua dai"),
+      .min(2, i18n.t("validation.fullNameMin", { min: 2 }))
+      .max(100, i18n.t("validation.fullNameMax")),
     email: z
       .string()
-      .min(1, "Email khong duoc de trong")
-      .email("Email khong hop le"),
+      .min(1, i18n.t("validation.emailRequired"))
+      .email(i18n.t("validation.emailInvalid")),
     username: z
       .string()
-      .min(3, "Username phai co it nhat 3 ky tu")
-      .max(30, "Username toi da 30 ky tu")
-      .regex(/^[a-zA-Z0-9_]+$/, "Username chi gom chu, so va dau gach duoi"),
+      .min(3, i18n.t("validation.usernameMin", { min: 3 }))
+      .max(30, i18n.t("validation.usernameMax", { max: 30 }))
+      .regex(/^[a-zA-Z0-9_]+$/, i18n.t("validation.usernamePattern")),
     password: z
       .string()
-      .min(6, "Mat khau phai co it nhat 6 ky tu")
+      .min(8, i18n.t("validation.passwordMin", { min: 8 }))
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Mat khau phai co it nhat 1 chu hoa, 1 chu thuong va 1 so",
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+=[\]{};':"\\|,.<>/?-])/,
+        i18n.t("validation.passwordPattern"),
       ),
-    confirmPassword: z.string().min(1, "Xac nhan mat khau khong duoc de trong"),
+    confirmPassword: z.string().min(1, i18n.t("validation.confirmPasswordRequired")),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Mat khau xac nhan khong khop",
+    message: i18n.t("validation.passwordMismatch"),
     path: ["confirmPassword"],
   });
 
 const RegisterPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+  const { setAuth } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const HAS_GOOGLE_OAUTH = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  useEffect(() => {
+    document.title = t("auth.register.pageTitle");
+  }, [t]);
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setIsGoogleLoading(true);
+    try {
+      const idToken = credentialResponse.credential;
+      if (!idToken) {
+        toast.error(t("auth.register.googleNoToken"));
+        return;
+      }
+      const response = await authService.googleRegister(idToken);
+      if (response.success) {
+        setAuth(
+          response.data.user,
+          response.data.accessToken,
+          response.data.refreshToken,
+        );
+        toast.success(t("auth.register.googleSuccess"));
+        // Google is already email-verified, then the business onboarding handles role/profile unlock.
+        navigate(BUSINESS_ROUTES.REGISTER, { replace: true });
+      }
+    } catch (error) {
+      toast.error(error.message || t("auth.register.googleFailed"));
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const {
     register,
@@ -71,7 +111,7 @@ const RegisterPage = () => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      const response = await authService.register({
+      const response = await authService.registerBusiness({
         email: data.email,
         username: data.username,
         password: data.password,
@@ -80,22 +120,46 @@ const RegisterPage = () => {
       });
 
       if (response.success) {
-        toast.success(
-          "Đăng ký thành công! Vui lòng kiểm tra email để xác thực.",
-        );
-        navigate(
-          `/resend-verification?email=${encodeURIComponent(data.email)}&from=register`,
-        );
+        const { emailVerificationRequired } = response.data;
+
+        // Trigger browser's "Save password?" dialog
+        if ("credentials" in navigator && navigator.credentials.create) {
+          try {
+            const credential = await navigator.credentials.create({
+              password: {
+                id: data.email,
+                password: data.password,
+                name: data.username || data.email,
+              },
+            });
+            if (credential) {
+              await navigator.credentials.store(credential);
+            }
+          } catch {
+            // Browser doesn't support or user denied
+          }
+        }
+
+        if (emailVerificationRequired) {
+          toast.success("Đăng ký thành công! Vui lòng kiểm tra email để xác thực.");
+          navigate(`/check-email?email=${encodeURIComponent(data.email.toLowerCase())}`, {
+            replace: true,
+          });
+          return;
+        }
+
+        toast.success("Đăng ký thành công! Vui lòng đăng ký doanh nghiệp.");
+        navigate(BUSINESS_ROUTES.REGISTER, { replace: true });
       }
     } catch (error) {
-      toast.error(error.message || "Dang ky that bai");
+      toast.error(error.message || t("auth.register.failed"));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden">
+    <div className="min-h-screen flex relative overflow-hidden page-enter">
       {/* Grid Background */}
       <div className="absolute inset-0 bg-grid-dots opacity-30 pointer-events-none"></div>
       <div className="absolute inset-0 bg-grid-lines opacity-10 pointer-events-none"></div>
@@ -121,7 +185,7 @@ const RegisterPage = () => {
                   DIDAUGIO
                 </h2>
                 <p className="text-[#F3E600] text-xs font-mono uppercase tracking-wider">
-                  REGISTRATION
+                  {t("auth.register.businessTitle")}
                 </p>
               </div>
             </div>
@@ -131,19 +195,23 @@ const RegisterPage = () => {
           <div className="space-y-8">
             <div>
               <h1 className="text-5xl font-black text-white uppercase leading-tight mb-4">
-                JOIN THE
-                <br />
-                SYSTEM
-                <br />
-                TODAY
+                {t("auth.register.heroTitle").split("\n").map((line, i) => (
+                  <span key={i}>
+                    {line}
+                    {i < t("auth.register.heroTitle").split("\n").length - 1 && <br />}
+                  </span>
+                ))}
               </h1>
               <div className="w-24 h-1 bg-[#F3E600]"></div>
             </div>
 
             <p className="text-gray-400 font-mono text-sm uppercase leading-relaxed max-w-md">
-              TẠO TÀI KHOẢN MỚI ĐỂ TRẢI NGHIỆM
-              <br />
-              HỆ THỐNG QUẢN LÝ THÔNG MINH
+              {t("auth.register.heroDesc").split("\n").map((line, i) => (
+                <span key={i}>
+                  {line}
+                  {i < t("auth.register.heroDesc").split("\n").length - 1 && <br />}
+                </span>
+              ))}
             </p>
 
             {/* Benefits */}
@@ -153,7 +221,7 @@ const RegisterPage = () => {
                   <div className="w-2 h-2 bg-[#F3E600]"></div>
                 </div>
                 <p className="text-xs text-gray-400 uppercase font-mono">
-                  FULL ACCESS TO MANAGEMENT TOOLS
+                  {t("auth.register.benefit1")}
                 </p>
               </div>
               <div className="flex items-start gap-3">
@@ -161,7 +229,7 @@ const RegisterPage = () => {
                   <div className="w-2 h-2 bg-[#F3E600]"></div>
                 </div>
                 <p className="text-xs text-gray-400 uppercase font-mono">
-                  SECURE & ENCRYPTED DATA
+                  {t("auth.register.benefit2")}
                 </p>
               </div>
               <div className="flex items-start gap-3">
@@ -169,7 +237,7 @@ const RegisterPage = () => {
                   <div className="w-2 h-2 bg-[#F3E600]"></div>
                 </div>
                 <p className="text-xs text-gray-400 uppercase font-mono">
-                  24/7 SYSTEM SUPPORT
+                  {t("auth.register.benefit3")}
                 </p>
               </div>
             </div>
@@ -193,7 +261,7 @@ const RegisterPage = () => {
             <div>
               <h2 className="text-xl font-black uppercase">DIDAUGIO</h2>
               <p className="text-[#F3E600] text-xs font-mono uppercase">
-                SYSTEM
+                {t("auth.register.mobileSubtitle")}
               </p>
             </div>
           </div>
@@ -205,11 +273,11 @@ const RegisterPage = () => {
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-1 h-8 bg-[#F3E600]"></div>
                 <h1 className="text-3xl font-black uppercase tracking-tight">
-                  SIGN UP
+                  {t("auth.register.title")}
                 </h1>
               </div>
               <p className="text-xs text-gray-500 uppercase font-mono ml-4">
-                TẠO TÀI KHOẢN MỚI
+                {t("auth.register.subtitle")}
               </p>
             </div>
 
@@ -221,13 +289,17 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <User className="h-4 w-4" />
-                  FULL NAME
+                  {t("auth.register.fullName")}
                 </Label>
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="NGUYEN VAN A"
-                  className="rounded-none border-2 border-black h-11 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                  name="fullName"
+                  placeholder={t("auth.register.fullNamePlaceholder")}
+                  className="rounded-none border-2 border-black h-11 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                  autoComplete="name"
+                  autoCapitalize="off"
+                  autoCorrect="off"
                   {...register("fullName")}
                 />
                 {errors.fullName && (
@@ -244,13 +316,17 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <AtSign className="h-4 w-4" />
-                  USERNAME
+                  {t("auth.register.username")}
                 </Label>
                 <Input
                   id="username"
                   type="text"
-                  placeholder="USERNAME_01"
+                  name="username"
+                  placeholder={t("auth.register.usernamePlaceholder")}
                   className="rounded-none border-2 border-black h-11 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                  autoComplete="username"
+                  autoCapitalize="off"
+                  autoCorrect="off"
                   {...register("username")}
                 />
                 {errors.username && (
@@ -267,13 +343,17 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <Mail className="h-4 w-4" />
-                  EMAIL ADDRESS
+                  {t("auth.register.email")}
                 </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="YOUR@EMAIL.COM"
-                  className="rounded-none border-2 border-black h-11 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                  name="email"
+                  placeholder={t("auth.register.emailPlaceholder")}
+                  className="rounded-none border-2 border-black h-11 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
+                  autoComplete="email"
+                  autoCapitalize="off"
+                  autoCorrect="off"
                   {...register("email")}
                 />
                 {errors.email && (
@@ -290,12 +370,13 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <Lock className="h-4 w-4" />
-                  PASSWORD
+                  {t("auth.register.password")}
                 </Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
+                    name="password"
                     placeholder="••••••••"
                     autoComplete="new-password"
                     className="rounded-none border-2 border-black h-11 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0 pr-12"
@@ -319,7 +400,7 @@ const RegisterPage = () => {
                   </p>
                 )}
                 <p className="text-[10px] text-gray-500 uppercase font-mono">
-                  MIN 6 CHARS, UPPERCASE, LOWERCASE & NUMBER
+                  {t("auth.register.passwordHint")}
                 </p>
               </div>
 
@@ -330,12 +411,13 @@ const RegisterPage = () => {
                   className="tim-meta flex items-center gap-2"
                 >
                   <Lock className="h-4 w-4" />
-                  CONFIRM PASSWORD
+                  {t("auth.register.confirmPassword")}
                 </Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
                     placeholder="••••••••"
                     autoComplete="new-password"
                     className="rounded-none border-2 border-black h-11 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0 pr-12"
@@ -367,39 +449,48 @@ const RegisterPage = () => {
                 className="w-full rounded-none border-2 border-black bg-[#F3E600] text-black hover:bg-black hover:text-[#F3E600] h-12 uppercase font-black text-sm transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none mt-6"
               >
                 {isLoading ? (
-                  "CREATING ACCOUNT..."
+                  t("auth.register.submitting")
                 ) : (
                   <>
                     <UserPlus className="mr-2 h-4 w-4" />
-                    CREATE ACCOUNT
+                    {t("auth.register.submit")}
                   </>
                 )}
               </Button>
             </form>
 
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t-2 border-black border-dashed"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-4 text-gray-500 font-mono">
-                  OR
-                </span>
-              </div>
-            </div>
+            {HAS_GOOGLE_OAUTH && (
+              <>
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t-2 border-black border-dashed"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-4 text-gray-500 font-mono">
+                      {t("common.or")}
+                    </span>
+                  </div>
+                </div>
+
+                <GoogleSignUpButton
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => toast.error(t("auth.register.googleFailed"))}
+                  disabled={isGoogleLoading}
+                />
+              </>
+            )}
 
             {/* Login Link */}
             <div className="text-center">
               <p className="text-xs text-gray-600 uppercase font-mono mb-2">
-                ALREADY HAVE AN ACCOUNT?
+                {t("auth.register.hasAccount")}
               </p>
               <Link
                 to="/auth/login"
                 className="w-full rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-11 px-6 uppercase font-black text-sm transition-all flex items-center justify-center"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                BACK TO LOGIN
+                {t("auth.register.loginNow")}
               </Link>
             </div>
           </div>
@@ -407,7 +498,7 @@ const RegisterPage = () => {
           {/* Footer Note */}
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-400 uppercase font-mono">
-              BY REGISTERING, YOU AGREE TO OUR TERMS
+              {t("auth.register.termsNote")}
             </p>
           </div>
         </div>

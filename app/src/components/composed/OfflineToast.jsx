@@ -5,7 +5,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useOffline } from "../../hooks/useOffline";
 import { TOKENS } from "../../constants/design-tokens";
@@ -55,7 +55,7 @@ export function OfflineToast() {
           className="w-9 h-9 rounded-full items-center justify-center"
           style={{ backgroundColor: "rgba(14,165,233,0.16)" }}
         >
-          <MaterialIcons name="wifi-off" size={18} color="#fff" />
+          <MaterialIconsRounded name="wifi-off" size={18} color="#fff" />
         </View>
         <Text className="text-white text-[13px] font-semibold flex-1">
           Không có kết nối mạng

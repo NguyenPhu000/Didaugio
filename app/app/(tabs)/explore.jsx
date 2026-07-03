@@ -1,24 +1,32 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
-  Pressable,
-  RefreshControl,
+  Alert,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import Animated, { useSharedValue } from "react-native-reanimated";
-import { MaterialIcons } from "@expo/vector-icons";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { Pressable } from "@/components/primitives/Pressable";
+import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
+import { RefreshControl } from "react-native-gesture-handler";
 
 import {
   useCategories,
   useExplore,
 } from "../../src/modules/explore/hooks/useExplore";
 import { useAuthStore } from "../../src/stores/authStore";
+import { useUIStore } from "../../src/stores/uiStore";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -31,30 +39,52 @@ import {
 
 import { FeaturedSection } from "../../src/modules/explore/components/FeaturedSection";
 import { ExperienceBentoSection } from "../../src/modules/explore/components/ExperienceBentoSection";
-import { PopularSection } from "../../src/modules/explore/components/PopularSection";
+import { CategoryPlacesSection } from "../../src/modules/explore/components/CategoryPlacesSection";
 import { ExploreSkeleton } from "../../src/modules/explore/components/ExploreSkeleton";
 import { SearchOverlay } from "../../src/modules/explore/components/SearchOverlay";
 import { ExploreModernHeader } from "../../src/modules/explore/components/ExploreModernHeader";
-import { ExploreQuickActions } from "../../src/modules/explore/components/ExploreQuickActions";
 import { CategoryPills } from "../../src/modules/explore/components/CategoryPills";
+import { useEvents } from "../../src/modules/explore/hooks/useEvents";
+import { EventBannerCarousel } from "../../src/modules/explore/components/EventBannerCarousel";
+import { EventSection } from "../../src/modules/explore/components/EventSection";
 
-const FEATURED_COUNT = 6;
-const EMPTY_STATE_TITLE = "Chưa có địa điểm nào";
-const EMPTY_STATE_COPY = "Hãy quay lại sau hoặc thử đổi danh mục khác.";
+import { useExploreCms } from "../../src/modules/explore/hooks/useExploreCms";
+import { CmsBannerCarousel } from "../../src/modules/explore/components/CmsBannerCarousel";
+import { SampleTripSection } from "../../src/modules/explore/components/SampleTripSection";
+import { AnnouncementBanner } from "../../src/modules/explore/components/AnnouncementBanner";
+
+import { BlurCarousel } from "../../src/components/reacticx/blur-carousel";
+import { Accordion, AccordionThemes } from "../../src/components/reacticx/accordion";
+
+import { Image } from "expo-image";
+import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../src/lib/media-url";
+
+import { useSavePlace, useUnsavePlace, useSavedPlaces } from "../../src/modules/saved/hooks/useSaved";
+
 const FOOD_HINTS = ["ẩm thực", "food", "restaurant", "ăn", "quán", "bánh"].map(
   (item) => normalizeText(item),
 );
 
-const FLOATING_TAB_CLEARANCE = TAB_BAR_HEIGHT + 24;
+const FLOATING_TAB_CLEARANCE = TAB_BAR_HEIGHT + 84;
+const TAB_SCREEN_PADDING = 16;
+
+const EXPLORE_ACCORDION_THEME = {
+  backgroundColor: "transparent",
+  borderColor: "rgba(0,0,0,0.06)",
+  headlineColor: APPLE_THEME.text,
+  subtitleColor: APPLE_THEME.textMuted,
+  iconColor: APPLE_THEME.textMuted,
+};
 
 export default function ExploreScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
+  const isGuest = useAuthStore((s) => s.isGuest);
 
   const [searchVisible, setSearchVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const scrollY = useSharedValue(0);
   const { data: categories = [] } = useCategories();
 
   const {
@@ -67,6 +97,90 @@ export default function ExploreScreen() {
     isFetchingNextPage,
   } = useExplore({ categoryId: selectedCategory });
 
+  const { data: events = [], isLoading: isLoadingEvents, refetch: refetchEvents } = useEvents();
+
+  const {
+    data: cmsData,
+    isLoading: isLoadingCms,
+    isRefetching: isCmsRefetching,
+    refetch: refetchCms,
+  } = useExploreCms();
+  const {
+    banners = [],
+    featuredPlaces = [],
+    sampleTrips = [],
+    announcement = null,
+  } = cmsData ?? {};
+
+  const featuredEvents = useMemo(() => {
+    if (!Array.isArray(events)) return [];
+    const now = Date.now();
+    return events
+      .filter((e) => e?.isFeaturedBanner)
+      .sort((a, b) => {
+        // Ưu tiên sự kiện đang diễn ra lên đầu
+        const aOngoing = new Date(a.startDate).getTime() <= now && now <= new Date(a.endDate).getTime();
+        const bOngoing = new Date(b.startDate).getTime() <= now && now <= new Date(b.endDate).getTime();
+        if (aOngoing && !bOngoing) return -1;
+        if (!aOngoing && bOngoing) return 1;
+        // Sau đó theo startDate tăng dần
+        return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+      });
+  }, [events]);
+
+  const regularEvents = useMemo(() => {
+    if (!Array.isArray(events)) return [];
+    return events.filter((e) => !e?.isFeaturedBanner);
+  }, [events]);
+
+  const handlePressEvent = useCallback((eventItem) => {
+    if (eventItem?.id) {
+      router.push({ pathname: "/event/[id]", params: { id: eventItem.id } });
+    }
+  }, [router]);
+
+  const isLoggedIn = !!user && !isGuest;
+  const { data: savedPlaces = [] } = useSavedPlaces(isLoggedIn);
+  const saveMutation = useSavePlace();
+  const unsaveMutation = useUnsavePlace();
+
+  const savedPlaceIds = useMemo(() => {
+    const ids = new Set();
+    for (const item of savedPlaces) {
+      const placeId = item?.placeId ?? item?.place?.id ?? item?.id;
+      if (placeId != null) ids.add(Number(placeId));
+    }
+    return ids;
+  }, [savedPlaces]);
+
+  const handleSavePlace = useCallback(async (place) => {
+    if (!isLoggedIn) {
+      Alert.alert(t("explore.toast.loginToSave"), t("explore.toast.loginToSaveDesc"), [
+        { text: t("common.later"), style: "cancel" },
+        { text: t("common.login"), onPress: () => router.push("/(auth)/login") },
+      ]);
+      return;
+    }
+    if (!place?.id) return;
+    const placeId = Number(place.id);
+    const isCurrentlySaved = savedPlaceIds.has(placeId);
+
+    try {
+      if (isCurrentlySaved) {
+        await unsaveMutation.mutateAsync(placeId);
+        useUIStore.getState().addToast({ type: "success", message: t("explore.toast.unsaved") });
+      } else {
+        await saveMutation.mutateAsync({ placeId });
+        useUIStore.getState().addToast({ type: "success", message: t("explore.toast.saved") });
+      }
+    } catch {
+      useUIStore.getState().addToast({
+        type: "error",
+        message: isCurrentlySaved ? t("explore.toast.unsaveFailed") : t("explore.toast.saveFailed"),
+      });
+    }
+  }, [isLoggedIn, savedPlaceIds, saveMutation, unsaveMutation, router]);
+
   const allPlaces = useMemo(
     () => exploreData?.pages.flatMap((page) => page?.data || []) ?? [],
     [exploreData],
@@ -75,12 +189,7 @@ export default function ExploreScreen() {
   const categoryTabs = useMemo(() => {
     const normalizedCategories = Array.isArray(categories) ? categories : [];
     return [
-      {
-        key: "all",
-        categoryId: null,
-        label: "Tất cả",
-        icon: "travel-explore",
-      },
+      { key: "all", categoryId: null, label: t("explore.categories.all"), icon: "travel-explore" },
       ...normalizedCategories
         .filter((category) => category?.id != null && category?.name)
         .map((category) => ({
@@ -93,85 +202,69 @@ export default function ExploreScreen() {
   }, [categories]);
 
   const selectedCategoryName = useMemo(() => {
-    if (selectedCategory == null) return "Tất cả trải nghiệm";
-    const matched = categories.find(
-      (category) => String(category?.id) === String(selectedCategory),
-    );
-    return matched?.name || "Danh mục đã chọn";
+    if (selectedCategory == null) return null;
+    const matched = categories.find((category) => String(category?.id) === String(selectedCategory));
+    return matched?.name || null;
   }, [categories, selectedCategory]);
 
-  const featuredPlaces = useMemo(
-    () => allPlaces.slice(0, FEATURED_COUNT),
-    [allPlaces],
-  );
+  const popularPlaces = allPlaces;
 
-  const popularPlaces = useMemo(
-    () => allPlaces.slice(selectedCategory == null ? FEATURED_COUNT : 0),
-    [allPlaces, selectedCategory],
-  );
+  const placesByCategory = useMemo(() => {
+    if (selectedCategory != null) return [];
 
-  const categoryHeroCopy = useMemo(
-    () =>
-      selectedCategory == null
-        ? "Gợi ý địa điểm nổi bật, ẩm thực và hoạt động phù hợp cho chuyến đi của bạn."
-        : `Đang lọc các địa điểm thuộc ${selectedCategoryName}. Chạm vào thẻ để xem chi tiết, ảnh và chỉ đường.`,
-    [selectedCategory, selectedCategoryName],
-  );
+    const categoryMap = new Map();
+    for (const place of allPlaces) {
+      const catId = place?.category?.id;
+      const catName = place?.category?.name;
+      if (catId != null && catName) {
+        if (!categoryMap.has(catId)) {
+          categoryMap.set(catId, { id: catId, name: catName, icon: getCategoryIcon(catName), places: [] });
+        }
+        categoryMap.get(catId).places.push(place);
+      }
+    }
 
-  const resultSummary = useMemo(
-    () =>
-      allPlaces.length > 0
-        ? `${allPlaces.length} địa điểm phù hợp`
-        : "Chưa có địa điểm phù hợp",
-    [allPlaces],
+    return Array.from(categoryMap.values())
+      .sort((a, b) => b.places.length - a.places.length)
+      .map((cat) => ({ ...cat, places: cat.places.slice(0, 8) }));
+  }, [allPlaces, selectedCategory]);
+
+  const handleViewCategoryPlaces = useCallback(
+    (category) => {
+      router.push({ pathname: "/explore/category-places", params: { id: category.id, name: category.name } });
+    },
+    [router],
   );
 
   const culinaryPlaces = useMemo(() => {
     const matched = allPlaces.filter((place) => {
-      const content = normalizeText(
-        [
-          place?.category?.name,
-          place?.name,
-          place?.shortDescription,
-          place?.description,
-        ]
-          .filter(Boolean)
-          .join(" "),
-      );
-
+      const textToCheck = `${place?.category?.name || ""} ${place?.name || ""} ${place?.shortDescription || ""}`;
+      const content = normalizeText(textToCheck);
       return FOOD_HINTS.some((keyword) => content.includes(keyword));
     });
-
     const source = matched.length >= 3 ? matched : allPlaces;
     return source.slice(0, 3);
   }, [allPlaces]);
 
   const handlePressPlace = useCallback(
     (place) => {
-      const id = place?.id;
-      if (id) {
-        router.push({ pathname: "/place/[id]", params: { id } });
-      }
+      if (place?.id) router.push({ pathname: "/place/[id]", params: { id: place.id } });
     },
     [router],
   );
 
-  const handleOpenSearch = useCallback(() => {
-    setSearchVisible(true);
-  }, []);
-
-  const handleCloseSearch = useCallback(() => {
-    setSearchVisible(false);
-  }, []);
+  const handleOpenSearch = useCallback(() => setSearchVisible(true), []);
+  const handleCloseSearch = useCallback(() => setSearchVisible(false), []);
 
   const handleRefresh = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     refetch();
-  }, [refetch]);
+    refetchEvents();
+    refetchCms();
+  }, [refetch, refetchEvents, refetchCms]);
 
   const handleEndReached = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
-    }
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleSelectCategory = useCallback((categoryId) => {
@@ -180,55 +273,109 @@ export default function ExploreScreen() {
 
   const handleScroll = useCallback(
     (event) => {
-      const { layoutMeasurement, contentOffset, contentSize } =
-        event.nativeEvent;
-      const distanceFromBottom =
-        contentSize.height - (layoutMeasurement.height + contentOffset.y);
-
-      if (distanceFromBottom <= 240) {
+      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+      if (contentSize.height - (layoutMeasurement.height + contentOffset.y) <= 240) {
         handleEndReached();
       }
     },
     [handleEndReached],
   );
 
+  const handleScrollEvent = useCallback((e) => {
+    handleScroll(e);
+  }, [handleScroll]);
+
+  const handlePressTrip = useCallback((trip) => {
+    if (trip?.id) router.push({ pathname: "/trip/[id]", params: { id: trip.id } });
+  }, [router]);
+
+  const isInitialLoading = isLoading || isLoadingEvents || isLoadingCms;
+  const showEmpty = allPlaces.length === 0 && !isInitialLoading;
+
+  const { width: screenWidth } = useWindowDimensions();
+
+  const renderEventBanner = useCallback(
+    ({ item: event }) => {
+      const rawImage = event?.thumbnail || event?.imageUrl;
+      const imageUri = rawImage ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 800) : null;
+      return (
+        <Pressable
+          haptic="light"
+          onPress={() => handlePressEvent(event)}
+          style={{ width: "100%", height: 170, borderRadius: 20, overflow: "hidden", backgroundColor: APPLE_THEME.surfaceMuted }}
+        >
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} contentFit="cover" transition={250} cachePolicy="memory-disk" style={StyleSheet.absoluteFillObject} />
+          ) : (
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#064e3b" }}>
+              <MaterialIconsRounded name="celebration" size={48} color="rgba(255,255,255,0.3)" />
+            </View>
+          )}
+          <View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.1)" }} pointerEvents="none" />
+          <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "70%", backgroundColor: "rgba(0,0,0,0.55)" }} pointerEvents="none" />
+          <View style={{ position: "absolute", top: 14, left: 14, flexDirection: "row", alignItems: "center", gap: 8, zIndex: 2 }}>
+            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: "#DC2626", flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <MaterialIconsRounded name="campaign" size={12} color="#FFFFFF" />
+              <Text style={{ color: "#FFF", fontSize: 10, fontFamily: TOKENS.font.bold, letterSpacing: 1.5 }}>{t("explore.event.featuredBadge")}</Text>
+            </View>
+          </View>
+          <View style={{ position: "absolute", bottom: 16, left: 16, right: 16, zIndex: 2, gap: 6 }}>
+            <Text style={{ color: "#FFF", fontSize: 18, lineHeight: 22, fontFamily: TOKENS.font.heading, letterSpacing: -0.4 }} numberOfLines={2}>{event?.title}</Text>
+            {event?.description ? (
+              <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontFamily: TOKENS.font.medium }} numberOfLines={1}>{event.description}</Text>
+            ) : null}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <MaterialIconsRounded name="people" size={13} color="rgba(255,255,255,0.8)" />
+                  <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 11, fontFamily: TOKENS.font.semibold }}>
+                    {t("explore.event.participants", { count: event?._count?.participants || event?.participantCount || 0 })}
+                  </Text>
+                </View>
+              </View>
+              <View style={{ paddingHorizontal: 14, height: 28, borderRadius: 999, backgroundColor: "#FFF", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                <Text style={{ color: "#000", fontSize: 11, fontFamily: TOKENS.font.bold }}>{t("explore.event.viewNow")}</Text>
+                <MaterialIconsRounded name="arrow-forward" size={12} color="#000" />
+              </View>
+            </View>
+          </View>
+        </Pressable>
+      );
+    },
+    [handlePressEvent, t],
+  );
+
+  const emptyOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    emptyOpacity.value = showEmpty ? withTiming(1, { duration: 250 }) : 0;
+  }, [showEmpty, emptyOpacity]);
+
+  const emptyAnimStyle = useAnimatedStyle(() => ({ opacity: emptyOpacity.value }));
+
   return (
-    <View
-      style={[
-        styles.screen,
-        { paddingTop: insets.top, backgroundColor: APPLE_THEME.background },
-      ]}
-    >
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar style="dark" />
 
-      {isLoading && !isRefetching ? (
+      {isInitialLoading && !isRefetching ? (
         <ExploreSkeleton />
       ) : (
         <Animated.ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: FLOATING_TAB_CLEARANCE },
-          ]}
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: FLOATING_TAB_CLEARANCE }]}
           refreshControl={
             <RefreshControl
-              refreshing={isRefetching}
+              refreshing={isRefetching || isCmsRefetching}
               onRefresh={handleRefresh}
               tintColor={APPLE_THEME.focusBlue}
               colors={[APPLE_THEME.focusBlue]}
             />
           }
-          onScroll={(e) => {
-            scrollY.value = e.nativeEvent.contentOffset.y;
-            handleScroll(e);
-          }}
+          onScroll={handleScrollEvent}
           scrollEventThrottle={16}
         >
-          {/* Header */}
-          <ExploreModernHeader
-            user={user}
-            onPressSearch={handleOpenSearch}
-          />
+          <ExploreModernHeader user={user} onPressSearch={handleOpenSearch} />
 
           {categoryTabs.length > 1 ? (
             <CategoryPills
@@ -238,84 +385,111 @@ export default function ExploreScreen() {
             />
           ) : null}
 
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryIcon}>
-              <MaterialIcons
-                name="explore"
-                size={20}
-                color={APPLE_THEME.white}
+          <AnnouncementBanner announcement={announcement} />
+
+          {selectedCategory === null ? <CmsBannerCarousel banners={banners} /> : null}
+
+          {selectedCategory === null && featuredEvents.length > 0 ? (
+            <View style={{ marginTop: 12, marginBottom: 4 }}>
+              <BlurCarousel
+                data={featuredEvents}
+                renderItem={renderEventBanner}
+                itemWidth={screenWidth - 32}
+                horizontalSpacing={16}
+                spacing={6}
               />
             </View>
-            <View style={styles.summaryTextWrap}>
-              <Text style={styles.summaryEyebrow}>{selectedCategoryName}</Text>
-              <Text style={styles.summaryTitle}>{resultSummary}</Text>
-              <Text style={styles.summaryCopy}>{categoryHeroCopy}</Text>
-            </View>
-            {selectedCategory != null ? (
+          ) : null}
+
+          {selectedCategoryName ? (
+            <View style={styles.filterPill}>
+              <View style={styles.filterDot} />
+              <Text style={styles.filterText}>
+                {selectedCategoryName} · {t("explore.results", { count: allPlaces.length })}
+              </Text>
               <Pressable
+                haptic="light"
                 onPress={() => handleSelectCategory(null)}
-                style={styles.clearCategoryButton}
+                hitSlop={8}
+                style={styles.filterCloseBtn}
               >
-                <Text style={styles.clearCategoryText}>Xóa lọc</Text>
+                <MaterialIconsRounded name="close" size={14} color={APPLE_THEME.text} />
               </Pressable>
+            </View>
+          ) : null}
+
+          <View>
+            {featuredPlaces.length > 0 ? (
+              <FeaturedSection
+                places={featuredPlaces}
+                onPressPlace={handlePressPlace}
+                onSavePlace={handleSavePlace}
+                savedPlaceIds={savedPlaceIds}
+              />
+            ) : null}
+
+            <SampleTripSection sampleTrips={sampleTrips} onPressTrip={handlePressTrip} />
+
+            {selectedCategory === null && regularEvents.length > 0 ? (
+              <EventSection events={regularEvents} onPressEvent={handlePressEvent} />
+            ) : null}
+
+            {culinaryPlaces.length >= 3 ? (
+              <ExperienceBentoSection places={culinaryPlaces} onPressPlace={handlePressPlace} />
+            ) : null}
+
+            {selectedCategory === null && placesByCategory.length > 0 ? (
+              <View style={{ marginTop: 16 }}>
+                {placesByCategory.map((category) => (
+                  <CategoryPlacesSection
+                    key={category.id}
+                    categoryName={category.name}
+                    categoryId={category.id}
+                    places={category.places}
+                    icon={category.icon}
+                    onPressPlace={handlePressPlace}
+                    onPressViewAll={() => handleViewCategoryPlaces(category)}
+                  />
+                ))}
+              </View>
+            ) : null}
+
+            {selectedCategory != null && popularPlaces.length > 0 ? (
+              <CategoryPlacesSection
+                categoryName={selectedCategoryName}
+                categoryId={selectedCategory}
+                places={popularPlaces.slice(0, 8)}
+                onPressPlace={handlePressPlace}
+                onPressViewAll={() =>
+                  handleViewCategoryPlaces({ id: selectedCategory, name: selectedCategoryName })
+                }
+              />
             ) : null}
           </View>
 
-          {/* Quick Actions */}
-          <ExploreQuickActions
-            categories={categories}
-            onSelectCategory={handleSelectCategory}
-            onOpenSearch={handleOpenSearch}
-          />
-
-          {/* Featured carousel */}
-          {featuredPlaces.length > 0 ? (
-            <FeaturedSection
-              places={featuredPlaces}
-              onPressPlace={handlePressPlace}
-              onPressViewAll={() => handleSelectCategory(null)}
-            />
-          ) : null}
-
-          {/* Bento culinary */}
-          {culinaryPlaces.length >= 3 ? (
-            <ExperienceBentoSection
-              places={culinaryPlaces}
-              onPressPlace={handlePressPlace}
-            />
-          ) : null}
-
-          {/* Popular list */}
-          {popularPlaces.length > 0 ? (
-            <PopularSection
-              places={popularPlaces}
-              onPressPlace={handlePressPlace}
-              title={
-                selectedCategory == null
-                  ? "Địa điểm nên thử"
-                  : `Địa điểm ${selectedCategoryName}`
-              }
-            />
-          ) : null}
-
-          {/* Empty state */}
-          {allPlaces.length === 0 && !isLoading ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>{EMPTY_STATE_TITLE}</Text>
-              <Text style={styles.emptyCopy}>
-                {selectedCategory == null
-                  ? EMPTY_STATE_COPY
-                  : "Danh mục này chưa có địa điểm phù hợp. Hãy thử danh mục khác hoặc tìm kiếm theo tên."}
+          {showEmpty ? (
+            <Animated.View style={[styles.emptyContainer, emptyAnimStyle]}>
+              <View style={styles.emptyIconWrapper}>
+                <MaterialIconsRounded name="explore-off" size={32} color={APPLE_THEME.textMuted} />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {selectedCategory == null ? t("explore.empty.noPlaces") : t("explore.empty.noResults")}
               </Text>
-            </View>
+              <Text style={styles.emptyDesc}>
+                {selectedCategory == null ? t("explore.empty.noPlacesDesc") : t("explore.empty.noResultsDesc")}
+              </Text>
+              {selectedCategory != null ? (
+                <Pressable haptic="light" onPress={() => handleSelectCategory(null)} style={styles.emptyActionBtn}>
+                  <Text style={styles.emptyActionText}>{t("common.viewAll")}</Text>
+                </Pressable>
+              ) : null}
+            </Animated.View>
           ) : null}
 
-          {/* Loading more */}
           {isFetchingNextPage ? (
-            <ActivityIndicator
-              color={APPLE_THEME.focusBlue}
-              style={styles.loadMore}
-            />
+            <View style={styles.loadingMoreWrapper}>
+              <ActivityIndicator color={APPLE_THEME.focusBlue} />
+            </View>
           ) : null}
         </Animated.ScrollView>
       )}
@@ -326,97 +500,96 @@ export default function ExploreScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
+  container: {
     flex: 1,
+    backgroundColor: APPLE_THEME.background,
   },
   scrollContent: {
     paddingTop: 4,
   },
-  summaryCard: {
-    marginTop: 12,
-    marginHorizontal: 20,
-    padding: 16,
-    borderRadius: 24,
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APPLE_THEME.borderSoft,
+  filterPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    ...Platform.select({
-      ios: TOKENS.shadow.sm,
-      android: { elevation: 2 },
-    }),
+    marginHorizontal: 20,
+    marginTop: 12,
+    paddingHorizontal: 16,
+    height: 40,
+    borderRadius: 999,
+    backgroundColor: APPLE_THEME.surfaceMuted,
+    gap: 10,
   },
-  summaryIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_THEME.primary,
+  filterDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: APPLE_THEME.focusBlue,
   },
-  summaryTextWrap: {
+  filterText: {
     flex: 1,
-    minWidth: 0,
-  },
-  summaryEyebrow: {
-    color: APPLE_THEME.focusBlue,
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.2,
-  },
-  summaryTitle: {
-    marginTop: 2,
     color: APPLE_THEME.text,
-    fontSize: 17,
-    lineHeight: 22,
-    fontFamily: TOKENS.font.heading,
     letterSpacing: -0.2,
   },
-  summaryCopy: {
-    marginTop: 4,
-    color: APPLE_THEME.textSecondary,
-    fontSize: 12.5,
-    lineHeight: 18,
-    fontFamily: TOKENS.font.medium,
+  filterCloseBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: APPLE_THEME.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  clearCategoryButton: {
-    height: 34,
-    paddingHorizontal: 12,
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 80,
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  emptyIconWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: APPLE_THEME.surfaceMuted,
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: TOKENS.font.bold,
+    color: APPLE_THEME.text,
+    textAlign: "center",
+    letterSpacing: -0.3,
+  },
+  emptyDesc: {
+    fontSize: 14,
+    lineHeight: 22,
+    fontFamily: TOKENS.font.medium,
+    color: APPLE_THEME.textMuted,
+    textAlign: "center",
+  },
+  emptyActionBtn: {
+    marginTop: 12,
+    height: 44,
+    paddingHorizontal: 24,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.05)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APPLE_THEME.borderSoft,
+    backgroundColor: APPLE_THEME.text,
   },
-  clearCategoryText: {
-    color: APPLE_THEME.text,
-    fontSize: 12,
+  emptyActionText: {
+    color: APPLE_THEME.white,
+    fontSize: 14,
     fontFamily: TOKENS.font.semibold,
   },
-  emptyState: {
+  loadingMoreWrapper: {
+    paddingVertical: 24,
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
-    paddingHorizontal: 40,
-    gap: 8,
-  },
-  emptyTitle: {
-    color: APPLE_THEME.text,
-    fontSize: 18,
-    fontFamily: TOKENS.font.heading,
-    textAlign: "center",
-  },
-  emptyCopy: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 14,
-    fontFamily: TOKENS.font.body,
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  loadMore: {
-    paddingVertical: 20,
   },
 });

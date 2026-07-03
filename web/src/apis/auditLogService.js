@@ -1,4 +1,5 @@
 import api from "@/constants/api";
+import i18n from "@/i18n";
 
 /**
  * Audit Log Service
@@ -76,37 +77,184 @@ export const auditLogService = {
    */
   getActionTypes: () => {
     return [
+      // CRUD cơ bản
       "CREATE",
       "UPDATE",
       "DELETE",
+      // Người dùng & phân quyền
       "UPDATE_ROLE",
       "UPDATE_PERMISSIONS",
       "ASSIGN_TAGS",
+      // Địa điểm
+      "SUBMIT_REVIEW",
+      "APPROVE",
+      "REJECT",
+      "UPDATE_STATUS",
+      "TOGGLE_FEATURED",
+      // Doanh nghiệp
+      "SUSPEND",
+      "REACTIVATE",
+      "TERMINATE",
+      "SIGN_CONTRACT",
+      // Dịch vụ
+      "UPDATE_DEPOSIT_CONFIG",
+      // Đặt chỗ
+      "CONFIRM",
+      "CANCEL",
+      "COMPLETE",
+      "NO_SHOW",
+      "MARK_PAID",
+      "REFUND",
+      "BULK_CONFIRM",
+      "BULK_CANCEL",
+      // Voucher
+      "BULK_DEACTIVATE",
+      // Đánh giá
+      "REPLY",
+      "UPDATE_REPLY",
+      "MODERATE_REPLY",
+      "DELETE_REPLY",
+      "MODERATE_REVIEW",
+      "ADMIN_MODERATE_REVIEW_REPLY",
     ];
   },
 
   /**
-   * Lấy danh sách tables có trong hệ thống (theo schema.prisma)
+   * Lấy danh sách tables có trong hệ thống
    * @returns {Array}
    */
   getTableNames: () => {
     return [
       "users",
-      "user_profiles",
-      "user_sessions",
+      "places",
+      "businesses",
+      "business_services",
+      "categories",
+      "tags",
+      "bookings",
+      "vouchers",
+      "reviews",
+      "review_replies",
       "roles",
       "permissions",
       "role_permissions",
       "user_permissions",
-      "categories",
-      "tags",
-      "category_tags",
-      "email_verifications",
-      "password_resets",
-      "audit_logs",
-      "businesses",
-      "places",
     ];
+  },
+
+  /**
+   * Lấy label tiếng Việt cho action
+   * @param {string} action
+   * @returns {string}
+   */
+  getActionLabel: (action) => {
+    const t = i18n.t;
+    const keyMap = {
+      CREATE: "create",
+      UPDATE: "update",
+      DELETE: "delete",
+      LOGIN: "login",
+      LOGOUT: "logout",
+      APPROVE: "approve",
+      REJECT: "reject",
+      SUSPEND: "suspend",
+      ACTIVATE: "activate",
+      EXPORT: "export",
+      IMPORT: "import",
+      ASSIGN: "assign",
+      UNASSIGN: "unassign",
+      BOOKMARK: "bookmark",
+      UNBOOKMARK: "unbookmark",
+      FEATURE: "feature",
+      UNFEATURE: "unfeature",
+      LOCK: "lock",
+      UNLOCK: "unlock",
+      VERIFY: "verify",
+      SIGN: "sign",
+      CANCEL: "cancel",
+      REFUND: "refund",
+      PAYOUT: "payout",
+      MODERATE: "moderate",
+      BROADCAST: "broadcast",
+    };
+    const key = keyMap[action];
+    return key ? t(`admin.auditLabels.actions.${key}`) : action;
+  },
+
+  /**
+   * Lấy label tiếng Việt cho bảng
+   * @param {string} tableName
+   * @returns {string}
+   */
+  getTableLabel: (tableName) => {
+    const t = i18n.t;
+    const keyMap = {
+      user: "user",
+      place: "place",
+      business: "business",
+      booking: "booking",
+      review: "review",
+      category: "category",
+      tag: "tag",
+      service: "service",
+      voucher: "voucher",
+      notification: "notification",
+      setting: "setting",
+      role: "role",
+      payout: "payout",
+      trip: "trip",
+      event: "event",
+    };
+    const key = keyMap[tableName];
+    return key ? t(`admin.auditLabels.tables.${key}`) : tableName;
+  },
+
+  /**
+   * Lấy màu cho action badge
+   * @param {string} action
+   * @returns {string}
+   */
+  getActionColor: (action) => {
+    const colors = {
+      CREATE: "bg-emerald-100 text-emerald-800 border-emerald-300",
+      UPDATE: "bg-blue-100 text-blue-800 border-blue-300",
+      DELETE: "bg-red-100 text-red-800 border-red-300",
+      UPDATE_ROLE: "bg-orange-100 text-orange-800 border-orange-300",
+      UPDATE_PERMISSIONS: "bg-purple-100 text-purple-800 border-purple-300",
+      ASSIGN_TAGS: "bg-cyan-100 text-cyan-800 border-cyan-300",
+      APPROVE: "bg-green-100 text-green-800 border-green-300",
+      REJECT: "bg-red-100 text-red-800 border-red-300",
+      SUBMIT_REVIEW: "bg-yellow-100 text-yellow-800 border-yellow-300",
+      SUSPEND: "bg-amber-100 text-amber-800 border-amber-300",
+      REACTIVATE: "bg-teal-100 text-teal-800 border-teal-300",
+      TERMINATE: "bg-gray-200 text-gray-800 border-gray-400",
+      CONFIRM: "bg-green-100 text-green-800 border-green-300",
+      CANCEL: "bg-red-100 text-red-800 border-red-300",
+      COMPLETE: "bg-blue-100 text-blue-800 border-blue-300",
+      NO_SHOW: "bg-orange-100 text-orange-800 border-orange-300",
+      MARK_PAID: "bg-emerald-100 text-emerald-800 border-emerald-300",
+      REFUND: "bg-amber-100 text-amber-800 border-amber-300",
+      MODERATE_REVIEW: "bg-indigo-100 text-indigo-800 border-indigo-300",
+      MODERATE_REPLY: "bg-indigo-100 text-indigo-800 border-indigo-300",
+    };
+    return colors[action] || "bg-gray-100 text-gray-700 border-gray-300";
+  },
+
+  /**
+   * Lấy màu cho role badge
+   * @param {string} roleName
+   * @returns {string}
+   */
+  getRoleColor: (roleName) => {
+    const colors = {
+      super_admin: "bg-red-100 text-red-800 border-red-300",
+      admin: "bg-purple-100 text-purple-800 border-purple-300",
+      business: "bg-blue-100 text-blue-800 border-blue-300",
+      staff: "bg-cyan-100 text-cyan-800 border-cyan-300",
+      user: "bg-gray-100 text-gray-800 border-gray-300",
+      guest: "bg-gray-50 text-gray-500 border-gray-200",
+    };
+    return colors[roleName] || "bg-gray-100 text-gray-700 border-gray-300";
   },
 };
 

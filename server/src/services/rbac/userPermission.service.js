@@ -1,7 +1,8 @@
 import prisma from "../../config/prismaClient.js";
-import { ROLE_HIERARCHY } from "../../config/constants.js";
+import { ROLE_HIERARCHY, ROLES } from "../../config/constants.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
+import { invalidateUserCache } from "../../utils/permissionCache.js";
 
 /**
  * Lấy danh sách users trong một role với quyền custom
@@ -103,10 +104,48 @@ export async function getUserPermissions(userId) {
   });
 
   if (!user) {
-    throw new ServiceError("User không tồn tại", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError("User khong ton tai", 404, ERROR_CODES.NOT_FOUND);
   }
 
-  // Quyền từ role
+  const isSuperAdmin = user.roleId === ROLES.SUPER_ADMIN;
+
+  // Super Admin: auto-grant ALL permissions in the system
+  if (isSuperAdmin) {
+    const allSystemPermissions = await prisma.permission.findMany({
+      orderBy: [{ module: "asc" }, { name: "asc" }],
+    });
+
+    const byModule = {};
+    allSystemPermissions.forEach((p) => {
+      if (!byModule[p.module]) {
+        byModule[p.module] = [];
+      }
+      byModule[p.module].push({
+        id: p.id,
+        name: p.name,
+        displayName: p.displayName,
+        module: p.module,
+        description: p.description,
+        source: "system",
+      });
+    });
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        roleId: user.roleId,
+        roleName: user.role.name,
+        roleDisplayName: user.role.displayName,
+      },
+      isSuperAdmin: true,
+      permissions: byModule,
+      totalPermissions: allSystemPermissions.length,
+      customPermissionCount: 0,
+    };
+  }
+
+  // Non-Super-Admin: role permissions + custom permissions
   const rolePermissions = user.role.rolePermissions.map((rp) => ({
     id: rp.permission.id,
     name: rp.permission.name,
@@ -116,7 +155,6 @@ export async function getUserPermissions(userId) {
     source: "role",
   }));
 
-  // Quyền custom của user
   const customPermissions = user.userPermissions.map((up) => ({
     id: up.permission.id,
     name: up.permission.name,
@@ -158,6 +196,7 @@ export async function getUserPermissions(userId) {
       roleName: user.role.name,
       roleDisplayName: user.role.displayName,
     },
+    isSuperAdmin: false,
     permissions: byModule,
     totalPermissions: allPermissions.length,
     customPermissionCount: customPermissions.length,
@@ -188,16 +227,27 @@ export async function updateUserCustomPermissions(
     throw new ServiceError("User không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
-  // Check hierarchy
-  const granterLevel = ROLE_HIERARCHY[granterUser.roleId] || 0;
-  const targetLevel = ROLE_HIERARCHY[targetUser.roleId] || 0;
+  // Super Admin bypass — can edit anyone except other Super Admins
+  if (granterUser.roleId === ROLES.SUPER_ADMIN) {
+    if (targetUser.roleId === ROLES.SUPER_ADMIN && userId !== grantedById) {
+      throw new ServiceError(
+        "Không thể chỉnh sửa quyền của Super Admin khác",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
+  } else {
+    // Check hierarchy for non-super-admin
+    const granterLevel = ROLE_HIERARCHY[granterUser.roleId]?.level || 999;
+    const targetLevel = ROLE_HIERARCHY[targetUser.roleId]?.level || 999;
 
-  if (granterLevel <= targetLevel) {
-    throw new ServiceError(
-      "Bạn không có quyền chỉnh sửa quyền của user này",
-      403,
-      ERROR_CODES.FORBIDDEN,
-    );
+    if (granterLevel >= targetLevel) {
+      throw new ServiceError(
+        "Bạn không có quyền chỉnh sửa quyền của user này",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
   }
 
   // Xóa tất cả quyền custom cũ
@@ -216,6 +266,8 @@ export async function updateUserCustomPermissions(
       skipDuplicates: true,
     });
   }
+
+  invalidateUserCache(userId);
 
   return getUserPermissions(userId);
 }
@@ -237,22 +289,34 @@ export async function bulkUpdateUserPermissions(
     throw new ServiceError("User không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
-  const granterLevel = ROLE_HIERARCHY[granterUser.roleId] || 0;
-
   // Kiểm tra tất cả target users
   const targetUsers = await prisma.user.findMany({
     where: { id: { in: userIds } },
     select: { id: true, roleId: true },
   });
 
-  for (const user of targetUsers) {
-    const targetLevel = ROLE_HIERARCHY[user.roleId] || 0;
-    if (granterLevel <= targetLevel) {
-      throw new ServiceError(
-        `Bạn không có quyền chỉnh sửa quyền của user ID ${user.id}`,
-        403,
-        ERROR_CODES.FORBIDDEN,
-      );
+  if (granterUser.roleId === ROLES.SUPER_ADMIN) {
+    // Super Admin can edit anyone except other Super Admins
+    for (const user of targetUsers) {
+      if (user.roleId === ROLES.SUPER_ADMIN && user.id !== grantedById) {
+        throw new ServiceError(
+          `Không thể chỉnh sửa quyền của Super Admin ID ${user.id}`,
+          403,
+          ERROR_CODES.FORBIDDEN,
+        );
+      }
+    }
+  } else {
+    const granterLevel = ROLE_HIERARCHY[granterUser.roleId]?.level || 999;
+    for (const user of targetUsers) {
+      const targetLevel = ROLE_HIERARCHY[user.roleId]?.level || 999;
+      if (granterLevel >= targetLevel) {
+        throw new ServiceError(
+          `Bạn không có quyền chỉnh sửa quyền của user ID ${user.id}`,
+          403,
+          ERROR_CODES.FORBIDDEN,
+        );
+      }
     }
   }
 
@@ -274,6 +338,10 @@ export async function bulkUpdateUserPermissions(
       data,
       skipDuplicates: true,
     });
+  }
+
+  for (const uid of userIds) {
+    invalidateUserCache(uid);
   }
 
   return {
@@ -298,20 +366,33 @@ export async function removeUserCustomPermissions(userId, grantedById) {
     throw new ServiceError("User không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
-  const granterLevel = ROLE_HIERARCHY[granterUser.roleId] || 0;
-  const targetLevel = ROLE_HIERARCHY[targetUser.roleId] || 0;
+  // Super Admin bypass
+  if (granterUser.roleId === ROLES.SUPER_ADMIN) {
+    if (targetUser.roleId === ROLES.SUPER_ADMIN && userId !== grantedById) {
+      throw new ServiceError(
+        "Không thể xóa quyền của Super Admin khác",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
+  } else {
+    const granterLevel = ROLE_HIERARCHY[granterUser.roleId]?.level || 999;
+    const targetLevel = ROLE_HIERARCHY[targetUser.roleId]?.level || 999;
 
-  if (granterLevel <= targetLevel) {
-    throw new ServiceError(
-      "Bạn không có quyền xóa quyền của user này",
-      403,
-      ERROR_CODES.FORBIDDEN,
-    );
+    if (granterLevel >= targetLevel) {
+      throw new ServiceError(
+        "Bạn không có quyền xóa quyền của user này",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
   }
 
   await prisma.userPermission.deleteMany({
     where: { userId },
   });
+
+  invalidateUserCache(userId);
 
   return { success: true, message: "Đã xóa tất cả quyền custom" };
 }

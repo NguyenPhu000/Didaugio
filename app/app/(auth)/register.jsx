@@ -5,90 +5,40 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { Link, useRouter } from "expo-router";
+import { Link } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather, MaterialIcons } from "@expo/vector-icons";
-import { Image } from "expo-image";
+import { Feather } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "../../src/components/primitives/MaterialIconsRounded";
 import { useRegister } from "../../src/modules/auth/hooks/useRegister";
-
-function Field({
-  label,
-  icon,
-  value,
-  onChangeText,
-  placeholder,
-  keyboardType,
-  autoComplete,
-  autoCapitalize = "none",
-  secureTextEntry = false,
-  showToggle = false,
-  isVisible = false,
-  onToggleVisibility,
-  textContentType,
-  returnKeyType,
-  onSubmitEditing,
-  inputRef,
-}) {
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <View style={styles.fieldWrap}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={[styles.fieldBox, focused && styles.fieldBoxFocused]}>
-        <Feather
-          name={icon}
-          size={18}
-          color={focused ? "#0369A1" : "#94A3B8"}
-        />
-        <TextInput
-          ref={inputRef}
-          value={value}
-          onChangeText={onChangeText}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          keyboardType={keyboardType}
-          autoComplete={autoComplete}
-          autoCapitalize={autoCapitalize}
-          secureTextEntry={secureTextEntry}
-          placeholder={placeholder}
-          placeholderTextColor="#94A3B8"
-          style={styles.fieldInput}
-          textContentType={textContentType}
-          returnKeyType={returnKeyType}
-          onSubmitEditing={onSubmitEditing}
-        />
-        {showToggle ? (
-          <Pressable onPress={onToggleVisibility} hitSlop={10}>
-            <Feather
-              name={isVisible ? "eye-off" : "eye"}
-              size={18}
-              color={focused ? "#0369A1" : "#94A3B8"}
-            />
-          </Pressable>
-        ) : null}
-      </View>
-    </View>
-  );
-}
+import { cn } from "../../src/lib/cn";
+import { useTranslation } from "react-i18next";
+import { GridBackground } from "../../src/components/ui/GridBackground";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { register, isLoading, error, successMessage } = useRegister();
+  const { t } = useTranslation();
 
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [fullNameFocused, setFullNameFocused] = useState(false);
+  const [usernameFocused, setUsernameFocused] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
 
   const usernameRef = useRef(null);
   const emailRef = useRef(null);
@@ -100,262 +50,289 @@ export default function RegisterScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <GridBackground 
+      backgroundColor="#020617" 
+      cellSize={48} 
+      lineColor="rgba(255,255,255,0.04)"
+      backgroundImage={require("../../assets/sky.jpg")}
+    >
       <StatusBar style="light" />
 
-      <Image
-        source={require("../../assets/sky.jpg")}
-        style={StyleSheet.absoluteFillObject}
-        contentFit="cover"
-      />
-      <View style={styles.backdrop} />
-
-      <View style={[styles.topBar, { top: insets.top + 16 }]}>
-        <View style={styles.brandRow}>
-          <MaterialIcons name="travel-explore" size={22} color="#fff" />
-          <Text style={styles.brandText}>Đi Đâu Giờ</Text>
-        </View>
-      </View>
-
       <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <ScrollView
-          bounces={false}
+          bounces={true}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "center",
+            paddingTop: insets.top + 40,
+            paddingBottom: Math.max(insets.bottom + 20, 40)
+          }}
+          className="px-6"
           showsVerticalScrollIndicator={false}
         >
-          <View
-            style={[
-              styles.card,
-              { paddingBottom: Math.max(insets.bottom + 16, 28) },
-            ]}
-          >
-            <Text style={styles.title}>Tạo tài khoản</Text>
-            <Text style={styles.subtitle}>
-              Tham gia cùng chúng tôi để bắt đầu hành trình của bạn.
-            </Text>
-
-            <Field
-              label="Họ và tên"
-              icon="user"
-              value={fullName}
-              onChangeText={setFullName}
-              autoCapitalize="words"
-              autoComplete="name"
-              placeholder="Nguyễn Văn A"
-              textContentType="name"
-              returnKeyType="next"
-              onSubmitEditing={() => usernameRef.current?.focus()}
-            />
-
-            <Field
-              label="Username"
-              icon="at-sign"
-              value={username}
-              onChangeText={setUsername}
-              autoComplete="username"
-              placeholder="username_01"
-              textContentType="username"
-              returnKeyType="next"
-              onSubmitEditing={() => emailRef.current?.focus()}
-              inputRef={usernameRef}
-            />
-
-            <Field
-              label="Email"
-              icon="mail"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoComplete="email"
-              placeholder="you@example.com"
-              textContentType="emailAddress"
-              returnKeyType="next"
-              onSubmitEditing={() => passwordRef.current?.focus()}
-              inputRef={emailRef}
-            />
-
-            <Field
-              label="Mật khẩu"
-              icon="lock"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoComplete="new-password"
-              placeholder="••••••••"
-              showToggle
-              isVisible={showPassword}
-              onToggleVisibility={() => setShowPassword((v) => !v)}
-              textContentType="newPassword"
-              returnKeyType="next"
-              onSubmitEditing={() => confirmPasswordRef.current?.focus()}
-              inputRef={passwordRef}
-            />
-
-            <Field
-              label="Xác nhận mật khẩu"
-              icon="check-circle"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword}
-              autoComplete="new-password"
-              placeholder="••••••••"
-              showToggle
-              isVisible={showConfirmPassword}
-              onToggleVisibility={() => setShowConfirmPassword((v) => !v)}
-              textContentType="password"
-              returnKeyType="done"
-              onSubmitEditing={handleRegister}
-              inputRef={confirmPasswordRef}
-            />
-
-            {error ? (
-              <View style={styles.errorBox}>
-                <Feather name="alert-circle" size={16} color="#EF4444" />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
-
-            {successMessage ? (
-              <View
-                style={[
-                  styles.errorBox,
-                  { borderColor: "#6EE7B7", backgroundColor: "#ECFDF5" },
-                ]}
-              >
-                <Feather name="check-circle" size={16} color="#10B981" />
-                <Text style={[styles.errorText, { color: "#047857" }]}>
-                  {successMessage}
-                </Text>
-              </View>
-            ) : null}
-
-            <Pressable
-              onPress={handleRegister}
-              disabled={isLoading}
-              style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+          {/* Brand header */}
+          <View className="items-center mb-6">
+            <View 
+              className="w-16 h-16 rounded-[18px] bg-white items-center justify-center mb-3 shadow-md elevation-2"
+              style={Platform.OS === "ios" ? {
+                shadowColor: "#000000",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.1,
+                shadowRadius: 12,
+              } : null}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.primaryButtonText}>Đăng ký tài khoản</Text>
-              )}
-            </Pressable>
+              <MaterialIconsRounded name="travel-explore" size={32} color="#007AFF" />
+            </View>
+            <Text className="text-[28px] font-extrabold text-white tracking-[-0.5px]">{t("common.appName")}</Text>
+            <Text className="text-sm text-white/60 mt-1 font-medium">{t("auth.register.subtitle")}</Text>
+          </View>
 
-            <View style={styles.footerRow}>
-              <Text style={styles.footerText}>Đã có tài khoản?</Text>
+          {/* Glassmorphic Register Card */}
+          <View 
+            className="bg-white/95 rounded-[24px] p-6 w-full shadow-xl elevation-4"
+            style={Platform.OS === "ios" ? {
+              shadowColor: "#000000",
+              shadowOffset: { width: 0, height: 12 },
+              shadowOpacity: 0.15,
+              shadowRadius: 24,
+            } : null}
+          >
+            <Text className="text-[30px] font-extrabold text-[#000000] mb-1.5">{t("auth.register.title")}</Text>
+         
+
+            {/* Section 1: Personal Info Grouped Cell */}
+            <Text className="text-[11px] font-bold text-[#8E8E93] mb-2 ml-1 tracking-[0.5px]">{t("auth.register.personalInfo")}</Text>
+            <View className="rounded-[14px] bg-[#F2F2F7] overflow-hidden border border-[#E5E5EA] mb-5">
+              {/* Họ tên */}
+              <View className={cn("flex-row items-center h-[52px] px-4 bg-transparent", fullNameFocused && "bg-[#E5E5EA]")}>
+                <View className="w-8 items-start">
+                  <Feather
+                    name="user"
+                    size={19}
+                    color={fullNameFocused ? "#007AFF" : "#8E8E93"}
+                  />
+                </View>
+                <TextInput
+                  value={fullName}
+                  onChangeText={setFullName}
+                  onFocus={() => setFullNameFocused(true)}
+                  onBlur={() => setFullNameFocused(false)}
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  placeholder={t("auth.register.fullName")}
+                  placeholderTextColor="#AEAEB2"
+                  className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
+                  textContentType="name"
+                  returnKeyType="next"
+                  onSubmitEditing={() => usernameRef.current?.focus()}
+                />
+              </View>
+
+              <View className="h-[1px] bg-[#E5E5EA] ml-12" />
+
+              {/* Username */}
+              <View className={cn("flex-row items-center h-[52px] px-4 bg-transparent", usernameFocused && "bg-[#E5E5EA]")}>
+                <View className="w-8 items-start">
+                  <Feather
+                    name="at-sign"
+                    size={19}
+                    color={usernameFocused ? "#007AFF" : "#8E8E93"}
+                  />
+                </View>
+                <TextInput
+                  ref={usernameRef}
+                  value={username}
+                  onChangeText={setUsername}
+                  onFocus={() => setUsernameFocused(true)}
+                  onBlur={() => setUsernameFocused(false)}
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  placeholder={t("auth.register.username")}
+                  placeholderTextColor="#AEAEB2"
+                  className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
+                  textContentType="username"
+                  returnKeyType="next"
+                  onSubmitEditing={() => emailRef.current?.focus()}
+                />
+              </View>
+
+              <View className="h-[1px] bg-[#E5E5EA] ml-12" />
+
+              {/* Email */}
+              <View className={cn("flex-row items-center h-[52px] px-4 bg-transparent", emailFocused && "bg-[#E5E5EA]")}>
+                <View className="w-8 items-start">
+                  <Feather
+                    name="mail"
+                    size={19}
+                    color={emailFocused ? "#007AFF" : "#8E8E93"}
+                  />
+                </View>
+                <TextInput
+                  ref={emailRef}
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => setEmailFocused(false)}
+                  keyboardType="email-address"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  placeholder={t("auth.register.email")}
+                  placeholderTextColor="#AEAEB2"
+                  className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
+                  textContentType="emailAddress"
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                />
+              </View>
+            </View>
+
+            {/* Section 2: Security Grouped Cell */}
+            <Text className="text-[11px] font-bold text-[#8E8E93] mb-2 ml-1 tracking-[0.5px]">{t("auth.register.securityPassword")}</Text>
+            <View className="rounded-[14px] bg-[#F2F2F7] overflow-hidden border border-[#E5E5EA] mb-5">
+              {/* Mật khẩu */}
+              <View className={cn("flex-row items-center h-[52px] px-4 bg-transparent", passwordFocused && "bg-[#E5E5EA]")}>
+                <View className="w-8 items-start">
+                  <Feather
+                    name="lock"
+                    size={19}
+                    color={passwordFocused ? "#007AFF" : "#8E8E93"}
+                  />
+                </View>
+                <TextInput
+                  ref={passwordRef}
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
+                  secureTextEntry={!showPassword}
+                  autoComplete="new-password"
+                  autoCapitalize="none"
+                  placeholder={t("auth.register.password")}
+                  placeholderTextColor="#AEAEB2"
+                  className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
+                  textContentType="newPassword"
+                  returnKeyType="next"
+                  onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+                />
+                <Pressable
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={12}
+                  className="p-1"
+                >
+                  <Feather
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={18}
+                    color="#8E8E93"
+                  />
+                </Pressable>
+              </View>
+
+              <View className="h-[1px] bg-[#E5E5EA] ml-12" />
+
+              {/* Xác nhận mật khẩu */}
+              <View className={cn("flex-row items-center h-[52px] px-4 bg-transparent", confirmPasswordFocused && "bg-[#E5E5EA]")}>
+                <View className="w-8 items-start">
+                  <Feather
+                    name="check-circle"
+                    size={19}
+                    color={confirmPasswordFocused ? "#007AFF" : "#8E8E93"}
+                  />
+                </View>
+                <TextInput
+                  ref={confirmPasswordRef}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  onFocus={() => setConfirmPasswordFocused(true)}
+                  onBlur={() => setConfirmPasswordFocused(false)}
+                  secureTextEntry={!showConfirmPassword}
+                  autoComplete="new-password"
+                  autoCapitalize="none"
+                  placeholder={t("auth.register.confirmPassword")}
+                  placeholderTextColor="#AEAEB2"
+                  className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
+                  textContentType="password"
+                  returnKeyType="done"
+                  onSubmitEditing={handleRegister}
+                />
+                <Pressable
+                  onPress={() => setShowConfirmPassword((v) => !v)}
+                  hitSlop={12}
+                  className="p-1"
+                >
+                  <Feather
+                    name={showConfirmPassword ? "eye-off" : "eye"}
+                    size={18}
+                    color="#8E8E93"
+                  />
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Error Message */}
+            {error ? (
+              <View className="flex-row items-center bg-[#FFFAFA] border border-[#FFD6D6] rounded-xl px-3 py-2.5 gap-2 mb-5">
+                <Feather name="alert-circle" size={16} color="#FF3B30" />
+                <Text className="flex-1 text-[#FF3B30] text-[12.5px] font-semibold">{error}</Text>
+              </View>
+            ) : null}
+
+            {/* Success Message */}
+            {successMessage ? (
+              <View className="flex-row items-center bg-[#F5FDF7] border border-[#D3F4DB] rounded-xl px-3 py-2.5 gap-2 mb-5">
+                <Feather name="check-circle" size={16} color="#34C759" />
+                <Text className="flex-1 text-[#34C759] text-[12.5px] font-semibold">{successMessage}</Text>
+              </View>
+            ) : null}
+
+            {/* Main Action Button */}
+            <View 
+              className="rounded-[14px] overflow-hidden mt-2"
+              style={Platform.OS === "ios" ? {
+                shadowColor: "#007AFF",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+              } : {
+                elevation: 3,
+              }}
+            >
+              <Pressable
+                onPress={handleRegister}
+                disabled={isLoading}
+                style={({ pressed }) => pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }}
+              >
+                <LinearGradient
+                  colors={["#007AFF", "#0056B3"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  className="h-[52px] items-center justify-center"
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#ffffff" size="small" />
+                  ) : (
+                    <Text className="text-white text-base font-bold">{t("auth.register.submit")}</Text>
+                  )}
+                </LinearGradient>
+              </Pressable>
+            </View>
+
+            {/* Footer switcher */}
+            <View className="flex-row justify-center items-center mt-5 gap-1.5">
+              <Text className="text-[#8E8E93] text-sm font-medium">{t("auth.register.hasAccount")}</Text>
               <Link href="/(auth)/login" asChild>
-                <Pressable hitSlop={10}>
-                  <Text style={styles.footerLink}>Đăng nhập ngay</Text>
+                <Pressable hitSlop={8} className="active:opacity-70">
+                  <Text className="text-[#007AFF] text-sm font-semibold">{t("auth.register.loginNow")}</Text>
                 </Pressable>
               </Link>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </GridBackground>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  screen: { flex: 1, backgroundColor: "#020617" },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(2, 6, 23, 0.35)",
-  },
-  topBar: {
-    position: "absolute",
-    zIndex: 10,
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  brandText: { color: "#fff", fontSize: 20, fontWeight: "800" },
-  scrollContent: { flexGrow: 1, justifyContent: "flex-end" },
-  card: {
-    marginTop: 150,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 36,
-    borderTopRightRadius: 36,
-    paddingTop: 28,
-    paddingHorizontal: 22,
-  },
-  title: { fontSize: 30, fontWeight: "800", color: "#0F172A" },
-  subtitle: {
-    marginTop: 6,
-    marginBottom: 18,
-    fontSize: 14,
-    lineHeight: 20,
-    color: "#64748B",
-  },
-  fieldWrap: { marginBottom: 14 },
-  fieldLabel: {
-    marginLeft: 4,
-    marginBottom: 6,
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#475569",
-  },
-  fieldBox: {
-    minHeight: 52,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#F8FAFC",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-  },
-  fieldBoxFocused: {
-    borderColor: "#0284C7",
-    backgroundColor: "#fff",
-  },
-  fieldInput: {
-    flex: 1,
-    fontSize: 15,
-    color: "#0F172A",
-    fontWeight: "500",
-    paddingVertical: 12,
-  },
-  errorBox: {
-    marginTop: 4,
-    marginBottom: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#FECACA",
-    backgroundColor: "#FEF2F2",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  errorText: { flex: 1, color: "#B91C1C", fontSize: 12.5, fontWeight: "600" },
-  primaryButton: {
-    marginTop: 6,
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: "#0369A1",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButtonText: { color: "#fff", fontSize: 16, fontWeight: "800" },
-  buttonDisabled: { opacity: 0.7 },
-  footerRow: {
-    marginTop: 30,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-  },
-  footerText: { color: "#64748B", fontSize: 14, fontWeight: "500" },
-  footerLink: { color: "#0369A1", fontSize: 14, fontWeight: "800" },
-});

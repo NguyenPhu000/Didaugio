@@ -1,26 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
-  ActivityIndicator,
-  Dimensions,
   FlatList,
   Linking,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
-import * as ImageManipulator from "expo-image-manipulator";
-import * as ImagePicker from "expo-image-picker";
-import { MaterialIcons } from "@expo/vector-icons";
-import BottomSheet, {
-  BottomSheetScrollView,
-  BottomSheetTextInput,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import {
@@ -28,65 +21,62 @@ import {
   usePlaceDetail,
   usePlaceReviews,
 } from "../../src/modules/place/hooks/usePlaceDetail";
+import { useUIStore } from "../../src/stores/uiStore";
 import {
   useSavePlace,
   useUnsavePlace,
 } from "../../src/modules/saved/hooks/useSaved";
+import {
+  OpeningHours,
+  SectionCard,
+  StatPill,
+  AmenityCard,
+  DetailRow,
+} from "../../src/modules/place/components/PlaceDetailComponents";
 import { useAuthStore } from "../../src/stores/authStore";
-import { useTrips } from "../../src/modules/trips/hooks/useTrips";
-import { useAddDestination } from "../../src/modules/trips/hooks/useTripDetail";
-import { GLASS_THEME, TOKENS } from "../../src/constants/design-tokens";
-import { resolveMediaUrl } from "../../src/lib/media-url";
-import { useI18n } from "../../src/hooks/useI18n";
+import { TOKENS } from "../../src/constants/design-tokens";
+import { Skeleton } from "../../src/components/ui/Skeleton";
+import {
+  resolveMediaUrl,
+  getCategoryPlaceholder,
+} from "../../src/lib/media-url";
+import { useTranslation } from "react-i18next";
 import {
   formatPriceLine,
   getCategoryIcon,
   getPlaceLocation,
 } from "../../src/modules/explore/utils/exploreHelpers";
+import {
+  PALETTE,
+  formatReviewCount,
+} from "../../src/modules/place/constants/placeSheetConstants";
+import { TripSelectorSheet } from "../../src/modules/place/components/TripSelectorSheet";
+import { ReviewComposerSheetContent } from "../../src/modules/place/components/ReviewComposerSheet";
+import {
+  AllReviewsSheetContent,
+  ReviewCard,
+  StarRow,
+} from "../../src/modules/place/components/AllReviewsSheet";
+import { cn } from "../../src/lib/cn";
 
-const DAY_NAMES = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-
-const PALETTE = {
-  bg: "#F4F7FB", // Lighter, clean background
-  surface: "#FFFFFF",
-  surfaceAlt: "#FAFCFF", // Very subtle tint
-  text: "#0F172A", // Darker slate for contrast
-  textMuted: "#475569", // Medium slate
-  textSoft: "#94A3B8", // Light slate
-  border: "#E2E8F0",
-  borderSoft: "#F1F5F9",
-  primary: "#2563EB", // Vibrant blue
-  primaryDark: "#1D4ED8",
-  primarySoft: "#EFF6FF", // Soft blue background for chips
-  success: "#10B981",
-  warning: "#F59E0B",
-  overlayStrong: "rgba(15, 23, 42, 0.65)", // Darker gradient
-  heroFallback: "#CBD5E1",
-  accent: "#FBBF24",
-};
-const PRICE_RANGE_LABELS = {
-  FREE: "Miễn phí",
-  BUDGET: "Bình dân",
-  MODERATE: "Trung bình",
-  EXPENSIVE: "Cao cấp",
-  LUXURY: "Sang trọng",
-};
-const REVIEW_MEDIA_LIMIT = 5;
-const REVIEW_IMAGE_WIDTH = 1000;
-const REVIEW_IMAGE_COMPRESS = 0.72;
 const MAIN_REVIEW_LIMIT = 5;
-const REVIEW_FILTER_RATINGS = [5, 4, 3, 2, 1];
 
-function formatReviewCount(value, t) {
-  const count = Number(value || 0);
-  if (!count) return t("Mới", "New");
-  if (count >= 1000)
-    return t(
-      `${(count / 1000).toFixed(1).replace(/\.0$/, "")}k đánh giá`,
-      `${(count / 1000).toFixed(1).replace(/\.0$/, "")}k reviews`,
-    );
-  return t(`${count} đánh giá`, `${count} reviews`);
-}
+const ICON_BUTTON_SHADOW = TOKENS.shadow.md;
+const INTRO_CARD_SHADOW = TOKENS.shadow.lg;
+const BOTTOM_BAR_SHADOW = TOKENS.shadow.lg;
+
+const SHEET_BACKGROUND = {
+  backgroundColor: PALETTE.surface,
+  borderTopLeftRadius: 28,
+  borderTopRightRadius: 28,
+  borderWidth: 1,
+  borderColor: PALETTE.border,
+};
+
+const SHEET_INDICATOR = {
+  backgroundColor: "rgba(0, 0, 0, 0.18)",
+  width: 36,
+};
 
 function getAddressLine(place) {
   return [place?.address, place?.ward?.name, place?.district?.name]
@@ -101,73 +91,35 @@ function getTodayHours(hours) {
 
 function getTodayHoursLabel(hours, t) {
   const todayHours = getTodayHours(hours);
-  if (!todayHours) return t("Cập nhật sau", "Updated later");
-  if (todayHours.isClosed) return t("Đóng cửa hôm nay", "Closed today");
+  if (!todayHours) return t("place.detail.updatedLater");
+  if (todayHours.isClosed) return t("place.detail.closedToday");
   if (todayHours.openTime && todayHours.closeTime) {
     return `${todayHours.openTime} - ${todayHours.closeTime}`;
   }
-  return t("Cập nhật sau", "Updated later");
+  return t("place.detail.updatedLater");
 }
 
 function getOpenState(hours, t) {
   const todayHours = getTodayHours(hours);
   if (!todayHours) {
     return {
-      label: t("Chờ cập nhật", "Pending update"),
+      label: t("place.detail.pendingUpdate"),
       color: PALETTE.warning,
       icon: "schedule",
     };
   }
   if (todayHours.isClosed) {
     return {
-      label: t("Hôm nay đóng cửa", "Closed today"),
+      label: t("place.detail.closedToday"),
       color: "#EF4444",
       icon: "do-not-disturb-on",
     };
   }
   return {
-    label: t("Mở cửa hôm nay", "Open today"),
+    label: t("place.detail.openToday"),
     color: PALETTE.success,
     icon: "schedule",
   };
-}
-
-function getFactCards(place, t) {
-  const cards = [];
-  const todayHours = getTodayHoursLabel(place?.openingHours, t);
-  const location = getPlaceLocation(place);
-
-  if (location) {
-    cards.push({
-      key: "location",
-      icon: "place",
-      label: t("Khu vực", "Area"),
-      value: location,
-    });
-  }
-  cards.push({
-    key: "hours",
-    icon: "calendar-today",
-    label: t("Hôm nay", "Today"),
-    value: todayHours,
-  });
-  if (place?.phone) {
-    cards.push({
-      key: "phone",
-      icon: "call",
-      label: t("Liên hệ", "Contact"),
-      value: place.phone,
-    });
-  }
-  if (place?.website) {
-    cards.push({
-      key: "website",
-      icon: "language",
-      label: "Website",
-      value: place.website.replace(/^https?:\/\//, ""),
-    });
-  }
-  return cards.slice(0, 4);
 }
 
 function getSystemTags(place) {
@@ -207,16 +159,24 @@ function getCreatorName(place, t) {
     place?.createdByUser?.fullName ||
     place?.createdByUser?.email ||
     place?.business?.businessName ||
-    t("Hệ thống", "System")
+    t("place.detail.system")
   );
 }
 
+const PRICE_RANGE_I18N_KEYS = {
+  FREE: "place.priceRange.free",
+  BUDGET: "place.priceRange.budget",
+  MODERATE: "place.priceRange.moderate",
+  EXPENSIVE: "place.priceRange.expensive",
+  LUXURY: "place.priceRange.luxury",
+};
+
 function formatPriceRange(place, t) {
-  if (place?.priceRange && PRICE_RANGE_LABELS[place.priceRange]) {
-    return PRICE_RANGE_LABELS[place.priceRange];
+  if (place?.priceRange && PRICE_RANGE_I18N_KEYS[place.priceRange]) {
+    return t(PRICE_RANGE_I18N_KEYS[place.priceRange]);
   }
   if (place?.priceRange) return String(place.priceRange);
-  return t("Cập nhật sau", "Updated later");
+  return t("place.detail.updatedLater");
 }
 
 function toExternalUrl(value) {
@@ -236,21 +196,21 @@ function getAmenityCards(place, t) {
     key: "open",
     icon: "schedule",
     label: openLabel,
-    tag: t("Hôm nay", "Today"),
+    tag: t("place.detail.today"),
   });
 
   if (place?.phone) {
     items.push({
       key: "phone",
       icon: "call",
-      label: t("Gọi nhanh", "Quick call"),
+      label: t("place.detail.quickCall"),
       tag: String(place.phone).replace(/\s+/g, "").slice(0, 14),
     });
   } else {
     items.push({
       key: "map",
       icon: "map",
-      label: t("Dễ tìm", "Easy to find"),
+      label: t("place.detail.easyToFind"),
     });
   }
 
@@ -258,784 +218,53 @@ function getAmenityCards(place, t) {
     items.push({
       key: "web",
       icon: "language",
-      label: t("Website", "Website"),
+      label: t("place.website"),
       tag: websiteLabel?.slice(0, 18),
     });
   } else {
     items.push({
       key: "save",
       icon: "star-outline",
-      label: t("Yêu thích", "Favorite"),
+      label: t("place.detail.favorite"),
     });
   }
 
   return items.slice(0, 3);
 }
 
-const StarRow = ({ rating, size = 16 }) =>
-  [1, 2, 3, 4, 5].map((value) => (
-    <MaterialIcons
-      key={value}
-      name={value <= Math.round(rating) ? "star" : "star-border"}
-      size={size}
-      color="#FBBF24"
-    />
-  ));
 
-function getReviewMediaUri(media) {
-  return resolveMediaUrl(
-    media?.mediaData ||
-      media?.thumbnailUrl ||
-      media?.secureUrl ||
-      media?.url ||
-      null,
-  );
-}
 
-function ReviewCard({ review, t }) {
-  const author =
-    review?.user?.profile?.fullName ||
-    review?.user?.email?.split("@")[0] ||
-    t("Ẩn danh", "Anonymous");
-  const avatar = resolveMediaUrl(review?.user?.profile?.avatar);
-  const media = (review?.media || []).map(getReviewMediaUri).filter(Boolean);
-  const visibleReplies = (review?.replies || []).filter(
-    (reply) => reply?.status !== "hidden",
-  );
-
+function PlaceDetailSkeleton() {
   return (
-    <View style={styles.reviewCard}>
-      <View style={styles.reviewHeader}>
-        <View style={styles.reviewAvatar}>
-          {avatar ? (
-            <Image
-              source={{ uri: avatar }}
-              style={styles.reviewAvatarImage}
-              contentFit="cover"
-            />
-          ) : (
-            <Text style={styles.reviewAvatarFallback}>
-              {author.charAt(0).toUpperCase()}
-            </Text>
-          )}
-        </View>
-        <View style={styles.reviewMeta}>
-          <View style={styles.reviewAuthorRow}>
-            <Text style={styles.reviewAuthor}>{author}</Text>
-            {review?.isVerifiedPurchase ? (
-              <View style={styles.verifiedReviewBadge}>
-                <MaterialIcons
-                  name="verified"
-                  size={12}
-                  color={PALETTE.success}
-                />
-                <Text style={styles.verifiedReviewText}>
-                  {t("Đã xác thực", "Verified")}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-          <View style={styles.reviewStars}>
-            <StarRow rating={review?.rating || 0} size={12} />
-          </View>
-        </View>
-        <Text style={styles.reviewDate}>
-          {review?.createdAt
-            ? new Date(review.createdAt).toLocaleDateString("vi-VN")
-            : ""}
-        </Text>
-      </View>
-      {review?.content ? (
-        <Text style={styles.reviewContent}>{review.content}</Text>
-      ) : null}
-      {media.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.reviewMediaScroller}
-          contentContainerStyle={styles.reviewMediaList}
+    <View className="flex-1 bg-white">
+      <Skeleton width="100%" height={480} borderRadius={0} />
+      <View className="px-4 -mt-10">
+        <View
+          className="bg-white rounded-[32px] px-5 pt-7 pb-[22px] gap-4"
+          style={INTRO_CARD_SHADOW}
         >
-          {media.slice(0, REVIEW_MEDIA_LIMIT).map((uri, index) => (
-            <Image
-              key={`${uri}-${index}`}
-              source={{ uri }}
-              style={styles.reviewMediaImage}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-            />
-          ))}
-        </ScrollView>
-      ) : null}
-      {visibleReplies.length > 0 ? (
-        <View style={styles.reviewReplyList}>
-          {visibleReplies.map((reply) => (
-            <View key={reply.id} style={styles.reviewReplyCard}>
-              <View style={styles.reviewReplyHeader}>
-                <MaterialIcons
-                  name="storefront"
-                  size={15}
-                  color={PALETTE.primaryDark}
-                />
-                <Text style={styles.reviewReplyAuthor}>
-                  {reply?.user?.profile?.fullName ||
-                    t("Phản hồi từ doanh nghiệp", "Business reply")}
-                </Text>
-              </View>
-              <Text style={styles.reviewReplyContent}>{reply.content}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function OpeningHours({ hours, t }) {
-  const today = new Date().getDay();
-
-  return (
-    <View style={styles.openingHoursList}>
-      {DAY_NAMES.map((day, index) => {
-        const dayNumber = index === 6 ? 0 : index + 1;
-        const item = hours?.find((entry) => entry.dayOfWeek === dayNumber);
-        const isToday = today === dayNumber;
-        const label = item?.isClosed
-          ? t("Đóng cửa", "Closed")
-          : item?.openTime && item?.closeTime
-            ? `${item.openTime} - ${item.closeTime}`
-            : t("Chưa cập nhật", "Not updated");
-
-        return (
-          <View
-            key={day}
-            style={[styles.openingRow, isToday && styles.openingRowActive]}
-          >
-            <Text
-              style={[styles.openingDay, isToday && styles.openingDayActive]}
-            >
-              {day}
-            </Text>
-            <Text
-              style={[
-                styles.openingLabel,
-                isToday && styles.openingLabelActive,
-              ]}
-            >
-              {label}
-            </Text>
+          <Skeleton width="40%" height={14} borderRadius={999} />
+          <Skeleton width="70%" height={28} borderRadius={10} />
+          <View className="flex-row justify-center gap-2.5">
+            <Skeleton width={100} height={38} borderRadius={999} />
+            <Skeleton width={120} height={38} borderRadius={999} />
           </View>
-        );
-      })}
-    </View>
-  );
-}
-
-function SectionCard({ title, actionLabel, onActionPress, children }) {
-  return (
-    <View style={styles.sectionCard}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {actionLabel ? (
-          <Pressable onPress={onActionPress} hitSlop={8}>
-            <Text style={styles.sectionAction}>{actionLabel}</Text>
-          </Pressable>
-        ) : null}
-      </View>
-      {children}
-    </View>
-  );
-}
-
-function StatPill({ icon, label }) {
-  return (
-    <View style={styles.statPill}>
-      <MaterialIcons name={icon} size={15} color={PALETTE.textMuted} />
-      <Text style={styles.statPillText} numberOfLines={1}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-function FactCard({ icon, label, value }) {
-  return (
-    <View style={styles.factCard}>
-      <View style={styles.factIconWrap}>
-        <MaterialIcons name={icon} size={18} color={PALETTE.primaryDark} />
-      </View>
-      <View style={styles.factContent}>
-        <Text style={styles.factLabel}>{label}</Text>
-        <Text style={styles.factValue} numberOfLines={2}>
-          {value}
-        </Text>
-      </View>
-      <MaterialIcons name="chevron-right" size={18} color={PALETTE.textSoft} />
-    </View>
-  );
-}
-
-function AmenityCard({ icon, label, tag, onPress }) {
-  return (
-    <Pressable onPress={onPress} style={styles.amenityCard}>
-      <View style={styles.amenityIconWrap}>
-        <MaterialIcons name={icon} size={22} color={PALETTE.primaryDark} />
-      </View>
-      <Text style={styles.amenityLabel} numberOfLines={1}>
-        {label}
-      </Text>
-      {tag ? (
-        <Text style={styles.amenityTagText} numberOfLines={1}>
-          {tag}
-        </Text>
-      ) : null}
-    </Pressable>
-  );
-}
-
-function DetailRow({ icon, label, value, onPress, highlight = false }) {
-  const content = (
-    <View style={styles.detailRow}>
-      <View style={styles.detailIconWrap}>
-        <MaterialIcons
-          name={icon}
-          size={17}
-          color={highlight ? PALETTE.primaryDark : PALETTE.textMuted}
-        />
-      </View>
-      <View style={styles.detailContent}>
-        <Text style={styles.detailLabel}>{label}</Text>
-        <Text
-          style={[styles.detailValue, highlight && styles.detailValueHighlight]}
-          numberOfLines={2}
-        >
-          {value}
-        </Text>
-      </View>
-      {onPress ? (
-        <MaterialIcons name="open-in-new" size={17} color={PALETTE.textSoft} />
-      ) : null}
-    </View>
-  );
-
-  if (onPress) {
-    return (
-      <Pressable onPress={onPress} style={styles.detailRowPressable}>
-        {content}
-      </Pressable>
-    );
-  }
-
-  return content;
-}
-
-function TripSelectorSheet({ placeId, placeName, onClose, t }) {
-  const router = useRouter();
-  const { data: trips = [], isLoading } = useTrips();
-  const [selectedTripId, setSelectedTripId] = useState(null);
-  const addMutation = useAddDestination(selectedTripId);
-
-  const handleSelect = useCallback(
-    async (tripId) => {
-      setSelectedTripId(tripId);
-      try {
-        const parsedPlaceId = parseInt(placeId, 10);
-        if (!Number.isFinite(parsedPlaceId) || parsedPlaceId <= 0) {
-          throw new Error(
-            t(
-              "Không xác định được địa điểm để thêm vào chuyến đi.",
-              "Could not resolve this place for the trip.",
-            ),
-          );
-        }
-
-        await addMutation.mutateAsync({
-          placeId: parsedPlaceId,
-          dayNumber: 1,
-          order: 0,
-        });
-        onClose();
-      } catch {
-        setSelectedTripId(null);
-      }
-    },
-    [addMutation, onClose, placeId, t],
-  );
-
-  return (
-    <View style={styles.tripSheet}>
-      <View style={styles.tripSheetHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.tripSheetTitle}>
-            {t("Thêm vào chuyến đi", "Add to trip")}
-          </Text>
-          {placeName ? (
-            <Text style={styles.tripSheetSubtitle}>{placeName}</Text>
-          ) : null}
-        </View>
-        <Pressable onPress={onClose} hitSlop={8} style={styles.tripSheetClose}>
-          <MaterialIcons
-            name="close"
-            size={20}
-            color={GLASS_THEME.textSecondary}
-          />
-        </Pressable>
-      </View>
-
-      {isLoading ? (
-        <ActivityIndicator
-          size="small"
-          color={GLASS_THEME.neon}
-          style={{ marginTop: 20 }}
-        />
-      ) : trips.length === 0 ? (
-        <View style={styles.emptyTripState}>
-          <Text style={styles.emptyTripText}>
-            {t("Bạn chưa có chuyến đi nào", "You have no trips yet")}
-          </Text>
-          <Pressable
-            onPress={() => {
-              onClose();
-              router.push("/trip/create");
-            }}
-            style={styles.createTripButton}
-          >
-            <Text style={styles.createTripButtonText}>
-              {t("Tạo chuyến đi mới", "Create new trip")}
-            </Text>
-          </Pressable>
-        </View>
-      ) : (
-        <>
-          <FlatList
-            data={trips}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={({ item }) => {
-              const isAdding =
-                selectedTripId === item.id && addMutation.isPending;
-              return (
-                <Pressable
-                  onPress={() => handleSelect(item.id)}
-                  disabled={addMutation.isPending}
-                  style={styles.tripItem}
-                >
-                  <View style={styles.tripItemIcon}>
-                    <MaterialIcons
-                      name="luggage"
-                      size={18}
-                      color={GLASS_THEME.neon}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.tripItemTitle}>{item.title}</Text>
-                    <Text style={styles.tripItemMeta}>
-                      {t(
-                        `${item.destinations?.length || 0} điểm đến`,
-                        `${item.destinations?.length || 0} destinations`,
-                      )}
-                    </Text>
-                  </View>
-                  {isAdding ? (
-                    <ActivityIndicator size="small" color={GLASS_THEME.neon} />
-                  ) : (
-                    <MaterialIcons
-                      name="add-circle-outline"
-                      size={22}
-                      color={GLASS_THEME.neon}
-                    />
-                  )}
-                </Pressable>
-              );
-            }}
-            style={{ maxHeight: 320 }}
-            showsVerticalScrollIndicator={false}
-          />
-
-          <Pressable
-            onPress={() => {
-              onClose();
-              router.push("/trip/create");
-            }}
-            style={styles.tripSecondaryButton}
-          >
-            <MaterialIcons
-              name="add"
-              size={18}
-              color={GLASS_THEME.neonAccent}
-            />
-            <Text style={styles.tripSecondaryButtonText}>
-              {t("Tạo chuyến đi mới", "Create new trip")}
-            </Text>
-          </Pressable>
-        </>
-      )}
-    </View>
-  );
-}
-
-function ReviewComposerSheetContent({
-  placeName,
-  isSubmitting,
-  onClose,
-  onSubmit,
-  t,
-}) {
-  const [rating, setRating] = useState(5);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [images, setImages] = useState([]);
-  const [isPicking, setIsPicking] = useState(false);
-  const [isProcessingSubmit, setIsProcessingSubmit] = useState(false);
-
-  const handlePickImages = useCallback(async () => {
-    const remainingSlots = REVIEW_MEDIA_LIMIT - images.length;
-    if (remainingSlots <= 0) return;
-
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(
-        t("Cần quyền truy cập ảnh", "Photo permission required"),
-        t(
-          "Hãy cấp quyền để đính kèm ảnh thực tế của địa điểm.",
-          "Please allow photo access to attach place photos.",
-        ),
-      );
-      return;
-    }
-
-    setIsPicking(true);
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        allowsMultipleSelection: true,
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.9,
-        selectionLimit: remainingSlots,
-      });
-
-      if (!result.canceled) {
-        setImages((current) =>
-          [...current, ...result.assets].slice(0, REVIEW_MEDIA_LIMIT),
-        );
-      }
-    } finally {
-      setIsPicking(false);
-    }
-  }, [images.length, t]);
-
-  const handleRemoveImage = useCallback((indexToRemove) => {
-    setImages((current) =>
-      current.filter((_, index) => index !== indexToRemove),
-    );
-  }, []);
-
-  const handleSubmit = useCallback(async () => {
-    const trimmedContent = content.trim();
-    const trimmedTitle = title.trim();
-
-    if (!trimmedContent) {
-      Alert.alert(
-        t("Thiếu nội dung", "Missing content"),
-        t("Vui lòng nhập cảm nhận của bạn.", "Please enter your review."),
-      );
-      return;
-    }
-
-    setIsProcessingSubmit(true);
-    try {
-      const media = await Promise.all(
-        images.map(async (asset, index) => {
-          const result = await ImageManipulator.manipulateAsync(
-            asset.uri,
-            [{ resize: { width: REVIEW_IMAGE_WIDTH } }],
-            {
-              compress: REVIEW_IMAGE_COMPRESS,
-              format: ImageManipulator.SaveFormat.JPEG,
-              base64: true,
-            },
-          );
-
-          return {
-            mediaData: `data:image/jpeg;base64,${result.base64}`,
-            mediaType: "image",
-            order: index,
-          };
-        }),
-      );
-
-      await onSubmit({
-        rating,
-        title: trimmedTitle || null,
-        content: trimmedContent,
-        media,
-      });
-      setRating(5);
-      setTitle("");
-      setContent("");
-      setImages([]);
-    } catch (error) {
-      Alert.alert(
-        t("Không thể gửi đánh giá", "Could not submit review"),
-        error?.message ||
-          t("Vui lòng thử lại sau.", "Please try again later."),
-      );
-    } finally {
-      setIsProcessingSubmit(false);
-    }
-  }, [content, images, onSubmit, rating, t, title]);
-
-  const isBusy = isSubmitting || isProcessingSubmit;
-
-  return (
-    <BottomSheetScrollView
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.reviewSheetContent}
-    >
-      <View style={styles.reviewModalHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.reviewModalTitle}>
-            {t("Viết đánh giá", "Write review")}
-          </Text>
-          {placeName ? (
-            <Text style={styles.reviewModalSubtitle} numberOfLines={1}>
-              {placeName}
-            </Text>
-          ) : null}
-        </View>
-        <Pressable onPress={onClose} style={styles.reviewModalClose}>
-          <MaterialIcons name="close" size={20} color={PALETTE.textMuted} />
-        </Pressable>
-      </View>
-
-      <View style={styles.reviewRatingPicker}>
-        {[1, 2, 3, 4, 5].map((value) => (
-          <Pressable key={value} onPress={() => setRating(value)} hitSlop={8}>
-            <MaterialIcons
-              name={value <= rating ? "star" : "star-border"}
-              size={34}
-              color="#FBBF24"
-            />
-          </Pressable>
-        ))}
-      </View>
-
-      <BottomSheetTextInput
-        value={title}
-        onChangeText={setTitle}
-        placeholder={t("Tiêu đề ngắn (không bắt buộc)", "Short title")}
-        placeholderTextColor={PALETTE.textSoft}
-        style={styles.reviewInput}
-        maxLength={120}
-        returnKeyType="next"
-      />
-      <BottomSheetTextInput
-        value={content}
-        onChangeText={setContent}
-        placeholder={t(
-          "Chia sẻ trải nghiệm của bạn...",
-          "Share your experience...",
-        )}
-        placeholderTextColor={PALETTE.textSoft}
-        style={[styles.reviewInput, styles.reviewContentInput]}
-        maxLength={2000}
-        multiline
-        textAlignVertical="top"
-      />
-
-      <View style={styles.reviewImageHeader}>
-        <Text style={styles.reviewImageTitle}>
-          {t("Ảnh thực tế", "Real photos")}
-        </Text>
-        <Text style={styles.reviewImageCount}>
-          {images.length}/{REVIEW_MEDIA_LIMIT}
-        </Text>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.reviewPickerList}
-      >
-        {images.map((asset, index) => (
-          <View key={`${asset.uri}-${index}`} style={styles.reviewPickItem}>
-            <Image
-              source={{ uri: asset.uri }}
-              style={styles.reviewPickImage}
-              contentFit="cover"
-            />
-            <Pressable
-              onPress={() => handleRemoveImage(index)}
-              style={styles.reviewPickRemove}
-            >
-              <MaterialIcons name="close" size={14} color="#FFFFFF" />
-            </Pressable>
+          <View className="flex-row justify-between gap-3 mt-2">
+            <Skeleton width={90} height={80} borderRadius={20} />
+            <Skeleton width={90} height={80} borderRadius={20} />
+            <Skeleton width={90} height={80} borderRadius={20} />
           </View>
-        ))}
-        {images.length < REVIEW_MEDIA_LIMIT ? (
-          <Pressable
-            onPress={handlePickImages}
-            disabled={isPicking || isBusy}
-            style={styles.reviewAddImageButton}
-          >
-            {isPicking ? (
-              <ActivityIndicator size="small" color={PALETTE.primary} />
-            ) : (
-              <>
-                <MaterialIcons
-                  name="add-photo-alternate"
-                  size={24}
-                  color={PALETTE.primaryDark}
-                />
-                <Text style={styles.reviewAddImageText}>
-                  {t("Thêm ảnh", "Add photo")}
-                </Text>
-              </>
-            )}
-          </Pressable>
-        ) : null}
-      </ScrollView>
-
-      <Pressable
-        onPress={handleSubmit}
-        disabled={isBusy}
-        style={[
-          styles.reviewSubmitButton,
-          isBusy && styles.reviewSubmitButtonDisabled,
-        ]}
-      >
-        {isBusy ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
-        ) : (
-          <Text style={styles.reviewSubmitText}>
-            {t("Gửi đánh giá", "Submit review")}
-          </Text>
-        )}
-      </Pressable>
-    </BottomSheetScrollView>
+        </View>
+        <View className="mt-[14px] rounded-[26px] p-[18px] bg-white gap-3">
+          <Skeleton width="45%" height={18} borderRadius={8} />
+          <Skeleton width="100%" height={60} borderRadius={16} />
+          <Skeleton width="100%" height={60} borderRadius={16} />
+        </View>
+      </View>
+    </View>
   );
 }
 
-function AllReviewsSheetContent({ reviews, totalCount, onClose, t }) {
-  const [ratingFilter, setRatingFilter] = useState(null);
-  const [photosOnly, setPhotosOnly] = useState(false);
-
-  const filteredReviews = useMemo(() => {
-    return [...reviews]
-      .filter((review) =>
-        ratingFilter ? Number(review?.rating) === ratingFilter : true,
-      )
-      .filter((review) =>
-        photosOnly ? Array.isArray(review?.media) && review.media.length > 0 : true,
-      )
-      .sort((a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0));
-  }, [photosOnly, ratingFilter, reviews]);
-
-  return (
-    <BottomSheetView style={styles.allReviewsSheet}>
-      <View style={styles.allReviewsHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.reviewModalTitle}>
-            {t("Tất cả đánh giá", "All reviews")}
-          </Text>
-          <Text style={styles.reviewModalSubtitle}>
-            {formatReviewCount(totalCount, t)}
-          </Text>
-        </View>
-        <Pressable onPress={onClose} style={styles.reviewModalClose}>
-          <MaterialIcons name="close" size={20} color={PALETTE.textMuted} />
-        </Pressable>
-      </View>
-
-      <View style={styles.reviewFilterWrap}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.reviewFilterRow}
-        >
-          <Pressable
-            onPress={() => setRatingFilter(null)}
-            style={[
-              styles.reviewFilterChip,
-              ratingFilter == null && styles.reviewFilterChipActive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.reviewFilterText,
-                ratingFilter == null && styles.reviewFilterTextActive,
-              ]}
-            >
-              {t("Mới nhất", "Latest")}
-            </Text>
-          </Pressable>
-          {REVIEW_FILTER_RATINGS.map((rating) => (
-            <Pressable
-              key={rating}
-              onPress={() =>
-                setRatingFilter((current) =>
-                  current === rating ? null : rating,
-                )
-              }
-              style={[
-                styles.reviewFilterChip,
-                ratingFilter === rating && styles.reviewFilterChipActive,
-              ]}
-            >
-              <MaterialIcons
-                name="star"
-                size={14}
-                color={ratingFilter === rating ? "#FFFFFF" : PALETTE.accent}
-              />
-              <Text
-                style={[
-                  styles.reviewFilterText,
-                  ratingFilter === rating && styles.reviewFilterTextActive,
-                ]}
-              >
-                {rating}
-              </Text>
-            </Pressable>
-          ))}
-          <Pressable
-            onPress={() => setPhotosOnly((value) => !value)}
-            style={[
-              styles.reviewFilterChip,
-              photosOnly && styles.reviewFilterChipActive,
-            ]}
-          >
-            <MaterialIcons
-              name="photo-library"
-              size={14}
-              color={photosOnly ? "#FFFFFF" : PALETTE.primaryDark}
-            />
-            <Text
-              style={[
-                styles.reviewFilterText,
-                photosOnly && styles.reviewFilterTextActive,
-              ]}
-            >
-              {t("Có ảnh", "With photos")}
-            </Text>
-          </Pressable>
-        </ScrollView>
-      </View>
-
-      {filteredReviews.length === 0 ? (
-        <View style={styles.allReviewsEmpty}>
-          <Text style={styles.emptyReviewText}>
-            {t("Không có đánh giá phù hợp", "No matching reviews")}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredReviews}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <ReviewCard review={item} t={t} />}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.allReviewsList}
-        />
-      )}
-    </BottomSheetView>
-  );
-}
 
 export default function PlaceDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -1046,18 +275,22 @@ export default function PlaceDetailScreen() {
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { t } = useI18n();
+  const { t } = useTranslation();
   const accessToken = useAuthStore((state) => state.accessToken);
   const bottomSheetRef = useRef(null);
   const writeReviewSheetRef = useRef(null);
   const allReviewsSheetRef = useRef(null);
   const imageListRef = useRef(null);
-  const SCREEN_WIDTH = Dimensions.get("window").width;
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const writeReviewSnapPoints = useMemo(() => ["62%", "92%"], []);
   const allReviewsSnapPoints = useMemo(() => ["70%", "96%"], []);
 
-  const { data: place, isLoading, isError, error } =
-    usePlaceDetail(placeIdentifier);
+  const {
+    data: place,
+    isLoading,
+    isError,
+    error,
+  } = usePlaceDetail(placeIdentifier);
   const resolvedPlaceId = useMemo(() => {
     const parsed = Number(place?.id);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
@@ -1067,11 +300,13 @@ export default function PlaceDetailScreen() {
   const totalReviews = Number(reviewData?.pagination?.total || reviews.length);
   const recentReviews = reviews.slice(0, MAIN_REVIEW_LIMIT);
 
+  const addToast = useUIStore((s) => s.addToast);
   const saveMutation = useSavePlace();
   const unsaveMutation = useUnsavePlace();
   const createReviewMutation = useCreateReview(resolvedPlaceId);
   const [activeImage, setActiveImage] = useState(0);
   const [isSavedLocal, setIsSavedLocal] = useState(false);
+  const [tripSheetKey, setTripSheetKey] = useState(0);
 
   useEffect(() => {
     setIsSavedLocal(Boolean(place?.isSaved));
@@ -1085,18 +320,15 @@ export default function PlaceDetailScreen() {
     [SCREEN_WIDTH],
   );
 
-  const handleSaveToggle = useCallback(() => {
+  const handleSaveToggle = useCallback(async () => {
     if (!accessToken) {
       Alert.alert(
-        t("Cần đăng nhập", "Login required"),
-        t(
-          "Hãy đăng nhập để lưu địa điểm yêu thích.",
-          "Please log in to save this place.",
-        ),
+        t("common.loginRequired"),
+        t("place.detail.loginToSave"),
         [
-          { text: t("Để sau", "Later"), style: "cancel" },
+          { text: t("common.later"), style: "cancel" },
           {
-            text: t("Đăng nhập", "Login"),
+            text: t("common.login"),
             onPress: () => router.push("/(auth)/login"),
           },
         ],
@@ -1106,29 +338,33 @@ export default function PlaceDetailScreen() {
 
     if (!place?.id) return;
 
-    if (isSavedLocal) {
-      setIsSavedLocal(false);
-      unsaveMutation.mutate(place.id, {
-        onError: () => setIsSavedLocal(true),
+    const currentStatus = isSavedLocal;
+    // Optimistic UI update
+    setIsSavedLocal(!currentStatus);
+
+    try {
+      if (currentStatus) {
+        await unsaveMutation.mutateAsync(place.id);
+        addToast({
+          type: "success",
+          message: t("place.detail.toast.unsaved"),
+        });
+      } else {
+        await saveMutation.mutateAsync({ placeId: place.id });
+        addToast({
+          type: "success",
+          message: t("place.detail.toast.saved"),
+        });
+      }
+    } catch (error) {
+      // Revert lại trạng thái nếu gọi API lỗi
+      setIsSavedLocal(currentStatus);
+      addToast({
+        type: "error",
+        message: currentStatus ? t("place.detail.toast.unsaveError") : t("place.detail.toast.saveError"),
       });
-    } else if (place?.id) {
-      setIsSavedLocal(true);
-      saveMutation.mutate(
-        { placeId: place.id },
-        {
-          onError: () => setIsSavedLocal(false),
-        },
-      );
     }
-  }, [
-    accessToken,
-    isSavedLocal,
-    place?.id,
-    router,
-    saveMutation,
-    t,
-    unsaveMutation,
-  ]);
+  }, [accessToken, place, isSavedLocal, unsaveMutation, saveMutation, addToast, router, t]);
 
   const handleNavigate = useCallback(() => {
     if (place?.latitude && place?.longitude) {
@@ -1156,36 +392,31 @@ export default function PlaceDetailScreen() {
 
     if (!accessToken) {
       Alert.alert(
-        t("Cần đăng nhập", "Login required"),
-        t(
-          "Hãy đăng nhập để thêm địa điểm vào chuyến đi.",
-          "Please log in to add this place to your trip.",
-        ),
+        t("common.loginRequired"),
+        t("place.detail.loginToAddToTrip"),
         [
-          { text: t("Để sau", "Later"), style: "cancel" },
+          { text: t("common.later"), style: "cancel" },
           {
-            text: t("Đăng nhập", "Login"),
+            text: t("common.login"),
             onPress: () => router.push("/(auth)/login"),
           },
         ],
       );
       return;
     }
+    setTripSheetKey((prev) => prev + 1);
     bottomSheetRef.current?.expand();
   }, [accessToken, place?.id, router, t]);
 
   const handleGetTicket = useCallback(() => {
     if (!accessToken) {
       Alert.alert(
-        t("Cần đăng nhập", "Login required"),
-        t(
-          "Hãy đăng nhập mới có thể đặt chỗ/booking.",
-          "Please log in to continue booking.",
-        ),
+        t("common.loginRequired"),
+        t("place.detail.loginToBook"),
         [
-          { text: t("Để sau", "Later"), style: "cancel" },
+          { text: t("common.later"), style: "cancel" },
           {
-            text: t("Đăng nhập", "Login"),
+            text: t("common.login"),
             onPress: () => router.push("/(auth)/login"),
           },
         ],
@@ -1200,15 +431,12 @@ export default function PlaceDetailScreen() {
   const handleOpenReviewComposer = useCallback(() => {
     if (!accessToken) {
       Alert.alert(
-        t("Cần đăng nhập", "Login required"),
-        t(
-          "Hãy đăng nhập để viết đánh giá địa điểm.",
-          "Please log in to write a review.",
-        ),
+        t("common.loginRequired"),
+        t("place.detail.loginToWriteReview"),
         [
-          { text: t("Để sau", "Later"), style: "cancel" },
+          { text: t("common.later"), style: "cancel" },
           {
-            text: t("Đăng nhập", "Login"),
+            text: t("common.login"),
             onPress: () => router.push("/(auth)/login"),
           },
         ],
@@ -1223,11 +451,8 @@ export default function PlaceDetailScreen() {
       await createReviewMutation.mutateAsync(payload);
       writeReviewSheetRef.current?.close();
       Alert.alert(
-        t("Đã gửi đánh giá", "Review submitted"),
-        t(
-          "Cảm ơn bạn đã chia sẻ trải nghiệm.",
-          "Thank you for sharing your experience.",
-        ),
+        t("place.detail.reviewSubmitted"),
+        t("place.detail.reviewSubmittedDesc"),
       );
     },
     [createReviewMutation, t],
@@ -1245,101 +470,79 @@ export default function PlaceDetailScreen() {
     }
   }, []);
 
+  // Derived data via hooks — must be BEFORE early returns (Rules of Hooks)
+  const images = useMemo(() => place?.images || [], [place?.images]);
+  const fallbackImage = useMemo(
+    () =>
+      resolveMediaUrl(place?.thumbnailUrl || place?.thumbnail) ||
+      getCategoryPlaceholder(place?.category?.name),
+    [place?.thumbnailUrl, place?.thumbnail, place?.category?.name],
+  );
+  const rating = Number(place?.ratingAvg || place?.averageRating || 0);
+  const reviewCount = Number(place?.reviewCount || place?._count?.reviews || 0);
+  const openState = useMemo(() => getOpenState(place?.openingHours, t), [place?.openingHours, t]);
+  const amenityCards = useMemo(() => getAmenityCards(place, t), [place, t]);
+  const systemTags = useMemo(() => getSystemTags(place), [place]);
+  const location = useMemo(() => getPlaceLocation(place), [place]);
+  const categoryName = useMemo(
+    () => place?.category?.name || t("place.detail.featuredPlace"),
+    [place?.category?.name, t],
+  );
+  const categoryIcon = getCategoryIcon(categoryName);
+  const priceLine = useMemo(() => formatPriceLine(place), [place]);
+  const priceRangeLabel = useMemo(() => formatPriceRange(place, t), [place, t]);
+  const addressLine = useMemo(() => getAddressLine(place), [place]);
+  const creatorName = useMemo(() => getCreatorName(place, t), [place, t]);
+  const ownerName = useMemo(
+    () =>
+      place?.business?.businessName ||
+      place?.createdByUser?.profile?.fullName ||
+      creatorName,
+    [place?.business?.businessName, place?.createdByUser?.profile?.fullName, creatorName],
+  );
+  const websiteUrl = useMemo(() => toExternalUrl(place?.website), [place?.website]);
+  const facebookUrl = useMemo(() => toExternalUrl(place?.facebook), [place?.facebook]);
+  const hasContactInfo = Boolean(
+    addressLine || place?.phone || place?.email || websiteUrl || facebookUrl,
+  );
+  const bottomPadding = Math.max(insets.bottom, 18) + 96;
+  const subtitle = useMemo(
+    () => place?.category?.name || location || t("place.detail.featuredPlace"),
+    [place?.category?.name, location, t],
+  );
+
   if (isLoading) {
-    return (
-      <View style={styles.loadingState}>
-        <ActivityIndicator size="large" color={PALETTE.primary} />
-      </View>
-    );
+    return <PlaceDetailSkeleton />;
   }
 
   if (isError || !place) {
     return (
-      <View style={styles.errorState}>
-        <View style={styles.errorIconWrap}>
-          <MaterialIcons name="error-outline" size={40} color="#EF4444" />
+      <View className="flex-1 items-center justify-center px-8 gap-3.5 bg-white">
+        <View className="w-[88px] h-[88px] rounded-[28px] items-center justify-center bg-[#FDECEC]">
+          <MaterialIconsRounded
+            name="error-outline"
+            size={40}
+            color="#EF4444"
+          />
         </View>
-        <Text style={styles.errorTitle}>
-          {error?.message || t("Không tìm thấy địa điểm", "Place not found")}
+        <Text
+          className="text-xl leading-7 text-center"
+          style={{ color: PALETTE.text, fontFamily: TOKENS.font.heading }}
+        >
+          {error?.message || t("place.notFound")}
         </Text>
       </View>
     );
   }
 
-  const images = place?.images || [];
-  const fallbackImage = resolveMediaUrl(
-    place?.thumbnailUrl || place?.thumbnail,
-  );
-  const currentImage = resolveMediaUrl(
-    images[activeImage]?.secureUrl ||
-      images[activeImage]?.thumbnailUrl ||
-      images[activeImage]?.imageData ||
-      images[activeImage]?.url ||
-      fallbackImage,
-  );
-  const rating = Number(place?.ratingAvg || place?.averageRating || 0);
-  const reviewCount = Number(place?.reviewCount || place?._count?.reviews || 0);
-  const openState = getOpenState(place?.openingHours, t);
-  const factCards = getFactCards(place, t);
-  const amenityCards = getAmenityCards(place, t);
-  const systemTags = getSystemTags(place);
-  const location = getPlaceLocation(place);
-  const categoryName =
-    place?.category?.name || t("Điểm đến nổi bật", "Featured place");
-  const categoryIcon = getCategoryIcon(categoryName);
-  const priceLine = formatPriceLine(place);
-  const priceRangeLabel = formatPriceRange(place, t);
-  const addressLine = getAddressLine(place);
-  const creatorName = getCreatorName(place, t);
-  const ownerName =
-    place?.business?.businessName ||
-    place?.createdByUser?.profile?.fullName ||
-    creatorName;
-  const websiteUrl = toExternalUrl(place?.website);
-  const facebookUrl = toExternalUrl(place?.facebook);
-  const hasContactInfo = Boolean(
-    addressLine || place?.phone || place?.email || websiteUrl || facebookUrl,
-  );
-  const overviewItems = [
-    {
-      key: "category",
-      icon: "category",
-      label: t("Danh mục", "Category"),
-      value: categoryName,
-    },
-    {
-      key: "area",
-      icon: "explore",
-      label: t("Khu vực", "Area"),
-      value: location || t("Cần Thơ", "Can Tho"),
-    },
-    {
-      key: "price",
-      icon: "payments",
-      label: t("Mức giá", "Price range"),
-      value: priceRangeLabel,
-    },
-    {
-      key: "owner",
-      icon: "account-circle",
-      label: t("Người đăng", "Owner"),
-      value: ownerName,
-    },
-  ];
-  const bottomPadding = Math.max(insets.bottom, 18) + 96;
-  const subtitle =
-    place?.category?.name ||
-    location ||
-    t("Điểm đến nổi bật", "Featured place");
-
   return (
-    <View style={styles.screen}>
+    <View className="flex-1 bg-white">
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomPadding }}
       >
         {/* Hero Image Gallery */}
-        <View style={styles.hero}>
+        <View className="relative h-[480px] bg-[#E8EDF2]">
           <FlatList
             ref={imageListRef}
             data={
@@ -1352,6 +555,14 @@ export default function PlaceDetailScreen() {
             onScroll={handleImageScroll}
             scrollEventThrottle={16}
             decelerationRate="fast"
+            removeClippedSubviews
+            maxToRenderPerBatch={3}
+            windowSize={3}
+            getItemLayout={(_, index) => ({
+              length: SCREEN_WIDTH,
+              offset: SCREEN_WIDTH * index,
+              index,
+            })}
             renderItem={({ item }) => {
               const uri = item?._fallback
                 ? fallbackImage
@@ -1365,14 +576,18 @@ export default function PlaceDetailScreen() {
               return uri ? (
                 <Image
                   source={{ uri }}
-                  style={[styles.heroImage, { width: SCREEN_WIDTH }]}
+                  className="h-[480px]"
+                  style={{ width: SCREEN_WIDTH }}
                   contentFit="cover"
                   transition={200}
                   cachePolicy="memory-disk"
                 />
               ) : (
-                <View style={[styles.heroFallback, { width: SCREEN_WIDTH }]}>
-                  <MaterialIcons
+                <View
+                  className="h-full items-center justify-center bg-[#E8EDF2]"
+                  style={{ width: SCREEN_WIDTH }}
+                >
+                  <MaterialIconsRounded
                     name="travel-explore"
                     size={54}
                     color="#FFFFFF"
@@ -1382,24 +597,60 @@ export default function PlaceDetailScreen() {
             }}
           />
 
-          <View style={styles.heroShadeTop} pointerEvents="none" />
-          <View style={styles.heroShadeBottom} pointerEvents="none" />
+          <View
+            className="absolute top-0 left-0 right-0 h-[150px]"
+            style={{ backgroundColor: "rgba(0,0,0,0.18)" }}
+            pointerEvents="none"
+          />
+          <View
+            className="absolute left-0 right-0 bottom-0 h-[240px]"
+            style={{ backgroundColor: PALETTE.overlayStrong }}
+            pointerEvents="none"
+          />
 
-          <View style={[styles.heroTopBar, { top: insets.top + 10 }]}>
-            <Pressable onPress={() => router.back()} style={styles.iconButton}>
-              <MaterialIcons
+          <View
+            className="absolute left-5 right-5 flex-row items-center justify-between"
+            style={{ top: insets.top + 10 }}
+          >
+            <Pressable
+              onPress={() => router.back()}
+              className="w-12 h-12 rounded-full items-center justify-center"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.92)",
+                ...ICON_BUTTON_SHADOW,
+              }}
+            >
+              <MaterialIconsRounded
                 name="arrow-back-ios-new"
                 size={18}
                 color={PALETTE.text}
               />
             </Pressable>
 
-            <View style={styles.heroActions}>
-              <Pressable onPress={handleNavigate} style={styles.iconButton}>
-                <MaterialIcons name="near-me" size={20} color={PALETTE.text} />
+            <View className="flex-row items-center gap-2.5">
+              <Pressable
+                onPress={handleNavigate}
+                className="w-12 h-12 rounded-full items-center justify-center"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.92)",
+                  ...ICON_BUTTON_SHADOW,
+                }}
+              >
+                <MaterialIconsRounded
+                  name="near-me"
+                  size={20}
+                  color={PALETTE.text}
+                />
               </Pressable>
-              <Pressable onPress={handleAddToTrip} style={styles.iconButton}>
-                <MaterialIcons
+              <Pressable
+                onPress={handleAddToTrip}
+                className="w-12 h-12 rounded-full items-center justify-center"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.92)",
+                  ...ICON_BUTTON_SHADOW,
+                }}
+              >
+                <MaterialIconsRounded
                   name="playlist-add"
                   size={20}
                   color={PALETTE.text}
@@ -1408,82 +659,117 @@ export default function PlaceDetailScreen() {
             </View>
           </View>
 
-          <View style={styles.heroContent}>
+          <View className="absolute left-6 right-6 bottom-[92px]">
             {addressLine ? (
-              <View style={styles.heroMetaRow}>
-                <MaterialIcons name="home-work" size={14} color="#FFFFFF" />
-                <Text style={styles.heroMetaText} numberOfLines={1}>
+              <View className="flex-row items-center gap-1.5 mb-2.5">
+                <MaterialIconsRounded
+                  name="home-work"
+                  size={14}
+                  color="#FFFFFF"
+                />
+                <Text
+                  className="text-sm text-white flex-1"
+                  style={{ fontFamily: TOKENS.font.medium }}
+                  numberOfLines={2}
+                >
                   {addressLine}
                 </Text>
               </View>
             ) : null}
 
-            <Text style={styles.heroTitle} numberOfLines={2}>
+            <Text
+              className="text-[22px] leading-[31px] tracking-[-0.6px] text-white max-w-[88%]"
+              style={{ fontFamily: TOKENS.font.heading }}
+              numberOfLines={2}
+            >
               {place?.name}
             </Text>
 
             <Pressable
               onPress={handleOpenAllReviews}
-              style={styles.heroReviewLink}
+              className="mt-2.5 flex-row items-center gap-0.5 self-start"
             >
-              <Text style={styles.heroReviewText}>
+              <Text
+                className="text-sm text-white"
+                style={{ fontFamily: TOKENS.font.medium }}
+              >
                 {formatReviewCount(reviewCount, t)}
               </Text>
-              <MaterialIcons name="chevron-right" size={16} color="#FFFFFF" />
+              <MaterialIconsRounded
+                name="chevron-right"
+                size={16}
+                color="#FFFFFF"
+              />
             </Pressable>
           </View>
 
           {images.length > 1 ? (
-            <View style={styles.heroPager}>
+            <View className="absolute bottom-[58px] self-center flex-row gap-2">
               {images.slice(0, 8).map((imageItem, index) => (
                 <View
                   key={imageItem?.id || index}
-                  style={[
-                    styles.heroDot,
-                    index === activeImage && styles.heroDotActive,
-                  ]}
+                  className={cn(
+                    "rounded-full",
+                    index === activeImage
+                      ? "w-4 bg-white"
+                      : "w-[7px] h-[7px] bg-[rgba(255,255,255,0.45)]"
+                  )}
                 />
               ))}
             </View>
           ) : null}
 
-          <Pressable onPress={handleSaveToggle} style={styles.favoriteFab}>
-            <MaterialIcons
-              name={isSavedLocal ? "star" : "star-border"}
-              size={28}
-              color={isSavedLocal ? "#1D1D1F" : "#6B7280"}
-            />
-          </Pressable>
         </View>
 
-        <View style={styles.contentWrap}>
-          <View style={styles.introCard}>
-            <View style={styles.locationBadgeRow}>
-              <MaterialIcons
-                name={categoryIcon}
-                size={16}
-                color={PALETTE.textMuted}
-              />
-              <Text style={styles.locationBadgeText}>
-                {subtitle.toUpperCase()}
-              </Text>
+        <View className="-mt-10 px-4">
+          <Animated.View entering={FadeInDown.delay(100).duration(500)}>
+            <View
+              className="bg-white rounded-[32px] px-5 pt-7 pb-[22px]"
+              style={INTRO_CARD_SHADOW}
+            >
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="flex-row items-center gap-1.5 flex-1">
+                <MaterialIconsRounded
+                  name={categoryIcon}
+                  size={16}
+                  color={PALETTE.textMuted}
+                />
+                <Text
+                  className="text-[13px] tracking-[0.9px]"
+                  style={{
+                    color: PALETTE.textMuted,
+                    fontFamily: TOKENS.font.semibold,
+                  }}
+                >
+                  {subtitle.toUpperCase()}
+                </Text>
+              </View>
+              <Pressable
+                onPress={handleSaveToggle}
+                className={cn(
+                  "w-9 h-9 rounded-full items-center justify-center border",
+                  isSavedLocal
+                    ? "bg-[rgba(255,159,10,0.08)] border-[rgba(255,159,10,0.2)]"
+                    : "bg-[#F5F5F7] border-[rgba(0,0,0,0.06)]"
+                )}
+              >
+                <MaterialIconsRounded
+                  name={isSavedLocal ? "bookmark" : "bookmark-border"}
+                  size={20}
+                  color={isSavedLocal ? "#FF9F0A" : PALETTE.textMuted}
+                />
+              </Pressable>
             </View>
 
-            <Text style={styles.titleCentered}>{place?.name}</Text>
-
-            <View style={styles.pillRowCentered}>
-              <StatPill icon="place" label={location || "Cần Thơ"} />
+            <View className="flex-row justify-center flex-wrap gap-2.5 mt-4">
+              <StatPill icon="place" label={location || t("place.defaultLocation")} />
               <StatPill
                 icon="calendar-today"
                 label={getTodayHoursLabel(place?.openingHours, t)}
               />
-              <StatPill
-                icon="groups-2"
-                label={`${Math.max(reviewCount, 2).toString().padStart(2, "0")}`}
-              />
             </View>
 
-            <View style={styles.amenityGrid}>
+            <View className="flex-row justify-between gap-3 mt-6">
               {amenityCards.map(({ key, ...amenity }) => {
                 let onPress = undefined;
                 if (key === "phone" && place?.phone) {
@@ -1499,106 +785,138 @@ export default function PlaceDetailScreen() {
               })}
             </View>
 
-            <View style={styles.introFooter}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.priceCaption}>Từ</Text>
-                <View style={styles.priceRow}>
-                  <Text style={styles.priceMain}>
-                    {priceLine?.main || t("Liên hệ", "Contact")}
+            <View className="flex-row items-end gap-3.5 mt-[22px]">
+              <View className="flex-1">
+                <Text
+                  className="text-[13px] mb-0.5"
+                  style={{
+                    color: PALETTE.textMuted,
+                    fontFamily: TOKENS.font.medium,
+                  }}
+                >
+                  {t("place.priceFrom")}
+                </Text>
+                <View className="flex-row items-end gap-1">
+                  <Text
+                    className="text-[22px] leading-7"
+                    style={{
+                      color: PALETTE.text,
+                      fontFamily: TOKENS.font.heading,
+                    }}
+                  >
+                    {priceLine?.main || t("place.detail.contactSection")}
                   </Text>
                   {priceLine?.suffix ? (
-                    <Text style={styles.priceSuffix}>{priceLine.suffix}</Text>
+                    <Text
+                      className="text-sm mb-0.5"
+                      style={{
+                        color: PALETTE.textMuted,
+                        fontFamily: TOKENS.font.medium,
+                      }}
+                    >
+                      {priceLine.suffix}
+                    </Text>
                   ) : null}
                 </View>
               </View>
-
-              <Pressable onPress={handleGetTicket} style={styles.bookButton}>
-                <Text style={styles.bookButtonText}>
-                  {accessToken
-                    ? t("Đặt ngay", "Book now")
-                    : t("Đăng nhập để đặt", "Login to book")}
-                </Text>
-              </Pressable>
             </View>
-          </View>
-
-          <View style={styles.quickActionRow}>
-            <Pressable onPress={handleNavigate} style={styles.secondaryAction}>
-              <MaterialIcons
-                name="directions"
-                size={18}
-                color={PALETTE.primaryDark}
-              />
-              <Text style={styles.secondaryActionText}>
-                {t("Chỉ đường", "Directions")}
-              </Text>
-            </Pressable>
-
-            <Pressable onPress={handleAddToTrip} style={styles.secondaryAction}>
-              <MaterialIcons
-                name="playlist-add"
-                size={18}
-                color={PALETTE.primaryDark}
-              />
-              <Text style={styles.secondaryActionText}>
-                {t("Thêm vào trip", "Add to trip")}
-              </Text>
-            </Pressable>
-          </View>
+            </View>
+          </Animated.View>
 
           {rating > 0 || reviewCount > 0 ? (
-            <SectionCard title={t("Đánh giá nổi bật", "Top rating")}>
-              <View style={styles.ratingSummary}>
+            <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+              <SectionCard title={t("place.detail.topRating")}>
+              <View className="flex-row items-center justify-between gap-4">
                 <View>
-                  <Text style={styles.ratingValue}>
-                    {rating > 0 ? rating.toFixed(1) : t("Mới", "New")}
+                  <Text
+                    className="text-[28px] leading-[34px]"
+                    style={{
+                      color: PALETTE.text,
+                      fontFamily: TOKENS.font.heading,
+                    }}
+                  >
+                    {rating > 0 ? rating.toFixed(1) : t("place.detail.new")}
                   </Text>
-                  <Text style={styles.ratingCount}>
+                  <Text
+                    className="text-[13px] mt-1"
+                    style={{
+                      color: PALETTE.textMuted,
+                      fontFamily: TOKENS.font.medium,
+                    }}
+                  >
                     {formatReviewCount(reviewCount, t)}
                   </Text>
                 </View>
 
-                <View style={styles.ratingStarsWrap}>
-                  <View style={styles.ratingStars}>
+                <View className="items-end gap-2">
+                  <View className="flex-row gap-0.5">
                     <StarRow rating={rating} />
                   </View>
                   <Text
-                    style={[styles.openStateText, { color: openState.color }]}
+                    className="text-[13px]"
+                    style={{
+                      color: openState.color,
+                      fontFamily: TOKENS.font.semibold,
+                    }}
                   >
                     {openState.label}
                   </Text>
                 </View>
               </View>
             </SectionCard>
+            </Animated.View>
           ) : null}
 
           {place?.description ? (
-            <SectionCard title={t("Giới thiệu", "About")}>
-              <Text style={styles.description}>{place.description}</Text>
-            </SectionCard>
+            <Animated.View entering={FadeInDown.delay(280).duration(400)}>
+              <SectionCard title={t("place.detail.about")}>
+                <Text
+                  className="text-sm leading-6"
+                  style={{
+                    color: PALETTE.textMuted,
+                    fontFamily: TOKENS.font.body,
+                  }}
+                >
+                  {place.description}
+                </Text>
+              </SectionCard>
+            </Animated.View>
           ) : null}
 
           {systemTags.length > 0 ? (
-            <SectionCard title="Tag">
-              <View style={styles.tagWrap}>
-                {systemTags.map((tag) => (
-                  <View key={tag} style={styles.tagChip}>
-                    <Text style={styles.tagChipText} numberOfLines={1}>
-                      {tag}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </SectionCard>
+            <Animated.View entering={FadeInDown.delay(340).duration(400)}>
+              <SectionCard title="Tag">
+                <View className="flex-row flex-wrap gap-2">
+                  {systemTags.map((tag) => (
+                    <View
+                      key={tag}
+                      className="px-3 py-[7px] rounded-full bg-[#F5F5F7] border border-[rgba(0,0,0,0.06)]"
+                    >
+                      <Text
+                        className="text-xs"
+                        style={{
+                          color: PALETTE.textMuted,
+                          fontFamily: TOKENS.font.medium,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {tag}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </SectionCard>
+            </Animated.View>
           ) : null}
 
           {hasContactInfo ? (
-            <SectionCard title={t("Liên hệ", "Contact")}>
-              <View style={styles.detailList}>
+            <Animated.View entering={FadeInDown.delay(400).duration(400)}>
+              <SectionCard title={t("place.detail.contactSection")}>
+              <View className="gap-2.5">
                 {addressLine ? (
                   <DetailRow
                     icon="place"
-                    label={t("Địa chỉ", "Address")}
+                    label={t("place.detail.addressLabel")}
                     value={addressLine}
                     onPress={handleNavigate}
                   />
@@ -1606,7 +924,7 @@ export default function PlaceDetailScreen() {
                 {place?.phone ? (
                   <DetailRow
                     icon="call"
-                    label={t("Điện thoại", "Phone")}
+                    label={t("place.detail.phoneLabel")}
                     value={place.phone}
                     highlight
                     onPress={() => handleOpenUrl(`tel:${place.phone}`)}
@@ -1615,7 +933,7 @@ export default function PlaceDetailScreen() {
                 {place?.email ? (
                   <DetailRow
                     icon="mail"
-                    label={t("Email", "Email")}
+                    label={t("place.detail.emailLabel")}
                     value={place.email}
                     onPress={() => handleOpenUrl(`mailto:${place.email}`)}
                   />
@@ -1623,7 +941,7 @@ export default function PlaceDetailScreen() {
                 {websiteUrl ? (
                   <DetailRow
                     icon="language"
-                    label={t("Website", "Website")}
+                    label={t("place.website")}
                     value={websiteUrl.replace(/^https?:\/\//, "")}
                     onPress={() => handleOpenUrl(websiteUrl)}
                   />
@@ -1631,7 +949,7 @@ export default function PlaceDetailScreen() {
                 {facebookUrl ? (
                   <DetailRow
                     icon="facebook"
-                    label={t("Facebook", "Facebook")}
+                    label={t("place.detail.facebookLabel")}
                     value={facebookUrl.replace(
                       /^https?:\/\/(www\.)?facebook\.com\//,
                       "fb/",
@@ -1641,24 +959,34 @@ export default function PlaceDetailScreen() {
                 ) : null}
               </View>
             </SectionCard>
+            </Animated.View>
           ) : null}
 
           {place?.openingHours?.length > 0 ? (
-            <SectionCard title={t("Giờ mở cửa", "Opening hours")}>
-              <OpeningHours hours={place.openingHours} t={t} />
-            </SectionCard>
+            <Animated.View entering={FadeInDown.delay(460).duration(400)}>
+              <SectionCard title={t("place.detail.openingHoursLabel")}>
+                <OpeningHours hours={place.openingHours} t={t} />
+              </SectionCard>
+            </Animated.View>
           ) : null}
 
+          <Animated.View entering={FadeInDown.delay(520).duration(400)}>
           <SectionCard
-            title={t("Đánh giá", "Reviews")}
+            title={t("place.detail.reviewsSection")}
             actionLabel={
-              accessToken ? t("Viết đánh giá", "Write review") : undefined
+              accessToken ? t("place.writeReview") : undefined
             }
             onActionPress={handleOpenReviewComposer}
           >
             {recentReviews.length === 0 ? (
-              <Text style={styles.emptyReviewText}>
-                {t("Chưa có đánh giá nào", "No reviews yet")}
+              <Text
+                className="text-sm text-center py-[18px]"
+                style={{
+                  color: PALETTE.textMuted,
+                  fontFamily: TOKENS.font.medium,
+                }}
+              >
+                {t("place.noReviews")}
               </Text>
             ) : (
               <>
@@ -1668,15 +996,18 @@ export default function PlaceDetailScreen() {
                 {totalReviews > MAIN_REVIEW_LIMIT ? (
                   <Pressable
                     onPress={handleOpenAllReviews}
-                    style={styles.seeAllReviewsButton}
+                    className="h-12 rounded-[18px] flex-row items-center justify-center gap-1.5 mt-1 border border-[rgba(0,0,0,0.12)] bg-[rgba(0,0,0,0.06)]"
                   >
-                    <Text style={styles.seeAllReviewsText}>
-                      {t(
-                        `Xem tất cả ${totalReviews} đánh giá`,
-                        `See all ${totalReviews} reviews`,
-                      )}
+                    <Text
+                      className="text-sm"
+                      style={{
+                        color: PALETTE.primaryDark,
+                        fontFamily: TOKENS.font.semibold,
+                      }}
+                    >
+                      {t("place.detail.seeAllReviews", { count: totalReviews })}
                     </Text>
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name="keyboard-arrow-up"
                       size={18}
                       color={PALETTE.primaryDark}
@@ -1686,40 +1017,70 @@ export default function PlaceDetailScreen() {
               </>
             )}
           </SectionCard>
+          </Animated.View>
         </View>
       </ScrollView>
 
       <BlurView
         intensity={85}
         tint="light"
-        style={[
-          styles.bottomBar,
-          { paddingBottom: Math.max(insets.bottom, 16) },
-        ]}
+        className="absolute left-[14px] right-[14px] bottom-[14px] flex-row items-center gap-2.5 px-3 pt-3 rounded-[28px] overflow-hidden border border-[rgba(255,255,255,0.4)]"
+        style={{
+          paddingBottom: Math.max(insets.bottom, 16),
+          backgroundColor: "rgba(255,255,255,0.75)",
+          ...BOTTOM_BAR_SHADOW,
+        }}
       >
-        <Pressable onPress={handleSaveToggle} style={styles.bottomIconButton}>
-          <MaterialIcons
-            name={isSavedLocal ? "bookmark" : "bookmark-border"}
-            size={24}
-            color={isSavedLocal ? "#1D1D1F" : PALETTE.textMuted}
-          />
-        </Pressable>
-
         <Pressable
-          onPress={handleNavigate}
-          style={styles.bottomSecondaryButton}
+          onPress={handleGetTicket}
+          className="flex-1 h-14 rounded-full items-center justify-center"
+          style={{ backgroundColor: PALETTE.primary }}
         >
-          <MaterialIcons name="map" size={19} color={PALETTE.primaryDark} />
-          <Text style={styles.bottomSecondaryText}>{t("Bản đồ", "Map")}</Text>
-        </Pressable>
-
-        <Pressable onPress={handleGetTicket} style={styles.bottomPrimaryButton}>
-          <Text style={styles.bottomPrimaryText}>
+          <Text
+            className="text-[15px] text-white"
+            style={{ fontFamily: TOKENS.font.semibold }}
+          >
             {accessToken
-              ? t("Đặt ngay", "Book now")
-              : t("Đăng nhập để đặt", "Login to book")}
+              ? t("place.bookNow")
+              : t("place.detail.loginToBookButton")}
           </Text>
         </Pressable>
+
+        {(priceLine?.main || priceRangeLabel) ? (
+          <View className="items-end pl-2.5">
+            <Text
+              className="text-[11px]"
+              style={{
+                color: PALETTE.textMuted,
+                fontFamily: TOKENS.font.medium,
+              }}
+            >
+              {t("place.priceFrom")}
+            </Text>
+            <View className="flex-row items-end gap-[3px]">
+              <Text
+                className="text-[17px] mt-px"
+                style={{
+                  color: PALETTE.text,
+                  fontFamily: TOKENS.font.heading,
+                }}
+              >
+                {priceLine?.main || priceRangeLabel}
+              </Text>
+              {priceLine?.suffix ? (
+                <Text
+                  className="text-xs mb-0.5"
+                  style={{
+                    color: PALETTE.textMuted,
+                    fontFamily: TOKENS.font.medium,
+                  }}
+                >
+                  {priceLine.suffix}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
       </BlurView>
 
       <BottomSheet
@@ -1729,8 +1090,6 @@ export default function PlaceDetailScreen() {
         enablePanDownToClose
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
-        backgroundStyle={styles.reviewSheetBackground}
-        handleIndicatorStyle={styles.reviewSheetIndicator}
       >
         <ReviewComposerSheetContent
           placeName={place?.name}
@@ -1746,8 +1105,6 @@ export default function PlaceDetailScreen() {
         index={-1}
         snapPoints={allReviewsSnapPoints}
         enablePanDownToClose
-        backgroundStyle={styles.reviewSheetBackground}
-        handleIndicatorStyle={styles.reviewSheetIndicator}
       >
         <AllReviewsSheetContent
           reviews={reviews}
@@ -1762,1052 +1119,27 @@ export default function PlaceDetailScreen() {
         index={-1}
         snapPoints={["55%", "80%"]}
         enablePanDownToClose
-        backgroundStyle={styles.sheetBackground}
-        handleIndicatorStyle={styles.sheetIndicator}
+        onChange={(index) => {
+          if (index === -1) {
+            setTripSheetKey((prev) => prev + 1);
+          }
+        }}
+        backgroundStyle={SHEET_BACKGROUND}
+        handleIndicatorStyle={SHEET_INDICATOR}
       >
-        <BottomSheetView style={{ flex: 1 }}>
+        <View className="flex-1">
           <TripSelectorSheet
+            key={tripSheetKey}
             placeId={resolvedPlaceId}
             placeName={place?.name}
             t={t}
             onClose={() => bottomSheetRef.current?.close()}
+            onStepChange={(step) => {
+              if (step === 2) bottomSheetRef.current?.snapToIndex(1);
+            }}
           />
-        </BottomSheetView>
+        </View>
       </BottomSheet>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: PALETTE.bg },
-  loadingState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.bg,
-  },
-  errorState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 32,
-    gap: 14,
-    backgroundColor: PALETTE.bg,
-  },
-  errorIconWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FDECEC",
-  },
-  errorTitle: {
-    color: PALETTE.text,
-    fontSize: 20,
-    lineHeight: 28,
-    textAlign: "center",
-    fontFamily: TOKENS.font.heading,
-  },
-  hero: {
-    position: "relative",
-    height: 480,
-    backgroundColor: PALETTE.heroFallback,
-  },
-  heroImage: { height: 480 },
-  heroFallback: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.heroFallback,
-  },
-  heroShadeTop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 150,
-    backgroundColor: "rgba(0,0,0,0.18)",
-  },
-  heroShadeBottom: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 240,
-    backgroundColor: PALETTE.overlayStrong,
-  },
-  heroTopBar: {
-    position: "absolute",
-    left: 20,
-    right: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  heroActions: { flexDirection: "row", alignItems: "center", gap: 10 },
-  iconButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.92)",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    elevation: 6,
-  },
-  heroContent: { position: "absolute", left: 24, right: 24, bottom: 92 },
-  heroMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 10,
-  },
-  heroMetaText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontFamily: TOKENS.font.medium,
-    flex: 1,
-  },
-  heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 22,
-    lineHeight: 31,
-    letterSpacing: -0.6,
-    fontFamily: TOKENS.font.heading,
-    maxWidth: "88%",
-  },
-  heroReviewLink: {
-    marginTop: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    alignSelf: "flex-start",
-  },
-  heroReviewText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontFamily: TOKENS.font.medium,
-  },
-  heroPager: {
-    position: "absolute",
-    bottom: 58,
-    alignSelf: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-  heroDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.45)",
-  },
-  heroDotActive: { width: 16, backgroundColor: "#FFFFFF" },
-  favoriteFab: {
-    position: "absolute",
-    right: 24,
-    bottom: -26,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.16,
-    shadowRadius: 24,
-    elevation: 10,
-  },
-  contentWrap: { marginTop: -40, paddingHorizontal: 16 },
-  introCard: {
-    backgroundColor: PALETTE.surface,
-    borderRadius: 32,
-    paddingHorizontal: 20,
-    paddingTop: 28,
-    paddingBottom: 22,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.05,
-    shadowRadius: 32,
-    elevation: 8,
-  },
-  locationBadgeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginBottom: 12,
-  },
-  locationBadgeText: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    letterSpacing: 0.9,
-    fontFamily: TOKENS.font.semibold,
-  },
-  titleCentered: {
-    color: PALETTE.text,
-    fontSize: 28,
-    lineHeight: 34,
-    letterSpacing: -0.7,
-    fontFamily: TOKENS.font.heading,
-    textAlign: "center",
-  },
-  pillRowCentered: {
-    flexDirection: "row",
-    justifyContent: "center",
-    flexWrap: "wrap",
-    gap: 10,
-    marginTop: 16,
-  },
-  statPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: PALETTE.surfaceAlt,
-    borderWidth: 1,
-    borderColor: PALETTE.borderSoft,
-  },
-  statPillText: {
-    maxWidth: 120,
-    color: PALETTE.textMuted,
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-  },
-  amenityGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-    marginTop: 24,
-  },
-  amenityCard: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "flex-start",
-  },
-  amenityIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.surfaceAlt,
-    borderWidth: 1,
-    borderColor: PALETTE.borderSoft,
-    marginBottom: 8,
-  },
-  amenityLabel: {
-    color: PALETTE.text,
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-    textAlign: "center",
-  },
-  amenityTagText: {
-    color: PALETTE.textSoft,
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-    textAlign: "center",
-    marginTop: 2,
-  },
-  factGrid: { gap: 10, marginTop: 18 },
-  factCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    minHeight: 78,
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: PALETTE.surface,
-    borderWidth: 1,
-    borderColor: PALETTE.borderSoft,
-  },
-  factIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.primarySoft,
-  },
-  factContent: {
-    flex: 1,
-    minWidth: 0,
-  },
-  factLabel: {
-    color: PALETTE.textSoft,
-    fontSize: 11,
-    marginBottom: 4,
-    letterSpacing: 0.3,
-    textTransform: "uppercase",
-    fontFamily: TOKENS.font.semibold,
-  },
-  factValue: {
-    color: PALETTE.text,
-    fontSize: 14,
-    lineHeight: 19,
-    fontFamily: TOKENS.font.semibold,
-  },
-  overviewGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  overviewItem: {
-    width: "48.5%",
-    borderRadius: 18,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: PALETTE.borderSoft,
-    backgroundColor: PALETTE.surfaceAlt,
-  },
-  overviewIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-    marginBottom: 8,
-  },
-  overviewTextWrap: {
-    gap: 4,
-  },
-  overviewLabel: {
-    color: PALETTE.textSoft,
-    fontSize: 11,
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-    fontFamily: TOKENS.font.semibold,
-  },
-  overviewValue: {
-    color: PALETTE.text,
-    fontSize: 15,
-    lineHeight: 20,
-    fontFamily: TOKENS.font.heading,
-  },
-  tagWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    rowGap: 10,
-  },
-  tagChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-    backgroundColor: PALETTE.surfaceAlt,
-    borderWidth: 1,
-    borderColor: PALETTE.borderSoft,
-  },
-  tagChipText: {
-    color: PALETTE.textMuted,
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-  },
-  detailList: {
-    gap: 10,
-  },
-  detailRowPressable: {
-    borderRadius: 16,
-  },
-  detailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: PALETTE.borderSoft,
-    backgroundColor: PALETTE.surfaceAlt,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-  },
-  detailIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-  },
-  detailContent: {
-    flex: 1,
-    minWidth: 0,
-  },
-  detailLabel: {
-    color: PALETTE.textSoft,
-    fontSize: 11,
-    marginBottom: 2,
-    fontFamily: TOKENS.font.medium,
-  },
-  detailValue: {
-    color: PALETTE.text,
-    fontSize: 13,
-    lineHeight: 19,
-    fontFamily: TOKENS.font.semibold,
-  },
-  detailValueHighlight: {
-    color: PALETTE.primaryDark,
-  },
-  introFooter: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 14,
-    marginTop: 22,
-  },
-  priceCaption: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    marginBottom: 2,
-    fontFamily: TOKENS.font.medium,
-  },
-  priceRow: { flexDirection: "row", alignItems: "flex-end", gap: 4 },
-  priceMain: {
-    color: PALETTE.text,
-    fontSize: 22,
-    lineHeight: 28,
-    fontFamily: TOKENS.font.heading,
-  },
-  priceSuffix: {
-    color: PALETTE.textMuted,
-    fontSize: 14,
-    marginBottom: 2,
-    fontFamily: TOKENS.font.medium,
-  },
-  bookButton: {
-    minWidth: 140,
-    height: 56,
-    paddingHorizontal: 24,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.primary,
-    shadowColor: PALETTE.primaryDark,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  bookButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontFamily: TOKENS.font.semibold,
-  },
-  quickActionRow: { flexDirection: "row", gap: 12, marginTop: 14 },
-  secondaryAction: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    height: 52,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: PALETTE.border,
-    backgroundColor: "rgba(255,255,255,0.7)",
-  },
-  secondaryActionText: {
-    color: PALETTE.primaryDark,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  sectionCard: {
-    marginTop: 14,
-    borderRadius: 26,
-    padding: 18,
-    backgroundColor: PALETTE.surface,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 18,
-    elevation: 4,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    color: PALETTE.text,
-    fontSize: 18,
-    fontFamily: TOKENS.font.heading,
-  },
-  sectionAction: {
-    color: PALETTE.primary,
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-  },
-  ratingSummary: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 16,
-  },
-  ratingValue: {
-    color: PALETTE.text,
-    fontSize: 28,
-    lineHeight: 34,
-    fontFamily: TOKENS.font.heading,
-  },
-  ratingCount: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    marginTop: 4,
-    fontFamily: TOKENS.font.medium,
-  },
-  ratingStarsWrap: { alignItems: "flex-end", gap: 8 },
-  ratingStars: { flexDirection: "row", gap: 2 },
-  openStateText: { fontSize: 13, fontFamily: TOKENS.font.semibold },
-  description: {
-    color: PALETTE.textMuted,
-    fontSize: 14,
-    lineHeight: 24,
-    fontFamily: TOKENS.font.body,
-  },
-  infoRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  infoText: {
-    flex: 1,
-    color: PALETTE.textMuted,
-    fontSize: 14,
-    lineHeight: 22,
-    fontFamily: TOKENS.font.body,
-  },
-  openingHoursList: { gap: 8 },
-  openingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: PALETTE.surfaceAlt,
-  },
-  openingRowActive: { backgroundColor: PALETTE.primarySoft },
-  openingDay: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-  },
-  openingDayActive: {
-    color: PALETTE.primaryDark,
-    fontFamily: TOKENS.font.semibold,
-  },
-  openingLabel: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-  },
-  openingLabelActive: {
-    color: PALETTE.primaryDark,
-    fontFamily: TOKENS.font.semibold,
-  },
-  emptyReviewText: {
-    color: PALETTE.textMuted,
-    fontSize: 14,
-    textAlign: "center",
-    paddingVertical: 18,
-    fontFamily: TOKENS.font.medium,
-  },
-  seeAllReviewsButton: {
-    height: 48,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: PALETTE.border,
-    backgroundColor: PALETTE.primarySoft,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginTop: 4,
-  },
-  seeAllReviewsText: {
-    color: PALETTE.primaryDark,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  reviewCard: {
-    padding: 16,
-    borderRadius: 20,
-    backgroundColor: PALETTE.surfaceAlt,
-    marginBottom: 10,
-  },
-  reviewHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
-  reviewAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.primarySoft,
-  },
-  reviewAvatarImage: { width: 44, height: 44 },
-  reviewAvatarFallback: {
-    color: PALETTE.primaryDark,
-    fontSize: 16,
-    fontFamily: TOKENS.font.heading,
-  },
-  reviewMeta: { flex: 1 },
-  reviewAuthorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  reviewAuthor: {
-    color: PALETTE.text,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  verifiedReviewBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    borderRadius: 999,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    backgroundColor: "#ECFDF5",
-  },
-  verifiedReviewText: {
-    color: PALETTE.success,
-    fontSize: 10,
-    fontFamily: TOKENS.font.semibold,
-  },
-  reviewStars: { flexDirection: "row", gap: 1, marginTop: 2 },
-  reviewDate: {
-    color: PALETTE.textSoft,
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-  },
-  reviewContent: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    lineHeight: 21,
-    marginTop: 12,
-    fontFamily: TOKENS.font.body,
-  },
-  reviewMediaScroller: { marginTop: 12 },
-  reviewMediaList: { gap: 8, paddingRight: 4 },
-  reviewMediaImage: {
-    width: 92,
-    height: 92,
-    borderRadius: 16,
-    backgroundColor: PALETTE.borderSoft,
-  },
-  reviewReplyList: {
-    gap: 8,
-    marginTop: 12,
-  },
-  reviewReplyCard: {
-    borderLeftWidth: 3,
-    borderLeftColor: PALETTE.primary,
-    borderRadius: 16,
-    padding: 12,
-    backgroundColor: "#FFFFFF",
-  },
-  reviewReplyHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 6,
-  },
-  reviewReplyAuthor: {
-    color: PALETTE.primaryDark,
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-  },
-  reviewReplyContent: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    lineHeight: 20,
-    fontFamily: TOKENS.font.body,
-  },
-  reviewSheetBackground: {
-    backgroundColor: PALETTE.surface,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-  },
-  reviewSheetIndicator: {
-    width: 42,
-    backgroundColor: PALETTE.border,
-  },
-  reviewSheetContent: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 32,
-  },
-  allReviewsSheet: {
-    flex: 1,
-    paddingHorizontal: 18,
-    paddingTop: 8,
-  },
-  allReviewsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 14,
-  },
-  reviewFilterWrap: {
-    marginHorizontal: -18,
-    marginBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: PALETTE.borderSoft,
-    paddingBottom: 12,
-  },
-  reviewFilterRow: {
-    gap: 8,
-    paddingHorizontal: 18,
-  },
-  reviewFilterChip: {
-    minHeight: 36,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: PALETTE.border,
-    backgroundColor: PALETTE.surfaceAlt,
-    paddingHorizontal: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  reviewFilterChipActive: {
-    borderColor: PALETTE.primary,
-    backgroundColor: PALETTE.primary,
-  },
-  reviewFilterText: {
-    color: PALETTE.textMuted,
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-  },
-  reviewFilterTextActive: {
-    color: "#FFFFFF",
-  },
-  allReviewsList: {
-    paddingBottom: 32,
-  },
-  allReviewsEmpty: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  reviewModalBackdrop: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(15,23,42,0.38)",
-  },
-  reviewModalScrim: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  reviewKeyboardAvoider: {
-    width: "100%",
-    justifyContent: "flex-end",
-  },
-  reviewModalCard: {
-    maxHeight: "88%",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 24,
-    backgroundColor: PALETTE.surface,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: -12 },
-    shadowOpacity: 0.16,
-    shadowRadius: 28,
-    elevation: 18,
-  },
-  reviewModalContent: {
-    paddingBottom: 8,
-  },
-  reviewModalHandle: {
-    alignSelf: "center",
-    width: 44,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: PALETTE.border,
-    marginBottom: 16,
-  },
-  reviewModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 14,
-  },
-  reviewModalTitle: {
-    color: PALETTE.text,
-    fontSize: 20,
-    fontFamily: TOKENS.font.heading,
-  },
-  reviewModalSubtitle: {
-    color: PALETTE.textMuted,
-    fontSize: 13,
-    marginTop: 4,
-    fontFamily: TOKENS.font.body,
-  },
-  reviewModalClose: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.surfaceAlt,
-  },
-  reviewRatingPicker: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginBottom: 16,
-  },
-  reviewInput: {
-    minHeight: 48,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: PALETTE.border,
-    backgroundColor: PALETTE.surfaceAlt,
-    color: PALETTE.text,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    fontFamily: TOKENS.font.body,
-    marginBottom: 10,
-  },
-  reviewContentInput: {
-    minHeight: 104,
-    lineHeight: 21,
-  },
-  reviewImageHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 4,
-    marginBottom: 10,
-  },
-  reviewImageTitle: {
-    color: PALETTE.text,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  reviewImageCount: {
-    color: PALETTE.textMuted,
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-  },
-  reviewPickerList: { gap: 10, paddingRight: 4 },
-  reviewPickItem: {
-    width: 82,
-    height: 82,
-    borderRadius: 18,
-    overflow: "hidden",
-    backgroundColor: PALETTE.borderSoft,
-  },
-  reviewPickImage: { width: 82, height: 82 },
-  reviewPickRemove: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(15,23,42,0.72)",
-  },
-  reviewAddImageButton: {
-    width: 82,
-    height: 82,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: PALETTE.primary,
-    backgroundColor: PALETTE.primarySoft,
-  },
-  reviewAddImageText: {
-    color: PALETTE.primaryDark,
-    fontSize: 11,
-    fontFamily: TOKENS.font.semibold,
-  },
-  reviewSubmitButton: {
-    height: 54,
-    borderRadius: 27,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.primary,
-    marginTop: 18,
-  },
-  reviewSubmitButtonDisabled: {
-    opacity: 0.75,
-  },
-  reviewSubmitText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-  },
-  bottomBar: {
-    position: "absolute",
-    left: 14,
-    right: 14,
-    bottom: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    backgroundColor: "rgba(255,255,255,0.75)",
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 28,
-    elevation: 12,
-    overflow: "hidden",
-  },
-  bottomIconButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.85)",
-    borderWidth: 1,
-    borderColor: PALETTE.borderSoft,
-  },
-  bottomSecondaryButton: {
-    flex: 1,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-    backgroundColor: "rgba(239, 246, 255, 0.9)",
-  },
-  bottomSecondaryText: {
-    color: PALETTE.primaryDark,
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-  },
-  bottomPrimaryButton: {
-    flex: 1.2,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PALETTE.primary,
-  },
-  bottomPrimaryText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-  },
-  sheetBackground: {
-    backgroundColor: "#0D1117",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: GLASS_THEME.glassBorder,
-  },
-  sheetIndicator: { backgroundColor: "rgba(255,255,255,0.3)", width: 36 },
-  tripSheet: { flex: 1, paddingHorizontal: 20, paddingTop: 8 },
-  tripSheetHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 18,
-  },
-  tripSheetTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontFamily: TOKENS.font.heading,
-  },
-  tripSheetSubtitle: {
-    color: GLASS_THEME.textSecondary,
-    fontSize: 13,
-    marginTop: 4,
-    fontFamily: TOKENS.font.body,
-  },
-  tripSheetClose: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
-  },
-  emptyTripState: { alignItems: "center", paddingVertical: 28, gap: 12 },
-  emptyTripText: {
-    color: GLASS_THEME.textSecondary,
-    textAlign: "center",
-    fontFamily: TOKENS.font.body,
-  },
-  createTripButton: {
-    backgroundColor: GLASS_THEME.neon,
-    borderRadius: 18,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  createTripButtonText: {
-    color: "#03131A",
-    fontSize: 13,
-    fontFamily: TOKENS.font.heading,
-  },
-  tripItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: 18,
-    backgroundColor: GLASS_THEME.glass,
-    borderWidth: 1,
-    borderColor: GLASS_THEME.glassBorder,
-    marginBottom: 10,
-  },
-  tripItemIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,240,255,0.08)",
-  },
-  tripItemTitle: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-  tripItemMeta: {
-    color: GLASS_THEME.textSecondary,
-    fontSize: 12,
-    marginTop: 2,
-    fontFamily: TOKENS.font.body,
-  },
-  tripSecondaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: 14,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: GLASS_THEME.glassBorderStrong,
-    marginTop: 4,
-  },
-  tripSecondaryButtonText: {
-    color: GLASS_THEME.neonAccent,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-  },
-});

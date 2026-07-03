@@ -1,17 +1,16 @@
-import { useCallback } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
   Share,
-  StyleSheet,
   Text,
   View,
+  Animated,
 } from "react-native";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useProfile } from "../../src/modules/profile/hooks/useProfile";
@@ -19,22 +18,25 @@ import { useAuthStore } from "../../src/stores/authStore";
 import { useTrips } from "../../src/modules/trips/hooks/useTrips";
 import { TOKENS } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "./_layout";
-import { TAB_SCREEN_PADDING, TAB_THEME } from "./tabTheme";
 import { UpcomingTripCard } from "../../src/modules/profile/components/UpcomingTripCard";
 import { MemoriesSection } from "../../src/modules/profile/components/MemoriesSection";
 import { resolveMediaUrl } from "../../src/lib/media-url";
+import { NotificationBell } from "../../src/components/composed/NotificationBell";
+import { locationService } from "../../src/apis/locationService";
+import { useTranslation } from "react-i18next";
+import * as Settings from "../../src/components/reacticx/settings-v1/components";
 
 const ACCENT_BLUE = "#3478F6";
 
 /* ====================== HELPERS ====================== */
-function getDisplayName(profile, storedUser) {
+function getDisplayName(profile, storedUser, t) {
   return (
     profile?.fullName ||
     profile?.profile?.fullName ||
     storedUser?.profile?.fullName ||
     storedUser?.fullName ||
     storedUser?.email?.split("@")[0] ||
-    "Lữ khách"
+    t("profile.guestDefault")
   );
 }
 
@@ -48,13 +50,13 @@ function getAvatarUri(profile, storedUser) {
   );
 }
 
-function getLocation(profile, storedUser) {
+function getLocation(profile, storedUser, t) {
   return (
     profile?.address ||
     profile?.profile?.address ||
     storedUser?.profile?.address ||
     storedUser?.address ||
-    "Chưa cập nhật địa chỉ"
+    t("profile.noAddress")
   );
 }
 
@@ -74,58 +76,147 @@ function formatCompactNumber(value) {
   return String(num);
 }
 
-function buildStats(profile, storedUser, tripsCount = 0) {
-  const reviewsCount = profile?.stats?.reviewsCount || 0;
-  const savedCount = profile?.stats?.savedCount || 0;
+function buildStats(profile, storedUser, tripsCount = 0, t) {
+  const reviewsCount = profile?.stats?.reviews || 0;
+  const savedCount = profile?.stats?.favorites || 0;
+  const finalTripsCount = profile?.stats?.trips ?? tripsCount;
 
   return [
     {
       key: "trips",
-      value: formatCompactNumber(tripsCount),
-      label: "CHUYẾN ĐI",
+      value: formatCompactNumber(finalTripsCount),
+      label: t("profile.stats.trips"),
     },
     {
       key: "reviews",
       value: formatCompactNumber(reviewsCount),
-      label: "ĐÁNH GIÁ",
+      label: t("profile.stats.reviews"),
     },
     {
       key: "saved",
       value: formatCompactNumber(savedCount),
-      label: "ĐÃ LƯU",
+      label: t("profile.stats.saved"),
     },
   ];
 }
 
+function CustomToast({ message, visible, onHide }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+
+      const timer = setTimeout(() => {
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }).start(() => onHide());
+      }, 2500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [visible, opacity, onHide]);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        bottom: 120,
+        left: 24,
+        right: 24,
+        opacity,
+        zIndex: 9999,
+        transform: [
+          {
+            translateY: opacity.interpolate({
+              inputRange: [0, 1],
+              outputRange: [15, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      <View
+        className="flex-row items-center gap-3 rounded-2xl border px-4 py-3 bg-slate-900 border-slate-800"
+        style={{
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.12,
+          shadowRadius: 10,
+          elevation: 5,
+        }}
+      >
+        <MaterialIconsRounded name="info-outline" size={20} color="#F59E0B" style={{ marginRight: 6 }} />
+        <Text
+          style={{ fontFamily: TOKENS.font.medium }}
+          className="text-white text-[13.5px] flex-1 leading-5"
+        >
+          {message}
+        </Text>
+      </View>
+    </Animated.View>
+  );
+}
+
 /* ====================== SUB COMPONENTS ====================== */
 function ProfileHeader({ onSettingsPress }) {
+  const { t } = useTranslation();
   const router = useRouter();
   return (
-    <View style={styles.header}>
-      <Pressable onPress={() => router.back()} style={styles.backBtn}>
-        <MaterialIcons name="arrow-back" size={26} color="#0F172A" />
+    <View className="flex-row items-center justify-between px-5 py-[14px]">
+      <Pressable onPress={() => router.back()} className="p-1">
+        <MaterialIconsRounded name="arrow-back" size={26} color="#0F172A" />
       </Pressable>
-      <Text style={styles.headerTitle}>HỒ SƠ</Text>
-      <Pressable onPress={onSettingsPress} style={styles.settingsBtn}>
-        <MaterialIcons name="settings" size={26} color="#64748B" />
-      </Pressable>
+      <Text
+        style={{ fontFamily: TOKENS.font.semibold }}
+        className="text-lg text-[#0F172A]"
+      >
+        {t("profile.title")}
+      </Text>
+      <View className="flex-row items-center gap-[10px]">
+        <NotificationBell size={42} />
+        <Pressable onPress={onSettingsPress} className="p-1">
+          <MaterialIconsRounded name="settings" size={26} color="#64748B" />
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 function AvatarBlock({ avatarUri, displayName }) {
   return (
-    <View style={styles.avatarContainer}>
-      <View style={styles.avatarRing}>
+    <View className="items-center mt-3">
+      <View
+        className="w-[118px] h-[118px] rounded-full bg-white p-1"
+        style={{
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.1,
+          shadowRadius: 16,
+          elevation: 10,
+        }}
+      >
         {avatarUri ? (
           <Image
             source={{ uri: avatarUri }}
-            style={styles.avatar}
+            style={{ width: 110, height: 110, borderRadius: 55 }}
+            className="w-[110px] h-[110px] rounded-full"
             contentFit="cover"
           />
         ) : (
-          <View style={styles.avatarFallback}>
-            <Text style={styles.avatarFallbackText}>
+          <View className="w-[110px] h-[110px] rounded-full bg-[#E0F0FF] items-center justify-center">
+            <Text
+              style={{ fontFamily: TOKENS.font.heading }}
+              className="text-[46px] text-[#3478F6]"
+            >
               {displayName[0]?.toUpperCase()}
             </Text>
           </View>
@@ -135,47 +226,65 @@ function AvatarBlock({ avatarUri, displayName }) {
   );
 }
 
-function SettingsSection() {
+function SettingsSection({ onSoonFeature }) {
+  const { t } = useTranslation();
   const router = useRouter();
 
   const settingsItems = [
     {
       icon: "confirmation-number",
-      label: "Booking của tôi",
+      iconColor: "#8E8E93",
+      label: t("profile.settingsItems.myBookings"),
       route: "/profile/bookings",
     },
     {
       icon: "bookmark",
-      label: "Địa điểm đã lưu",
+      iconColor: "#8E8E93",
+      label: t("profile.settingsItems.savedPlaces"),
       route: "/(tabs)/saved",
     },
     {
       icon: "credit-card",
-      label: "Phương thức thanh toán",
-      route: "/profile/payment-methods",
+      iconColor: "#8E8E93",
+      label: t("profile.settingsItems.paymentMethods"),
+      onPress: () => onSoonFeature(t("profile.settingsItems.paymentMethods")),
     },
     {
       icon: "notifications",
-      label: "Thông báo",
+      iconColor: "#8E8E93",
+      label: t("profile.settingsItems.notifications"),
       route: "/profile/notifications",
     },
   ];
 
   return (
-    <View style={styles.settingsContainer}>
-      <Text style={styles.sectionTitle}>Cài đặt</Text>
-      <View style={styles.settingsList}>
-        {settingsItems.map((item, index) => (
-          <Pressable
-            key={index}
-            style={styles.settingItem}
-            onPress={() => router.push(item.route)}
-          >
-            <MaterialIcons name={item.icon} size={24} color="#64748B" />
-            <Text style={styles.settingLabel}>{item.label}</Text>
-            <MaterialIcons name="chevron-right" size={24} color="#64748B" />
-          </Pressable>
-        ))}
+    <View style={{ marginTop: 8 }}>
+      <Text style={{ fontFamily: TOKENS.font.semibold, fontSize: 20, color: "#0F172A" }}>
+        {t("profile.settings")}
+      </Text>
+      <View style={{ marginTop: 12 }}>
+        <Settings.Group style={{ backgroundColor: "#FFFFFF", borderRadius: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}>
+          {settingsItems.map((item) => (
+            <Settings.Item
+              key={item.label}
+              onPress={item.onPress || (() => router.push(item.route))}
+              style={{ minHeight: 52, paddingVertical: 4 }}
+            >
+              <Settings.Icon
+                icon={<MaterialIconsRounded name={item.icon} size={18} color="#FFFFFF" />}
+                color={item.iconColor}
+                size={30}
+                borderRadius={8}
+              />
+              <Settings.Content>
+                <Settings.Title style={{ color: "#0F172A", fontSize: 16, fontFamily: TOKENS.font.medium }}>
+                  {item.label}
+                </Settings.Title>
+              </Settings.Content>
+              <Settings.Chevron color="#C7C7CC" size={14} />
+            </Settings.Item>
+          ))}
+        </Settings.Group>
       </View>
     </View>
   );
@@ -183,6 +292,7 @@ function SettingsSection() {
 
 /* ====================== MAIN ====================== */
 export default function ProfileScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const storedUser = useAuthStore((s) => s.user);
@@ -193,24 +303,30 @@ export default function ProfileScreen() {
 
   if (!isLoggedIn) {
     return (
-      <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <View
+        className="flex-1 bg-[#F8FAFC]"
+        style={{ paddingTop: insets.top }}
+      >
         <ProfileHeader
           onSettingsPress={() => router.push("/profile/settings")}
         />
         <ScrollView
-          style={styles.guestScroll}
-          contentContainerStyle={[
-            styles.guestContainer,
-            { paddingBottom: TAB_BAR_HEIGHT + 32 },
-          ]}
+          className="flex-1 bg-[#F8FAFC]"
+          contentContainerStyle={{
+            flexGrow: 1,
+            alignItems: "center",
+            paddingHorizontal: 28,
+            justifyContent: "center",
+            paddingBottom: TAB_BAR_HEIGHT + 32,
+          }}
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
           {/* Icon block */}
-          <View style={styles.guestIconOuter}>
-            <View style={styles.guestIconRing} />
-            <View style={styles.guestIconWrap}>
-              <MaterialIcons
+          <View className="items-center justify-center mb-7">
+            <View className="absolute w-[120px] h-[120px] rounded-full bg-[#3478F6]/[0.08]" />
+            <View className="w-[88px] h-[88px] rounded-[26px] items-center justify-center bg-[#EAF2FF]">
+              <MaterialIconsRounded
                 name="person-outline"
                 size={40}
                 color={ACCENT_BLUE}
@@ -219,14 +335,21 @@ export default function ProfileScreen() {
           </View>
 
           {/* Text */}
-          <Text style={styles.guestTitle}>Đăng nhập để mở khóa hồ sơ</Text>
-          <Text style={styles.guestSubtitle}>
-            Theo dõi chuyến đi, lưu kỷ niệm và đồng bộ dữ liệu trên mọi thiết
-            bị.
+          <Text
+            style={{ fontFamily: TOKENS.font.heading }}
+            className="text-2xl text-[#0F172A] text-center mb-[10px]"
+          >
+            {t("profile.guest.title")}
+          </Text>
+          <Text
+            style={{ fontFamily: TOKENS.font.regular }}
+            className="text-[15px] text-[#64748B] text-center leading-[23px] max-w-[320px]"
+          >
+            {t("profile.guest.description")}
           </Text>
 
           {/* Divider */}
-          <View style={styles.guestDivider} />
+          <View className="w-12 h-[3px] rounded-full bg-[#E2E8F0] my-7" />
 
           {/* Nút đăng nhập */}
           <Pressable
@@ -235,12 +358,24 @@ export default function ProfileScreen() {
               router.navigate("/(auth)/login");
             }}
             style={({ pressed }) => [
-              styles.guestPrimaryBtn,
-              pressed && styles.guestPressedScale,
+              {
+                shadowColor: ACCENT_BLUE,
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.35,
+                shadowRadius: 10,
+                elevation: 6,
+              },
+              pressed && { opacity: 0.88, transform: [{ scale: 0.975 }] },
             ]}
+            className="flex-row items-center justify-center gap-2 w-full py-4 rounded-full bg-[#3478F6] mb-3"
           >
-            <MaterialIcons name="login" size={18} color="#fff" />
-            <Text style={styles.guestPrimaryText}>Đăng nhập</Text>
+            <MaterialIconsRounded name="login" size={18} color="#fff" />
+            <Text
+              style={{ fontFamily: TOKENS.font.semibold }}
+              className="text-[15px] text-white tracking-[0.2px]"
+            >
+              {t("profile.guest.login")}
+            </Text>
           </Pressable>
 
           {/* Nút đăng ký */}
@@ -250,28 +385,46 @@ export default function ProfileScreen() {
               router.navigate("/(auth)/register");
             }}
             style={({ pressed }) => [
-              styles.guestRegisterBtn,
-              pressed && styles.guestPressedScale,
+              {
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.22,
+                shadowRadius: 10,
+                elevation: 6,
+              },
+              pressed && { opacity: 0.88, transform: [{ scale: 0.975 }] },
             ]}
+            className="flex-row items-center justify-center gap-2 w-full py-4 rounded-full bg-[#0F172A] mb-3"
           >
-            <MaterialIcons name="person-add-alt-1" size={18} color="#fff" />
-            <Text style={styles.guestRegisterText}>Đăng ký tài khoản mới</Text>
+            <MaterialIconsRounded name="person-add-alt-1" size={18} color="#fff" />
+            <Text
+              style={{ fontFamily: TOKENS.font.semibold }}
+              className="text-[15px] text-white tracking-[0.2px]"
+            >
+              {t("profile.guest.register")}
+            </Text>
           </Pressable>
 
           {/* Nút khám phá */}
           <Pressable
             onPress={() => router.push("/(tabs)/map")}
-            style={({ pressed }) => [
-              styles.guestSecondaryBtn,
-              pressed && styles.guestPressedScale,
-            ]}
+            style={({ pressed }) => pressed && { opacity: 0.88, transform: [{ scale: 0.975 }] }}
+            className="flex-row items-center justify-center gap-2 w-full py-4 rounded-full border-[1.5px] border-[#CBD5E1] bg-white"
           >
-            <Text style={styles.guestSecondaryText}>Khám phá bản đồ</Text>
+            <Text
+              style={{ fontFamily: TOKENS.font.semibold }}
+              className="text-[#334155] text-[15px] tracking-[0.2px]"
+            >
+              {t("profile.guest.explore")}
+            </Text>
           </Pressable>
 
           {/* Hint */}
-          <Text style={styles.guestHint}>
-            Miễn phí · Không cần thẻ tín dụng
+          <Text
+            style={{ fontFamily: TOKENS.font.regular }}
+            className="mt-[18px] text-xs text-[#94A3B8] text-center"
+          >
+            {t("profile.guest.freeNote")}
           </Text>
         </ScrollView>
       </View>
@@ -282,16 +435,77 @@ export default function ProfileScreen() {
 }
 
 function LoggedInProfileScreen({ insets, storedUser }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { data: profile, isLoading, refetch, isRefetching } = useProfile(true);
   const { data: trips = [] } = useTrips(true);
+  const [displayLocation, setDisplayLocation] = useState(t("profile.loadingAddress"));
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
 
-  const displayName = getDisplayName(profile, storedUser);
+  const handleSoonFeature = (title) => {
+    setToastMessage(t("profile.comingSoon", { feature: title }));
+    setToastVisible(true);
+  };
+
+  const displayName = getDisplayName(profile, storedUser, t);
   const avatarUri = getAvatarUri(profile, storedUser);
-  const location = getLocation(profile, storedUser);
   const bio = getBio(profile, storedUser);
   const tripsCount = trips?.length || 0;
-  const stats = buildStats(profile, storedUser, tripsCount);
+  const stats = buildStats(profile, storedUser, tripsCount, t);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadFullAddress() {
+      const addressDetail = profile?.address || profile?.profile?.address || "";
+      const pCode = profile?.provinceCode || profile?.profile?.provinceCode || "";
+      const dCode = profile?.districtCode || profile?.profile?.districtCode || "";
+
+      if (!pCode) {
+        if (isMounted) {
+          setDisplayLocation(addressDetail || t("profile.noAddress"));
+        }
+        return;
+      }
+
+      try {
+        // Lấy tên tỉnh
+        const provinces = await locationService.getAllProvinces();
+        const province = provinces.find((p) => p.province_code === pCode);
+        const provinceName = province ? province.name : "";
+
+        let districtName = "";
+        if (dCode) {
+          // Lấy tên huyện
+          const districts = await locationService.getWardsByProvince(pCode);
+          const district = districts.find((d) => d.ward_code === dCode);
+          districtName = district ? district.ward_name : "";
+        }
+
+        const parts = [];
+        if (addressDetail) parts.push(addressDetail);
+        if (districtName) parts.push(districtName);
+        if (provinceName) parts.push(provinceName);
+
+        const fullAddress = parts.join(", ");
+        if (isMounted) {
+          setDisplayLocation(fullAddress || t("profile.noAddress"));
+        }
+      } catch (error) {
+        console.error("Error loading address labels:", error);
+        if (isMounted) {
+          setDisplayLocation(addressDetail || t("profile.noAddress"));
+        }
+      }
+    }
+
+    loadFullAddress();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [profile?.address, profile?.provinceCode, profile?.districtCode]);
 
   const upcomingTrip =
     trips.find((t) => t?.status !== "completed" && t?.status !== "cancelled") ||
@@ -303,23 +517,26 @@ function LoggedInProfileScreen({ insets, storedUser }) {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Check out ${displayName}'s profile on Đi Đâu Giờ!`,
+        message: t("profile.shareMessage", { name: displayName }),
       });
     } catch {}
   };
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <View
+      className="flex-1 bg-[#F8FAFC]"
+      style={{ paddingTop: insets.top }}
+    >
       <ProfileHeader onSettingsPress={() => router.push("/profile/settings")} />
 
       {isLoading ? (
-        <View style={styles.loadingWrap}>
+        <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={ACCENT_BLUE} />
         </View>
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 84 }}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
           }
@@ -328,46 +545,103 @@ function LoggedInProfileScreen({ insets, storedUser }) {
           <AvatarBlock avatarUri={avatarUri} displayName={displayName} />
 
           {/* Name + Location */}
-          <Text style={styles.username}>{displayName}</Text>
+          <Text
+            style={{ fontFamily: TOKENS.font.heading }}
+            className="text-center text-2xl text-[#0F172A] mt-4"
+          >
+            {displayName}
+          </Text>
           {bio ? (
-            <Text style={styles.bioText} numberOfLines={2}>
+            <Text
+              style={{ fontFamily: TOKENS.font.regular }}
+              className="text-center mt-1.5 px-8 text-sm leading-5 text-[#475569]"
+              numberOfLines={2}
+            >
               {bio}
             </Text>
           ) : null}
-          <View style={styles.locationPill}>
-            <MaterialIcons name="location-on" size={16} color={ACCENT_BLUE} />
-            <Text style={styles.locationText}>{location}</Text>
+          <View className="flex-row items-center gap-1.5 self-center mt-1.5">
+            <MaterialIconsRounded name="location-on" size={16} color={ACCENT_BLUE} />
+            <Text
+              style={{ fontFamily: TOKENS.font.semibold }}
+              className="text-[13px] text-[#3478F6] text-center px-6"
+            >
+              {displayLocation}
+            </Text>
           </View>
 
           {/* Buttons */}
-          <View style={styles.actionRow}>
+          <View className="flex-row gap-3 px-6 mt-6">
             <Pressable
               onPress={() => router.push("/profile/edit")}
-              style={styles.primaryBtn}
+              className="flex-1 bg-[#3478F6] py-[15px] rounded-full items-center"
             >
-              <Text style={styles.primaryBtnText}>Chỉnh sửa hồ sơ</Text>
+              <Text
+                style={{ fontFamily: TOKENS.font.semibold }}
+                className="text-white text-[15px]"
+              >
+                {t("profile.actions.editProfile")}
+              </Text>
             </Pressable>
-            <Pressable onPress={handleShare} style={styles.outlineBtn}>
-              <Text style={styles.outlineBtnText}>Chia sẻ hồ sơ</Text>
+            <Pressable
+              onPress={handleShare}
+              className="flex-1 border-[1.5px] border-[#CBD5E1] py-[15px] rounded-full items-center"
+            >
+              <Text
+                style={{ fontFamily: TOKENS.font.semibold }}
+                className="text-[#334155] text-[15px]"
+              >
+                {t("profile.actions.shareProfile")}
+              </Text>
             </Pressable>
           </View>
 
           {/* Stats - exactly like mockup */}
-          <View style={styles.statsRow}>
+          <View className="flex-row gap-3 px-6 mt-7">
             {stats.map((stat) => (
-              <View key={stat.key} style={styles.statBox}>
-                <Text style={styles.statNumber}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
+              <View
+                key={stat.key}
+                className="flex-1 bg-white rounded-2xl py-[18px] items-center"
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 10,
+                  elevation: 3,
+                }}
+              >
+                <Text
+                  style={{ fontFamily: TOKENS.font.heading }}
+                  className="text-[26px] text-[#0F172A]"
+                >
+                  {stat.value}
+                </Text>
+                <Text
+                  style={{ fontFamily: TOKENS.font.medium }}
+                  className="text-[10.5px] text-[#64748B] mt-1.5 uppercase"
+                >
+                  {stat.label}
+                </Text>
               </View>
             ))}
           </View>
 
           {/* Upcoming Trip - exactly like first image */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Chuyến đi sắp tới</Text>
+          <View className="mt-6 px-6">
+            <View className="flex-row justify-between items-center mb-3">
+              <Text
+                style={{ fontFamily: TOKENS.font.semibold }}
+                className="text-xl text-[#0F172A]"
+              >
+                {t("profile.upcomingTrips")}
+              </Text>
               <Pressable onPress={() => router.push("/(tabs)/trips")}>
-                <Text style={styles.viewAll}>Xem tất cả</Text>
+                <Text
+                  style={{ fontFamily: TOKENS.font.semibold }}
+                  className="text-[15px] text-[#3478F6]"
+                >
+                  {t("common.viewAll")}
+                </Text>
               </Pressable>
             </View>
             {upcomingTrip ? (
@@ -377,20 +651,10 @@ function LoggedInProfileScreen({ insets, storedUser }) {
               />
             ) : (
               <View
-                style={[
-                  styles.upcomingCard,
-                  {
-                    height: 120,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "#FFFFFF",
-                    borderWidth: 1,
-                    borderColor: "#E2E8F0",
-                    elevation: 0,
-                  },
-                ]}
+                className="items-center justify-center bg-white border border-[#E2E8F0] rounded-2xl"
+                style={{ height: 120 }}
               >
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="travel-explore"
                   size={28}
                   color="#CBD5E1"
@@ -402,345 +666,34 @@ function LoggedInProfileScreen({ insets, storedUser }) {
                     fontFamily: TOKENS.font.medium,
                   }}
                 >
-                  Chưa có chuyến đi nào sắp tới
+                  {t("profile.noUpcomingTrips")}
                 </Text>
               </View>
             )}
           </View>
 
           {/* Memories - exactly like second image */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Kỷ niệm</Text>
+          <View className="mt-6 px-6">
+            <Text
+              style={{ fontFamily: TOKENS.font.semibold }}
+              className="text-xl text-[#0F172A]"
+            >
+              {t("profile.memories")}
+            </Text>
             <MemoriesSection completedTrips={completedTrips} />
           </View>
 
           {/* Settings - exactly like second image */}
-          <View style={styles.section}>
-            <SettingsSection />
+          <View className="mt-6 px-6">
+            <SettingsSection onSoonFeature={handleSoonFeature} />
           </View>
         </ScrollView>
       )}
+      <CustomToast
+        message={toastMessage}
+        visible={toastVisible}
+        onHide={() => setToastVisible(false)}
+      />
     </View>
   );
 }
-
-/* ====================== STYLES (pixel-perfect with mockup) ====================== */
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F8FAFC" },
-  scrollContent: { paddingBottom: TAB_BAR_HEIGHT + 60 },
-
-  guestScroll: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-  guestContainer: {
-    flexGrow: 1,
-    alignItems: "center",
-    paddingHorizontal: 28,
-    justifyContent: "center",
-  },
-
-  guestIconOuter: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 28,
-  },
-  guestIconRing: {
-    position: "absolute",
-    width: 120,
-    height: 120,
-    borderRadius: 999,
-    backgroundColor: "rgba(52,120,246,0.08)",
-  },
-  guestIconWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#EAF2FF",
-  },
-  guestTitle: {
-    fontSize: 24,
-    fontFamily: TOKENS.font.heading,
-    color: "#0F172A",
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  guestSubtitle: {
-    fontSize: 15,
-    fontFamily: TOKENS.font.regular,
-    color: "#64748B",
-    textAlign: "center",
-    lineHeight: 23,
-    maxWidth: 320,
-  },
-
-  guestDivider: {
-    width: 48,
-    height: 3,
-    borderRadius: 999,
-    backgroundColor: "#E2E8F0",
-    marginVertical: 28,
-  },
-
-  guestPrimaryBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    width: "100%",
-    paddingVertical: 16,
-    borderRadius: 999,
-    backgroundColor: ACCENT_BLUE,
-    marginBottom: 12,
-    shadowColor: ACCENT_BLUE,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  guestPrimaryText: {
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-    color: "#FFFFFF",
-    letterSpacing: 0.2,
-  },
-
-  guestRegisterBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    width: "100%",
-    paddingVertical: 16,
-    borderRadius: 999,
-    backgroundColor: "#0F172A",
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  guestRegisterText: {
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-    color: "#FFFFFF",
-    letterSpacing: 0.2,
-  },
-
-  guestSecondaryBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    width: "100%",
-    paddingVertical: 16,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: "#CBD5E1",
-    backgroundColor: "#FFFFFF",
-  },
-  guestSecondaryText: {
-    color: "#334155",
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.2,
-  },
-
-  guestPressedScale: {
-    opacity: 0.88,
-    transform: [{ scale: 0.975 }],
-  },
-
-  guestHint: {
-    marginTop: 18,
-    fontSize: 12,
-    fontFamily: TOKENS.font.regular,
-    color: "#94A3B8",
-    textAlign: "center",
-  },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  backBtn: { padding: 4 },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: TOKENS.font.semibold,
-    color: "#0F172A",
-  },
-  settingsBtn: { padding: 4 },
-
-  avatarContainer: { alignItems: "center", marginTop: 12 },
-  avatarRing: {
-    width: 118,
-    height: 118,
-    borderRadius: 999,
-    backgroundColor: "#fff",
-    padding: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  avatar: { width: 110, height: 110, borderRadius: 999 },
-  avatarFallback: {
-    width: 110,
-    height: 110,
-    borderRadius: 999,
-    backgroundColor: "#E0F0FF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarFallbackText: {
-    fontSize: 46,
-    fontFamily: TOKENS.font.heading,
-    color: ACCENT_BLUE,
-  },
-
-  username: {
-    textAlign: "center",
-    fontSize: 24,
-    fontFamily: TOKENS.font.heading,
-    color: "#0F172A",
-    marginTop: 16,
-  },
-  bioText: {
-    textAlign: "center",
-    marginTop: 6,
-    paddingHorizontal: 32,
-    fontSize: 14,
-    lineHeight: 20,
-    color: "#475569",
-    fontFamily: TOKENS.font.regular,
-  },
-  locationPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    alignSelf: "center",
-    marginTop: 6,
-  },
-  locationText: {
-    fontSize: 13,
-    color: ACCENT_BLUE,
-    fontFamily: TOKENS.font.semibold,
-  },
-
-  actionRow: {
-    flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 24,
-    marginTop: 24,
-  },
-  primaryBtn: {
-    flex: 1,
-    backgroundColor: ACCENT_BLUE,
-    paddingVertical: 15,
-    borderRadius: 999,
-    alignItems: "center",
-  },
-  primaryBtnText: {
-    color: "#fff",
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-  },
-  outlineBtn: {
-    flex: 1,
-    borderWidth: 1.5,
-    borderColor: "#CBD5E1",
-    paddingVertical: 15,
-    borderRadius: 999,
-    alignItems: "center",
-  },
-  outlineBtnText: {
-    color: "#334155",
-    fontSize: 15,
-    fontFamily: TOKENS.font.semibold,
-  },
-
-  statsRow: {
-    flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 24,
-    marginTop: 28,
-  },
-  statBox: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  statNumber: {
-    fontSize: 26,
-    fontFamily: TOKENS.font.heading,
-    color: "#0F172A",
-  },
-  statLabel: {
-    fontSize: 10.5,
-    color: "#64748B",
-    marginTop: 6,
-    textTransform: "uppercase",
-    fontFamily: TOKENS.font.medium,
-  },
-
-  /* Section common */
-  section: { marginTop: 32, paddingHorizontal: 24 },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontFamily: TOKENS.font.semibold,
-    color: "#0F172A",
-  },
-  viewAll: {
-    fontSize: 15,
-    color: ACCENT_BLUE,
-    fontFamily: TOKENS.font.semibold,
-  },
-
-  /* Settings */
-  settingsContainer: { marginTop: 8 },
-  settingsList: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingVertical: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  settingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    gap: 16,
-  },
-  settingLabel: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: TOKENS.font.medium,
-    color: "#0F172A",
-  },
-
-  loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center" },
-});

@@ -1,0 +1,27 @@
+// https://docs.expo.dev/guides/using-eslint/
+const { defineConfig } = require('eslint/config');
+const expoConfig = require("eslint-config-expo/flat");
+
+module.exports = defineConfig([
+  expoConfig,
+  {
+    files: ["**/*.test.js"],
+    languageOptions: {
+      globals: {
+        describe: "readonly",
+        expect: "readonly",
+        test: "readonly",
+      },
+    },
+  },
+  {
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: "./jsconfig.json",
+        },
+      },
+    },
+    ignores: ["dist/*"],
+  }
+]);

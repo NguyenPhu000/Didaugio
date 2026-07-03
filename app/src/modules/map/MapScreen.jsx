@@ -1,39 +1,63 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Keyboard,
-  Modal,
   Pressable,
   StatusBar,
   Text,
   TextInput,
   View,
   LayoutAnimation,
-  Platform,
-  UIManager,
   useWindowDimensions,
 } from "react-native";
+import { useTranslation } from "react-i18next";
+import * as Location from "expo-location";
+import safeAsyncStorage from "../../utils/safeAsyncStorage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Marker } from "react-native-maps";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
+import { Image } from "expo-image";
+import { Alert } from "react-native";
+import { usePingEvent, useEventDetail, useCreateMoment } from "../explore/hooks/useEvents";
+import { MaterialIconsRounded } from "../../components/primitives/MaterialIconsRounded";
 import { useHomeData } from "./hooks/useHomeData";
 import { useMapPlaces } from "./hooks/useMapPlaces";
 import { useBoundaryData } from "./hooks/useBoundaryData";
 import { useFilterState } from "./hooks/useFilterState";
-import { useNavigationStateMachine } from "./hooks/useNavigationStateMachine";
-import { useRouteBuilderController } from "./hooks/useRouteBuilderController";
+import { useMapLocationTracker } from "./hooks/useMapLocationTracker";
+import { useNavigationController } from "./hooks/useNavigationController";
 import MapView from "./components/MapView";
-import RouteBuilderPanel from "./components/route-builder/RouteBuilderPanel";
-import ArrivalConfirmModal from "./components/navigation/ArrivalConfirmModal";
+import RoutePolyline from "./components/RoutePolyline";
+import SnapLine from "./components/SnapLine";
+import ArrivalBanner from "./components/navigation/ArrivalBanner";
+import ActiveTripNavBanner from "./components/navigation/ActiveTripNavBanner";
 import NavigationStatusBanner from "./components/navigation/NavigationStatusBanner";
+import NearbyWarningBanner from "./components/navigation/NearbyWarningBanner";
+import StartNavigationModal from "./components/navigation/StartNavigationModal";
+import TripCompleteModal from "./components/navigation/TripCompleteModal";
+import DepartureReminderBanner from "./components/navigation/DepartureReminderBanner";
+import {
+  buildManeuverLabel,
+  getManeuverIcon,
+  pickUpcomingStep,
+} from "./utils/maneuver";
+import {
+  useActiveTrip,
+  ARRIVAL_RADIUS_M,
+} from "../trips/hooks/useActiveTrip";
+import { buildTripDays } from "../trips/utils/tripHelpers";
+import { useDepartureAlerts } from "../trips/hooks/useDepartureAlerts";
+import { useTripDetail, useUpdateTrip } from "../trips/hooks/useTripDetail";
+import { sendLocalNotification } from "../../lib/local-notifications";
 import FilterGroupBar from "./components/filters/FilterGroupBar";
 import FilterPickerModal from "./components/filters/FilterPickerModal";
-import CurrentLocationMarker from "./components/map-overlays/CurrentLocationMarker";
-import RouteBuilderStopsMarkerLayer from "./components/map-overlays/RouteBuilderStopsMarkerLayer";
-import ActiveRouteLayer from "./components/map-overlays/ActiveRouteLayer";
 import { useMapRouting } from "./hooks/useMapRouting";
-import { AIEntryButton } from "../../components/composed/AIEntryButton";
+import { mapRoutingResponse } from "./hooks/routeMapping";
+import { calculateRouteApi } from "../../api/routingApi";
+import { Locate, Layers, X } from "lucide-react-native";
 import {
   PlacePreviewCard,
   getPlaceRatingValue,
@@ -42,7 +66,7 @@ import {
 import { trackEvent } from "../../lib/analytics";
 import { resolveMediaUrl } from "../../lib/media-url";
 import { useAuthStore } from "../../stores/authStore";
-import { DistrictLayer, WardLayer } from "./components/BoundaryLayer";
+import { ContextualBoundaryLayer } from "./components/BoundaryLayer";
 import {
   CATEGORY_MARKER_STYLES,
   DEFAULT_CATEGORY_ICON,
@@ -51,25 +75,33 @@ import {
   DEFAULT_MAP_STYLE,
 } from "./config/mapConfig";
 import { TOKENS } from "../../constants/design-tokens";
-import { FLOATING_TAB_CLEARANCE } from "../../../app/(tabs)/_layout";
+import {
+  FLOATING_TAB_CLEARANCE,
+} from "../../../app/(tabs)/_layout";
 import { ALL_AREAS_KEY } from "./constants/filter.constants";
-import { ROUTE_BUILDER_LONG_PRESS_PICK_RADIUS_M } from "./constants/routeBuilder.constants";
-import { NAVIGATION_EVENT_DEDUP_MS } from "./constants/navigation.constants";
+import {
+  NAVIGATION_EVENT_DEDUP_MS,
+  SCREEN_DIM_ACTIVATE_DISTANCE_M,
+  SCREEN_DIM_DEACTIVATE_DISTANCE_M,
+  SCREEN_DIM_OVERLAY_OPACITY,
+} from "./constants/navigation.constants";
 import { MAP_TEXT } from "./constants/mapText.constants";
 import { distanceMeters } from "./utils/distance";
 import {
   formatRouteDistance,
   formatRouteEta,
-} from "./utils/routeBuilderMapper";
+} from "./utils/routeFormat";
+import {
+  getVoiceMutedPreference,
+  setVoiceMutedPreference,
+  speakNavigationInstruction,
+  stopSpeech,
+} from "./utils/voiceGuidance";
 import { filterVisiblePlaces, getPlaceDistrictMeta } from "./utils/placeFilter";
-
-const isNewArchitectureEnabled = global?.nativeFabricUIManager != null;
-
-if (Platform.OS === "android" && !isNewArchitectureEnabled) {
-  if (UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-  }
-}
+import {
+  buildTripPreviewSegments,
+  buildTripPreviewStops,
+} from "./utils/tripRoutePreview";
 
 const MAP_UI_THEME = {
   background: TOKENS.color.neutral[900],
@@ -87,31 +119,14 @@ const MAP_UI_THEME = {
 
 const MAP_CANVAS_STYLE = {
   position: "absolute",
-  inset: 0,
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
   width: "100%",
   height: "100%",
 };
-const PLACE_SPATIAL_INDEX_CELL_DEGREES = 0.003;
-
-const getSpatialCellKey = (latitude, longitude) => {
-  const latCell = Math.floor(latitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
-  const lngCell = Math.floor(longitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
-  return `${latCell}:${lngCell}`;
-};
-
-const buildNearbySpatialKeys = (latitude, longitude) => {
-  const latCell = Math.floor(latitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
-  const lngCell = Math.floor(longitude / PLACE_SPATIAL_INDEX_CELL_DEGREES);
-  const keys = [];
-
-  for (let dLat = -1; dLat <= 1; dLat += 1) {
-    for (let dLng = -1; dLng <= 1; dLng += 1) {
-      keys.push(`${latCell + dLat}:${lngCell + dLng}`);
-    }
-  }
-
-  return keys;
-};
+const ARRIVING_SOON_RADIUS_M = 150;
 
 const GlassPanel = ({ style, children, intensity = 40 }) => (
   <BlurView
@@ -131,92 +146,18 @@ const GlassPanel = ({ style, children, intensity = 40 }) => (
   </BlurView>
 );
 
-const LayerSwitcherModal = ({ visible, onClose, currentStyle, onSelect }) => {
-  const options = Object.values(MAP_STYLES);
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <Pressable
-        className="flex-1 items-center justify-center"
-        style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
-        onPress={onClose}
-      >
-        <View
-          className="rounded-2xl p-4 w-[260px]"
-          style={{
-            elevation: 10,
-            backgroundColor: MAP_UI_THEME.backgroundElevated,
-            borderWidth: 1,
-            borderColor: MAP_UI_THEME.border,
-          }}
-        >
-          <Text
-            className="text-[15px] font-bold text-center mb-4"
-            style={{ color: MAP_UI_THEME.text }}
-          >
-            {MAP_TEXT.layerSwitcher.title}
-          </Text>
-          {options.map((opt) => {
-            const active = currentStyle.key === opt.key;
-            return (
-              <Pressable
-                key={opt.key}
-                onPress={() => {
-                  onSelect(opt);
-                  onClose();
-                }}
-                className="flex-row items-center gap-3 py-3 px-3 rounded-xl mb-1"
-                style={
-                  active
-                    ? { backgroundColor: "rgba(0,240,255,0.12)" }
-                    : undefined
-                }
-              >
-                <MaterialIcons
-                  name={
-                    opt.key === "satellite"
-                      ? "satellite"
-                      : opt.key === "osm"
-                        ? "map"
-                        : "layers"
-                  }
-                  size={22}
-                  color={
-                    active ? MAP_UI_THEME.neon : MAP_UI_THEME.textSecondary
-                  }
-                />
-                <Text
-                  className="text-[14px] font-medium flex-1"
-                  style={{
-                    color: active
-                      ? MAP_UI_THEME.text
-                      : MAP_UI_THEME.textSecondary,
-                  }}
-                >
-                  {opt.label}
-                </Text>
-                {active ? (
-                  <MaterialIcons
-                    name="check"
-                    size={20}
-                    color={MAP_UI_THEME.neon}
-                  />
-                ) : null}
-              </Pressable>
-            );
-          })}
-        </View>
-      </Pressable>
-    </Modal>
-  );
-};
+function buildLocalDateTime(ymd, hhmm) {
+  if (!ymd || !hhmm) return null;
+  const [year, month, day] = String(ymd).split("-").map(Number);
+  const [hours, minutes] = String(hhmm).split(":").map(Number);
+  if ([year, month, day, hours, minutes].some((n) => Number.isNaN(n))) {
+    return null;
+  }
+  return new Date(year, month - 1, day, hours, minutes, 0, 0);
+}
 
 export default function MapScreen() {
+  const { t } = useTranslation();
   const { width: viewportWidth, height: viewportHeight } =
     useWindowDimensions();
   const isCompactPreviewCard = viewportWidth <= 360 || viewportHeight <= 700;
@@ -230,12 +171,37 @@ export default function MapScreen() {
   const searchInputRef = useRef(null);
   const lastAppliedFocusRef = useRef(null);
   const lastNavigationEventRef = useRef({ signature: null, timestamp: 0 });
+  const navigationTickHandlerRef = useRef(null);
+  const pingMutationRef = useRef(pingEventMutation);
 
   const [mapStyle, setMapStyle] = useState(DEFAULT_MAP_STYLE);
   const [layerModalVisible, setLayerModalVisible] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [selectedPlace, setSelectedPlace] = useState(null);
+
+  // States cho Active Trip Mode
+  const [nearbyTriggered, setNearbyTriggered] = useState(false);
+  const [startNavConfirmVisible, setStartNavConfirmVisible] = useState(false);
+  const [tripCompleteVisible, setTripCompleteVisible] = useState(false);
+  const [completeIsTripEnd, setCompleteIsTripEnd] = useState(false);
+  const [completeDayNumber, setCompleteDayNumber] = useState(1);
+  const [isVoiceMuted, setIsVoiceMuted] = useState(true);
+  const [previewRouteResults, setPreviewRouteResults] = useState([]);
+  const [isPreviewRouteLoading, setIsPreviewRouteLoading] = useState(false);
+  const [isPreviewRouteError, setIsPreviewRouteError] = useState(false);
+
+  // Event states
+  const [activeEventId, setActiveEventId] = useState(null);
+  const [isMomentUploading, setIsMomentUploading] = useState(false);
+
+  // Fetch event detail with auto-polling every 10s for broadcastNotice
+  const { data: eventData } = useEventDetail(activeEventId, !!activeEventId, {
+    refetchInterval: activeEventId ? 10_000 : false,
+  });
+  const broadcastNotice = eventData?.broadcastNotice || null;
+
+  const createMomentMutation = useCreateMoment();
 
   const {
     data: mapPlaces,
@@ -246,7 +212,6 @@ export default function MapScreen() {
 
   const {
     districts: districtGeo,
-    wards: wardGeo,
     refetch: refetchBoundary,
   } = useBoundaryData();
 
@@ -350,6 +315,19 @@ export default function MapScreen() {
     }
   }, [allPlaces, selectedPlace]);
 
+  // ─── MapTransportToMode helper ─────────────────────────────────────────────
+  // Chuyển đổi phương tiện tiếng Việt sang OSRM mode.
+  const mapTransportToMode = useCallback((transport) => {
+    if (!transport) return "motorcycle";
+    const t = String(transport).toLowerCase().trim();
+    if (t.includes("đi bộ") || t.includes("walking")) return "walking";
+    if (t.includes("xe hơi") || t.includes("ô tô") || t.includes("car")) return "driving";
+    if (t.includes("xe đạp") || t.includes("cycling") || t.includes("bike")) return "cycling";
+    if (t.includes("xe buýt") || t.includes("bus")) return "driving";
+    return "motorcycle";
+  }, []);
+
+  // ─── Active Trip Ferry Avoidance (per-trip from AsyncStorage) ──────────────
   const visiblePlaces = useMemo(
     () =>
       filterVisiblePlaces({
@@ -364,23 +342,6 @@ export default function MapScreen() {
       }),
     [allPlaces, searchText, activeCategoryId, activeArea, quickFilters],
   );
-
-  const visiblePlaceSpatialIndex = useMemo(() => {
-    const index = new Map();
-
-    visiblePlaces.forEach((place) => {
-      const latitude = Number(place?.latitude);
-      const longitude = Number(place?.longitude);
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
-
-      const key = getSpatialCellKey(latitude, longitude);
-      const bucket = index.get(key) || [];
-      bucket.push(place);
-      index.set(key, bucket);
-    });
-
-    return index;
-  }, [visiblePlaces]);
 
   const currentUserNickname = useMemo(() => {
     const nickname =
@@ -397,6 +358,20 @@ export default function MapScreen() {
     return null;
   }, [authUser]);
 
+  const handleActiveLocationUpdate = useCallback((location) => {
+    navigationTickHandlerRef.current?.(location);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getVoiceMutedPreference().then((muted) => {
+      if (!cancelled) setIsVoiceMuted(muted);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const currentUserAvatarUri = useMemo(
     () =>
       resolveMediaUrl(
@@ -404,17 +379,6 @@ export default function MapScreen() {
       ),
     [authUser],
   );
-
-  const mapBoundaryOverlays = useMemo(
-    () => (
-      <>
-        {districtGeo ? <DistrictLayer geojson={districtGeo} /> : null}
-        {wardGeo ? <WardLayer geojson={wardGeo} /> : null}
-      </>
-    ),
-    [districtGeo, wardGeo],
-  );
-
   const selectedPlaceId = selectedPlace?.id ?? null;
 
   const activePlace = useMemo(
@@ -430,51 +394,801 @@ export default function MapScreen() {
     mapRef.current?.flyTo([CAN_THO_CENTER.lng, CAN_THO_CENTER.lat], 12);
   }, []);
 
-  const routeBuilder = useRouteBuilderController({
-    allPlaces,
-    onSelectPlace: setSelectedPlace,
-    onLocationResolved: focusMapForLocation,
-  });
-
   const {
     currentLocation,
+    heading: mapHeading,
     locateNow,
-    mode: routeBuilderMode,
-    setMode: setRouteBuilderMode,
-    draftStops: routeBuilderDraftStops,
-    canConfirm: routeBuilderCanConfirm,
-    hasConfirmedRoute: routeBuilderHasConfirmedRoute,
-    isDirty: routeBuilderIsDirty,
-    minimumStops: routeBuilderMinimumStops,
-    enabled: routeBuilderEnabled,
-    pendingArrival: routeBuilderPendingArrival,
-    recoveryMode: routeBuilderRecoveryMode,
-    activeTarget: routeBuilderActiveTarget,
-    distanceToActiveTargetLabel: routeBuilderDistanceToActiveTargetLabel,
-    completedLegs: routeBuilderCompletedLegs,
-    legCount: routeBuilderLegCount,
-    hasPendingArrival: routeBuilderHasPendingArrival,
-    completedView: routeBuilderCompletedView,
-    etaLabel: routeBuilderEtaLabel,
-    distanceLabel: routeBuilderDistanceLabel,
-    isRouteError: isRouteBuilderError,
-    isRouteFetching: isRouteBuilderFetching,
-    arrivalAlertVisible: routeBuilderArrivalAlertVisible,
-    recoveryCoordinates: routeBuilderRecoveryCoordinates,
-    recoverySource: routeBuilderRecoverySource,
-    legVisuals: routeBuilderLegVisuals,
-    addStopFromPlace: handleAddRouteBuilderStopFromPlace,
-    removeStop: handleRemoveRouteBuilderStop,
-    clear: handleClearRouteBuilder,
-    confirmRoute: handleConfirmRouteBuilder,
-    exit: handleExitRouteBuilder,
-    confirmArrivedLeg: handleConfirmArrivedRouteBuilderLeg,
-    dismissArrivalAlert: handleDismissRouteBuilderArrivalAlert,
-    resetProgress: handleResetRouteBuilderProgress,
-    toggleCompletedView: handleToggleCompletedLegView,
-    retryRoute: refetchRouteBuilder,
-    hasFinished: routeBuilderHasFinished,
-  } = routeBuilder;
+  } = useMapLocationTracker({
+    watchEnabled: false,
+  });
+
+  // ─── Active Trip Mode ───────────────────────────────────────────────────────
+  const activeTrip = useActiveTrip();
+  const {
+    isActive: isActiveTripMode,
+    activeTrip: activeTripDetail,
+    targetPoint: activeTargetPoint,
+    nextDestination: activeNextDestination,
+    isLastDestination: isActiveLastDestination,
+    visitedIds: activeVisitedIds,
+    markArrived: markActiveArrived,
+    exitActiveTrip,
+  } = activeTrip;
+
+  const updateActiveTripMutation = useUpdateTrip(activeTrip.activeTripId);
+  const rawTripPreviewId = Array.isArray(params.tripPreviewId)
+    ? params.tripPreviewId[0]
+    : params.tripPreviewId;
+  const tripPreviewId =
+    rawTripPreviewId && !isActiveTripMode ? String(rawTripPreviewId) : null;
+  const isTripPreviewMode = Boolean(tripPreviewId);
+  const { data: previewTrip, isLoading: isPreviewTripLoading } =
+    useTripDetail(tripPreviewId);
+  const updatePreviewTripMutation = useUpdateTrip(tripPreviewId);
+  const pingEventMutation = usePingEvent();
+
+  useEffect(() => {
+    pingMutationRef.current = pingEventMutation;
+  }, [pingEventMutation]);
+
+  // Tần suất và khoảng cách GPS động dựa trên nearbyTriggered
+  const gpsIntervals = useMemo(() => {
+    if (nearbyTriggered) {
+      return { timeInterval: 3000, distanceInterval: 5 }; // Boost frequency when NEARBY
+    }
+    return { timeInterval: 10000, distanceInterval: 15 }; // Default cruising frequency
+  }, [nearbyTriggered]);
+
+  // GPS thời gian thực riêng cho active trip. Dừng định vị khi paused.
+  const {
+    currentLocation: activeTripLocation,
+    heading: activeTripHeading,
+    locateNow: locateActiveTripNow,
+  } = useMapLocationTracker({
+    watchEnabled: isActiveTripMode && !activeTrip.isPaused,
+    timeInterval: gpsIntervals.timeInterval,
+    distanceInterval: gpsIntervals.distanceInterval,
+    onLocationUpdate: handleActiveLocationUpdate,
+  });
+  const userMapLocation = isActiveTripMode ? activeTripLocation : currentLocation;
+  const liveUserHeading = isActiveTripMode ? activeTripHeading : mapHeading;
+  const userHeading = Number.isFinite(liveUserHeading)
+    ? liveUserHeading
+    : Number.isFinite(userMapLocation?.heading)
+    ? userMapLocation.heading
+    : null;
+  const shouldShowUserHeadingHat =
+    !isTripPreviewMode &&
+    userMapLocation &&
+    Number.isFinite(userMapLocation.latitude) &&
+    Number.isFinite(userMapLocation.longitude);
+  const userHeadingOpacity = userHeading === null ? 0.45 : 1;
+
+  const [activeArrivalVisible, setActiveArrivalVisible] = useState(false);
+  const followCameraRef = useRef(false);
+  const arrivalHandledRef = useRef(null);
+  const dimActivatedRef = useRef(false);
+  const [isScreenDimmed, setIsScreenDimmed] = useState(false);
+
+  // Xin quyền vị trí (foreground + background) khi vào Active Trip Mode.
+  useEffect(() => {
+    if (!isActiveTripMode) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const fg = await Location.requestForegroundPermissionsAsync();
+        if (cancelled || fg.status !== "granted") return;
+        await Location.requestBackgroundPermissionsAsync();
+      } catch {
+        // Bỏ qua lỗi xin quyền — chế độ foreground vẫn hoạt động.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isActiveTripMode]);
+
+  // 1. Đọc activeEventId từ AsyncStorage khi activeTrip.activeTripId thay đổi
+  useEffect(() => {
+    const checkActiveEvent = async () => {
+      try {
+        if (isActiveTripMode && activeTrip.activeTripId) {
+          const evId = await safeAsyncStorage.getItem(
+            `didaugio:active_event_trip:${activeTrip.activeTripId}`
+          );
+          setActiveEventId(evId ? parseInt(evId, 10) : null);
+        } else {
+          setActiveEventId(null);
+        }
+      } catch (err) {
+        console.error("Lỗi đọc activeEventId:", err);
+      }
+    };
+    checkActiveEvent();
+  }, [isActiveTripMode, activeTrip.activeTripId]);
+
+  // 3. Định kỳ 3 phút gửi ping vị trí GPS chặng hiện tại lên API
+  useEffect(() => {
+    if (
+      !isActiveTripMode ||
+      !activeEventId ||
+      !activeTripLocation ||
+      activeTrip.isPaused ||
+      !activeNextDestination?.placeId
+    ) {
+      return;
+    }
+
+    const sendPing = async () => {
+      try {
+        await pingMutationRef.current.mutateAsync({
+          id: activeEventId,
+          payload: {
+            latitude: activeTripLocation.latitude,
+            longitude: activeTripLocation.longitude,
+            placeId: activeNextDestination.placeId,
+          },
+        });
+      } catch (err) {
+        console.error("Lỗi ping vị trí lên server:", err);
+      }
+    };
+
+    sendPing();
+    const interval = setInterval(sendPing, 180000); // 3 phút
+    return () => clearInterval(interval);
+  }, [
+    isActiveTripMode,
+    activeEventId,
+    activeTripLocation?.latitude,
+    activeTripLocation?.longitude,
+    activeNextDestination?.placeId,
+    activeTrip.isPaused,
+  ]);
+
+  // 4. Giả lập 3 đốm Neon nhấp nháy xung quanh đích chặng
+  const neonSpots = useMemo(() => {
+    if (!isActiveTripMode || !activeTargetPoint) return [];
+    const baseLat = activeTargetPoint.lat;
+    const baseLng = activeTargetPoint.lng;
+    return [
+      { id: "neon-1", latitude: baseLat + 0.0004, longitude: baseLng - 0.0003, color: "#38BDF8" },
+      { id: "neon-2", latitude: baseLat - 0.0003, longitude: baseLng + 0.0005, color: "#34C759" },
+      { id: "neon-3", latitude: baseLat + 0.0002, longitude: baseLng + 0.0004, color: "#FF2D55" },
+    ];
+  }, [isActiveTripMode, activeTargetPoint?.lat, activeTargetPoint?.lng]);
+
+  // 5. Chụp ảnh check-in nén 0.6 và gửi lên API moments khi bấm ĐĂNG KHOẢNH KHẮC
+  const handleCameraCheckIn = useCallback(async () => {
+    if (!activeEventId || !activeNextDestination) return;
+
+    const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
+    if (cameraStatus.status !== "granted") {
+      Alert.alert(t("mapScreen.accessRequired"), t("mapScreen.cameraRequired"));
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (result.canceled || !result.assets?.[0]?.uri) return;
+
+    setIsMomentUploading(true);
+
+    try {
+      // Nén & crop 1:1
+      const manipulated = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 400, height: 400 } }],
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      const response = await fetch(manipulated.uri);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onloadend = async () => {
+        const base64data = reader.result;
+
+        try {
+          await createMomentMutation.mutateAsync({
+            id: activeEventId,
+            payload: {
+              placeId: activeNextDestination.placeId,
+              imageUrl: base64data,
+            },
+          });
+
+          // Lưu AsyncStorage đánh dấu hoàn thành chặng đi này
+          const key = `didaugio:event:${activeEventId}:checkedin:${activeNextDestination.placeId}`;
+          await safeAsyncStorage.setItem(key, "true");
+
+          Alert.alert(t("mapScreen.checkinSuccess"), t("mapScreen.checkinSuccessDesc"));
+        } catch (err) {
+          Alert.alert(t("mapScreen.checkinFailed"), err?.message || t("mapScreen.checkinFailedDesc"));
+        } finally {
+          setIsMomentUploading(false);
+        }
+      };
+    } catch (err) {
+      console.error(err);
+      Alert.alert(t("mapScreen.imageError"), t("mapScreen.imageErrorDesc"));
+      setIsMomentUploading(false);
+    }
+  }, [activeEventId, activeNextDestination]);
+
+  // Bật auto-follow + bay camera về vị trí hiện tại khi vào chế độ.
+  useEffect(() => {
+    if (!isActiveTripMode || activeTrip.isPaused) {
+      followCameraRef.current = false;
+      return;
+    }
+    followCameraRef.current = true;
+    void locateActiveTripNow();
+  }, [isActiveTripMode, activeTrip.isPaused, locateActiveTripNow]);
+
+  const activeRouteOrigin = useMemo(() => {
+    if (!isActiveTripMode || activeTrip.isPaused || !activeTripLocation) return null;
+    return {
+      lat: activeTripLocation.latitude,
+      lng: activeTripLocation.longitude,
+      name: MAP_TEXT.common.currentLocationName,
+    };
+  }, [
+    isActiveTripMode,
+    activeTrip.isPaused,
+    activeTripLocation?.latitude,
+    activeTripLocation?.longitude,
+  ]);
+
+  // Mode cho active trip: lấy từ transportToNext của chặng hiện tại.
+  // Phương tiện của chặng hiện tại được lưu ở địa điểm xuất phát (địa điểm liền trước của đích đến tiếp theo).
+  const activeTravelMode = useMemo(() => {
+    if (!activeTripDetail?.destinations?.length || !activeNextDestination) {
+      return "motorcycle";
+    }
+
+    const ordered = [...activeTripDetail.destinations].sort((a, b) => {
+      if (a.dayNumber !== b.dayNumber) return a.dayNumber - b.dayNumber;
+      return a.order - b.order;
+    });
+
+    const currentIndex = ordered.findIndex((d) => d.id === activeNextDestination.id);
+    if (currentIndex > 0) {
+      const prevDest = ordered[currentIndex - 1];
+      // Nếu cùng ngày, lấy phương tiện chặng tiếp theo của điểm trước đó
+      if (prevDest.dayNumber === activeNextDestination.dayNumber) {
+        return mapTransportToMode(prevDest.transportToNext);
+      }
+    }
+
+    // Nếu là địa điểm đầu tiên của chuyến đi hoặc điểm đầu tiên của ngày mới,
+    // sử dụng phương tiện đi tiếp của chính điểm đó, hoặc mặc định là xe máy
+    return mapTransportToMode(activeNextDestination.transportToNext || "motorcycle");
+  }, [activeTripDetail?.destinations, activeNextDestination, mapTransportToMode]);
+
+  const {
+    coordinates: baseActiveRouteCoordinates,
+    firstRoute: baseActiveFirstRoute,
+    source: baseActiveRouteSource,
+    distanceM: baseActiveRouteDistanceM,
+    durationS: baseActiveRouteDurationS,
+    isFetching: isActiveRouteFetching,
+  } = useMapRouting({
+    origin: activeRouteOrigin,
+    destination: activeTargetPoint,
+    mode: activeTravelMode,
+    enabled: Boolean(activeRouteOrigin && activeTargetPoint),
+    navMode: "navigation",
+  });
+
+  const navigationController = useNavigationController({
+    enabled: isActiveTripMode && !activeTrip.isPaused,
+    routeCoordinates: baseActiveRouteCoordinates,
+    firstRoute: baseActiveFirstRoute,
+    destination: activeTargetPoint,
+    mode: activeTravelMode,
+    mapRef,
+  });
+
+  useEffect(() => {
+    navigationTickHandlerRef.current = navigationController.onLocationUpdate;
+    return () => {
+      if (navigationTickHandlerRef.current === navigationController.onLocationUpdate) {
+        navigationTickHandlerRef.current = null;
+      }
+    };
+  }, [navigationController.onLocationUpdate]);
+
+  const activeNavigationRoute = navigationController.routeOverride;
+  const activeRouteCoordinates =
+    activeNavigationRoute?.coordinates ?? baseActiveRouteCoordinates;
+  const activeFirstRoute =
+    activeNavigationRoute?.firstRoute ?? baseActiveFirstRoute;
+  const activeRouteSource =
+    activeNavigationRoute?.source ?? baseActiveRouteSource;
+  const activeRouteDistanceM =
+    navigationController.progress?.remainingMeters ??
+    activeNavigationRoute?.distanceM ??
+    baseActiveRouteDistanceM;
+  const activeRouteDurationS =
+    navigationController.progress?.etaSeconds ??
+    activeNavigationRoute?.durationS ??
+    baseActiveRouteDurationS;
+
+  const activeDistanceToTarget = useMemo(() => {
+    if (Number.isFinite(navigationController.distanceToDest)) {
+      return navigationController.distanceToDest;
+    }
+    if (!activeTripLocation || !activeTargetPoint) return null;
+    return distanceMeters(
+      activeTripLocation.latitude,
+      activeTripLocation.longitude,
+      activeTargetPoint.lat,
+      activeTargetPoint.lng,
+    );
+  }, [activeTripLocation, activeTargetPoint, navigationController.distanceToDest]);
+
+  const activeUpcomingStep = useMemo(() => {
+    if (navigationController.upcomingStep) return navigationController.upcomingStep;
+    const steps = activeFirstRoute?.legs?.[0]?.steps;
+    return pickUpcomingStep(steps, activeTripLocation, distanceMeters, {
+      currentHeading: activeTripLocation?.heading,
+    });
+  }, [activeFirstRoute, activeTripLocation, navigationController.upcomingStep]);
+
+  const activeInstruction = useMemo(
+    () => (activeUpcomingStep ? buildManeuverLabel(activeUpcomingStep) : null),
+    [activeUpcomingStep],
+  );
+  const activeInstructionIcon = useMemo(
+    () =>
+      activeUpcomingStep ? getManeuverIcon(activeUpcomingStep) : "navigation",
+    [activeUpcomingStep],
+  );
+  const activeRouteEtaLabel = useMemo(
+    () => formatRouteEta(activeRouteDurationS),
+    [activeRouteDurationS],
+  );
+  const activeRouteDistanceLabel = useMemo(
+    () => formatRouteDistance(activeRouteDistanceM),
+    [activeRouteDistanceM],
+  );
+
+  const previewStops = useMemo(
+    () => buildTripPreviewStops(previewTrip?.destinations || []),
+    [previewTrip?.destinations],
+  );
+
+  const previewSegments = useMemo(
+    () => buildTripPreviewSegments(previewStops, previewRouteResults),
+    [previewRouteResults, previewStops],
+  );
+
+  const previewFitCoordinates = useMemo(() => {
+    if (previewSegments.length > 0) {
+      return previewSegments.flatMap((segment) => segment.coordinates);
+    }
+    return previewStops.map((stop) => stop.coordinate);
+  }, [previewSegments, previewStops]);
+
+  useEffect(() => {
+    if (!isTripPreviewMode || previewStops.length < 2) {
+      setPreviewRouteResults([]);
+      setIsPreviewRouteLoading(false);
+      setIsPreviewRouteError(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsPreviewRouteLoading(true);
+    setIsPreviewRouteError(false);
+
+    Promise.all(
+      previewStops.slice(0, -1).map(async (from, index) => {
+        const to = previewStops[index + 1];
+        try {
+          const response = await calculateRouteApi({
+            origin: {
+              lat: from.coordinate.latitude,
+              lng: from.coordinate.longitude,
+              name: from.name,
+            },
+            destination: {
+              lat: to.coordinate.latitude,
+              lng: to.coordinate.longitude,
+              name: to.name,
+            },
+            mode: mapTransportToMode(from.destination?.transportToNext),
+            options: {
+              alternatives: 1,
+              steps: false,
+              overview: "full",
+              geometries: "polyline6",
+              snapToRoad: true,
+              simplifyGeometry: true,
+            },
+          });
+          return mapRoutingResponse(response);
+        } catch {
+          return {
+            coordinates: [from.coordinate, to.coordinate],
+            distanceM: null,
+            source: "fallback",
+          };
+        }
+      }),
+    )
+      .then((results) => {
+        if (cancelled) return;
+        const hasFallback = results.some((result) => result.source === "fallback");
+        setPreviewRouteResults(results);
+        setIsPreviewRouteError(hasFallback);
+      })
+      .finally(() => {
+        if (!cancelled) setIsPreviewRouteLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isTripPreviewMode, mapTransportToMode, previewStops]);
+
+  useEffect(() => {
+    if (!isTripPreviewMode || previewFitCoordinates.length < 2) return;
+    const timer = setTimeout(() => {
+      mapRef.current?.fitToCoordinates?.(previewFitCoordinates, {
+        edgePadding: {
+          top: (insets.top || 0) + 130,
+          right: 48,
+          bottom: FLOATING_TAB_CLEARANCE + 150,
+          left: 48,
+        },
+        animated: true,
+      });
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [insets.top, isTripPreviewMode, previewFitCoordinates]);
+
+  const activeDistanceToNextTurnLabel = useMemo(
+    () => formatRouteDistance(navigationController.distanceToNextTurn),
+    [navigationController.distanceToNextTurn],
+  );
+  const activeTripSpeedKmh =
+    navigationController.lastLocation?.speedKmh ??
+    activeTripLocation?.speedKmh ??
+    (Number.isFinite(activeTripLocation?.speed) ? activeTripLocation.speed * 3.6 : 0);
+  const activeMapPadding = useMemo(
+    () =>
+      isActiveTripMode && !activeTrip.isPaused
+        ? { top: 0, right: 0, bottom: viewportHeight * 0.4, left: 0 }
+        : undefined,
+    [activeTrip.isPaused, isActiveTripMode, viewportHeight],
+  );
+
+  const handleToggleVoice = useCallback(() => {
+    setIsVoiceMuted((prev) => {
+      const next = !prev;
+      void setVoiceMutedPreference(next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isActiveTripMode || activeTrip.isPaused || !activeInstruction) return;
+
+    const nextTurnDistance = navigationController.distanceToNextTurn;
+    const distanceToDest = activeDistanceToTarget;
+    let speechKey = null;
+    let speechText = null;
+
+    if (Number.isFinite(distanceToDest) && distanceToDest <= 30) {
+      speechKey = `arrival:${activeNextDestination?.id ?? "destination"}`;
+      speechText = t("map.voice.arrived", { name: activeTargetPoint?.name || t("map.voice.defaultDestination") });
+    } else if (Number.isFinite(nextTurnDistance) && nextTurnDistance <= 50) {
+      speechKey = `turn-now:${activeUpcomingStep?.maneuver?.location?.join(",")}`;
+      speechText = activeInstruction;
+    } else if (Number.isFinite(nextTurnDistance) && nextTurnDistance <= 300) {
+      speechKey = `turn-soon:${activeUpcomingStep?.maneuver?.location?.join(",")}`;
+      speechText = t("map.voice.distanceInstruction", { distance: Math.round(nextTurnDistance), instruction: activeInstruction });
+    }
+
+    if (speechText) {
+      void speakNavigationInstruction(speechText, {
+        key: speechKey,
+        isMuted: isVoiceMuted,
+        speedKmh: activeTripSpeedKmh,
+      });
+    }
+
+    return () => {
+      stopSpeech();
+    };
+  }, [
+    activeDistanceToTarget,
+    activeInstruction,
+    activeNextDestination?.id,
+    activeTargetPoint?.name,
+    activeTrip.isPaused,
+    activeTripSpeedKmh,
+    activeUpcomingStep,
+    isActiveTripMode,
+    isVoiceMuted,
+    navigationController.distanceToNextTurn,
+  ]);
+
+  // Nhắc nhở di chuyển thông minh trước 10 phút.
+  useDepartureAlerts({
+    activeTrip: activeTripDetail,
+    visitedIds: activeVisitedIds,
+    nextDestination: activeNextDestination,
+    enabled: isActiveTripMode,
+  });
+
+  const dayDateMap = useMemo(() => {
+    const map = new Map();
+    if (!activeTripDetail) return map;
+    for (const day of buildTripDays(activeTripDetail)) {
+      map.set(day.dayNumber, day.dateYmd);
+    }
+    return map;
+  }, [activeTripDetail]);
+
+  const currentDestination = useMemo(() => {
+    if (!activeTripDetail?.destinations?.length) return null;
+    const visited = activeTripDetail.destinations
+      .filter((d) => activeVisitedIds.includes(d.id) && d.endTime)
+      .sort((a, b) => {
+        if (a.dayNumber !== b.dayNumber) return a.dayNumber - b.dayNumber;
+        return a.order - b.order;
+      });
+    return visited.length ? visited[visited.length - 1] : null;
+  }, [activeTripDetail, activeVisitedIds]);
+
+  const departureReminder = useMemo(() => {
+    if (!isActiveTripMode || activeTrip.isPaused || !currentDestination || !activeNextDestination) return null;
+    const ymd = dayDateMap.get(currentDestination.dayNumber);
+    const endAt = buildLocalDateTime(ymd, currentDestination.endTime);
+    if (!endAt) return null;
+
+    const now = new Date();
+    const timeDiffMs = endAt.getTime() - now.getTime();
+    const minutesLeft = timeDiffMs / (60 * 1000);
+
+    if (minutesLeft <= 10 && minutesLeft >= -15) {
+      return {
+        nextName: activeNextDestination.place?.name || t("map.departureReminderBanner.defaultNextName"),
+        minutesLeft: Math.max(0, Math.ceil(minutesLeft)),
+      };
+    }
+    return null;
+  }, [isActiveTripMode, activeTrip.isPaused, currentDestination, activeNextDestination, dayDateMap]);
+
+  // Phát hiện sắp đến nơi (< 150m) → mở bottom banner không chặn bản đồ.
+  useEffect(() => {
+    if (!isActiveTripMode || !activeNextDestination) {
+      setActiveArrivalVisible(false);
+      return;
+    }
+    if (
+      Number.isFinite(activeDistanceToTarget) &&
+      activeDistanceToTarget <= ARRIVING_SOON_RADIUS_M &&
+      arrivalHandledRef.current !== activeNextDestination.id
+    ) {
+      setActiveArrivalVisible(true);
+    }
+  }, [isActiveTripMode, activeDistanceToTarget, activeNextDestination]);
+
+  // Reset nearbyTriggered và arrivalHandled khi đổi destination chặng tiếp theo
+  useEffect(() => {
+    setNearbyTriggered(false);
+    arrivalHandledRef.current = null;
+  }, [activeNextDestination?.id]);
+
+  // Hysteresis logic cho nearby warning banner (khoảng cách <= 150m)
+  useEffect(() => {
+    if (
+      !isActiveTripMode ||
+      activeTrip.isPaused ||
+      !activeDistanceToTarget ||
+      activeArrivalVisible ||
+      activeDistanceToTarget <= ARRIVAL_RADIUS_M
+    ) {
+      setNearbyTriggered(false);
+      return;
+    }
+    if (activeDistanceToTarget <= 150) {
+      setNearbyTriggered(true);
+    } else if (activeDistanceToTarget > 200) {
+      setNearbyTriggered(false);
+    }
+  }, [activeDistanceToTarget, isActiveTripMode, activeTrip.isPaused, activeArrivalVisible]);
+
+  // Screen dimming: giảm sáng khi đường thẳng dài (> 1km không có ngã rẽ)
+  useEffect(() => {
+    if (!isActiveTripMode || activeTrip.isPaused) {
+      setIsScreenDimmed(false);
+      dimActivatedRef.current = false;
+      return;
+    }
+
+    const nextTurnDist = navigationController.distanceToNextTurn;
+    if (!Number.isFinite(nextTurnDist)) {
+      setIsScreenDimmed(false);
+      dimActivatedRef.current = false;
+      return;
+    }
+
+    if (dimActivatedRef.current) {
+      if (nextTurnDist <= SCREEN_DIM_DEACTIVATE_DISTANCE_M) {
+        dimActivatedRef.current = false;
+        setIsScreenDimmed(false);
+      }
+    } else if (nextTurnDist >= SCREEN_DIM_ACTIVATE_DISTANCE_M) {
+      dimActivatedRef.current = true;
+      setIsScreenDimmed(true);
+    }
+  }, [isActiveTripMode, activeTrip.isPaused, navigationController.distanceToNextTurn]);
+
+  const handleExitActiveTrip = useCallback(async () => {
+    followCameraRef.current = false;
+    setActiveArrivalVisible(false);
+    await exitActiveTrip();
+  }, [exitActiveTrip]);
+
+  const handleRequestStopActiveTrip = useCallback(() => {
+    Alert.alert(
+      t("mapScreen.stopJourneyTitle"),
+      t("mapScreen.stopJourneyMessage"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("mapScreen.stopJourney"),
+          style: "destructive",
+          onPress: () => {
+            void handleExitActiveTrip();
+          },
+        },
+      ],
+    );
+  }, [handleExitActiveTrip, t]);
+
+  const handlePauseActiveTrip = useCallback(async () => {
+    await activeTrip.pauseActiveTrip();
+    followCameraRef.current = false;
+    setIsScreenDimmed(false);
+  }, [activeTrip]);
+
+  const handleResumeActiveTrip = useCallback(async () => {
+    await activeTrip.resumeActiveTrip();
+    followCameraRef.current = true;
+    await locateActiveTripNow();
+  }, [activeTrip, locateActiveTripNow]);
+
+  const handleCancelTripPreview = useCallback(() => {
+    setPreviewRouteResults([]);
+    router.setParams({ tripPreviewId: undefined });
+    router.back();
+  }, [router]);
+
+  const handleConfirmTripPreview = useCallback(() => {
+    if (!previewTrip?.id || updatePreviewTripMutation.isPending) return;
+    if (previewStops.length === 0) {
+      Alert.alert(t("common.error"), t("mapScreen.previewNoStops"));
+      return;
+    }
+
+    updatePreviewTripMutation.mutate(
+      { status: "in-progress" },
+      {
+        onSuccess: async () => {
+          await activeTrip.startActiveTrip(previewTrip.id);
+          await sendLocalNotification({
+            title: t("trip.detail.startNotification"),
+            body: t("trip.detail.startNotificationBody", {
+              title: previewTrip.title || t("trip.detail.defaultTitle"),
+            }),
+            data: { tripId: previewTrip.id },
+          });
+          router.setParams({ tripPreviewId: undefined });
+          followCameraRef.current = true;
+          await locateActiveTripNow();
+        },
+        onError: (error) => {
+          Alert.alert(
+            t("common.error"),
+            error?.message || t("trip.detail.startError"),
+          );
+        },
+      },
+    );
+  }, [
+    activeTrip,
+    locateActiveTripNow,
+    previewStops.length,
+    previewTrip,
+    router,
+    t,
+    updatePreviewTripMutation,
+  ]);
+
+  const handleDismissActiveArrival = useCallback(() => {
+    // Tạm ẩn popup cho điểm hiện tại, tránh bật lại liên tục khi vẫn ở gần.
+    if (activeNextDestination) {
+      arrivalHandledRef.current = activeNextDestination.id;
+    }
+    setActiveArrivalVisible(false);
+  }, [activeNextDestination]);
+
+  const handlePrimaryTripComplete = useCallback(async () => {
+    setTripCompleteVisible(false);
+    if (completeIsTripEnd) {
+      await handleExitActiveTrip();
+    } else {
+      await activeTrip.pauseActiveTrip();
+    }
+  }, [handleExitActiveTrip, completeIsTripEnd, activeTrip]);
+
+  const handleConfirmActiveArrival = useCallback(async () => {
+    const arrivedDest = activeNextDestination;
+    if (!arrivedDest) return;
+
+    arrivalHandledRef.current = arrivedDest.id;
+    setActiveArrivalVisible(false);
+    await markActiveArrived(arrivedDest.id);
+
+    const updatedVisitedIds = [...activeVisitedIds, arrivedDest.id];
+
+    if (isActiveLastDestination) {
+      const finishedTripId = activeTrip.activeTripId;
+      await sendLocalNotification({
+        title: t("mapScreen.journeyComplete"),
+        body: t("mapScreen.journeyCompleteDesc"),
+        data: { tripId: finishedTripId },
+      });
+      if (finishedTripId) {
+        updateActiveTripMutation.mutate({ status: "completed" });
+      }
+      setCompleteIsTripEnd(true);
+      setCompleteDayNumber(arrivedDest.dayNumber);
+      setTripCompleteVisible(true);
+    } else {
+      const currentDay = arrivedDest.dayNumber;
+      const destinationsInDay = (activeTripDetail?.destinations || []).filter(
+        (d) => d.dayNumber === currentDay
+      );
+      const isDayFinished = destinationsInDay.every((d) =>
+        updatedVisitedIds.includes(d.id)
+      );
+
+      if (isDayFinished) {
+        await sendLocalNotification({
+          title: t("mapScreen.dayComplete", { day: currentDay }),
+          body: t("mapScreen.dayCompleteDesc"),
+        });
+        setCompleteIsTripEnd(false);
+        setCompleteDayNumber(currentDay);
+        setTripCompleteVisible(true);
+      } else {
+        await sendLocalNotification({
+          title: t("mapScreen.checkedIn"),
+          body: t("mapScreen.checkedInDesc", { name: arrivedDest.place?.name || t("map.common.destinationNameLower") }),
+        });
+      }
+    }
+  }, [
+    activeNextDestination,
+    markActiveArrived,
+    activeVisitedIds,
+    isActiveLastDestination,
+    activeTrip.activeTripId,
+    activeTripDetail,
+    updateActiveTripMutation,
+  ]);
 
   const routeOriginFromCurrentLocation = useMemo(() => {
     if (
@@ -490,7 +1204,7 @@ export default function MapScreen() {
       lng: currentLocation.longitude,
       name: MAP_TEXT.common.currentLocationName,
     };
-  }, [currentLocation]);
+  }, [currentLocation?.latitude, currentLocation?.longitude]);
 
   const routeDestinationFromSelectedPlace = useMemo(() => {
     if (
@@ -508,7 +1222,7 @@ export default function MapScreen() {
     };
   }, [activePlace]);
 
-  const shouldSuppressSingleRoute = routeBuilderEnabled;
+  const shouldSuppressSingleRoute = isActiveTripMode;
 
   const routeOrigin = shouldSuppressSingleRoute
     ? null
@@ -558,7 +1272,7 @@ export default function MapScreen() {
     !routeDistanceLabel;
 
   const routeStatus = useMemo(() => {
-    if (routeBuilderMode || !routeEnabled) return null;
+    if (!routeEnabled) return null;
 
     if (isRouteError) {
       return {
@@ -584,31 +1298,30 @@ export default function MapScreen() {
   }, [
     isRouteError,
     isRouteFallback,
-    routeBuilderMode,
     routeEnabled,
     routeError?.message,
     routeSource,
   ]);
 
   const handleLocate = useCallback(async () => {
+    if (isActiveTripMode) {
+      followCameraRef.current = true;
+      const location = await locateActiveTripNow();
+      focusMapForLocation(location ?? null);
+      return location;
+    }
     const location = await locateNow();
     focusMapForLocation(location ?? null);
     return location;
-  }, [focusMapForLocation, locateNow]);
+  }, [focusMapForLocation, locateNow, isActiveTripMode, locateActiveTripNow]);
 
   const handleSelectPlace = useCallback((place) => {
     setSelectedPlace(place);
     if (place.longitude && place.latitude) {
-      mapRef.current?.flyTo([place.longitude, place.latitude], 15);
+      const latOffset = 0.0022;
+      mapRef.current?.flyTo([Number(place.longitude), Number(place.latitude) - latOffset], 15);
     }
   }, []);
-
-  const handleLongPressPlace = useCallback(
-    (place) => {
-      handleAddRouteBuilderStopFromPlace(place);
-    },
-    [handleAddRouteBuilderStopFromPlace],
-  );
 
   const handleStartRouteFromPreview = useCallback(
     async (place) => {
@@ -645,7 +1358,6 @@ export default function MapScreen() {
       });
 
       setSelectedPlace(place);
-      setRouteBuilderMode(false);
 
       if (!currentLocation) {
         await handleLocate();
@@ -669,42 +1381,6 @@ export default function MapScreen() {
     setSelectedPlace(null);
   }, []);
 
-  const handleMapLongPress = useCallback(
-    (event) => {
-      const latitude = Number(event?.nativeEvent?.coordinate?.latitude);
-      const longitude = Number(event?.nativeEvent?.coordinate?.longitude);
-
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-        return;
-      }
-
-      let nearestPlace = null;
-      let minDistance = Number.POSITIVE_INFINITY;
-      const candidatePlaces = buildNearbySpatialKeys(latitude, longitude)
-        .flatMap((key) => visiblePlaceSpatialIndex.get(key) || []);
-
-      candidatePlaces.forEach((place) => {
-        const placeLat = Number(place?.latitude);
-        const placeLng = Number(place?.longitude);
-        if (!Number.isFinite(placeLat) || !Number.isFinite(placeLng)) return;
-
-        const meters = distanceMeters(latitude, longitude, placeLat, placeLng);
-        if (meters < minDistance) {
-          minDistance = meters;
-          nearestPlace = place;
-        }
-      });
-
-      if (
-        nearestPlace &&
-        minDistance <= ROUTE_BUILDER_LONG_PRESS_PICK_RADIUS_M
-      ) {
-        handleLongPressPlace(nearestPlace);
-      }
-    },
-    [handleLongPressPlace, visiblePlaceSpatialIndex],
-  );
-
   const handleOpenPlaceDetail = useCallback(
     (place) => {
       if (!place?.id) return;
@@ -714,6 +1390,24 @@ export default function MapScreen() {
   );
 
   useEffect(() => {
+    const startNav = Array.isArray(params.startNav)
+      ? params.startNav[0]
+      : params.startNav;
+
+    if (startNav === "true") {
+      setStartNavConfirmVisible(true);
+      router.setParams({ startNav: undefined });
+    }
+
+    const resumeNav = Array.isArray(params.resumeNav)
+      ? params.resumeNav[0]
+      : params.resumeNav;
+
+    if (resumeNav === "true") {
+      activeTrip.resumeActiveTrip();
+      router.setParams({ resumeNav: undefined });
+    }
+
     const focusLat = Array.isArray(params.focusLat)
       ? params.focusLat[0]
       : params.focusLat;
@@ -741,7 +1435,8 @@ export default function MapScreen() {
     if (lastAppliedFocusRef.current === key) return;
     lastAppliedFocusRef.current = key;
 
-    mapRef.current?.flyTo([lng, lat], 15);
+    const latOffset = focusPlaceId ? 0.0022 : 0;
+    mapRef.current?.flyTo([lng, lat - latOffset], 15);
 
     if (!focusPlaceId) return;
     const matchedPlace = (mapPlaces || []).find(
@@ -752,15 +1447,7 @@ export default function MapScreen() {
     if (matchedPlace) {
       setSelectedPlace(matchedPlace);
     }
-  }, [params, mapPlaces]);
-
-  const routeBuilderNavigationMeta = useNavigationStateMachine({
-    routeBuilderMode,
-    routeBuilderHasFinished,
-    routeBuilderPendingArrival,
-    routeBuilderRecoveryMode,
-    routeBuilderActiveTargetName: routeBuilderActiveTarget?.name,
-  });
+  }, [params, mapPlaces, router]);
 
   return (
     <View
@@ -794,7 +1481,7 @@ export default function MapScreen() {
             className="flex-1 items-center justify-center gap-3"
             style={{ backgroundColor: MAP_UI_THEME.background }}
           >
-            <MaterialIcons name="wifi-off" size={40} color="#FB7185" />
+            <MaterialIconsRounded name="wifi-off" size={40} color="#FB7185" />
             <Text className="text-[14px]" style={{ color: MAP_UI_THEME.text }}>
               {MAP_TEXT.errors.mapData}
             </Text>
@@ -803,7 +1490,7 @@ export default function MapScreen() {
               className="flex-row items-center gap-2 px-5 py-2.5 rounded-xl"
               style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
             >
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="refresh"
                 size={18}
                 color={MAP_UI_THEME.text}
@@ -818,91 +1505,738 @@ export default function MapScreen() {
         {/* Always render MapView - pins should be visible even if there are errors */}
         <MapView
           ref={mapRef}
-          places={visiblePlaces}
+          places={isTripPreviewMode ? [] : visiblePlaces}
           selectedPlaceId={activePlace?.id ?? null}
           onSelectPlace={handleSelectPlace}
-          onLongPressPlace={handleLongPressPlace}
           onPressMap={handleMapPress}
-          onLongPressMap={handleMapLongPress}
           tileUrls={mapStyle.urls}
           mapType={mapStyle.mapType || "standard"}
           useNativeCleanStyle={mapStyle.useNativeCleanStyle === true}
+          mapPadding={activeMapPadding}
+          courseUpEnabled={isActiveTripMode && !activeTrip.isPaused}
+          showsUserLocation={!isTripPreviewMode}
+          showsUserHeadingIndicator={false}
+          showsMyLocationButton={false}
           style={MAP_CANVAS_STYLE}
         >
-          {mapBoundaryOverlays}
-
-          <CurrentLocationMarker
-            location={currentLocation}
-            nickname={currentUserNickname}
-            avatarUri={currentUserAvatarUri}
+          <ContextualBoundaryLayer
+            geojson={districtGeo}
+            activeArea={activeArea}
+            allAreasKey={ALL_AREAS_KEY}
           />
 
-          <RouteBuilderStopsMarkerLayer stops={routeBuilderDraftStops} />
+          {shouldShowUserHeadingHat ? (
+            <Marker
+              coordinate={userMapLocation}
+              anchor={{ x: 0.5, y: 0.56 }}
+              rotation={userHeading ?? 0}
+              tracksViewChanges={false}
+              zIndex={1205}
+            >
+              <View className="h-[64px] w-[64px] items-center justify-center">
+                <View
+                  className="absolute h-[64px] w-[64px] items-center justify-start pt-1"
+                  style={{
+                    opacity: userHeadingOpacity,
+                  }}
+                >
+                  <MaterialIconsRounded
+                    name="navigation"
+                    size={44}
+                    color="#1A73E8"
+                    style={{
+                      textShadowColor: "rgba(255,255,255,0.96)",
+                      textShadowOffset: { width: 0, height: 0 },
+                      textShadowRadius: 3,
+                    }}
+                  />
+                </View>
+              </View>
+            </Marker>
+          ) : null}
 
-          <ActiveRouteLayer
-            routeBuilderEnabled={routeBuilderEnabled}
-            routeBuilderRecoveryMode={routeBuilderRecoveryMode}
-            routeBuilderRecoveryCoordinates={routeBuilderRecoveryCoordinates}
-            routeBuilderRecoverySource={routeBuilderRecoverySource}
-            routeBuilderLegVisuals={routeBuilderLegVisuals}
-            routeCoordinates={routeCoordinates}
-            routeSource={routeSource}
-          />
+          {isTripPreviewMode && previewSegments.length > 0
+            ? previewSegments.map((segment) => (
+                <RoutePolyline
+                  key={segment.id}
+                  coordinates={segment.coordinates}
+                  source={segment.source}
+                  strokeWidth={6}
+                  isPrimary
+                  dashed={segment.dashed}
+                  color={segment.color}
+                  strokeOpacity={0.96}
+                />
+              ))
+            : null}
+
+          {isTripPreviewMode && previewSegments.length > 0
+            ? previewSegments.map((segment) =>
+                segment.labelCoordinate ? (
+                  <Marker
+                    key={`segment-label-${segment.id}`}
+                    coordinate={segment.labelCoordinate}
+                    anchor={{ x: 0.5, y: 0.5 }}
+                    tracksViewChanges={false}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                        paddingHorizontal: 8,
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: "rgba(17,24,39,0.9)",
+                        borderWidth: 1,
+                        borderColor: "rgba(255,255,255,0.82)",
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: segment.color,
+                        }}
+                      />
+                      <Text
+                        style={{
+                          color: "#FFFFFF",
+                          fontSize: 11,
+                          fontFamily: TOKENS.font.semibold,
+                        }}
+                      >
+                        {[segment.label, segment.distanceLabel].filter(Boolean).join(" • ")}
+                      </Text>
+                    </View>
+                  </Marker>
+                ) : null,
+              )
+            : null}
+
+          {isTripPreviewMode && previewStops.length > 0
+            ? previewStops.map((stop) => {
+                const imageUri = resolveMediaUrl(stop.thumbnail);
+                return (
+                  <Marker
+                    key={`preview-stop-${stop.id}`}
+                    coordinate={stop.coordinate}
+                    anchor={{ x: 0.5, y: 0.92 }}
+                    tracksViewChanges
+                  >
+                    <View style={{ alignItems: "center" }}>
+                      <View
+                        style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: 14,
+                          backgroundColor: "#FFFFFF",
+                          padding: 3,
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 3 },
+                          shadowOpacity: 0.22,
+                          shadowRadius: 5,
+                          elevation: 5,
+                        }}
+                      >
+                        {imageUri ? (
+                          <Image
+                            source={{ uri: imageUri }}
+                            style={{ width: "100%", height: "100%", borderRadius: 11 }}
+                            contentFit="cover"
+                          />
+                        ) : (
+                          <View
+                            style={{
+                              flex: 1,
+                              borderRadius: 11,
+                              alignItems: "center",
+                              justifyContent: "center",
+                              backgroundColor: "#F3F4F6",
+                            }}
+                          >
+                            <MaterialIconsRounded name="place" size={24} color="#6B7280" />
+                          </View>
+                        )}
+                      </View>
+                      <View
+                        style={{
+                          marginTop: -8,
+                          width: 26,
+                          height: 26,
+                          borderRadius: 13,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor:
+                            previewSegments[stop.sequence - 1]?.color ||
+                            previewSegments[stop.sequence - 2]?.color ||
+                            "#EF4444",
+                          borderWidth: 2,
+                          borderColor: "#FFFFFF",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: "#FFFFFF",
+                            fontSize: 12,
+                            fontFamily: TOKENS.font.bold,
+                          }}
+                        >
+                          {stop.sequence}
+                        </Text>
+                      </View>
+                    </View>
+                  </Marker>
+                );
+              })
+            : null}
+
+          {!isTripPreviewMode && isActiveTripMode && activeRouteCoordinates.length > 1 ? (
+            <RoutePolyline
+              coordinates={activeRouteCoordinates}
+              source={activeRouteSource || "osrm"}
+              strokeWidth={6}
+              isPrimary
+              dashed={activeRouteSource === "fallback"}
+              color="hsl(145, 63%, 38%)"
+              strokeOpacity={navigationController.isGpsLost ? 0.4 : 0.95}
+            />
+          ) : !isTripPreviewMode && routeCoordinates.length > 1 ? (
+            <RoutePolyline
+              coordinates={routeCoordinates}
+              source={routeSource || "osrm"}
+              strokeWidth={5}
+              isPrimary
+              dashed={routeSource === "fallback"}
+            />
+          ) : null}
+
+          {isActiveTripMode &&
+          !navigationController.isGpsLost &&
+          navigationController.snappedPoint &&
+          Number(navigationController.distanceToRoute) > 8 ? (
+            <SnapLine
+              from={activeTripLocation}
+              to={navigationController.snappedPoint}
+            />
+          ) : null}
+
+          {isActiveTripMode && neonSpots.length > 0
+            ? neonSpots.map((spot) => (
+                <Marker
+                  key={spot.id}
+                  coordinate={{ latitude: spot.latitude, longitude: spot.longitude }}
+                  anchor={{ x: 0.5, y: 0.5 }}
+                  tracksViewChanges={false}
+                >
+                  <View style={{ alignItems: "center", justifyContent: "center" }}>
+                    <View
+                      style={{
+                        backgroundColor: spot.color,
+                        opacity: 0.25,
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        position: "absolute",
+                      }}
+                    />
+                    <View
+                      style={{
+                        backgroundColor: spot.color,
+                        borderColor: "#FFFFFF",
+                        borderWidth: 1,
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 2,
+                        elevation: 3,
+                      }}
+                    />
+                  </View>
+                </Marker>
+              ))
+            : null}
+
+          {isActiveTripMode &&
+          navigationController.isGpsLost &&
+          navigationController.estimatedPosition ? (
+            <Marker
+              coordinate={navigationController.estimatedPosition}
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
+            >
+              <View style={{ alignItems: "center", justifyContent: "center" }}>
+                <View
+                  style={{
+                    backgroundColor: "#9CA3AF",
+                    opacity: 0.3,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    position: "absolute",
+                  }}
+                />
+                <View
+                  style={{
+                    backgroundColor: "#9CA3AF",
+                    borderColor: "#FFFFFF",
+                    borderWidth: 1.5,
+                    width: 12,
+                    height: 12,
+                    borderRadius: 6,
+                  }}
+                />
+              </View>
+            </Marker>
+          ) : null}
         </MapView>
       </View>
 
-      <RouteBuilderPanel
-        visible={routeBuilderMode}
-        bottomOffset={FLOATING_TAB_CLEARANCE + 4}
-        statusLabel={routeBuilderNavigationMeta.label}
-        draftStops={routeBuilderDraftStops}
-        canConfirm={routeBuilderCanConfirm}
-        hasConfirmedRoute={routeBuilderHasConfirmedRoute}
-        isDirty={routeBuilderIsDirty}
-        minimumStops={routeBuilderMinimumStops}
-        enabled={routeBuilderEnabled}
-        pendingArrival={routeBuilderPendingArrival}
-        recoveryMode={routeBuilderRecoveryMode}
-        activeTargetName={routeBuilderActiveTarget?.name}
-        distanceToActiveTargetLabel={routeBuilderDistanceToActiveTargetLabel}
-        completedLegs={routeBuilderCompletedLegs}
-        legCount={routeBuilderLegCount}
-        hasPendingArrival={routeBuilderHasPendingArrival}
-        completedView={routeBuilderCompletedView}
-        etaLabel={routeBuilderEtaLabel}
-        distanceLabel={routeBuilderDistanceLabel}
-        isRouteError={isRouteBuilderError}
-        isRouteFetching={isRouteBuilderFetching}
-        onExit={handleExitRouteBuilder}
-        onRemoveStop={handleRemoveRouteBuilderStop}
-        onConfirmRoute={handleConfirmRouteBuilder}
-        onClear={handleClearRouteBuilder}
-        onConfirmArrived={handleConfirmArrivedRouteBuilderLeg}
-        onResetProgress={handleResetRouteBuilderProgress}
-        onToggleCompletedView={handleToggleCompletedLegView}
-        onRetryRoute={refetchRouteBuilder}
+      <ActiveTripNavBanner
+        visible={isActiveTripMode && !activeTrip.isPaused}
+        topOffset={(insets.top || 0) + 12}
+        instruction={activeInstruction}
+        instructionIcon={activeInstructionIcon}
+        targetName={activeTargetPoint?.name}
+        streetName={activeUpcomingStep?.name}
+        etaLabel={activeRouteEtaLabel}
+        distanceLabel={activeRouteDistanceLabel}
+        distanceToNextTurn={navigationController.distanceToNextTurn}
+        distanceToNextTurnLabel={activeDistanceToNextTurnLabel}
+        isFetching={isActiveRouteFetching}
+        isOffRoute={navigationController.isOffRoute}
+        isVoiceMuted={isVoiceMuted}
+        travelMode={activeTravelMode}
+        onToggleVoice={handleToggleVoice}
+        onExit={handleRequestStopActiveTrip}
       />
 
-      <ArrivalConfirmModal
-        visible={routeBuilderMode && routeBuilderArrivalAlertVisible}
-        targetName={routeBuilderPendingArrival?.targetName}
-        onDismiss={handleDismissRouteBuilderArrivalAlert}
-        onConfirm={handleConfirmArrivedRouteBuilderLeg}
+      {isActiveTripMode && !activeTrip.isPaused ? (
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            top: (insets.top || 0) + 116,
+            zIndex: 82,
+            alignItems: "flex-end",
+          }}
+        >
+          <BlurView
+            tint="dark"
+            intensity={34}
+            style={{
+              flexDirection: "row",
+              gap: 8,
+              padding: 6,
+              borderRadius: 22,
+              overflow: "hidden",
+              backgroundColor: "rgba(17,24,39,0.86)",
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.16)",
+            }}
+          >
+            <Pressable
+              onPress={handlePauseActiveTrip}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                height: 38,
+                paddingHorizontal: 12,
+                borderRadius: 19,
+                backgroundColor: "rgba(255,214,10,0.18)",
+              }}
+            >
+              <MaterialIconsRounded name="pause" size={17} color="#FFD60A" />
+              <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: TOKENS.font.semibold }}>
+                {t("mapScreen.pauseJourney")}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={handleRequestStopActiveTrip}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                height: 38,
+                paddingHorizontal: 12,
+                borderRadius: 19,
+                backgroundColor: "rgba(239,68,68,0.2)",
+              }}
+            >
+              <MaterialIconsRounded name="stop" size={17} color="#FCA5A5" />
+              <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: TOKENS.font.semibold }}>
+                {t("mapScreen.stopJourney")}
+              </Text>
+            </Pressable>
+          </BlurView>
+        </View>
+      ) : null}
+
+      <NearbyWarningBanner
+        visible={isActiveTripMode && !activeTrip.isPaused && nearbyTriggered}
+        topOffset={(insets.top || 0) + 94}
+        targetName={activeTargetPoint?.name}
+        distanceMeters={activeDistanceToTarget ?? 0}
+      />
+
+      {isActiveTripMode && navigationController.isGpsLost ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            top: (insets.top || 0) + 94,
+            zIndex: 75,
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              backgroundColor: "rgba(30, 41, 59, 0.92)",
+              borderWidth: 1,
+              borderColor: "rgba(148, 163, 184, 0.24)",
+              borderRadius: 14,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+            }}
+          >
+            <MaterialIconsRounded name="signal-cellular-off" size={16} color="#94A3B8" />
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  color: "#E2E8F0",
+                  fontSize: 13,
+                  fontFamily: TOKENS.font.semibold,
+                }}
+              >
+                {MAP_TEXT.navigation.signalLost}
+              </Text>
+              {navigationController.estimatedPosition ? (
+                <Text
+                  style={{
+                    color: "#94A3B8",
+                    fontSize: 11,
+                    fontFamily: TOKENS.font.medium,
+                  }}
+                >
+                  {MAP_TEXT.navigation.signalLostSubtitle}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Broadcast Notice from Event Organizers */}
+      {broadcastNotice ? (
+        <View
+          pointerEvents="auto"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            top: isActiveTripMode ? (insets.top || 0) + 156 : (insets.top || 0) + 64,
+            zIndex: 99,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              backgroundColor: "#DC2626",
+              borderWidth: 1,
+              borderColor: "#EF4444",
+              borderRadius: 14,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 6,
+              elevation: 5,
+            }}
+          >
+            <MaterialIconsRounded name="warning" size={16} color="#FFFFFF" />
+            <Text
+              style={{
+                flex: 1,
+                color: "#FFFFFF",
+                fontSize: 12,
+                fontFamily: TOKENS.font.bold,
+              }}
+              numberOfLines={2}
+            >
+              {t("mapScreen.broadcastFrom", { notice: broadcastNotice })}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      <DepartureReminderBanner
+        visible={Boolean(departureReminder)}
+        bottomOffset={FLOATING_TAB_CLEARANCE + 12}
+        nextName={departureReminder?.nextName}
+        minutesLeft={departureReminder?.minutesLeft ?? 10}
+      />
+
+      {/* Banner khi Hành trình đang tạm nghỉ */}
+      {isActiveTripMode && activeTrip.isPaused && (
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            bottom: FLOATING_TAB_CLEARANCE + 12,
+            zIndex: 80,
+          }}
+        >
+          <BlurView
+            tint="dark"
+            intensity={36}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderRadius: 18,
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: "rgba(255, 255, 255, 0.16)",
+              backgroundColor: "rgba(16, 24, 32, 0.92)",
+            }}
+          >
+            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <MaterialIconsRounded name="pause-circle-filled" size={24} color="#FFD60A" />
+              <View style={{ flex: 1, gap: 1 }}>
+                <Text style={{ color: "#FFFFFF", fontSize: 14, fontFamily: TOKENS.font.semibold }}>
+                  {t("mapScreen.journeyPaused")}
+                </Text>
+                <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, fontFamily: TOKENS.font.medium }}>
+                  {t("mapScreen.journeyPausedDesc")}
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={handleResumeActiveTrip}
+              style={{
+                paddingHorizontal: 14,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "#007BFF",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: TOKENS.font.semibold }}>
+                {t("mapScreen.resume")}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={handleRequestStopActiveTrip}
+              style={{
+                paddingHorizontal: 14,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "rgba(239,68,68,0.2)",
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1,
+                borderColor: "rgba(252,165,165,0.38)",
+              }}
+            >
+              <Text style={{ color: "#FCA5A5", fontSize: 12, fontFamily: TOKENS.font.semibold }}>
+                {t("mapScreen.stopJourney")}
+              </Text>
+            </Pressable>
+          </BlurView>
+        </View>
+      )}
+
+      {isTripPreviewMode ? (
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            bottom: FLOATING_TAB_CLEARANCE + 14,
+            zIndex: 88,
+          }}
+        >
+          <BlurView
+            tint="light"
+            intensity={46}
+            style={{
+              borderRadius: 24,
+              overflow: "hidden",
+              backgroundColor: "rgba(255,255,255,0.94)",
+              borderWidth: 1,
+              borderColor: "rgba(17,24,39,0.08)",
+            }}
+          >
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14, gap: 12 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 14,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "rgba(16,185,129,0.12)",
+                  }}
+                >
+                  {isPreviewTripLoading || isPreviewRouteLoading ? (
+                    <ActivityIndicator size="small" color="#059669" />
+                  ) : (
+                    <MaterialIconsRounded name="route" size={20} color="#047857" />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: "#111827",
+                      fontSize: 16,
+                      fontFamily: TOKENS.font.bold,
+                    }}
+                  >
+                    {previewTrip?.title || t("mapScreen.previewTitle")}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      marginTop: 2,
+                      color: "#6B7280",
+                      fontSize: 12,
+                      fontFamily: TOKENS.font.medium,
+                    }}
+                  >
+                    {isPreviewRouteError
+                      ? t("mapScreen.previewFallback")
+                      : t("mapScreen.previewSummary", {
+                          count: previewStops.length,
+                          segments: previewSegments.length,
+                        })}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Pressable
+                  onPress={handleCancelTripPreview}
+                  style={{
+                    height: 46,
+                    paddingHorizontal: 16,
+                    borderRadius: 23,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#F3F4F6",
+                  }}
+                >
+                  <Text style={{ color: "#111827", fontSize: 13, fontFamily: TOKENS.font.semibold }}>
+                    {t("common.back")}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleConfirmTripPreview}
+                  disabled={
+                    previewStops.length === 0 ||
+                    updatePreviewTripMutation.isPending ||
+                    isPreviewTripLoading
+                  }
+                  style={{
+                    flex: 1,
+                    height: 46,
+                    borderRadius: 23,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#111827",
+                    opacity:
+                      previewStops.length === 0 ||
+                      updatePreviewTripMutation.isPending ||
+                      isPreviewTripLoading
+                        ? 0.55
+                        : 1,
+                  }}
+                >
+                  {updatePreviewTripMutation.isPending ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={{ color: "#FFFFFF", fontSize: 14, fontFamily: TOKENS.font.bold }}>
+                      {t("mapScreen.startGuidance")}
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </BlurView>
+        </View>
+      ) : null}
+
+      <StartNavigationModal
+        visible={startNavConfirmVisible}
+        onDismiss={() => {
+          setStartNavConfirmVisible(false);
+          handleExitActiveTrip();
+        }}
+        onConfirm={async () => {
+          setStartNavConfirmVisible(false);
+          followCameraRef.current = true;
+          await locateActiveTripNow();
+        }}
+      />
+
+      <TripCompleteModal
+        visible={tripCompleteVisible}
+        isTripEnd={completeIsTripEnd}
+        dayNumber={completeDayNumber}
+        onDismiss={() => {
+          setTripCompleteVisible(false);
+          if (completeIsTripEnd) {
+            handleExitActiveTrip();
+          }
+        }}
+        onPrimaryAction={handlePrimaryTripComplete}
+        primaryActionText={completeIsTripEnd ? t("mapScreen.complete") : t("mapScreen.paused")}
+      />
+
+      <ArrivalBanner
+        visible={isActiveTripMode && !activeTrip.isPaused && activeArrivalVisible}
+        targetName={activeTargetPoint?.name}
+        distanceMeters={activeDistanceToTarget ?? Number.POSITIVE_INFINITY}
+        speedKmh={activeTripSpeedKmh}
+        bottomOffset={FLOATING_TAB_CLEARANCE + 18}
+        onDismiss={handleDismissActiveArrival}
+        onConfirm={handleConfirmActiveArrival}
       />
 
       <NavigationStatusBanner
-        visible={routeEnabled && Boolean(routeStatus)}
+        visible={!isTripPreviewMode && routeEnabled && Boolean(routeStatus)}
         routeStatus={routeStatus}
         routeEtaLabel={routeEtaLabel}
         routeDistanceLabel={routeDistanceLabel}
         isRouteFetching={isRouteFetching}
         onRetry={refetchRoute}
         bottomOffset={
-          routeBuilderMode
-            ? FLOATING_TAB_CLEARANCE + 82
-            : activePlace
-              ? FLOATING_TAB_CLEARANCE + 194
-              : FLOATING_TAB_CLEARANCE + 82
+          activePlace
+            ? FLOATING_TAB_CLEARANCE + 124
+            : FLOATING_TAB_CLEARANCE + 82
         }
       />
 
@@ -911,240 +2245,309 @@ export default function MapScreen() {
         style={{ paddingTop: (insets.top || 0) + 12 }}
         pointerEvents="box-none"
       >
-        <View className="flex-row items-start px-4 gap-3" pointerEvents="auto">
-          <Pressable
-            className="w-[48px] h-[48px]"
-            style={{ display: "none" }}
-            onPress={undefined}
-            accessibilityRole="button"
-            accessibilityLabel={MAP_TEXT.accessibility.openMenu}
-          >
-            <BlurView
-              tint="light"
-              intensity={80}
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(255, 255, 255, 0.85)",
-                borderWidth: 1,
-                borderColor: "rgba(255, 255, 255, 0.5)",
-                overflow: "hidden",
-              }}
-            >
-              <MaterialIcons
-                name="menu"
-                size={24}
-                color={TOKENS.color.neutral[700]}
-              />
-            </BlurView>
-          </Pressable>
-
-          {/* Search bar expanding */}
+        {!isTripPreviewMode && !isActiveTripMode ? (
           <View
-            style={{
-              flex: searchOpen ? 1 : 0,
-              width: searchOpen ? undefined : 48,
-              height: 48,
-            }}
+            className="flex-row items-center px-4 gap-3"
+            pointerEvents="auto"
           >
-            <BlurView
-              tint="light"
-              intensity={80}
-              style={{
-                borderRadius: 24,
-                flexDirection: "row",
-                alignItems: "center",
-                overflow: "hidden",
-                height: 48,
-                backgroundColor: "rgba(255, 255, 255, 0.85)",
-                borderWidth: 1,
-                borderColor: "rgba(255, 255, 255, 0.5)",
-              }}
-            >
-              <Pressable
-                onPress={searchOpen ? undefined : openSearch}
-                style={{
-                  width: 48,
-                  height: 48,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <MaterialIcons
-                  name="search"
-                  size={22}
-                  color={
-                    searchOpen
-                      ? TOKENS.color.primary[500]
-                      : TOKENS.color.neutral[700]
-                  }
-                />
-              </Pressable>
-
-              {searchOpen ? (
-                <>
-                  <TextInput
-                    ref={searchInputRef}
-                    value={searchText}
-                    onChangeText={setSearchText}
-                    placeholder={MAP_TEXT.search.placeholder}
-                    placeholderTextColor={TOKENS.color.neutral[500]}
-                    style={{
-                      flex: 1,
-                      height: 48,
-                      fontSize: 15,
-                      fontWeight: "700",
-                      color: TOKENS.color.neutral[900],
-                      paddingRight: 8,
-                      fontFamily: TOKENS.font.semibold,
-                    }}
-                    returnKeyType="search"
-                    onSubmitEditing={() => Keyboard.dismiss()} // Chỉ đóng bàn phím, để user thấy marker kết quả
-                    autoCorrect={false}
-                  />
-                  {searchText.length > 0 ? (
-                    <Pressable
-                      onPress={() => setSearchText("")}
-                      style={{
-                        width: 44,
-                        height: 48,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <MaterialIcons
-                        name="close"
-                        size={20}
-                        color={TOKENS.color.neutral[500]}
-                      />
-                    </Pressable>
-                  ) : null}
-                  <Pressable
-                    onPress={closeSearch}
-                    style={{
-                      paddingRight: 14,
-                      paddingLeft: 6,
-                      height: 48,
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: TOKENS.color.neutral[600],
-                        fontSize: 14,
-                        fontFamily: TOKENS.font.semibold,
-                      }}
-                    >
-                      {MAP_TEXT.search.cancel}
-                    </Text>
-                  </Pressable>
-                </>
-              ) : null}
-            </BlurView>
-          </View>
-
-          {/* Vùng trống để đẩy Profile */}
-          {!searchOpen ? <View style={{ flex: 1 }} /> : null}
-
-          <View className="items-end gap-2">
+            {/* Search bar — full width glass pill */}
             <Pressable
-              className="w-[48px] h-[48px]"
-              onPress={() => router.push("/(tabs)/profile")}
+              onPress={searchOpen ? undefined : openSearch}
+              style={{ flex: 1 }}
             >
               <BlurView
                 tint="light"
                 intensity={80}
                 style={{
-                  width: 48,
-                  height: 48,
                   borderRadius: 24,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  overflow: "hidden",
+                  height: 44,
+                  backgroundColor: "rgba(255, 255, 255, 0.88)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255, 255, 255, 0.5)",
+                }}
+              >
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <MaterialIconsRounded
+                    name="search"
+                    size={20}
+                    color={
+                      searchOpen
+                        ? TOKENS.color.primary[500]
+                        : TOKENS.color.neutral[500]
+                    }
+                  />
+                </View>
+
+                {searchOpen ? (
+                  <>
+                    <TextInput
+                      ref={searchInputRef}
+                      value={searchText}
+                      onChangeText={setSearchText}
+                      placeholder={MAP_TEXT.search.placeholder}
+                      placeholderTextColor={TOKENS.color.neutral[400]}
+                      style={{
+                        flex: 1,
+                        height: 44,
+                        fontSize: 14,
+                        color: TOKENS.color.neutral[900],
+                        fontFamily: TOKENS.font.medium,
+                      }}
+                      returnKeyType="search"
+                      onSubmitEditing={() => Keyboard.dismiss()}
+                      autoCorrect={false}
+                    />
+                    {searchText.length > 0 ? (
+                      <Pressable
+                        onPress={() => setSearchText("")}
+                        hitSlop={8}
+                        style={{
+                          width: 36,
+                          height: 44,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <MaterialIconsRounded
+                          name="close"
+                          size={18}
+                          color={TOKENS.color.neutral[400]}
+                        />
+                      </Pressable>
+                    ) : null}
+                    <Pressable
+                      onPress={closeSearch}
+                      hitSlop={8}
+                      style={{
+                        paddingRight: 14,
+                        paddingLeft: 4,
+                        height: 44,
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: TOKENS.color.neutral[500],
+                          fontSize: 13,
+                          fontFamily: TOKENS.font.medium,
+                        }}
+                      >
+                        {MAP_TEXT.search.cancel}
+                      </Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <Text
+                    style={{
+                      flex: 1,
+                      color: TOKENS.color.neutral[400],
+                      fontSize: 14,
+                      fontFamily: TOKENS.font.medium,
+                      paddingRight: 14,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {MAP_TEXT.search.placeholder}
+                  </Text>
+                )}
+              </BlurView>
+            </Pressable>
+
+            {/* Profile avatar */}
+            {!searchOpen ? (
+              <Pressable
+                onPress={() => router.push("/(tabs)/profile")}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: "rgba(255, 255, 255, 0.85)",
+                  backgroundColor: "rgba(255, 255, 255, 0.88)",
                   borderWidth: 1,
                   borderColor: "rgba(255, 255, 255, 0.5)",
                   overflow: "hidden",
                 }}
               >
-                <MaterialIcons
-                  name="person"
-                  size={24}
-                  color={TOKENS.color.neutral[700]}
-                />
-              </BlurView>
-            </Pressable>
+                {currentUserAvatarUri ? (
+                  <Image
+                    source={{ uri: currentUserAvatarUri }}
+                    style={{ width: 44, height: 44 }}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <MaterialIconsRounded
+                    name="person"
+                    size={22}
+                    color={TOKENS.color.neutral[600]}
+                  />
+                )}
+              </Pressable>
+            ) : null}
           </View>
-        </View>
+        ) : null}
 
-        <FilterGroupBar
-          activeFilterGroup={activeFilterGroup}
-          onSelectFilterGroup={handleSelectFilterGroup}
-          activeFilterGroupMeta={activeFilterGroupMeta}
-          activeFilterSummaryLabel={activeFilterSummaryLabel}
-          onOpenFilterPicker={handleOpenFilterPicker}
-        />
+        {!isTripPreviewMode && !isActiveTripMode ? (
+          <FilterGroupBar
+            activeFilterGroup={activeFilterGroup}
+            onSelectFilterGroup={handleSelectFilterGroup}
+            activeFilterGroupMeta={activeFilterGroupMeta}
+            activeFilterSummaryLabel={activeFilterSummaryLabel}
+            onOpenFilterPicker={handleOpenFilterPicker}
+          />
+        ) : null}
 
+{/* Phương tiện active trip tự động lấy từ transportToNext */}
+
+        {isActiveTripMode && !activeTrip.isPaused && activeEventId && activeDistanceToTarget <= 50 ? (
+          <Pressable
+            onPress={handleCameraCheckIn}
+            disabled={isMomentUploading}
+            style={{
+              position: "absolute",
+              right: 14,
+              bottom: FLOATING_TAB_CLEARANCE + 180,
+              zIndex: 99,
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: "#34C759",
+                borderColor: "#FFFFFF",
+                borderWidth: 1.5,
+                borderRadius: 24,
+                width: 48,
+                height: 48,
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 6,
+                elevation: 6,
+              }}
+            >
+              {isMomentUploading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <MaterialIconsRounded name="photo-camera" size={22} color="#FFFFFF" />
+              )}
+            </View>
+          </Pressable>
+        ) : null}
+
+        {/* Floating action buttons — vertical stack */}
         <View
           pointerEvents="box-none"
           style={{
             position: "absolute",
             right: 14,
-            bottom: FLOATING_TAB_CLEARANCE + 84,
-            zIndex: 55,
+            top: (insets.top || 0) + 120,
+            zIndex: 50,
           }}
         >
-          <View className="items-end gap-3" pointerEvents="auto">
-            <AIEntryButton onPress={() => router.push("/(tabs)/ai")} />
-
-            <Pressable className="w-[44px] h-[44px]" onPress={handleLocate}>
-              <GlassPanel
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                intensity={52}
-              >
-                <MaterialIcons
-                  name="my-location"
-                  size={20}
-                  color={MAP_UI_THEME.neon}
-                />
-              </GlassPanel>
-            </Pressable>
-
+          <View
+            style={{ alignItems: "flex-end", gap: 10 }}
+            pointerEvents="auto"
+          >
+            {/* Locate Button */}
             <Pressable
-              className="w-[44px] h-[44px]"
-              onPress={() => setLayerModalVisible(true)}
+              onPress={handleLocate}
+              className="w-11 h-11 rounded-full items-center justify-center border border-black/[0.04] bg-white/90 shadow-lg shadow-slate-900/5 active:scale-95 transition-all"
             >
-              <GlassPanel
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                intensity={52}
-              >
-                <MaterialIcons
-                  name="layers"
-                  size={20}
-                  color={MAP_UI_THEME.text}
-                />
-              </GlassPanel>
+              <Locate
+                size={20}
+                color="#007AFF"
+              />
             </Pressable>
+
+            {/* Layer Button + Popover Row */}
+            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
+              <Pressable
+                onPress={() => {
+                  LayoutAnimation.configureNext(
+                    LayoutAnimation.Presets.easeInEaseOut,
+                  );
+                  setLayerModalVisible(!layerModalVisible);
+                }}
+                className="w-11 h-11 rounded-full items-center justify-center border border-black/[0.04] bg-white/90 shadow-lg shadow-slate-900/5 active:scale-95 transition-all"
+              >
+                {layerModalVisible ? (
+                  <X size={20} color="#4B5563" />
+                ) : (
+                  <Layers size={20} color="#4B5563" />
+                )}
+              </Pressable>
+
+              {/* Layer picker popover */}
+              {layerModalVisible && (
+                <View
+                  style={{ padding: 3 }}
+                  className="flex-row rounded-full items-center gap-1 bg-white/90 border border-black/[0.04] shadow-lg shadow-slate-900/5"
+                >
+                  <Pressable
+                    onPress={() => {
+                      LayoutAnimation.configureNext(
+                        LayoutAnimation.Presets.easeInEaseOut,
+                      );
+                      setMapStyle(MAP_STYLES.OSM);
+                      setLayerModalVisible(false);
+                    }}
+                    className={`px-3.5 h-8 rounded-full items-center justify-center transition-all duration-200 ${
+                      mapStyle.key === "osm"
+                        ? "bg-slate-900"
+                        : "bg-transparent active:bg-slate-100"
+                    }`}
+                  >
+                    <Text
+                      className={`text-[13px] font-medium transition-colors duration-200 ${
+                        mapStyle.key === "osm" ? "text-white" : "text-slate-600"
+                      }`}
+                    >
+                      {t("mapScreen.map")}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      LayoutAnimation.configureNext(
+                        LayoutAnimation.Presets.easeInEaseOut,
+                      );
+                      setMapStyle(MAP_STYLES.HYBRID);
+                      setLayerModalVisible(false);
+                    }}
+                    className={`px-3.5 h-8 rounded-full items-center justify-center transition-all duration-200 ${
+                      mapStyle.key === "hybrid"
+                        ? "bg-slate-900"
+                        : "bg-transparent active:bg-slate-100"
+                    }`}
+                  >
+                    <Text
+                      className={`text-[13px] font-medium transition-colors duration-200 ${
+                        mapStyle.key === "hybrid" ? "text-white" : "text-slate-600"
+                      }`}
+                    >
+                      {t("mapScreen.satellite")}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
           </View>
         </View>
       </View>
 
-      {activePlace && !routeBuilderMode ? (
+      {activePlace && !isTripPreviewMode && !isActiveTripMode ? (
         <View
           pointerEvents="box-none"
           style={{
@@ -1155,7 +2558,7 @@ export default function MapScreen() {
             zIndex: 70,
           }}
         >
-          <PlacePreviewCard
+        <PlacePreviewCard
             place={activePlace}
             onClose={handleClosePreview}
             onViewDetail={handleOpenPlaceDetail}
@@ -1170,22 +2573,28 @@ export default function MapScreen() {
             travelLoading={previewTravelLoading}
             compact={isCompactPreviewCard}
           />
-        </View>
+          </View>
+      ) : null}
+
+      {/* Screen dimming overlay cho đường thẳng dài */}
+      {isActiveTripMode && !activeTrip.isPaused && isScreenDimmed ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundColor: `rgba(0, 0, 0, ${SCREEN_DIM_OVERLAY_OPACITY})`,
+            zIndex: 4,
+          }}
+        />
       ) : null}
 
       <FilterPickerModal
-        visible={filterPickerVisible}
+        visible={!isTripPreviewMode && filterPickerVisible}
         activeFilterGroupLabel={activeFilterGroupMeta.label}
         options={filterPickerOptions}
         onClose={handleCloseFilterPicker}
         onSelectOption={handleSelectFilterOption}
-      />
-
-      <LayerSwitcherModal
-        visible={layerModalVisible}
-        onClose={() => setLayerModalVisible(false)}
-        currentStyle={mapStyle}
-        onSelect={setMapStyle}
       />
     </View>
   );

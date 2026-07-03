@@ -1,6 +1,6 @@
 import prisma from "../../config/prismaClient.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
-import { emitToUser, isUserOnline } from "../../config/socketIO.js";
+import { emitToUser, emitToAll, isUserOnline } from "../../config/socketIO.js";
 import { sendWebPush } from "./webPush.service.js";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
@@ -437,6 +437,17 @@ eventEmitter.on(EVENTS.BUSINESS.RESUBMITTED, async ({ businessId, ownerId, busin
   });
 });
 
+eventEmitter.on(EVENTS.BUSINESS.CONTRACT_SIGNED, async ({ businessId, businessName, ownerId, contractVersion, signedAt }) => {
+  await notifyAdmins(
+    "Doanh nghiệp ký hợp đồng",
+    `${businessName || `Doanh nghiệp #${businessId}`} đã ký hợp đồng (${contractVersion || "v1"}) lúc ${new Date(signedAt).toLocaleString("vi-VN")}.`,
+    { businessId, contractVersion, type: "admin_business_contract_signed" },
+    ownerId,
+  ).catch((error) => {
+    console.error("[Notification] Error processing BUSINESS.CONTRACT_SIGNED:", error);
+  });
+});
+
 eventEmitter.on(EVENTS.PLACE.CREATED, async ({ id, name, createdBy }) => {
   const place = await prisma.place.findUnique({
     where: { id: Number(id) },
@@ -530,6 +541,27 @@ eventEmitter.on(
   },
 );
 
+eventEmitter.on(EVENTS.BOOKING.PAID, async ({ bookingId, bookingCode, userId, businessId }) => {
+  await Promise.all([
+    notifyUser(
+      userId,
+      "Đã thanh toán, chờ xác nhận",
+      `Booking #${bookingCode} đã thanh toán thành công. Đang chờ doanh nghiệp xác nhận.`,
+      { bookingId, type: "booking_paid" },
+    ),
+    businessId
+      ? notifyBusinessOwner(
+          businessId,
+          "Có đơn thanh toán mới, vui lòng xác nhận",
+          `Booking #${bookingCode} đã được thanh toán. Vui lòng xác nhận đơn.`,
+          { bookingId, type: "booking_paid_business" },
+        )
+      : Promise.resolve(),
+  ]).catch((error) => {
+    console.error("[Notification] Error processing BOOKING.PAID:", error);
+  });
+});
+
 eventEmitter.on(EVENTS.BOOKING.CONFIRMED, async ({ bookingId, bookingCode, confirmedBy, userId }) => {
   await notifyUser(
     userId,
@@ -541,6 +573,53 @@ eventEmitter.on(EVENTS.BOOKING.CONFIRMED, async ({ bookingId, bookingCode, confi
     console.error("[Notification] Error processing BOOKING.CONFIRMED:", error);
   });
 });
+
+const formatRescheduleTimeVi = (iso) => {
+  try {
+    return new Date(iso).toLocaleString("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      weekday: "short",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+};
+
+eventEmitter.on(
+  EVENTS.BOOKING.RESCHEDULED,
+  async ({
+    bookingId,
+    bookingCode,
+    userId,
+    rescheduledBy,
+    newBookingAt,
+    businessNote,
+  }) => {
+    const when = newBookingAt ? formatRescheduleTimeVi(newBookingAt) : "";
+    const noteSuffix =
+      businessNote && String(businessNote).trim()
+        ? ` Ghi chú: ${String(businessNote).trim()}`
+        : "";
+    await notifyUser(
+      userId,
+      "Lịch đặt chỗ đã đổi",
+      `Booking #${bookingCode} được dời sang ${when}.${noteSuffix}`,
+      {
+        bookingId,
+        type: "booking_rescheduled",
+        newBookingAt: newBookingAt || null,
+      },
+      rescheduledBy,
+    ).catch((error) => {
+      console.error("[Notification] Error processing BOOKING.RESCHEDULED:", error);
+    });
+  },
+);
 
 eventEmitter.on(
   EVENTS.BOOKING.CANCELLED,
@@ -621,6 +700,149 @@ eventEmitter.on(EVENTS.REVIEW.REPLIED, async ({ reviewId, replyId, repliedBy, re
     console.error("[Notification] Error processing REVIEW.REPLIED:", error);
   });
 });
+
+/**
+ * Tạo thông báo hệ thống (announcement) — hiển thị ngay cho tất cả user.
+ * Lưu vào notifications_global + tạo NotificationRecipient cho từng user
+ * + emit Socket.IO + push cho offline users.
+ */
+export async function createAnnouncement({ title, body, imageUrl, createdBy }) {
+  // 1. Lấy toàn bộ user active
+  const users = await prisma.user.findMany({
+    where: { status: "active" },
+    select: { id: true },
+  });
+
+  if (users.length === 0) return null;
+
+  const createdById = toPositiveInt(createdBy) || users[0].id;
+
+  // 2. Tạo NotificationGlobal + NotificationRecipient cho từng user
+  const notification = await prisma.notificationGlobal.create({
+    data: {
+      title,
+      body,
+      imageUrl: imageUrl || null,
+      targetType: "all",
+      targetValue: { userIds: users.map((u) => u.id) },
+      data: { type: "announcement" },
+      status: "sent",
+      sentAt: new Date(),
+      createdBy: createdById,
+      successCount: users.length,
+      recipients: {
+        create: users.map((u) => ({
+          userId: u.id,
+        })),
+      },
+    },
+    include: { recipients: true },
+  });
+
+  // 3. Emit Socket.IO per-user (notification event) + push cho offline users
+  for (const recipient of notification.recipients) {
+    const payload = toPayload(notification, recipient);
+    emitToUser(recipient.userId, "notification", payload);
+    sendPushIfOffline(
+      recipient.userId,
+      title,
+      body,
+      { type: "announcement", announcementId: notification.id },
+    ).catch(() => {});
+  }
+
+  // 4. Emit announcement event (cho UI realtime, backwards-compatible)
+  emitToAll("announcement", {
+    id: notification.id,
+    title: notification.title,
+    body: notification.body,
+    imageUrl: notification.imageUrl,
+    sentAt: notification.sentAt,
+  });
+
+  return notification;
+}
+
+/**
+ * Cập nhật thông báo hệ thống (admin).
+ */
+export async function updateAnnouncement(id, { title, body, imageUrl }) {
+  const existing = await prisma.notificationGlobal.findUnique({
+    where: { id: Number(id) },
+  });
+
+  if (!existing) {
+    throw new Error("Không tìm thấy thông báo");
+  }
+
+  const updated = await prisma.notificationGlobal.update({
+    where: { id: Number(id) },
+    data: {
+      ...(title !== undefined && { title }),
+      ...(body !== undefined && { body }),
+      ...(imageUrl !== undefined && { imageUrl }),
+    },
+  });
+
+  return updated;
+}
+
+/**
+ * Xóa thông báo hệ thống (admin).
+ */
+export async function deleteAnnouncement(id) {
+  const existing = await prisma.notificationGlobal.findUnique({
+    where: { id: Number(id) },
+  });
+
+  if (!existing) {
+    throw new Error("Không tìm thấy thông báo");
+  }
+
+  await prisma.notificationGlobal.delete({
+    where: { id: Number(id) },
+  });
+
+  return { id: Number(id) };
+}
+
+/**
+ * Lấy danh sách thông báo hệ thống (admin).
+ */
+export async function getAnnouncements({ page = 1, limit = 20 } = {}) {
+  const pageNum = Math.max(Number(page) || 1, 1);
+  const limitNum = Math.min(Math.max(Number(limit) || 20, 1), 50);
+  const skip = (pageNum - 1) * limitNum;
+
+  const [data, total] = await Promise.all([
+    prisma.notificationGlobal.findMany({
+      where: { targetType: "all" },
+      orderBy: { sentAt: "desc" },
+      skip,
+      take: limitNum,
+      select: {
+        id: true,
+        title: true,
+        body: true,
+        imageUrl: true,
+        sentAt: true,
+        status: true,
+        createdAt: true,
+      },
+    }),
+    prisma.notificationGlobal.count({ where: { targetType: "all" } }),
+  ]);
+
+  return {
+    data,
+    pagination: {
+      page: pageNum,
+      limit: limitNum,
+      total,
+      totalPages: Math.ceil(total / limitNum),
+    },
+  };
+}
 
 export const initNotificationService = () => {
   console.log("[Notification Service] Initialized and listening for events...");

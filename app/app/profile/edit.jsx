@@ -15,7 +15,7 @@ import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../../src/stores/authStore";
@@ -29,6 +29,7 @@ import {
 import { resolveMediaUrl } from "../../src/lib/media-url";
 import { BottomSheetPicker } from "../../src/components/ui/BottomSheetPicker";
 import { ProvinceDistrictSelect } from "../../src/modules/profile/components/ProvinceDistrictSelect";
+import { useTranslation } from "react-i18next";
 
 const MAX_AVATAR_BYTES = 200 * 1024;
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
@@ -43,13 +44,6 @@ const APPLE_COLORS = {
   accent: "#111111",
   disabled: "#D1D5DB",
 };
-
-const GENDER_OPTIONS = [
-  { value: "", label: "Không chọn" },
-  { value: "male", label: "Nam" },
-  { value: "female", label: "Nữ" },
-  { value: "other", label: "Khác" },
-];
 
 const normalizeText = (value) => String(value || "").trim();
 
@@ -131,7 +125,7 @@ async function compressAvatarToDataUrl(uri) {
     nextQuality = Math.max(0.4, Number((nextQuality - 0.1).toFixed(2)));
   }
 
-  throw new Error("Không thể nén ảnh dưới 200KB. Vui lòng chọn ảnh khác.");
+  throw new Error("COMPRESS_FAILED");
 }
 
 export default function EditProfileScreen() {
@@ -161,6 +155,17 @@ export default function EditProfileScreen() {
   const seededRef = useRef(false);
   const seededFromProfileRef = useRef(false);
   const genderSheetRef = useRef(null);
+  const { t } = useTranslation();
+
+  const genderOptions = useMemo(
+    () => [
+      { value: "", label: t("editProfile.gender.notSelected") },
+      { value: "male", label: t("editProfile.gender.male") },
+      { value: "female", label: t("editProfile.gender.female") },
+      { value: "other", label: t("editProfile.gender.other") },
+    ],
+    [t],
+  );
 
   const seedForm = (source) => {
     if (!source) return;
@@ -242,14 +247,14 @@ export default function EditProfileScreen() {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(
-          "Chưa có quyền truy cập ảnh",
-          "Vui lòng cấp quyền thư viện ảnh để cập nhật avatar.",
+          t("editProfile.errors.noPhotoAccess"),
+          t("editProfile.errors.grantPhotoPermission"),
         );
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.Images,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 1,
@@ -260,7 +265,7 @@ export default function EditProfileScreen() {
 
       const selectedUri = result.assets?.[0]?.uri;
       if (!selectedUri) {
-        Alert.alert("Không tìm thấy ảnh", "Vui lòng thử chọn lại ảnh khác.");
+        Alert.alert(t("editProfile.errors.imageNotFound"), t("editProfile.errors.trySelectAgain"));
         return;
       }
 
@@ -270,8 +275,8 @@ export default function EditProfileScreen() {
       setPendingAvatarDataUrl(compressed.dataUrl);
     } catch (error) {
       Alert.alert(
-        "Không thể xử lý ảnh",
-        error?.message || "Vui lòng thử lại với ảnh khác.",
+        t("editProfile.errors.processImage"),
+        t("editProfile.errors.tryAgain"),
       );
     } finally {
       setIsProcessingAvatar(false);
@@ -283,19 +288,19 @@ export default function EditProfileScreen() {
     const cleanUsername = normalizeText(username);
 
     if (cleanFullName.length < 2) {
-      Alert.alert("Thiếu thông tin", "Tên hiển thị phải có ít nhất 2 ký tự.");
+      Alert.alert(t("editProfile.errors.missingInfo"), t("editProfile.errors.nameMinChars"));
       return;
     }
 
     if (!cleanUsername) {
-      Alert.alert("Thiếu thông tin", "Username là bắt buộc.");
+      Alert.alert(t("editProfile.errors.missingInfo"), t("editProfile.errors.usernameRequired"));
       return;
     }
 
     if (!USERNAME_REGEX.test(cleanUsername)) {
       Alert.alert(
-        "Username chưa hợp lệ",
-        "Username chỉ gồm chữ, số, dấu gạch dưới và dài 3-30 ký tự.",
+        t("editProfile.errors.invalidUsername"),
+        t("editProfile.errors.usernameFormat"),
       );
       return;
     }
@@ -356,12 +361,12 @@ export default function EditProfileScreen() {
         profile: mergedProfile,
       });
 
-      Alert.alert("Cập nhật thành công", "Hồ sơ của bạn đã được lưu.");
+      Alert.alert(t("editProfile.success.title"), t("editProfile.success.message"));
       router.back();
     } catch (error) {
       Alert.alert(
-        "Không thể cập nhật hồ sơ",
-        error?.message || "Vui lòng thử lại sau.",
+        t("editProfile.errors.updateFailed"),
+        t("editProfile.errors.tryAgainLater"),
       );
     }
   };
@@ -373,182 +378,255 @@ export default function EditProfileScreen() {
     "U";
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}> 
-      <View style={styles.headerRow}>
-        <View style={styles.headerSideBtn}>
+    <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
+      {/* Header */}
+      <View className="flex-row items-center justify-between px-5 pt-2 pb-3 bg-white">
+        <View className="w-12 items-start justify-center">
           <Pressable
             onPress={() => router.back()}
-            style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
+            style={({ pressed }) => pressed && { opacity: 0.7 }}
+            className="py-2"
           >
-            <Text style={styles.headerBtnText}>Hủy</Text>
+            <Text className="text-base text-[#6B7280] font-medium">{t("editProfile.cancel")}</Text>
           </Pressable>
         </View>
 
-        <Text style={styles.headerTitle}>Chỉnh sửa hồ sơ</Text>
+        <Text
+          style={{ fontFamily: TOKENS.font.heading }}
+          className="text-xl text-[#111111]"
+        >
+          {t("editProfile.title")}
+        </Text>
 
-        <View style={styles.headerSideBtn} />
+        <View className="w-12" />
       </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.flex}
+        className="flex-1"
       >
         <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: insets.bottom + 28 },
-          ]}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingTop: 16,
+            paddingBottom: insets.bottom + 100,
+          }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.avatarSection}>
+          {/* Avatar Section */}
+          <View className="items-center bg-white border border-[#F3F4F6] rounded-3xl py-6 shadow-sm">
             <Pressable
               onPress={handlePickAvatar}
-              style={({ pressed }) => [styles.avatarPressable, pressed && styles.pressed]}
+              style={({ pressed }) => pressed && { opacity: 0.8 }}
+              className="w-[120px] h-[120px] rounded-full items-center justify-center bg-white border border-[#E5E7EB] relative"
             >
               {displayAvatar ? (
                 <Image
                   source={{ uri: displayAvatar }}
-                  style={styles.avatar}
+                  style={{ width: 116, height: 116, borderRadius: 58 }}
                   contentFit="cover"
                   transition={150}
                 />
               ) : (
-                <View style={styles.avatarFallback}>
-                  <Text style={styles.avatarFallbackText}>{displayInitial}</Text>
+                <View className="w-[116px] h-[116px] rounded-full items-center justify-center bg-[#F3F4F6]">
+                  <Text
+                    style={{ fontFamily: TOKENS.font.heading }}
+                    className="text-[#111111] text-[40px]"
+                  >
+                    {displayInitial}
+                  </Text>
                 </View>
               )}
 
-              <View style={styles.avatarCameraBadge}>
+              <View className="absolute right-0.5 bottom-0.5 w-[32px] h-[32px] rounded-full items-center justify-center bg-[#111111] border-2 border-white">
                 {isProcessingAvatar ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <MaterialIcons name="photo-camera" size={16} color="#FFFFFF" />
+                  <MaterialIconsRounded name="photo-camera" size={16} color="#FFFFFF" />
                 )}
               </View>
             </Pressable>
 
-            <Text style={styles.avatarHint}>Chạm để đổi ảnh đại diện</Text>
-          </View>
-
-          <View style={styles.formCard}>
-            <FieldLabel text="Tên hiển thị" required={true} />
-            <TextInput
-              value={fullName}
-              onChangeText={setFullName}
-              placeholder="Ví dụ: Nguyễn Văn A"
-              placeholderTextColor={APPLE_COLORS.placeholder}
-              style={styles.input}
-              maxLength={100}
-            />
-
-            <FieldLabel text="Username" required={true} />
-            <TextInput
-              value={username}
-              onChangeText={setUsername}
-              placeholder="username_3_30_ky_tu"
-              placeholderTextColor={APPLE_COLORS.placeholder}
-              style={styles.input}
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={30}
-            />
-
-            <FieldLabel text="Nickname" />
-            <TextInput
-              value={nickname}
-              onChangeText={setNickname}
-              placeholder="Tên hiển thị trên bản đồ"
-              placeholderTextColor={APPLE_COLORS.placeholder}
-              style={styles.input}
-              maxLength={50}
-            />
-
-            <FieldLabel text="Số điện thoại" />
-            <TextInput
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="090..."
-              placeholderTextColor={APPLE_COLORS.placeholder}
-              style={styles.input}
-              keyboardType="phone-pad"
-              maxLength={20}
-            />
-
-            <FieldLabel text="Giới tính" />
-            <Pressable
-              style={styles.pickerTrigger}
-              onPress={() => genderSheetRef.current?.present()}
+            <Text
+              style={{ fontFamily: TOKENS.font.medium }}
+              className="mt-3 text-xs text-[#6B7280]"
             >
-              <Text style={[styles.triggerText, !gender && { color: APPLE_COLORS.placeholder }]}>
-                {gender ? GENDER_OPTIONS.find((o) => o.value === gender)?.label : "Chọn giới tính"}
-              </Text>
-              <MaterialIcons name="keyboard-arrow-down" size={24} color={APPLE_COLORS.placeholder} />
-            </Pressable>
-
-            <FieldLabel text="Khu vực" />
-            <ProvinceDistrictSelect
-              provinceCode={provinceCode}
-              districtCode={districtCode}
-              onProvinceChange={setProvinceCode}
-              onDistrictChange={setDistrictCode}
-            />
-
-            <FieldLabel text="Chi tiết địa chỉ" />
-            <TextInput
-              value={address}
-              onChangeText={setAddress}
-              placeholder="Số nhà, tên đường..."
-              placeholderTextColor={APPLE_COLORS.placeholder}
-              style={styles.input}
-              maxLength={500}
-            />
-
-            <FieldLabel text="Giới thiệu" />
-            <TextInput
-              value={bio}
-              onChangeText={setBio}
-              placeholder="Giới thiệu ngắn về bạn"
-              placeholderTextColor={APPLE_COLORS.placeholder}
-              style={[styles.input, styles.textarea]}
-              multiline={true}
-              textAlignVertical="top"
-              numberOfLines={4}
-              maxLength={1000}
-            />
+              {t("editProfile.changeAvatar")}
+            </Text>
           </View>
 
-          
+          {/* Form Fields */}
+          <View className="bg-white p-5 rounded-3xl border border-[#F3F4F6] gap-4 mt-4 shadow-sm mb-6">
+            <View>
+              <FieldLabel text={t("editProfile.fields.displayName")} required={true} />
+              <TextInput
+                value={fullName}
+                onChangeText={setFullName}
+                placeholder={t("editProfile.placeholders.displayName")}
+                placeholderTextColor={APPLE_COLORS.placeholder}
+                style={{ fontFamily: TOKENS.font.body }}
+                className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl px-4 py-3 text-base text-[#111111] min-h-[52px]"
+                maxLength={100}
+              />
+            </View>
+
+            <View>
+              <FieldLabel text={t("editProfile.fields.username")} required={true} />
+              <TextInput
+                value={username}
+                onChangeText={setUsername}
+                placeholder={t("editProfile.placeholders.username")}
+                placeholderTextColor={APPLE_COLORS.placeholder}
+                style={{ fontFamily: TOKENS.font.body }}
+                className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl px-4 py-3 text-base text-[#111111] min-h-[52px]"
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={30}
+              />
+            </View>
+
+            <View>
+              <FieldLabel text={t("editProfile.fields.nickname")} />
+              <TextInput
+                value={nickname}
+                onChangeText={setNickname}
+                placeholder={t("editProfile.placeholders.nickname")}
+                placeholderTextColor={APPLE_COLORS.placeholder}
+                style={{ fontFamily: TOKENS.font.body }}
+                className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl px-4 py-3 text-base text-[#111111] min-h-[52px]"
+                maxLength={50}
+              />
+            </View>
+
+            <View>
+              <FieldLabel text={t("editProfile.fields.phone")} />
+              <TextInput
+                value={phone}
+                onChangeText={setPhone}
+                placeholder={t("editProfile.placeholders.phone")}
+                placeholderTextColor={APPLE_COLORS.placeholder}
+                style={{ fontFamily: TOKENS.font.body }}
+                className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl px-4 py-3 text-base text-[#111111] min-h-[52px]"
+                keyboardType="phone-pad"
+                maxLength={20}
+              />
+            </View>
+
+            <View>
+              <FieldLabel text={t("editProfile.fields.gender")} />
+              <View className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl overflow-hidden">
+                <Pressable
+                  className="flex-row items-center min-h-[52px] px-4 active:bg-[#F8FAFC]"
+                  onPress={() => genderSheetRef.current?.present()}
+                >
+                  <MaterialIconsRounded
+                    name={
+                      gender === "male"
+                        ? "male"
+                        : gender === "female"
+                          ? "female"
+                          : gender === "other"
+                            ? "transgender"
+                            : "wc"
+                    }
+                    size={18}
+                    color={gender ? "#64748B" : "#94A3B8"}
+                    style={{ marginRight: 10 }}
+                  />
+                  <Text
+                    style={{ fontFamily: TOKENS.font.body }}
+                    className={`text-[14.5px] flex-1 ${gender ? "text-[#1E293B]" : "text-[#94A3B8]"}`}
+                  >
+                    {gender
+                      ? genderOptions.find((o) => o.value === gender)?.label
+                      : t("editProfile.selectGender")}
+                  </Text>
+                  <MaterialIconsRounded
+                    name="chevron-right"
+                    size={20}
+                    color={gender ? "#94A3B8" : "#E2E8F0"}
+                  />
+                </Pressable>
+              </View>
+            </View>
+
+
+            <View>
+              <FieldLabel text={t("editProfile.fields.region")} />
+              <ProvinceDistrictSelect
+                provinceCode={provinceCode}
+                districtCode={districtCode}
+                onProvinceChange={setProvinceCode}
+                onDistrictChange={setDistrictCode}
+              />
+            </View>
+
+            <View>
+              <FieldLabel text={t("editProfile.fields.address")} />
+              <TextInput
+                value={address}
+                onChangeText={setAddress}
+                placeholder={t("editProfile.placeholders.address")}
+                placeholderTextColor={APPLE_COLORS.placeholder}
+                style={{ fontFamily: TOKENS.font.body }}
+                className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl px-4 py-3 text-base text-[#111111] min-h-[52px]"
+                maxLength={500}
+              />
+            </View>
+
+            <View>
+              <FieldLabel text={t("editProfile.fields.bio")} />
+              <TextInput
+                value={bio}
+                onChangeText={setBio}
+                placeholder={t("editProfile.placeholders.bio")}
+                placeholderTextColor={APPLE_COLORS.placeholder}
+                style={{ fontFamily: TOKENS.font.body }}
+                className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-2xl px-4 py-3 text-base text-[#111111] min-h-[120px] pt-3"
+                multiline={true}
+                textAlignVertical="top"
+                numberOfLines={4}
+                maxLength={1000}
+              />
+            </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
       <BottomSheetPicker
         ref={genderSheetRef}
-        title="Chọn Giới Tính"
-        data={GENDER_OPTIONS}
+        title={t("editProfile.selectGender")}
+        data={genderOptions}
         selectedValue={gender}
-        snapPoints={["40%"]}
+        snapPoints={["35%"]}
+        showSearch={false}
         onSelect={setGender}
       />
 
-      <BlurView 
-        intensity={80} 
-        tint="light" 
-        style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 20) }]}
+      <BlurView
+        intensity={80}
+        tint="light"
+        className="absolute bottom-0 left-0 right-0 px-6 pt-4 border-t border-[#F3F4F6] bg-white/80"
+        style={{ paddingBottom: Math.max(insets.bottom, 20) }}
       >
         <Pressable
           onPress={handleSave}
           disabled={!isDirty || isSaving}
-          style={({ pressed }) => [
-            styles.pillSaveBtn,
-            (!isDirty || isSaving) && styles.pillSaveBtnDisabled,
-            pressed && isDirty && !isSaving && styles.pressed,
-          ]}
+          style={({ pressed }) => pressed && isDirty && !isSaving && { opacity: 0.8 }}
+          className={`rounded-full h-[56px] flex-row items-center justify-center ${
+            !isDirty || isSaving ? "bg-[#D1D5DB]" : "bg-[#111111]"
+          }`}
         >
           {isSaving ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={[styles.pillSaveBtnText, !isDirty && styles.pillSaveBtnTextDisabled]}>Lưu Thay Đổi</Text>
+            <Text
+              style={{ fontFamily: TOKENS.font.semibold }}
+              className={`text-lg ${!isDirty || isSaving ? "text-[#A1A1AA]" : "text-white"}`}
+            >
+              {t("editProfile.saveChanges")}
+            </Text>
           )}
         </Pressable>
       </BlurView>
@@ -558,202 +636,13 @@ export default function EditProfileScreen() {
 
 function FieldLabel({ text, required = false }) {
   return (
-    <Text style={styles.fieldLabel}>
+    <Text
+      style={{ fontFamily: TOKENS.font.semibold }}
+      className="text-sm text-[#111111] mb-1.5"
+    >
       {text}
-      {required ? <Text style={styles.requiredMark}> *</Text> : null}
+      {required ? <Text className="text-[#EF4444]"> *</Text> : null}
     </Text>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: APPLE_COLORS.background,
-  },
-  flex: {
-    flex: 1,
-  },
-  headerRow: {
-    paddingHorizontal: TAB_SCREEN_PADDING,
-    paddingTop: 10,
-    paddingBottom: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  headerTitle: {
-    color: APPLE_COLORS.text,
-    fontSize: 20,
-    fontFamily: TOKENS.font.heading,
-    letterSpacing: -0.2,
-  },
-  headerSideBtn: {
-    minWidth: 48,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerBtn: {
-    height: 36,
-    justifyContent: "center",
-  },
-  headerBtnText: {
-    color: APPLE_COLORS.mutedText,
-    fontSize: 16,
-    fontFamily: TOKENS.font.medium,
-  },
-  pressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.98 }],
-  },
-  scrollContent: {
-    paddingHorizontal: TAB_SCREEN_PADDING,
-    paddingTop: 16,
-    paddingBottom: 100,
-    gap: 16,
-  },
-  avatarSection: {
-    alignItems: "center",
-    borderRadius: 24,
-    paddingVertical: 16,
-    backgroundColor: APPLE_COLORS.surface,
-    borderWidth: 1,
-    borderColor: APPLE_COLORS.border,
-    ...TOKENS.shadow.sm,
-  },
-  avatarPressable: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    backgroundColor: APPLE_COLORS.surface,
-    borderWidth: 1,
-    borderColor: APPLE_COLORS.border,
-  },
-  avatar: {
-    width: 116,
-    height: 116,
-    borderRadius: 58,
-  },
-  avatarFallback: {
-    width: 116,
-    height: 116,
-    borderRadius: 58,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_COLORS.borderSoft,
-  },
-  avatarFallbackText: {
-    color: APPLE_COLORS.text,
-    fontSize: 40,
-    fontFamily: TOKENS.font.heading,
-  },
-  avatarCameraBadge: {
-    position: "absolute",
-    right: 2,
-    bottom: 2,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_COLORS.accent,
-    borderWidth: 2,
-    borderColor: APPLE_COLORS.surface,
-  },
-  avatarHint: {
-    marginTop: 10,
-    color: APPLE_COLORS.mutedText,
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-  },
-  formCard: {
-    backgroundColor: APPLE_COLORS.surface,
-    padding: 20,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: APPLE_COLORS.border,
-    gap: 16,
-    ...TOKENS.shadow.sm,
-  },
-  fieldLabel: {
-    fontSize: 14,
-    color: APPLE_COLORS.text,
-    fontFamily: TOKENS.font.semibold,
-    marginBottom: 4,
-  },
-  requiredMark: {
-    color: "#EF4444",
-  },
-  input: {
-    backgroundColor: "#F9FAFB",
-    borderWidth: 1,
-    borderColor: APPLE_COLORS.borderSoft,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: APPLE_COLORS.text,
-    fontFamily: TOKENS.font.body,
-    minHeight: 52,
-  },
-  textarea: {
-    paddingTop: 14,
-    minHeight: 120,
-  },
-  pickerTrigger: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#F9FAFB",
-    borderWidth: 1,
-    borderColor: APPLE_COLORS.borderSoft,
-    borderRadius: 14,
-    minHeight: 52,
-    paddingHorizontal: 16,
-  },
-  triggerText: {
-    fontFamily: TOKENS.font.body,
-    fontSize: 16,
-    color: APPLE_COLORS.text,
-    flex: 1,
-  },
-  bottomBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.05)",
-  },
-  pillSaveBtn: {
-    backgroundColor: APPLE_COLORS.accent,
-    borderRadius: 999,
-    height: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    ...TOKENS.shadow.md,
-  },
-  pillSaveBtnDisabled: {
-    backgroundColor: APPLE_COLORS.disabled,
-  },
-  pillSaveBtnText: {
-    color: "#FFFFFF",
-    fontFamily: TOKENS.font.semibold,
-    fontSize: 18,
-  },
-  pillSaveBtnTextDisabled: {
-    color: "#A1A1AA",
-  },
-  footnote: {
-    color: "#71717A",
-    fontSize: 12,
-    lineHeight: 18,
-    fontFamily: TOKENS.font.body,
-    paddingHorizontal: 2,
-  },
-});

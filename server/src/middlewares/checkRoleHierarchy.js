@@ -1,4 +1,10 @@
-import { ROLE_HIERARCHY, ROLES } from "../config/constants.js";
+import {
+  ROLE_HIERARCHY,
+  ROLES,
+  canAssignRoleId,
+  canManageRoleId,
+  isSuperAdminRole,
+} from "../config/constants.js";
 import prisma from "../config/prismaClient.js";
 import { ERROR_CODES } from "../config/messages.js";
 
@@ -6,17 +12,31 @@ export const checkRoleHierarchy = async (req, res, next) => {
   try {
     const currentUserRoleId = req.user.roleId;
 
-    if (currentUserRoleId === ROLES.SUPER_ADMIN) {
+    const targetUserId = req.params.id || req.params.userId || req.body.userId;
+
+    if (isSuperAdminRole(currentUserRoleId)) {
+      if (targetUserId) {
+        const targetUser = await prisma.user.findUnique({
+          where: { id: Number(targetUserId) },
+          select: { id: true, roleId: true },
+        });
+        if (targetUser && isSuperAdminRole(targetUser.roleId) && targetUser.id !== req.user.id) {
+          return res.status(403).json({
+            success: false,
+            data: null,
+            message: "Không thể chỉnh sửa thông tin của Super Admin khác",
+            errorCode: ERROR_CODES.FORBIDDEN,
+          });
+        }
+      }
       return next();
     }
 
-    const targetUserId = req.params.id || req.params.userId || req.body.userId;
+
 
     if (!targetUserId && req.body.roleId) {
       const targetRoleId = Number(req.body.roleId);
-      const currentRole = ROLE_HIERARCHY[currentUserRoleId];
-
-      if (!currentRole.canManage.includes(targetRoleId)) {
+      if (!canAssignRoleId(currentUserRoleId, targetRoleId)) {
         return res.status(403).json({
           success: false,
           data: null,
@@ -51,10 +71,9 @@ export const checkRoleHierarchy = async (req, res, next) => {
       });
     }
 
-    const currentRole = ROLE_HIERARCHY[currentUserRoleId];
     const targetRoleId = targetUser.roleId;
 
-    if (!currentRole.canManage.includes(targetRoleId)) {
+    if (!canManageRoleId(currentUserRoleId, targetRoleId)) {
       return res.status(403).json({
         success: false,
         data: null,
@@ -66,7 +85,7 @@ export const checkRoleHierarchy = async (req, res, next) => {
     if (req.body.roleId) {
       const newRoleId = Number(req.body.roleId);
 
-      if (!currentRole.canManage.includes(newRoleId)) {
+      if (!canAssignRoleId(currentUserRoleId, newRoleId)) {
         return res.status(403).json({
           success: false,
           data: null,

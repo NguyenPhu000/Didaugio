@@ -1,7 +1,8 @@
 import { memo } from "react";
 import { Pressable, Text, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { FILTER_GROUP_OPTIONS } from "../../constants/filter.constants";
+import { cn } from "../../../../lib/cn";
 
 const FilterGroupBar = memo(function FilterGroupBar({
   activeFilterGroup,
@@ -12,23 +13,11 @@ const FilterGroupBar = memo(function FilterGroupBar({
 }) {
   return (
     <View className="mt-3 px-4" pointerEvents="auto">
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
+      <View className="flex-row items-center gap-2">
         <View className="flex-row items-center gap-2">
           <View
-            className="flex-row items-center"
-            style={{
-              borderRadius: 999,
-              backgroundColor: "#FFFFFF",
-              borderWidth: 1,
-              borderColor: "rgba(15,23,42,0.18)",
-              padding: 2,
-            }}
+            className="flex-row items-center rounded-full border p-0.5"
+            style={{ backgroundColor: "#FFFFFF", borderColor: "rgba(0, 0, 0, 0.18)" }}
           >
             {FILTER_GROUP_OPTIONS.map((group) => {
               const active = activeFilterGroup === group.key;
@@ -36,21 +25,21 @@ const FilterGroupBar = memo(function FilterGroupBar({
                 <Pressable
                   key={group.key}
                   onPress={() => onSelectFilterGroup(group.key)}
-                  className="h-[30px] rounded-full flex-row items-center gap-1 px-2.5"
-                  style={{
-                    backgroundColor: active ? "#111111" : "#FFFFFF",
-                    borderWidth: 1,
-                    borderColor: active ? "#111111" : "#D1D5DB",
-                  }}
+                  className={cn(
+                    "h-[30px] flex-row items-center gap-1 rounded-[15px] border px-2.5",
+                    active ? "border-ink bg-ink" : "border-[#D1D5DB] bg-white",
+                  )}
                 >
-                  <MaterialIcons
+                  <MaterialIconsRounded
                     name={group.icon}
                     size={13}
                     color={active ? "#FFFFFF" : "#111111"}
                   />
                   <Text
-                    className="text-[11px] font-semibold"
-                    style={{ color: active ? "#FFFFFF" : "#111111" }}
+                    className={cn(
+                      "text-[11px] font-semibold",
+                      active ? "text-white" : "text-ink",
+                    )}
                   >
                     {group.label}
                   </Text>
@@ -61,28 +50,28 @@ const FilterGroupBar = memo(function FilterGroupBar({
 
           <Pressable
             onPress={onOpenFilterPicker}
-            className="flex-1 h-[34px] rounded-full flex-row items-center justify-between px-3"
+            className="flex-1 flex-row items-center justify-between rounded-[17px] border px-3"
             style={{
+              height: 34,
               backgroundColor: "#FFFFFF",
-              borderWidth: 1,
-              borderColor: "rgba(15,23,42,0.22)",
+              borderColor: "rgba(0, 0, 0, 0.22)",
             }}
           >
-            <View className="flex-row items-center gap-1.5" style={{ flex: 1 }}>
-              <MaterialIcons
+            <View className="flex-1 flex-row items-center gap-1.5">
+              <MaterialIconsRounded
                 name={activeFilterGroupMeta.icon}
                 size={14}
                 color="#111111"
               />
               <Text
                 numberOfLines={1}
-                className="text-[12px] font-semibold"
+                className="text-xs font-semibold"
                 style={{ color: "#111111" }}
               >
                 {activeFilterSummaryLabel}
               </Text>
             </View>
-            <MaterialIcons
+            <MaterialIconsRounded
               name="keyboard-arrow-down"
               size={18}
               color="#111111"

@@ -1,4 +1,4 @@
-import { geminiModel } from "../../config/geminiClient.js";
+import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
 
 class AINavigationService {
   async getNavigationAdvice(payload = {}) {
@@ -11,8 +11,14 @@ class AINavigationService {
     const prompt = this._buildPrompt({ origin, destination, routes, context });
 
     try {
-      const result = await geminiModel.generateContent(prompt);
-      const text = result?.response?.text?.() || "";
+      const client = createGroqClient();
+      const completion = await client.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+        max_tokens: 800,
+      });
+      const text = completion.choices[0]?.message?.content || "";
       const parsed = this._tryParseJson(text);
 
       if (parsed?.recommendation?.routeId) {
@@ -45,8 +51,14 @@ class AINavigationService {
     });
 
     try {
-      const result = await geminiModel.generateContent(prompt);
-      const text = result?.response?.text?.() || "";
+      const client = createGroqClient();
+      const completion = await client.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+        max_tokens: 800,
+      });
+      const text = completion.choices[0]?.message?.content || "";
       const parsed = this._tryParseJson(text);
       const orderedIndexes = this._sanitizeWaypointIndexes(
         parsed?.orderedWaypointIndexes,

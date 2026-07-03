@@ -173,7 +173,7 @@
 }
 
 /* ============================================
-   MapLibre GL Custom Styles - Đi Đâu Giờ
+   MapLibre GL Custom Styles - iPoint Genie
    ============================================ */
 
 /* Map Container */
@@ -655,6 +655,24 @@
 }
 .maplibregl-popup-close-button {
   display: none !important;
+}
+
+/* ============================================
+   Page Transitions - Smooth fade for auth pages
+   ============================================ */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-fade-in 0.3s ease-out forwards;
 }
 
 /* ============================================

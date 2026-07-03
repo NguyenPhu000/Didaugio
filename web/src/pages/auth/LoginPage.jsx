@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import User from "lucide-react/dist/esm/icons/user";
 import Lock from "lucide-react/dist/esm/icons/lock";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Shield from "lucide-react/dist/esm/icons/shield";
 import Activity from "lucide-react/dist/esm/icons/activity";
+import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
 import {
   Button,
   Input,
@@ -22,14 +24,25 @@ import { authService } from "@/apis/authService";
 import { loginSchema } from "@/schemas/auth";
 import GoogleLoginButton from "@/components/auth/GoogleLoginButton";
 import { resolvePostLoginRoute } from "@/utils/authRouting";
-import { AUTH_ROUTES } from "@/constants/routes";
+import { AUTH_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 
 const HAS_GOOGLE_OAUTH = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const REMEMBER_KEY = "ddg_remember_login";
 
 const LoginPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const { setAuth, logout } = useAuthStore();
+  const { setAuth } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
+
+  const savedLogin = (() => {
+    try {
+      const raw = localStorage.getItem(REMEMBER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
 
   const {
     register,
@@ -37,33 +50,42 @@ const LoginPage = () => {
     formState: { errors },
   } = useForm({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      identifier: savedLogin?.identifier || "",
+    },
   });
 
-  const handleGoogleSuccess = async (codeResponse) => {
+  const [rememberMe, setRememberMe] = useState(!!savedLogin?.identifier);
+
+  useEffect(() => {
+    document.title = t("auth.login.pageTitle");
+  }, [t]);
+
+  const handleGoogleSuccess = async (credentialResponse) => {
     setIsLoading(true);
     try {
-      const response = await authService.googleLogin(
-        codeResponse.code,
-        window.location.origin,
-      );
+      // GoogleLogin default flow returns { credential: "<id_token>" }
+      const idToken = credentialResponse.credential;
+      if (!idToken) {
+        toast.error(t("auth.login.googleNoToken"));
+        return;
+      }
+      const response = await authService.googleLogin(idToken);
       if (response.success) {
-        const dashboardUrl = resolvePostLoginRoute(response.data.user);
-        if (dashboardUrl === AUTH_ROUTES.LOGIN) {
-          logout();
-          toast.error("Tài khoản không có quyền truy cập khu vực quản trị");
-          return;
-        }
+        const user = response.data.user;
+        setAuth(user, response.data.accessToken, response.data.refreshToken);
+        toast.success(t("auth.login.googleSuccess"));
 
-        setAuth(
-          response.data.user,
-          response.data.accessToken,
-          response.data.refreshToken,
+        const dashboardUrl = resolvePostLoginRoute(user);
+        navigate(
+          dashboardUrl === AUTH_ROUTES.LOGIN
+            ? BUSINESS_ROUTES.REGISTER
+            : dashboardUrl,
+          { replace: true },
         );
-        toast.success("Đăng nhập Google thành công!");
-        navigate(dashboardUrl, { replace: true });
       }
     } catch (error) {
-      toast.error(error.message || "Đăng nhập Google thất bại");
+      toast.error(error.message || t("auth.login.googleFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -72,23 +94,48 @@ const LoginPage = () => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      const response = await authService.login(data.identifier, data.password);
+      const response = await authService.login(data.identifier, data.password, {
+        rememberMe,
+      });
       if (response.success) {
         const dashboardUrl = resolvePostLoginRoute(response.data.user);
-        if (dashboardUrl === AUTH_ROUTES.LOGIN) {
-          logout();
-          toast.error("Tài khoản không có quyền truy cập khu vực quản trị");
-          return;
+        // Save identifier to localStorage for "Remember me"
+        if (rememberMe) {
+          localStorage.setItem(REMEMBER_KEY, JSON.stringify({ identifier: data.identifier }));
+        } else {
+          localStorage.removeItem(REMEMBER_KEY);
         }
 
-        // Lưu user, accessToken và refreshToken
+        // Trigger browser's "Save password?" dialog via Web Credentials API
+        if ("credentials" in navigator && navigator.credentials.create) {
+          try {
+            const credential = await navigator.credentials.create({
+              password: {
+                id: data.identifier,
+                password: data.password,
+                name: data.identifier,
+              },
+            });
+            if (credential) {
+              await navigator.credentials.store(credential);
+            }
+          } catch {
+            // Browser doesn't support or user denied
+          }
+        }
+
         setAuth(
           response.data.user,
           response.data.accessToken,
           response.data.refreshToken,
         );
-        toast.success("Đăng nhập thành công!");
-        navigate(dashboardUrl, { replace: true });
+        toast.success(t("auth.login.success"));
+        navigate(
+          dashboardUrl === AUTH_ROUTES.LOGIN
+            ? BUSINESS_ROUTES.REGISTER
+            : dashboardUrl,
+          { replace: true },
+        );
       }
     } catch (error) {
       if (error?.errorCode === "EMAIL_NOT_VERIFIED") {
@@ -97,21 +144,25 @@ const LoginPage = () => {
         const query = isEmailIdentifier
           ? `?email=${encodeURIComponent(normalizedIdentifier.toLowerCase())}`
           : "";
-        toast.error(
-          "Email chưa xác thực. Vui lòng kiểm tra email hoặc gửi lại link xác thực.",
-        );
+        toast.error(t("auth.login.emailNotVerified"));
         navigate(`/resend-verification${query}`);
         return;
       }
 
-      toast.error(error.message || "Đăng nhập thất bại");
+      // Show helpful message for inactive accounts
+      if (error?.errorCode === "ACCOUNT_INACTIVE") {
+        toast.error(error.message || "Tài khoản chưa được kích hoạt. Vui lòng đăng nhập bằng Google để kích hoạt.");
+        return;
+      }
+
+      toast.error(error.message || t("auth.login.failed"));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden">
+    <div className="min-h-screen flex relative overflow-hidden page-enter">
       {/* Grid Background */}
       <div className="absolute inset-0 bg-grid-dots opacity-30 pointer-events-none"></div>
       <div className="absolute inset-0 bg-grid-lines opacity-10 pointer-events-none"></div>
@@ -137,7 +188,7 @@ const LoginPage = () => {
                   DIDAUGIO
                 </h2>
                 <p className="text-[#F3E600] text-xs font-mono uppercase tracking-wider">
-                  SYSTEM ACCESS
+                  {t("auth.login.adminSubtitle")}
                 </p>
               </div>
             </div>
@@ -147,19 +198,19 @@ const LoginPage = () => {
           <div className="space-y-8">
             <div>
               <h1 className="text-5xl font-black text-white uppercase leading-tight mb-4">
-                KIỂM SOÁT
+                {t("auth.login.heroTitle1")}
                 <br />
-                TRUY CẬP
+                {t("auth.login.heroTitle2")}
                 <br />
-                BẢO MẬT
+                {t("auth.login.heroTitle3")}
               </h1>
               <div className="w-24 h-1 bg-[#F3E600]"></div>
             </div>
 
             <p className="text-gray-400 font-mono text-sm uppercase leading-relaxed max-w-md">
-              Hệ THỐNG QUẢN LÝ THÔNG MINH
+              {t("auth.login.heroDesc1")}
               <br />
-              DU LỊCH CẦN THƠ // PHÂN HỆ XÁC THỰC
+              {t("auth.login.heroDesc2")}
             </p>
 
             {/* Stats */}
@@ -167,19 +218,19 @@ const LoginPage = () => {
               <div className="bg-white/5 border border-white/10 p-3">
                 <div className="text-2xl font-black text-[#F3E600]">24/7</div>
                 <div className="text-[10px] text-gray-500 uppercase font-mono">
-                  HOẠT ĐỘNG
+                  {t("auth.login.statActive")}
                 </div>
               </div>
               <div className="bg-white/5 border border-white/10 p-3">
                 <div className="text-2xl font-black text-[#F3E600]">256</div>
                 <div className="text-[10px] text-gray-500 uppercase font-mono">
-                  MÃ HÓA
+                  {t("auth.login.statEncryption")}
                 </div>
               </div>
               <div className="bg-white/5 border border-white/10 p-3">
                 <div className="text-2xl font-black text-[#F3E600]">100%</div>
                 <div className="text-[10px] text-gray-500 uppercase font-mono">
-                  BẢO MẬT
+                  {t("auth.login.statSecure")}
                 </div>
               </div>
             </div>
@@ -203,7 +254,7 @@ const LoginPage = () => {
             <div>
               <h2 className="text-xl font-black uppercase">DIDAUGIO</h2>
               <p className="text-[#F3E600] text-xs font-mono uppercase">
-                SYSTEM
+                {t("auth.login.mobileSubtitle")}
               </p>
             </div>
           </div>
@@ -215,11 +266,11 @@ const LoginPage = () => {
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-1 h-8 bg-[#F3E600]"></div>
                 <h1 className="text-3xl font-black uppercase tracking-tight">
-                  ĐĂNG NHẬP
+                  {t("auth.login.title")}
                 </h1>
               </div>
               <p className="text-xs text-gray-500 uppercase font-mono ml-4">
-                ĐĂNG NHẬP VÀO HỆ THỐNG
+                {t("auth.login.subtitle")}
               </p>
             </div>
 
@@ -228,17 +279,19 @@ const LoginPage = () => {
               <div className="space-y-2">
                 <label htmlFor="login-identifier" className="tim-meta flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  EMAIL OR USERNAME
+                  {t("auth.login.emailOrUsername")}
                 </label>
                 <div className="relative">
                   <Input
                     id="login-identifier"
                     type="text"
                     name="identifier"
-                    placeholder="YOUR@EMAIL.COM OR USERNAME"
+                    placeholder={t("auth.login.emailOrUsernamePlaceholder")}
                     autoComplete="username"
                     spellCheck={false}
-                    className="rounded-none border-2 border-black h-12 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0 pl-4"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    className="rounded-none border-2 border-black h-12 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0 pl-4"
                     {...register("identifier")}
                   />
                 </div>
@@ -253,14 +306,14 @@ const LoginPage = () => {
               <div className="space-y-2">
                 <label htmlFor="login-password" className="tim-meta flex items-center gap-2">
                   <Lock className="h-4 w-4" />
-                  PASSWORD
+                  {t("auth.login.password")}
                 </label>
                 <div className="relative">
                   <Input
                     id="login-password"
                     type="password"
                     name="password"
-                    placeholder="Mật khẩu của bạn…"
+                    placeholder={t("auth.login.passwordPlaceholder")}
                     autoComplete="current-password"
                     className="rounded-none border-2 border-black h-12 font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0 pl-4"
                     {...register("password")}
@@ -273,13 +326,24 @@ const LoginPage = () => {
                 )}
               </div>
 
-              {/* Forgot Password Link */}
-              <div className="text-right">
+              {/* Remember Me & Forgot Password */}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded-none border-2 border-black accent-[#F3E600] cursor-pointer"
+                  />
+                  <span className="text-xs text-gray-600 uppercase font-mono">
+                    {t("auth.login.rememberMe")}
+                  </span>
+                </label>
                 <Link
                   to="/auth/forgot-password"
                   className="text-xs text-gray-600 hover:text-black uppercase font-mono underline"
                 >
-                  QUÊN MẬT KHẨU?
+                  {t("auth.login.forgotPassword")}
                 </Link>
               </div>
 
@@ -290,10 +354,10 @@ const LoginPage = () => {
                 className="w-full rounded-none border-2 border-black bg-[#F3E600] text-black hover:bg-black hover:text-[#F3E600] h-12 uppercase font-black text-sm transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
               >
                 {isLoading ? (
-                  "ĐANG XÁC THỰC…"
+                  t("auth.login.submitting")
                 ) : (
                   <>
-                    TRUY CẬP HỆ THỐNG <ArrowRight className="ml-2 h-4 w-4" />
+                    {t("auth.login.submit")} <ArrowRight className="ml-2 h-4 w-4" />
                   </>
                 )}
               </Button>
@@ -307,14 +371,14 @@ const LoginPage = () => {
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
                     <span className="bg-white px-4 text-gray-500 font-mono">
-                      OR
+                      {t("common.or")}
                     </span>
                   </div>
                 </div>
 
                 <GoogleLoginButton
                   onSuccess={handleGoogleSuccess}
-                  onError={() => toast.error("Đăng nhập Google thất bại")}
+                  onError={() => toast.error(t("auth.login.googleFailed"))}
                   disabled={isLoading}
                 />
 
@@ -326,16 +390,17 @@ const LoginPage = () => {
               </>
             )}
 
-            {/* Register Link */}
+            {/* Business Register Link */}
             <div className="text-center">
               <p className="text-xs text-gray-600 uppercase font-mono mb-2">
-                DON'T HAVE AN ACCOUNT?
+                {t("auth.login.noAccount")}
               </p>
               <Link
                 to="/auth/register"
-                className="w-full rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-12 px-6 uppercase font-black text-sm transition-all flex items-center justify-center"
+                className="w-full rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-12 px-6 uppercase font-black text-sm transition-all flex items-center justify-center gap-2"
               >
-                CREATE NEW ACCOUNT
+                <BriefcaseBusiness className="h-4 w-4" />
+                {t("auth.login.registerBusiness")}
               </Link>
             </div>
           </div>
@@ -343,7 +408,7 @@ const LoginPage = () => {
           {/* Footer Note */}
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-400 uppercase font-mono">
-              PROTECTED BY ADVANCED SECURITY
+              {t("auth.login.secureNote")}
             </p>
           </div>
         </div>

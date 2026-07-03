@@ -1,231 +1,150 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useAuthStore } from "@/stores/authStore";
-import useCategoryStore from "@/stores/categoryStore";
-import usePlaceStore from "@/stores/placeStore";
-import { dashboardService } from "@/apis/dashboardService";
+import { useDashboardStats } from "@/hooks/queries/useDashboardQuery";
+import { useCategories } from "@/hooks/queries/useCategoryQueries";
+import { usePlaces } from "@/hooks/queries/usePlaceQueries";
 import { useNavigate } from "react-router-dom";
-import Building2 from "lucide-react/dist/esm/icons/building-2";
-import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
-import Activity from "lucide-react/dist/esm/icons/activity";
-import Users from "lucide-react/dist/esm/icons/users";
 import Search from "lucide-react/dist/esm/icons/search";
-import "@/lib/chartSetup";
-import { ROLES } from "@/constants/constants";
 import { ADMIN_ROUTES } from "@/constants/routes";
+import { useTranslation } from "react-i18next";
 
-// Sub-components
-import TimStatsCard from "@/components/admin/TimStatsCard";
-import {
-  DashboardDataStatus,
-  DashboardCategories,
-  DashboardCharts,
-  DashboardRecentPlaces,
-} from "./dashboard";
+// Admin components
+import SectionCards from "@/components/admin/SectionCards";
+import ChartAreaInteractive from "@/components/admin/ChartAreaInteractive";
+import RecentPlacesTable from "@/components/admin/RecentPlacesTable";
+import OnlineUsersCard from "@/components/admin/OnlineUsersCard";
+import ServerHealthCard from "@/components/admin/ServerHealthCard";
+import RecentErrorsCard from "@/components/admin/RecentErrorsCard";
 
-/**
- * DASHBOARD PAGE - T.I.M STYLE WITH ADVANCED CHARTS
- * Refactored: uses server-side /api/dashboard/stats for aggregate data
- */
+// Legacy sub-components
+import { DashboardDataStatus, DashboardCategories } from "./dashboard";
+
 const DashboardPage = () => {
   const { user } = useAuthStore();
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const { categories, fetchCategories } = useCategoryStore();
-  const { places, fetchPlaces } = usePlaceStore();
-  const [loading, setLoading] = useState(true);
+
+  const { data: statsRes, isLoading: statsLoading } = useDashboardStats();
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
+  const { data: placesRes, isLoading: placesLoading } = usePlaces({ limit: 50 });
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [stats, setStats] = useState({
-    total: 0,
-    approved: 0,
-    pending: 0,
-    featured: 0,
-    totalViews: 0,
-    avgRating: 0,
-    rejected: 0,
-  });
-  const [userCount, setUserCount] = useState(0);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
+  const loading = statsLoading || categoriesLoading || placesLoading;
 
-        // Fetch server-side aggregate stats + categories in parallel
-        const [statsRes] = await Promise.all([
-          dashboardService.getStats(),
-          fetchCategories(),
-          fetchPlaces({ limit: 10 }),
-        ]);
+  // Extract stats from response
+  const statsPayload =
+    statsRes?.success === true && statsRes?.data != null
+      ? statsRes.data
+      : statsRes;
 
-        if (statsRes?.success && statsRes.data) {
-          const { places: placeStats, users: userStats } = statsRes.data;
-          setStats({
-            total: placeStats?.total || 0,
-            approved: placeStats?.approved || 0,
-            pending: placeStats?.pending || 0,
-            rejected: placeStats?.rejected || 0,
-            featured: placeStats?.featured || 0,
-            totalViews: placeStats?.totalViews || 0,
-            avgRating: placeStats?.averageRating || 0,
-          });
-          setUserCount(userStats?.total || 0);
-        }
-      } catch (err) {
-        console.error("Failed to load dashboard data:", err);
-      } finally {
-        setLoading(false);
+  const stats = statsPayload?.places
+    ? {
+        total: statsPayload.places?.total || 0,
+        approved: statsPayload.places?.approved || 0,
+        pending: statsPayload.places?.pending || 0,
+        rejected: statsPayload.places?.rejected || 0,
+        featured: statsPayload.places?.featured || 0,
+        totalViews: statsPayload.places?.totalViews || 0,
+        avgRating: statsPayload.places?.averageRating || 0,
       }
-    };
-    loadData();
-  }, [fetchCategories, fetchPlaces]);
+    : { total: 0, approved: 0, pending: 0, featured: 0, totalViews: 0, avgRating: 0, rejected: 0 };
+
+  const userCount = statsPayload?.users?.total || 0;
+  const places = placesRes?.data || placesRes || [];
 
   const handleSearch = useCallback(
     (e) => {
       if (e.key === "Enter" || e.type === "click") {
         if (searchQuery.trim()) {
           navigate(
-            `${ADMIN_ROUTES.PLACES}?search=${encodeURIComponent(searchQuery)}`,
+            `${ADMIN_ROUTES.PLACES}?search=${encodeURIComponent(searchQuery)}`
           );
         }
       }
     },
-    [navigate, searchQuery],
+    [navigate, searchQuery]
   );
 
   if (loading) {
     return (
-      <div className="min-h-screen p-8 bg-background relative">
-        <div className="absolute inset-0 bg-grid-dots opacity-40 pointer-events-none" />
-        <div className="relative z-10 space-y-12 max-w-[1600px] mx-auto">
-          {/* Header skeleton */}
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-black pb-6 gap-4">
-            <div className="flex items-center gap-6">
-              <div className="w-1 h-16 bg-primary animate-pulse" />
-              <div className="space-y-2">
-                <div className="h-3 w-32 bg-muted animate-pulse" />
-                <div className="h-8 w-48 bg-muted animate-pulse" />
-                <div className="h-4 w-64 bg-muted animate-pulse" />
-              </div>
-            </div>
-          </div>
-
-          {/* Stats cards skeleton */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="border-2 border-black p-6 space-y-3">
-                <div className="h-3 w-24 bg-muted animate-pulse" />
-                <div className="h-10 w-20 bg-muted animate-pulse" />
-                <div className="h-3 w-16 bg-muted animate-pulse" />
-              </div>
-            ))}
-          </div>
-
-          {/* Content skeleton */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="border-2 border-black p-6 h-64 animate-pulse bg-muted/20" />
-            <div className="lg:col-span-2 border-2 border-black p-6 h-64 animate-pulse bg-muted/20" />
+      <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-64 animate-pulse rounded bg-muted" />
           </div>
         </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-[180px] animate-pulse rounded-lg bg-muted" />
+          ))}
+        </div>
+        <div className="h-[350px] animate-pulse rounded-lg bg-muted" />
+        <div className="h-[400px] animate-pulse rounded-lg bg-muted" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-8 bg-background relative">
-      {/* Multi-layer Background */}
-      <div className="absolute inset-0 bg-grid-dots opacity-40 pointer-events-none"></div>
-      <div className="absolute inset-0 bg-grid-lines opacity-15 pointer-events-none"></div>
-
-      <div className="relative z-10 space-y-12 max-w-[1600px] mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-black pb-6 gap-4">
-          <div className="flex items-center gap-6">
-            <div className="accent-bar h-16" />
-            <div>
-              <div className="tim-meta mb-1 opacity-60">
-                XIN CHÀO,{" "}
-                {user?.fullName?.toUpperCase() ||
-                  user?.username?.toUpperCase() ||
-                  "ADMIN"}
-              </div>
-              <h1 className="tim-title">TỔNG QUAN</h1>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1">
-                  BẢNG ĐIỀU KHIỂN // TỔNG QUAN
-                </span>
-                <p className="tim-meta">BẢNG ĐIỀU KHIỂN & THỐNG KÊ</p>
-              </div>
+    <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">
+            {t("dashboard.greeting", { name: user?.fullName || user?.username || "Admin" })}
+          </h2>
+          <p className="text-muted-foreground">
+            {t("dashboard.subtitle")}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-lg border shadow-sm">
+            <div className="flex h-9 items-center pl-3">
+              <Search className="h-4 w-4 text-muted-foreground" />
             </div>
-          </div>
-          <div className="corner-tech">
-            <div className="flex items-center shadow-hard hover:shadow-hard-subtle transition-all duration-200">
-              <div
-                className="h-12 w-12 bg-black flex items-center justify-center text-white hud-element cursor-pointer"
-                onClick={handleSearch}
-                role="button"
-                aria-label="Tìm kiếm"
-              >
-                <Search className="h-5 w-5" />
-              </div>
-              <input
-                type="text"
-                name="search"
-                aria-label="Tìm kiếm hệ thống"
-                placeholder="TÌM KIẾ́M HỆ THỐNG…"
-                className="h-12 w-64 px-4 border-y border-r border-black tim-body uppercase focus:outline-none focus:bg-primary/10 placeholder:text-muted-foreground input-technical"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleSearch}
-              />
-            </div>
+            <input
+              type="text"
+              placeholder={t("dashboard.searchPlaceholder")}
+              className="h-9 w-40 bg-transparent px-3 text-sm focus:outline-none sm:w-64"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearch}
+            />
           </div>
         </div>
+      </div>
 
-        {/* Thống kê nhanh — đồng bộ kiểu danh mục */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <TimStatsCard
-            title="TỔNG ĐỊA ĐIỂM"
-            value={stats.total}
-            icon={Building2}
-            serial="DAT-001"
-          />
-          <TimStatsCard
-            title="LƯỢT XEM (ƯỚC LƯỢNG)"
-            value={`${(stats.totalViews / 1000).toFixed(1)}K`}
-            icon={Activity}
-            serial="ANA-002"
-            textColor="text-emerald-600"
-          />
-          <TimStatsCard
-            title="ĐÁNH GIÁ TB"
-            value={stats.avgRating}
-            icon={TrendingUp}
-            serial="QOS-003"
-            textColor="text-amber-600"
-          />
-          <TimStatsCard
-            title="NGƯỜI DÙNG"
-            value={userCount}
-            icon={Users}
-            serial="USR-004"
-            color="bg-yellow-50"
-          />
+      {/* Stats Cards */}
+      <SectionCards stats={stats} userCount={userCount} />
+
+      {/* Interactive Chart */}
+      <ChartAreaInteractive />
+
+      {/* Monitoring Section */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <OnlineUsersCard />
+        <ServerHealthCard />
+        <RecentErrorsCard />
+      </div>
+
+      {/* Data Status + Categories (legacy sections) */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <DashboardDataStatus stats={stats} />
+        <DashboardCategories categories={categories} places={places} />
+      </div>
+
+      {/* Recent Places Table */}
+      <div className="rounded-lg border bg-card">
+        <div className="border-b px-6 py-4">
+          <h3 className="text-lg font-semibold">{t("dashboard.recentPlaces.title")}</h3>
+          <p className="text-sm text-muted-foreground">
+            {t("dashboard.latestPlaces")}
+          </p>
         </div>
-
-        {/* Data Status + Categories */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <DashboardDataStatus stats={stats} />
-          <DashboardCategories categories={categories} places={places} />
+        <div className="p-6 pt-0">
+          <RecentPlacesTable places={places} />
         </div>
-
-        {/* Charts Section */}
-        <DashboardCharts
-          stats={stats}
-          categories={categories}
-          places={places}
-        />
-
-        {/* Recent Places */}
-        <DashboardRecentPlaces places={places} />
       </div>
     </div>
   );

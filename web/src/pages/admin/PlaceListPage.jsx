@@ -18,9 +18,17 @@ import Activity from "lucide-react/dist/esm/icons/activity";
 import List from "lucide-react/dist/esm/icons/list";
 import GridIcon from "lucide-react/dist/esm/icons/grid";
 import AnimatedIcon from "@/components/ui/animated-icon";
+import { cn } from "@/lib/utils";
 import { lazy, Suspense } from "react";
-import usePlaceStore from "@/stores/placeStore";
-import useCategoryStore from "@/stores/categoryStore";
+import {
+  usePlaces,
+  useDeletePlace,
+  useUpdatePlaceStatus,
+  useApprovePlace,
+  useRejectPlace,
+  useToggleFeature,
+} from "@/hooks/queries/usePlaceQueries";
+import { useCategories } from "@/hooks/queries/useCategoryQueries";
 
 // Dynamic import for heavy component
 const PlaceDetailDialog = lazy(
@@ -65,40 +73,38 @@ import { usePermission } from "@/hooks/usePermission";
 import { Textarea } from "@/components/ui/textarea";
 import TimStatsCard from "@/components/admin/TimStatsCard";
 import BusinessDetailModal from "@/components/admin/BusinessDetailModal";
+import { useTranslation } from "react-i18next";
+import { getTableSerialNumber } from "@/utils/tableSerial";
 
 /**
- * PLACE LIST PAGE - T.I.M STYLE OVERHAUL (VIETNAMESE)
+ * PLACE LIST PAGE - T.I.M STYLE OVERHAUL
  */
 
 const PlaceListPage = ({
   initialStatus = "all",
   lockStatusFilter = false,
-  pageTitle = "QUẢN LÝ ĐỊA ĐIỂM",
-  pageMeta = "KIỂM SOÁT VÀ ĐIỀU PHỐI DỮ LIỆU",
+  pageTitle,
+  pageMeta,
   moderationMode = false,
   allowCreate = true,
 }) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+  const { t } = useTranslation();
+  const resolvedPageTitle = pageTitle || t("places.title");
+  const resolvedPageMeta = pageMeta || t("places.subtitle");
   const { hasPermission } = usePermission();
   const canModeratePlaces =
     hasPermission("places.approve") || hasPermission("places.reject");
   const canFeaturePlaces = hasPermission("places.feature");
 
-  const {
-    places,
-    loading,
-    pagination,
-    fetchPlaces,
-    deletePlace,
-    updatePlaceStatus,
-    approvePlace,
-    rejectPlace,
-    toggleFeature,
-  } = usePlaceStore();
-
-  const { categories, fetchCategories } = useCategoryStore();
+  // TanStack Query mutations
+  const deleteMutation = useDeletePlace();
+  const updateStatusMutation = useUpdatePlaceStatus();
+  const approveMutation = useApprovePlace();
+  const rejectMutation = useRejectPlace();
+  const toggleFeatureMutation = useToggleFeature();
 
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -139,20 +145,23 @@ const PlaceListPage = ({
     setFilters(newFilters);
   }, [searchParams, initialStatus]);
 
-  // Load data when filters change
-  useEffect(() => {
-    const apiFilters = { ...filters };
-    if (apiFilters.status === "all") apiFilters.status = "";
-    if (apiFilters.categoryId === "all") apiFilters.categoryId = "";
-    if (apiFilters.districtId === "all") apiFilters.districtId = "";
-    if (!apiFilters.businessId) delete apiFilters.businessId;
+  // Build API filters
+  const apiFilters = useMemo(() => {
+    const f = { ...filters };
+    if (f.status === "all") f.status = "";
+    if (f.categoryId === "all") f.categoryId = "";
+    if (f.districtId === "all") f.districtId = "";
+    if (!f.businessId) delete f.businessId;
+    return f;
+  }, [filters]);
 
-    fetchPlaces(apiFilters);
-  }, [filters, fetchPlaces]);
+  // TanStack Query for places
+  const { data: placesRes, isLoading } = usePlaces(apiFilters);
+  const places = placesRes?.data || placesRes || [];
+  const pagination = placesRes?.pagination || { page: 1, limit: 12, total: 0, totalPages: 0 };
 
-  useEffect(() => {
-    if (categories.length === 0) fetchCategories();
-  }, [categories.length, fetchCategories]);
+  // TanStack Query for categories
+  const { data: categories = [] } = useCategories();
 
   const updateURL = (newFilters) => {
     const params = {};
@@ -220,20 +229,20 @@ const PlaceListPage = ({
   };
 
   const handleDelete = async (place) => {
-    if (!confirm(`XÁC NHẬN XÓA: "${place.name}"?`)) return;
+    if (!confirm(t("places.confirmDelete", { name: place.name }))) return;
 
     try {
-      await deletePlace(place.id);
+      await deleteMutation.mutateAsync(place.id);
       toast({
-        title: "HỆ THỐNG",
-        description: "Đã xóa địa điểm khỏi cơ sở dữ liệu.",
+        title: t("common.success"),
+        description: t("places.messages.deleteSuccess"),
         className: "bg-black text-white border border-primary font-mono",
       });
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "LỖI",
-        description: error.message || "Không thể thực hiện tác vụ.",
+        title: t("common.error"),
+        description: error.message || t("places.errors.actionFailed"),
       });
     }
   };
@@ -242,27 +251,27 @@ const PlaceListPage = ({
     try {
       if (newStatus === "approved") {
         if (!hasPermission("places.approve")) {
-          throw new Error("Bạn không có quyền duyệt địa điểm.");
+          throw new Error(t("places.errors.noApprovePermission"));
         }
-        await approvePlace(place.id);
+        await approveMutation.mutateAsync(place.id);
       } else if (newStatus === "rejected") {
         if (!hasPermission("places.reject")) {
-          throw new Error("Bạn không có quyền từ chối địa điểm.");
+          throw new Error(t("places.errors.noRejectPermission"));
         }
         openModerationDialog(place, "rejected");
         return;
       } else {
-        await updatePlaceStatus(place.id, newStatus);
+        await updateStatusMutation.mutateAsync({ id: place.id, status: newStatus });
       }
       toast({
-        title: "TRẠNG THÁI",
-        description: "Cập nhật trạng thái thành công.",
+        title: t("places.statusUpdated"),
+        description: t("places.messages.statusUpdateSuccess"),
         className: "bg-black text-white border border-primary font-mono",
       });
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "LỖI",
+        title: t("common.error"),
         description: error.message,
       });
     }
@@ -285,36 +294,28 @@ const PlaceListPage = ({
     if (moderationDialog.action === "rejected" && note.length < 10) {
       toast({
         variant: "destructive",
-        title: "LỖI DỮ LIỆU",
-        description: "Lý do từ chối phải có ít nhất 10 ký tự.",
+        title: t("places.moderation.dataError"),
+        description: t("places.moderation.rejectReasonMinLength"),
       });
       return;
     }
 
     try {
       if (moderationDialog.action === "approved") {
-        await approvePlace(place.id);
+        await approveMutation.mutateAsync(place.id);
         toast({
-          title: "DUYỆT THÀNH CÔNG",
-          description: "Địa điểm đã được phê duyệt.",
+          title: t("places.moderation.approved"),
+          description: t("places.moderation.approvedDescription"),
           className: "bg-black text-white border border-primary font-mono",
         });
       } else {
-        await rejectPlace(place.id, note);
+        await rejectMutation.mutateAsync({ id: place.id, reason: note });
         toast({
-          title: "ĐÃ TỪ CHỐI",
-          description: "Địa điểm đã được chuyển về trạng thái từ chối.",
+          title: t("places.moderation.rejected"),
+          description: t("places.moderation.rejectedDescription"),
           className: "bg-black text-white border border-primary font-mono",
         });
       }
-
-      const refreshedFilters = { ...filters };
-      if (refreshedFilters.status === "all") refreshedFilters.status = "";
-      if (refreshedFilters.categoryId === "all")
-        refreshedFilters.categoryId = "";
-      if (refreshedFilters.districtId === "all")
-        refreshedFilters.districtId = "";
-      await fetchPlaces(refreshedFilters);
 
       setModerationDialog({
         open: false,
@@ -325,26 +326,26 @@ const PlaceListPage = ({
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "LỖI",
-        description: error.message || "Không thể cập nhật trạng thái duyệt.",
+        title: t("common.error"),
+        description: error.message || t("places.errors.moderationFailed"),
       });
     }
   };
 
   const handleToggleFeature = async (place) => {
     try {
-      await toggleFeature(place.id);
+      await toggleFeatureMutation.mutateAsync(place.id);
       toast({
-        title: "NỔI BẬT",
+        title: t("places.featured"),
         description: place.isFeatured
-          ? "Đã gỡ bỏ nổi bật."
-          : "Đã thêm vào danh sách nổi bật.",
+          ? t("places.messages.featureRemoved")
+          : t("places.messages.featureAdded"),
         className: "bg-black text-white border border-primary font-mono",
       });
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "LỖI",
+        title: t("common.error"),
         description: error.message,
       });
     }
@@ -362,31 +363,30 @@ const PlaceListPage = ({
     const statusConfig = {
       draft: {
         label: "DRAFT",
-        className: "bg-gray-200 text-gray-700 border-2 border-gray-400",
+        className: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
       },
       pending: {
         label: "PENDING",
-        className:
-          "bg-yellow-400 text-black border-2 border-yellow-600 animate-pulse font-black",
+        className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50 animate-pulse",
       },
       approved: {
         label: "APPROVED",
-        className: "bg-[#F3E600] text-black border-2 border-black font-black",
+        className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50",
       },
       rejected: {
         label: "REJECTED",
-        className: "bg-red-500 text-white border-2 border-red-700 font-black",
+        className: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50",
       },
       hidden: {
         label: "HIDDEN",
-        className: "bg-gray-800 text-gray-300 border-2 border-gray-600",
+        className: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
       },
     };
 
     const config = statusConfig[status] || statusConfig.draft;
     return (
       <div
-        className={`px-3 py-1.5 text-[10px] uppercase font-mono ${config.className} backdrop-blur-sm shadow-sm`}
+        className={cn("px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded-full border shadow-sm backdrop-blur-sm", config.className)}
       >
         {config.label}
       </div>
@@ -399,55 +399,55 @@ const PlaceListPage = ({
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b-2 border-black pb-6">
           <div className="flex items-center gap-6">
-            <div className="accent-bar h-16"></div>
+            <div className="accent-bar h-16 shrink-0"></div>
             <div>
-              <h1 className="tim-title">{pageTitle}</h1>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1">
+              <h1 className="tim-title">{resolvedPageTitle}</h1>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
                   DATABASE // PLACES
                 </span>
-                <p className="tim-meta">{pageMeta}</p>
+                <p className="tim-meta">{resolvedPageMeta}</p>
               </div>
             </div>
           </div>
           {allowCreate && hasPermission("places.create") && (
             <Button
               onClick={handleCreate}
-              className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
+              className="w-full sm:w-auto h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6 shrink-0"
             >
               <Plus className="mr-2 h-4 w-4" />
-              KHỞI TẠO ĐỊA ĐIỂM
+              {t("places.createPlace")}
             </Button>
           )}
         </div>
 
         {/* Thống kê nhanh (theo dữ liệu trang / bộ lọc hiện tại) */}
-        {!loading && (
+        {!isLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <TimStatsCard
-              title="TỔNG (TRANG)"
+              title={t("places.stats.total")}
               value={placeStats.total}
               icon={MapPin}
               serial="PLC-001"
             />
             <TimStatsCard
-              title="ĐÃ DUYỆT"
+              title={t("places.stats.approved")}
               value={placeStats.approved}
               icon={CheckCircle}
               serial="PLC-002"
               textColor="text-emerald-600"
             />
             <TimStatsCard
-              title="CHỜ DUYỆT"
+              title={t("places.stats.pending")}
               value={placeStats.pending}
               icon={Activity}
               serial="PLC-003"
               textColor="text-amber-600"
             />
             <TimStatsCard
-              title="NỔI BẬT"
+              title={t("places.stats.featured")}
               value={placeStats.featured}
               icon={Star}
               serial="PLC-004"
@@ -464,7 +464,7 @@ const PlaceListPage = ({
               <Search className="h-4 w-4" />
             </div>
             <input
-              placeholder="TÌM KIẾM THEO TÊN, ĐỊA CHỈ [ENTER]..."
+              placeholder={t("places.searchPlaceholder")}
               value={filters.search}
               onChange={handleSearch}
               onKeyDown={onSearchKey}
@@ -473,21 +473,21 @@ const PlaceListPage = ({
           </div>
 
           {/* Filters */}
-          <div className="flex gap-4 overflow-x-auto pb-2 md:pb-0">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-4 w-full md:w-auto">
             <Select
               value={filters.status || "all"}
               onValueChange={(val) => handleFilterChange("status", val)}
               disabled={lockStatusFilter}
             >
-              <SelectTrigger className="w-[150px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
-                <SelectValue placeholder="TRẠNG THÁI" />
+              <SelectTrigger className="w-full sm:w-[150px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
+                <SelectValue placeholder={t("places.statusFilters.placeholder")} />
               </SelectTrigger>
               <SelectContent className="rounded-none border-black">
-                <SelectItem value="all">TẤT CẢ</SelectItem>
-                <SelectItem value="pending">CHỜ DUYỆT</SelectItem>
-                <SelectItem value="approved">ĐÃ DUYỆT</SelectItem>
-                <SelectItem value="draft">NHÁP</SelectItem>
-                <SelectItem value="rejected">TỪ CHỐI</SelectItem>
+                <SelectItem value="all">{t("places.statusFilters.all")}</SelectItem>
+                <SelectItem value="pending">{t("places.statusFilters.pending")}</SelectItem>
+                <SelectItem value="approved">{t("places.statusFilters.approved")}</SelectItem>
+                <SelectItem value="draft">{t("places.statusFilters.draft")}</SelectItem>
+                <SelectItem value="rejected">{t("places.statusFilters.rejected")}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -495,11 +495,11 @@ const PlaceListPage = ({
               value={filters.categoryId || "all"}
               onValueChange={(val) => handleFilterChange("categoryId", val)}
             >
-              <SelectTrigger className="w-[180px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
-                <SelectValue placeholder="DANH MỤC" />
+              <SelectTrigger className="w-full sm:w-[180px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
+                <SelectValue placeholder={t("places.categoryFilter.placeholder")} />
               </SelectTrigger>
               <SelectContent className="rounded-none border-black">
-                <SelectItem value="all">TẤT CẢ DANH MỤC</SelectItem>
+                <SelectItem value="all">{t("places.categoryFilter.all")}</SelectItem>
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id.toString()}>
                     {cat.name}
@@ -508,7 +508,7 @@ const PlaceListPage = ({
               </SelectContent>
             </Select>
 
-            <div className="border-l border-black pl-4 flex gap-2">
+            <div className="col-span-2 sm:col-span-1 border-t sm:border-t-0 sm:border-l border-black pt-4 sm:pt-0 sm:pl-4 flex gap-2 justify-end">
               <Button
                 variant="ghost"
                 size="icon"
@@ -530,11 +530,11 @@ const PlaceListPage = ({
         </div>
 
         {/* Content Grid */}
-        {loading ? (
+        {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-12 h-12 border-4 border-black border-t-primary rounded-full animate-spin"></div>
             <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-              LOADING DATA STREAM...
+              {t("common.loading")}
             </div>
           </div>
         ) : (
@@ -545,18 +545,18 @@ const PlaceListPage = ({
                 : "space-y-2"
             }
           >
-            {places.map((place) =>
+            {places.map((place, index) =>
               viewMode === "grid" ? (
                 // GRID VIEW CARD - ENHANCED T.I.M STYLE
                 <div
                   key={place.id}
-                  className="relative group bg-white border-2 border-black transition-all hover:-translate-y-2 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden"
+                  className="relative group bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1 overflow-hidden flex flex-col"
                 >
                   {/* Grid Background Overlay */}
                   <div className="absolute inset-0 bg-grid-dots opacity-30 pointer-events-none"></div>
 
                   {/* Image Container */}
-                  <div className="h-52 bg-gray-900 relative overflow-hidden border-b-2 border-black">
+                  <div className="h-52 bg-zinc-900 relative overflow-hidden border-b border-zinc-100 dark:border-zinc-800 rounded-t-2xl shrink-0">
                     {place.images?.[0] ? (
                       <>
                         <img
@@ -565,7 +565,7 @@ const PlaceListPage = ({
                           alt={place.name}
                         />
                         {/* Accent Bar on Image */}
-                        <div className="absolute bottom-0 left-0 w-1 h-full bg-[#F3E600] group-hover:w-2 transition-all"></div>
+                        <div className="absolute bottom-0 left-0 w-1 h-full bg-[#F3E600] group-hover:w-1.5 transition-all"></div>
                       </>
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
@@ -580,41 +580,44 @@ const PlaceListPage = ({
                     <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
                       {getStatusBadge(place.status)}
                       {place.isFeatured && (
-                        <div className="bg-[#F3E600] border-2 border-black text-black px-2 py-1 text-[10px] uppercase font-black flex items-center gap-1">
+                        <div className="bg-[#F3E600] text-black px-2.5 py-1 text-[10px] uppercase font-bold flex items-center gap-1 rounded-full shadow-sm">
                           <Star className="w-3 h-3 fill-black" /> FEATURED
                         </div>
                       )}
                     </div>
 
                     {/* ID Badge */}
-                    <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm border border-white/20 px-2 py-1">
-                      <span className="font-mono text-[10px] text-white">
-                        #{place.id}
+                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-0.5 rounded-full">
+                      <span className="font-mono text-[10px] text-white font-semibold">
+                        {getTableSerialNumber(
+                          pagination.total || places.length,
+                          index,
+                          pagination.page || filters.page,
+                          pagination.limit || filters.limit,
+                        )}
                       </span>
                     </div>
                   </div>
 
                   {/* Content Section */}
-                  <div className="p-5 relative bg-white">
+                  <div className="p-5 relative bg-white dark:bg-zinc-900 flex-1 flex flex-col">
                     {/* Title */}
                     <h3
-                      className="font-black text-lg leading-tight uppercase mb-2 tracking-tight hover:text-[#F3E600] transition-colors cursor-pointer"
+                      className="font-bold text-base text-zinc-900 dark:text-zinc-100 leading-tight uppercase mb-2 tracking-tight hover:text-[#F3E600] transition-colors cursor-pointer line-clamp-2 min-h-[2.5rem]"
                       title={place.name}
                       onClick={() => handleViewDetails(place)}
                     >
-                      {place.name.length > 30
-                        ? `${place.name.substring(0, 30)}...`
-                        : place.name}
+                      {place.name}
                     </h3>
 
                     {/* Meta Info */}
-                    <div className="flex items-center gap-2 text-[10px] font-mono text-gray-500 mb-4 uppercase">
-                      <span className="bg-gray-100 px-2 py-0.5 border border-gray-300">
+                    <div className="flex items-center gap-2 text-[10px] text-zinc-500 dark:text-zinc-400 mb-4 flex-wrap">
+                      <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full font-medium">
                         {place.category?.name || "UNCATEGORIZED"}
                       </span>
-                      <span className="text-gray-300">//</span>
+                      <span className="text-zinc-300 dark:text-zinc-700">•</span>
                       <span
-                        className="truncate max-w-[120px]"
+                        className="truncate max-w-[120px] font-medium"
                         title={place.district?.name}
                       >
                         {place.district?.name || "NO_DISTRICT"}
@@ -622,22 +625,20 @@ const PlaceListPage = ({
                     </div>
 
                     {/* Stats Grid - Enhanced */}
-                    <div className="grid grid-cols-2 gap-3 border-t-2 border-black pt-4 mb-4">
-                      <div className="text-center bg-gray-50 border border-gray-200 p-2">
-                        <div className="text-[10px] text-gray-400 font-mono uppercase mb-1 tracking-wider">
-                          <Eye className="w-3 h-3 inline mr-1" />
-                          VIEWS
+                    <div className="grid grid-cols-2 gap-2.5 border-t border-zinc-100 dark:border-zinc-800 pt-4 mb-4">
+                      <div className="text-center bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl p-2.5 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                        <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+                          <Eye className="w-3.5 h-3.5 text-zinc-400" /> VIEWS
                         </div>
-                        <div className="font-black text-xl tracking-tighter">
+                        <div className="font-bold text-lg text-zinc-800 dark:text-zinc-200">
                           {place.viewCount || 0}
                         </div>
                       </div>
-                      <div className="text-center bg-yellow-50 border border-yellow-200 p-2">
-                        <div className="text-[10px] text-gray-400 font-mono uppercase mb-1 tracking-wider">
-                          <Star className="w-3 h-3 inline mr-1" />
-                          RATING
+                      <div className="text-center bg-amber-50/30 dark:bg-amber-950/10 border border-amber-100/50 dark:border-amber-950/30 rounded-xl p-2.5 transition-all hover:bg-amber-50/50">
+                        <div className="text-[10px] text-amber-600/80 dark:text-amber-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> RATING
                         </div>
-                        <div className="font-black text-xl tracking-tighter text-yellow-600">
+                        <div className="font-bold text-lg text-amber-700 dark:text-amber-400">
                           {place.ratingAvg
                             ? parseFloat(place.ratingAvg).toFixed(1)
                             : "N/A"}
@@ -646,34 +647,34 @@ const PlaceListPage = ({
                     </div>
 
                     {/* Action Buttons - Tactical Style */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 mt-auto pt-2 border-t border-zinc-100 dark:border-zinc-800">
                       <Button
                         size="sm"
-                        className="flex-1 rounded-none border-2 border-black bg-white text-black hover:bg-[#F3E600] hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] uppercase font-black text-xs h-10 transition-all"
+                        className="flex-1 rounded-xl bg-zinc-950 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 dark:text-zinc-950 text-white font-semibold text-[11px] gap-1.5 h-10 shadow-sm"
                         onClick={() => handleEdit(place)}
                       >
-                        <Edit className="w-4 h-4 mr-1.5" /> EDIT
+                        <Edit className="w-4 h-4" /> EDIT
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="icon"
-                            className="h-10 w-10 rounded-none border-2 border-black bg-black text-[#F3E600] hover:bg-[#F3E600] hover:text-black transition-all"
+                            className="h-10 w-10 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
                           >
                             <MoreHorizontal className="w-5 h-5" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           align="end"
-                          className="rounded-none border border-black w-48 font-mono text-xs uppercase"
+                          className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-950 w-48 font-sans text-xs [--accent:transparent]"
                         >
-                          <DropdownMenuLabel>TÁC VỤ</DropdownMenuLabel>
+                          <DropdownMenuLabel>{t("places.card.actions")}</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleViewDetails(place)}
                             className="cursor-pointer hover:bg-gray-100"
                           >
-                            <Info className="mr-2 h-3 w-3" /> CHI TIẾT
+                            <Info className="mr-2 h-3 w-3" /> {t("places.card.detail")}
                           </DropdownMenuItem>
                           {canFeaturePlaces && (
                             <DropdownMenuItem
@@ -681,7 +682,7 @@ const PlaceListPage = ({
                               className="cursor-pointer hover:bg-gray-100"
                             >
                               <Star className="mr-2 h-3 w-3" />{" "}
-                              {place.isFeatured ? "GỠ NỔI BẬT" : "ĐẶT NỔI BẬT"}
+                              {place.isFeatured ? t("places.card.unfeature") : t("places.card.feature")}
                             </DropdownMenuItem>
                           )}
 
@@ -697,8 +698,7 @@ const PlaceListPage = ({
                                   }
                                   className="text-green-600 hover:bg-green-50 cursor-pointer text-bold"
                                 >
-                                  <CheckCircle className="mr-2 h-3 w-3" /> DUYỆT
-                                  NHANH
+                                  <CheckCircle className="mr-2 h-3 w-3" /> {t("places.card.quickApprove")}
                                 </DropdownMenuItem>
                               )}
                               {hasPermission("places.reject") && (
@@ -710,7 +710,7 @@ const PlaceListPage = ({
                                   }
                                   className="text-red-600 hover:bg-red-50 cursor-pointer text-bold"
                                 >
-                                  <XCircle className="mr-2 h-3 w-3" /> TỪ CHỐI
+                                  <XCircle className="mr-2 h-3 w-3" /> {t("places.card.reject")}
                                 </DropdownMenuItem>
                               )}
                             </>
@@ -723,7 +723,7 @@ const PlaceListPage = ({
                                 onClick={() => handleDelete(place)}
                                 className="text-red-600 hover:bg-red-50 cursor-pointer"
                               >
-                                <Trash2 className="mr-2 h-3 w-3" /> XÓA BỎ
+                                <Trash2 className="mr-2 h-3 w-3" /> {t("places.card.delete")}
                               </DropdownMenuItem>
                             </>
                           )}
@@ -736,40 +736,114 @@ const PlaceListPage = ({
                 // LIST VIEW ROW
                 <div
                   key={place.id}
-                  className="flex items-center bg-white border border-gray-200 p-2 hover:border-black transition-colors group"
+                  className="flex flex-col sm:flex-row sm:items-center bg-white border border-black p-3 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all group gap-3 sm:gap-0"
                 >
-                  <div className="w-12 h-12 bg-gray-200 mr-4 shrink-0 relative">
-                    {place.images?.[0] && (
+                  <div className="w-full sm:w-16 sm:h-16 h-36 bg-gray-200 sm:mr-4 shrink-0 relative border border-black">
+                    {place.images?.[0] ? (
                       <img
                         src={place.images[0].imageData || place.images[0]}
                         className="w-full h-full object-cover"
+                        alt={place.name}
                       />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <MapPin className="h-6 w-6 text-gray-400" />
+                      </div>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0 grid grid-cols-12 items-center gap-4">
-                    <div className="col-span-4">
-                      <div className="font-bold text-sm uppercase truncate">
+                  <div className="flex-1 min-w-0 flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4">
+                    <div className="md:col-span-5 min-w-0">
+                      <div
+                        className="font-bold text-sm uppercase truncate cursor-pointer hover:text-yellow-600"
+                        onClick={() => handleViewDetails(place)}
+                      >
                         {place.name}
                       </div>
-                      <div className="text-[10px] text-gray-500 font-mono">
-                        {place.address}
+                      <div className="text-[10px] text-gray-500 font-mono truncate" title={place.address}>
+                        {place.address || "NO_ADDRESS"}
                       </div>
                     </div>
-                    <div className="col-span-2 text-[10px] font-mono uppercase bg-gray-50 p-1 text-center">
-                      {place.category?.name}
+                    <div className="md:col-span-3 flex items-center gap-2">
+                      <span className="text-[10px] font-mono uppercase bg-gray-100 px-2 py-0.5 border border-gray-300">
+                        {place.category?.name || "UNCATEGORIZED"}
+                      </span>
                     </div>
-                    <div className="col-span-3">
+                    <div className="md:col-span-2">
                       {getStatusBadge(place.status)}
                     </div>
-                    <div className="col-span-3 text-right">
+                    <div className="md:col-span-2 flex justify-end gap-2 mt-2 md:mt-0">
                       <Button
                         size="sm"
-                        variant="ghost"
-                        className="h-6 text-[10px] uppercase font-bold"
+                        className="flex-1 md:flex-initial h-8 rounded-none border border-black bg-white text-black hover:bg-[#F3E600] hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-mono text-[10px] uppercase font-bold"
                         onClick={() => handleEdit(place)}
                       >
-                        CHỈNH SỬA
+                        {t("common.edit")}
                       </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-8 w-8 rounded-none border-2 border-black bg-black text-[#F3E600] hover:bg-[#F3E600] hover:text-black transition-all"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="rounded-none border border-black w-48 font-mono text-xs uppercase"
+                        >
+                          <DropdownMenuLabel>{t("places.card.actions")}</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleViewDetails(place)}
+                            className="cursor-pointer"
+                          >
+                            <Info className="mr-2 h-3 w-3" /> {t("places.card.detail")}
+                          </DropdownMenuItem>
+                          {canFeaturePlaces && (
+                            <DropdownMenuItem
+                              onClick={() => handleToggleFeature(place)}
+                              className="cursor-pointer"
+                            >
+                              <Star className="mr-2 h-3 w-3" />{" "}
+                              {place.isFeatured ? t("places.card.unfeature") : t("places.card.feature")}
+                            </DropdownMenuItem>
+                          )}
+                          {place.status === "pending" && canModeratePlaces && (
+                            <>
+                              <DropdownMenuSeparator />
+                              {hasPermission("places.approve") && (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(place, "approved")}
+                                  className="text-green-600"
+                                >
+                                  <CheckCircle className="mr-2 h-3 w-3" /> {t("places.card.quickApprove")}
+                                </DropdownMenuItem>
+                              )}
+                              {hasPermission("places.reject") && (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(place, "rejected")}
+                                  className="text-red-600"
+                                >
+                                  <XCircle className="mr-2 h-3 w-3" /> {t("places.card.reject")}
+                                </DropdownMenuItem>
+                              )}
+                            </>
+                          )}
+                          {hasPermission("places.delete") && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(place)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-3 w-3" /> {t("places.card.delete")}
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>
@@ -779,20 +853,20 @@ const PlaceListPage = ({
         )}
 
         {/* Empty State */}
-        {!loading && places.length === 0 && (
+        {!isLoading && places.length === 0 && (
           <div className="text-center py-20 border border-dashed border-black bg-white/50">
             <MapPin className="h-12 w-12 mx-auto mb-4 text-gray-300" />
             <h3 className="font-black text-xl uppercase mb-2">
-              KHÔNG CÓ DỮ LIỆU
+              {t("places.empty.title")}
             </h3>
             <p className="font-mono text-xs text-muted-foreground mb-6 uppercase">
-              HỆ THỐNG KHÔNG TÌM THẤY ĐỊA ĐIỂM NÀO KHỚP VỚI BỘ LỌC.
+              {t("places.empty.description")}
             </p>
             <Button
               onClick={handleCreate}
               className="rounded-none bg-black text-white px-8 font-bold uppercase hover:bg-primary hover:text-black"
             >
-              KHỞI TẠO MỚI
+              {t("places.empty.createNew")}
             </Button>
           </div>
         )}
@@ -801,7 +875,7 @@ const PlaceListPage = ({
         {pagination && pagination.totalPages > 1 && (
           <div className="flex items-center justify-between border-t border-black pt-4 font-mono text-xs uppercase">
             <div>
-              TRANG {pagination.page} / {pagination.totalPages}
+              {t("places.pagination.page", { page: pagination.page, totalPages: pagination.totalPages })}
             </div>
             <div className="flex gap-2">
               <Button
@@ -810,7 +884,7 @@ const PlaceListPage = ({
                 onClick={() => handleFilterChange("page", filters.page - 1)}
                 className="rounded-none border-black h-8 hover:bg-black hover:text-white"
               >
-                TRƯỚC
+                {t("common.previous")}
               </Button>
               <Button
                 variant="outline"
@@ -818,7 +892,7 @@ const PlaceListPage = ({
                 onClick={() => handleFilterChange("page", filters.page + 1)}
                 className="rounded-none border-black h-8 hover:bg-black hover:text-white"
               >
-                SAU
+                {t("common.next")}
               </Button>
             </div>
           </div>
@@ -841,7 +915,7 @@ const PlaceListPage = ({
           onDelete={handleDelete}
           onApprove={
             hasPermission("places.approve")
-              ? (place) => approvePlace(place.id)
+              ? (place) => approveMutation.mutateAsync(place.id)
               : undefined
           }
           onReject={
@@ -874,19 +948,19 @@ const PlaceListPage = ({
           <DialogHeader className="space-y-2">
             <DialogTitle className="font-black uppercase tracking-wide text-base">
               {moderationDialog.action === "approved"
-                ? "XÁC NHẬN DUYỆT ĐỊA ĐIỂM"
-                : "XÁC NHẬN TỪ CHỐI ĐỊA ĐIỂM"}
+                ? t("places.moderation.confirmApprove")
+                : t("places.moderation.confirmReject")}
             </DialogTitle>
             <DialogDescription className="font-mono text-xs uppercase text-gray-500">
-              {moderationDialog.place?.name || "ĐỊA ĐIỂM"}
+              {moderationDialog.place?.name || t("places.moderation.placeLabel")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2">
             <label className="font-mono text-[11px] uppercase text-gray-600">
               {moderationDialog.action === "approved"
-                ? "GHI CHÚ (TÙY CHỌN)"
-                : "LÝ DO TỪ CHỐI (BẮT BUỘC, TỐI THIỂU 10 KÝ TỰ)"}
+                ? t("places.moderation.noteOptional")
+                : t("places.moderation.rejectReasonRequired")}
             </label>
             <Textarea
               value={moderationDialog.comment}
@@ -899,8 +973,8 @@ const PlaceListPage = ({
               rows={4}
               placeholder={
                 moderationDialog.action === "approved"
-                  ? "Ví dụ: Nội dung đầy đủ, dữ liệu hợp lệ..."
-                  : "Ví dụ: Thiếu thông tin địa chỉ, ảnh không phù hợp..."
+                  ? t("places.moderation.approvePlaceholder")
+                  : t("places.moderation.rejectPlaceholder")
               }
               className="rounded-none border-black focus-visible:ring-0 font-mono text-sm"
             />
@@ -920,7 +994,7 @@ const PlaceListPage = ({
                 })
               }
             >
-              Hủy
+              {t("common.cancel")}
             </Button>
             <Button
               type="button"
@@ -932,8 +1006,8 @@ const PlaceListPage = ({
               onClick={handleModerationConfirm}
             >
               {moderationDialog.action === "approved"
-                ? "Xác nhận duyệt"
-                : "Xác nhận từ chối"}
+                ? t("places.moderation.confirmApproveBtn")
+                : t("places.moderation.confirmRejectBtn")}
             </Button>
           </div>
         </DialogContent>

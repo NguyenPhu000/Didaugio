@@ -1,5 +1,7 @@
 import profileService from "../../services/profile/profile.service.js";
 import appService from "../../services/app/app.service.js";
+import tripService from "../../services/trip/trip.service.js";
+import tripPlanService from "../../services/trip/tripPlan.service.js";
 import * as bookingService from "../../services/booking/booking.service.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import prisma from "../../config/prismaClient.js";
@@ -152,6 +154,7 @@ export const savePlace = async (req, res, next) => {
       getUserId(req),
       placeId,
       req.body?.note || null,
+      req.body?.collectionName,
     );
     res.status(201).json({ success: true, data, message: "Đã lưu địa điểm" });
   } catch (error) {
@@ -178,9 +181,106 @@ export const unsavePlace = async (req, res, next) => {
   }
 };
 
+export const getSavedTrips = async (req, res, next) => {
+  try {
+    const data = await tripService.getMySavedTrips(getUserId(req));
+    res.json({
+      success: true,
+      data,
+      message: "Lấy danh sách chuyến đi đã lưu thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const saveTrip = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.tripId);
+    if (!tripId) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID chuyến đi không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    const data = await tripService.saveTrip(getUserId(req), tripId);
+    res.status(201).json({ success: true, data, message: "Đã lưu chuyến đi" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const unsaveTrip = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.tripId);
+    if (!tripId) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID chuyến đi không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    await tripService.unsaveTrip(getUserId(req), tripId);
+    res.json({ success: true, data: null, message: "Đã bỏ lưu chuyến đi" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSavedCollections = async (req, res, next) => {
+  try {
+    const data = await appService.getMySavedCollections(getUserId(req));
+    res.json({
+      success: true,
+      data,
+      message: "Lấy danh sách bộ sưu tập đã lưu thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const renameSavedCollection = async (req, res, next) => {
+  try {
+    const data = await appService.renameMySavedCollection(
+      getUserId(req),
+      req.params.name,
+      req.body?.name,
+    );
+    res.json({
+      success: true,
+      data,
+      message: "Đã đổi tên bộ sưu tập",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteSavedCollection = async (req, res, next) => {
+  try {
+    const data = await appService.deleteMySavedCollection(
+      getUserId(req),
+      req.params.name,
+    );
+    res.json({
+      success: true,
+      data,
+      message: "Đã xóa bộ sưu tập",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getMyTrips = async (req, res, next) => {
   try {
-    const result = await appService.getMyTrips(getUserId(req), req.query);
+    const result = await tripService.getMyTrips(getUserId(req), req.query);
     res.json({
       success: true,
       data: result.data,
@@ -255,6 +355,34 @@ export const getMyBookingQR = async (req, res, next) => {
   }
 };
 
+export const cancelMyBooking = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID booking không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    const booking = await bookingService.cancelMyBooking(
+      id,
+      getUserId(req),
+      req.body?.cancelReason,
+    );
+
+    res.json({
+      success: true,
+      data: booking,
+      message: "Hủy booking thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const linkMyBookingToTrip = async (req, res, next) => {
   try {
     const id = parseId(req.params.id);
@@ -285,7 +413,7 @@ export const linkMyBookingToTrip = async (req, res, next) => {
 
 export const generateTrip = async (req, res, next) => {
   try {
-    const result = await appService.generateAndSaveTrip(
+    const result = await tripService.generateAndSaveTrip(
       getUserId(req),
       req.body || {},
     );
@@ -313,8 +441,13 @@ export const createTrip = async (req, res, next) => {
       totalDays,
       travelStyle,
       groupSize,
+      status,
     } = req.body;
-    const trip = await appService.createTrip(getUserId(req), {
+
+    const ALLOWED_INITIAL_STATUSES = ["planned"];
+    const finalStatus = ALLOWED_INITIAL_STATUSES.includes(status) ? status : "planned";
+
+    const trip = await tripService.createTrip(getUserId(req), {
       title,
       description,
       startDate,
@@ -322,6 +455,7 @@ export const createTrip = async (req, res, next) => {
       totalDays,
       travelStyle,
       groupSize,
+      status: finalStatus,
     });
     res
       .status(201)
@@ -338,7 +472,7 @@ export const getTripDetail = async (req, res, next) => {
       return res
         .status(400)
         .json({ success: false, data: null, message: "ID không hợp lệ" });
-    const trip = await appService.getTripDetail(id, getUserId(req));
+    const trip = await tripService.getTripDetail(id, getUserId(req));
     if (!trip)
       return res.status(404).json({
         success: false,
@@ -362,7 +496,7 @@ export const updateTrip = async (req, res, next) => {
       return res
         .status(400)
         .json({ success: false, data: null, message: "ID không hợp lệ" });
-    const trip = await appService.updateTrip(id, getUserId(req), req.body);
+    const trip = await tripService.updateTrip(id, getUserId(req), req.body);
     res.json({
       success: true,
       data: trip,
@@ -380,12 +514,26 @@ export const deleteTrip = async (req, res, next) => {
       return res
         .status(400)
         .json({ success: false, data: null, message: "ID không hợp lệ" });
-    await appService.deleteTrip(id, getUserId(req));
+    await tripService.deleteTrip(id, getUserId(req));
     res.json({
       success: true,
       data: null,
       message: "Xóa chuyến đi thành công",
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const duplicateTrip = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id)
+      return res
+        .status(400)
+        .json({ success: false, data: null, message: "ID không hợp lệ" });
+    const trip = await tripService.duplicateTrip(id, getUserId(req));
+    res.status(201).json({ success: true, data: trip, message: "Nhân bản chuyến đi thành công" });
   } catch (error) {
     next(error);
   }
@@ -398,12 +546,25 @@ export const addDestination = async (req, res, next) => {
       return res
         .status(400)
         .json({ success: false, data: null, message: "ID không hợp lệ" });
-    const { placeId, dayNumber = 1, order = 0, note } = req.body;
-    const dest = await appService.addDestination(tripId, getUserId(req), {
+    const {
+      placeId,
+      dayNumber = 1,
+      order = 0,
+      note,
+      startTime,
+      endTime,
+      transportToNext,
+      distanceToNext,
+    } = req.body;
+    const dest = await tripService.addDestination(tripId, getUserId(req), {
       placeId,
       dayNumber,
       order,
       note,
+      startTime,
+      endTime,
+      transportToNext,
+      distanceToNext,
     });
     res.status(201).json({
       success: true,
@@ -423,12 +584,163 @@ export const removeDestination = async (req, res, next) => {
       return res
         .status(400)
         .json({ success: false, data: null, message: "ID không hợp lệ" });
-    await appService.removeDestination(tripId, destId, getUserId(req));
+    await tripService.removeDestination(tripId, destId, getUserId(req));
     res.json({
       success: true,
       data: null,
       message: "Đã xóa địa điểm khỏi lịch trình",
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const reorderDestinations = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.id);
+    if (!tripId)
+      return res.status(400).json({ success: false, data: null, message: "ID khong hop le", errorCode: ERROR_CODES.VALIDATION_ERROR });
+    const { dayNumber, orderedIds } = req.body;
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0)
+      return res.status(400).json({ success: false, data: null, message: "Danh sach sap xep khong hop le", errorCode: ERROR_CODES.VALIDATION_ERROR });
+    const destinations = await tripService.reorderDestinations(tripId, getUserId(req), { dayNumber, orderedIds });
+    res.json({ success: true, data: destinations, message: "Da cap nhat thu tu lich trinh" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const linkBookingToTripPlan = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.tripId);
+    const bookingId = parseId(req.params.bookingId);
+    if (!tripId || !bookingId) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    const result = await tripPlanService.linkBookingToTrip({
+      bookingId,
+      tripId,
+      actorUserId: getUserId(req),
+      ...req.body,
+    });
+
+    return res.json({
+      success: true,
+      data: result,
+      message: "Liên kết booking vào chuyến đi thành công",
+      errorCode: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const reorderTripStops = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.tripId);
+    if (!tripId) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "ID không hợp lệ",
+        errorCode: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    const result = await tripPlanService.reorderDestinations({
+      tripId,
+      actorUserId: getUserId(req),
+      updates: req.body.updates,
+    });
+
+    return res.json({
+      success: true,
+      data: result,
+      message: "Sắp xếp lịch trình thành công",
+      errorCode: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateDestination = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.id);
+    const destId = parseId(req.params.destId);
+    if (!tripId || !destId)
+      return res.status(400).json({ success: false, data: null, message: "ID khong hop le", errorCode: ERROR_CODES.VALIDATION_ERROR });
+    const dest = await tripService.updateDestination(tripId, destId, getUserId(req), req.body);
+    res.json({ success: true, data: dest, message: "Da cap nhat dia diem" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const moveDestination = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.id);
+    const destId = parseId(req.params.destId);
+    if (!tripId || !destId)
+      return res.status(400).json({ success: false, data: null, message: "ID khong hop le", errorCode: ERROR_CODES.VALIDATION_ERROR });
+    const { newDayNumber, newOrder } = req.body;
+    const dest = await tripService.moveDestination(tripId, destId, getUserId(req), { newDayNumber, newOrder });
+    res.json({ success: true, data: dest, message: "Da chuyen dia diem sang ngay khac" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── TripShare Controllers ──────────────────────────────────────────────────
+
+export const createTripShare = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.id);
+    if (!tripId)
+      return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    const share = await tripService.createTripShare(tripId, getUserId(req), req.body);
+    res.status(201).json({ success: true, data: share, message: "Tạo link chia sẻ thành công" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTripShares = async (req, res, next) => {
+  try {
+    const tripId = parseId(req.params.id);
+    if (!tripId)
+      return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    const shares = await tripService.getTripShares(tripId, getUserId(req));
+    res.json({ success: true, data: shares, message: "Lấy danh sách chia sẻ thành công" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const accessTripShare = async (req, res, next) => {
+  try {
+    const { shareCode } = req.params;
+    const { password } = req.body || {};
+    const result = await tripService.accessTripShare(shareCode, password);
+    res.json({ success: true, data: result, message: "Truy cập chuyến đi thành công" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteTripShare = async (req, res, next) => {
+  try {
+    const shareId = parseId(req.params.shareId);
+    if (!shareId)
+      return res.status(400).json({ success: false, data: null, message: "ID không hợp lệ" });
+    await tripService.deleteTripShare(shareId, getUserId(req));
+    res.json({ success: true, data: null, message: "Xóa link chia sẻ thành công" });
   } catch (error) {
     next(error);
   }
@@ -478,17 +790,34 @@ export default {
   getSavedPlaces,
   savePlace,
   unsavePlace,
+  getSavedTrips,
+  saveTrip,
+  unsaveTrip,
+  getSavedCollections,
+  renameSavedCollection,
+  deleteSavedCollection,
   getMyTrips,
   getMyBookings,
   getMyBookingDetail,
   getMyBookingQR,
+  cancelMyBooking,
   linkMyBookingToTrip,
   generateTrip,
   createTrip,
   getTripDetail,
   updateTrip,
   deleteTrip,
+  duplicateTrip,
   addDestination,
   removeDestination,
+  reorderDestinations,
+  linkBookingToTripPlan,
+  reorderTripStops,
+  updateDestination,
+  moveDestination,
+  createTripShare,
+  getTripShares,
+  accessTripShare,
+  deleteTripShare,
   updatePushToken,
 };

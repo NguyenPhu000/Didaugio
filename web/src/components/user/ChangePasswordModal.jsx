@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { Eye, EyeOff, Lock } from "lucide-react";
 import {
   Dialog,
@@ -14,33 +14,35 @@ import {
 } from "@/components/ui/Dialog";
 import { Button, Input, Label } from "@/components/ui";
 import { authService } from "@/apis";
-
-const changePasswordSchema = z
-  .object({
-    currentPassword: z.string().min(1, "Vui long nhap mat khau hien tai"),
-    newPassword: z
-      .string()
-      .min(6, "Mat khau moi phai co it nhat 6 ky tu")
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Mat khau phai co it nhat 1 chu hoa, 1 chu thuong va 1 so"
-      ),
-    confirmPassword: z.string().min(1, "Vui long xac nhan mat khau"),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Mat khau xac nhan khong khop",
-    path: ["confirmPassword"],
-  })
-  .refine((data) => data.currentPassword !== data.newPassword, {
-    message: "Mat khau moi phai khac mat khau hien tai",
-    path: ["newPassword"],
-  });
+import { useTranslation } from "react-i18next";
 
 export const ChangePasswordModal = ({ open, onOpenChange }) => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const changePasswordSchema = z
+    .object({
+      currentPassword: z.string().min(1, t("user.changePassword.currentPasswordRequired")),
+      newPassword: z
+        .string()
+        .min(6, t("user.changePassword.newPasswordMin"))
+        .regex(
+          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+          t("user.changePassword.newPasswordComplexity")
+        ),
+      confirmPassword: z.string().min(1, t("user.changePassword.confirmPasswordRequired")),
+    })
+    .refine((data) => data.newPassword === data.confirmPassword, {
+      message: t("user.changePassword.passwordMismatch"),
+      path: ["confirmPassword"],
+    })
+    .refine((data) => data.currentPassword !== data.newPassword, {
+      message: t("user.changePassword.sameAsOld"),
+      path: ["newPassword"],
+    });
 
   const {
     register,
@@ -59,7 +61,7 @@ export const ChangePasswordModal = ({ open, onOpenChange }) => {
         data.newPassword,
         data.confirmPassword
       );
-      toast.success("Doi mat khau thanh cong! Vui long dang nhap lai.");
+      toast.success(t("user.changePassword.success"));
       reset();
       onOpenChange(false);
 
@@ -68,7 +70,7 @@ export const ChangePasswordModal = ({ open, onOpenChange }) => {
         window.location.href = "/auth/login";
       }, 2000);
     } catch (error) {
-      toast.error(error.message || "Doi mat khau that bai");
+      toast.error(error.message || t("user.changePassword.failed"));
     } finally {
       setIsLoading(false);
     }
@@ -87,22 +89,22 @@ export const ChangePasswordModal = ({ open, onOpenChange }) => {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Lock className="h-5 w-5" />
-            Doi mat khau
+            {t("user.changePassword.title")}
           </DialogTitle>
           <DialogDescription>
-            Nhap mat khau hien tai va mat khau moi de thay doi
+            {t("user.changePassword.description")}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Current Password */}
           <div className="space-y-2">
-            <Label htmlFor="currentPassword">Mat khau hien tai</Label>
+            <Label htmlFor="currentPassword">{t("user.changePassword.currentPasswordLabel")}</Label>
             <div className="relative">
               <Input
                 id="currentPassword"
                 type={showCurrentPassword ? "text" : "password"}
-                placeholder="Nhap mat khau hien tai"
+                placeholder={t("user.changePassword.currentPasswordPlaceholder")}
                 {...register("currentPassword")}
                 className="pr-10"
               />
@@ -127,12 +129,12 @@ export const ChangePasswordModal = ({ open, onOpenChange }) => {
 
           {/* New Password */}
           <div className="space-y-2">
-            <Label htmlFor="newPassword">Mat khau moi</Label>
+            <Label htmlFor="newPassword">{t("user.changePassword.newPasswordLabel")}</Label>
             <div className="relative">
               <Input
                 id="newPassword"
                 type={showNewPassword ? "text" : "password"}
-                placeholder="Nhap mat khau moi (toi thieu 6 ky tu)"
+                placeholder={t("user.changePassword.newPasswordPlaceholder")}
                 {...register("newPassword")}
                 className="pr-10"
               />
@@ -157,12 +159,12 @@ export const ChangePasswordModal = ({ open, onOpenChange }) => {
 
           {/* Confirm Password */}
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Xac nhan mat khau moi</Label>
+            <Label htmlFor="confirmPassword">{t("user.changePassword.confirmPasswordLabel")}</Label>
             <div className="relative">
               <Input
                 id="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
-                placeholder="Nhap lai mat khau moi"
+                placeholder={t("user.changePassword.confirmPasswordPlaceholder")}
                 {...register("confirmPassword")}
                 className="pr-10"
               />
@@ -192,10 +194,10 @@ export const ChangePasswordModal = ({ open, onOpenChange }) => {
               onClick={handleClose}
               disabled={isLoading}
             >
-              Huy
+              {t("user.changePassword.cancel")}
             </Button>
             <Button type="submit" loading={isLoading}>
-              Doi mat khau
+              {t("user.changePassword.submit")}
             </Button>
           </DialogFooter>
         </form>

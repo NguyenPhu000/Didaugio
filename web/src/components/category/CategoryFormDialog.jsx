@@ -19,8 +19,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/Dialog";
-import useCategoryStore from "@/stores/categoryStore";
+import { useCreateCategory, useUpdateCategory } from "@/hooks/queries/useCategoryQueries";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useTranslation } from "react-i18next";
 import {
   CATEGORY_ICON_MAP,
   CATEGORY_ICON_PRESETS,
@@ -38,11 +40,13 @@ export default function CategoryFormDialog({
   category,
   parentCategory,
 }) {
-  const { createCategory, updateCategory, fetchCategories } =
-    useCategoryStore();
+  const { t } = useTranslation();
+  const createMutation = useCreateCategory();
+  const updateMutation = useUpdateCategory();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
   const [iconSearch, setIconSearch] = useState("");
+
+  const loading = createMutation.isPending || updateMutation.isPending;
 
   const [formData, setFormData] = useState({
     name: "",
@@ -52,11 +56,11 @@ export default function CategoryFormDialog({
     description: "",
     parentId: null,
     order: 0,
+    isActive: true,
   });
 
   useEffect(() => {
     if (category) {
-      // Edit mode
       setFormData({
         name: category.name || "",
         slug: category.slug || "",
@@ -65,9 +69,9 @@ export default function CategoryFormDialog({
         description: category.description || "",
         parentId: category.parentId || null,
         order: category.order || 0,
+        isActive: category.isActive !== undefined ? category.isActive : true,
       });
     } else if (parentCategory) {
-      // Add child mode
       setFormData({
         name: "",
         slug: "",
@@ -76,9 +80,9 @@ export default function CategoryFormDialog({
         description: "",
         parentId: parentCategory.id,
         order: 0,
+        isActive: true,
       });
     } else {
-      // Add root mode
       setFormData({
         name: "",
         slug: "",
@@ -87,6 +91,7 @@ export default function CategoryFormDialog({
         description: "",
         parentId: null,
         order: 0,
+        isActive: true,
       });
     }
   }, [category, parentCategory, open]);
@@ -95,12 +100,11 @@ export default function CategoryFormDialog({
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
 
-      // Auto-generate slug from name
       if (field === "name" && !category) {
         updated.slug = value
           .toLowerCase()
           .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[̀-ͯ]/g, "")
           .replace(/đ/g, "d")
           .replace(/[^a-z0-9\s-]/g, "")
           .trim()
@@ -113,23 +117,21 @@ export default function CategoryFormDialog({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
 
     try {
       if (category) {
-        await updateCategory(category.id, formData);
+        await updateMutation.mutateAsync({ id: category.id, data: formData });
         toast({
           title: "Thành công",
           description: "Cập nhật danh mục thành công",
         });
       } else {
-        await createCategory(formData);
+        await createMutation.mutateAsync(formData);
         toast({
           title: "Thành công",
           description: "Tạo danh mục thành công",
         });
       }
-      await fetchCategories();
       onClose();
     } catch (error) {
       toast({
@@ -137,13 +139,11 @@ export default function CategoryFormDialog({
         title: "Lỗi",
         description: error.response?.data?.message || error.message,
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   const filteredIcons = CATEGORY_ICON_PRESETS.filter((icon) =>
-    icon.toLowerCase().includes(iconSearch.toLowerCase()),
+    icon.toLowerCase().includes(iconSearch.toLowerCase())
   );
 
   let dialogTitle = "TẠO DANH MỤC GỐC";
@@ -322,6 +322,23 @@ export default function CategoryFormDialog({
               rows={3}
               className="rounded-none border-black font-mono focus-visible:ring-0 bg-gray-50"
             />
+          </div>
+
+          {/* Active Status Checkbox */}
+          <div className="flex items-center space-x-2 pt-2 border-t border-gray-100">
+            <Checkbox
+              id="isActive"
+              checked={formData.isActive}
+              onCheckedChange={(checked) => handleChange("isActive", checked)}
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="isActive" className="cursor-pointer uppercase font-bold text-xs tracking-wider">
+                {t("categories.activeStatus", { defaultValue: "TRẠNG THÁI HOẠT ĐỘNG" })}
+              </Label>
+              <p className="text-[10px] text-muted-foreground font-mono">
+                {t("categories.inactiveNote", { defaultValue: "DANH MỤC KHÔNG HOẠT ĐỘNG SẼ BỊ ẨN KHỎI BỘ LỌC VÀ GIAO DIỆN HIỂN THỊ" })}
+              </p>
+            </div>
           </div>
 
           <DialogFooter className="border-t border-black pt-6 gap-3">

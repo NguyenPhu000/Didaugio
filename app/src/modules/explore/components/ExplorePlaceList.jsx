@@ -26,19 +26,19 @@ const PlaceRow = memo(function PlaceRow({ place, onPress }) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+      className="flex-row items-center gap-3.5 p-3 rounded-[20px] bg-white border border-[#F3F4F6] shadow-sm elevation-1 active:opacity-90 active:scale-[0.98]"
     >
-      <View style={styles.thumb}>
+      <View className="w-20 h-20 rounded-[16px] overflow-hidden bg-[#F9FAFB] border border-[#E5E7EB] relative">
         {img ? (
           <Image
             source={{ uri: img }}
-            style={StyleSheet.absoluteFillObject}
+            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
             contentFit="cover"
             transition={180}
             cachePolicy="memory-disk"
           />
         ) : (
-          <View style={styles.thumbFallback}>
+          <View className="flex-1 items-center justify-center">
             <MaterialCommunityIcons
               name="map-marker-outline"
               size={24}
@@ -48,19 +48,19 @@ const PlaceRow = memo(function PlaceRow({ place, onPress }) {
         )}
       </View>
 
-      <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
+      <View className="flex-1 min-w-0 gap-1.5">
+        <Text className="text-black text-[16.5px] font-semibold tracking-[-0.3px]" numberOfLines={1}>
           {place?.name || "Địa điểm"}
         </Text>
-        <View style={styles.metaRow}>
+        <View className="flex-row items-center gap-1.5">
           <MaterialCommunityIcons name="map-marker-outline" size={14} color="#6B7280" />
-          <Text style={styles.metaText} numberOfLines={1}>
+          <Text className="text-[#6B7280] text-[13px] font-medium flex-1" numberOfLines={1}>
             {location}
           </Text>
         </View>
-        <View style={styles.metaRow}>
+        <View className="flex-row items-center gap-1.5">
           <MaterialCommunityIcons name="star" size={14} color="#000000" />
-          <Text style={[styles.metaText, { color: "#000" }]} numberOfLines={1}>
+          <Text className="text-black text-[13px] font-medium flex-1" numberOfLines={1}>
             {rating > 0 ? `${rating.toFixed(1)} • ${ratingMeta}` : ratingMeta}
           </Text>
         </View>
@@ -101,14 +101,14 @@ function ExplorePlaceListInner({
 
   if (!loading && (!Array.isArray(data) || data.length === 0)) {
     return (
-      <View style={styles.empty}>
+      <View className="flex-1 items-center justify-center px-10 gap-3">
         <MaterialCommunityIcons
           name="compass-outline"
           size={50}
           color="#D1D5DB"
         />
-        <Text style={styles.emptyTitle}>{emptyTitle}</Text>
-        <Text style={styles.emptyCopy}>{emptyCopy}</Text>
+        <Text className="text-black text-[18px] font-semibold text-center">{emptyTitle}</Text>
+        <Text className="text-[#6B7280] text-[14px] leading-5 text-center font-normal">{emptyCopy}</Text>
       </View>
     );
   }
@@ -119,7 +119,7 @@ function ExplorePlaceListInner({
       renderItem={renderItem}
       keyExtractor={keyExtractor}
       estimatedItemSize={EST_ITEM_SIZE}
-      contentContainerStyle={styles.listContent}
+      contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 }}
       ItemSeparatorComponent={RowSeparator}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.4}
@@ -127,7 +127,7 @@ function ExplorePlaceListInner({
         fetchingMore ? (
           <ActivityIndicator
             color="#000000"
-            style={styles.footerLoader}
+            className="py-5"
           />
         ) : null
       }
@@ -135,103 +135,8 @@ function ExplorePlaceListInner({
   );
 
   function RowSeparator() {
-    return <View style={styles.rowSeparator} />;
+    return <View className="h-3" />;
   }
 }
 
 export const ExplorePlaceList = memo(ExplorePlaceListInner);
-
-const styles = StyleSheet.create({
-  listContent: {
-    paddingHorizontal: TOKENS.space[6],
-    paddingTop: 16,
-    paddingBottom: 40,
-  },
-  rowSeparator: {
-    height: 12,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    padding: 12,
-    borderRadius: 20,
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#F3F4F6",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 5,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
-  rowPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  thumb: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
-    overflow: "hidden",
-    backgroundColor: "#F9FAFB",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  thumbFallback: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  info: {
-    flex: 1,
-    minWidth: 0,
-    gap: 6,
-  },
-  name: {
-    color: "#000000",
-    fontSize: 16.5,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.3,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  metaText: {
-    color: "#6B7280", // Gray 500
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-    flex: 1,
-  },
-  empty: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 40,
-    gap: 12,
-  },
-  emptyTitle: {
-    color: "#000000",
-    fontSize: 18,
-    fontFamily: TOKENS.font.semibold,
-    textAlign: "center",
-  },
-  emptyCopy: {
-    color: "#6B7280",
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: TOKENS.font.body,
-    textAlign: "center",
-  },
-  footerLoader: {
-    paddingVertical: 20,
-  },
-});

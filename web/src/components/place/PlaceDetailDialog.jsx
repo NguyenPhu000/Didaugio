@@ -204,7 +204,8 @@ function SectionTitle({ icon: _Icon, children }) {
 function ImageGallery({ images, name, status, isFeatured }) {
   const [idx, setIdx] = useState(0);
   const imgs = Array.isArray(images) && images.length > 0 ? images : [];
-  const src = imgs[idx]?.imageData || imgs[idx]?.url;
+  const getImgSrc = (img) => img?.secureUrl || img?.thumbnailUrl || img?.imageData || img?.url;
+  const src = getImgSrc(imgs[idx]);
   const s = STATUS_CFG[status] || STATUS_CFG.draft;
 
   return (
@@ -297,7 +298,7 @@ function ImageGallery({ images, name, status, isFeatured }) {
               )}
             >
               <img
-                src={img.imageData || img.url}
+                src={getImgSrc(img)}
                 alt={`Ảnh ${i + 1}`}
                 className="w-full h-full object-cover"
               />

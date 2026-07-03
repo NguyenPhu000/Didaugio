@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -28,8 +29,8 @@ export function AIEntryButton({
       500,
       withRepeat(
         withSequence(
-          withTiming(1, { duration: 1200 }),
-          withTiming(0, { duration: 1200 }),
+          withTiming(1, { duration: 1400 }),
+          withTiming(0, { duration: 1400 }),
         ),
         -1,
         false,
@@ -39,14 +40,13 @@ export function AIEntryButton({
 
   const pulseStyle = useAnimatedStyle(() => {
     const scale = compact ? 1.04 : 1.06;
-
     return {
       transform: [{ scale: 1 + pulse.value * (scale - 1) }],
     };
   });
 
   const haloStyle = useAnimatedStyle(() => ({
-    opacity: 0.12 + pulse.value * 0.14,
+    opacity: 0.15 + pulse.value * 0.16,
     transform: [{ scale: 1.02 + pulse.value * 0.18 }],
   }));
 
@@ -84,7 +84,13 @@ export function AIEntryButton({
           <View style={styles.buttonGradientGlow} />
 
           <View style={[styles.iconWrap, compact && styles.iconWrapCompact]}>
-            <View style={styles.iconGradientBase} />
+            {/* Sử dụng LinearGradient công nghệ AI đa sắc thay cho màu xanh trơn */}
+            <LinearGradient
+              colors={["#2563EB", "#7C3AED", "#DB2777"]} // AI assistant style gradient
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             <View style={styles.iconGradientHighlight} />
             <Image
               source={require("../../../assets/technical-support.png")}
@@ -108,13 +114,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.72)",
-    borderWidth: 1,
-    borderColor: "rgba(96,165,250,0.28)",
-    shadowColor: "#2563EB",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.22,
-    shadowRadius: 22,
-    elevation: 12,
+    borderWidth: 1.5,
+    borderColor: "rgba(168,85,247,0.32)", // Viền tím AI mờ
+    shadowColor: "#7C3AED", // Shadow màu tím công nghệ
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
   },
   buttonCompact: {
     width: 52,
@@ -132,7 +138,7 @@ const styles = StyleSheet.create({
     bottom: -8,
     left: -8,
     borderRadius: 35,
-    backgroundColor: "rgba(59,130,246,0.24)",
+    backgroundColor: "rgba(139,92,246,0.24)", // Phát sáng màu tím hồng AI
   },
   haloCompact: {
     top: -7,
@@ -148,7 +154,7 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F5FAFF",
+    backgroundColor: "#FAF5FF", // Nền tím nhạt
   },
   buttonGradientCompact: {
     borderRadius: 26,
@@ -172,15 +178,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.45)",
-    backgroundColor: "#4DA8FF",
-  },
-  iconGradientBase: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: "#2A8CFF",
   },
   iconGradientHighlight: {
     position: "absolute",
@@ -189,7 +186,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 22,
     borderRadius: 999,
-    backgroundColor: "#A8E1FF",
+    backgroundColor: "rgba(255,255,255,0.35)",
     opacity: 0.95,
     transform: [{ rotate: "-20deg" }],
   },
@@ -217,5 +214,7 @@ const styles = StyleSheet.create({
   rootCompact: {
     width: 52,
     height: 52,
+    borderRadius: 26,
   },
 });
+export default AIEntryButton;

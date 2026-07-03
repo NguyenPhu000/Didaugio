@@ -5,14 +5,13 @@ import {
   Linking,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useHomeData } from "./hooks/useHomeData";
 import { useMapPlaces } from "./hooks/useMapPlaces";
 import {
@@ -32,6 +31,7 @@ import {
 } from "../../components/composed/PlacePreviewCard";
 import { isPlaceOpenNow } from "./utils/placeFilter";
 import { TOKENS } from "../../constants/design-tokens";
+import { cn } from "../../lib/cn";
 
 const toSearchableText = (place) =>
   [
@@ -45,7 +45,7 @@ const toSearchableText = (place) =>
     .join(" ")
     .toLowerCase();
 
-const CategoryChip = memo(({ category, active, onToggle }) => {
+function CategoryChipInner({ category, active, onToggle }) {
   const meta =
     category.id === null
       ? { ...DEFAULT_CATEGORY_ICON, icon: "apps" }
@@ -54,38 +54,57 @@ const CategoryChip = memo(({ category, active, onToggle }) => {
   return (
     <Pressable
       onPress={() => onToggle(category.id)}
-      style={[styles.chip, active ? styles.chipActive : null]}
+      className={cn(
+        "h-[34px] flex-row items-center gap-[5px] rounded-full border px-3",
+        active ? "border-ink bg-ink" : "border-[#E5E7EB] bg-white",
+      )}
     >
-      <MaterialIcons
+      <MaterialIconsRounded
         name={meta.icon}
         size={14}
         color={active ? "#FFFFFF" : "#475569"}
       />
-      <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>
+      <Text
+        className={cn(
+          "text-xs font-semibold",
+          active ? "text-white" : "text-ink-secondary",
+        )}
+      >
         {category.name}
       </Text>
     </Pressable>
   );
-});
+}
 
-const QuickFilterChip = memo(({ option, active, onToggle }) => (
+const CategoryChip = memo(CategoryChipInner);
+
+function QuickFilterChipInner({ option, active, onToggle }) {
+  return (
   <Pressable
     onPress={() => onToggle(option.key)}
-    style={[
-      styles.chip,
-      active ? styles.quickFilterChipActive : styles.quickFilterChip,
-    ]}
+    className={cn(
+      "h-[34px] flex-row items-center gap-[5px] rounded-full border px-3",
+      active ? "border-primary-500 bg-primary-500" : "border-[#E5E7EB] bg-white",
+    )}
   >
-    <MaterialIcons
+    <MaterialIconsRounded
       name={option.icon}
       size={14}
       color={active ? "#FFFFFF" : "#475569"}
     />
-    <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>
+    <Text
+      className={cn(
+        "text-xs font-semibold",
+        active ? "text-white" : "text-ink-secondary",
+      )}
+    >
       {option.label}
     </Text>
   </Pressable>
-));
+  );
+}
+
+const QuickFilterChip = memo(QuickFilterChipInner);
 
 export default function MapScreenWeb() {
   const insets = useSafeAreaInsets();
@@ -241,30 +260,52 @@ export default function MapScreenWeb() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-background">
       <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: (insets.top || 0) + 12 },
-        ]}
+        contentContainerStyle={{
+          paddingHorizontal: 14,
+          paddingBottom: 24,
+          gap: 10,
+          paddingTop: (insets.top || 0) + 12,
+        }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.noticeCard}>
-          <MaterialIcons
+        <View
+          className="flex-row items-start gap-2.5 rounded-[14px] border p-3"
+          style={{
+            borderColor: "rgba(59,130,246,0.28)",
+            backgroundColor: "rgba(239,246,255,0.95)",
+          }}
+        >
+          <MaterialIconsRounded
             name="public"
             size={18}
             color={TOKENS.color.primary[600]}
           />
-          <View style={styles.noticeTextWrap}>
-            <Text style={styles.noticeTitle}>{MAP_TEXT.web.noticeTitle}</Text>
-            <Text style={styles.noticeSubtext}>
+          <View className="flex-1 min-w-0 gap-0.5">
+            <Text
+              className="text-[13px] font-semibold leading-[18px]"
+              style={{ color: TOKENS.color.neutral[900], fontFamily: TOKENS.font.semibold }}
+            >
+              {MAP_TEXT.web.noticeTitle}
+            </Text>
+            <Text
+              className="text-xs leading-[17px]"
+              style={{ color: TOKENS.color.neutral[600], fontFamily: TOKENS.font.body }}
+            >
               {MAP_TEXT.web.noticeSubtext}
             </Text>
           </View>
         </View>
 
-        <View style={styles.searchWrap}>
-          <MaterialIcons
+        <View
+          className="h-[46px] flex-row items-center gap-2 rounded-[23px] border px-3.5"
+          style={{
+            borderColor: "rgba(148,163,184,0.28)",
+            backgroundColor: "rgba(255,255,255,0.95)",
+          }}
+        >
+          <MaterialIconsRounded
             name="search"
             size={18}
             color={TOKENS.color.neutral[500]}
@@ -274,13 +315,17 @@ export default function MapScreenWeb() {
             onChangeText={setSearchText}
             placeholder={MAP_TEXT.search.placeholder}
             placeholderTextColor={TOKENS.color.neutral[400]}
-            style={styles.searchInput}
+            className="flex-1 h-full text-sm"
+            style={{
+              color: TOKENS.color.neutral[900],
+              fontFamily: TOKENS.font.medium,
+            }}
             returnKeyType="search"
             onSubmitEditing={() => Keyboard.dismiss()}
           />
           {searchText ? (
             <Pressable onPress={() => setSearchText("")}>
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="close"
                 size={18}
                 color={TOKENS.color.neutral[500]}
@@ -293,7 +338,7 @@ export default function MapScreenWeb() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}
+            contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}
             keyboardShouldPersistTaps="handled"
           >
             <CategoryChip
@@ -315,7 +360,7 @@ export default function MapScreenWeb() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipRow}
+          contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}
           keyboardShouldPersistTaps="handled"
         >
           {QUICK_FILTER_OPTIONS.map((option) => (
@@ -328,42 +373,82 @@ export default function MapScreenWeb() {
           ))}
         </ScrollView>
 
-        <Text style={styles.summaryText}>
+        <Text
+          className="text-xs mt-1"
+          style={{ color: TOKENS.color.neutral[600], fontFamily: TOKENS.font.medium }}
+        >
           {MAP_TEXT.web.summaryFound(visiblePlaces.length)}
         </Text>
 
         {isPlacesLoading ? (
-          <View style={styles.centerState}>
+          <View
+            className="items-center justify-center rounded-[14px] border py-[22px] gap-2.5"
+            style={{
+              borderColor: "rgba(148,163,184,0.24)",
+              backgroundColor: "rgba(255,255,255,0.95)",
+            }}
+          >
             <ActivityIndicator size="large" color={TOKENS.color.primary[500]} />
-            <Text style={styles.stateText}>{MAP_TEXT.web.loadingPlaces}</Text>
+            <Text
+              className="text-[13px]"
+              style={{ color: TOKENS.color.neutral[700], fontFamily: TOKENS.font.medium }}
+            >
+              {MAP_TEXT.web.loadingPlaces}
+            </Text>
           </View>
         ) : null}
 
         {placesError ? (
-          <View style={styles.centerState}>
-            <MaterialIcons
+          <View
+            className="items-center justify-center rounded-[14px] border py-[22px] gap-2.5"
+            style={{
+              borderColor: "rgba(148,163,184,0.24)",
+              backgroundColor: "rgba(255,255,255,0.95)",
+            }}
+          >
+            <MaterialIconsRounded
               name="wifi-off"
               size={24}
               color={TOKENS.color.error}
             />
-            <Text style={styles.stateText}>{MAP_TEXT.web.placesLoadError}</Text>
+            <Text
+              className="text-[13px]"
+              style={{ color: TOKENS.color.neutral[700], fontFamily: TOKENS.font.medium }}
+            >
+              {MAP_TEXT.web.placesLoadError}
+            </Text>
             <Pressable
               onPress={() => refetchPlaces?.()}
-              style={styles.retryButton}
+              className="h-8 items-center justify-center rounded-full px-3.5"
+              style={{ backgroundColor: TOKENS.color.primary[600] }}
             >
-              <Text style={styles.retryText}>{MAP_TEXT.errors.retry}</Text>
+              <Text
+                className="text-xs font-semibold"
+                style={{ color: "#FFFFFF", fontFamily: TOKENS.font.semibold }}
+              >
+                {MAP_TEXT.errors.retry}
+              </Text>
             </Pressable>
           </View>
         ) : null}
 
         {!isPlacesLoading && !placesError && visiblePlaces.length === 0 ? (
-          <View style={styles.centerState}>
-            <MaterialIcons
+          <View
+            className="items-center justify-center rounded-[14px] border py-[22px] gap-2.5"
+            style={{
+              borderColor: "rgba(148,163,184,0.24)",
+              backgroundColor: "rgba(255,255,255,0.95)",
+            }}
+          >
+            <MaterialIconsRounded
               name="search-off"
               size={24}
               color={TOKENS.color.neutral[500]}
             />
-            <Text style={styles.stateText}>
+            <Text
+              className="text-[13px]"
+              style={{ color: TOKENS.color.neutral[700], fontFamily: TOKENS.font.medium }}
+            >
               {MAP_TEXT.web.noPlacesForFilters}
             </Text>
           </View>
@@ -371,7 +456,7 @@ export default function MapScreenWeb() {
 
         {!isPlacesLoading && !placesError
           ? visiblePlaces.map((place, index) => (
-              <View key={place?.id ?? index} style={styles.placeBlock}>
+              <View key={place?.id ?? index} className="gap-2 mt-0.5">
                 <PlacePreviewCard
                   place={place}
                   compact={false}
@@ -381,14 +466,21 @@ export default function MapScreenWeb() {
 
                 <Pressable
                   onPress={() => handleOpenExternalMap(place)}
-                  style={styles.mapButton}
+                  className="self-end h-[34px] flex-row items-center gap-1.5 rounded-full border px-3"
+                  style={{
+                    borderColor: "rgba(59,130,246,0.28)",
+                    backgroundColor: "rgba(255,255,255,0.94)",
+                  }}
                 >
-                  <MaterialIcons
+                  <MaterialIconsRounded
                     name="map"
                     size={16}
                     color={TOKENS.color.primary[700]}
                   />
-                  <Text style={styles.mapButtonText}>
+                  <Text
+                    className="text-xs font-semibold"
+                    style={{ color: TOKENS.color.primary[700], fontFamily: TOKENS.font.semibold }}
+                  >
                     {MAP_TEXT.web.openInGoogleMaps}
                   </Text>
                 </Pressable>
@@ -399,150 +491,3 @@ export default function MapScreenWeb() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: TOKENS.color.background.light,
-  },
-  content: {
-    paddingHorizontal: 14,
-    paddingBottom: 24,
-    gap: 10,
-  },
-  noticeCard: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(59,130,246,0.28)",
-    backgroundColor: "rgba(239,246,255,0.95)",
-    padding: 12,
-  },
-  noticeTextWrap: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  noticeTitle: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: TOKENS.color.neutral[900],
-    fontFamily: TOKENS.font.semibold,
-  },
-  noticeSubtext: {
-    fontSize: 12,
-    lineHeight: 17,
-    color: TOKENS.color.neutral[600],
-    fontFamily: TOKENS.font.body,
-  },
-  searchWrap: {
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.28)",
-    backgroundColor: "rgba(255,255,255,0.95)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 14,
-  },
-  searchInput: {
-    flex: 1,
-    height: "100%",
-    color: TOKENS.color.neutral[900],
-    fontSize: 14,
-    fontFamily: TOKENS.font.medium,
-  },
-  chipRow: {
-    gap: 8,
-    paddingHorizontal: 2,
-  },
-  chip: {
-    height: 34,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  chipActive: {
-    backgroundColor: "#0F172A",
-    borderColor: "#0F172A",
-  },
-  quickFilterChip: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#E5E7EB",
-  },
-  quickFilterChipActive: {
-    backgroundColor: TOKENS.color.primary[500],
-    borderColor: TOKENS.color.primary[500],
-  },
-  chipText: {
-    fontSize: 12,
-    color: TOKENS.color.neutral[700],
-    fontFamily: TOKENS.font.semibold,
-  },
-  chipTextActive: {
-    color: "#FFFFFF",
-  },
-  summaryText: {
-    fontSize: 12,
-    color: TOKENS.color.neutral[600],
-    fontFamily: TOKENS.font.medium,
-    marginTop: 4,
-  },
-  centerState: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.24)",
-    backgroundColor: "rgba(255,255,255,0.95)",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 22,
-    gap: 10,
-  },
-  stateText: {
-    fontSize: 13,
-    color: TOKENS.color.neutral[700],
-    fontFamily: TOKENS.font.medium,
-  },
-  retryButton: {
-    height: 32,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: TOKENS.color.primary[600],
-  },
-  retryText: {
-    fontSize: 12,
-    color: "#FFFFFF",
-    fontFamily: TOKENS.font.semibold,
-  },
-  placeBlock: {
-    gap: 8,
-    marginTop: 2,
-  },
-  mapButton: {
-    alignSelf: "flex-end",
-    height: 34,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(59,130,246,0.28)",
-    backgroundColor: "rgba(255,255,255,0.94)",
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  mapButtonText: {
-    fontSize: 12,
-    color: TOKENS.color.primary[700],
-    fontFamily: TOKENS.font.semibold,
-  },
-});

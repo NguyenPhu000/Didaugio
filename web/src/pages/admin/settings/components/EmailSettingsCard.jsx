@@ -8,18 +8,20 @@ import {
   Input,
   Button,
 } from "@/components/ui";
+import { useTranslation } from "react-i18next";
 import SettingSelectField from "./SettingSelectField";
 import { SMTP_PORT_OPTIONS } from "../settingsSelectOptions";
 
 const EmailSettingsCard = ({ value, onChange }) => {
+  const { t } = useTranslation();
   return (
     <Card className="rounded-none border-black bg-white">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-black uppercase tracking-wide">
-          3) Email (SMTP / Notifications)
+          {t("settings.email.title")}
         </CardTitle>
         <CardDescription className="font-mono text-xs uppercase tracking-wider text-gray-500">
-          SMTP host/port, email gửi mặc định, SSL/TLS và test gửi email
+          {t("settings.email.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -32,7 +34,7 @@ const EmailSettingsCard = ({ value, onChange }) => {
           />
           <SettingSelectField
             id="settings-smtp-port"
-            label="Cổng SMTP"
+            label={t("settings.email.smtpPort")}
             value={value.smtpPort != null ? String(value.smtpPort) : ""}
             onChange={(v) => onChange("smtpPort", v)}
             options={SMTP_PORT_OPTIONS}
@@ -41,7 +43,7 @@ const EmailSettingsCard = ({ value, onChange }) => {
             className="rounded-none border-black md:col-span-2"
             value={value.defaultFromEmail}
             onChange={(e) => onChange("defaultFromEmail", e.target.value)}
-            placeholder="Email gửi mặc định"
+            placeholder={t("settings.email.fromEmail")}
           />
         </div>
 
@@ -80,7 +82,7 @@ const EmailSettingsCard = ({ value, onChange }) => {
           type="button"
           className="rounded-none border border-black bg-white text-black hover:bg-black hover:text-white uppercase font-bold text-xs"
         >
-          Test gửi email
+          {t("settings.email.testSendEmail")}
         </Button>
       </CardContent>
     </Card>

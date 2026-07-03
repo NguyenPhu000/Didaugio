@@ -9,10 +9,24 @@ import {
   createBookingSchema,
   serviceBookingParamSchema,
 } from "../../models/index.js";
+import { ROLES } from "../../config/constants.js";
 
 const router = express.Router();
 
 router.use(authenticate);
+
+// Block GUEST from booking services
+router.use((req, res, next) => {
+  if (req.user?.roleId === ROLES.GUEST) {
+    return res.status(403).json({
+      success: false,
+      data: null,
+      message: "Vui long dang nhap de dat dich vu",
+      errorCode: "GUEST_NOT_ALLOWED",
+    });
+  }
+  next();
+});
 
 router.post(
   "/:serviceId/book",
@@ -29,3 +43,4 @@ router.post(
 );
 
 export default router;
+

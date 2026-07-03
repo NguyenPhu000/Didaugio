@@ -2,15 +2,26 @@ import { useMemo, useState } from "react";
 import {
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
+  TouchableOpacity,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { TOKENS } from "../../constants/design-tokens";
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+/* ── Apple tokens ── */
+const INK = "#1D1D1F";
+const CANVAS = "#FFFFFF";
+const PARCHMENT = "#F5F5F7";
+const PRIMARY = "#0066CC";
+const MUTED = "rgba(0,0,0,0.48)";
+const BORDER_SOFT = "rgba(0,0,0,0.06)";
+
+/* ── Helpers ── */
 
 const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 const MONTHS = [
@@ -21,26 +32,19 @@ const MONTHS = [
 
 function formatDisplay(date) {
   if (!date) return null;
-  return date.toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  const d = String(date.getDate()).padStart(2, "0");
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
 }
 
-/** Lấy tất cả các ngày cần render trong lưới tháng (kể cả padding đầu/cuối) */
 function buildCalendarDays(year, month) {
-  const firstDay = new Date(year, month, 1).getDay(); // 0=CN
+  const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells = [];
-
-  // Padding trước ngày 1
   for (let i = 0; i < firstDay; i++) cells.push(null);
-  // Các ngày trong tháng
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  // Padding cuối để đủ hàng
   while (cells.length % 7 !== 0) cells.push(null);
-
   return cells;
 }
 
@@ -60,31 +64,47 @@ function isBeforeDay(a, b) {
   return as < bs;
 }
 
-// ── Calendar Modal ─────────────────────────────────────────────────────────
+/* ── Calendar Modal ── */
 
 function CalendarModal({ visible, value, minimumDate, onConfirm, onClose }) {
+  const { t } = useTranslation();
+  const { width: screenW } = useWindowDimensions();
+  const cellSize = Math.floor((screenW - 80) / 7);
+
   const today = new Date();
   const initDate = value ?? today;
   const [viewYear, setViewYear] = useState(initDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(initDate.getMonth());
   const [selected, setSelected] = useState(value ?? null);
 
-  const cells = useMemo(() => buildCalendarDays(viewYear, viewMonth), [viewYear, viewMonth]);
+  const cells = useMemo(
+    () => buildCalendarDays(viewYear, viewMonth),
+    [viewYear, viewMonth],
+  );
 
   const goToPrevMonth = () => {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
-    else setViewMonth((m) => m - 1);
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear((y) => y - 1);
+    } else {
+      setViewMonth((m) => m - 1);
+    }
   };
 
   const goToNextMonth = () => {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
-    else setViewMonth((m) => m + 1);
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear((y) => y + 1);
+    } else {
+      setViewMonth((m) => m + 1);
+    }
   };
 
   const handleDayPress = (day) => {
     if (!day) return;
     const date = new Date(viewYear, viewMonth, day);
     if (minimumDate && isBeforeDay(date, minimumDate)) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelected(date);
   };
 
@@ -100,57 +120,55 @@ function CalendarModal({ visible, value, minimumDate, onConfirm, onClose }) {
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={styles.calendarCard} onPress={() => {}}>
-          {/* Month navigation */}
-          <View style={styles.calNavRow}>
-            <Pressable onPress={goToPrevMonth} style={styles.calNavBtn} hitSlop={8}>
-              <MaterialIcons name="chevron-left" size={22} color={TOKENS.color.neutral[700]} />
+      <Pressable style={st.overlay} onPress={onClose}>
+        <Pressable style={st.card} onPress={() => {}}>
+          {/* Month nav */}
+          <View style={st.navRow}>
+            <Pressable onPress={goToPrevMonth} hitSlop={10} style={st.navBtn}>
+              <Ionicons name="chevron-back" size={18} color={INK} />
             </Pressable>
-            <Text style={styles.calMonthLabel}>
+            <Text style={st.monthLabel}>
               {MONTHS[viewMonth]} {viewYear}
             </Text>
-            <Pressable onPress={goToNextMonth} style={styles.calNavBtn} hitSlop={8}>
-              <MaterialIcons name="chevron-right" size={22} color={TOKENS.color.neutral[700]} />
+            <Pressable onPress={goToNextMonth} hitSlop={10} style={st.navBtn}>
+              <Ionicons name="chevron-forward" size={18} color={INK} />
             </Pressable>
           </View>
 
           {/* Weekday headers */}
-          <View style={styles.calWeekRow}>
+          <View style={st.weekRow}>
             {WEEKDAYS.map((d) => (
-              <Text key={d} style={styles.calWeekLabel}>{d}</Text>
+              <Text key={d} style={[st.weekLabel, { width: cellSize }]}>
+                {d}
+              </Text>
             ))}
           </View>
 
           {/* Day grid */}
-          <View style={styles.calGrid}>
+          <View style={st.grid}>
             {cells.map((day, idx) => {
-              if (!day) return <View key={`empty-${idx}`} style={styles.calCell} />;
+              if (!day) return <View key={`e-${idx}`} style={[st.cell, { width: cellSize, height: cellSize }]} />;
 
               const date = new Date(viewYear, viewMonth, day);
               const isSelected = isSameDay(date, selected);
               const isToday = isSameDay(date, today);
-              const disabled = minimumDate ? isBeforeDay(date, minimumDate) : false;
+              const disabled = minimumDate
+                ? isBeforeDay(date, minimumDate)
+                : false;
 
               return (
                 <Pressable
                   key={idx}
                   onPress={() => handleDayPress(day)}
                   disabled={disabled}
-                  style={({ pressed }) => [
-                    styles.calCell,
-                    isSelected && styles.calCellSelected,
-                    isToday && !isSelected && styles.calCellToday,
-                    pressed && !disabled && styles.calCellPressed,
-                    disabled && styles.calCellDisabled,
-                  ]}
+                  style={[st.cell, { width: cellSize, height: cellSize }, isSelected && st.cellSelected]}
                 >
                   <Text
                     style={[
-                      styles.calDayText,
-                      isSelected && styles.calDayTextSelected,
-                      isToday && !isSelected && styles.calDayTextToday,
-                      disabled && styles.calDayTextDisabled,
+                      st.dayText,
+                      isSelected && st.dayTextSelected,
+                      isToday && !isSelected && st.dayTextToday,
+                      disabled && st.dayTextDisabled,
                     ]}
                   >
                     {day}
@@ -161,17 +179,19 @@ function CalendarModal({ visible, value, minimumDate, onConfirm, onClose }) {
           </View>
 
           {/* Actions */}
-          <View style={styles.calActions}>
-            <Pressable onPress={onClose} style={styles.calCancelBtn}>
-              <Text style={styles.calCancelText}>Hủy</Text>
+          <View style={st.actions}>
+            <Pressable onPress={onClose} style={st.cancelBtn}>
+              <Text style={st.cancelText}>{t("datePicker.cancel")}</Text>
             </Pressable>
             <Pressable
               onPress={handleConfirm}
               disabled={!selected}
-              style={[styles.calConfirmBtn, !selected && styles.calConfirmBtnDisabled]}
+              style={[st.confirmBtn, !selected && st.confirmBtnDisabled]}
             >
-              <Text style={[styles.calConfirmText, !selected && styles.calConfirmTextDisabled]}>
-                Xác nhận
+              <Text
+                style={[st.confirmText, !selected && st.confirmTextDisabled]}
+              >
+                {t("datePicker.confirm")}
               </Text>
             </Pressable>
           </View>
@@ -181,57 +201,48 @@ function CalendarModal({ visible, value, minimumDate, onConfirm, onClose }) {
   );
 }
 
-// ── Public component ───────────────────────────────────────────────────────
+/* ── Public: iOS table row date picker ── */
 
-/**
- * CustomDatePicker — pure-JS calendar picker, không cần native module.
- *
- * Props:
- *  label        string
- *  value        Date | null
- *  onChange     (Date | null) => void
- *  minimumDate  Date | null
- *  placeholder  string
- */
 export function CustomDatePicker({
   label,
   value,
   onChange,
   minimumDate,
-  placeholder = "Chọn ngày",
+  placeholder,
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-
+  const defaultPlaceholder = placeholder || t("datePicker.select");
   const displayText = formatDisplay(value);
 
   return (
-    <View style={styles.wrapper}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-
-      <Pressable
+    <>
+      <TouchableOpacity
+        activeOpacity={0.7}
         onPress={() => setOpen(true)}
-        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+        style={st.row}
       >
-        <View style={styles.iconWrap}>
-          <MaterialIcons
-            name="calendar-today"
-            size={16}
-            color={value ? TOKENS.color.primary[600] : TOKENS.color.neutral[400]}
-          />
-        </View>
+        <Text style={st.rowLabel}>{label}</Text>
 
-        <Text style={[styles.valueText, !displayText && styles.placeholderText]}>
-          {displayText ?? placeholder}
+        <Text style={[st.rowValue, !displayText && st.rowPlaceholder]} numberOfLines={1}>
+          {displayText ?? defaultPlaceholder}
         </Text>
 
         {value ? (
-          <Pressable hitSlop={8} onPress={() => onChange(null)} style={styles.clearBtn}>
-            <MaterialIcons name="close" size={16} color={TOKENS.color.neutral[400]} />
-          </Pressable>
-        ) : (
-          <MaterialIcons name="expand-more" size={20} color={TOKENS.color.neutral[400]} />
-        )}
-      </Pressable>
+          <TouchableOpacity
+            hitSlop={8}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onChange(null);
+            }}
+            style={st.rowClear}
+          >
+            <Ionicons name="close-circle" size={16} color={MUTED} />
+          </TouchableOpacity>
+        ) : null}
+
+        <Ionicons name="chevron-forward" size={16} color="#C8C8CC" />
+      </TouchableOpacity>
 
       <CalendarModal
         visible={open}
@@ -240,192 +251,163 @@ export function CustomDatePicker({
         onConfirm={(date) => onChange(date)}
         onClose={() => setOpen(false)}
       />
-    </View>
+    </>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────
+/* ── Styles ── */
 
-const PRIMARY = TOKENS.color.primary[600];
-const CELL_SIZE = 40;
-
-const styles = StyleSheet.create({
-  /* ── Input row ── */
-  wrapper: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-    color: TOKENS.color.neutral[500],
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    marginBottom: 8,
-  },
+const st = StyleSheet.create({
+  /* ── iOS table row ── */
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    backgroundColor: "#F8FBFF",
-    borderRadius: TOKENS.radius.lg,
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.22)",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    minHeight: 52,
+    paddingVertical: 13,
+    paddingHorizontal: 4,
+    minHeight: 48,
   },
   rowPressed: {
-    borderColor: TOKENS.color.primary[400],
-    backgroundColor: "rgba(0,102,230,0.04)",
+    backgroundColor: PARCHMENT,
   },
-  iconWrap: {
-    width: 20,
-    alignItems: "center",
-  },
-  valueText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: TOKENS.font.medium,
-    color: TOKENS.color.neutral[900],
-  },
-  placeholderText: {
-    color: TOKENS.color.neutral[400],
+  rowLabel: {
+    fontSize: 17,
     fontFamily: TOKENS.font.body,
+    color: INK,
+    letterSpacing: -0.374,
   },
-  clearBtn: {
-    padding: 2,
+  rowValue: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 17,
+    fontFamily: TOKENS.font.body,
+    color: PRIMARY,
+    letterSpacing: -0.374,
+    marginRight: 6,
+  },
+  rowPlaceholder: {
+    color: MUTED,
+  },
+  rowClear: {
+    paddingHorizontal: 4,
+    marginRight: 4,
   },
 
-  /* ── Modal overlay ── */
-  modalOverlay: {
+  /* ── Modal ── */
+  overlay: {
     flex: 1,
     backgroundColor: "rgba(15,23,42,0.48)",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
   },
-  calendarCard: {
+  card: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: TOKENS.radius["2xl"],
+    backgroundColor: CANVAS,
+    borderRadius: 18,
     padding: 20,
-    ...TOKENS.shadow.lg,
   },
 
-  /* ── Nav row ── */
-  calNavRow: {
+  /* ── Nav ── */
+  navRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  calNavBtn: {
+  navBtn: {
     width: 36,
     height: 36,
-    borderRadius: TOKENS.radius.md,
+    borderRadius: 9999,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F1F5F9",
+    backgroundColor: PARCHMENT,
   },
-  calMonthLabel: {
-    fontSize: 16,
+  monthLabel: {
+    fontSize: 17,
     fontFamily: TOKENS.font.semibold,
-    color: TOKENS.color.neutral[900],
+    color: INK,
+    letterSpacing: -0.374,
   },
 
   /* ── Weekday headers ── */
-  calWeekRow: {
+  weekRow: {
     flexDirection: "row",
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  calWeekLabel: {
-    flex: 1,
+  weekLabel: {
     textAlign: "center",
     fontSize: 11,
     fontFamily: TOKENS.font.semibold,
-    color: TOKENS.color.neutral[400],
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
+    color: MUTED,
+    letterSpacing: -0.08,
   },
 
   /* ── Day grid ── */
-  calGrid: {
+  grid: {
     flexDirection: "row",
     flexWrap: "wrap",
   },
-  calCell: {
-    width: `${100 / 7}%`,
-    height: CELL_SIZE,
+  cell: {
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: CELL_SIZE / 2,
+    borderRadius: 9999,
   },
-  calCellSelected: {
-    backgroundColor: PRIMARY,
+  cellSelected: {
+    backgroundColor: INK,
   },
-  calCellToday: {
-    backgroundColor: "rgba(0,102,230,0.1)",
+  dayText: {
+    fontSize: 15,
+    fontFamily: TOKENS.font.body,
+    color: INK,
   },
-  calCellPressed: {
-    backgroundColor: "rgba(0,102,230,0.08)",
-  },
-  calCellDisabled: {
-    opacity: 0.3,
-  },
-  calDayText: {
-    fontSize: 14,
-    fontFamily: TOKENS.font.medium,
-    color: TOKENS.color.neutral[800],
-  },
-  calDayTextSelected: {
-    color: "#FFFFFF",
+  dayTextSelected: {
+    color: CANVAS,
     fontFamily: TOKENS.font.semibold,
   },
-  calDayTextToday: {
+  dayTextToday: {
     color: PRIMARY,
     fontFamily: TOKENS.font.semibold,
   },
-  calDayTextDisabled: {
-    color: TOKENS.color.neutral[400],
+  dayTextDisabled: {
+    color: "#C8C8CC",
   },
 
   /* ── Actions ── */
-  calActions: {
+  actions: {
     flexDirection: "row",
     gap: 10,
-    marginTop: 16,
+    marginTop: 20,
   },
-  calCancelBtn: {
+  cancelBtn: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: TOKENS.radius.lg,
+    borderRadius: 9999,
     alignItems: "center",
-    backgroundColor: "#F1F5F9",
+    backgroundColor: PARCHMENT,
   },
-  calCancelText: {
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-    color: TOKENS.color.neutral[600],
+  cancelText: {
+    fontSize: 15,
+    fontFamily: TOKENS.font.body,
+    color: INK,
+    letterSpacing: -0.374,
   },
-  calConfirmBtn: {
-    flex: 2,
+  confirmBtn: {
+    flex: 1,
     paddingVertical: 12,
-    borderRadius: TOKENS.radius.lg,
+    borderRadius: 9999,
     alignItems: "center",
     backgroundColor: PRIMARY,
-    ...TOKENS.shadow.accent,
   },
-  calConfirmBtnDisabled: {
-    backgroundColor: TOKENS.color.neutral[100],
-    shadowOpacity: 0,
-    elevation: 0,
+  confirmBtnDisabled: {
+    backgroundColor: PARCHMENT,
   },
-  calConfirmText: {
-    fontSize: 14,
+  confirmText: {
+    fontSize: 15,
     fontFamily: TOKENS.font.semibold,
-    color: "#FFFFFF",
+    color: CANVAS,
+    letterSpacing: -0.374,
   },
-  calConfirmTextDisabled: {
-    color: TOKENS.color.neutral[400],
+  confirmTextDisabled: {
+    color: MUTED,
   },
 });

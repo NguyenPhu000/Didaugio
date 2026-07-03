@@ -8,3 +8,6 @@ export const updateMyProfileApi = (data) =>
 
 export const updateMyAvatarApi = (avatarUrl) =>
   client.put(ENDPOINTS.profile.updateAvatar, { avatarUrl });
+
+export const updateNotificationSettingsApi = (settings) =>
+  client.put(ENDPOINTS.profile.notifications, settings);

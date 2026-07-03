@@ -1,9 +1,9 @@
 import prisma from "../config/prismaClient.js";
-import { ROLES, BUSINESS_STATUS } from "../config/constants.js";
+import { ROLES, BUSINESS_STATUS, CURRENT_CONTRACT_VERSION } from "../config/constants.js";
 
 /**
  * Gate business-owner operations by profile existence, status, and contract state.
- * Admin roles bypass this check.
+ * Admin roles bypass this check. Staff users resolved via businessId.
  */
 export const requireActiveBusiness = (options = {}) => {
   const { requireContractSigned = false } = options;
@@ -26,15 +26,71 @@ export const requireActiveBusiness = (options = {}) => {
         return next();
       }
 
-      const business = await prisma.business.findUnique({
-        where: { ownerId: userId },
-        select: {
-          id: true,
-          status: true,
-          contractSigned: true,
-          contractSignedAt: true,
-        },
+      // Kiểm tra xác thực email trước khi kiểm tra business
+      const userRecord = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { emailVerified: true },
       });
+
+      if (!userRecord?.emailVerified) {
+        return res.status(403).json({
+          success: false,
+          data: null,
+          message: "Vui lòng xác thực email trước khi sử dụng tính năng này",
+          errorCode: "EMAIL_NOT_VERIFIED",
+        });
+      }
+
+      let business;
+      if (roleId === ROLES.STAFF) {
+        const staffUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { businessId: true },
+        });
+        if (!staffUser?.businessId) {
+          return res.status(403).json({
+            success: false,
+            data: null,
+            message: "Bạn chưa được gán cho doanh nghiệp nào",
+            errorCode: "NO_BUSINESS_PROFILE",
+          });
+        }
+        business = await prisma.business.findUnique({
+          where: { id: staffUser.businessId },
+          select: {
+            id: true,
+            status: true,
+            contractSigned: true,
+            contractSignedAt: true,
+            contractVersion: true,
+          },
+        });
+
+        if (
+          business &&
+          (business.status === BUSINESS_STATUS.SUSPENDED ||
+            business.status === BUSINESS_STATUS.TERMINATED)
+        ) {
+          return res.status(403).json({
+            success: false,
+            data: null,
+            message:
+              "Doanh nghiệp đã bị tạm ngưng hoặc chấm dứt. Vui lòng liên hệ quản trị viên.",
+            errorCode: "BUSINESS_SUSPENDED",
+          });
+        }
+      } else {
+        business = await prisma.business.findUnique({
+          where: { ownerId: userId },
+          select: {
+            id: true,
+            status: true,
+            contractSigned: true,
+            contractSignedAt: true,
+            contractVersion: true,
+          },
+        });
+      }
 
       if (!business) {
         return res.status(403).json({
@@ -97,6 +153,20 @@ export const requireActiveBusiness = (options = {}) => {
           data: null,
           message: "Vui lòng ký hợp đồng trước khi sử dụng tính năng này",
           errorCode: "CONTRACT_REQUIRED",
+        });
+      }
+
+      // Check if contract needs renewal (version mismatch)
+      if (
+        requireContractSigned &&
+        business.contractSigned &&
+        business.contractVersion !== CURRENT_CONTRACT_VERSION
+      ) {
+        return res.status(403).json({
+          success: false,
+          data: null,
+          message: "Hợp đồng đã có phiên bản mới. Vui lòng ký lại để tiếp tục.",
+          errorCode: "CONTRACT_RENEWAL_REQUIRED",
         });
       }
 

@@ -5,6 +5,8 @@ import { requirePermission } from "../../middlewares/permissionMiddleware.js";
 import { checkRoleHierarchy } from "../../middlewares/checkRoleHierarchy.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
 import { blockGuestFromAdmin } from "../../middlewares/blockGuestFromAdmin.js";
+import { validateBody } from "../../middlewares/validateSchema.js";
+import { updateUserRoleSchema } from "../../models/index.js";
 
 const router = express.Router();
 
@@ -65,6 +67,7 @@ router.delete(
 router.patch(
   "/users/:id/role",
   requirePermission("roles.assign_to_users"),
+  validateBody(updateUserRoleSchema),
   checkRoleHierarchy,
   auditLog({
     action: "UPDATE_ROLE",

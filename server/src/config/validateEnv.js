@@ -7,7 +7,7 @@ const FIELD_ENCRYPTION_KEY_LENGTH = 64; // 32 bytes = 64 hex characters
 
 /** Bắt buộc khi deploy production / staging đầy đủ tính năng */
 const REQUIRED_FOR_FULL_STACK = [
-  "GEMINI_API_KEY",
+  "GROQ_API_KEY",
   "CLOUDINARY_CLOUD_NAME",
   "CLOUDINARY_API_KEY",
   "CLOUDINARY_API_SECRET",
@@ -46,6 +46,12 @@ export function validateEnv() {
   } else if (isProd) {
     throw new Error(
       `[ENV] FIELD_ENCRYPTION_KEY bắt buộc trong production để mã hóa dữ liệu nhạy cảm`,
+    );
+  }
+
+  if (isProd && !process.env.SEPAY_WEBHOOK_SECRET) {
+    throw new Error(
+      "[ENV] SEPAY_WEBHOOK_SECRET bat buoc trong production de xac thuc webhook SePay",
     );
   }
 

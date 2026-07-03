@@ -1,0 +1,1721 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "retry": "Retry",
+    "skip": "Skip",
+    "search": "Search",
+    "filter": "Filter",
+    "all": "All",
+    "none": "None",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK",
+    "or": "OR",
+    "and": "and",
+    "viewAll": "View All",
+    "seeMore": "See More",
+    "noResults": "No results",
+    "noData": "No data yet",
+    "tryAgain": "Try again",
+    "required": "Required",
+    "optional": "Optional",
+    "free": "Free",
+    "appName": "iPoint Genie",
+    "offline": "You are offline — Showing saved data",
+    "days": "days",
+    "people": "people",
+    "later": "Later",
+    "loginRequired": "Login required",
+    "login": "Login",
+    "saving": "Saving...",
+    "processing": "Processing...",
+    "weekdays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    }
+  },
+  "tabs": {
+    "map": "Map",
+    "explore": "Explore",
+    "saved": "Saved",
+    "trips": "Trips"
+  },
+  "auth": {
+    "login": {
+      "title": "LOGIN",
+      "subtitle": "ACCESS SYSTEM",
+      "brandTagline": "Explore Can Tho your way",
+      "emailOrUsername": "Email or username",
+      "password": "Password",
+      "rememberMe": "REMEMBER ME",
+      "forgotPassword": "FORGOT PASSWORD?",
+      "submit": "ACCESS SYSTEM",
+      "submitting": "AUTHENTICATING...",
+      "orContinueWith": "OR CONTINUE WITH",
+      "googleLogin": "Sign in with Google",
+      "guestExperience": "Guest experience",
+      "noAccount": "Don't have an account?",
+      "createAccount": "Create a new account",
+      "success": "Login successful!",
+      "googleSuccess": "Google login successful!",
+      "noPermission": "Account does not have access"
+    },
+    "register": {
+      "title": "REGISTER",
+      "subtitle": "CREATE A SMART TRAVEL ACCOUNT",
+      "personalInfo": "PERSONAL INFORMATION",
+      "fullName": "Full name",
+      "username": "Username",
+      "email": "Email address",
+      "securityPassword": "SECURITY PASSWORD",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "submit": "Create account",
+      "hasAccount": "Already have an account?",
+      "loginNow": "Log in now",
+      "success": "Registration successful!",
+      "failed": "Registration failed"
+    },
+    "forgotPassword": {
+      "title": "FORGOT PASSWORD",
+      "emailLabel": "EMAIL ADDRESS",
+      "submit": "SEND RECOVERY EMAIL",
+      "emailSent": "EMAIL SENT",
+      "checkInbox": "Check your inbox",
+      "backToLogin": "BACK TO LOGIN",
+      "tryDifferentEmail": "Try a different email"
+    },
+    "resetPassword": {
+      "title": "RESET PASSWORD",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "submit": "RESET PASSWORD",
+      "success": "Password reset successful!"
+    },
+    "verifyEmail": {
+      "title": "VERIFY EMAIL",
+      "verifying": "Verifying email...",
+      "success": "Email verified!",
+      "failed": "Email verification failed"
+    }
+  },
+  "onboarding": {
+    "travelStyleTitle": "What kind of travel do you like? 🌴",
+    "travelStyleSubtitle": "Select the styles you love (you can choose multiple)",
+    "groupTitle": "Who do you travel with? 👥",
+    "groupSubtitle": "Help Nhi give you better suggestions",
+    "budgetTitle": "What's your budget? 💰",
+    "budgetSubtitle": "Let Nhi suggest options that fit your wallet",
+    "next": "Next",
+    "start": "Start exploring!",
+    "skip": "Skip"
+  },
+  "explore": {
+    "header": {
+      "greeting": "What do you want to explore today?",
+      "subtitle": "Pick a category, check out top spots and start your journey in Can Tho.",
+      "searchPlaceholder": "Search places, food, activities...",
+      "location": "Can Tho"
+    },
+    "categories": {
+      "all": "All"
+    },
+    "recommended": "Must-try places",
+    "results": "{{count}} results",
+    "sections": {
+      "featured": "Featured destinations",
+      "culinary": "Culinary highlights",
+      "popular": "Popular"
+    },
+    "card": {
+      "featuredBadge": "Featured",
+      "recommended": "Recommended",
+      "contact": "Contact",
+      "view": "View",
+      "defaultExperience": "Unique experience",
+      "defaultCategory": "Food & drink"
+    },
+    "quickActions": {
+      "restaurants": "Food",
+      "hotel": "Hotels",
+      "cafe": "Cafés",
+      "shopping": "Shopping",
+      "culture": "Culture",
+      "events": "Events",
+      "nature": "Nature",
+      "more": "All"
+    },
+    "empty": {
+      "noPlaces": "No places yet",
+      "noResults": "No results found",
+      "noPlacesDesc": "Come back later or try a different category.",
+      "noResultsDesc": "Try a different category or search by name."
+    },
+    "search": {
+      "placeholder": "Search places, restaurants, fun spots...",
+      "close": "Close",
+      "resetFilters": "Reset filters",
+      "resultsMatch": "{{count}} matching results",
+      "searchNext": "Find your next destination",
+      "noResults": "No results found",
+      "tabs": {
+        "all": "All",
+        "categories": "Categories",
+        "areas": "Areas",
+        "price": "Price",
+        "ratingSort": "Rating & Sort"
+      },
+      "price": {
+        "free": "Free",
+        "budget": "Budget",
+        "midRange": "Mid-range",
+        "premium": "Premium"
+      },
+      "sort": {
+        "newest": "Newest",
+        "rating": "Rating",
+        "popular": "Popular"
+      }
+    },
+    "heroBanner": {
+      "title": "Quality services, simpler than ever.",
+      "description": "Trusted experts. Exceptional results.",
+      "cta": "Book a service"
+    },
+    "toast": {
+      "saved": "Place added to favorites",
+      "unsaved": "Place removed from favorites",
+      "saveError": "Could not save place",
+      "unsaveError": "Could not unsave place",
+      "loginToSave": "Log in to save"
+    },
+    "event": {
+      "upcoming": "Upcoming",
+      "ongoing": "Ongoing",
+      "ended": "Ended",
+      "participants": "{{count}} joined",
+      "legs": "{{count}} legs",
+      "communityEvents": "Community events",
+      "viewAll": "View all",
+      "featuredBadge": "FEATURED EVENT",
+      "onlineCount": "{{count}} ONLINE",
+      "viewNow": "View now"
+    },
+    "sampleTrip": {
+      "adventure": "Adventure",
+      "culture": "Culture",
+      "relax": "Relaxation",
+      "food": "Food",
+      "family": "Family",
+      "budget": "Budget",
+      "luxury": "Luxury",
+      "days": "{{count}} days",
+      "from": "From {{price}}"
+    },
+    "headerBrand": "iPoint Genie",
+    "headerGreeting": "Hello, {{name}}",
+    "cmsBrandBadge": "iPoint Genie",
+    "cmsFallbackTitle": "iPoint Genie",
+    "cmsFallbackDesc": "Discover hundreds of fascinating places in Can Tho",
+    "heroBadge": "RECOMMENDED FOR YOU",
+    "heroExplore": "Explore"
+  },
+  "saved": {
+    "title": "Favorites",
+    "countLabel": "{{count}} places",
+    "filterAll": "All",
+    "empty": {
+      "noResults": "No places",
+      "noSaved": "No saved places yet",
+      "noResultsDesc": "Try changing filters or area to see other places you've saved.",
+      "noSavedDesc": "Try exploring and saving your favorite places for easy access.",
+      "explore": "Explore places"
+    },
+    "alert": {
+      "unsaveTitle": "Unsave this place?",
+      "noteError": "Could not save note"
+    }
+  },
+  "trips": {
+    "guestTitle": "Log in to manage trips",
+    "guestDescription": "Track your trips, save memories and sync data across all devices.",
+    "empty": {
+      "preparing": "Preparing journey",
+      "syncing": "Syncing trip data...",
+      "explore": "Explore the world",
+      "noResults": "No results",
+      "createFirst": "Create your first trip to organize destinations, itineraries and notes all in one neat place.",
+      "createTrip": "Create new trip",
+      "clearFilter": "Clear filter",
+      "loadError": "Could not load data",
+      "retry": "Try again"
+    }
+  },
+  "profile": {
+    "title": "PROFILE",
+    "guestDefault": "Traveler",
+    "noAddress": "No address set",
+    "loadingAddress": "Loading address...",
+    "stats": {
+      "trips": "TRIPS",
+      "reviews": "REVIEWS",
+      "saved": "SAVED"
+    },
+    "guest": {
+      "title": "Log in to unlock your profile",
+      "description": "Track trips, save memories and sync data across all devices.",
+      "login": "Log in",
+      "register": "Create new account",
+      "explore": "Explore map",
+      "freeNote": "Free · No credit card"
+    },
+    "actions": {
+      "editProfile": "Edit profile",
+      "shareProfile": "Share profile"
+    },
+    "upcomingTrips": "Upcoming trips",
+    "noUpcomingTrips": "No upcoming trips",
+    "memories": "Memories",
+    "memoriesSection": {
+      "noMemories": "No memories yet",
+      "journey": "Journey",
+      "moreCount": "+{{count}} more"
+    },
+    "settingsItems": {
+      "myBookings": "My Bookings",
+      "savedPlaces": "Saved Places",
+      "paymentMethods": "Payment Methods",
+      "notifications": "Notifications"
+    },
+    "settings": "Settings",
+    "comingSoon": "{feature} will be available in the next update!",
+    "shareMessage": "Check out {{name}}'s profile on iPoint Genie"
+  },
+  "settings": {
+    "title": "SETTINGS",
+    "account": "Account",
+    "editProfile": "Edit profile",
+    "editProfileSubtitle": "Update your name, avatar and personal info",
+    "loginEmail": "Login email",
+    "accountSecurity": "Account security",
+    "accountSecuritySubtitle": "Password, 2FA and login sessions",
+    "syncProfile": "Sync profile",
+    "syncProfileSubtitle": "Refresh data from the server",
+    "syncing": "Syncing...",
+    "preferences": "Preferences",
+    "darkMode": "Dark mode",
+    "darkModeOn": "On — Easy on the eyes",
+    "darkModeOff": "Off — Light theme",
+    "notifications": "Notifications",
+    "notificationsUnread": "{{count}} unread",
+    "noNewNotifications": "No new notifications",
+    "pushNotifications": "Push notifications",
+    "pushOn": "On — Receive push alerts",
+    "pushOff": "Off — Silent mode",
+    "hapticFeedback": "Haptic feedback",
+    "hapticSubtitle": "Vibration when tapping buttons",
+    "autoSync": "Auto sync",
+    "autoSyncing": "Syncing data...",
+    "autoSyncOn": "On — Always up to date",
+    "autoSyncOff": "Off — Manual refresh",
+    "customize": {
+      "language": "Language"
+    },
+    "features": "Features",
+    "savedPlaces": "Saved places",
+    "paymentMethods": "Payment methods",
+    "support": "Support",
+    "helpCenter": "Help center",
+    "helpCenterSubtitle": "FAQs and guides",
+    "sendFeedback": "Send feedback",
+    "sendFeedbackSubtitle": "Help us improve the app",
+    "clearCache": "Clear cache",
+    "clearCacheSubtitle": "Free up storage space",
+    "clearCacheTitle": "Clear cache?",
+    "clearCacheMessage": "This will remove temporary data. Your account and saved places will not be affected.",
+    "clearCacheConfirm": "Clear",
+    "clearCacheSuccess": "Done!",
+    "clearCacheSuccessMessage": "Cache has been cleared successfully.",
+    "legal": "Legal",
+    "privacyPolicy": "Privacy policy",
+    "termsOfService": "Terms of service",
+    "appVersion": "App version",
+    "logout": "Log out",
+    "logoutConfirmTitle": "Log out?",
+    "logoutConfirmMessage": "You will need to log in again to access your account.",
+    "emailNotSet": "Not set",
+    "syncError": "Sync failed. Please try again.",
+    "comingSoon": "{feature} will be available in the next update!"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "unreadCount": "{{count}} unread",
+    "markAllRead": "Mark all read",
+    "filterUnread": "Unread",
+    "filterAll": "All",
+    "empty": {
+      "noNew": "No new notifications",
+      "noNotifications": "No notifications yet",
+      "allRead": "All notifications have been read.",
+      "description": "Notifications from bookings, places and the system will appear here."
+    },
+    "time": {
+      "justNow": "Just now",
+      "minutes": "{{count}} min",
+      "hours": "{{count}}h",
+      "days": "{{count}} days"
+    }
+  },
+  "bookings": {
+    "title": "My Bookings",
+    "subtitle": "Track confirmations, QR codes and trip links",
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "rejected": "Rejected",
+      "expired": "Expired",
+      "noShow": "No show"
+    },
+    "stats": {
+      "total": "Total",
+      "confirmed": "Confirmed",
+      "pending": "Pending"
+    },
+    "empty": {
+      "noBookings": "You have no bookings yet",
+      "explore": "Explore places"
+    },
+    "qrReady": "QR is ready, tap to view",
+    "viewDetail": "View booking details"
+  },
+  "bookingTicket": {
+    "notAvailable": "Not available",
+    "quantityValue": "{{count}} guest",
+    "quantityValue_plural": "{{count}} guests",
+    "location": "Location",
+    "date": "Date",
+    "time": "Time",
+    "quantity": "Guests",
+    "address": "Address",
+    "total": "Total",
+    "qrPending": "QR unlocks after confirmation"
+  },
+  "bookingDetail": {
+    "title": "Booking Details",
+    "bookingCode": "Booking code",
+    "service": "Service",
+    "place": "Place",
+    "usageTime": "Usage time",
+    "totalPayment": "Total payment",
+    "qrTitle": "QR Check-in Code",
+    "qrDescription": "Scan this code at the venue to confirm your booking.",
+    "qrLoading": "Loading QR code...",
+    "qrNotLoaded": "QR code not loaded yet.",
+    "qrUnavailable": "QR is not available for this booking.",
+    "qrPending": "QR will appear when the booking is confirmed.",
+    "qrCheckin": "QR Check-in Code",
+    "qrInstructions": "Show this code to the business when you arrive to use the service.",
+    "loadingQR": "Loading QR code...",
+    "qrLoadFailed": "Could not load QR code.",
+    "qrPendingConfirm": "QR will appear when the booking is confirmed.",
+    "statusUsed": "Used",
+    "notDetermined": "Not determined",
+    "notFound": "Booking not found",
+    "status": {
+      "unknown": "Unknown",
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "rejected": "Rejected",
+      "expired": "Expired",
+      "noShow": "No show"
+    },
+    "linkTrip": "Link Trip",
+    "currentTripDay": "Currently on day {{day}} of the trip.",
+    "openLinkedTrip": "Open linked trip",
+    "noLinkedTripDesc": "This booking is not linked to a trip yet. You can select an existing trip or create a new one to add the place to the correct booking date.",
+    "linkSelectedTrip": "Link selected trip",
+    "createTripAndLink": "Create trip & link",
+    "viewPlace": "View place",
+    "savePlace": "Save place",
+    "saving": "Saving...",
+    "tripFromBooking": "Trip from booking {{date}}",
+    "daysCount": "{{count}} days",
+    "tripLink": {
+      "title": "Trip Link",
+      "linkedTrip": "Linked trip",
+      "createAndLink": "Create trip & link"
+    },
+    "actions": {
+      "savePlace": "Save place",
+      "viewPlace": "View place",
+      "viewInTrip": "View in trip"
+    },
+    "payment": {
+      "unpaid": "Unpaid",
+      "unpaidDesc": "Pay online to confirm your booking",
+      "paid": "Paid",
+      "paidDesc": "Your transaction has been recorded. If you cancel this booking, a refund request will be sent to admin for manual review.",
+      "partialRefund": "Partially refunded",
+      "partialRefundDesc": "Admin has processed a partial refund for this booking.",
+      "refunded": "Refunded",
+      "refundedDesc": "Your payment has been refunded successfully.",
+      "refundRejected": "Refund request rejected",
+      "refundRejectedDesc": "Admin rejected the refund request for this booking.",
+      "refundAmount": "Refunded amount",
+      "redirecting": "Redirecting...",
+      "payNow": "Pay now",
+      "bankTransfer": "Bank transfer",
+      "bankTransferDesc": "Scan VietQR QR - Pay via banking app",
+      "methodTitle": "Payment method"
+    },
+    "cancel": {
+      "cta": "Cancel booking & request refund",
+      "alertSuccessTitle": "Request sent",
+      "alertSuccessMessage": "Your booking was cancelled. The refund request will be reviewed by admin.",
+      "alertErrorTitle": "Could not cancel booking",
+      "alertErrorMessage": "Please try again later."
+    },
+    "offline": "Offline",
+    "refund": {
+      "title": "Confirm cancel & request refund",
+      "bookingLabel": "Booking",
+      "defaultService": "Service",
+      "paidAmount": "Amount paid",
+      "policy": "Policy applied",
+      "currentTime": "Current time:",
+      "usageDate": "Usage date:",
+      "refundLevel": "Refund level: Admin will review and process according to the service policy",
+      "cancelReason": "Cancel reason (required, minimum 5 characters)",
+      "cancelReasonPlaceholder": "e.g: I have unexpected work and cannot attend on schedule.",
+      "refundNote": "Refund request will be sent to admin for manual review.",
+      "keepBooking": "Keep booking",
+      "processing": "Processing...",
+      "confirmCancel": "Confirm Cancel & Refund"
+    }
+  },
+  "booking": {
+    "loginRequired": "Please log in to book",
+    "loginDescription": "You need to be logged in to book services at this place.",
+    "loginNow": "Log in now",
+    "quantity": "Quantity: {{count}}",
+    "subtotal": "Subtotal",
+    "notSelected": "Not selected",
+    "contactForPrice": "Contact",
+    "noServices": "No services available at this place yet.",
+    "steps": {
+      "service": "Service",
+      "confirm": "Confirm",
+      "submit": "Submit request"
+    },
+    "title": "Book a service",
+    "selectService": "Select the service you want to book",
+    "confirmTitle": "Confirm booking information",
+    "fields": {
+      "place": "Place",
+      "service": "Service",
+      "quantity": "Quantity",
+      "usageDate": "Usage date",
+      "selectTime": "Select time",
+      "selected": "Selected",
+      "notSelected": "Not selected"
+    },
+    "timeGroups": {
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "evening": "Evening",
+      "all": "All"
+    },
+    "tripLink": {
+      "title": "Link to Trip",
+      "none": "No link",
+      "selectExisting": "Select existing trip",
+      "createNew": "Create new trip",
+      "noTrips": "You have no trips yet.",
+      "newTripPlaceholder": "Trip name (optional)",
+      "tripCreateInfo": "A new trip will be created for {{date}}.",
+      "summaryPrefix": "Trip link",
+      "linkedTripId": "Trip #{{id}}",
+      "notSelected": "Not selected",
+      "createOnConfirm": "Will be created on confirm"
+    },
+    "tripDays": "{{count}} days",
+    "pricing": {
+      "total": "Total",
+      "deposit": "Deposit",
+      "contact": "Contact",
+      "depositLabel": "Deposit: {{amount}}",
+      "refundable": "Refundable {{percent}}%",
+      "nonRefundable": "Non-refundable"
+    },
+    "submitRequest": "Submit booking request",
+    "payAtPlace": "Pay at venue",
+    "payAtPlaceDescription": "Please pay directly at the venue after using the service.",
+    "contactInfo": "Contact information",
+    "contactValidation": "Please fill in your name and a valid phone number.",
+    "placeholders": {
+      "name": "Full name",
+      "phone": "Phone number",
+      "email": "Email (optional)",
+      "note": "Special requests (optional)"
+    },
+    "timeSlotsCount": "{{count}} time slots available",
+    "slotUnavailableWarning": "This time slot has passed. Please select another.",
+    "tripDescription": {
+      "withService": "Booked service: {{service}}",
+      "default": "Created from booking"
+    },
+    "buttons": {
+      "confirmBooking": "Confirm booking",
+      "next": "Next",
+      "confirm": "Confirm"
+    },
+    "alerts": {
+      "slotUnavailable": {
+        "title": "Time slot unavailable",
+        "message": "This time slot has passed. Please select another time.",
+        "ok": "OK",
+        "expired": "This time slot has passed. Please go back and select another."
+      },
+      "slotFull": "Full",
+      "missingContact": {
+        "title": "Contact required",
+        "message": "Please fill in your name and a valid phone number."
+      },
+      "selectTrip": {
+        "title": "Select a trip",
+        "message": "Please select a trip to link this booking to."
+      }
+    },
+    "errors": {
+      "tripCreateFailed": "Failed to create trip. Please try again.",
+      "bookingFailed": "Booking failed. Please try again.",
+      "generic": "An error occurred. Please try again."
+    },
+    "success": {
+      "title": "Booking successful!",
+      "description": "Your booking request has been sent. The business will confirm shortly.",
+      "descriptionWithService": "Your booking for \"{{service}}\" has been sent. The business will confirm shortly.",
+      "linkedTrip": "Added to trip: {{title}} (Day {{day}})",
+      "viewBookings": "View my bookings",
+      "backToPlace": "Back to place",
+      "viewInTrip": "View in trip"
+    }
+  },
+  "place": {
+    "details": "Details",
+    "reviews": "Reviews",
+    "services": "Services",
+    "directions": "Directions",
+    "save": "Save",
+    "saved": "Saved",
+    "share": "Share",
+    "report": "Report",
+    "openNow": "Open now",
+    "closed": "Closed",
+    "openHours": "Opening hours",
+    "address": "Address",
+    "phone": "Phone",
+    "website": "Website",
+    "rating": "Rating",
+    "reviewCount": "{{count}} reviews",
+    "writeReview": "Write a review",
+    "noReviews": "No reviews yet",
+    "loading": "Loading place info...",
+    "notFound": "Place not found",
+    "priceRange": {
+      "free": "Free",
+      "budget": "Budget",
+      "moderate": "Moderate",
+      "expensive": "Premium",
+      "luxury": "Luxury"
+    },
+    "priceFrom": "From",
+    "defaultLocation": "Can Tho",
+    "dayNames": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    "bookNow": "Book now",
+    "viewOnMap": "View on map",
+    "noImage": "No image",
+    "defaultPlace": "Place",
+    "newBadge": "New",
+    "million": "M",
+    "calculating": "Calculating...",
+    "viewDetail": "View details",
+    "selectedLabel": "Selected",
+    "selectLabel": "Select",
+    "addLeg": "Add leg",
+    "directionsLabel": "Directions",
+    "detail": {
+      "updatedLater": "Updated later",
+      "closedToday": "Closed today",
+      "pendingUpdate": "Pending update",
+      "openToday": "Open today",
+      "today": "Today",
+      "system": "System",
+      "quickCall": "Quick call",
+      "easyToFind": "Easy to find",
+      "favorite": "Favorite",
+      "loginToSave": "Please log in to save this place.",
+      "loginToAddToTrip": "Please log in to add this place to your trip.",
+      "loginToBook": "Please log in to continue booking.",
+      "loginToWriteReview": "Please log in to write a review.",
+      "reviewSubmitted": "Review submitted",
+      "reviewSubmittedDesc": "Thank you for sharing your experience.",
+      "featuredPlace": "Featured place",
+      "category": "Category",
+      "area": "Area",
+      "priceRange": "Price range",
+      "owner": "Owner",
+      "canTho": "Can Tho",
+      "loginToBookButton": "Login to book",
+      "topRating": "Top rating",
+      "new": "New",
+      "about": "About",
+      "tagLabel": "Tag",
+      "contactSection": "Contact",
+      "addressLabel": "Address",
+      "phoneLabel": "Phone",
+      "emailLabel": "Email",
+      "facebookLabel": "Facebook",
+      "openingHoursLabel": "Opening hours",
+      "reviewsSection": "Reviews",
+      "seeAllReviews": "See all {{count}} reviews",
+      "mapButton": "Map",
+      "addToTrip": "Add to trip",
+      "closed": "Closed",
+      "notUpdated": "Not updated",
+      "noReviewsShort": "No reviews yet",
+      "oneReview": "1 review",
+      "manyReviews": "{{count}} reviews",
+      "anonymous": "Anonymous",
+      "verified": "Verified",
+      "businessReply": "Business reply",
+      "allReviews": "All reviews",
+      "latest": "Latest",
+      "withPhotos": "With photos",
+      "noMatchingReviews": "No matching reviews",
+      "yourRating": "Your rating",
+      "tripType": "Trip type",
+      "visitType": {
+        "solo": "Solo",
+        "couple": "Couple",
+        "family": "Family",
+        "friends": "Friends",
+        "business": "Business"
+      },
+      "shareExperience": "Share your experience",
+      "whatDidYouLike": "What did you like the most?",
+      "submitReview": "Submit review",
+      "addedToTrip": "Added to trip",
+      "addedToTripDesc": "Added \"{{placeName}}\" to \"{{tripName}}\"",
+      "somethingWentWrong": "Something went wrong",
+      "addToTripError": "Could not add to trip. Please try again.",
+      "noTripsYet": "You have no trips yet. Create a trip before adding places.",
+      "selectTrip": "Select trip",
+      "addPlaceToTrip": "Add this place to your trip",
+      "addToTripTitle": "Add to trip",
+      "addPlaceConfirm": "Add \"{{placeName}}\" to \"{{tripName}}\"?",
+      "toast": {
+        "saved": "Place added to favorites",
+        "unsaved": "Place removed from favorites",
+        "saveError": "Could not save place",
+        "unsaveError": "Could not unsave place"
+      }
+    }
+  },
+  "event": {
+    "loginRequired": "Login required",
+    "joinEvent": "Join event",
+    "success": "Success",
+    "error": "Error",
+    "communityEvent": "Community event",
+    "location": "Can Tho",
+    "participants": "Participants",
+    "onlineCount": "{{count}} online",
+    "checkins": "Check-ins",
+    "itinerary": "Itinerary & Progress",
+    "momentsCheckin": "Moments Check-in",
+    "personalProgress": "Personal progress",
+    "leg": "leg",
+    "routeDetail": "Route details",
+    "noLegs": "No legs yet.",
+    "pointDetail": "Point details",
+    "takePhoto": "Take check-in photo",
+    "checkedIn": "Checked in",
+    "momentsWall": "Moments Wall",
+    "anonymous1v1": "ANONYMOUS 1:1",
+    "noMoments": "No moments yet",
+    "anonymousCompanion": "Anonymous companion",
+    "checkinTime": "Check-in time",
+    "joinJourney": "JOIN THE JOURNEY",
+    "alreadyJoining": "YOU ARE JOINING THE JOURNEY"
+  },
+  "trip": {
+    "create": {
+      "title": "New Trip",
+      "info": "Trip information",
+      "time": "Time",
+      "savedPlaces": "Saved places",
+      "namePlaceholder": "Trip name",
+      "descPlaceholder": "Short description (optional)",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "selectDate": "Select date",
+      "duration": "{{count}} days",
+      "selectEndDate": "Select end date",
+      "endDateError": "End date must be after start date",
+      "cancelAlert": "Cancel trip creation?",
+      "submit": "Create trip",
+      "addingPlaces": "Adding places...",
+      "success": "Trip created successfully"
+    },
+    "detail": {
+      "deleteTitle": "Delete itinerary?",
+      "deleteMessage": "This itinerary will be permanently deleted.",
+      "startTitle": "Start journey?",
+      "startMessage": "Starting the journey will track your location for navigation and progress updates.",
+      "startNotification": "Journey started!",
+      "notFound": "Trip not found",
+      "notFoundDesc": "The trip may have been deleted or you don't have access.",
+      "back": "Back",
+      "duplicateSuccess": "Duplicated successfully",
+      "duplicateSuccessMsg": "Created a copy of \"{{name}}\"",
+      "openNewTrip": "Open new trip",
+      "stayHere": "Stay here",
+      "duplicateError": "Could not duplicate trip",
+      "completeTitle": "Complete trip?",
+      "completeMessage": "Mark \"{{name}}\" as completed?",
+      "complete": "Complete",
+      "completeError": "Could not mark as completed",
+      "duplicating": "Duplicating...",
+      "duplicateTrip": "Duplicate trip"
+    },
+    "itinerary": {
+      "close": "Close",
+      "error": "Error",
+      "reorderError": "Could not reorder destinations. Please try again.",
+      "removeTitle": "Remove destination",
+      "removeMessage": "Remove \"{{name}}\" from itinerary?",
+      "remove": "Remove",
+      "removeError": "Could not remove this destination. Please try again.",
+      "moveError": "Could not move this destination. Please try again.",
+      "updateError": "Could not update destination. Please try again.",
+      "saveError": "Could not save changes. Please try again.",
+      "continueTrip": "Continue trip",
+      "viewMap": "View trip map",
+      "startTrip": "Start trip",
+      "resumeSubtitle": "Resume navigation and location tracking",
+      "mapSubtitle": "View real-time navigation map",
+      "starting": "Starting…",
+      "today": "Today",
+      "dayLabel": "Day {{number}}",
+      "destinationCount": "{{count}} destinations",
+      "addDestination": "Add destination",
+      "noDestinations": "No destinations yet",
+      "noDestinationsDesc": "Add your favorite places to this day"
+    },
+    "budget": {
+      "loading": "Loading budget...",
+      "noData": "No data yet",
+      "noDataDesc": "The budget tab will summarize costs when linked bookings are available.",
+      "exploreServices": "Explore services",
+      "totalEstimate": "Estimated total",
+      "confirmedAmount": "Confirmed",
+      "pendingConfirm": "Pending confirmation",
+      "bookingCount": "{{count}} bookings",
+      "upcomingReminder": "Upcoming appointment reminder",
+      "daysLeft": "{{count}} days left",
+      "hoursLeft": "{{count}} hours left",
+      "appointmentSoon": "Appointment coming up!",
+      "reminderBody": "Your \"{{service}}\" booking at \"{{place}}\" is scheduled at {{time}}.",
+      "defaultPlace": "place",
+      "bookingDetail": "Booking details",
+      "unknownPlace": "Unknown place",
+      "defaultService": "Service"
+    },
+    "services": {
+      "loading": "Loading services...",
+      "noBookings": "No bookings yet",
+      "noBookingsDesc": "Bookings linked to this trip will appear here.",
+      "defaultService": "Service",
+      "defaultPlace": "Place"
+    },
+    "timeline": {
+      "noName": "Untitled",
+      "dragToReorder": "Drag to reorder",
+      "visited": "Visited",
+      "viewDetail": "View place details",
+      "moveToDay": "Move to another day",
+      "editItinerary": "Edit destination itinerary",
+      "edit": "Edit",
+      "removeFromItinerary": "Remove destination from itinerary",
+      "moreBookings": "+{{count}} more bookings"
+    },
+    "share": {
+      "viewOnly": "View only",
+      "allowEdit": "Allow editing",
+      "editLabel": "Edit",
+      "createLink": "Create share link",
+      "createLinkError": "Could not create share link",
+      "createdLinks": "Created links",
+      "noLinks": "No share links yet",
+      "newLink": "Create new share link",
+      "accessCount": "{{count}} accesses"
+    },
+    "celebration": {
+      "title": "Trip completed!",
+      "hint": "Pull down to see details"
+    },
+    "timeField": {
+      "done": "Done"
+    },
+    "createHero": {
+      "time": "Time",
+      "saved": "Saved",
+      "itinerary": "Itinerary",
+      "newTrip": "New trip"
+    },
+    "savedGrid": {
+      "place": "Place",
+      "selected": "selected",
+      "loadError": "Could not load data",
+      "noSaved": "No saved places yet",
+      "retrySubtitle": "Check your network connection and try again",
+      "emptySubtitle": "Save your favorite places from the map or Explore to quickly add them to trips",
+      "tapHint": "Tap to select a place",
+      "savedCount": "{{count}} saved"
+    },
+    "sync": {
+      "syncing": "Syncing {{count}} changes...",
+      "pendingOffline": "{{count}} changes pending sync"
+    },
+    "departureAlerts": {
+      "nextPlace": "next destination",
+      "title": "Time to move",
+      "body": "It's almost time to move to the next destination {{name}}. Get ready to depart!"
+    }
+  },
+  "editProfile": {
+    "cancel": "Cancel",
+    "title": "Edit Profile",
+    "changeAvatar": "Tap to change avatar",
+    "fields": {
+      "displayName": "Display name",
+      "username": "Username",
+      "nickname": "Nickname",
+      "phone": "Phone number",
+      "gender": "Gender",
+      "region": "Region",
+      "address": "Address details",
+      "bio": "Bio"
+    },
+    "placeholders": {
+      "displayName": "e.g. John Doe",
+      "username": "Display name on map",
+      "phone": "090...",
+      "address": "Street number, name...",
+      "bio": "Short introduction about you"
+    },
+    "gender": {
+      "notSelected": "Not selected",
+      "male": "Male",
+      "female": "Female",
+      "other": "Other"
+    },
+    "selectGender": "Select gender",
+    "saveChanges": "Save Changes",
+    "errors": {
+      "noPhotoAccess": "No photo access",
+      "grantPhotoPermission": "Please grant photo library access to select an avatar.",
+      "imageNotFound": "Image not found",
+      "trySelectAgain": "Please select an image again.",
+      "processImage": "Cannot process image",
+      "tryAgain": "Please try again.",
+      "missingInfo": "Missing information",
+      "nameMinChars": "Name must be at least 2 characters.",
+      "usernameRequired": "Please enter a username.",
+      "invalidUsername": "Invalid username",
+      "usernameFormat": "Username must be 3-30 characters and only contain letters, numbers, underscores.",
+      "updateFailed": "Update failed",
+      "tryAgainLater": "Please try again later."
+    },
+    "success": {
+      "title": "Success",
+      "message": "Profile has been updated."
+    }
+  },
+  "feedback": {
+    "title": "Feedback & Support",
+    "subtitle": "Your feedback helps us improve",
+    "weListen": "We listen to you",
+    "description": "Help iPoint Genie get better for the Can Tho community",
+    "typeLabel": "Feedback type *",
+    "titleLabel": "Title *",
+    "titlePlaceholder": "Briefly describe the issue...",
+    "contentLabel": "Detailed content *",
+    "contentPlaceholder": "Describe your feedback, issue or suggestion in detail...",
+    "faq": "Frequently Asked Questions",
+    "addPlace": "How to add/edit place info",
+    "reviewGuide": "Guide to reviewing places",
+    "privacyTerms": "Privacy policy & terms",
+    "submitting": "Submitting...",
+    "submit": "Submit feedback",
+    "thankYou": "Thank you!",
+    "submitFailed": "Submission failed"
+  },
+  "guestGate": {
+    "title": "Log in to continue",
+    "description": "This feature requires a logged in account.",
+    "login": "Log in",
+    "register": "Create new account",
+    "freeNote": "Free · No credit card"
+  },
+  "preferences": {
+    "travelStyles": {
+      "food": "Cuisine",
+      "history": "History",
+      "nature": "Nature",
+      "shopping": "Shopping",
+      "nightlife": "Nightlife",
+      "budget": "Budget"
+    },
+    "groupTypes": {
+      "solo": "Solo",
+      "couple": "Couple",
+      "family": "Family",
+      "group": "Friends"
+    },
+    "budgetLevels": {
+      "low": {
+        "label": "Budget",
+        "description": "< 500,000 VND/day"
+      },
+      "medium": {
+        "label": "Moderate",
+        "description": "500k - 1.5M VND/day"
+      },
+      "high": {
+        "label": "Premium",
+        "description": "> 1.5M VND/day"
+      }
+    }
+  },
+  "map": {
+    "common": {
+      "currentLocationName": "Current location",
+      "destinationName": "Destination",
+      "destinationMissingName": "Missing destination",
+      "destinationNameLower": "destination"
+    },
+    "layerSwitcher": {
+      "title": "Choose map style"
+    },
+    "loading": {
+      "map": "Loading map..."
+    },
+    "errors": {
+      "mapData": "Could not load data",
+      "retry": "Retry",
+      "routeDirectionTitle": "Cannot get directions",
+      "routeDirectionMessage": "Routing connection error. Please try again.",
+      "routeFallbackTitle": "Using estimated route",
+      "routeFallbackMessage": "Route may differ slightly, please check in person when traveling."
+    },
+    "search": {
+      "placeholder": "Search places...",
+      "cancel": "Cancel"
+    },
+    "web": {
+      "noticeTitle": "Web mode is using a list view",
+      "noticeSubtext": "Native maps are not supported on web. You can still search, filter and open places on Google Maps.",
+      "allCategories": "All",
+      "summaryFound": "Found {{count}} places",
+      "loadingPlaces": "Loading data...",
+      "placesLoadError": "Could not load place data",
+      "noPlacesForFilters": "No places match the filters",
+      "openInGoogleMaps": "Open in Google Maps"
+    },
+    "mapConfig": {
+      "mapStyles": {
+        "osm": "Map",
+        "hybrid": "Satellite"
+      },
+      "categoryLabels": {
+        "cuisine": "Cuisine",
+        "lodging": "Lodging",
+        "sightseeing": "Sightseeing",
+        "shopping": "Shopping",
+        "ecotourism": "Ecotourism",
+        "cafe": "Cafe",
+        "homestay": "Homestay",
+        "ecoPark": "Eco Park",
+        "place": "Place"
+      }
+    },
+    "routeFormatting": {
+      "minuteUnit": "min",
+      "hourUnit": "h",
+      "minuteShortUnit": "m",
+      "meterUnit": "m",
+      "kilometerUnit": "km",
+      "interProvince": "Inter-province (~{{km}} km)"
+    },
+    "arrivalModal": {
+      "title": "Arrived at destination",
+      "body": "You have arrived at {{targetName}}. Confirm to complete this leg.",
+      "cancel": "Cancel",
+      "confirm": "Confirm"
+    },
+    "navigationStatusBanner": {
+      "fallbackInfo": "Estimate: time and distance may vary with actual traffic.",
+      "optimizedInfo": "Optimized based on current travel time.",
+      "retryingRoute": "Retrying...",
+      "retryRoute": "Retry directions"
+    },
+    "navigation": {
+      "signalLost": "Searching for signal...",
+      "signalLostSubtitle": "Estimated position based on last speed"
+    },
+    "voice": {
+      "arrived": "You have arrived at {{name}}",
+      "distanceInstruction": "{{distance}} meters, {{instruction}}",
+      "defaultDestination": "destination"
+    },
+    "activeTripNavBanner": {
+      "traveling": "Traveling",
+      "recalculating": "Recalculating route",
+      "continueTo": "Continue to {{name}}",
+      "followCurrentRoute": "Follow the current route",
+      "calculatingRoute": "Calculating route...",
+      "updating": "Updating..."
+    },
+    "arrivalBanner": {
+      "arrivedTitle": "Have you arrived?",
+      "approachingTitle": "Almost there",
+      "arrivedMessage": "Confirm arrival at {{name}} to complete this leg.",
+      "approachingMessage": "{{distance}} to {{name}}. Find a safe place to stop.",
+      "swipeToConfirm": "Swipe/tap to confirm",
+      "unlockWhenStopped": "Unlocks when stopped within 30m",
+      "defaultDestination": "destination",
+      "defaultDistance": "a short distance"
+    },
+    "nearbyWarningBanner": {
+      "title": "Almost there!",
+      "message": "Only {{distance}}m to {{name}}.",
+      "defaultTarget": "Destination"
+    },
+    "startNavigationModal": {
+      "title": "Start journey",
+      "body": "Would you like to start navigation and track your location for the trip now?",
+      "later": "Later",
+      "startNow": "Start now"
+    },
+    "tripCompleteModal": {
+      "journeyTitle": "Congratulations on completing the journey!",
+      "dayTitle": "Day {{day}} complete!",
+      "journeyMessage": "You have excellently completed all destinations in this trip. Wishing you many beautiful memories in Can Tho!",
+      "dayMessage": "All destinations for Day {{day}} have been explored. Would you like to pause navigation to rest?",
+      "close": "Close",
+      "complete": "Complete",
+      "pause": "Pause"
+    },
+    "departureReminderBanner": {
+      "title": "Get ready to move",
+      "withMinutes": "About {{minutes}} minutes left before moving to {{name}}.",
+      "now": "It's time to head to {{name}}. Let's go!",
+      "defaultNextName": "next destination"
+    },
+    "filters": {
+      "quickOptions": {
+        "topRated": "Top rated",
+        "trending": "Trending",
+        "budget": "Budget",
+        "premium": "Premium",
+        "openNow": "Nearest open"
+      },
+      "groupOptions": {
+        "category": "Category",
+        "area": "Area",
+        "quick": "Quick"
+      },
+      "pickerTitle": "Select {{groupLabel}} to filter",
+      "allCategories": "All categories",
+      "categoryFallback": "Category",
+      "allAreas": "All areas",
+      "areaFallback": "Area",
+      "noneApplied": "None applied",
+      "countApplied": "{{count}} filters",
+      "groupFallback": "filters"
+    }
+  },
+  "language": {
+    "deviceLanguage": "Device language",
+    "english": "English",
+    "vietnamese": "Tiếng Việt"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "message": "An unexpected error occurred. Please try again.",
+    "retry": "Try again"
+  },
+  "errors": {
+    "network": "No network connection. Please check your connection.",
+    "server": "Server is experiencing issues. Please try again later.",
+    "unauthorized": "Session expired. Please log in again.",
+    "notFound": "Requested information not found.",
+    "validation": "Invalid information. Please check and try again.",
+    "unknown": "An error occurred. Please try again.",
+    "aiQuota": "AI has reached its quota limit. Please try again later.",
+    "aiUnavailable": "AI service is temporarily unavailable.",
+    "locationDenied": "Location permission is required to use this feature.",
+    "imageCompress": "Cannot compress image under {{size}}KB. Please choose another image."
+  },
+  "stepIndicator": {
+    "service": "Service",
+    "confirm": "Confirm",
+    "submit": "Submit request"
+  },
+  "districts": {
+    "title": "By district",
+    "subtitle": "Select an area to see featured places.",
+    "loading": "Loading...",
+    "viewPlaces": "View places by area",
+    "fallbackName": "Area"
+  },
+  "ai": {
+    "typing": "Nhi is typing...",
+    "suggestions": {
+      "restaurants": "Good restaurants in Can Tho",
+      "hotels": "Hotels nearby",
+      "activities": "Fun activities"
+    }
+  },
+  "tripDashboard": {
+    "journey": "Journey",
+    "yourTrips": "{{count}} trips of yours",
+    "createMemory": "Create new memories",
+    "createTripAccessibility": "Create new trip",
+    "upcoming": "Upcoming",
+    "newTrip": "New trip",
+    "destinations": "{{count}} destinations",
+    "createFirst": "Create your first trip",
+    "startExploring": "Start your journey exploring the world",
+    "listWithCount": "List ({{count}})",
+    "list": "List",
+    "startToday": "Starting today",
+    "startTomorrow": "Starting tomorrow",
+    "daysUntil": "{{count}} days left"
+  },
+  "tripCard": {
+    "noDate": "No date selected",
+    "tripAccessibility": "Trip {{name}}, {{status}}",
+    "unsaveAccessibility": "Unsave trip",
+    "saveAccessibility": "Save trip",
+    "newTrip": "New trip",
+    "days": "days",
+    "destinations": "destinations",
+    "dayCount": "{{count}} days",
+    "placeCount": "{{count}} places"
+  },
+  "tripHeader": {
+    "from": "From {{date}}",
+    "add": "Add",
+    "share": "Share",
+    "unsave": "Unsave",
+    "saveTrip": "Save trip",
+    "editInfo": "Edit info",
+    "deleteTrip": "Delete trip"
+  },
+  "tripTabBar": {
+    "itinerary": "Itinerary",
+    "services": "Services",
+    "budget": "Budget"
+  },
+  "editDestination": {
+    "invalidTime": "Invalid time",
+    "endTimeError": "End time cannot be before start time.",
+    "editPlace": "Edit place",
+    "detailTime": "Detail time",
+    "start": "Start",
+    "end": "End",
+    "stayDuration": "Stay {{duration}}",
+    "moveToNext": "Move to next point",
+    "transport": "Transport",
+    "distanceToNext": "Distance to next point",
+    "autoCalculated": "(Auto-calculated by system)",
+    "tripNotes": "Trip notes",
+    "notesPlaceholder": "Enter notes or plans for dining, photography here...",
+    "save": "Save"
+  },
+  "moveDestination": {
+    "editItinerary": "Edit itinerary",
+    "selectDay": "Select activity day",
+    "dayLabel": "Day {{number}}",
+    "detailTime": "Detail time",
+    "start": "Start",
+    "end": "End",
+    "tripNotes": "Trip notes",
+    "notesPlaceholder": "Enter notes or plans for dining, photography here...",
+    "saveChanges": "Save changes"
+  },
+  "editTrip": {
+    "noPhotoAccess": "No photo access",
+    "noPhotoAccessDesc": "Please grant photo library access to select a cover image.",
+    "error": "Error",
+    "imageError": "Cannot process image. Please try again.",
+    "invalidDate": "Invalid date",
+    "endDateError": "End date cannot be before start date.",
+    "editTrip": "Edit trip",
+    "coverPhoto": "Cover photo",
+    "tapToSelect": "Tap to select cover photo",
+    "changePhoto": "Change photo",
+    "tripName": "Trip name",
+    "tripNamePlaceholder": "Enter trip name",
+    "description": "Description",
+    "descPlaceholder": "Add a short description...",
+    "startDate": "Start date",
+    "selectDate": "Select date",
+    "endDate": "End date",
+    "save": "Save"
+  },
+  "inlineAddPlace": {
+    "backToSearch": "Back to search",
+    "addPlaceToTrip": "Add place to trip",
+    "addToItinerary": "Add to itinerary",
+    "closeModal": "Close modal",
+    "searchPlaceholder": "Search by place name...",
+    "clearSearch": "Clear search content",
+    "enterKeyword": "Enter keyword",
+    "searchDesc": "Search travel places in Can Tho",
+    "noResults": "No results found",
+    "tryDifferentKeyword": "Please try a different keyword",
+    "searchingSystem": "Searching more on the system...",
+    "yourSavedPlaces": "Your saved places",
+    "savedAndSuggested": "Saved and popular suggestions",
+    "suggestedPlaces": "Popular suggestions",
+    "noSuggestions": "No suggested places yet",
+    "canTho": "Can Tho",
+    "selectDay": "Select day",
+    "dayLabel": "Day {{number}}",
+    "startTime": "Start time",
+    "endTime": "End time",
+    "moveToPlace": "Move to this place",
+    "transport": "Transport",
+    "tripNotes": "Trip notes",
+    "notesPlaceholder": "Enter notes or plans for dining, photography here...",
+    "addError": "An error occurred while adding the place.",
+    "addToItineraryAccessibility": "Add to trip itinerary",
+    "create": "Create"
+  },
+  "savedDashboard": {
+    "allWithCount": "All ({{count}})",
+    "allAreasWithCount": "All areas ({{count}})",
+    "cancel": "Cancel",
+    "manageCollection": "Manage collection",
+    "collectionLabel": "Collection: {{name}}",
+    "renameCollection": "Rename collection",
+    "renamePrompt": "Enter new name for \"{{name}}\"",
+    "deleteCollection": "Delete collection",
+    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"? Places will not be deleted.",
+    "saved": "Saved",
+    "collections": "Collections",
+    "areas": "Areas"
+  },
+  "savedCard": {
+    "favoritePlace": "Favorite place",
+    "canThoVietnam": "Can Tho, Vietnam",
+    "rating": "Rating"
+  },
+  "collectionSelector": {
+    "favorite": "Favorite",
+    "unsaved": "Unsaved",
+    "unsavedDesc": "Removed place from collection.",
+    "saveSuccess": "Saved successfully",
+    "saveSuccessDesc": "Saved to {{name}}",
+    "error": "An error occurred",
+    "errorDesc": "Please try again later.",
+    "duplicateName": "Duplicate name",
+    "duplicateNameDesc": "Collection name already exists.",
+    "saveSuccessNew": "Saved successfully",
+    "saveSuccessNewDesc": "Saved to {{name}}",
+    "createError": "An error occurred",
+    "createErrorDesc": "Cannot create collection.",
+    "saveToCollection": "Save to collection",
+    "createNew": "Create new collection",
+    "namePlaceholder": "Collection name...",
+    "create": "Create",
+    "placeCount": "{{count}} places"
+  },
+  "noteEditor": {
+    "title": "Personal notes",
+    "subtitle": "Saved place",
+    "placeholder": "e.g: Go in the afternoon, try signature dish, suitable for groups...",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "saveNote": "Save note"
+  },
+  "aiPlanner": {
+    "confirmDelete": "Delete Planner history?",
+    "confirmDeleteDesc": "All conversations, suggested itineraries and place selections will be deleted on this device.",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "close": "Close",
+    "travelAssistant": "Travel assistant Nhi",
+    "readyToHelp": "Ready to help",
+    "planTravel": "Plan travel",
+    "intro": "I can help you find dining, entertainment spots and arrange Can Tho itineraries automatically!",
+    "selectPlaces": "Select places you want",
+    "selectingCount": "Selecting {{selected}}/{{total}} places",
+    "selectAll": "Select all",
+    "deselect": "Deselect",
+    "selected": "Selected",
+    "selectPlace": "Select place",
+    "added": "Added",
+    "addTrip": "Add trip",
+    "details": "Details",
+    "createFromSelection": "Create itinerary from selection",
+    "creatingTrip": "Creating trip...",
+    "suggestingPlaces": "Suggesting places...",
+    "processing": "Processing...",
+    "inputPlaceholder": "Describe the plan you want...",
+    "voiceListening": "Listening. Tap the mic again to send.",
+    "voiceTranscribing": "Nhi is turning your voice into text...",
+    "voiceSpeaking": "Nhi is speaking...",
+    "voiceError": "Voice is not available right now.",
+    "voicePermissionDenied": "Microphone permission is required for voice chat.",
+    "voiceEmptyRecording": "No voice was captured. Try speaking a little closer to the mic.",
+    "voiceTranscriptLabel": "Nhi heard",
+    "voiceItineraryQueued": "I prepared a trip preview. Review the places and choose the ones you want to keep.",
+    "voiceWave": {
+      "idle": "Tap to Chat",
+      "idleHint": "Ask Nhi by voice",
+      "listening": "Listening",
+      "listeningHint": "Tap again to send",
+      "transcribing": "Writing it down",
+      "speaking": "Nhi is speaking",
+      "speakingHint": "Tap volume to stop",
+      "thinking": "Nhi is thinking"
+    },
+    "suggestionGroups": {
+      "saved": {
+        "title": "From your saved places",
+        "route": "Build a route from saved places"
+      },
+      "nearby": {
+        "title": "Near you now",
+        "food": "Good food nearby",
+        "hot": "Trending places today"
+      },
+      "trip": {
+        "title": "Plan a trip",
+        "oneDay": "One-day Can Tho route",
+        "family": "Family-friendly day"
+      },
+      "context": {
+        "morning": "Easy morning plan",
+        "afternoon": "Photo spots this afternoon",
+        "evening": "Evening food and walk"
+      }
+    },
+    "suggestionPrompts": {
+      "savedRoute": "Create a short route from my saved places and prioritize places that are close to each other.",
+      "foodNearby": "Suggest good food near me with realistic price and why each place is worth trying.",
+      "hotNow": "Suggest hot or trending places near me today, prioritize places with strong reviews and recent interest.",
+      "oneDayTrip": "Create a clean one-day Can Tho itinerary with travel order, time blocks, and estimated cost.",
+      "familyTrip": "Plan a relaxed family-friendly day trip in Can Tho.",
+      "morning": "Suggest an easy morning plan near me with breakfast or coffee first.",
+      "afternoon": "Suggest photo spots for this afternoon and the best order to visit them.",
+      "evening": "Suggest an evening food and walking plan in Can Tho."
+    },
+    "quickSuggestions": {
+      "suggestion1": "Suggest good restaurants in Ninh Kieu",
+      "suggestion2": "Top 5 beautiful photo spots",
+      "suggestion3": "Can Tho evening plan",
+      "suggestion4": "Family day trip",
+      "suggestion5": "Nice cafe near city center"
+    },
+    "chatThinking": "Nhi is thinking...",
+    "loadingStep0": "Nhi is scanning nearby places...",
+    "loadingStep1": "Nhi is calculating the optimal route...",
+    "loadingStep2": "Nhi is preparing the cost estimate...",
+    "loadingWait": "Hang on a little longer...",
+    "chatErrorFallback": "Something went wrong, please try again.",
+    "botLabel": "Nhi (AI)",
+    "tripReady": "Itinerary **{{title}}** is ready!",
+    "destinationCount": "{{count}} destinations",
+    "estimatedCost": "Cost ~{{cost}} VND",
+    "selectingCountShort": "Selecting: {{count}} destinations.",
+    "previewMessage": "Nhi has prepared a {{totalDays}}-day itinerary with {{suggestedCount}} suggested places.",
+    "previewInstruction": "Select places below and press **Confirm & create trip**."
+  },
+  "chatPanel": {
+    "confirmDelete": "Delete chat history?",
+    "confirmDeleteDesc": "All conversations with Nhi will be deleted on this device.",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteHistory": "Delete history",
+    "greeting": "Hi, I'm Nhi",
+    "intro": "I can help you find places, suggest restaurants, or plan Can Tho travel itineraries.",
+    "inputPlaceholder": "Ask Nhi something...",
+    "noTrips": "No trips yet",
+    "noTripsDesc": "You need to create a trip first to add this place to the itinerary.",
+    "close": "Close",
+    "addSuccess": "Success",
+    "addSuccessDesc": "Added {{name}} to trip \"{{trip}}\"",
+    "addFailed": "Failed",
+    "addFailedDesc": "Cannot add to trip",
+    "selectTrip": "Select trip",
+    "selectTripPrompt": "Which trip do you want to add \"{{name}}\" to?"
+  },
+  "aiChat": {
+    "rateLimit": "Nhi is answering too many requests, please wait a moment and try again.",
+    "serviceOverloaded": "AI service is temporarily overloaded. Please try again in a few minutes.",
+    "invalidItineraryData": "No valid itinerary data received.",
+    "itineraryReady": "Nhi has designed an optimal itinerary with budget estimation for you! Take a look:",
+    "noReplyContent": "No reply content received, please try again.",
+    "memorySummary": "[Summary of {{count}} previous messages: conversation is ongoing]"
+  },
+  "client": {
+    "refreshTimeout": "Session refresh timed out. Please log in again.",
+    "invalidSession": "Your session is no longer valid."
+  },
+  "exploreNearby": {
+    "sortByDistance": "Sorted by distance from your current location.",
+    "enableLocation": "Enable location to see places closer to you.",
+    "nearYou": "Near you",
+    "locate": "Locate",
+    "enableLocationBtn": "Enable location",
+    "currentLocation": "Current location...",
+    "noPlaces": "No matching places",
+    "tryAgain": "Try again or enable location to sort by distance."
+  },
+  "exploreTopRated": {
+    "title": "Top rated",
+    "subtitle": "The highest rated destinations.",
+    "noData": "No rating data yet",
+    "noDataDesc": "Come back later when there are more reviews from the community."
+  },
+  "exploreNewest": {
+    "title": "Newest",
+    "subtitle": "Places recently updated.",
+    "noData": "No new data yet",
+    "noDataDesc": "Come back later to see newly updated places."
+  },
+  "exploreCategories": {
+    "viewAll": "View all",
+    "title": "Explore by category",
+    "subtitle": "Find the perfect destination for you.",
+    "loading": "Loading categories..."
+  },
+  "exploreCategory": {
+    "all": "All",
+    "category": "Category",
+    "subtitle": "Places that match to get you started exploring.",
+    "noPlaces": "No places in this category",
+    "noPlacesDesc": "Try a different category or come back later."
+  },
+  "exploreDistrict": {
+    "area": "Area",
+    "subtitle": "Featured places in the area you selected.",
+    "noPlaces": "No places in this area",
+    "noPlacesDesc": "Try a different area or come back later."
+  },
+  "authValidation": {
+    "nameMin": "Name must be at least 2 characters.",
+    "emailRequired": "Please enter email.",
+    "usernameRequired": "Please enter username.",
+    "usernameFormat": "Username must be 3-30 characters and only contain letters, numbers, underscores.",
+    "emailInvalid": "Invalid email.",
+    "passwordMin": "Password must be at least 6 characters.",
+    "passwordComplexity": "Password needs uppercase, lowercase letters and numbers.",
+    "passwordMismatch": "Passwords do not match.",
+    "registerSuccess": "Registration successful. Please check your email to verify.",
+    "registerFailed": "Registration failed. Please try again.",
+    "loginRequired": "Please enter email or username.",
+    "loginEmailInvalid": "Invalid email.",
+    "loginUsernameFormat": "Username must be at least 3 characters and only contain letters, numbers, underscores.",
+    "passwordRequired": "Please enter password.",
+    "noSessionData": "No valid login session data received.",
+    "emailNotVerified": "Email not verified. Please log in by email to receive a new verification link.",
+    "loginFailed": "Login failed. Please try again.",
+    "googleNoResponse": "No Google login response received. Please try again.",
+    "googleInvalidSession": "Invalid Google login session.",
+    "googleFailed": "Google login failed.",
+    "googleFailedRetry": "Google login failed. Please try again.",
+    "googleNoIdToken": "No id_token received from Google.",
+    "googleMissingConfig": "Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in app/.env.",
+    "googleMissingOwner": "Missing EXPO_PUBLIC_EXPO_OWNER or EXPO_PUBLIC_EXPO_SLUG in app/.env.",
+    "googleNotReady": "Google OAuth not ready. Please try again in a few seconds.",
+    "apiPointingToExpo": "Login API is pointing to Expo/Metro instead of backend. Check EXPO_PUBLIC_API_URL and app/server port."
+  },
+  "tripHelpers": {
+    "all": "All",
+    "upcoming": "Upcoming",
+    "completed": "Completed",
+    "from": "From {{date}}",
+    "noDate": "No date selected",
+    "ended": "Ended",
+    "noLongerValid": "No longer valid",
+    "inJourney": "In journey",
+    "startToday": "Starting today",
+    "startTomorrow": "Starting tomorrow",
+    "daysUntil": "{{count}} days left",
+    "canAddLater": "Can add later",
+    "trip": "Trip",
+    "processing": "Processing",
+    "destination": "Destination",
+    "done": "Done",
+    "bookingNoDate": "Booking without clear date",
+    "minutes": "min",
+    "hours": "hr",
+    "nextDay": "(next day)",
+    "startAt": "Start {{time}}",
+    "endAt": "End {{time}}",
+    "noTime": "No time set",
+    "transportWalk": "Walk",
+    "transportMotorbike": "Motorbike",
+    "transportCar": "Car",
+    "transportBus": "Bus",
+    "transportOther": "Other",
+    "sectionTracking": "{{count}} trips are being closely tracked.",
+    "sectionCompleted": "{{count}} trips closed for quick review.",
+    "sectionAll": "{{count}} trips in one tidy dashboard."
+  },
+  "tripTheme": {
+    "upcoming": "Upcoming",
+    "ongoing": "Ongoing",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "bookingPending": "Pending",
+    "bookingConfirmed": "Confirmed",
+    "bookingCompleted": "Completed",
+    "bookingCancelled": "Cancelled",
+    "bookingRejected": "Rejected",
+    "bookingClosed": "Closed",
+    "bookingNoShow": "No show",
+    "unknown": "Unknown"
+  },
+  "exploreHelpers": {
+    "you": "You",
+    "goodMorning": "Good morning",
+    "hello": "Hello",
+    "goodEvening": "Good evening",
+    "new": "New",
+    "reviews": "reviews",
+    "free": "Free",
+    "perTurn": "/turn",
+    "cheap": "Cheap",
+    "budget": "Budget",
+    "premium": "Premium",
+    "canTho": "Can Tho"
+  },
+  "savedHelpers": {
+    "all": "All",
+    "hasNotes": "Has notes",
+    "collections": "Collections",
+    "area": "Area {{id}}",
+    "category": "Category {{id}}",
+    "new": "New",
+    "reviews": "reviews",
+    "saved": "Saved",
+    "collectionsLabel": "Collections",
+    "areas": "Areas",
+    "hasNotesLabel": "Has notes",
+    "priceFrom": "From",
+    "millionUnit": "M VND",
+    "thousandUnit": "K VND",
+    "currencyUnit": " VND"
+  },
+  "maneuver": {
+    "left": "left",
+    "right": "right",
+    "slightLeft": "slight left",
+    "slightRight": "slight right",
+    "sharpLeft": "sharp left",
+    "sharpRight": "sharp right",
+    "straight": "straight",
+    "uturn": "U-turn",
+    "depart": "Depart on {{road}}",
+    "startMoving": "Start moving",
+    "arrived": "Arrived",
+    "roundabout": "Enter roundabout{{road}}",
+    "merge": "Merge{{road}}",
+    "fork": "Take fork {{road}}",
+    "continueStraight": "Continue straight{{road}}",
+    "goStraight": "Go straight{{road}}",
+    "makeUturn": "U-turn{{road}}",
+    "turn": "Turn {{dir}}{{road}}",
+    "continue": "Continue{{road}}",
+    "continueMoving": "Continue moving"
+  },
+  "mapScreen": {
+    "accessRequired": "Access required",
+    "cameraRequired": "You need camera access to take check-in photos.",
+    "checkinSuccess": "Success",
+    "checkinSuccessDesc": "Anonymous check-in moment posted successfully!",
+    "checkinFailed": "Error",
+    "checkinFailedDesc": "Failed to post moment.",
+    "imageError": "Error",
+    "imageErrorDesc": "Cannot process image.",
+    "journeyComplete": "Journey complete!",
+    "journeyCompleteDesc": "Congratulations on completing your trip!",
+    "dayComplete": "Day {{day}} complete!",
+    "dayCompleteDesc": "All places for today have been explored.",
+    "checkedIn": "Checked in!",
+    "checkedInDesc": "You've arrived at {{name}}.",
+    "broadcastFrom": "ANNOUNCEMENT FROM ORGANIZER: {{notice}}",
+    "journeyPaused": "Journey is paused",
+    "journeyPausedDesc": "Navigation and GPS tracking have been stopped to save battery.",
+    "resume": "Resume",
+    "previewTitle": "Review your route",
+    "previewSummary": "{{count}} places • {{segments}} route legs",
+    "previewFallback": "Some route legs are estimated. Check the path before starting.",
+    "previewNoStops": "This trip has no valid places to navigate.",
+    "startGuidance": "Start guidance",
+    "pauseJourney": "Pause",
+    "stopJourney": "Stop",
+    "stopJourneyTitle": "Stop journey?",
+    "stopJourneyMessage": "Navigation will stop, but the trip will not be marked as completed.",
+    "map": "Map",
+    "satellite": "Satellite",
+    "complete": "Complete",
+    "paused": "Paused"
+  },
+  "travelMode": {
+    "motorbike": "Motorbike",
+    "car": "Car",
+    "bicycle": "Bicycle",
+    "walking": "Walking",
+    "title": "Travel mode"
+  },
+  "datePicker": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "select": "Select"
+  },
+  "bottomSheetPicker": {
+    "searchPlaceholder": "Search {{title}}...",
+    "loading": "Loading list...",
+    "noResults": "No matching results found"
+  }
+}

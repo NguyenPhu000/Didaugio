@@ -62,6 +62,7 @@ export const updateRolePermissions = async (req, res, next) => {
     const result = await roleService.updateRolePermissions(
       req.params.id,
       req.body,
+      req.user,
     );
     res.status(200).json({
       success: true,

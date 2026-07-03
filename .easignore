@@ -1,0 +1,19 @@
+# Ignore directories outside app/
+server/
+web/
+docs/
+.kilo/
+benchmarks/
+agents/
+.agents/
+.cursor/
+.claude/
+
+# Ignore root files
+.env
+.gitignore
+CLAUDE.md
+README.md
+
+# Ignore root node_modules
+node_modules/

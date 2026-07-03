@@ -1,5 +1,5 @@
-import { createElement, useCallback, useEffect, useMemo, useState } from "react";
-import toast from "react-hot-toast";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast as sonnerToast } from "sonner";
 import api from "@/constants/api";
 import { ROLES } from "@/constants/constants";
 import { useAuthStore } from "@/stores/authStore";
@@ -24,7 +24,9 @@ const normalizeNotificationsResponse = (response) => {
 const normalizeNotification = (notification) => ({
   ...notification,
   message: notification.message || notification.body || "",
+  body: notification.body || notification.message || "",
   metadata: notification.metadata || notification.data || {},
+  readAt: notification.readAt || notification.read_at || null,
 });
 
 export const useNotifications = () => {
@@ -83,32 +85,33 @@ export const useNotifications = () => {
       });
       setUnreadCount((prev) => prev + 1);
 
-      toast.custom((toastState) =>
-        createElement(
-          "div",
-          {
-            className: `${toastState.visible ? "animate-enter" : "animate-leave"} max-w-sm border border-black bg-white px-4 py-3 font-mono shadow-lg`,
-          },
-          createElement(
-            "p",
-            { className: "text-xs font-bold uppercase" },
-            notification.title,
-          ),
-          createElement(
-            "p",
-            { className: "mt-0.5 text-[11px] text-gray-600" },
-            notification.message,
-          ),
-        ),
-        { duration: 6000, position: "top-right" },
-      );
+      sonnerToast(notification.title || "Thông báo mới", {
+        description: notification.message || notification.body || "",
+        duration: 6000,
+      });
     };
 
     socket.off("notification", handleNotification);
     socket.on("notification", handleNotification);
 
+    // Announcement cũng tạo NotificationRecipient + emit "notification" per-user
+    // nên handleNotification ở trên sẽ bắt được. Tuy nhiên nếu UI cần
+    // phân biệt announcement (ví dụ hiển thị khác), có thể listen thêm event này.
+    const handleAnnouncement = (rawAnnouncement) => {
+      // Refetch để đồng bộ danh sách (bao gồm announcement vừa tạo)
+      fetchNotifications();
+      sonnerToast(rawAnnouncement.title || "📢 Thông báo hệ thống", {
+        description: rawAnnouncement.body || "",
+        duration: 8000,
+      });
+    };
+
+    socket.off("announcement", handleAnnouncement);
+    socket.on("announcement", handleAnnouncement);
+
     return () => {
       socket.off("notification", handleNotification);
+      socket.off("announcement", handleAnnouncement);
     };
   }, [accessToken, enabled, userId]);
 

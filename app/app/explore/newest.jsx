@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { searchPlacesApi } from "../../src/modules/explore/api/exploreApi";
 import { PLACE_STATUS } from "../../src/constants/preferences";
@@ -9,6 +10,7 @@ import { ExplorePlaceList } from "../../src/modules/explore/components/ExplorePl
 const LIMIT = 60;
 
 export default function ExploreNewestScreen() {
+  const { t } = useTranslation();
   const query = useQuery({
     queryKey: ["explore-newest", LIMIT],
     queryFn: () =>
@@ -28,15 +30,15 @@ export default function ExploreNewestScreen() {
 
   return (
     <ExploreListScaffold
-      title="Mới nhất"
-      subtitle="Các địa điểm vừa được cập nhật gần đây."
+      title={t("exploreNewest.title")}
+      subtitle={t("exploreNewest.subtitle")}
     >
       <ExplorePlaceList
         data={places}
         loading={query.isLoading}
         onEndReached={query.refetch}
-        emptyTitle="Chưa có dữ liệu mới"
-        emptyCopy="Hãy quay lại sau để xem các địa điểm mới cập nhật."
+        emptyTitle={t("exploreNewest.noData")}
+        emptyCopy={t("exploreNewest.noDataDesc")}
       />
     </ExploreListScaffold>
   );

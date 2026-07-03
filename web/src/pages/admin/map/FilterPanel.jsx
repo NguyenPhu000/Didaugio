@@ -1,13 +1,6 @@
 import { Star, Layers, RefreshCw } from "lucide-react";
-import { getCategoryConfig, PRICE_LABELS } from "@/modules/map";
-
-const PRICE_OPTIONS = [
-  { value: "all", label: "Tất cả mức giá" },
-  ...Object.entries(PRICE_LABELS).map(([value, { label }]) => ({
-    value,
-    label,
-  })),
-];
+import { useTranslation } from "react-i18next";
+import { getCategoryConfig, PRICE_LABELS, getPriceLabel } from "@/modules/map";
 
 const CatIcon = ({ id, className }) => {
   const { Icon } = getCategoryConfig(id);
@@ -25,11 +18,21 @@ const FilterPanel = ({
   setOnlyFeatured,
   hasActiveFilters,
   onResetFilters,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  const PRICE_OPTIONS = [
+    { value: "all", label: t("common.all") },
+    ...Object.entries(PRICE_LABELS).map(([value]) => ({
+      value,
+      label: getPriceLabel(value),
+    })),
+  ];
+
+  return (
   <div className="flex-1 overflow-y-auto p-4 space-y-5">
     <div>
       <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
-        Danh mục
+        {t("places.category")}
       </p>
       <div className="grid grid-cols-2 gap-1.5">
         <button
@@ -40,7 +43,7 @@ const FilterPanel = ({
               : "border-gray-200 text-gray-600 hover:border-gray-400"
           }`}
         >
-          <Layers className="h-3.5 w-3.5" /> Tất cả
+          <Layers className="h-3.5 w-3.5" /> {t("common.all")}
         </button>
         {categories.map((cat) => (
           <button
@@ -70,7 +73,7 @@ const FilterPanel = ({
 
     <div>
       <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
-        Mức giá
+        {t("common.filter")}
       </p>
       <div className="space-y-1">
         {PRICE_OPTIONS.map(({ value, label }) => (
@@ -96,7 +99,7 @@ const FilterPanel = ({
 
     <div>
       <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
-        Khác
+        {t("common.other")}
       </p>
       <button
         onClick={() => setOnlyFeatured((v) => !v)}
@@ -109,7 +112,7 @@ const FilterPanel = ({
         <Star
           className={`h-4 w-4 ${onlyFeatured ? "fill-amber-400 text-amber-400" : "text-gray-400"}`}
         />
-        Chỉ hiện nổi bật
+        {t("places.card.feature")}
         <span className="ml-auto text-[10px] font-mono text-gray-400">
           {places.filter((p) => p.isFeatured).length}
         </span>
@@ -121,10 +124,11 @@ const FilterPanel = ({
         onClick={onResetFilters}
         className="w-full flex items-center justify-center gap-2 py-2.5 border border-red-200 text-red-600 bg-red-50 rounded-lg text-[12px] font-bold hover:bg-red-100 transition-colors"
       >
-        <RefreshCw className="h-3.5 w-3.5" /> Xoá tất cả bộ lọc
+        <RefreshCw className="h-3.5 w-3.5" /> {t("admin.map.clearFilters")}
       </button>
     )}
   </div>
 );
+};
 
 export default FilterPanel;

@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import i18n from "@/i18n";
 import { registerApi } from "../api/authApi";
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
@@ -19,44 +20,44 @@ export function useRegister() {
       const trimmedUsername = String(username || "").trim();
 
       if (trimmedFullName.length < 2) {
-        setError("Họ tên phải có ít nhất 2 ký tự.");
+        setError(i18n.t("authValidation.nameMin"));
         return false;
       }
 
       if (!normalizedEmail) {
-        setError("Vui lòng nhập email.");
+        setError(i18n.t("authValidation.emailRequired"));
         return false;
       }
 
       if (!trimmedUsername) {
-        setError("Vui lòng nhập username.");
+        setError(i18n.t("authValidation.usernameRequired"));
         return false;
       }
 
       if (!USERNAME_REGEX.test(trimmedUsername)) {
         setError(
-          "Username phải từ 3-30 ký tự và chỉ gồm chữ, số, dấu gạch dưới.",
+          i18n.t("authValidation.usernameFormat"),
         );
         return false;
       }
 
       if (!/\S+@\S+\.\S+/.test(normalizedEmail)) {
-        setError("Email không hợp lệ.");
+        setError(i18n.t("authValidation.emailInvalid"));
         return false;
       }
 
       if (password.length < 6) {
-        setError("Mật khẩu phải có ít nhất 6 ký tự.");
+        setError(i18n.t("authValidation.passwordMin"));
         return false;
       }
 
       if (!PASSWORD_REGEX.test(password)) {
-        setError("Mật khẩu cần có chữ hoa, chữ thường và số.");
+        setError(i18n.t("authValidation.passwordComplexity"));
         return false;
       }
 
       if (password !== confirmPassword) {
-        setError("Mật khẩu xác nhận không khớp.");
+        setError(i18n.t("authValidation.passwordMismatch"));
         return false;
       }
 
@@ -72,11 +73,11 @@ export function useRegister() {
 
         setSuccessMessage(
           res?.message ||
-            "Đăng ký thành công. Vui lòng kiểm tra email để xác thực.",
+            i18n.t("authValidation.registerSuccess"),
         );
         return true;
       } catch (err) {
-        const msg = err?.message || "Đăng ký thất bại. Vui lòng thử lại.";
+        const msg = err?.message || i18n.t("authValidation.registerFailed");
         setError(msg);
         return false;
       } finally {

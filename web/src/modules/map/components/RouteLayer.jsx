@@ -3,6 +3,7 @@
  * GL line layers for the driving route + informative DOM pins for waypoints.
  */
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Source, Layer, Marker } from "react-map-gl/maplibre";
 import { Navigation2, Flag, MapPin } from "lucide-react";
 
@@ -37,6 +38,7 @@ const ROUTE_DASH_LAYER = {
 // ─── Waypoint pin ─────────────────────────────────────────────────────────────
 
 const WaypointPin = ({ point, type }) => {
+  const { t } = useTranslation();
   const isOrigin = type === "origin";
   const bg = isOrigin ? "bg-green-500" : "bg-red-500";
   const labelBg = isOrigin ? "bg-green-700" : "bg-red-700";
@@ -63,7 +65,7 @@ const WaypointPin = ({ point, type }) => {
           </p>
         )}
         <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider opacity-60">
-          {isOrigin ? "Điểm xuất phát" : "Điểm đến"}
+          {isOrigin ? t("map.routing.originLabel") : t("map.routing.destinationLabel")}
         </p>
       </div>
 

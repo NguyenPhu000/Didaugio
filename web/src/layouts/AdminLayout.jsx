@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
@@ -16,14 +16,16 @@ import AnimatedIcon from "@/components/ui/animated-icon";
 import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES, ROLE_NAMES } from "@/constants/constants";
 import { APP_META } from "@/constants/brand";
-import * as placeService from "@/apis/placeService";
+import { usePlaces } from "@/hooks/queries/usePlaceQueries";
+import { usePermission } from "@/hooks/usePermission";
+import { useTranslation } from "react-i18next";
 
 // Extracted sub-components
 import {
   NavMain,
   CustomSidebarRail,
   AdminHeader,
-  menuData,
+  getMenuData,
   filterMenuByRole,
 } from "./sidebar";
 
@@ -34,50 +36,36 @@ import {
  */
 const AdminLayout = ({ children }) => {
   const { user } = useAuthStore();
-  const [pendingPlacesCount, setPendingPlacesCount] = useState(0);
+  const { hasPermission } = usePermission();
+  const { t } = useTranslation();
+
+  // Fetch pending places count via TanStack Query (auto-refresh every 60s)
+  const { data: pendingPlacesRes } = usePlaces(
+    { status: "pending", page: 1, limit: 1 },
+    { refetchInterval: 60000, enabled: user?.roleId !== ROLES.BUSINESS }
+  );
+  const pendingPlacesCount =
+    Number(pendingPlacesRes?.pagination?.total ?? pendingPlacesRes?.data?.length ?? 0) || 0;
 
   useEffect(() => {
-    if (user?.roleId === ROLES.BUSINESS) return;
-    let disposed = false;
-
-    const loadPendingCount = async () => {
-      try {
-        const response = await placeService.getAllPlaces({
-          status: "pending",
-          page: 1,
-          limit: 1,
-        });
-        if (disposed) return;
-        const total =
-          response?.pagination?.total ?? response?.data?.length ?? 0;
-        setPendingPlacesCount(Number(total) || 0);
-      } catch {
-        if (!disposed) setPendingPlacesCount(0);
-      }
-    };
-
-    loadPendingCount();
-    const timer = setInterval(loadPendingCount, 60000);
-    return () => {
-      disposed = true;
-      clearInterval(timer);
-    };
-  }, [user?.roleId]);
+    document.title = `${t("common.appName")} - ${t("common.adminPanel")}`;
+  }, [t]);
 
   const menuDataView = useMemo(() => {
-    const filtered = filterMenuByRole(menuData, user?.roleId);
+    const data = getMenuData();
+    const filtered = filterMenuByRole(data, { roleId: user?.roleId, hasPermission });
 
     if (filtered.main && user?.roleId === ROLES.BUSINESS) {
       filtered.main = filtered.main.map((item) =>
-        item.title === "Dashboard"
+        item.key === "dashboard"
           ? { ...item, url: BUSINESS_ROUTES.DASHBOARD }
-          : item,
+          : item
       );
     }
 
     if (filtered.management) {
       filtered.management = filtered.management.map((item) => {
-        if (item.title !== "Địa điểm" || !item.items) return item;
+        if (item.key !== "places" || !item.items) return item;
         return {
           ...item,
           items: item.items.map((sub) => {
@@ -95,7 +83,7 @@ const AdminLayout = ({ children }) => {
     }
 
     return filtered;
-  }, [pendingPlacesCount, user?.roleId]);
+  }, [pendingPlacesCount, user?.roleId, hasPermission, t]);
 
   return (
     <SidebarProvider>
@@ -136,23 +124,37 @@ const AdminLayout = ({ children }) => {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent className="px-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {/* ─── Common ─── */}
           {menuDataView.main && (
-            <NavMain items={menuDataView.main} label="Main" />
+            <NavMain items={menuDataView.main} label={t("nav.section.main")} />
           )}
+
+          {/* ─── Admin sections ─── */}
           {menuDataView.management && (
-            <NavMain items={menuDataView.management} label="Quản lý" />
-          )}
-          {menuDataView.business && (
-            <NavMain items={menuDataView.business} label="Doanh nghiệp" />
+            <NavMain items={menuDataView.management} label={t("nav.section.management")} />
           )}
           {menuDataView.adminBusiness && (
-            <NavMain items={menuDataView.adminBusiness} label="Business" />
+            <NavMain items={menuDataView.adminBusiness} label={t("nav.section.adminBusiness")} />
           )}
           {menuDataView.users && (
-            <NavMain items={menuDataView.users} label="Users" />
+            <NavMain items={menuDataView.users} label={t("nav.section.users")} />
           )}
           {menuDataView.system && (
-            <NavMain items={menuDataView.system} label="System" />
+            <NavMain items={menuDataView.system} label={t("nav.section.system")} />
+          )}
+
+          {/* ─── Business sections ─── */}
+          {menuDataView.business && (
+            <NavMain items={menuDataView.business} label={t("nav.section.business")} />
+          )}
+          {menuDataView.businessFinance && (
+            <NavMain items={menuDataView.businessFinance} label={t("nav.section.finance")} />
+          )}
+          {menuDataView.businessReviews && (
+            <NavMain items={menuDataView.businessReviews} label={t("nav.section.reviews")} />
+          )}
+          {menuDataView.businessAccount && (
+            <NavMain items={menuDataView.businessAccount} label={t("nav.section.account")} />
           )}
         </SidebarContent>
       </Sidebar>

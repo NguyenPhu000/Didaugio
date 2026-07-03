@@ -85,3 +85,13 @@ export function isImageSource(resolved) {
   const base = resolved.split("?")[0].toLowerCase();
   return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(base);
 }
+
+export function getOptimizedCloudinaryUrl(url, width = 800) {
+  if (!url || typeof url !== "string") return url;
+  if (!url.includes("res.cloudinary.com")) return url;
+
+  const parts = url.split("/upload/");
+  if (parts.length < 2) return url;
+
+  return `${parts[0]}/upload/f_auto,q_auto,w_${width},c_fill/${parts[1]}`;
+}

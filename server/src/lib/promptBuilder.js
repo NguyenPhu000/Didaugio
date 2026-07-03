@@ -46,5 +46,26 @@ export function buildChatSystemPrompt(context = {}) {
     parts.push(`Đã xem: ${context.visitedPlaceIds.slice(-5).join(", ")}`);
   }
 
+  if (Array.isArray(context.systemPlaces) && context.systemPlaces.length > 0) {
+    const minifiedPlaces = context.systemPlaces.map((p) => ({
+      i: p.id,
+      n: p.name,
+      c: p.category?.name || "Địa điểm",
+      a: p.address || "",
+      r: p.ratingAvg ? Number(p.ratingAvg) : 0,
+      p: p.priceFrom && p.priceTo ? `${p.priceFrom}đ - ${p.priceTo}đ` : "Chưa cập nhật/Miễn phí",
+      d: p.description ? p.description.substring(0, 120) : "",
+    }));
+    parts.push(
+      `\nQUAN TRỌNG: Bạn CHỈ ĐƯỢC PHÉP giới thiệu/gợi ý các địa điểm có trong danh sách dưới đây (danh sách JSON rút gọn: i = ID, n = Tên, c = Danh mục, a = Địa chỉ, r = Điểm đánh giá trung bình, p = Khoảng giá, d = Mô tả ngắn). Tuyệt đối KHÔNG tự ý bịa tên hoặc lấy địa điểm khác bên ngoài. Nếu khách hỏi địa điểm ngoài danh sách, hãy trả lời lịch sự rằng "Hiện tại hệ thống iPoint Genie chưa cập nhật địa điểm này" và gợi ý sang địa điểm có sẵn dưới đây.\nDanh sách địa điểm hệ thống:\n${JSON.stringify(minifiedPlaces)}`
+    );
+    parts.push(
+      `Khi bạn gợi ý hay nhắc đến bất kỳ địa điểm nào trong câu trả lời, hãy LUÔN kết thúc câu trả lời bằng một dòng định dạng chính xác sau (thay các ID thật vào):
+[PLACES: id1, id2, ...]
+Ví dụ: [PLACES: 12, 15]
+Lưu ý: Chỉ liệt kê ID của các địa điểm bạn gợi ý ở trên. Không viết gì thêm trên dòng này.`
+    );
+  }
+
   return parts.join("\n");
 }

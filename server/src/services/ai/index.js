@@ -5,6 +5,7 @@ export { default as aiNavigationService } from "./aiNavigation.service.js";
 export {
   generateFallbackItinerary,
   generateItinerary,
-  geminiModel,
-} from "./gemini.service.js";
+} from "./itinerary.service.js";
 export { streamPlaceSummary, streamChat } from "./aiStreaming.service.js";
+export { chatWithGroq, buildGroqSystemPrompt } from "./groq.service.js";
+export { generateHybridPlan } from "./hybridPlanner.service.js";

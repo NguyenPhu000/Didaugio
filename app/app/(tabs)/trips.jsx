@@ -1,13 +1,25 @@
 import { useCallback, useMemo, useState } from "react";
-import { View, FlatList, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
+import { View, RefreshControl } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTrips } from "../../src/modules/trips/hooks/useTrips";
+import { useTranslation } from "react-i18next";
+import VerticalFlowCarousel from "../../src/components/reacticx/vertical-flow-carousel";
+import { useTripsCached, useOfflineSync } from "../../src/modules/trips/hooks/useTripsOffline";
+import {
+  useSaveTrip,
+  useUnsaveTrip,
+} from "../../src/modules/trips/hooks/useTrips";
 import { useAuthStore } from "../../src/stores/authStore";
 import { GuestGate } from "../../src/components/ui/GuestGate";
+import { OfflineBanner } from "../../src/components/ui/OfflineBanner";
 import { TAB_BAR_HEIGHT } from "./_layout";
 import { TripsDashboard } from "../../src/modules/trips/components/TripsDashboard";
 import { TripCard } from "../../src/modules/trips/components/TripCard";
+import { TripSyncIndicator } from "../../src/modules/trips/components/TripSyncIndicator";
+import {
+  getDisplayStatus,
+  sortTripsForDashboard,
+} from "../../src/modules/trips/utils/tripHelpers";
 import {
   LoadingState,
   EmptyTrips,
@@ -16,6 +28,7 @@ import {
 import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../src/constants/design-tokens";
 
 export default function TripsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -24,25 +37,58 @@ export default function TripsScreen() {
   const [activeFilter, setActiveFilter] = useState("all");
 
   const {
-    data: trips = [],
+    data: tripsRaw,
     isLoading,
     isError,
     refetch,
-  } = useTrips(isLoggedIn);
+    isRefetching,
+  } = useTripsCached(isLoggedIn);
 
-  const filteredTrips = useMemo(
-    () =>
-      trips.filter((trip) => {
-        if (activeFilter === "all") return true;
-        if (activeFilter === "active") {
-          return trip.status === "active" || trip.status === "draft";
-        }
-        if (activeFilter === "done") {
-          return trip.status === "completed" || trip.status === "cancelled";
-        }
-        return true;
-      }),
-    [activeFilter, trips],
+  useOfflineSync();
+
+  const trips = useMemo(
+    () => (Array.isArray(tripsRaw) ? tripsRaw : []),
+    [tripsRaw],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isLoggedIn) {
+        refetch();
+      }
+    }, [isLoggedIn, refetch]),
+  );
+
+  const filteredTrips = useMemo(() => {
+    const list = trips.filter((trip) => {
+      if (activeFilter === "all") return true;
+      const displayStatus = getDisplayStatus(trip);
+      if (activeFilter === "active") {
+        return displayStatus === "upcoming" || displayStatus === "ongoing";
+      }
+      if (activeFilter === "done") {
+        return displayStatus === "completed" || displayStatus === "cancelled";
+      }
+      return true;
+    });
+
+    return sortTripsForDashboard(list);
+  }, [activeFilter, trips]);
+
+  const saveTripMutation = useSaveTrip();
+  const unsaveTripMutation = useUnsaveTrip();
+
+  const handleToggleSaveTrip = useCallback(
+    (tripId) => {
+      const trip = trips.find((t) => String(t.id) === String(tripId));
+      if (!trip) return;
+      if (trip.isSaved) {
+        unsaveTripMutation.mutate(tripId);
+      } else {
+        saveTripMutation.mutate(tripId);
+      }
+    },
+    [trips, saveTripMutation, unsaveTripMutation],
   );
 
   const handleCreate = useCallback(() => router.push("/trip/create"), [router]);
@@ -51,68 +97,90 @@ export default function TripsScreen() {
     [router],
   );
 
+  const renderTripCard = useCallback(
+    (item) => (
+      <TripCard
+        trip={item}
+        onPress={() => handlePressTrip(item.id)}
+        onSave={handleToggleSaveTrip}
+        isSaved={item.isSaved}
+      />
+    ),
+    [handlePressTrip, handleToggleSaveTrip],
+  );
+
+  const keyExtractor = useCallback((item) => String(item.id), []);
+
   if (!isLoggedIn) {
     return (
       <GuestGate
         icon="luggage"
-        title="Đăng nhập để quản lý chuyến đi"
-        description="Đồng bộ lịch trình, điểm đến và tiến độ hành trình của bạn trên mọi thiết bị."
+        title={t("trips.guestTitle")}
+        description={t("trips.guestDescription")}
       />
     );
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <FlatList
+    <View
+      className="flex-1"
+      style={{
+        paddingTop: insets.top,
+        backgroundColor: APPLE_THEME.background,
+      }}
+    >
+      <OfflineBanner />
+      <VerticalFlowCarousel
         data={!isLoading && !isError ? filteredTrips : []}
-        renderItem={({ item }) => (
-          <TripCard trip={item} onPress={() => handlePressTrip(item.id)} />
-        )}
-        keyExtractor={(item) => String(item.id)}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
+        renderItem={renderTripCard}
+        keyExtractor={keyExtractor}
+        itemHeight={246}
+        spacing={18}
+        rotationAngle={3.5}
+        scaleInactive={0.93}
+        opacityInactive={0.72}
+        blurIntensity={8}
+        showBlur={filteredTrips.length > 1}
+        endSpacing={0}
+        contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 30 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor="#1D1D1F"
+            colors={["#1D1D1F"]}
+          />
+        }
         ListHeaderComponent={
-          <>
-            {!isLoading && !isError && (
+          !isLoading && !isError ? (
+            <>
+              <TripSyncIndicator />
               <TripsDashboard
                 trips={trips}
                 filteredCount={filteredTrips.length}
                 activeFilter={activeFilter}
                 onSelectFilter={setActiveFilter}
-                onCreate={handleCreate}
                 onOpenHero={handlePressTrip}
+                onCreate={handleCreate}
               />
-            )}
-          </>
+            </>
+          ) : null
         }
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
           isLoading ? (
             <LoadingState />
           ) : isError ? (
             <ErrorState onRetry={refetch} />
           ) : (
-            <EmptyTrips onCreate={handleCreate} activeFilter={activeFilter} />
+            <EmptyTrips
+              onCreate={handleCreate}
+              activeFilter={activeFilter}
+              onClearFilter={() => setActiveFilter("all")}
+            />
           )
         }
-        ListFooterComponent={<View style={styles.footerSpace} />}
+        ListFooterComponent={<View className="h-4" />}
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: APPLE_THEME.background,
-  },
-  listContent: {
-    paddingBottom: TAB_BAR_HEIGHT + 24,
-  },
-  separator: {
-    height: 18,
-  },
-  footerSpace: {
-    height: 16,
-  },
-});

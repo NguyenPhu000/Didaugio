@@ -4,12 +4,14 @@ import {
   useCallback,
   useMemo,
   useTransition,
+  memo,
+  useRef,
 } from "react";
-import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
   Star,
-  Search,
   MessageSquare,
   Send,
   X,
@@ -22,19 +24,23 @@ import {
   Image as ImageIcon,
   AlertTriangle,
   Clock,
+  Download,
+  Search,
 } from "lucide-react";
+import { exportToCsv, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 import api from "@/constants/api";
 import { getMyPlaces } from "@/apis/businessApi";
 import {
-  SectionCard,
-  PageHeader,
-  EmptyState,
-} from "@/components/business/DashboardWidgets";
+  BusinessSectionCard,
+  BusinessPageHeader,
+  BusinessEmptyState,
+} from "@/components/business/ui";
 import { DESIGN } from "@/components/business/dashboardWidgetHelpers";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import {
   Select,
@@ -49,18 +55,19 @@ import { resolveMediaUrl } from "@/utils/mediaUrl";
 
 const REVIEW_API = "/business/reviews";
 const REVIEW_MEDIA_PREVIEW_LIMIT = 5;
-const QUICK_REPLY_TEMPLATES = [
-  "Cảm ơn bạn đã chia sẻ trải nghiệm. Chúng tôi rất vui khi được phục vụ bạn và mong sớm gặp lại bạn.",
-  "Cảm ơn góp ý của bạn. Chúng tôi đã ghi nhận phản hồi này để cải thiện chất lượng dịch vụ.",
-  "Rất tiếc vì trải nghiệm của bạn chưa như kỳ vọng. Chúng tôi sẽ kiểm tra lại ngay và phản hồi hướng xử lý sớm nhất.",
-];
 
-const NEGATIVE_REPLY_TEMPLATE =
-  "Rất tiếc vì trải nghiệm của bạn chưa tốt. Chúng tôi xin ghi nhận và sẽ kiểm tra lại để cải thiện ngay.";
+const reviewApi = {
+  list: (params) => api.get(REVIEW_API, { params }),
+  getStats: () => api.get(`${REVIEW_API}/stats`),
+  reply: (reviewId, content) => api.post(`${REVIEW_API}/${reviewId}/reply`, { content }),
+  updateReply: (reviewId, replyId, content) => api.put(`${REVIEW_API}/${reviewId}/replies/${replyId}`, { content }),
+  deleteReply: (reviewId, replyId) => api.delete(`${REVIEW_API}/${reviewId}/replies/${replyId}`),
+  moderateReply: (reviewId, replyId, status) => api.patch(`${REVIEW_API}/${reviewId}/replies/${replyId}/moderation`, { status }),
+};
 
 // ─── Star Rating ──────────────────────────────────────────────────────────────
 
-const StarRating = ({ rating, size = "sm" }) => {
+const StarRating = memo(({ rating, size = "sm" }) => {
   const sz = size === "lg" ? "h-5 w-5" : "h-3.5 w-3.5";
   return (
     <div className="flex gap-0.5">
@@ -72,7 +79,8 @@ const StarRating = ({ rating, size = "sm" }) => {
       ))}
     </div>
   );
-};
+});
+StarRating.displayName = "StarRating";
 
 const getReviewMediaSrc = (media) =>
   resolveMediaUrl(
@@ -81,7 +89,7 @@ const getReviewMediaSrc = (media) =>
 
 // ─── Review Card ──────────────────────────────────────────────────────────────
 
-const ReviewCard = ({
+const ReviewCard = memo(({
   review,
   replyingTo,
   replyContent,
@@ -101,36 +109,46 @@ const ReviewCard = ({
   onDeleteReply,
   onModerateReply,
 }) => {
-  const formatDate = (date) =>
-    date ? new Date(date).toLocaleDateString("vi-VN") : "";
+  const { t } = useTranslation();
+  const formatDate = useCallback(
+    (date) => (date ? new Date(date).toLocaleDateString("vi-VN") : ""),
+    [],
+  );
   const hasReplied = review.replies?.length > 0;
   const isReplying = replyingTo === review.id;
-  const mediaItems = (review.media || [])
-    .map((media) => ({ ...media, src: getReviewMediaSrc(media) }))
-    .filter((media) => media.src)
-    .slice(0, REVIEW_MEDIA_PREVIEW_LIMIT);
+  const mediaItems = useMemo(
+    () =>
+      (review.media || [])
+        .map((media) => ({ ...media, src: getReviewMediaSrc(media) }))
+        .filter((media) => media.src)
+        .slice(0, REVIEW_MEDIA_PREVIEW_LIMIT),
+    [review.media],
+  );
 
-  const getModerateReplyIcon = (reply) => {
-    if (actionLoadingByReply[reply.id]) {
-      return <Loader2 className="h-3.5 w-3.5 animate-spin" />;
-    }
-    if (reply.status === "hidden") {
-      return <Eye className="h-3.5 w-3.5" />;
-    }
-    return <EyeOff className="h-3.5 w-3.5" />;
-  };
+  const handleQuickReply = useCallback(
+    (template) => {
+      onStartReply(review.id);
+      onContentChange(template);
+    },
+    [review.id, onStartReply, onContentChange],
+  );
+
+  const handleLowRatingReply = useCallback(() => {
+    onStartReply(review.id);
+    onContentChange(t("business.reviews.quickReplies.apologize"));
+  }, [review.id, onStartReply, onContentChange, t]);
 
   return (
-    <div className={cn(DESIGN.card, "[content-visibility:auto] p-5 space-y-3")}>
+    <div className={cn(DESIGN.card, "[content-visibility:auto] p-4 md:p-5 gap-3 flex flex-col")}>
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 font-semibold text-sm text-muted-foreground">
+        <div className="h-9 w-9 rounded-full bg-zinc-100 flex items-center justify-center shrink-0 font-semibold text-sm text-zinc-600">
           {(review.user?.profile?.fullName || "?")?.[0]?.toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-sm text-foreground">
-              {review.user?.profile?.fullName || "Ẩn danh"}
+            <span className="font-semibold text-sm text-zinc-950">
+              {review.user?.profile?.fullName || t("admin.reviewModeration.anonymous")}
             </span>
             <StarRating rating={review.rating} />
             {!hasReplied && (
@@ -138,7 +156,7 @@ const ReviewCard = ({
                 variant="outline"
                 className="text-[10px] text-amber-600 border-amber-200 bg-amber-50"
               >
-                Chưa phản hồi
+                {t("business.reviews.title")}
               </Badge>
             )}
             {review.isVerifiedPurchase && (
@@ -146,11 +164,11 @@ const ReviewCard = ({
                 variant="outline"
                 className="text-[10px] border-emerald-200 bg-emerald-50 text-emerald-700"
               >
-                Đã xác thực
+                {t("admin.reviewModeration.verified")}
               </Badge>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-zinc-500 mt-0.5">
             {review.place?.name} · {formatDate(review.createdAt)}
           </p>
         </div>
@@ -158,27 +176,27 @@ const ReviewCard = ({
 
       {/* Content */}
       {review.title && (
-        <p className="font-medium text-sm text-foreground">{review.title}</p>
+        <p className="font-medium text-sm text-zinc-950">{review.title}</p>
       )}
       {review.content && (
-        <p className="text-sm text-muted-foreground leading-relaxed">
+        <p className="text-sm text-zinc-500 leading-relaxed">
           {review.content}
         </p>
       )}
       {mediaItems.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
           {mediaItems.map((media, index) => (
             <a
               key={media.id || `${media.src}-${index}`}
               href={media.src}
               target="_blank"
               rel="noreferrer"
-              className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-muted"
-              title={media.caption || "Ảnh đánh giá"}
+              className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50"
+              title={media.caption || t("business.reviews.title")}
             >
               <img
                 src={media.src}
-                alt={media.caption || `Ảnh đánh giá ${index + 1}`}
+                alt={media.caption || `${t("business.reviews.title")} ${index + 1}`}
                 className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                 loading="lazy"
               />
@@ -189,109 +207,30 @@ const ReviewCard = ({
 
       {/* Existing replies */}
       {hasReplied && (
-        <div className="ml-6 pl-4 border-l-2 border-primary/30 space-y-3">
+        <div className="ml-3 md:ml-6 pl-3 md:pl-4 border-l-2 border-zinc-200 gap-3 flex flex-col">
           {review.replies.map((reply) => (
-            <div key={reply.id}>
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-primary">
-                    {reply.user?.profile?.fullName || "Doanh nghiệp"}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {formatDate(reply.createdAt)}
-                  </span>
-                  {reply.status === "hidden" && (
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] border-amber-300 text-amber-700 bg-amber-50"
-                    >
-                      Đã ẩn
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() => onStartEditReply(reply)}
-                    disabled={
-                      !!actionLoadingByReply[reply.id] ||
-                      editingReplyId === reply.id
-                    }
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() =>
-                      onModerateReply(
-                        reply.id,
-                        reply.status === "hidden" ? "visible" : "hidden",
-                      )
-                    }
-                    disabled={!!actionLoadingByReply[reply.id]}
-                  >
-                    {getModerateReplyIcon(reply)}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                    onClick={() => onDeleteReply(reply.id)}
-                    disabled={!!actionLoadingByReply[reply.id]}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-
-              {editingReplyId === reply.id ? (
-                <div className="mt-1 flex gap-2 items-start">
-                  <Textarea
-                    value={editContent}
-                    onChange={(e) => onEditContentChange(e.target.value)}
-                    rows={2}
-                    className="flex-1 text-xs"
-                  />
-                  <div className="flex flex-col gap-1">
-                    <Button
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => onSaveEditReply(reply.id)}
-                      disabled={!!actionLoadingByReply[reply.id]}
-                    >
-                      {actionLoadingByReply[reply.id] ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Send className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={onCancelEditReply}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  {reply.content}
-                </p>
-              )}
-            </div>
+            <ReplyItem
+              key={reply.id}
+              reply={reply}
+              placeName={review.place?.name}
+              editingReplyId={editingReplyId}
+              editContent={editContent}
+              actionLoadingByReply={actionLoadingByReply}
+              onStartEditReply={onStartEditReply}
+              onCancelEditReply={onCancelEditReply}
+              onEditContentChange={onEditContentChange}
+              onSaveEditReply={onSaveEditReply}
+              onDeleteReply={onDeleteReply}
+              onModerateReply={onModerateReply}
+              formatDate={formatDate}
+            />
           ))}
         </div>
       )}
 
       {/* Reply UI */}
       {isReplying ? (
-        <div className="space-y-2">
+        <div className="gap-2 flex flex-col">
           <div className="flex flex-wrap gap-1.5">
             {quickReplyTemplates.map((template) => (
               <Button
@@ -309,20 +248,24 @@ const ReviewCard = ({
           <div className="flex gap-2 items-start">
             <Textarea
               autoFocus
-              placeholder="Nhập phản hồi..."
+              placeholder={t("business.reviews.replySuccess")}
               value={replyContent}
               onChange={(e) => onContentChange(e.target.value)}
               rows={2}
-              className="flex-1 text-sm"
+              className="flex-1 text-sm min-w-0"
             />
             <div className="flex flex-col gap-1">
               <Button
                 size="sm"
-                className="h-9 w-9 p-0"
+                className="h-9 w-9 p-0 bg-zinc-950 text-white hover:bg-zinc-900"
                 onClick={onSendReply}
                 disabled={sending}
               >
-                <Send className="h-3.5 w-3.5" />
+                {sending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
               </Button>
               <Button
                 variant="outline"
@@ -341,24 +284,21 @@ const ReviewCard = ({
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5 h-8 text-xs"
+              className="gap-1.5 h-9 min-h-[44px] md:min-h-0 md:h-8 text-xs"
               onClick={() => onStartReply(review.id)}
             >
               <MessageSquare className="h-3.5 w-3.5" />
-              Phản hồi
+              {t("admin.reviewModeration.reply")}
             </Button>
             {review.rating <= 2 && (
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 h-8 text-xs border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                onClick={() => {
-                  onStartReply(review.id);
-                  onContentChange(NEGATIVE_REPLY_TEMPLATE);
-                }}
+                className="gap-1.5 h-9 min-h-[44px] md:min-h-0 md:h-8 text-xs border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                onClick={handleLowRatingReply}
               >
                 <AlertTriangle className="h-3.5 w-3.5" />
-                Xử lý nhanh
+                {t("business.schedule.processing")}
               </Button>
             )}
           </div>
@@ -366,11 +306,131 @@ const ReviewCard = ({
       )}
     </div>
   );
-};
+});
+ReviewCard.displayName = "ReviewCard";
+
+// ─── Reply Item (extracted for memoization) ───────────────────────────────────
+
+const ReplyItem = memo(({
+  reply,
+  placeName,
+  editingReplyId,
+  editContent,
+  actionLoadingByReply,
+  onStartEditReply,
+  onCancelEditReply,
+  onEditContentChange,
+  onSaveEditReply,
+  onDeleteReply,
+  onModerateReply,
+  formatDate,
+}) => {
+  const { t } = useTranslation();
+  const isEditing = editingReplyId === reply.id;
+  const isLoading = !!actionLoadingByReply[reply.id];
+
+  const moderateIcon = useMemo(() => {
+    if (isLoading) return <Loader2 className="h-3.5 w-3.5 animate-spin" />;
+    if (reply.status === "hidden") return <Eye className="h-3.5 w-3.5" />;
+    return <EyeOff className="h-3.5 w-3.5" />;
+  }, [isLoading, reply.status]);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-semibold text-zinc-950 truncate">
+            {placeName}
+          </span>
+          <span className="text-[10px] text-zinc-500 shrink-0">
+            {formatDate(reply.createdAt)}
+          </span>
+          {reply.status === "hidden" && (
+            <Badge
+              variant="outline"
+              className="text-[10px] border-amber-300 text-amber-700 bg-amber-50 shrink-0"
+            >
+              {t("admin.reviewModeration.hidden")}
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 md:h-7 md:w-7 p-0"
+            onClick={() => onStartEditReply(reply)}
+            disabled={isLoading || isEditing}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 md:h-7 md:w-7 p-0"
+            onClick={() =>
+              onModerateReply(reply.id, reply.status === "hidden" ? "visible" : "hidden")
+            }
+            disabled={isLoading}
+          >
+            {moderateIcon}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 md:h-7 md:w-7 p-0 text-destructive hover:text-destructive"
+            onClick={() => onDeleteReply(reply.id)}
+            disabled={isLoading}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {isEditing ? (
+        <div className="mt-1 flex gap-2 items-start">
+          <Textarea
+            value={editContent}
+            onChange={(e) => onEditContentChange(e.target.value)}
+            rows={2}
+            className="flex-1 text-xs min-w-0"
+          />
+          <div className="flex flex-col gap-1">
+            <Button
+              size="sm"
+              className="h-8 w-8 p-0 bg-zinc-950 text-white hover:bg-zinc-900"
+              onClick={() => onSaveEditReply(reply.id)}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="h-3.5 w-3.5" />
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={onCancelEditReply}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">
+          {reply.content}
+        </p>
+      )}
+    </div>
+  );
+});
+ReplyItem.displayName = "ReplyItem";
 
 // ─── Rating Bar ───────────────────────────────────────────────────────────────
 
-const RatingBar = ({ star, count, total }) => {
+const RatingBar = memo(({ star, count, total }) => {
   const pct = total > 0 ? (count / total) * 100 : 0;
   return (
     <div className="flex items-center gap-3">
@@ -388,16 +448,51 @@ const RatingBar = ({ star, count, total }) => {
       </span>
     </div>
   );
+});
+RatingBar.displayName = "RatingBar";
+
+// ─── Search Debounce Hook ─────────────────────────────────────────────────────
+
+const useDebouncedValue = (value, delay = 350) => {
+  const [debounced, setDebounced] = useState(value);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timerRef.current);
+  }, [value, delay]);
+
+  return debounced;
 };
+
+// ─── Skeleton Card ────────────────────────────────────────────────────────────
+
+const ReviewCardSkeleton = memo(() => (
+  <div className="space-y-2 p-4 rounded-xl border border-border">
+    <div className="flex items-center gap-2">
+      <Skeleton className="h-9 w-9 rounded-full" />
+      <div className="space-y-1.5 flex-1">
+        <Skeleton className="h-3.5 w-32" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+    </div>
+    <Skeleton className="h-3.5 w-full" />
+    <Skeleton className="h-3.5 w-3/4" />
+  </div>
+));
+ReviewCardSkeleton.displayName = "ReviewCardSkeleton";
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const ReviewListPage = () => {
+  const { t } = useTranslation();
   const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [places, setPlaces] = useState([]);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [selectedPlaceId, setSelectedPlaceId] = useState("all");
   const [ratingFilter, setRatingFilter] = useState("0");
   const [mediaFilter, setMediaFilter] = useState("all");
@@ -410,33 +505,50 @@ const ReviewListPage = () => {
   const [actionLoadingByReply, setActionLoadingByReply] = useState({});
   const [isPendingTransition, startTransition] = useTransition();
 
+  const QUICK_REPLY_TEMPLATES = useMemo(
+    () => [
+      t("business.reviews.quickReplies.thankPositive"),
+      t("business.reviews.quickReplies.thankNeutral"),
+      t("business.reviews.quickReplies.apologize"),
+    ],
+    [t],
+  );
+
+  const STATUS_LABELS = useMemo(
+    () => ({
+      visible: t("admin.reviewModeration.show"),
+      hidden: t("admin.reviewModeration.hidden"),
+      pending: t("admin.reviewModeration.pending"),
+      reported: t("admin.reviewModeration.reported"),
+    }),
+    [t],
+  );
+
   const loadReviews = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get(REVIEW_API, {
-        params: {
-          search,
-          placeId: selectedPlaceId !== "all" ? selectedPlaceId : undefined,
-          rating: ratingFilter !== "0" ? ratingFilter : undefined,
-          hasMedia: mediaFilter === "with-media" ? true : undefined,
-          page: 1,
-          limit: 50,
-        },
+      const response = await reviewApi.list({
+        search: debouncedSearch || undefined,
+        placeId: selectedPlaceId !== "all" ? selectedPlaceId : undefined,
+        rating: ratingFilter !== "0" ? ratingFilter : undefined,
+        hasMedia: mediaFilter === "with-media" ? true : undefined,
+        page: 1,
+        limit: 50,
       });
       setReviews(response.data || []);
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể tải danh sách đánh giá");
+      toastApiErrorIfNeeded(error, t("business.reviews.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [search, ratingFilter, selectedPlaceId, mediaFilter]);
+  }, [debouncedSearch, ratingFilter, selectedPlaceId, mediaFilter, t]);
 
   const loadStats = useCallback(async () => {
     try {
-      const response = await api.get(`${REVIEW_API}/stats`);
+      const response = await reviewApi.getStats();
       setStats(response.data);
-    } catch {
-      // Keep list visible even if stats endpoint fails.
+    } catch (err) {
+      console.error("[ReviewListPage] Failed to load stats:", err);
     }
   }, []);
 
@@ -471,161 +583,201 @@ const ReviewListPage = () => {
     [reviews],
   );
 
-  const handleTabChange = (nextTab) => {
+  const handleTabChange = useCallback((nextTab) => {
     startTransition(() => {
       setTabFilter(nextTab);
     });
-  };
+  }, []);
 
-  const handleReply = async () => {
+  const handleReply = useCallback(async () => {
     if (!replyContent.trim()) {
-      toast.error("Nội dung phản hồi không được trống");
+      toast.error(t("business.reviews.replyFailed"));
       return;
     }
     setSending(true);
     try {
-      await api.post(`${REVIEW_API}/${replyingTo}/reply`, {
-        content: replyContent,
-      });
-      toast.success("Phản hồi thành công");
+      await reviewApi.reply(replyingTo, replyContent);
+      toast.success(t("business.reviews.replySuccess"));
       setReplyingTo(null);
       setReplyContent("");
       await loadReviews();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể phản hồi");
+      toastApiErrorIfNeeded(error, t("business.reviews.replyFailed"));
     } finally {
       setSending(false);
     }
-  };
+  }, [replyContent, replyingTo, t, loadReviews]);
 
-  const handleStartEditReply = (reply) => {
+  const handleStartReply = useCallback((reviewId) => {
+    setReplyingTo(reviewId);
+    setReplyContent("");
+  }, []);
+
+  const handleCancelReply = useCallback(() => {
+    setReplyingTo(null);
+    setReplyContent("");
+  }, []);
+
+  const handleStartEditReply = useCallback((reply) => {
     setEditingReplyId(reply.id);
     setEditContent(reply.content || "");
-  };
+  }, []);
 
-  const handleCancelEditReply = () => {
+  const handleCancelEditReply = useCallback(() => {
     setEditingReplyId(null);
     setEditContent("");
-  };
+  }, []);
 
-  const handleSaveEditReply = async (reviewId, replyId) => {
+  const handleSaveEditReply = useCallback(async (reviewId, replyId) => {
     if (!editContent.trim()) {
-      toast.error("Nội dung phản hồi không được trống");
+      toast.error(t("business.reviews.replyFailed"));
       return;
     }
 
     setActionLoadingByReply((prev) => ({ ...prev, [replyId]: true }));
     try {
-      await api.put(`${REVIEW_API}/${reviewId}/replies/${replyId}`, {
-        content: editContent,
-      });
-      toast.success("Cập nhật phản hồi thành công");
+      await reviewApi.updateReply(reviewId, replyId, editContent);
+      toast.success(t("business.reviews.replySuccess"));
       handleCancelEditReply();
       await loadReviews();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể cập nhật phản hồi");
+      toastApiErrorIfNeeded(error, t("business.reviews.replyFailed"));
     } finally {
       setActionLoadingByReply((prev) => ({ ...prev, [replyId]: false }));
     }
-  };
+  }, [editContent, t, loadReviews, handleCancelEditReply]);
 
-  const handleDeleteReply = async (reviewId, replyId) => {
+  const handleDeleteReply = useCallback(async (reviewId, replyId) => {
     setActionLoadingByReply((prev) => ({ ...prev, [replyId]: true }));
     try {
-      await api.delete(`${REVIEW_API}/${reviewId}/replies/${replyId}`);
-      toast.success("Xóa phản hồi thành công");
+      await reviewApi.deleteReply(reviewId, replyId);
+      toast.success(t("common.deletedSuccessfully"));
       if (editingReplyId === replyId) {
         handleCancelEditReply();
       }
       await loadReviews();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể xóa phản hồi");
+      toastApiErrorIfNeeded(error, t("business.reviews.replyFailed"));
     } finally {
       setActionLoadingByReply((prev) => ({ ...prev, [replyId]: false }));
     }
-  };
+  }, [editingReplyId, t, loadReviews, handleCancelEditReply]);
 
-  const handleModerateReply = async (reviewId, replyId, status) => {
+  const handleModerateReply = useCallback(async (reviewId, replyId, status) => {
     setActionLoadingByReply((prev) => ({ ...prev, [replyId]: true }));
     try {
-      await api.patch(
-        `${REVIEW_API}/${reviewId}/replies/${replyId}/moderation`,
-        {
-          status,
-        },
-      );
+      await reviewApi.moderateReply(reviewId, replyId, status);
       toast.success(
-        status === "hidden" ? "Đã ẩn phản hồi" : "Đã hiển thị phản hồi",
+        status === "hidden" ? t("admin.reviewModeration.hidden") : t("admin.reviewModeration.show"),
       );
       await loadReviews();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể moderation phản hồi");
+      toastApiErrorIfNeeded(error, t("business.reviews.replyFailed"));
     } finally {
       setActionLoadingByReply((prev) => ({ ...prev, [replyId]: false }));
     }
-  };
+  }, [t, loadReviews]);
+
+  const handleExportCsv = useCallback(() => {
+    if (!reviews || reviews.length === 0) {
+      toast.error(t("admin.reviewModeration.noReviews"));
+      return;
+    }
+
+    exportToCsv({
+      columns: [
+        { key: "id", label: "ID" },
+        { key: (row) => row.user?.profile?.fullName || row.user?.email?.split("@")[0] || t("admin.reviewModeration.anonymous"), label: t("business.reviews.title") },
+        { key: (row) => row.user?.email || "", label: "Email" },
+        { key: "rating", label: t("admin.analytics.avgRating") },
+        { key: (row) => row.content || row.comment || "", label: t("business.reviews.title") },
+        { key: (row) => STATUS_LABELS[row.status] || row.status, label: t("business.revenue.status") },
+        { key: (row) => row.place?.name || "", label: t("business.places.title") },
+        { key: (row) => row.replies?.[0]?.content || "", label: t("admin.reviewModeration.reply") },
+        { key: (row) => row._count?.replies ?? (row.replies?.length ?? 0), label: `${t("admin.reviewModeration.reply")} (SL)` },
+        { key: (row) => (row.media || []).length, label: "Media" },
+        { key: (row) => formatCsvDate(row.createdAt), label: t("common.createdAt") },
+      ],
+      data: reviews,
+      filename: slugifyFilename("danh_sach_danh_gia"),
+    });
+
+    toast.success(t("common.export"));
+  }, [reviews, t, STATUS_LABELS]);
 
   return (
-    <div className="space-y-6 p-6 lg:p-8 min-h-screen">
+    <div className="space-y-4 md:space-y-6 p-4 md:p-6 lg:p-8 min-h-screen">
       {/* Header */}
-      <PageHeader
-        title="Quản lý đánh giá"
-        subtitle="Xem và phản hồi đánh giá từ khách hàng"
-        badge={stats?.total || undefined}
-      />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <BusinessPageHeader
+          title={t("business.reviews.title")}
+          description={t("business.reviews.description")}
+          badge={stats?.total || undefined}
+        />
+        <Button
+          variant="outline"
+          onClick={handleExportCsv}
+          className="h-9 px-3 gap-1.5 font-mono text-xs uppercase font-bold shrink-0 self-start sm:self-auto"
+        >
+          <Download className="h-4 w-4" />
+          CSV
+        </Button>
+      </div>
 
       {/* Stats Overview */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {/* Average rating */}
-          <SectionCard>
-            <div className="flex flex-col items-center justify-center py-4 gap-2">
-              <p className="text-5xl font-bold text-foreground">
+          <BusinessSectionCard>
+            <div className="flex flex-col items-center justify-center py-3 md:py-4 gap-1.5 md:gap-2">
+              <p className="text-3xl md:text-5xl font-bold text-foreground">
                 {Number(stats.avgRating || 0).toFixed(1)}
               </p>
               <StarRating rating={Math.round(stats.avgRating)} size="lg" />
-              <p className="text-xs text-muted-foreground">
-                Trung bình từ {stats.total} đánh giá
+              <p className="text-[10px] md:text-xs text-muted-foreground text-center">
+                {t("admin.analytics.avgRating")} ({stats.total})
               </p>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
-          <SectionCard>
-            <div className="flex flex-col items-center justify-center py-4 gap-2">
-              <MessageSquare className="h-6 w-6 text-primary" />
-              <p className="text-3xl font-bold text-foreground">
+          <BusinessSectionCard>
+            <div className="flex flex-col items-center justify-center py-3 md:py-4 gap-1.5 md:gap-2">
+              <MessageSquare className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+              <p className="text-2xl md:text-3xl font-bold text-foreground">
                 {Number(stats.responseRate || 0).toFixed(1)}%
               </p>
-              <p className="text-xs text-muted-foreground">
-                Tỷ lệ đã phản hồi
+              <p className="text-[10px] md:text-xs text-muted-foreground text-center">
+                {t("business.reviews.responseRate", { defaultValue: "Tỷ lệ phản hồi" })}
               </p>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
-          <SectionCard>
-            <div className="flex flex-col items-center justify-center py-4 gap-2">
-              <Clock className="h-6 w-6 text-primary" />
-              <p className="text-3xl font-bold text-foreground">
+          <BusinessSectionCard>
+            <div className="flex flex-col items-center justify-center py-3 md:py-4 gap-1.5 md:gap-2">
+              <Clock className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+              <p className="text-2xl md:text-3xl font-bold text-foreground">
                 {Number(stats.avgResponseTimeHours || 0).toFixed(1)}h
               </p>
-              <p className="text-xs text-muted-foreground">
-                Thời gian phản hồi TB
+              <p className="text-[10px] md:text-xs text-muted-foreground text-center">
+                {t("business.reviews.avgResponseTime", { defaultValue: "Thời gian phản hồi" })}
               </p>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
-          <SectionCard>
-            <div className="flex flex-col items-center justify-center py-4 gap-2">
-              <AlertTriangle className="h-6 w-6 text-amber-500" />
-              <p className="text-3xl font-bold text-foreground">
+          <BusinessSectionCard>
+            <div className="flex flex-col items-center justify-center py-3 md:py-4 gap-1.5 md:gap-2">
+              <AlertTriangle className="h-5 w-5 md:h-6 md:w-6 text-amber-500" />
+              <p className="text-2xl md:text-3xl font-bold text-foreground">
                 {Math.max((stats.total || 0) - (stats.repliedCount || 0), 0)}
               </p>
-              <p className="text-xs text-muted-foreground">Chưa phản hồi</p>
+              <p className="text-[10px] md:text-xs text-muted-foreground text-center">
+                {t("admin.reviewModeration.pending")}
+              </p>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
           {/* Rating distribution */}
-          <SectionCard title="Phân bố xếp hạng" className="md:col-span-4">
+          <BusinessSectionCard title={t("admin.analytics.avgRating")} className="col-span-2 md:col-span-4">
             <div className="space-y-2.5">
               {[5, 4, 3, 2, 1].map((r) => (
                 <RatingBar
@@ -636,23 +788,23 @@ const ReviewListPage = () => {
                 />
               ))}
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
         </div>
       )}
 
       {/* Main List */}
-      <SectionCard
-        title="Danh sách đánh giá"
+      <BusinessSectionCard
+        title={t("business.reviews.title")}
         titleIcon={MessagesSquare}
         bodyClassName="p-0"
         action={
-          <div className="flex gap-2 items-center">
+          <div className="flex flex-wrap gap-2 items-center">
             <Select value={selectedPlaceId} onValueChange={setSelectedPlaceId}>
-              <SelectTrigger className="h-8 text-xs w-40">
-                <SelectValue placeholder="Tất cả địa điểm" />
+              <SelectTrigger className="h-9 md:h-8 text-xs w-full sm:w-40">
+                <SelectValue placeholder={t("business.bookings.allPlaces")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả địa điểm</SelectItem>
+                <SelectItem value="all">{t("business.bookings.allPlaces")}</SelectItem>
                 {places.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     {p.name}
@@ -661,157 +813,143 @@ const ReviewListPage = () => {
               </SelectContent>
             </Select>
             <Select value={ratingFilter} onValueChange={setRatingFilter}>
-              <SelectTrigger className="h-8 text-xs w-28">
-                <SelectValue placeholder="Tất cả sao" />
+              <SelectTrigger className="h-9 md:h-8 text-xs w-full sm:w-28">
+                <SelectValue placeholder={t("admin.reviewModeration.allStars")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="0">Tất cả sao</SelectItem>
+                <SelectItem value="0">{t("admin.reviewModeration.allStars")}</SelectItem>
                 {[5, 4, 3, 2, 1].map((r) => (
                   <SelectItem key={r} value={String(r)}>
-                    {r} sao
+                    {r} ★
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Select value={mediaFilter} onValueChange={setMediaFilter}>
-              <SelectTrigger className="h-8 text-xs w-32">
-                <SelectValue placeholder="Ảnh đánh giá" />
+              <SelectTrigger className="h-9 md:h-8 text-xs w-full sm:w-32">
+                <SelectValue placeholder={t("admin.reviewModeration.allPhotos")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả ảnh</SelectItem>
+                <SelectItem value="all">{t("admin.reviewModeration.allPhotos")}</SelectItem>
                 <SelectItem value="with-media">
                   <span className="inline-flex items-center gap-1.5">
                     <ImageIcon className="h-3.5 w-3.5" />
-                    Có ảnh
+                    {t("admin.reviewModeration.withPhotos")}
                   </span>
                 </SelectItem>
               </SelectContent>
             </Select>
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <Input
-                placeholder="Tìm nội dung..."
+                placeholder={t("admin.reviewModeration.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 text-xs w-40"
+                className="pl-8 h-9 md:h-8 text-xs w-full sm:w-40"
               />
             </div>
           </div>
         }
       >
         <Tabs value={tabFilter} onValueChange={handleTabChange}>
-          <div className="px-5 border-b border-border/60">
+          <div className="px-4 md:px-5 border-b border-border/60 overflow-x-auto">
             <TabsList className="h-10 bg-transparent gap-1 p-0">
               <TabsTrigger value="all" className={DESIGN.tabUnderlineTrigger}>
-                Tất cả ({reviews.length})
+                {t("common.all")} ({reviews.length})
               </TabsTrigger>
               <TabsTrigger
                 value="unreplied"
                 className={DESIGN.tabUnderlineTrigger}
               >
-                Chưa phản hồi ({unrepliedCount})
+                {t("admin.reviewModeration.pending")} ({unrepliedCount})
               </TabsTrigger>
               <TabsTrigger
                 value="replied"
                 className={DESIGN.tabUnderlineTrigger}
               >
-                Đã phản hồi ({reviews.length - unrepliedCount})
+                {t("admin.reviewModeration.reply")} ({reviews.length - unrepliedCount})
               </TabsTrigger>
               <TabsTrigger
                 value="attention"
                 className={DESIGN.tabUnderlineTrigger}
               >
-                Cần xử lý ({attentionCount})
+                {t("admin.reviewModeration.needsAction")} ({attentionCount})
               </TabsTrigger>
             </TabsList>
             {isPendingTransition && (
               <p className="py-1 text-[11px] text-muted-foreground">
-                Đang lọc đánh giá...
+                {t("common.processing")}
               </p>
             )}
           </div>
 
           {["all", "unreplied", "replied", "attention"].map((tab) => (
             <TabsContent key={tab} value={tab} className="mt-0">
-              <div className="p-5">
-                {(() => {
-                  if (loading) {
-                    return (
-                      <div className="space-y-4">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                          <div
-                            key={i}
-                            className="space-y-2 p-4 rounded-xl border border-border"
-                          >
-                            <div className="flex items-center gap-2">
-                              <Skeleton className="h-9 w-9 rounded-full" />
-                              <div className="space-y-1.5">
-                                <Skeleton className="h-3.5 w-32" />
-                                <Skeleton className="h-3 w-24" />
-                              </div>
-                            </div>
-                            <Skeleton className="h-3.5 w-full" />
-                            <Skeleton className="h-3.5 w-3/4" />
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  }
-
-                  if (filteredReviews.length === 0) {
-                    return (
-                      <EmptyState
-                        icon={Star}
-                        message="Không có đánh giá nào."
+              <div className="p-4 md:p-5">
+                {loading ? (
+                  <div className="space-y-4">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <ReviewCardSkeleton key={i} />
+                    ))}
+                  </div>
+                ) : filteredReviews.length === 0 ? (
+                  <BusinessEmptyState
+                    icon={Star}
+                    message={t("admin.reviewModeration.noReviews")}
+                    action={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setTabFilter("all");
+                          setSearch("");
+                          setSelectedPlaceId("all");
+                          setRatingFilter("0");
+                          setMediaFilter("all");
+                        }}
+                      >
+                        {t("common.reset", { defaultValue: "Đặt lại bộ lọc" })}
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    {filteredReviews.map((review) => (
+                      <ReviewCard
+                        key={review.id}
+                        review={review}
+                        replyingTo={replyingTo}
+                        replyContent={replyContent}
+                        editingReplyId={editingReplyId}
+                        editContent={editContent}
+                        sending={sending}
+                        actionLoadingByReply={actionLoadingByReply}
+                        quickReplyTemplates={QUICK_REPLY_TEMPLATES}
+                        onStartReply={handleStartReply}
+                        onCancelReply={handleCancelReply}
+                        onContentChange={setReplyContent}
+                        onSendReply={handleReply}
+                        onStartEditReply={handleStartEditReply}
+                        onCancelEditReply={handleCancelEditReply}
+                        onEditContentChange={setEditContent}
+                        onSaveEditReply={(replyId) =>
+                          handleSaveEditReply(review.id, replyId)
+                        }
+                        onDeleteReply={(replyId) =>
+                          handleDeleteReply(review.id, replyId)
+                        }
+                        onModerateReply={(replyId, status) =>
+                          handleModerateReply(review.id, replyId, status)
+                        }
                       />
-                    );
-                  }
-
-                  return (
-                    <div className="space-y-4">
-                      {filteredReviews.map((review) => (
-                        <ReviewCard
-                          key={review.id}
-                          review={review}
-                          replyingTo={replyingTo}
-                          replyContent={replyContent}
-                          editingReplyId={editingReplyId}
-                          editContent={editContent}
-                          sending={sending}
-                          actionLoadingByReply={actionLoadingByReply}
-                          quickReplyTemplates={QUICK_REPLY_TEMPLATES}
-                          onStartReply={(reviewId) => {
-                            setReplyingTo(reviewId);
-                            setReplyContent("");
-                          }}
-                          onCancelReply={() => {
-                            setReplyingTo(null);
-                            setReplyContent("");
-                          }}
-                          onContentChange={setReplyContent}
-                          onSendReply={handleReply}
-                          onStartEditReply={handleStartEditReply}
-                          onCancelEditReply={handleCancelEditReply}
-                          onEditContentChange={setEditContent}
-                          onSaveEditReply={(replyId) =>
-                            handleSaveEditReply(review.id, replyId)
-                          }
-                          onDeleteReply={(replyId) =>
-                            handleDeleteReply(review.id, replyId)
-                          }
-                          onModerateReply={(replyId, status) =>
-                            handleModerateReply(review.id, replyId, status)
-                          }
-                        />
-                      ))}
-                    </div>
-                  );
-                })()}
+                    ))}
+                  </div>
+                )}
               </div>
             </TabsContent>
           ))}
         </Tabs>
-      </SectionCard>
+      </BusinessSectionCard>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { locationService } from "@/apis/locationService";
 
 /**
@@ -22,6 +23,7 @@ const ProvinceDistrictSelect = ({
   onDistrictChange,
   errors = {},
 }) => {
+  const { t } = useTranslation();
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [loadingProvinces, setLoadingProvinces] = useState(true);
@@ -76,11 +78,11 @@ const ProvinceDistrictSelect = ({
   const selectClassName =
     "w-full py-2.5 pl-10 pr-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 focus:ring-blue-600 focus:border-blue-600 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors appearance-none disabled:opacity-50 disabled:cursor-not-allowed";
 
-  let districtPlaceholder = "-- Chọn quận/huyện/phường/xã --";
+  let districtPlaceholder = t("location.selectDistrict");
   if (loadingDistricts) {
-    districtPlaceholder = "Đang tải...";
+    districtPlaceholder = t("location.loading");
   } else if (!provinceCode) {
-    districtPlaceholder = "Vui lòng chọn tỉnh/thành phố trước";
+    districtPlaceholder = t("location.selectProvinceFirst");
   }
 
   return (
@@ -88,7 +90,7 @@ const ProvinceDistrictSelect = ({
       {/* Province Select */}
       <div>
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-          Tỉnh/Thành phố
+          {t("location.province")}
         </label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10">
@@ -102,7 +104,7 @@ const ProvinceDistrictSelect = ({
             className={selectClassName}
           >
             <option value="">
-              {loadingProvinces ? "Đang tải..." : "-- Chọn tỉnh/thành phố --"}
+              {loadingProvinces ? t("location.loading") : t("location.selectProvince")}
             </option>
             {provinces.map((province) => (
               <option
@@ -128,7 +130,7 @@ const ProvinceDistrictSelect = ({
       {/* District Select */}
       <div>
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-          Quận/Huyện/Phường/Xã
+          {t("location.district")}
         </label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10">

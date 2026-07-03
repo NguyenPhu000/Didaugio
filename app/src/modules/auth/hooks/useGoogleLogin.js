@@ -5,6 +5,7 @@ import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 import * as Google from "expo-auth-session/providers/google";
 import { makeRedirectUri } from "expo-auth-session";
+import i18n from "@/i18n";
 import { useAuthStore } from "../../../stores/authStore";
 import { loginGoogleApi } from "../api/authApi";
 import { normalizeAuthSessionResponse } from "../utils/normalizeAuthSession";
@@ -105,7 +106,7 @@ export function useGoogleLogin() {
     timeoutRef.current = setTimeout(() => {
       if (callbackHandledRef.current || finishingRef.current) return;
       setIsLoading(false);
-      setError("Không nhận được phản hồi đăng nhập Google. Vui lòng thử lại.");
+      setError(i18n.t("authValidation.googleNoResponse"));
     }, CALLBACK_TIMEOUT_MS);
   }, [clearCallbackTimeout]);
 
@@ -123,7 +124,7 @@ export function useGoogleLogin() {
 
         if (!accessToken || !user) {
           throw new Error(
-            errorMessage || "Phiên đăng nhập Google không hợp lệ.",
+            errorMessage || i18n.t("authValidation.googleInvalidSession"),
           );
         }
 
@@ -159,7 +160,7 @@ export function useGoogleLogin() {
         await finalizeGoogleSession(idToken);
       } catch (e) {
         const normalizedError = buildLoginError(
-          e?.message || "Đăng nhập thất bại. Vui lòng thử lại.",
+          e?.message || i18n.t("authValidation.loginFailed"),
           e?.code || "GOOGLE_LOGIN_FAILED",
         );
         setError(normalizedError.message);
@@ -194,7 +195,7 @@ export function useGoogleLogin() {
         setError(
           response.error?.description ||
             response.error?.message ||
-            "Đăng nhập Google thất bại.",
+            i18n.t("authValidation.googleFailed"),
         );
         setIsLoading(false);
         return;
@@ -202,7 +203,7 @@ export function useGoogleLogin() {
 
       if (response.type !== "success") {
         clearCallbackTimeout();
-        setError("Đăng nhập Google thất bại. Vui lòng thử lại.");
+        setError(i18n.t("authValidation.googleFailedRetry"));
         setIsLoading(false);
         return;
       }
@@ -211,7 +212,7 @@ export function useGoogleLogin() {
         response.authentication?.idToken || response.params?.id_token || null;
       if (!idToken) {
         clearCallbackTimeout();
-        setError("Không nhận được id_token từ Google.");
+        setError(i18n.t("authValidation.googleNoIdToken"));
         setIsLoading(false);
         return;
       }
@@ -222,7 +223,7 @@ export function useGoogleLogin() {
         await finalizeGoogleSession(idToken);
       } catch (e) {
         const normalizedError = buildLoginError(
-          e?.message || "Đăng nhập thất bại. Vui lòng thử lại.",
+          e?.message || i18n.t("authValidation.loginFailed"),
           e?.code || "GOOGLE_LOGIN_FAILED",
         );
         setError(normalizedError.message);
@@ -244,19 +245,19 @@ export function useGoogleLogin() {
     setError(null);
 
     if (!googleConfig.webClientId) {
-      setError("Thiếu EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID trong app/.env.");
+      setError(i18n.t("authValidation.googleMissingConfig"));
       return;
     }
 
     if (isExpoGo && !googleConfig.hasProxyProject) {
       setError(
-        "Thiếu EXPO_PUBLIC_EXPO_OWNER hoặc EXPO_PUBLIC_EXPO_SLUG trong app/.env.",
+        i18n.t("authValidation.googleMissingOwner"),
       );
       return;
     }
 
     if (!request) {
-      setError("Google OAuth chưa sẵn sàng. Vui lòng thử lại sau vài giây.");
+      setError(i18n.t("authValidation.googleNotReady"));
       return;
     }
 
@@ -286,7 +287,7 @@ export function useGoogleLogin() {
 
         if (result.type === "error") {
           clearCallbackTimeout();
-          setError(result.error?.message || "Đăng nhập Google thất bại.");
+          setError(result.error?.message || i18n.t("authValidation.googleFailed"));
           setIsLoading(false);
           return;
         }
@@ -302,7 +303,7 @@ export function useGoogleLogin() {
     } catch (e) {
       clearCallbackTimeout();
       const normalizedError = buildLoginError(
-        e?.message || "Đăng nhập thất bại. Vui lòng thử lại.",
+        e?.message || i18n.t("authValidation.loginFailed"),
         e?.code || "GOOGLE_LOGIN_FAILED",
       );
       setError(normalizedError.message);

@@ -4,12 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { CheckCircle2, XCircle, Loader2, Mail } from "lucide-react";
 import { authService } from "@/apis";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
+import { useAuthStore } from "@/stores/authStore";
+import { ROLES } from "@/constants/constants";
 
 const VerifyEmailPublicPage = () => {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
+  const { user, setUser } = useAuthStore();
 
   const [status, setStatus] = useState("verifying"); // verifying | success | error
   const [message, setMessage] = useState("");
@@ -17,7 +22,7 @@ const VerifyEmailPublicPage = () => {
   const verifyEmail = useCallback(async () => {
     if (!token) {
       setStatus("error");
-      setMessage("Token không hợp lệ. Vui lòng kiểm tra lại link trong email.");
+      setMessage(t("auth.verifyEmail.invalidToken"));
       return;
     }
 
@@ -25,23 +30,33 @@ const VerifyEmailPublicPage = () => {
       setStatus("verifying");
       const response = await authService.verifyEmail({ token });
       setStatus("success");
-      setMessage(response.message || "Xác thực email thành công!");
-      toast.success("✅ Xác thực email thành công!");
+      setMessage(response.message || t("auth.verifyEmail.verifySuccess"));
+      toast.success(t("auth.verifyEmail.verifySuccess"));
+
+      // Cập nhật trạng thái emailVerified trong store
+      if (user) {
+        setUser({ ...user, emailVerified: true });
+      }
 
       // Auto redirect sau 3 giây
       setTimeout(() => {
-        navigate("/login", {
-          state: { message: "Email đã được xác thực. Vui lòng đăng nhập." },
-        });
+        if (user?.roleId === ROLES.BUSINESS) {
+          // Đã login + là business → đi thẳng đăng ký doanh nghiệp
+          navigate("/business/register", { replace: true });
+        } else {
+          navigate("/login", {
+            state: { message: t("auth.verifyEmail.redirectMessage") },
+          });
+        }
       }, 3000);
     } catch (error) {
       setStatus("error");
       const errorMsg =
-        error.response?.data?.message || error.message || "Xác thực thất bại";
+        error.response?.data?.message || error.message || t("auth.verifyEmail.verifyFailed");
       setMessage(errorMsg);
       toast.error(`❌ ${errorMsg}`);
     }
-  }, [navigate, token]);
+  }, [navigate, token, user, setUser]);
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -72,9 +87,9 @@ const VerifyEmailPublicPage = () => {
             )}
           </div>
           <CardTitle className="text-2xl font-bold">
-            {status === "verifying" && "Đang xác thực email..."}
-            {status === "success" && "Xác thực thành công!"}
-            {status === "error" && "Xác thực thất bại"}
+            {status === "verifying" && t("auth.verifyEmail.verifying")}
+            {status === "success" && t("auth.verifyEmail.success")}
+            {status === "error" && t("auth.verifyEmail.failed")}
           </CardTitle>
         </CardHeader>
 
@@ -92,10 +107,10 @@ const VerifyEmailPublicPage = () => {
                   onClick={() => navigate("/login")}
                   className="w-full bg-green-600 hover:bg-green-700"
                 >
-                  Đi đến Đăng nhập
+                  {t("auth.verifyEmail.goToLogin")}
                 </Button>
                 <p className="text-sm text-gray-500 text-center">
-                  Tự động chuyển hướng sau 3 giây...
+                  {t("auth.verifyEmail.autoRedirect")}
                 </p>
               </>
             )}
@@ -106,7 +121,7 @@ const VerifyEmailPublicPage = () => {
                   onClick={verifyEmail}
                   className="w-full bg-blue-600 hover:bg-blue-700"
                 >
-                  Thử lại
+                  {t("auth.verifyEmail.retry")}
                 </Button>
                 <Button
                   onClick={() => navigate("/resend-verification")}
@@ -114,24 +129,21 @@ const VerifyEmailPublicPage = () => {
                   className="w-full"
                 >
                   <Mail className="mr-2 h-4 w-4" />
-                  Gửi lại email xác thực
+                  {t("auth.verifyEmail.resendEmail")}
                 </Button>
                 <div className="border-t pt-4 mt-4">
                   <p className="text-sm text-gray-600 text-center mb-3">
-                    Các lỗi thường gặp:
+                    {t("auth.verifyEmail.commonErrors")}
                   </p>
                   <ul className="text-xs text-gray-500 space-y-2">
                     <li>
-                      • <strong>Token đã hết hạn:</strong> Token có hiệu lực 24
-                      giờ. Vui lòng gửi lại email xác thực.
+                      • {t("auth.verifyEmail.tokenExpired")}
                     </li>
                     <li>
-                      • <strong>Token không hợp lệ:</strong> Link có thể bị sai.
-                      Kiểm tra lại email hoặc gửi lại.
+                      • {t("auth.verifyEmail.tokenInvalid")}
                     </li>
                     <li>
-                      • <strong>Email đã xác thực:</strong> Tài khoản của bạn đã
-                      được xác thực. Vui lòng đăng nhập.
+                      • {t("auth.verifyEmail.emailAlreadyVerified")}
                     </li>
                   </ul>
                 </div>
@@ -141,7 +153,7 @@ const VerifyEmailPublicPage = () => {
             {status === "verifying" && (
               <div className="text-center">
                 <p className="text-sm text-gray-500">
-                  Vui lòng đợi trong giây lát...
+                  {t("auth.verifyEmail.pleaseWait")}
                 </p>
               </div>
             )}
@@ -150,17 +162,17 @@ const VerifyEmailPublicPage = () => {
           {/* Footer */}
           <div className="border-t pt-4 text-center">
             <p className="text-sm text-gray-600">
-              Chưa có tài khoản?{" "}
+              {t("auth.verifyEmail.noAccount")}{" "}
               <Link
                 to="/register"
                 className="text-blue-600 hover:underline font-medium"
               >
-                Đăng ký ngay
+                {t("auth.verifyEmail.registerNow")}
               </Link>
             </p>
             <p className="text-sm text-gray-600 mt-2">
               <Link to="/login" className="text-blue-600 hover:underline">
-                Quay lại Đăng nhập
+                {t("auth.verifyEmail.backToLogin")}
               </Link>
             </p>
           </div>

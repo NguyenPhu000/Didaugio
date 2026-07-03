@@ -8,6 +8,7 @@ import {
   categoryBarOptions,
 } from "./dashboardChartConfigs";
 import DashboardSystemHealth from "./DashboardSystemHealth";
+import { useTranslation } from "react-i18next";
 
 /**
  * ChartPanel - Wrapper with T.I.M style header
@@ -33,6 +34,7 @@ const ChartPanel = ({ title, subtitle, children }) => (
  * DashboardCharts - All chart panels for the dashboard
  */
 const DashboardCharts = ({ stats, categories, places }) => {
+  const { t } = useTranslation();
   const activityData = getActivityChartData();
   const placeStatusData = getPlaceStatusData(stats);
   const categoryBarData = getCategoryBarData(categories, places);
@@ -40,7 +42,7 @@ const DashboardCharts = ({ stats, categories, places }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       {/* Activity Chart */}
-      <ChartPanel title="ACTIVITY ANALYTICS" subtitle="BIỂU ĐỒ HOẠT ĐỘNG TUẦN">
+      <ChartPanel title={t("dashboard.charts.activityAnalytics")} subtitle={t("dashboard.charts.weeklyActivity")}>
         <div className="p-6 h-[350px]">
           <Line data={activityData} options={activityChartOptions} />
         </div>
@@ -48,8 +50,8 @@ const DashboardCharts = ({ stats, categories, places }) => {
 
       {/* Place Status Doughnut Chart */}
       <ChartPanel
-        title="STATUS DISTRIBUTION"
-        subtitle="PHÂN BỐ TRẠNG THÁI ĐỊA ĐIỂM"
+        title={t("dashboard.charts.statusDistribution")}
+        subtitle={t("dashboard.charts.placeStatusBreakdown")}
       >
         <div className="p-6 h-[350px] flex items-center justify-center">
           <Doughnut data={placeStatusData} options={placeStatusOptions} />
@@ -57,14 +59,14 @@ const DashboardCharts = ({ stats, categories, places }) => {
       </ChartPanel>
 
       {/* Category Distribution Bar Chart */}
-      <ChartPanel title="CATEGORY METRICS" subtitle="THỐNG KÊ THEO DANH MỤC">
+      <ChartPanel title={t("dashboard.charts.categoryMetrics")} subtitle={t("dashboard.charts.categoryStats")}>
         <div className="p-6 h-[350px]">
           <Bar data={categoryBarData} options={categoryBarOptions} />
         </div>
       </ChartPanel>
 
       {/* System Health Monitor */}
-      <ChartPanel title="SYSTEM HEALTH" subtitle="GIÁM SÁT HỆ THỐNG REALTIME">
+      <ChartPanel title={t("dashboard.charts.systemHealth")} subtitle={t("dashboard.charts.realtimeMonitoring")}>
         <DashboardSystemHealth />
       </ChartPanel>
     </div>

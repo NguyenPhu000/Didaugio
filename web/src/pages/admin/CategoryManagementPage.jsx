@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   Plus,
   Search,
@@ -16,7 +16,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import {
   Dialog,
   DialogContent,
@@ -26,13 +25,6 @@ import {
   DialogTitle,
 } from "@/components/ui/Dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -40,21 +32,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import useCategoryStore from "@/stores/categoryStore";
+import { useCategoryTree, useDeleteCategory } from "@/hooks/queries/useCategoryQueries";
 import CategoryFormDialog from "@/components/category/CategoryFormDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import { CATEGORY_ICON_MAP } from "@/constants/categoryConstants";
 import TimStatsCard from "@/components/admin/TimStatsCard";
+import { useTranslation } from "react-i18next";
 
 /**
  * CATEGORY MANAGEMENT PAGE - T.I.M STYLE
  */
 
 export default function CategoryManagementPage() {
-  const { categoryTree, loading, deleteCategory, fetchCategoryTree } =
-    useCategoryStore();
+  const { t } = useTranslation();
+  const { data: categoryTree = [], isLoading, refetch } = useCategoryTree(null, 3, true);
+  const deleteMutation = useDeleteCategory();
   const { toast } = useToast();
 
   const [formOpen, setFormOpen] = useState(false);
@@ -68,17 +61,13 @@ export default function CategoryManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  useEffect(() => {
-    fetchCategoryTree();
-  }, [fetchCategoryTree]);
-
   const [expandedRows, setExpandedRows] = useState({});
   const [selectedRootFilter, setSelectedRootFilter] = useState("all");
 
   const toggleExpand = (catId) => {
     setExpandedRows((prev) => ({
       ...prev,
-      [catId]: !prev[catId], // Toggle logic (default is false/undefined)
+      [catId]: !prev[catId],
     }));
   };
 
@@ -86,18 +75,16 @@ export default function CategoryManagementPage() {
     const getVisible = (cats, lvl) => {
       let res = [];
       cats.forEach((cat) => {
-        // Status Filter
         const matchesStatus =
           filterStatus === "all" ||
-          (filterStatus === "active" && !cat.isHidden) ||
-          (filterStatus === "hidden" && cat.isHidden);
+          (filterStatus === "active" && cat.isActive) ||
+          (filterStatus === "hidden" && !cat.isActive);
 
         const matchesSearch =
           !searchQuery ||
           cat.name.toLowerCase().includes(searchQuery.toLowerCase());
 
         if (searchQuery) {
-          // Search Mode: Flatten and filter
           if (matchesSearch && matchesStatus) {
             res.push({ ...cat, level: lvl });
           }
@@ -105,12 +92,11 @@ export default function CategoryManagementPage() {
             res = res.concat(getVisible(cat.children, lvl + 1));
           }
         } else {
-          // Tree Mode: Respect expansion
           if (matchesStatus) {
             res.push({ ...cat, level: lvl });
           }
 
-          const isExpanded = !!expandedRows[cat.id]; // Default Collasped (undefined/false -> false)
+          const isExpanded = !!expandedRows[cat.id];
 
           if (isExpanded && cat.children && cat.children.length > 0) {
             res = res.concat(getVisible(cat.children, lvl + 1));
@@ -134,10 +120,6 @@ export default function CategoryManagementPage() {
     selectedRootFilter,
   ]);
 
-  // Calculate actual stats (not affected by expansion state)
-  // BUG FIX: Separate actual total categories from filtered display count
-  // Previously: filteredFlatCategories.length would increase when expanding subcategories
-  // Now: actualTotalCategories always shows true total regardless of UI expansion state
   const actualTotalCategories = useMemo(() => {
     const countAll = (categories) => {
       return categories.reduce((total, cat) => {
@@ -150,7 +132,7 @@ export default function CategoryManagementPage() {
   const actualActiveCount = useMemo(() => {
     const countActive = (categories) => {
       return categories.reduce((total, cat) => {
-        const thisActive = !cat.isHidden ? 1 : 0;
+        const thisActive = cat.isActive ? 1 : 0;
         return (
           total + thisActive + (cat.children ? countActive(cat.children) : 0)
         );
@@ -188,10 +170,10 @@ export default function CategoryManagementPage() {
     if (!categoryToDelete) return;
 
     try {
-      await deleteCategory(categoryToDelete.id);
+      await deleteMutation.mutateAsync(categoryToDelete.id);
       toast({
-        title: "THÀNH CÔNG",
-        description: "Đã xóa danh mục khỏi hệ thống.",
+        title: t("common.success"),
+        description: t("categories.messages.deleteSuccess"),
         className: "bg-black text-white border border-primary font-mono",
       });
       setDeleteDialogOpen(false);
@@ -199,19 +181,19 @@ export default function CategoryManagementPage() {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "LỖI",
+        title: t("common.error"),
         description:
           error.response?.data?.message ||
-          "Không thể xóa danh mục này (có thể do còn địa điểm con).",
+          t("categories.errors.deleteFailed"),
       });
     }
   };
 
   const handleRefresh = () => {
-    fetchCategoryTree();
+    refetch();
     toast({
-      title: "ĐÃ LÀM MỚI",
-      description: "Dữ liệu danh mục đã được cập nhật.",
+      title: t("common.refreshed"),
+      description: t("categories.messages.refreshed"),
       className: "font-mono",
     });
   };
@@ -229,14 +211,14 @@ export default function CategoryManagementPage() {
             <div className="w-1.5 h-16 bg-yellow-400"></div>
             <div>
               <h1 className="text-4xl md:text-5xl uppercase font-black tracking-tight mb-2">
-                QUẢN LÝ DANH MỤC
+                {t("categories.title")}
               </h1>
               <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-1">
                 <span className="bg-black text-white px-2.5 py-0.5 text-xs font-mono font-bold tracking-widest uppercase">
                   TAXONOMY // CATEGORIES
                 </span>
                 <span className="text-gray-500 font-mono text-xs font-bold tracking-widest uppercase">
-                  PHÂN LOẠI VÀ TỔ CHỨC DỮ LIỆU
+                  {t("categories.subtitle")}
                 </span>
               </div>
             </div>
@@ -247,7 +229,7 @@ export default function CategoryManagementPage() {
               className="h-12 w-12 flex items-center justify-center border border-black bg-white hover:bg-gray-100 transition-colors"
             >
               <RefreshCw
-                className={`h-5 w-5 text-black ${loading ? "animate-spin" : ""}`}
+                className={`h-5 w-5 text-black ${isLoading ? "animate-spin" : ""}`}
               />
             </button>
             <button
@@ -255,7 +237,7 @@ export default function CategoryManagementPage() {
               className="h-12 px-6 flex items-center gap-2 border border-black bg-black text-white font-mono text-sm font-bold tracking-widest uppercase hover:bg-yellow-400 hover:text-black transition-colors"
             >
               <Plus className="h-4 w-4" />
-              TẠO DANH MỤC GỐC
+              {t("categories.createRoot")}
             </button>
           </div>
         </div>
@@ -263,30 +245,30 @@ export default function CategoryManagementPage() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8">
           <TimStatsCard
-            title="TỔNG DANH MỤC"
+            title={t("categories.stats.total")}
             value={actualTotalCategories}
             icon={FolderTree}
             serial="CAT-001"
           />
           <TimStatsCard
-            title="ĐANG HIỂN THỊ"
+            title={t("categories.stats.active")}
             value={actualActiveCount}
             icon={Eye}
             serial="CAT-002"
             textColor="text-emerald-500"
           />
           <TimStatsCard
-            title="ĐANG ẨN"
+            title={t("categories.stats.hidden")}
             value={actualHiddenCount}
             icon={EyeOff}
             serial="CAT-003"
             textColor="text-gray-400"
           />
           <TimStatsCard
-            title="TỔNG ĐỊA ĐIỂM"
+            title={t("categories.stats.totalPlaces")}
             value={filteredFlatCategories.reduce(
               (acc, curr) => acc + (curr._count?.places || 0),
-              0,
+              0
             )}
             icon={MapPin}
             serial="CAT-004"
@@ -303,7 +285,7 @@ export default function CategoryManagementPage() {
             </div>
             <input
               type="text"
-              placeholder="TÌM KIẾM DANH MỤC..."
+              placeholder={t("categories.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 bg-zinc-50 px-4 font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400 transition-colors"
@@ -317,7 +299,7 @@ export default function CategoryManagementPage() {
               onChange={(e) => setSelectedRootFilter(e.target.value)}
               className="w-full h-full px-4 appearance-none outline-none font-mono text-xs uppercase cursor-pointer bg-white z-10 hover:bg-gray-50 focus:bg-yellow-50"
             >
-              <option value="all">TẤT CẢ DANH MỤC</option>
+              <option value="all">{t("categories.filters.allCategories")}</option>
               {(categoryTree || []).map((root) => (
                 <option key={root.id} value={root.id}>
                   {root.name}
@@ -336,9 +318,9 @@ export default function CategoryManagementPage() {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="w-full h-full px-4 appearance-none outline-none font-mono text-xs uppercase cursor-pointer bg-white z-10 hover:bg-gray-50 focus:bg-yellow-50"
             >
-              <option value="all">TẤT CẢ TRẠNG THÁI</option>
-              <option value="active">ĐANG HIỂN THỊ</option>
-              <option value="hidden">ĐANG ẨN</option>
+              <option value="all">{t("categories.filters.allStatuses")}</option>
+              <option value="active">{t("categories.filters.active")}</option>
+              <option value="hidden">{t("categories.filters.hidden")}</option>
             </select>
             <div className="absolute right-4 top-0 bottom-0 flex items-center pointer-events-none">
               <ChevronDown className="h-4 w-4 text-gray-400" />
@@ -348,11 +330,11 @@ export default function CategoryManagementPage() {
 
         {/* Table View */}
         <div className="bg-white border border-black shadow-sm overflow-hidden">
-          {loading ? (
+          {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
               <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
               <span className="font-mono text-xs uppercase text-gray-500">
-                ĐANG TẢI DỮ LIỆU...
+                {t("common.loading")}
               </span>
             </div>
           ) : (
@@ -361,24 +343,24 @@ export default function CategoryManagementPage() {
                 <thead>
                   <tr className="bg-black text-white font-mono text-[11px] md:text-sm font-bold uppercase tracking-widest">
                     <th className="p-4 border-r border-gray-800 text-left">
-                      TÊN DANH MỤC / CẤP ĐỘ
+                      {t("categories.table.name")}
                     </th>
                     <th className="p-4 border-r border-gray-800 text-center w-[120px]">
-                      ICON / HÌNH
+                      {t("categories.table.icon")}
                     </th>
                     <th className="p-4 border-r border-gray-800 w-[150px] text-center">
                       SLUG
                     </th>
                     <th className="p-4 border-r border-gray-800 text-center w-[100px]">
-                      THỨ TỰ
+                      {t("categories.table.order")}
                     </th>
                     <th className="p-4 border-r border-gray-800 w-[150px] text-center">
-                      ĐỊA ĐIỂM
+                      {t("categories.table.places")}
                     </th>
                     <th className="p-4 border-r border-gray-800 w-[150px] text-center">
-                      TRẠNG THÁI
+                      {t("categories.table.status")}
                     </th>
-                    <th className="p-4 text-center w-[100px]">THAO TÁC</th>
+                    <th className="p-4 text-center w-[100px]">{t("categories.table.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -476,13 +458,13 @@ export default function CategoryManagementPage() {
                         </span>
                       </td>
                       <td className="p-4 border-r border-gray-100">
-                        {cat.isHidden ? (
+                        {!cat.isActive ? (
                           <div className="flex items-center justify-center gap-2 text-xs font-bold text-gray-500 uppercase font-mono">
-                            <EyeOff className="w-3 h-3" /> Ẩn
+                            <EyeOff className="w-3 h-3" /> {t("categories.status.hidden")}
                           </div>
                         ) : (
                           <div className="flex items-center justify-center gap-2 text-xs font-bold text-green-600 uppercase font-mono">
-                            <Eye className="w-3 h-3" /> Hiển thị
+                            <Eye className="w-3 h-3" /> {t("categories.status.active")}
                           </div>
                         )}
                       </td>
@@ -497,29 +479,28 @@ export default function CategoryManagementPage() {
                             align="end"
                             className="rounded-none border border-black w-56 font-mono text-xs uppercase"
                           >
-                            <DropdownMenuLabel>QUẢN LÝ</DropdownMenuLabel>
+                            <DropdownMenuLabel>{t("categories.management")}</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             {cat.level < 2 && (
                               <DropdownMenuItem
                                 onClick={() => handleAddChild(cat)}
                                 className="cursor-pointer"
                               >
-                                <Plus className="mr-2 h-3 w-3" /> THÊM DANH MỤC
-                                CON
+                                <Plus className="mr-2 h-3 w-3" /> {t("categories.actions.addChild")}
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
                               onClick={() => handleEdit(cat)}
                               className="cursor-pointer"
                             >
-                              <Edit className="mr-2 h-3 w-3" /> CHỈNH SỬA
+                              <Edit className="mr-2 h-3 w-3" /> {t("categories.actions.edit")}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => handleDeleteClick(cat)}
                               className="text-red-600 hover:bg-red-50 cursor-pointer"
                             >
-                              <Trash2 className="mr-2 h-3 w-3" /> XÓA DANH MỤC
+                              <Trash2 className="mr-2 h-3 w-3" /> {t("categories.actions.delete")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -531,7 +512,7 @@ export default function CategoryManagementPage() {
                       <td colSpan={7} className="p-20 text-center">
                         <FolderOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                         <div className="font-bold uppercase text-gray-400">
-                          KHÔNG TÌM THẤY DỮ LIỆU
+                          {t("common.noData")}
                         </div>
                       </td>
                     </tr>
@@ -559,17 +540,15 @@ export default function CategoryManagementPage() {
           <DialogContent className="rounded-none border border-black p-0 overflow-hidden sm:max-w-md">
             <DialogHeader className="p-6 bg-red-600 text-white">
               <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-                <Activity className="h-6 w-6" /> CẢNH BÁO: QUY TRÌNH XÓA
+                <Activity className="h-6 w-6" /> {t("categories.deleteDialog.title")}
               </DialogTitle>
               <DialogDescription className="text-red-100 font-mono text-xs mt-2 uppercase">
-                Thao tác này là vĩnh viễn và không thể hoàn tác. Xin xác nhận.
+                {t("categories.deleteDialog.description")}
               </DialogDescription>
             </DialogHeader>
             <div className="p-6 bg-white">
               <p className="font-mono text-sm mb-4">
-                Bạn có chắc chắn muốn xóa danh mục{" "}
-                <span className="font-bold">[{categoryToDelete?.name}]</span>{" "}
-                khỏi cơ sở dữ liệu?
+                {t("categories.deleteDialog.message", { name: categoryToDelete?.name })}
               </p>
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button
@@ -577,14 +556,14 @@ export default function CategoryManagementPage() {
                   onClick={() => setDeleteDialogOpen(false)}
                   className="rounded-none border-black hover:bg-gray-100"
                 >
-                  Hủy bỏ
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={handleDeleteConfirm}
                   className="rounded-none bg-red-600 hover:bg-red-700 font-bold uppercase"
                 >
-                  Xác nhận xóa
+                  {t("common.confirmDelete")}
                 </Button>
               </DialogFooter>
             </div>

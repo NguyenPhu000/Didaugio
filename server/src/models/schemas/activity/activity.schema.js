@@ -6,8 +6,9 @@ export const auditLogQuerySchema = z.object({
   userId: z.coerce.number().int().positive().optional(),
   action: z.string().optional(),
   tableName: z.string().optional(),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  recordId: z.coerce.number().int().positive().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
 });
 
 export const createEmailVerificationSchema = z.object({

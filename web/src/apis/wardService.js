@@ -33,6 +33,8 @@ export const getWardBySlug = async (slug) => {
 };
 
 export default {
+  getAll: getWardsByDistrict,
+  getById: getWardById,
   getAllWards,
   getWardsByDistrict,
   getWardById,

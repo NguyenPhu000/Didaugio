@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import useTagStore from "@/stores/tagStore";
+import { useMemo, useState } from "react";
+import { useTags } from "@/hooks/queries/useTagQueries";
 import { Loader2, Tag, X, ChevronRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -23,14 +23,8 @@ const TAG_GROUPS = {
 };
 
 const TagSelector = ({ selectedTags = [], onChange }) => {
-  const { tags, fetchTags, loading } = useTagStore();
+  const { data: tags = [], isLoading } = useTags();
   const [activeGroup, setActiveGroup] = useState(null);
-
-  useEffect(() => {
-    if (tags.length === 0) {
-      fetchTags();
-    }
-  }, [fetchTags, tags.length]);
 
   const toggleTag = (tagId) => {
     const newSelected = selectedTags.includes(tagId)
@@ -63,10 +57,9 @@ const TagSelector = ({ selectedTags = [], onChange }) => {
     "other",
   ];
 
-  // Get selected tag objects for display
   const selectedTagObjects = tags.filter((t) => selectedTags.includes(t.id));
 
-  if (loading && tags.length === 0)
+  if (isLoading && tags.length === 0)
     return (
       <div className="p-8 flex justify-center border border-black border-dashed bg-gray-50">
         <Loader2 className="animate-spin w-6 h-6" />
@@ -113,7 +106,7 @@ const TagSelector = ({ selectedTags = [], onChange }) => {
         {groupOrder.map((groupKey) => {
           const count = (groupedTags[groupKey] || []).length;
           const selectedInGroup = (groupedTags[groupKey] || []).filter((t) =>
-            selectedTags.includes(t.id),
+            selectedTags.includes(t.id)
           ).length;
 
           return (
@@ -125,7 +118,7 @@ const TagSelector = ({ selectedTags = [], onChange }) => {
                 "h-auto py-3 px-3 flex flex-col items-start gap-1 border-black rounded-none shadow-sm transition-all hover:translate-y-[-2px] hover:shadow-hard",
                 selectedInGroup > 0
                   ? "bg-gray-50 ring-1 ring-black ring-offset-1"
-                  : "bg-white",
+                  : "bg-white"
               )}
               onClick={() => setActiveGroup(groupKey)}
             >
@@ -179,7 +172,7 @@ const TagSelector = ({ selectedTags = [], onChange }) => {
                         "flex items-center justify-between px-3 py-2 text-xs font-mono uppercase border transition-all text-left",
                         isSelected
                           ? "bg-black text-white border-black shadow-hard transform translate-y-[-2px]"
-                          : "bg-white text-black border-gray-200 hover:border-black hover:bg-gray-50",
+                          : "bg-white text-black border-gray-200 hover:border-black hover:bg-gray-50"
                       )}
                     >
                       <span className="truncate mr-2 font-medium">

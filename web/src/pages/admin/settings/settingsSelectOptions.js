@@ -45,6 +45,7 @@ export const ANALYTICS_PROVIDER_OPTIONS = [
 
 export const PAYMENT_PROVIDER_OPTIONS = [
   { value: "none", label: "Chưa tích hợp" },
+  { value: "sepay", label: "SePay (VietQR)" },
   { value: "momo", label: "MoMo" },
   { value: "vnpay", label: "VNPay" },
   { value: "stripe", label: "Stripe" },

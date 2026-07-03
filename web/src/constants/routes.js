@@ -20,6 +20,7 @@ export const ADMIN_ROUTES = {
   DASHBOARD: "/dashboard",
   PROFILE: "/profile",
   SETTINGS: "/settings",
+  NOTIFICATIONS: "/notifications",
 
   USERS: "/users",
   ROLES: "/roles",
@@ -43,22 +44,44 @@ export const ADMIN_ROUTES = {
   PASSWORD_RESETS: "/password-resets",
   AUDIT_LOGS: "/audit-logs",
   LOGIN_HISTORY: "/login-history",
+
+  ANALYTICS: "/admin/analytics",
+  CMS: "/admin/cms",
+  PAYOUTS: "/admin/payouts",
+  REFUNDS: "/admin/refunds",
+  CASHFLOW: "/admin/cashflow",
+  SUBSCRIPTIONS: "/admin/subscriptions",
+  SUBSCRIPTION_PLANS: "/admin/subscriptions/plans",
 };
 
 export const BUSINESS_ROUTES = {
   DASHBOARD: "/business/dashboard",
+  WELCOME: "/business/welcome",
   PROFILE: "/business/profile",
   /** Deep link: mục Hợp đồng trong Hồ sơ (một bản ghi Business, không còn /business/contracts) */
   PROFILE_CONTRACT: "/business/profile?section=contract",
   REGISTER: "/business/register",
+  MAP: "/business/map",
+  PLACES: "/business/places",
+  PLACES_NEW: "/business/places/new",
+  PLACES_EDIT_PATTERN: "/business/places/edit/:id",
+  PLACES_EDIT: (id) => `/business/places/edit/${id}`,
   SERVICES: "/business/services",
   BOOKINGS: "/business/bookings",
   BOOKING_SCHEDULE: "/business/bookings/schedule",
   BOOKING_QUICK: "/business/bookings/quick",
   BOOKING_DETAIL: (id) => `/business/bookings/${id}`,
   VOUCHERS: "/business/vouchers",
+  STAFF: "/business/staff",
+  EARNINGS: "/business/earnings",
+  CASHFLOW: "/business/cashflow",
+  SUBSCRIPTION: "/business/subscription",
+  SUBSCRIPTION_PLANS: "/business/subscription/plans",
+  SUBSCRIPTION_INVOICES: "/business/subscription/invoices",
   REVENUE: "/business/revenue",
+  REPORTS: "/business/reports",
   REVIEWS: "/business/reviews",
+  SETTINGS: "/business/settings",
 };
 
 export const PLACES_ALIAS = "/places";

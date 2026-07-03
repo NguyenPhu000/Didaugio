@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -7,76 +8,55 @@ import {
   Phone,
   Mail,
   Globe,
-  Facebook,
   Tag,
   Loader2,
-  Calendar,
   Clock,
-  Info,
   DollarSign,
-  ImageIcon,
+  Image as ImageIcon,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import usePlaceStore from "@/stores/placeStore";
-import useCategoryStore from "@/stores/categoryStore";
-import useTagStore from "@/stores/tagStore";
-import * as districtService from "@/apis/districtService";
-import * as wardService from "@/apis/wardService";
-import { Button, Card, Badge, Separator } from "@/components/ui";
+import { useCategories } from "@/hooks/queries/useCategoryQueries";
+import { useTags } from "@/hooks/queries/useTagQueries";
+import { useCreatePlace, useUpdatePlace } from "@/hooks/queries/usePlaceQueries";
+import { useDistrictDetail, useWardDetail } from "@/hooks/queries/useDistrictQueries";
+import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription, Badge } from "@/components/ui";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 /**
  * STEP 3: PREVIEW & SUBMIT
- * Xem trước thông tin và gửi
- * T.I.M Style Redesign
+ * Clean, modern Shadcn/UI style
  */
-
 const StepPreview = ({ isEditMode }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const { wizardData, prevStep, loading, createPlace, updatePlace } =
+  const { wizardData, prevStep } =
     usePlaceStore();
 
-  const { categories } = useCategoryStore();
-  const { tags, fetchTags } = useTagStore();
+  const { data: categories = [] } = useCategories();
+  const { data: tags = [] } = useTags();
+  const createMutation = useCreatePlace();
+  const updateMutation = useUpdatePlace();
 
-  const [district, setDistrict] = useState(null);
-  const [ward, setWard] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
+  // Fetch district/ward details
+  const { data: districtRes } = useDistrictDetail(wizardData.districtId);
+  const district = districtRes?.data || districtRes;
+  const { data: wardRes } = useWardDetail(wizardData.wardId);
+  const ward = wardRes?.data || wardRes;
 
-  // Load district and ward info
-  useEffect(() => {
-    if (wizardData.districtId) {
-      districtService
-        .getDistrictById(wizardData.districtId)
-        .then((res) => setDistrict(res.data))
-        .catch(() => {});
-    }
-
-    if (wizardData.wardId) {
-      wardService
-        .getWardById(wizardData.wardId)
-        .then((res) => setWard(res.data))
-        .catch(() => {});
-    }
-  }, [wizardData.districtId, wizardData.wardId]);
-
-  // Load tags if not loaded
-  useEffect(() => {
-    if (tags.length === 0) {
-      fetchTags();
-    }
-  }, [tags.length, fetchTags]);
+  const submitting = createMutation.isPending || updateMutation.isPending;
 
   const category = categories.find((cat) => cat.id === wizardData.categoryId);
 
   const handleSubmit = async () => {
-    setSubmitting(true);
     try {
       const placeData = {
         ...wizardData,
-        // Ensure arrays are properly formatted
         images: wizardData.images || [],
         tagIds: wizardData.tagIds || [],
         openingHours: wizardData.openingHours || [],
@@ -84,44 +64,39 @@ const StepPreview = ({ isEditMode }) => {
       };
 
       if (isEditMode) {
-        // Update existing place
         const updateId = wizardData.id;
 
         if (!updateId) {
           console.error("Missing ID in wizardData", wizardData);
           toast({
             variant: "destructive",
-            title: "Lỗi",
-            description: "Không xác định được ID địa điểm",
+            title: t("common.error"),
+            description: t("admin.placeWizard.error"),
           });
           return;
         }
 
-        await updatePlace(updateId, placeData);
+        await updateMutation.mutateAsync({ id: updateId, data: placeData });
         toast({
-          title: "Thành công",
-          description: "Cập nhật địa điểm thành công",
+          title: t("common.success"),
+          description: t("admin.placeWizard.preview.updateSuccess"),
         });
       } else {
-        // Create new place
-        await createPlace(placeData);
+        await createMutation.mutateAsync(placeData);
         toast({
-          title: "Thành công",
-          description: "Tạo địa điểm mới thành công",
+          title: t("common.success"),
+          description: t("admin.placeWizard.preview.createSuccess"),
         });
       }
 
-      // Navigate back to list
       navigate("/admin/places");
     } catch (error) {
       console.error(error);
       toast({
         variant: "destructive",
-        title: "Lỗi",
-        description: error.message || "Có lỗi xảy ra khi lưu địa điểm",
+        title: t("common.error"),
+        description: error.message || t("admin.placeWizard.loadFailed"),
       });
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -132,242 +107,253 @@ const StepPreview = ({ isEditMode }) => {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-500 pb-20">
       {/* Summary Header */}
-      <div className="bg-white border-2 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-        <div className="flex justify-between items-start">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Badge className="bg-black text-white hover:bg-black rounded-none font-mono text-xs uppercase px-2 py-1">
-                {category?.name || "CHƯA PHÂN LOẠI"}
-              </Badge>
+      <Card className="overflow-hidden">
+        <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-6">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div className="space-y-2">
+              {category && (
+                <Badge variant="secondary" className="text-xs">
+                  {category.name}
+                </Badge>
+              )}
+              <h2 className="text-2xl sm:text-3xl font-bold">
+                {wizardData.name || t("common.noData")}
+              </h2>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4" />
+                <span>
+                  {wizardData.address}
+                  {district && `, ${district.name}`}
+                  {ward && `, ${ward.name}`}
+                </span>
+              </div>
             </div>
-            <h2 className="text-3xl font-black uppercase tracking-tight">
-              {wizardData.name || "UNTITLED_PLACE"}
-            </h2>
-            <div className="flex items-center gap-2 text-sm font-mono text-gray-600">
-              <MapPin className="w-4 h-4" />
-              <span>
-                {wizardData.address}
-                {district && `, ${district.name}`}
-                {ward && `, ${ward.name}`}
-              </span>
+            <div className="flex gap-2">
+              <Badge variant="outline" className="text-xs">
+                {wizardData.images?.length || 0} {t("admin.placeWizard.preview.images")}
+              </Badge>
+              {wizardData.slug && (
+                <Badge variant="outline" className="text-xs font-mono lowercase">
+                  /{wizardData.slug}
+                </Badge>
+              )}
             </div>
           </div>
-
-          {/* Thumbnail Preview Removed - Moved to Gallery */}
         </div>
-      </div>
+      </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Main Content Review */}
-        <div className="md:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
           {/* Images Gallery */}
-          <Card className="border-2 border-gray-200 rounded-sm p-4 bg-white">
-            <div className="flex items-center gap-2 mb-3 border-b border-gray-100 pb-2">
-              <ImageIcon className="w-4 h-4 text-gray-400" />
-              <span className="font-mono font-bold uppercase text-xs text-gray-500">
-                THƯ VIỆN ẢNH ({wizardData.images?.length || 0})
-              </span>
-            </div>
-            {wizardData.images && wizardData.images.length > 0 ? (
-              <div className="grid grid-cols-4 gap-2">
-                {wizardData.images.map((img, idx) => (
-                  <div
-                    key={idx}
-                    className="aspect-square border border-gray-200 bg-gray-50 relative group"
-                  >
-                    <img
-                      src={img.imageData}
-                      alt={`Preview ${idx}`}
-                      className="w-full h-full object-cover transition-all"
-                    />
-                    {img.isCover && (
-                      <div className="absolute top-1 left-1 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-[1px] font-mono">
-                        COVER
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-400 italic font-mono text-center py-4">
-                -- CHƯA CÓ HÌNH ẢNH --
-              </p>
-            )}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ImageIcon className="h-5 w-5 text-primary" />
+                {t("admin.placeWizard.preview.images")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {wizardData.images && wizardData.images.length > 0 ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {wizardData.images.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className="aspect-square border rounded-lg bg-muted overflow-hidden relative group"
+                    >
+                      <img
+                        src={img.imageData}
+                        alt={`Preview ${idx + 1}`}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      />
+                      {img.isCover && (
+                        <div className="absolute top-1 left-1 bg-primary text-primary-foreground text-[10px] font-medium px-1.5 py-0.5 rounded">
+                          Cover
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <ImageIcon className="h-10 w-10 text-muted-foreground/50 mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {t("admin.placeWizard.preview.noImages")}
+                  </p>
+                </div>
+              )}
+            </CardContent>
           </Card>
 
           {/* Description */}
-          <Card className="border-2 border-gray-200 rounded-sm p-4 bg-white">
-            <div className="flex items-center gap-2 mb-3 border-b border-gray-100 pb-2">
-              <Info className="w-4 h-4 text-gray-400" />
-              <span className="font-mono font-bold uppercase text-xs text-gray-500">
-                MÔ TẢ
-              </span>
-            </div>
-            <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-line font-mono">
-              {wizardData.description || "[CHƯA CÓ DỮ LIỆU]"}
-            </p>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Tag className="h-5 w-5 text-primary" />
+                {t("admin.placeWizard.preview.description")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+                {wizardData.description || t("common.noData")}
+              </p>
+            </CardContent>
           </Card>
 
-          {/* Tags & Price Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border-2 border-gray-200 rounded-sm p-4 bg-white h-auto">
-              <div className="flex items-center gap-2 mb-3 border-b border-gray-100 pb-2">
-                <Tag className="w-4 h-4 text-gray-400" />
-                <span className="font-mono font-bold uppercase text-xs text-gray-500">
-                  TAGS & THUỘC TÍNH
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
+          {/* Tags & Price */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Tag className="h-5 w-5 text-primary" />
+                  {t("admin.placeWizard.preview.tags")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 {wizardData.tagIds && wizardData.tagIds.length > 0 ? (
-                  wizardData.tagIds.map((tagId) => {
-                    const tag = tags.find((t) => t.id === tagId);
-                    return tag ? (
-                      <span
-                        key={tagId}
-                        className="px-2 py-1 bg-gray-100 text-gray-600 font-mono text-[10px] uppercase border border-gray-200"
-                      >
-                        #{tag.name}
-                      </span>
-                    ) : null;
-                  })
+                  <div className="flex flex-wrap gap-2">
+                    {wizardData.tagIds.map((tagId) => {
+                      const tag = tags.find((t) => t.id === tagId);
+                      return tag ? (
+                        <Badge key={tagId} variant="secondary" className="text-xs">
+                          #{tag.name}
+                        </Badge>
+                      ) : null;
+                    })}
+                  </div>
                 ) : (
-                  <span className="text-xs text-gray-400 italic font-mono">
-                    -- KHÔNG --
-                  </span>
+                  <p className="text-sm text-muted-foreground">
+                    {t("common.noData")}
+                  </p>
                 )}
-              </div>
+              </CardContent>
             </Card>
 
-            <Card className="border-2 border-gray-200 rounded-sm p-4 bg-white h-auto">
-              <div className="flex items-center gap-2 mb-3 border-b border-gray-100 pb-2">
-                <DollarSign className="w-4 h-4 text-gray-400" />
-                <span className="font-mono font-bold uppercase text-xs text-gray-500">
-                  GIÁ CẢ
-                </span>
-              </div>
-              <div className="space-y-1">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <DollarSign className="h-5 w-5 text-primary" />
+                  {t("admin.placeWizard.preview.priceRange")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
                 {wizardData.priceRange ? (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-gray-500">
-                      PHÂN KHÚC:
-                    </span>
-                    <span className="text-sm font-bold">
-                      {wizardData.priceRange}
-                    </span>
-                  </div>
+                  <Badge variant="outline">{wizardData.priceRange}</Badge>
                 ) : null}
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-xs font-mono text-gray-500">
-                    KHOẢNG:
-                  </span>
-                  <span className="text-sm font-mono">
-                    {wizardData.priceFrom
-                      ? Number(wizardData.priceFrom).toLocaleString("vi-VN")
-                      : "0"}
-                    {" - "}
-                    {wizardData.priceTo
-                      ? Number(wizardData.priceTo).toLocaleString("vi-VN")
-                      : "0"}
-                  </span>
-                </div>
-              </div>
+                <p className="text-sm text-muted-foreground">
+                  {wizardData.priceFrom
+                    ? `${Number(wizardData.priceFrom).toLocaleString("vi-VN")} - ${Number(wizardData.priceTo || wizardData.priceFrom).toLocaleString("vi-VN")} VND`
+                    : t("common.noData")}
+                </p>
+              </CardContent>
             </Card>
           </div>
         </div>
 
         {/* Sidebar Info */}
         <div className="space-y-6">
-          <Card className="border-2 border-gray-200 rounded-sm p-4 bg-gray-50">
-            <div className="flex items-center gap-2 mb-3 border-b border-gray-200 pb-2">
-              <Clock className="w-4 h-4 text-gray-400" />
-              <span className="font-mono font-bold uppercase text-xs text-gray-500">
-                LỊCH TRÌNH
-              </span>
-            </div>
-            <div className="space-y-2">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Clock className="h-5 w-5 text-primary" />
+                {t("admin.placeWizard.preview.openingHours")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               {wizardData.openingHours && wizardData.openingHours.length > 0 ? (
-                wizardData.openingHours.map((slot, idx) => (
-                  <div
-                    key={idx}
-                    className="flex justify-between items-center text-xs font-mono"
-                  >
-                    <span className="font-bold w-6">
-                      {slot.dayOfWeek === 8 ? "CN" : `T${slot.dayOfWeek}`}
-                    </span>
-                    <span
-                      className={cn(
-                        slot.isClosed ? "text-red-500" : "text-emerald-600",
-                        "flex-1 text-right",
-                      )}
+                <div className="space-y-2">
+                  {wizardData.openingHours.map((slot, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between text-sm"
                     >
-                      {slot.isClosed
-                        ? "ĐÓNG"
-                        : `${slot.openTime} - ${slot.closeTime}`}
-                    </span>
-                  </div>
-                ))
+                      <span className="font-medium w-12">
+                        {slot.dayOfWeek === 8 ? "CN" : `T${slot.dayOfWeek}`}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-muted-foreground",
+                          slot.isClosed && "text-destructive"
+                        )}
+                      >
+                        {slot.isClosed
+                          ? t("common.disabled")
+                          : `${slot.openTime} - ${slot.closeTime}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <span className="text-xs text-gray-400 italic font-mono block text-center py-4">
-                  -- CHƯA CÓ LỊCH --
-                </span>
+                <p className="text-sm text-muted-foreground">
+                  {t("common.noData")}
+                </p>
               )}
-            </div>
+            </CardContent>
           </Card>
 
-          <Card className="border-2 border-gray-200 rounded-sm p-4 bg-white">
-            <div className="flex items-center gap-2 mb-3 border-b border-gray-100 pb-2">
-              <Phone className="w-4 h-4 text-gray-400" />
-              <span className="font-mono font-bold uppercase text-xs text-gray-500">
-                LIÊN HỆ
-              </span>
-            </div>
-            <div className="space-y-3 font-mono text-xs">
-              <div className="flex gap-2 items-center">
-                <Phone className="w-3 h-3 text-gray-400" />
-                <span>{wizardData.phone || "--"}</span>
-              </div>
-              <div className="flex gap-2 items-center">
-                <Mail className="w-3 h-3 text-gray-400" />
-                <span className="break-all">{wizardData.email || "--"}</span>
-              </div>
-              <div className="flex gap-2 items-center">
-                <Globe className="w-3 h-3 text-gray-400" />
-                <span className="truncate max-w-[150px]">
-                  {wizardData.website || "--"}
-                </span>
-              </div>
-            </div>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Phone className="h-5 w-5 text-primary" />
+                {t("admin.placeWizard.preview.phone")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {wizardData.phone && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span>{wizardData.phone}</span>
+                </div>
+              )}
+              {wizardData.email && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <span className="truncate">{wizardData.email}</span>
+                </div>
+              )}
+              {wizardData.website && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <span className="truncate">{wizardData.website}</span>
+                </div>
+              )}
+              {!wizardData.phone && !wizardData.email && !wizardData.website && (
+                <p className="text-sm text-muted-foreground">
+                  {t("common.noData")}
+                </p>
+              )}
+            </CardContent>
           </Card>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex justify-between pt-6 border-t-2 border-black border-dashed mt-8">
+      <div className="flex justify-between pt-6 border-t bg-background/80 backdrop-blur-sm sticky bottom-0 pb-2">
         <Button
           variant="outline"
           onClick={handleBack}
           disabled={submitting}
           size="lg"
-          className="rounded-none border-2 border-black hover:bg-gray-100 font-mono font-bold uppercase"
+          className="gap-2"
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          QUAY LẠI
+          <ArrowLeft className="h-4 w-4" />
+          {t("common.back")}
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={submitting || loading}
+          disabled={submitting}
           size="lg"
-          className="rounded-none bg-black text-white hover:bg-gray-900 min-w-[200px] font-mono font-bold uppercase shadow-[4px_4px_0px_0px_rgba(200,200,200,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+          className="gap-2"
         >
           {submitting ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ĐANG XỬ LÝ...
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t("common.processing")}
             </>
           ) : (
             <>
-              <Check className="mr-2 h-4 w-4" />
-              {isEditMode ? "CẬP NHẬT NGAY" : "TẠO ĐỊA ĐIỂM"}
+              <Check className="h-4 w-4" />
+              {isEditMode ? t("admin.placeWizard.preview.save") : t("admin.placeWizard.preview.save")}
             </>
           )}
         </Button>

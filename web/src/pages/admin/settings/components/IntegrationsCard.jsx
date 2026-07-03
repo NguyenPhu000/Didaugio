@@ -6,6 +6,7 @@ import {
   CardTitle,
   Input,
 } from "@/components/ui";
+import { useTranslation } from "react-i18next";
 import SettingSelectField from "./SettingSelectField";
 import {
   ANALYTICS_PROVIDER_OPTIONS,
@@ -13,14 +14,15 @@ import {
 } from "../settingsSelectOptions";
 
 const IntegrationsCard = ({ value, onChange }) => {
+  const { t } = useTranslation();
   return (
     <Card className="rounded-none border-black bg-white">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-black uppercase tracking-wide">
-          6) Tích hợp & API
+          {t("settings.integrations.title")}
         </CardTitle>
         <CardDescription className="font-mono text-xs uppercase tracking-wider text-gray-500">
-          API keys, webhook endpoint và dịch vụ bên thứ 3
+          {t("settings.integrations.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -44,14 +46,14 @@ const IntegrationsCard = ({ value, onChange }) => {
         />
         <SettingSelectField
           id="settings-analytics-provider"
-          label="Analytics"
+          label={t("settings.integrations.analytics")}
           value={value.analyticsProvider}
           onChange={(v) => onChange("analyticsProvider", v)}
           options={ANALYTICS_PROVIDER_OPTIONS}
         />
         <SettingSelectField
           id="settings-payment-provider"
-          label="Cổng thanh toán"
+          label={t("settings.integrations.paymentProvider")}
           value={value.paymentProvider}
           onChange={(v) => onChange("paymentProvider", v)}
           options={PAYMENT_PROVIDER_OPTIONS}

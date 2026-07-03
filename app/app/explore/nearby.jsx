@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -11,7 +12,9 @@ import { ExploreListScaffold } from "../../src/modules/explore/components/Explor
 import { ExplorePlaceList } from "../../src/modules/explore/components/ExplorePlaceList";
 import { distanceMeters, formatDistance } from "../../src/modules/explore/utils/geo";
 
+
 export default function ExploreNearbyScreen() {
+  const { t } = useTranslation();
   const [watchEnabled, setWatchEnabled] = useState(false);
   const { currentLocation, permission, locateNow } = useExploreLocation({
     watchEnabled,
@@ -34,46 +37,47 @@ export default function ExploreNearbyScreen() {
   }, [data, currentLocation]);
 
   const subtitle = currentLocation
-    ? "Sắp xếp theo khoảng cách từ vị trí hiện tại của bạn."
-    : "Bật vị trí để xem các địa điểm gần bạn hơn.";
+    ? t("exploreNearby.sortByDistance")
+    : t("exploreNearby.enableLocation");
 
   return (
     <ExploreListScaffold
-      title="Gần bạn"
+      title={t("exploreNearby.nearYou")}
       subtitle={subtitle}
       rightAction={
-        <View style={styles.actionRow}>
+        <View className="flex-row items-center">
           <Pressable
             onPress={async () => {
               await locateNow();
               setWatchEnabled(true);
             }}
+            className="flex-row items-center gap-[6px] h-9 px-3 rounded-full bg-[#1D1D1F]"
             style={({ pressed }) => [
-              styles.actionBtn,
+              TOKENS.shadow.sm,
               pressed && { opacity: 0.92, transform: [{ scale: 0.98 }] },
             ]}
           >
-            <MaterialIcons
+            <MaterialIconsRounded
               name={permission === "granted" ? "my-location" : "location-off"}
               size={16}
               color={APPLE_THEME.white}
             />
-            <Text style={styles.actionText}>
-              {permission === "granted" ? "Định vị" : "Bật vị trí"}
+            <Text className="text-white text-[12px] font-semibold tracking-[0.2px]">
+              {permission === "granted" ? t("exploreNearby.locate") : t("exploreNearby.enableLocationBtn")}
             </Text>
           </Pressable>
         </View>
       }
     >
       {currentLocation ? (
-        <View style={styles.hintPill}>
-          <MaterialIcons
+        <View className="mx-6 mt-3 mb-[-2px] flex-row items-center gap-[6px] px-3 h-8 rounded-full bg-white/70 border border-[rgba(0,0,0,0.08)]">
+          <MaterialIconsRounded
             name="near-me"
             size={14}
             color={APPLE_THEME.textSecondary}
           />
-          <Text style={styles.hintText} numberOfLines={1}>
-            {`Vị trí hiện tại • ${currentLocation.latitude.toFixed(3)}, ${currentLocation.longitude.toFixed(3)}`}
+          <Text className="text-[rgba(0,0,0,0.8)] text-[12px] font-medium flex-1 min-w-0" numberOfLines={1}>
+            {`${t("exploreNearby.currentLocation")} • ${currentLocation.latitude.toFixed(3)}, ${currentLocation.longitude.toFixed(3)}`}
           </Text>
         </View>
       ) : null}
@@ -81,55 +85,10 @@ export default function ExploreNearbyScreen() {
       <ExplorePlaceList
         data={places}
         loading={isLoading}
-        emptyTitle="Chưa có địa điểm phù hợp"
-        emptyCopy="Hãy thử lại hoặc bật vị trí để sắp xếp theo khoảng cách."
+        emptyTitle={t("exploreNearby.noPlaces")}
+        emptyCopy={t("exploreNearby.tryAgain")}
         onEndReached={refetch}
       />
     </ExploreListScaffold>
   );
 }
-
-const styles = StyleSheet.create({
-  actionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  actionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    height: 36,
-    paddingHorizontal: 12,
-    borderRadius: TOKENS.radius.full,
-    backgroundColor: APPLE_THEME.primary,
-    ...TOKENS.shadow.sm,
-  },
-  actionText: {
-    color: APPLE_THEME.white,
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.2,
-  },
-  hintPill: {
-    marginHorizontal: TOKENS.space[6],
-    marginTop: 12,
-    marginBottom: -2,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    height: 32,
-    borderRadius: TOKENS.radius.full,
-    backgroundColor: "rgba(255,255,255,0.7)",
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-  },
-  hintText: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-    flex: 1,
-    minWidth: 0,
-  },
-});
-

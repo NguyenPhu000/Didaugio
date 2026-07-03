@@ -1,446 +1,275 @@
-import { memo, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Fragment, useMemo, useState, useEffect } from "react";
+import { StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
+import { Image } from "expo-image";
+import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
+import { Box, Text, Pressable } from "../../../components/primitives";
+import { cn } from "../../../lib/cn";
 import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../../src/constants/design-tokens";
-import {
-  TAB_CARD_RADIUS,
-  TAB_SCREEN_PADDING,
-} from "../../../../app/(tabs)/tabTheme";
-import {
-  FILTERS,
   buildSummary,
-  getSectionCopy,
   getHeroTrip,
   getDateRangeLabel,
+  getTimelineLabel,
+  getDaysUntil,
+  getTripFilters,
 } from "../utils/tripHelpers";
+import { resolveTripCoverUri } from "../../../lib/media-url";
 
-const SummaryTile = memo(function SummaryTile({ item }) {
-  const toneStyles = {
-    blue: [styles.summaryIconPrimary, styles.summarySparkPrimary],
-    amber: [styles.summaryIconMuted, styles.summarySparkMuted],
-    green: [styles.summaryIconMuted, styles.summarySparkMuted],
-    red: [styles.summaryIconMuted, styles.summarySparkMuted],
-  };
-  const [iconStyle, sparkStyle] = toneStyles[item.tone] || toneStyles.blue;
+const HERO_COVER_WIDTH = 800;
 
-  return (
-    <View style={styles.summaryTile}>
-      <View style={[styles.summaryIconWrap, iconStyle]}>
-        <MaterialIcons name={item.icon} size={20} color="#FFFFFF" />
-      </View>
-      <View style={{ gap: 2 }}>
-        <Text style={styles.summaryValue}>{item.value}</Text>
-        <Text style={styles.summaryLabel}>{item.label}</Text>
-      </View>
-      {/* Thêm nền đốm mờ để tạo glass feel */}
-      <View style={[styles.summarySpark, sparkStyle]} />
-    </View>
-  );
-});
-
-const FilterChip = memo(function FilterChip({ item, active, onPress }) {
-  if (active) {
-    return (
-      <Pressable
-        onPress={() => onPress(item.key)}
-        style={styles.filterChipActive}
-      >
-        <Text style={styles.filterChipTextActive}>{item.label}</Text>
-      </Pressable>
-    );
-  }
-  return (
-    <Pressable onPress={() => onPress(item.key)} style={styles.filterChip}>
-      <Text style={styles.filterChipText}>{item.label}</Text>
-    </Pressable>
-  );
-});
+const STAT_ICON_THEME = {
+  blue: { color: "#1D1D1F" },
+  amber: { color: "#FF9F0A" },
+  green: { color: "#34C759" },
+  teal: { color: "#14B8A6" },
+  red: { color: "#FF3B30" },
+};
 
 export function TripsDashboard({
   trips,
   filteredCount,
   activeFilter,
   onSelectFilter,
-  onCreate,
   onOpenHero,
+  onCreate,
 }) {
+  const { t } = useTranslation();
   const heroTrip = useMemo(() => getHeroTrip(trips), [trips]);
   const summary = useMemo(() => buildSummary(trips), [trips]);
+  const filters = getTripFilters();
+
+  const heroCoverUri = useMemo(
+    () => (heroTrip ? resolveTripCoverUri(heroTrip, HERO_COVER_WIDTH) : null),
+    [heroTrip],
+  );
+
+  const [imgSrc, setImgSrc] = useState({ uri: heroCoverUri });
+
+  useEffect(() => {
+    setImgSrc({ uri: heroCoverUri });
+  }, [heroCoverUri]);
+
+  const timelineLabel = heroTrip ? getTimelineLabel(heroTrip) : null;
 
   return (
-    <View style={styles.dashboardWrap}>
-      <View style={styles.heroCard}>
-        <View style={styles.heroAccent} />
+    <Box className="px-6 pt-2 pb-6">
+      {/* ── Header ── */}
+      <Box className="flex-row items-center justify-between mt-2.5 mb-4">
+        <Box className="flex-1 pr-3">
+          <Text className="text-[28px] font-semibold text-ink">
+            {t("tripDashboard.journey")}
+          </Text>
+          <Text className="text-[14px] mt-1 text-ink-muted">
+            {(trips?.length ?? 0) > 0
+              ? t("tripDashboard.yourTrips", { count: trips.length })
+              : t("tripDashboard.createMemory")}
+          </Text>
+        </Box>
+        <Pressable
+          onPress={onCreate}
+          accessibilityLabel={t("tripDashboard.createTripAccessibility")}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          className="w-11 h-11 rounded-full items-center justify-center bg-ink active:opacity-[0.85]"
+        >
+          <MaterialIconsRounded name="add" size={26} color="#FFFFFF" />
+        </Pressable>
+      </Box>
 
-        <View style={styles.heroTopRow}>
-          <View style={styles.heroBadge}>
-            <MaterialIcons
-              name="explore"
-              size={14}
-              color={APPLE_THEME.primary}
+      {/* ── Hero Trip Card ── */}
+      {heroTrip ? (
+        <Pressable
+          onPress={() => onOpenHero(heroTrip.id)}
+          className="h-[176px] rounded-2xl overflow-hidden mb-4 bg-[#1C1C1E]"
+          style={SHADOW.hero}
+        >
+          {imgSrc?.uri ? (
+            <Image
+              source={imgSrc}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              transition={300}
+              cachePolicy="memory-disk"
+              onError={() => setImgSrc({ uri: null })}
             />
-            <Text style={styles.heroBadgeText}>Bảng điều khiển</Text>
-          </View>
+          ) : null}
+          <Box className="absolute inset-0 bg-black/35" pointerEvents="none" />
 
-          <Pressable onPress={onCreate} style={styles.createButton}>
-            <MaterialIcons name="add" size={18} color={APPLE_THEME.white} />
-            <Text style={styles.createButtonText}>Tạo mới</Text>
-          </Pressable>
-        </View>
+          <Box className="absolute top-3 left-3 rounded-full overflow-hidden">
+            <Box className="flex-row items-center px-3 py-1.5 gap-1.5 bg-white/90">
+              <Box className="w-1.5 h-1.5 rounded-full bg-success" />
+              <Text className="text-[11px] uppercase font-semibold text-ink">
+                {timelineLabel || t("tripDashboard.upcoming")}
+              </Text>
+            </Box>
+          </Box>
 
-        <Text style={styles.heroTitle}>
-          Quản lý hành trình theo cách rõ ràng hơn
-        </Text>
-        <Text style={styles.heroSubtitle}>
-          Nhắc việc, trạng thái và điểm đến quan trọng đều nằm trong cùng một bố
-          cục để theo dõi nhanh.
-        </Text>
+          <Box className="absolute bottom-0 left-0 right-0 p-4 gap-2.5">
+            <Text
+              className="text-white text-[22px] leading-[27px] font-semibold"
+              numberOfLines={2}
+            >
+              {heroTrip.title || t("tripDashboard.newTrip")}
+            </Text>
 
-        {heroTrip ? (
-          <Pressable
-            onPress={() => onOpenHero(heroTrip.id)}
-            style={({ pressed }) => [
-              styles.spotlightCard,
-              pressed && { transform: [{ scale: 0.98 }], opacity: 0.9 },
-            ]}
-          >
-            <View style={styles.spotlightTopRow}>
-              <View style={styles.spotlightLabelWrap}>
-                <Text style={styles.spotlightEyebrow}>Sắp tới nhất</Text>
-                <Text style={styles.spotlightTitle} numberOfLines={1}>
-                  {heroTrip.title || "Chuyến đi mới"}
-                </Text>
-              </View>
-              <View style={styles.spotlightArrow}>
-                <MaterialIcons
-                  name="north-east"
-                  size={18}
-                  color={APPLE_THEME.primary}
-                />
-              </View>
-            </View>
-
-            <View style={styles.spotlightMetaRow}>
-              <View style={styles.spotlightMetaPill}>
-                <MaterialIcons
-                  name="calendar-today"
-                  size={13}
-                  color={APPLE_THEME.textSecondary}
-                />
-                <Text style={styles.spotlightMetaText}>
+            <Box className="flex-row items-center flex-wrap gap-2">
+              <Box className="flex-row items-center gap-1.5 bg-white/20 px-2.5 py-1.5 rounded-full">
+                <MaterialIconsRounded name="event" size={14} color="rgba(255,255,255,0.8)" />
+                <Text className="text-white text-xs font-medium">
                   {getDateRangeLabel(heroTrip)}
                 </Text>
-              </View>
-              <View style={styles.spotlightMetaPill}>
-                <MaterialIcons
-                  name="place"
-                  size={13}
-                  color={APPLE_THEME.textSecondary}
-                />
-                <Text style={styles.spotlightMetaText}>
-                  {heroTrip.destinations?.length || 0} điểm đến
+              </Box>
+              <Box className="flex-row items-center gap-1.5 bg-white/20 px-2.5 py-1.5 rounded-full">
+                <MaterialIconsRounded name="place" size={14} color="rgba(255,255,255,0.8)" />
+                <Text className="text-white text-xs font-medium">
+                  {t("tripDashboard.destinations", {
+                    count: heroTrip.destinations?.length || 0,
+                  })}
                 </Text>
-              </View>
-            </View>
-          </Pressable>
-        ) : (
-          <View style={styles.spotlightEmpty}>
-            <Text style={styles.spotlightEmptyTitle}>
-              Chưa có hành trình nổi bật
+              </Box>
+            </Box>
+
+            {(() => {
+              const daysUntil = getDaysUntil(heroTrip?.startDate);
+              if (daysUntil === null || daysUntil > 30) return null;
+              return (
+                <Box className="self-start">
+                  <Box className="flex-row items-center gap-1.5 bg-white/90 rounded-full px-3 py-[5px]">
+                    <MaterialIconsRounded name="schedule" size={14} color="#1D1D1F" />
+                    <Text className="text-ink text-[12px] font-semibold">
+                      {daysUntil === 0
+                        ? t("tripDashboard.startToday")
+                        : daysUntil === 1
+                          ? t("tripDashboard.startTomorrow")
+                          : t("tripDashboard.daysUntil", { count: daysUntil })}
+                    </Text>
+                  </Box>
+                </Box>
+              );
+            })()}
+          </Box>
+        </Pressable>
+      ) : (
+        <Pressable
+          onPress={onCreate}
+          className="h-[116px] rounded-2xl overflow-hidden flex-row items-center px-5 mb-5 border border-black/5 bg-white relative active:opacity-[0.95]"
+          style={SHADOW.create}
+        >
+          <Box className="w-14 h-14 rounded-[18px] bg-ink items-center justify-center mr-4">
+            <MaterialIconsRounded name="add-location-alt" size={28} color="#FFFFFF" />
+          </Box>
+          <Box className="flex-1">
+            <Text className="text-[17px] mb-1 font-semibold text-ink">
+              {t("tripDashboard.createFirst")}
             </Text>
-            <Text style={styles.spotlightEmptyCopy}>
-              Tạo chuyến đi mới để bắt đầu xây dựng kế hoạch.
+            <Text className="text-sm text-ink-muted">
+              {t("tripDashboard.startExploring")}
             </Text>
-          </View>
-        )}
-      </View>
+          </Box>
+          <Box className="w-8 h-8 rounded-full bg-black/[0.06] items-center justify-center ml-3">
+            <MaterialIconsRounded name="arrow-forward" size={20} color="#1D1D1F" />
+          </Box>
+        </Pressable>
+      )}
 
-      <View style={styles.summaryGrid}>
-        {summary.map((item) => (
-          <SummaryTile key={item.key} item={item} />
-        ))}
-      </View>
-
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionTitleWrap}>
-          <Text style={styles.sectionTitle}>Danh sách hành trình</Text>
-          <Text style={styles.sectionCopy}>
-            {getSectionCopy(activeFilter, filteredCount)}
-          </Text>
-        </View>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filtersRow}
+      {/* ── Stats Summary Strip (unified card, hairline dividers) ── */}
+      <Box
+        className="flex-row items-stretch bg-white rounded-lg border border-black/5 py-3.5 mb-6"
+        style={SHADOW.stats}
       >
-        {FILTERS.map((filter) => (
-          <FilterChip
-            key={filter.key}
-            item={filter}
-            active={activeFilter === filter.key}
-            onPress={onSelectFilter}
-          />
-        ))}
-      </ScrollView>
-    </View>
+        {summary.map((item, idx) => {
+          const theme = STAT_ICON_THEME[item.tone] || STAT_ICON_THEME.blue;
+          return (
+            <Fragment key={item.key}>
+              {idx > 0 ? <Box style={DIVIDER_STYLE} /> : null}
+              <Box className="flex-1 items-center justify-center gap-1 px-1">
+                <MaterialIconsRounded name={item.icon} size={16} color={theme.color} />
+                <Text className="text-[19px] leading-[23px] font-bold text-ink">
+                  {item.value}
+                </Text>
+                <Text
+                  className="text-xs leading-[14px] text-ink-muted"
+                  numberOfLines={1}
+                >
+                  {item.label}
+                </Text>
+              </Box>
+            </Fragment>
+          );
+        })}
+      </Box>
+
+      {/* ── Section Header + Apple Custom Segmented Filters ── */}
+      <Box className="flex-row items-center justify-between mb-4">
+        <Text className="text-xl font-semibold text-ink">
+          {filteredCount > 0
+            ? t("tripDashboard.listWithCount", { count: filteredCount })
+            : t("tripDashboard.list")}
+        </Text>
+        <Box className="flex-row bg-white border border-black/5 p-0.5 rounded-[9px] items-center">
+          {filters.map((filter) => {
+            const active = activeFilter === filter.key;
+            return (
+              <Pressable
+                key={filter.key}
+                onPress={() => onSelectFilter(filter.key)}
+                className={cn(
+                  "px-3 py-1 rounded-[7px] items-center justify-center",
+                  active ? "bg-black/[0.06]" : "bg-transparent",
+                )}
+                style={active ? SHADOW.filter : undefined}
+              >
+                <Text
+                  className={cn(
+                    "text-xs font-semibold",
+                    active ? "text-ink" : "text-ink-muted",
+                  )}
+                >
+                  {filter.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </Box>
+      </Box>
+    </Box>
   );
 }
 
-const styles = StyleSheet.create({
-  dashboardWrap: {
-    paddingHorizontal: TAB_SCREEN_PADDING,
-    paddingTop: 16,
-    paddingBottom: 18,
+/* Shadow styles — kept in StyleSheet (complex multi-property shadows not expressible in className) */
+const SHADOW = {
+  hero: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 22,
+    elevation: 8,
   },
-  heroCard: {
-    borderRadius: TAB_CARD_RADIUS,
-    padding: 24,
-    gap: 18,
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-    overflow: "hidden",
-    ...TOKENS.shadow.sm,
+  create: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  heroAccent: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-    backgroundColor: APPLE_THEME.primary,
+  stats: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
-  heroTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  filter: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 1.5,
+    elevation: 1,
   },
-  heroBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: TOKENS.radius.full,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: APPLE_THEME.primaryTint,
-  },
-  heroBadgeText: {
-    color: APPLE_THEME.primary,
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  createButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: TOKENS.radius.full,
-    backgroundColor: APPLE_THEME.primary,
-  },
-  createButtonText: {
-    color: APPLE_THEME.white,
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-  },
-  heroTitle: {
-    color: APPLE_THEME.text,
-    fontSize: 25,
-    lineHeight: 31,
-    fontFamily: TOKENS.font.heading,
-  },
-  heroSubtitle: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 14.5,
-    lineHeight: 22,
-    fontFamily: TOKENS.font.body,
-  },
-  spotlightCard: {
-    borderRadius: TOKENS.radius.xl,
-    padding: 16,
-    backgroundColor: APPLE_THEME.surfaceElevated,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.border,
-    gap: 14,
-    marginTop: 4,
-  },
-  spotlightTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  spotlightLabelWrap: {
-    flex: 1,
-    gap: 4,
-  },
-  spotlightEyebrow: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  spotlightTitle: {
-    color: APPLE_THEME.text,
-    fontSize: 19,
-    fontFamily: TOKENS.font.heading,
-  },
-  spotlightArrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_THEME.primaryTint,
-  },
-  spotlightMetaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  spotlightMetaPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: TOKENS.radius.full,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.border,
-  },
-  spotlightMetaText: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 12.5,
-    fontFamily: TOKENS.font.medium,
-  },
-  spotlightEmpty: {
-    borderRadius: TOKENS.radius.xl,
-    padding: 18,
-    backgroundColor: APPLE_THEME.surfaceElevated,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.border,
-    gap: 8,
-    marginTop: 4,
-  },
-  spotlightEmptyTitle: {
-    color: APPLE_THEME.text,
-    fontSize: 16,
-    fontFamily: TOKENS.font.semibold,
-  },
-  spotlightEmptyCopy: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: TOKENS.font.body,
-  },
+};
 
-  summaryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 14,
-    marginTop: 20,
-  },
-  summaryTile: {
-    width: "47.5%",
-    minHeight: 112,
-    borderRadius: TOKENS.radius.xl,
-    padding: 16,
-    backgroundColor: APPLE_THEME.surface,
-    overflow: "hidden",
-    flexDirection: "column",
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: APPLE_THEME.borderSoft,
-    ...TOKENS.shadow.sm,
-  },
-  summaryIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  summaryIconPrimary: { backgroundColor: APPLE_THEME.primary },
-  summaryIconMuted: { backgroundColor: "#2F2F31" },
-
-  summaryValue: {
-    color: APPLE_THEME.text,
-    fontSize: 26,
-    fontFamily: TOKENS.font.heading,
-  },
-  summaryLabel: {
-    color: APPLE_THEME.textMuted,
-    fontSize: 13.5,
-    fontFamily: TOKENS.font.medium,
-  },
-  summarySpark: {
-    position: "absolute",
-    right: -20,
-    top: -20,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  summarySparkPrimary: { backgroundColor: "rgba(0, 0, 0, 0.05)" },
-  summarySparkMuted: { backgroundColor: "rgba(0, 0, 0, 0.035)" },
-
-  sectionHeader: {
-    marginTop: 26,
-    marginBottom: 16,
-  },
-  sectionTitleWrap: {
-    gap: 6,
-  },
-  sectionTitle: {
-    color: APPLE_THEME.text,
-    fontSize: 21,
-    fontFamily: TOKENS.font.heading,
-  },
-  sectionCopy: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: TOKENS.font.body,
-  },
-
-  filtersRow: {
-    gap: 12,
-    paddingRight: 16,
-  },
-  filterChip: {
-    borderRadius: 999,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.border,
-  },
-  filterChipActive: {
-    borderRadius: 999,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: APPLE_THEME.primary,
-    borderWidth: 1,
-    borderColor: APPLE_THEME.primary,
-  },
-  filterChipText: {
-    color: APPLE_THEME.textSecondary,
-    fontSize: 13.5,
-    fontFamily: TOKENS.font.semibold,
-  },
-  filterChipTextActive: {
-    color: APPLE_THEME.white,
-    fontSize: 13.5,
-    fontFamily: TOKENS.font.semibold,
-  },
-});
+const DIVIDER_STYLE = {
+  width: StyleSheet.hairlineWidth,
+  alignSelf: "stretch",
+  marginVertical: 4,
+  backgroundColor: "rgba(0,0,0,0.08)",
+};

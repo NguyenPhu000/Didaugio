@@ -10,21 +10,24 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useAuthStore } from "../../src/stores/authStore";
+import i18n from "@/i18n";
+import { getI18nLocale } from "../../src/utils/dateFormat";
 import {
   usePlaceServices,
   useCreateBooking,
 } from "../../src/modules/booking/hooks/useBooking";
+import { useServiceAvailability } from "../../src/modules/booking/hooks/useServiceAvailability";
 import { usePlaceDetail } from "../../src/modules/place/hooks/usePlaceDetail";
 import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../src/constants/design-tokens";
 import {
   useCreateTrip,
   useTrips,
 } from "../../src/modules/trips/hooks/useTrips";
-
-const STEP_LABELS = ["Dịch vụ", "Xác nhận", "Gửi yêu cầu"];
-const WEEKDAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+import { StepIndicator } from "../../src/modules/booking/components/StepIndicator";
+import { ServiceCard } from "../../src/modules/booking/components/ServiceCard";
+import { useTranslation } from "react-i18next";
 
 const buildTimeSlots = ({
   startHour = 6,
@@ -45,12 +48,7 @@ const buildTimeSlots = ({
 
 const TIME_SLOTS = buildTimeSlots();
 
-const TIME_GROUPS = [
-  { key: "morning", label: "Sáng" },
-  { key: "afternoon", label: "Chiều" },
-  { key: "evening", label: "Tối" },
-  { key: "all", label: "Tất cả" },
-];
+const TIME_GROUP_KEYS = ["morning", "afternoon", "evening", "all"];
 
 const resolveTimeGroup = (timeValue) => {
   const [hourStr] = String(timeValue || "").split(":");
@@ -115,18 +113,20 @@ const buildCalendarDays = (monthDate) => {
   });
 };
 
+const getLocale = () => getI18nLocale();
+
 const formatMonthYearLabel = (monthDate) =>
-  monthDate.toLocaleDateString("vi-VN", {
+  monthDate.toLocaleDateString(getLocale(), {
     month: "long",
     year: "numeric",
   });
 
-const formatBookingDateTime = (dateYmd, timeValue) => {
-  if (!dateYmd) return "Chưa chọn";
+const formatBookingDateTime = (dateYmd, timeValue, notSelectedLabel) => {
+  if (!dateYmd) return notSelectedLabel || "—";
   const dateObj = new Date(`${dateYmd}T00:00:00`);
   const dateLabel = Number.isNaN(dateObj.getTime())
     ? dateYmd
-    : dateObj.toLocaleDateString("vi-VN", {
+    : dateObj.toLocaleDateString(getLocale(), {
         weekday: "short",
         day: "2-digit",
         month: "2-digit",
@@ -136,9 +136,9 @@ const formatBookingDateTime = (dateYmd, timeValue) => {
   return `${dateLabel} • ${timeValue || "--:--"}`;
 };
 
-const formatPrice = (price) => {
-  if (!price && price !== 0) return "Liên hệ";
-  return new Intl.NumberFormat("vi-VN", {
+const formatPrice = (price, contactLabel) => {
+  if (!price && price !== 0) return contactLabel || "—";
+  return new Intl.NumberFormat(getI18nLocale(), {
     style: "currency",
     currency: "VND",
   }).format(price);
@@ -161,181 +161,10 @@ const BOOKING_THEME = {
   focusBlue: APPLE_THEME.focusBlue,
 };
 
-const StepIndicator = ({ currentStep }) => (
-  <View
-    style={{
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 20,
-      marginBottom: 24,
-    }}
-  >
-    {STEP_LABELS.map((label, index) => {
-      const stepNum = index + 1;
-      const isDone = stepNum < currentStep;
-      const isActive = stepNum === currentStep;
-      return (
-        <View key={label} style={{ flex: 1, alignItems: "center" }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              width: "100%",
-            }}
-          >
-            {index > 0 ? (
-              <View
-                style={{
-                  flex: 1,
-                  height: 2,
-                  backgroundColor:
-                    isDone || isActive
-                      ? BOOKING_THEME.neon
-                      : BOOKING_THEME.glass,
-                }}
-              />
-            ) : null}
-            <View
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: isActive
-                  ? BOOKING_THEME.neon
-                  : isDone
-                    ? BOOKING_THEME.neonGlow
-                    : BOOKING_THEME.glass,
-                borderWidth: 1,
-                borderColor:
-                  isDone || isActive
-                    ? BOOKING_THEME.neon
-                    : BOOKING_THEME.glassBorder,
-              }}
-            >
-              {isDone ? (
-                <MaterialIcons
-                  name="check"
-                  size={16}
-                  color={BOOKING_THEME.neon}
-                />
-              ) : (
-                <Text
-                  style={{
-                    color: isActive
-                      ? BOOKING_THEME.white
-                      : BOOKING_THEME.textSecondary,
-                    fontSize: 13,
-                    fontWeight: "700",
-                  }}
-                >
-                  {stepNum}
-                </Text>
-              )}
-            </View>
-            {index < STEP_LABELS.length - 1 ? (
-              <View
-                style={{
-                  flex: 1,
-                  height: 2,
-                  backgroundColor:
-                    stepNum < currentStep
-                      ? BOOKING_THEME.neon
-                      : BOOKING_THEME.glass,
-                }}
-              />
-            ) : null}
-          </View>
-          <Text
-            style={{
-              color: isActive
-                ? BOOKING_THEME.neon
-                : BOOKING_THEME.textSecondary,
-              fontSize: 11,
-              fontWeight: isActive ? "700" : "400",
-              marginTop: 6,
-            }}
-          >
-            {label}
-          </Text>
-        </View>
-      );
-    })}
-  </View>
-);
 
-const ServiceCard = ({ service, isSelected, onSelect }) => (
-  <Pressable
-    onPress={() => onSelect(service)}
-    style={{
-      borderRadius: 20,
-      padding: 16,
-      marginBottom: 12,
-      backgroundColor: isSelected
-        ? BOOKING_THEME.neonGlow
-        : BOOKING_THEME.glass,
-      borderWidth: 1.5,
-      borderColor: isSelected ? BOOKING_THEME.neon : BOOKING_THEME.glassBorder,
-    }}
-  >
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
-    >
-      <View style={{ flex: 1, marginRight: 12 }}>
-        <Text
-          style={{ color: BOOKING_THEME.text, fontSize: 15, fontWeight: "700" }}
-        >
-          {service.name}
-        </Text>
-        {service.description ? (
-          <Text
-            style={{
-              color: BOOKING_THEME.textSecondary,
-              fontSize: 12,
-              marginTop: 4,
-              lineHeight: 18,
-            }}
-            numberOfLines={2}
-          >
-            {service.description}
-          </Text>
-        ) : null}
-      </View>
-      <View style={{ alignItems: "flex-end", gap: 4 }}>
-        <Text
-          style={{ color: BOOKING_THEME.neon, fontSize: 15, fontWeight: "800" }}
-        >
-          {formatPrice(service.price)}
-        </Text>
-        <View
-          style={{
-            width: 22,
-            height: 22,
-            borderRadius: 11,
-            backgroundColor: isSelected ? BOOKING_THEME.neon : "transparent",
-            borderWidth: 2,
-            borderColor: isSelected
-              ? BOOKING_THEME.neon
-              : BOOKING_THEME.glassBorder,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {isSelected ? (
-            <MaterialIcons name="check" size={13} color={BOOKING_THEME.white} />
-          ) : null}
-        </View>
-      </View>
-    </View>
-  </Pressable>
-);
 
 export default function BookingScreen() {
+  const { t } = useTranslation();
   const { placeId } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -343,6 +172,10 @@ export default function BookingScreen() {
   const isGuest = useAuthStore((s) => s.isGuest);
   const currentUser = useAuthStore((s) => s.user);
   const isLoggedIn = Boolean(accessToken) && !isGuest;
+
+  const STEP_LABELS = [t("booking.steps.service"), t("booking.steps.confirm"), t("booking.steps.submit")];
+  const WEEKDAY_LABELS = [t("common.weekdays.mon"), t("common.weekdays.tue"), t("common.weekdays.wed"), t("common.weekdays.thu"), t("common.weekdays.fri"), t("common.weekdays.sat"), t("common.weekdays.sun")];
+  const TIME_GROUPS = TIME_GROUP_KEYS.map((key) => ({ key, label: t(`booking.timeGroups.${key}`) }));
 
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState(null);
@@ -375,6 +208,11 @@ export default function BookingScreen() {
   const { data: trips = [] } = useTrips(isLoggedIn);
   const bookingMutation = useCreateBooking();
   const createTripMutation = useCreateTrip();
+
+  const { data: availabilityData } = useServiceAvailability(
+    selectedService?.id,
+    selectedDate,
+  );
 
   useEffect(() => {
     const timer = setInterval(() => setNowTs(Date.now()), 30_000);
@@ -422,15 +260,38 @@ export default function BookingScreen() {
   const isSlotAvailable = (dateValue, timeValue) => {
     const slot = new Date(`${dateValue}T${timeValue}:00`);
     if (Number.isNaN(slot.getTime())) return false;
-    return slot.getTime() > nowTs + 5 * 60 * 1000;
+    if (slot.getTime() <= nowTs + 5 * 60 * 1000) return false;
+
+    if (availabilityData?.bookingModel === "capacity" && availabilityData?.slots) {
+      const slotData = availabilityData.slots.find(
+        (s) => s.time?.startsWith(`${dateValue}T${timeValue}`) || s.time?.includes(`T${timeValue}:`),
+      );
+      if (slotData && !slotData.available) return false;
+    }
+
+    if (availabilityData?.bookingModel === "resource" && availabilityData?.bookedSlots?.length > 0) {
+      const slotStart = new Date(`${dateValue}T${timeValue}:00`);
+      const slotDurationMs = (selectedService?.slotDurationMinutes || 60) * 60_000;
+      const slotEnd = new Date(slotStart.getTime() + slotDurationMs);
+
+      const isBooked = availabilityData.bookedSlots.some((booked) => {
+        const bookedStart = new Date(booked.startTime);
+        const bookedEnd = new Date(booked.endTime);
+        return bookedStart < slotEnd && bookedEnd > slotStart;
+      });
+      if (isBooked) return false;
+    }
+
+    return true;
   };
 
   const createdTripDefaultTitle = useMemo(() => {
     const placeLabel = place?.name ? ` - ${place.name}` : "";
-    return `Trip booking ${selectedDate}${placeLabel}`;
-  }, [place?.name, selectedDate]);
+    return `${t("booking.title")} ${selectedDate}${placeLabel}`;
+  }, [place?.name, selectedDate, t]);
 
   useEffect(() => {
+    if (!selectedDate || !selectedService) return;
     if (isSlotAvailable(selectedDate, selectedTime)) return;
     const next = TIME_SLOTS.find((slot) =>
       isSlotAvailable(selectedDate, slot.value),
@@ -439,7 +300,7 @@ export default function BookingScreen() {
       setSelectedTime(next.value);
       setActiveTimeGroup(resolveTimeGroup(next.value));
     }
-  }, [selectedDate, selectedTime, nowTs]);
+  }, [selectedDate, selectedTime, nowTs, availabilityData, selectedService]);
 
   useEffect(() => {
     if (tripLinkMode !== "create") return;
@@ -466,9 +327,9 @@ export default function BookingScreen() {
     slotWarningRef.current = warningKey;
 
     Alert.alert(
-      "Khung giờ không còn khả dụng",
-      "Vui lòng chọn khung giờ khác để tiếp tục đặt chỗ.",
-      [{ text: "Đã hiểu" }],
+      t("booking.alerts.slotUnavailable.title"),
+      t("booking.alerts.slotUnavailable.message"),
+      [{ text: t("booking.alerts.slotUnavailable.ok") }],
     );
   }, [step, isSelectedTimeAvailable, selectedDate, selectedTime]);
 
@@ -538,7 +399,7 @@ export default function BookingScreen() {
             borderColor: BOOKING_THEME.glassBorderStrong,
           }}
         >
-          <MaterialIcons
+          <MaterialIconsRounded
             name="lock-outline"
             size={44}
             color={BOOKING_THEME.neon}
@@ -553,7 +414,7 @@ export default function BookingScreen() {
             textAlign: "center",
           }}
         >
-          Hãy đăng nhập để booking
+          {t("booking.loginRequired")}
         </Text>
         <Text
           style={{
@@ -564,7 +425,7 @@ export default function BookingScreen() {
             maxWidth: 320,
           }}
         >
-          Bạn cần đăng nhập để đặt chỗ và quản lý lịch sử booking của mình.
+          {t("booking.loginDescription")}
         </Text>
 
         <Pressable
@@ -584,7 +445,7 @@ export default function BookingScreen() {
               fontWeight: "800",
             }}
           >
-            Đăng nhập ngay
+            {t("booking.loginNow")}
           </Text>
         </Pressable>
 
@@ -606,7 +467,7 @@ export default function BookingScreen() {
               fontWeight: "700",
             }}
           >
-            Quay lại
+            {t("common.back")}
           </Text>
         </Pressable>
       </View>
@@ -616,23 +477,23 @@ export default function BookingScreen() {
   const handleConfirmBooking = async () => {
     if (!hasValidContact) {
       Alert.alert(
-        "Thiếu thông tin liên hệ",
-        "Vui lòng nhập họ tên và số điện thoại hợp lệ để địa điểm xác nhận booking.",
+        t("booking.alerts.missingContact.title"),
+        t("booking.alerts.missingContact.message"),
       );
       return;
     }
 
     if (!isSelectedTimeAvailable) {
       Alert.alert(
-        "Khung giờ không còn khả dụng",
-        "Khung giờ đã chọn vừa hết chỗ, vui lòng chọn lại.",
+        t("booking.alerts.slotUnavailable.title"),
+        t("booking.alerts.slotUnavailable.expired"),
       );
       setStep(2);
       return;
     }
 
     if (tripLinkMode === "existing" && !selectedTripId) {
-      Alert.alert("Chọn Trip", "Vui lòng chọn một trip để liên kết booking.");
+      Alert.alert(t("booking.alerts.selectTrip.title"), t("booking.alerts.selectTrip.message"));
       setStep(2);
       return;
     }
@@ -649,8 +510,8 @@ export default function BookingScreen() {
         const createdTripRes = await createTripMutation.mutateAsync({
           title,
           description: selectedService?.name
-            ? `Tạo từ booking dịch vụ ${selectedService.name}`
-            : "Tạo từ booking dịch vụ",
+            ? t("booking.tripDescription.withService", { service: selectedService.name })
+            : t("booking.tripDescription.default"),
           startDate: selectedDate,
           endDate: selectedDate,
           totalDays: 1,
@@ -660,16 +521,15 @@ export default function BookingScreen() {
         tripIdPayload = Number(createdTripRes?.data?.id || createdTripRes?.id);
 
         if (!Number.isInteger(tripIdPayload) || tripIdPayload <= 0) {
-          throw {
-            message: "Không thể tạo trip mới để liên kết booking",
-            status: 500,
-            code: "TRIP_CREATE_FAILED",
-          };
+          const err = new Error(t("booking.errors.tripCreateFailed"));
+          err.status = 500;
+          err.code = "TRIP_CREATE_FAILED";
+          throw err;
         }
       }
 
       const bookingRes = await bookingMutation.mutateAsync({
-        placeId: parseInt(placeId),
+        placeId: parseInt(placeId, 10),
         serviceId: selectedService?.id,
         tripId: tripIdPayload || undefined,
         quantity,
@@ -688,11 +548,24 @@ export default function BookingScreen() {
         setLinkedTripSummary(null);
       }
 
-      setBookingDone(true);
+      // Navigation separated from booking logic
+      const newBookingId = bookingRes?.data?.id || bookingRes?.id;
+      if (newBookingId) {
+        try {
+          router.replace(`/payment/checkout?bookingId=${newBookingId}`);
+        } catch (navErr) {
+          // Fallback: show success screen if navigation fails
+          console.warn("[booking] Navigation to checkout failed:", navErr);
+          setBookingDone(true);
+        }
+      } else {
+        // No ID returned — show success screen as fallback
+        setBookingDone(true);
+      }
     } catch (error) {
       Alert.alert(
-        "Không thể đặt dịch vụ",
-        error?.message || "Có lỗi xảy ra, vui lòng thử lại.",
+        t("booking.errors.bookingFailed"),
+        error?.message || t("booking.errors.generic"),
       );
     }
   };
@@ -727,7 +600,7 @@ export default function BookingScreen() {
             elevation: 16,
           }}
         >
-          <MaterialIcons
+          <MaterialIconsRounded
             name="check-circle"
             size={52}
             color={BOOKING_THEME.neon}
@@ -741,7 +614,7 @@ export default function BookingScreen() {
             textAlign: "center",
           }}
         >
-          Đặt thành công!
+          {t("booking.success.title")}
         </Text>
         <Text
           style={{
@@ -752,8 +625,8 @@ export default function BookingScreen() {
           }}
         >
           {selectedService?.name
-            ? `Dịch vụ "${selectedService.name}" đã được đặt. Chúng tôi sẽ liên hệ để xác nhận.`
-            : "Đặt dịch vụ thành công. Chúng tôi sẽ liên hệ để xác nhận."}
+            ? t("booking.success.descriptionWithService", { service: selectedService.name })
+            : t("booking.success.description")}
         </Text>
 
         {linkedTripSummary ? (
@@ -765,9 +638,7 @@ export default function BookingScreen() {
               lineHeight: 18,
             }}
           >
-            Booking đã được liên kết vào trip "
-            {linkedTripSummary.title || `#${linkedTripSummary.id}`}" (ngày{" "}
-            {linkedTripSummary.dayNumber || 1}).
+            {t("booking.success.linkedTrip", { title: linkedTripSummary.title || `#${linkedTripSummary.id}`, day: linkedTripSummary.dayNumber || 1 })}
           </Text>
         ) : null}
 
@@ -790,7 +661,7 @@ export default function BookingScreen() {
                 fontWeight: "700",
               }}
             >
-              Xem trong trip
+              {t("booking.success.viewInTrip")}
             </Text>
           </Pressable>
         ) : null}
@@ -816,7 +687,7 @@ export default function BookingScreen() {
               fontWeight: "800",
             }}
           >
-            Xem booking của tôi
+            {t("booking.success.viewBookings")}
           </Text>
         </Pressable>
 
@@ -838,7 +709,7 @@ export default function BookingScreen() {
               fontWeight: "700",
             }}
           >
-            Quay lại địa điểm
+            {t("booking.success.backToPlace")}
           </Text>
         </Pressable>
       </View>
@@ -875,7 +746,7 @@ export default function BookingScreen() {
             borderColor: BOOKING_THEME.glassBorder,
           }}
         >
-          <MaterialIcons
+          <MaterialIconsRounded
             name="arrow-back"
             size={20}
             color={BOOKING_THEME.text}
@@ -889,7 +760,7 @@ export default function BookingScreen() {
               fontWeight: "800",
             }}
           >
-            Đặt dịch vụ
+            {t("booking.title")}
           </Text>
           {place?.name ? (
             <Text
@@ -924,7 +795,7 @@ export default function BookingScreen() {
                 marginBottom: 16,
               }}
             >
-              Chọn dịch vụ bạn muốn đặt
+              {t("booking.selectService")}
             </Text>
 
             {servicesLoading ? (
@@ -945,7 +816,7 @@ export default function BookingScreen() {
                   borderColor: BOOKING_THEME.glassBorder,
                 }}
               >
-                <MaterialIcons
+                <MaterialIconsRounded
                   name="room-service"
                   size={48}
                   color={BOOKING_THEME.textMuted}
@@ -957,8 +828,7 @@ export default function BookingScreen() {
                     fontSize: 14,
                   }}
                 >
-                  Địa điểm này chưa có dịch vụ đặt trước.{"\n"}Vui lòng liên hệ
-                  trực tiếp.
+                  {t("booking.noServices")}
                 </Text>
               </View>
             ) : (
@@ -981,7 +851,7 @@ export default function BookingScreen() {
                 marginBottom: 16,
               }}
             >
-              Xác nhận thông tin đặt dịch vụ
+              {t("booking.confirmTitle")}
             </Text>
 
             <View
@@ -1003,7 +873,7 @@ export default function BookingScreen() {
                 <Text
                   style={{ color: BOOKING_THEME.textSecondary, fontSize: 13 }}
                 >
-                  Địa điểm
+                  {t("booking.fields.place")}
                 </Text>
                 <Text
                   style={{
@@ -1032,7 +902,7 @@ export default function BookingScreen() {
                 <Text
                   style={{ color: BOOKING_THEME.textSecondary, fontSize: 13 }}
                 >
-                  Dịch vụ
+                  {t("booking.fields.service")}
                 </Text>
                 <Text
                   style={{
@@ -1061,7 +931,7 @@ export default function BookingScreen() {
                 <Text
                   style={{ color: BOOKING_THEME.textSecondary, fontSize: 13 }}
                 >
-                  Số lượng
+                  {t("booking.fields.quantity")}
                 </Text>
                 <View
                   style={{
@@ -1083,7 +953,7 @@ export default function BookingScreen() {
                       borderColor: BOOKING_THEME.glassBorder,
                     }}
                   >
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name="remove"
                       size={16}
                       color={BOOKING_THEME.text}
@@ -1101,7 +971,14 @@ export default function BookingScreen() {
                     {quantity}
                   </Text>
                   <Pressable
-                    onPress={() => setQuantity(quantity + 1)}
+                    onPress={() => {
+                      const maxQty = availabilityData?.slots
+                        ? availabilityData.slots.find((s) => s.time?.startsWith(`${selectedDate}T${selectedTime}`))?.remaining ?? 20
+                        : 20;
+                      if (quantity < Math.min(maxQty, 20)) {
+                        setQuantity(quantity + 1);
+                      }
+                    }}
                     style={{
                       width: 32,
                       height: 32,
@@ -1113,7 +990,7 @@ export default function BookingScreen() {
                       borderColor: BOOKING_THEME.glassBorder,
                     }}
                   >
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name="add"
                       size={16}
                       color={BOOKING_THEME.text}
@@ -1133,7 +1010,7 @@ export default function BookingScreen() {
                 <Text
                   style={{ color: BOOKING_THEME.textSecondary, fontSize: 13 }}
                 >
-                  Ngày sử dụng
+                  {t("booking.fields.usageDate")}
                 </Text>
                 <View
                   style={{
@@ -1170,7 +1047,7 @@ export default function BookingScreen() {
                         opacity: canMovePrevMonth ? 1 : 0.35,
                       }}
                     >
-                      <MaterialIcons
+                      <MaterialIconsRounded
                         name="chevron-left"
                         size={18}
                         color={BOOKING_THEME.text}
@@ -1203,7 +1080,7 @@ export default function BookingScreen() {
                         justifyContent: "center",
                       }}
                     >
-                      <MaterialIcons
+                      <MaterialIconsRounded
                         name="chevron-right"
                         size={18}
                         color={BOOKING_THEME.text}
@@ -1287,7 +1164,7 @@ export default function BookingScreen() {
                 </View>
 
                 <Text style={{ color: BOOKING_THEME.textMuted, fontSize: 12 }}>
-                  Đã chọn: {formatBookingDateTime(selectedDate, selectedTime)}
+                  {t("booking.fields.selected")}: {formatBookingDateTime(selectedDate, selectedTime, t("booking.fields.notSelected"))}
                 </Text>
               </View>
 
@@ -1295,7 +1172,7 @@ export default function BookingScreen() {
                 <Text
                   style={{ color: BOOKING_THEME.textSecondary, fontSize: 13 }}
                 >
-                  Chọn giờ sử dụng
+                  {t("booking.fields.selectTime")}
                 </Text>
 
                 <View
@@ -1373,6 +1250,16 @@ export default function BookingScreen() {
                       );
                       const isSelected = selectedTime === slot.value;
 
+                      let remaining = null;
+                      if (availabilityData?.bookingModel === "capacity" && availabilityData?.slots) {
+                        const slotData = availabilityData.slots.find(
+                          (s) => s.time?.startsWith(`${selectedDate}T${slot.value}`) || s.time?.includes(`T${slot.value}:`),
+                        );
+                        if (slotData) {
+                          remaining = slotData.remaining;
+                        }
+                      }
+
                       return (
                         <Pressable
                           key={slot.value}
@@ -1410,6 +1297,19 @@ export default function BookingScreen() {
                           >
                             {slot.label}
                           </Text>
+                          {remaining !== null ? (
+                            <Text
+                              style={{
+                                color: remaining > 0
+                                  ? "#22C55E"
+                                  : "#EF4444",
+                                fontSize: 10,
+                                fontWeight: "600",
+                              }}
+                            >
+                              {remaining > 0 ? `${remaining}` : t("booking.slotFull")}
+                            </Text>
+                          ) : null}
                         </Pressable>
                       );
                     })}
@@ -1417,13 +1317,12 @@ export default function BookingScreen() {
                 </View>
 
                 <Text style={{ color: BOOKING_THEME.textMuted, fontSize: 11 }}>
-                  {visibleTimeSlots.length} mốc giờ trong nhóm đã chọn
+                  {t("booking.timeSlotsCount", { count: visibleTimeSlots.length })}
                 </Text>
 
                 {!isSelectedTimeAvailable ? (
                   <Text style={{ color: "#F59E0B", fontSize: 12 }}>
-                    Khung giờ đã chọn không còn khả dụng, vui lòng chọn khung
-                    giờ khác.
+                    {t("booking.slotUnavailableWarning")}
                   </Text>
                 ) : null}
               </View>
@@ -1439,16 +1338,16 @@ export default function BookingScreen() {
                 <Text
                   style={{ color: BOOKING_THEME.textSecondary, fontSize: 13 }}
                 >
-                  Liên kết vào Trip
+                  {t("booking.tripLink.title")}
                 </Text>
 
                 <View
                   style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
                 >
                   {[
-                    { key: "none", label: "Không liên kết" },
-                    { key: "existing", label: "Chọn trip có sẵn" },
-                    { key: "create", label: "Tạo trip mới" },
+                    { key: "none", label: t("booking.tripLink.none") },
+                    { key: "existing", label: t("booking.tripLink.selectExisting") },
+                    { key: "create", label: t("booking.tripLink.createNew") },
                   ].map((item) => {
                     const selected = tripLinkMode === item.key;
                     return (
@@ -1536,7 +1435,7 @@ export default function BookingScreen() {
                                 fontSize: 11,
                               }}
                             >
-                              {trip.totalDays || 1} ngày
+                              {t("booking.tripDays", { count: trip.totalDays || 1 })}
                             </Text>
                           </Pressable>
                         );
@@ -1549,8 +1448,7 @@ export default function BookingScreen() {
                         fontSize: 12,
                       }}
                     >
-                      Bạn chưa có trip nào, hãy chọn "Tạo trip mới" để tạo
-                      nhanh.
+                      {t("booking.tripLink.noTrips")}
                     </Text>
                   )
                 ) : null}
@@ -1560,7 +1458,7 @@ export default function BookingScreen() {
                     <TextInput
                       value={newTripTitle}
                       onChangeText={setNewTripTitle}
-                      placeholder="Tên trip mới"
+                      placeholder={t("booking.tripLink.newTripPlaceholder")}
                       placeholderTextColor={BOOKING_THEME.textMuted}
                       style={{
                         borderWidth: 1,
@@ -1579,8 +1477,7 @@ export default function BookingScreen() {
                         fontSize: 12,
                       }}
                     >
-                      Trip sẽ được tạo theo ngày sử dụng {selectedDate} và tự
-                      gắn điểm đến này vào lịch trình.
+                      {t("booking.tripLink.tripCreateInfo", { date: selectedDate })}
                     </Text>
                   </View>
                 ) : null}
@@ -1606,7 +1503,7 @@ export default function BookingScreen() {
                         fontSize: 13,
                       }}
                     >
-                      Tổng tiền
+                      {t("booking.pricing.total")}
                     </Text>
                     <Text
                       style={{
@@ -1615,7 +1512,7 @@ export default function BookingScreen() {
                         fontWeight: "800",
                       }}
                     >
-                      {formatPrice(totalPrice)}
+                      {formatPrice(totalPrice, t("booking.pricing.contact"))}
                     </Text>
                   </View>
 
@@ -1639,7 +1536,7 @@ export default function BookingScreen() {
                             fontSize: 13,
                           }}
                         >
-                          Tiền cọc
+                          {t("booking.pricing.deposit")}
                         </Text>
                         <Text
                           style={{
@@ -1648,7 +1545,7 @@ export default function BookingScreen() {
                             fontWeight: "700",
                           }}
                         >
-                          {formatPrice(depositInfo.amount)}
+                          {formatPrice(depositInfo.amount, t("booking.pricing.contact"))}
                         </Text>
                       </View>
                     </>
@@ -1666,7 +1563,7 @@ export default function BookingScreen() {
                 marginBottom: 16,
               }}
             >
-              Gửi yêu cầu đặt chỗ
+              {t("booking.submitRequest")}
             </Text>
 
             <View
@@ -1680,7 +1577,7 @@ export default function BookingScreen() {
                 gap: 12,
               }}
             >
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="fact-check"
                 size={40}
                 color={BOOKING_THEME.neon}
@@ -1693,7 +1590,7 @@ export default function BookingScreen() {
                   textAlign: "center",
                 }}
               >
-                Thanh toán tại địa điểm
+                {t("booking.payAtPlace")}
               </Text>
               <Text
                 style={{
@@ -1703,8 +1600,7 @@ export default function BookingScreen() {
                   lineHeight: 20,
                 }}
               >
-                Gửi yêu cầu trước, địa điểm sẽ xác nhận qua điện thoại. Bạn
-                thanh toán trực tiếp khi đến nơi.
+                {t("booking.payAtPlaceDescription")}
               </Text>
 
               <View style={{ width: "100%", gap: 10 }}>
@@ -1715,13 +1611,13 @@ export default function BookingScreen() {
                     fontWeight: "800",
                   }}
                 >
-                  Thông tin liên hệ
+                  {t("booking.contactInfo")}
                 </Text>
 
                 <TextInput
                   value={guestName}
                   onChangeText={setGuestName}
-                  placeholder="Họ tên người đặt"
+                  placeholder={t("booking.placeholders.name")}
                   placeholderTextColor={BOOKING_THEME.textMuted}
                   style={{
                     borderWidth: 1,
@@ -1740,7 +1636,7 @@ export default function BookingScreen() {
                 <TextInput
                   value={guestPhone}
                   onChangeText={setGuestPhone}
-                  placeholder="Số điện thoại xác nhận"
+                  placeholder={t("booking.placeholders.phone")}
                   placeholderTextColor={BOOKING_THEME.textMuted}
                   style={{
                     borderWidth: 1,
@@ -1759,7 +1655,7 @@ export default function BookingScreen() {
                 <TextInput
                   value={guestEmail}
                   onChangeText={setGuestEmail}
-                  placeholder="Email nhận thông tin (không bắt buộc)"
+                  placeholder={t("booking.placeholders.email")}
                   placeholderTextColor={BOOKING_THEME.textMuted}
                   style={{
                     borderWidth: 1,
@@ -1779,7 +1675,7 @@ export default function BookingScreen() {
                 <TextInput
                   value={requestNote}
                   onChangeText={setRequestNote}
-                  placeholder="Ghi chú cho địa điểm (không bắt buộc)"
+                  placeholder={t("booking.placeholders.note")}
                   placeholderTextColor={BOOKING_THEME.textMuted}
                   style={{
                     minHeight: 82,
@@ -1799,8 +1695,7 @@ export default function BookingScreen() {
 
                 {!hasValidContact ? (
                   <Text style={{ color: "#F59E0B", fontSize: 12 }}>
-                    Cần họ tên và số điện thoại hợp lệ để địa điểm liên hệ xác
-                    nhận.
+                    {t("booking.contactValidation")}
                   </Text>
                 ) : null}
               </View>
@@ -1820,7 +1715,7 @@ export default function BookingScreen() {
                 <Text
                   style={{ color: BOOKING_THEME.textSecondary, fontSize: 12 }}
                 >
-                  Ngày sử dụng
+                  {t("booking.fields.usageDate")}
                 </Text>
                 <Text
                   style={{
@@ -1829,33 +1724,33 @@ export default function BookingScreen() {
                     fontWeight: "700",
                   }}
                 >
-                  {formatBookingDateTime(selectedDate, selectedTime)}
+                  {formatBookingDateTime(selectedDate, selectedTime, t("booking.fields.notSelected"))}
                 </Text>
                 {depositInfo ? (
                   <Text
                     style={{ color: BOOKING_THEME.textSecondary, fontSize: 12 }}
                   >
-                    Cọc: {formatPrice(depositInfo.amount)}
+                    {t("booking.pricing.depositLabel", { amount: formatPrice(depositInfo.amount, t("booking.pricing.contact")) })}
                     {depositInfo.type === "PERCENT"
                       ? ` (${depositInfo.rateOrAmount}%)`
                       : ""}
                     {depositInfo.refundable
-                      ? ` • Hoàn tối đa ${depositInfo.refundPercent}% theo chính sách`
-                      : " • Không hoàn cọc"}
+                      ? ` • ${t("booking.pricing.refundable", { percent: depositInfo.refundPercent })}`
+                      : ` • ${t("booking.pricing.nonRefundable")}`}
                   </Text>
                 ) : null}
 
                 <Text
                   style={{ color: BOOKING_THEME.textSecondary, fontSize: 12 }}
                 >
-                  Trip:{" "}
+                  {t("booking.tripLink.summaryPrefix")}{" "}
                   {tripLinkMode === "none"
-                    ? "Không liên kết"
+                    ? t("booking.tripLink.none")
                     : tripLinkMode === "existing"
                       ? selectedTripId
-                        ? `Liên kết trip #${selectedTripId}`
-                        : "Chưa chọn trip"
-                      : "Tạo trip mới khi xác nhận"}
+                        ? t("booking.tripLink.linkedTripId", { id: selectedTripId })
+                        : t("booking.tripLink.notSelected")
+                      : t("booking.tripLink.createOnConfirm")}
                 </Text>
               </View>
 
@@ -1877,7 +1772,7 @@ export default function BookingScreen() {
                       fontWeight: "800",
                     }}
                   >
-                    {formatPrice(totalPrice)}
+                    {formatPrice(totalPrice, t("booking.pricing.contact"))}
                   </Text>
                 </View>
               ) : null}
@@ -1896,7 +1791,7 @@ export default function BookingScreen() {
               >
                 <Text style={{ color: BOOKING_THEME.danger, fontSize: 13 }}>
                   {bookingMutation.error?.message ||
-                    "Có lỗi xảy ra, vui lòng thử lại"}
+                    t("booking.errors.generic")}
                 </Text>
               </View>
             ) : null}
@@ -1963,7 +1858,7 @@ export default function BookingScreen() {
                 fontWeight: "800",
               }}
             >
-              {step === 1 ? "Tiếp theo" : "Xác nhận"}
+              {step === 1 ? t("booking.buttons.next") : t("booking.buttons.confirm")}
             </Text>
           </Pressable>
         ) : (
@@ -1990,7 +1885,7 @@ export default function BookingScreen() {
             {isSubmittingBooking ? (
               <ActivityIndicator size="small" color={BOOKING_THEME.white} />
             ) : (
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="check-circle"
                 size={18}
                 color={
@@ -2009,7 +1904,7 @@ export default function BookingScreen() {
                 fontWeight: "800",
               }}
             >
-              Xác nhận đặt chỗ
+              {t("booking.buttons.confirmBooking")}
             </Text>
           </Pressable>
         )}

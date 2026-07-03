@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../utils/safeAsyncStorage";
 
 const { persist, createJSONStorage } = require("zustand/middleware");
 
@@ -34,9 +34,11 @@ export const useAIContextStore = create(
     (set) => ({
       sessionContext: {
         currentLocation: null,
+        currentCity: null,
         visitedPlaceIds: [],
         currentPlaceId: null,
         preferences: null,
+        userProfile: null,
         timeOfDay: null,
       },
 
@@ -70,6 +72,16 @@ export const useAIContextStore = create(
       setPreferences: (prefs) =>
         set((s) => ({
           sessionContext: { ...s.sessionContext, preferences: prefs },
+        })),
+
+      setCurrentCity: (city) =>
+        set((s) => ({
+          sessionContext: { ...s.sessionContext, currentCity: city },
+        })),
+
+      setUserProfile: (profile) =>
+        set((s) => ({
+          sessionContext: { ...s.sessionContext, userProfile: profile },
         })),
 
       setTimeOfDay: (timeOfDay) =>
@@ -128,22 +140,26 @@ export const useAIContextStore = create(
     }),
     {
       name: "ai-context-store",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => safeAsyncStorage),
       partialize: (s) => ({
         sessionContext: {
           visitedPlaceIds: s.sessionContext.visitedPlaceIds,
           preferences: s.sessionContext.preferences,
+          userProfile: s.sessionContext.userProfile,
+          currentCity: s.sessionContext.currentCity,
           timeOfDay: s.sessionContext.timeOfDay,
           currentPlaceId: s.sessionContext.currentPlaceId,
           currentLocation: s.sessionContext.currentLocation,
         },
-        conversationMemory: trimMessages(
-          s.conversationMemory
-            .map(normalizeConversationMessage)
-            .filter(Boolean),
-        ),
         intentHistory: s.intentHistory.slice(-10),
       }),
+      version: 2,
+      migrate: (persistedState) => {
+        if (persistedState) {
+          delete persistedState.conversationMemory;
+        }
+        return persistedState;
+      },
     },
   ),
 );

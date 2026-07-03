@@ -6,32 +6,34 @@ import {
   CardTitle,
   Checkbox,
 } from "@/components/ui";
+import { useTranslation } from "react-i18next";
 import SettingSelectField from "./SettingSelectField";
 import { SESSION_TIMEOUT_OPTIONS } from "../settingsSelectOptions";
 
 const SecuritySettingsCard = ({ value, onChange }) => {
+  const { t } = useTranslation();
   const toggles = [
-    ["require2FA", "Bật 2FA"],
-    ["lockoutEnabled", "Lockout sau nhiều lần sai"],
-    ["csrfProtection", "CSRF protection"],
-    ["xssProtection", "XSS protection"],
-    ["secureApiLogin", "API login security"],
+    ["require2FA", t("settings.security.requireTwoFactor")],
+    ["lockoutEnabled", t("settings.security.lockoutEnabled")],
+    ["csrfProtection", t("settings.security.csrfProtection")],
+    ["xssProtection", t("settings.security.xssProtection")],
+    ["secureApiLogin", t("settings.security.secureApiLogin")],
   ];
 
   return (
     <Card className="rounded-none border-black bg-white">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-black uppercase tracking-wide">
-          4) Bảo mật (Security)
+          {t("settings.security.title")}
         </CardTitle>
         <CardDescription className="font-mono text-xs uppercase tracking-wider text-gray-500">
-          2FA, lockout, session timeout, CSRF/XSS và bảo mật API login
+          {t("settings.security.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <SettingSelectField
           id="settings-session-timeout"
-          label="Hết hạn phiên (phút)"
+          label={t("settings.security.sessionTimeout")}
           value={
             value.sessionTimeoutMinutes != null
               ? String(value.sessionTimeoutMinutes)

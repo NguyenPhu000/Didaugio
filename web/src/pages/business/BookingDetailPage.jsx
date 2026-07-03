@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
 import {
   ArrowLeft,
@@ -16,7 +17,11 @@ import {
   Wallet,
   RotateCcw,
   Clock3,
+  CreditCard,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -33,18 +38,151 @@ import * as bookingApi from "@/apis/bookingService";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BOOKING_STATUS } from "@/constants/constants";
 import {
-  SectionCard,
   StatusBadge,
 } from "@/components/business/DashboardWidgets";
+import {
+  BusinessSectionCard,
+} from "@/components/business/ui";
 import {
   formatDate,
   formatDateTime,
   formatVND,
 } from "@/components/business/dashboardWidgetHelpers";
 
-// ─── Info Row ─────────────────────────────────────────────────────────────────
+// ─── OnlinePaymentInfo ─────────────────────────────────────────────────────────
 
-const InfoRow = ({ label, value, className }) => (
+const formatPaymentDateTime = (isoString) => {
+  if (!isoString) return "—";
+  try {
+    const date = new Date(isoString);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  } catch {
+    return "—";
+  }
+};
+
+const getPaymentStatusConfig = (t) => ({
+  paid: {
+    label: t("business.bookingDetail.paid"),
+    bg: "bg-green-50",
+    text: "text-green-700",
+    border: "border-green-200",
+    dot: "bg-green-500",
+  },
+  unpaid: {
+    label: t("business.bookingDetail.unpaid"),
+    bg: "bg-yellow-50",
+    text: "text-yellow-700",
+    border: "border-yellow-200",
+    dot: "bg-yellow-500",
+  },
+  fully_refunded: {
+    label: t("business.bookingDetail.refunded"),
+    bg: "bg-red-50",
+    text: "text-red-700",
+    border: "border-red-200",
+    dot: "bg-red-500",
+  },
+  partially_refunded: {
+    label: t("business.bookingDetail.partialRefundLabel"),
+    bg: "bg-orange-50",
+    text: "text-orange-700",
+    border: "border-orange-200",
+    dot: "bg-orange-500",
+  },
+});
+
+const OnlinePaymentInfo = memo(({ payment }) => {
+  const { t } = useTranslation();
+  const status = payment?.status || "unpaid";
+  const config = getPaymentStatusConfig(t)[status] || getPaymentStatusConfig(t).unpaid;
+  const isPaid = status === "paid";
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <div className="flex items-center gap-2 pb-2 border-b border-border/60">
+        <CreditCard className="h-4 w-4 text-primary" />
+        <span className="text-sm font-semibold">{t("business.bookingDetail.onlinePayment")}</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+        <div className="flex items-start justify-between gap-3 py-1.5">
+          <span className="text-xs text-muted-foreground shrink-0">{t("business.bookingDetail.paymentMethod")}</span>
+          <div className="flex items-center gap-1.5">
+            {payment?.paymentMethod === "VNPAY" && (
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs font-medium px-2 py-0.5">
+                VNPAY
+              </Badge>
+            )}
+            {payment?.paymentMethod === "MOMO" && (
+              <Badge variant="outline" className="bg-pink-50 text-pink-700 border-pink-200 text-xs font-medium px-2 py-0.5">
+                MOMO
+              </Badge>
+            )}
+            {payment?.paymentMethod === "SEPAY" && (
+              <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-medium px-2 py-0.5">
+                SePay
+              </Badge>
+            )}
+            {!payment?.paymentMethod && (
+              <span className="text-sm text-muted-foreground">—</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-start justify-between gap-3 py-1.5">
+          <span className="text-xs text-muted-foreground shrink-0">{t("business.bookingDetail.transactionRef")}</span>
+          <span className="text-xs font-mono font-medium text-foreground">
+            {payment?.transactionRef || "—"}
+          </span>
+        </div>
+
+        {isPaid && payment?.transactionId && (
+          <div className="flex items-start justify-between gap-3 py-1.5">
+            <span className="text-xs text-muted-foreground shrink-0">{t("business.bookingDetail.paymentGatewayCode")}</span>
+            <span className="text-xs font-mono text-foreground">
+              {payment.transactionId}
+            </span>
+          </div>
+        )}
+
+        {isPaid && payment?.bankCode && (
+          <div className="flex items-start justify-between gap-3 py-1.5">
+            <span className="text-xs text-muted-foreground shrink-0">{t("business.bookingDetail.bank")}</span>
+            <span className="text-xs font-medium text-foreground uppercase">
+              {payment.bankCode}
+            </span>
+          </div>
+        )}
+
+        <div className="flex items-start justify-between gap-3 py-1.5">
+          <span className="text-xs text-muted-foreground shrink-0">{t("business.bookingDetail.time")}</span>
+          <span className="text-xs text-foreground">
+            {formatPaymentDateTime(payment?.paidAt)}
+          </span>
+        </div>
+
+        <div className="flex items-start justify-between gap-3 py-1.5 col-span-2">
+          <span className="text-xs text-muted-foreground shrink-0">{t("business.bookingDetail.statusLabel")}</span>
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${config.bg} ${config.text} ${config.border}`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
+            {config.label}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+});
+OnlinePaymentInfo.displayName = "OnlinePaymentInfo";
+
+const InfoRow = memo(({ label, value, className }) => (
   <div className="flex items-start justify-between gap-4 py-2.5 border-b border-border/50 last:border-0">
     <span className="text-xs text-muted-foreground shrink-0 w-32">{label}</span>
     <span
@@ -53,7 +191,8 @@ const InfoRow = ({ label, value, className }) => (
       {value || "—"}
     </span>
   </div>
-);
+));
+InfoRow.displayName = "InfoRow";
 
 // ─── Loading Skeleton ─────────────────────────────────────────────────────────
 
@@ -76,21 +215,22 @@ const BookingDetailSkeleton = () => (
 // ─── Cancel Dialog ─────────────────────────────────────────────────────────────
 
 const CancelDialog = ({ open, onClose, onConfirm }) => {
+  const { t } = useTranslation();
   const [reason, setReason] = useState("");
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-destructive">Hủy đặt chỗ</DialogTitle>
+          <DialogTitle className="text-destructive">{t("business.bookingDetail.confirmDialogTitle")}</DialogTitle>
           <DialogDescription>
-            Vui lòng nhập lý do hủy (ít nhất 5 ký tự).
+            {t("business.bookingDetail.confirmDialogDesc")}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-1.5">
-          <Label>Lý do hủy</Label>
+          <Label>{t("business.bookingDetail.cancelReason")}</Label>
           <Textarea
             autoFocus
-            placeholder="Nhập lý do..."
+            placeholder={t("business.bookingDetail.cancelReasonPlaceholder")}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             className="min-h-[80px]"
@@ -98,19 +238,19 @@ const CancelDialog = ({ open, onClose, onConfirm }) => {
         </div>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose}>
-            Quay lại
+            {t("business.bookingDetail.back")}
           </Button>
           <Button
             variant="destructive"
             onClick={() => {
               if (reason.trim().length < 5) {
-                toast.error("Lý do cần ít nhất 5 ký tự");
+                toast.error(t("business.bookingDetail.reasonMinLength"));
                 return;
               }
               onConfirm(reason.trim());
             }}
           >
-            Xác nhận hủy
+            {t("business.bookingDetail.confirmCancel")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -119,6 +259,7 @@ const CancelDialog = ({ open, onClose, onConfirm }) => {
 };
 
 const MarkPaidDialog = ({ open, onClose, onConfirm, loading }) => {
+  const { t } = useTranslation();
   const [note, setNote] = useState("");
 
   useEffect(() => {
@@ -132,15 +273,15 @@ const MarkPaidDialog = ({ open, onClose, onConfirm, loading }) => {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Xác nhận thanh toán</DialogTitle>
+          <DialogTitle>{t("business.bookingDetail.confirmPaymentTitle")}</DialogTitle>
           <DialogDescription>
-            Đánh dấu booking đã thanh toán thủ công.
+            {t("business.bookingDetail.confirmPaymentDesc")}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-1.5">
-          <Label>Ghi chú (tuỳ chọn)</Label>
+          <Label>{t("business.bookingDetail.paymentNoteLabel")}</Label>
           <Textarea
-            placeholder="Ví dụ: Khách đã chuyển khoản"
+            placeholder={t("business.bookingDetail.paymentNotePlaceholder")}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             className="min-h-[80px]"
@@ -148,10 +289,10 @@ const MarkPaidDialog = ({ open, onClose, onConfirm, loading }) => {
         </div>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} disabled={loading}>
-            Quay lại
+            {t("business.bookingDetail.back")}
           </Button>
           <Button onClick={() => onConfirm(note.trim())} loading={loading}>
-            Xác nhận đã thanh toán
+            {t("business.bookingDetail.confirmPaidBtn")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -160,6 +301,7 @@ const MarkPaidDialog = ({ open, onClose, onConfirm, loading }) => {
 };
 
 const RefundDialog = ({ open, onClose, onConfirm, loading, maxAmount }) => {
+  const { t } = useTranslation();
   const [reason, setReason] = useState("");
   const [amount, setAmount] = useState(maxAmount || 0);
 
@@ -177,14 +319,14 @@ const RefundDialog = ({ open, onClose, onConfirm, loading, maxAmount }) => {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-destructive">Hoàn tiền</DialogTitle>
+          <DialogTitle className="text-destructive">{t("business.bookingDetail.refundTitle")}</DialogTitle>
           <DialogDescription>
-            Nhập số tiền hoàn và lý do để lưu lại lịch sử giao dịch.
+            {t("business.bookingDetail.refundDesc")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-1.5">
-          <Label>Số tiền hoàn (VND)</Label>
+          <Label>{t("business.bookingDetail.refundAmountLabel")}</Label>
           <input
             type="number"
             min={1}
@@ -194,14 +336,14 @@ const RefundDialog = ({ open, onClose, onConfirm, loading, maxAmount }) => {
             className="h-10 w-full rounded-md border border-border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <p className="text-[11px] text-muted-foreground">
-            Tối đa: {formatVND(maxAmount || 0)}
+            {t("business.bookingDetail.maxAmount")} {formatVND(maxAmount || 0)}
           </p>
         </div>
 
         <div className="space-y-1.5">
-          <Label>Lý do hoàn tiền</Label>
+          <Label>{t("business.bookingDetail.refundReason")}</Label>
           <Textarea
-            placeholder="Nhập lý do..."
+            placeholder={t("business.bookingDetail.cancelReasonPlaceholder")}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             className="min-h-[90px]"
@@ -210,28 +352,28 @@ const RefundDialog = ({ open, onClose, onConfirm, loading, maxAmount }) => {
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} disabled={loading}>
-            Quay lại
+            {t("business.bookingDetail.back")}
           </Button>
           <Button
             variant="destructive"
             onClick={() => {
               if (reason.trim().length < 5) {
-                toast.error("Lý do hoàn tiền cần ít nhất 5 ký tự");
+                toast.error(t("business.bookingDetail.refundReasonMinLength"));
                 return;
               }
               if (!amount || amount <= 0) {
-                toast.error("Số tiền hoàn phải lớn hơn 0");
+                toast.error(t("business.bookingDetail.refundAmountZero"));
                 return;
               }
               if (maxAmount && amount > maxAmount) {
-                toast.error("Số tiền hoàn vượt quá giá trị thanh toán");
+                toast.error(t("business.bookingDetail.refundExceedsPayment"));
                 return;
               }
               onConfirm({ reason: reason.trim(), amount });
             }}
             loading={loading}
           >
-            Xác nhận hoàn tiền
+            {t("business.bookingDetail.confirmRefundBtn")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -239,7 +381,8 @@ const RefundDialog = ({ open, onClose, onConfirm, loading, maxAmount }) => {
   );
 };
 
-const PaymentTimeline = ({ booking }) => {
+const PaymentTimeline = memo(({ booking }) => {
+  const { t } = useTranslation();
   const paymentStatus = String(
     booking?.paymentStatus || "unpaid",
   ).toLowerCase();
@@ -255,8 +398,8 @@ const PaymentTimeline = ({ booking }) => {
   const events = [
     {
       key: "created",
-      title: "Tạo đặt chỗ",
-      subtitle: "Booking được khởi tạo",
+      title: t("business.bookingDetail.timeline.created"),
+      subtitle: t("business.bookingDetail.timelineSubtitle"),
       at: booking?.createdAt,
     },
   ];
@@ -264,8 +407,8 @@ const PaymentTimeline = ({ booking }) => {
   if (paidAt || paymentStatus === "paid") {
     events.push({
       key: "paid",
-      title: "Đã thanh toán",
-      subtitle: "Xác nhận thanh toán thủ công",
+      title: t("business.bookingDetail.timeline.paid"),
+      subtitle: t("business.bookingDetail.manualConfirmSubtitle"),
       at: paidAt,
     });
   }
@@ -273,9 +416,9 @@ const PaymentTimeline = ({ booking }) => {
   if (refundedAt || paymentStatus.includes("refund") || refundAmount > 0) {
     events.push({
       key: "refund",
-      title: isPartialRefund ? "Hoàn tiền một phần" : "Đã hoàn tiền",
+      title: isPartialRefund ? t("business.bookingDetail.partialRefundLabel") : t("business.bookingDetail.timeline.refunded"),
       subtitle:
-        refundAmount > 0 ? `Giá trị hoàn: ${formatVND(refundAmount)}` : "",
+        refundAmount > 0 ? t("business.bookingDetail.refundValue", { amount: formatVND(refundAmount) }) : "",
       at: refundedAt,
     });
   }
@@ -296,18 +439,20 @@ const PaymentTimeline = ({ booking }) => {
               <p className="text-xs text-muted-foreground">{event.subtitle}</p>
             )}
             <p className="text-xs text-muted-foreground/80">
-              {event.at ? formatDateTime(event.at) : "Chưa có thời gian"}
+              {event.at ? formatDateTime(event.at) : t("business.bookingDetail.noTime")}
             </p>
           </div>
         </div>
       ))}
     </div>
   );
-};
+});
+PaymentTimeline.displayName = "PaymentTimeline";
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-const BookingDetailPage = () => {
+const BookingDetailPage = memo(() => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
@@ -324,7 +469,7 @@ const BookingDetailPage = () => {
       const response = await bookingApi.getById(id);
       setBooking(response.data);
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể tải thông tin đặt chỗ");
+      toastApiErrorIfNeeded(error, t("business.bookings.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -348,10 +493,10 @@ const BookingDetailPage = () => {
     setActionLoading(true);
     try {
       await bookingApi.confirm(id);
-      toast.success("Xác nhận thành công");
+      toast.success(t("business.bookings.confirmedSuccess"));
       await Promise.all([loadBooking(), loadQR()]);
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể xác nhận");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotConfirm"));
     } finally {
       setActionLoading(false);
     }
@@ -361,11 +506,11 @@ const BookingDetailPage = () => {
     setActionLoading(true);
     try {
       await bookingApi.cancel(id, reason);
-      toast.success("Hủy thành công");
+      toast.success(t("business.bookings.cancelledSuccess"));
       setCancelOpen(false);
       await loadBooking();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể hủy");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotCancel"));
     } finally {
       setActionLoading(false);
     }
@@ -375,10 +520,10 @@ const BookingDetailPage = () => {
     setActionLoading(true);
     try {
       await bookingApi.complete(id);
-      toast.success("Hoàn thành đặt chỗ");
+      toast.success(t("business.bookings.completedSuccess"));
       await loadBooking();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể hoàn thành");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotComplete"));
     } finally {
       setActionLoading(false);
     }
@@ -388,10 +533,10 @@ const BookingDetailPage = () => {
     setActionLoading(true);
     try {
       await bookingApi.markNoShow(id);
-      toast.success("Đánh dấu không đến");
+      toast.success(t("business.bookings.noShowMarked"));
       await loadBooking();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể đánh dấu");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotMarkNoShow"));
     } finally {
       setActionLoading(false);
     }
@@ -404,11 +549,11 @@ const BookingDetailPage = () => {
         note,
         paidAt: new Date().toISOString(),
       });
-      toast.success("Đã cập nhật trạng thái thanh toán");
+      toast.success(t("business.bookings.confirmedSuccess"));
       setMarkPaidOpen(false);
       await loadBooking();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể xác nhận thanh toán");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotConfirm"));
     } finally {
       setActionLoading(false);
     }
@@ -422,11 +567,11 @@ const BookingDetailPage = () => {
         refundAmount: amount,
         refundedAt: new Date().toISOString(),
       });
-      toast.success("Đã xử lý hoàn tiền");
+      toast.success(t("business.bookings.completedSuccess"));
       setRefundOpen(false);
       await loadBooking();
     } catch (error) {
-      toastApiErrorIfNeeded(error, "Không thể hoàn tiền");
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotComplete"));
     } finally {
       setActionLoading(false);
     }
@@ -439,13 +584,13 @@ const BookingDetailPage = () => {
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <AlertTriangle className="h-10 w-10 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          Đặt chỗ không tồn tại hoặc đã bị xóa
+          {t("business.bookingDetail.title")}
         </p>
         <Button
           variant="outline"
           onClick={() => navigate(BUSINESS_ROUTES.BOOKINGS)}
         >
-          <ArrowLeft className="h-4 w-4 mr-2" /> Quay lại danh sách
+          <ArrowLeft className="h-4 w-4 mr-2" /> {t("common.back")}
         </Button>
       </div>
     );
@@ -455,18 +600,18 @@ const BookingDetailPage = () => {
   const paymentStatus = String(
     booking?.paymentStatus || "unpaid",
   ).toLowerCase();
-  let paymentStatusLabel = "Chưa thanh toán";
+  let paymentStatusLabel = t("business.bookingDetail.unpaid");
   if (paymentStatus === "paid") {
-    paymentStatusLabel = "Đã thanh toán";
+    paymentStatusLabel = t("business.bookingDetail.paid");
   } else if (paymentStatus.includes("refund")) {
-    paymentStatusLabel = "Đã hoàn tiền";
+    paymentStatusLabel = t("business.bookingDetail.refunded");
   }
   const canMarkPaid =
     paymentStatus !== "paid" && !paymentStatus.includes("refund");
   const canRefund = paymentStatus === "paid";
 
   return (
-    <div className="space-y-6 p-6 lg:p-8 min-h-screen">
+    <div className="space-y-4 p-4 md:space-y-6 md:p-6 lg:p-8 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -486,7 +631,7 @@ const BookingDetailPage = () => {
               <StatusBadge status={booking.status} />
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Tạo lúc {formatDateTime(booking.createdAt)}
+              {t("business.bookingDetail.createdAt", { time: formatDateTime(booking.createdAt) })}
             </p>
           </div>
         </div>
@@ -500,7 +645,7 @@ const BookingDetailPage = () => {
                 disabled={actionLoading}
               >
                 <Check className="h-4 w-4" />{" "}
-                {actionLoading ? "Đang xử lý..." : "Xác nhận"}
+                {actionLoading ? t("business.bookingDetail.processing") : t("business.bookingDetail.confirm")}
               </Button>
               <Button
                 variant="destructive"
@@ -508,7 +653,7 @@ const BookingDetailPage = () => {
                 className="gap-2"
                 disabled={actionLoading}
               >
-                <X className="h-4 w-4" /> Hủy đặt chỗ
+                <X className="h-4 w-4" /> {t("business.bookingDetail.cancel")}
               </Button>
             </>
           )}
@@ -520,7 +665,7 @@ const BookingDetailPage = () => {
                 disabled={actionLoading}
               >
                 <CheckCircle className="h-4 w-4" />{" "}
-                {actionLoading ? "Đang xử lý..." : "Hoàn thành"}
+                {actionLoading ? t("business.bookingDetail.processing") : t("business.bookingDetail.complete")}
               </Button>
               <Button
                 variant="outline"
@@ -528,7 +673,7 @@ const BookingDetailPage = () => {
                 className="gap-2"
                 disabled={actionLoading}
               >
-                <AlertTriangle className="h-4 w-4" /> Không đến
+                <AlertTriangle className="h-4 w-4" /> {t("business.bookingDetail.noShow")}
               </Button>
             </>
           )}
@@ -540,72 +685,76 @@ const BookingDetailPage = () => {
         {/* Left: info columns */}
         <div className="lg:col-span-2 space-y-4">
           {/* Customer Info */}
-          <SectionCard title="Thông tin khách hàng" titleIcon={User}>
+          <BusinessSectionCard title={t("business.bookingDetail.customerInfo")} titleIcon={User}>
             <InfoRow
-              label="Họ tên"
+              label={t("business.bookingDetail.customerName")}
               value={booking.user?.fullName || booking.guestName}
             />
             <InfoRow
-              label="Email"
+              label={t("business.bookingDetail.customerEmail")}
               value={booking.user?.email || booking.guestEmail}
             />
             <InfoRow
-              label="Số điện thoại"
+              label={t("business.bookingDetail.customerPhone")}
               value={booking.user?.phone || booking.guestPhone}
             />
-          </SectionCard>
+          </BusinessSectionCard>
 
           {/* Service & Booking Info */}
-          <SectionCard title="Chi tiết đặt chỗ" titleIcon={Ticket}>
-            <InfoRow label="Dịch vụ" value={booking.service?.name} />
-            <InfoRow label="Địa điểm" value={booking.service?.place?.name} />
+          <BusinessSectionCard title={t("business.bookingDetail.bookingDetails")} titleIcon={Ticket}>
+            <InfoRow label={t("business.bookingDetail.service")} value={booking.service?.name} />
+            <InfoRow label={t("business.bookingDetail.place")} value={booking.service?.place?.name} />
             <InfoRow
-              label="Ngày sử dụng"
+              label={t("business.bookingDetail.usageDate")}
               value={formatDate(booking.useDate || booking.bookingDate)}
             />
-            <InfoRow label="Số lượng" value={booking.quantity || 1} />
-            {booking.note && <InfoRow label="Ghi chú" value={booking.note} />}
-          </SectionCard>
+            <InfoRow label={t("business.bookingDetail.quantity")} value={booking.quantity || 1} />
+            {booking.note && <InfoRow label={t("business.bookingDetail.notes")} value={booking.note} />}
+          </BusinessSectionCard>
 
           {/* Payment */}
-          <SectionCard title="Thanh toán" titleIcon={DollarSign}>
-            <InfoRow label="Giá gốc" value={formatVND(booking.originalPrice)} />
-            {booking.discountAmount > 0 && (
+          {booking.payment ? (
+            <OnlinePaymentInfo payment={booking.payment} />
+          ) : (
+            <BusinessSectionCard title={t("business.bookingDetail.payment")} titleIcon={DollarSign}>
+              <InfoRow label={t("business.bookingDetail.originalPrice")} value={formatVND(booking.originalPrice)} />
+              {booking.discountAmount > 0 && (
+                <InfoRow
+                  label={t("business.bookingDetail.discount")}
+                  value={`-${formatVND(booking.discountAmount)}`}
+                  className="text-emerald-600"
+                />
+              )}
               <InfoRow
-                label="Giảm giá"
-                value={`-${formatVND(booking.discountAmount)}`}
-                className="text-emerald-600"
+                label={t("business.bookingDetail.finalAmount")}
+                value={formatVND(booking.finalPrice)}
+                className="text-lg font-bold"
               />
-            )}
-            <InfoRow
-              label="Thành tiền"
-              value={formatVND(booking.finalPrice)}
-              className="text-lg font-bold"
-            />
-            {booking.commissionAmount > 0 && (
-              <InfoRow
-                label="Hoa hồng hệ thống"
-                value={`-${formatVND(booking.commissionAmount)}`}
-                className="text-rose-600"
-              />
-            )}
-            {booking.cancelReason && (
-              <InfoRow
-                label="Lý do hủy"
-                value={booking.cancelReason}
-                className="text-destructive"
-              />
-            )}
-          </SectionCard>
+              {booking.commissionAmount > 0 && (
+                <InfoRow
+                  label={t("business.bookingDetail.systemCommission")}
+                  value={`-${formatVND(booking.commissionAmount)}`}
+                  className="text-rose-600"
+                />
+              )}
+              {booking.cancelReason && (
+                <InfoRow
+                  label={t("business.bookingDetail.cancelReasonLabel")}
+                  value={booking.cancelReason}
+                  className="text-destructive"
+                />
+              )}
+            </BusinessSectionCard>
+          )}
         </div>
 
         {/* Right: Action panel + QR + Voucher */}
         <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-          <SectionCard title="Thanh toán thủ công" titleIcon={Wallet}>
+          <BusinessSectionCard title={t("business.bookingDetail.manualPayment")} titleIcon={Wallet}>
             <div className="space-y-3">
               <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
                 <p className="text-xs text-muted-foreground">
-                  Trạng thái thanh toán
+                  {t("business.bookingDetail.paymentStatus")}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-foreground uppercase">
                   {paymentStatusLabel}
@@ -620,7 +769,7 @@ const BookingDetailPage = () => {
                   disabled={!canMarkPaid || actionLoading}
                 >
                   <CheckCircle className="h-4 w-4" />
-                  Xác nhận thanh toán
+                  {t("business.bookingDetail.confirmPaymentBtn")}
                 </Button>
 
                 <Button
@@ -631,19 +780,19 @@ const BookingDetailPage = () => {
                   disabled={!canRefund || actionLoading}
                 >
                   <RotateCcw className="h-4 w-4" />
-                  Hoàn tiền
+                  {t("business.bookingDetail.refundBtn")}
                 </Button>
               </div>
             </div>
-          </SectionCard>
+          </BusinessSectionCard>
 
-          <SectionCard title="Timeline thanh toán" titleIcon={Clock3}>
+          <BusinessSectionCard title={t("business.bookingDetail.paymentTimeline")} titleIcon={Clock3}>
             <PaymentTimeline booking={booking} />
-          </SectionCard>
+          </BusinessSectionCard>
 
           {/* QR Code */}
           {qrCode && (
-            <SectionCard title="Mã QR xác nhận" titleIcon={QrCode}>
+            <BusinessSectionCard title={t("business.bookingDetail.qrCode")} titleIcon={QrCode}>
               <div className="flex justify-center p-2">
                 <img
                   src={qrCode}
@@ -652,20 +801,20 @@ const BookingDetailPage = () => {
                 />
               </div>
               <p className="text-xs text-center text-muted-foreground mt-2">
-                Khách hàng xuất trình mã này khi đến
+                {t("business.bookingDetail.qrCodePresent")}
               </p>
-            </SectionCard>
+            </BusinessSectionCard>
           )}
 
           {/* Voucher */}
           {booking.voucher && (
-            <SectionCard title="Voucher áp dụng" titleIcon={Tag}>
+            <BusinessSectionCard title={t("business.bookingDetail.voucherApplied")} titleIcon={Tag}>
               <div className="text-center py-2">
                 <span className="font-mono font-bold text-lg tracking-widest bg-muted px-3 py-1 rounded-md">
                   {booking.voucher.code}
                 </span>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Giảm{" "}
+                  {t("business.bookingDetail.voucherDiscount")}{" "}
                   <span className="font-semibold text-emerald-600">
                     {booking.voucher.discountType === "percentage"
                       ? `${booking.voucher.discountValue}%`
@@ -673,7 +822,7 @@ const BookingDetailPage = () => {
                   </span>
                 </p>
               </div>
-            </SectionCard>
+            </BusinessSectionCard>
           )}
         </div>
       </div>
@@ -700,6 +849,8 @@ const BookingDetailPage = () => {
       />
     </div>
   );
-};
+});
+
+BookingDetailPage.displayName = "BookingDetailPage";
 
 export default BookingDetailPage;

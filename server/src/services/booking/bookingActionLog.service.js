@@ -3,12 +3,16 @@ import logger from "../../config/logger.js";
 export const BOOKING_ACTION = {
   APPROVE: "approve",
   REJECT: "reject",
+  CANCEL: "cancel",
+  COMPLETE: "complete",
+  NO_SHOW: "no_show",
   RESCHEDULE: "reschedule",
   QUICK_APPROVE: "quick_approve",
   QUICK_REJECT: "quick_reject",
   AUTO_APPROVE: "auto_approve",
   AUTO_APPROVE_FAILED: "auto_approve_failed",
   AUTO_EXPIRE: "auto_expire",
+  CHECKIN: "checkin",
 };
 
 /**

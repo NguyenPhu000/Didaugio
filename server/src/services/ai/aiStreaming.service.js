@@ -1,5 +1,4 @@
-import { geminiModel } from "../../config/geminiClient.js";
-import { mapGeminiError } from "../../lib/geminiErrorHandler.js";
+import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
 
 const SSE_HEADERS = {
   "Content-Type": "text/event-stream",
@@ -23,15 +22,23 @@ export async function streamPlaceSummary(prompt, res) {
   );
 
   try {
-    const result = await geminiModel.generateContentStream(prompt);
-    for await (const chunk of result.stream) {
-      const text = chunk.text();
+    const client = createGroqClient();
+    const stream = await client.chat.completions.create({
+      model: GROQ_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.6,
+      max_tokens: 1500,
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const text = chunk.choices[0]?.delta?.content || "";
       if (text) writeSSE(res, text);
     }
     writeSSE(res, "[DONE]");
   } catch (err) {
-    const { body } = mapGeminiError(err);
-    writeSSE(res, `[ERROR] ${body.message}`);
+    const message = err?.message || "Lỗi khi streaming AI";
+    writeSSE(res, `[ERROR] ${message.split("\n")[0]}`);
   } finally {
     res.end();
   }
@@ -49,22 +56,29 @@ export async function streamChat(messages, system, res) {
   );
 
   try {
-    const result = await geminiModel.generateContentStream({
-      systemInstruction: system,
-      contents: messages.map((m) => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }],
-      })),
+    const client = createGroqClient();
+    const stream = await client.chat.completions.create({
+      model: GROQ_MODEL,
+      messages: [
+        { role: "system", content: system },
+        ...messages.map((m) => ({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.content,
+        })),
+      ],
+      temperature: 0.6,
+      max_tokens: 1500,
+      stream: true,
     });
 
-    for await (const chunk of result.stream) {
-      const text = chunk.text();
+    for await (const chunk of stream) {
+      const text = chunk.choices[0]?.delta?.content || "";
       if (text) writeSSE(res, text);
     }
     writeSSE(res, "[DONE]");
   } catch (err) {
-    const { body } = mapGeminiError(err);
-    writeSSE(res, `[ERROR] ${body.message}`);
+    const message = err?.message || "Lỗi khi streaming AI";
+    writeSSE(res, `[ERROR] ${message.split("\n")[0]}`);
   } finally {
     res.end();
   }

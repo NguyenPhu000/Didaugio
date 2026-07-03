@@ -1,0 +1,158 @@
+import safeAsyncStorage from "../utils/safeAsyncStorage";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import { QUERY_KEYS } from "../constants/query-keys";
+import {
+  REACT_QUERY_PERSIST_BUSTER,
+  TRIP_OFFLINE_MAX_AGE_MS,
+} from "../constants/trip-offline-cache";
+
+const PERSIST_STORAGE_KEY = "didaugio-react-query-cache";
+
+const tripsRootKey = QUERY_KEYS.trips.all()[0];
+
+function slimPlace(place) {
+  if (!place || typeof place !== "object") return place;
+  const { thumbnail, images, ...rest } = place;
+
+  const slimThumbnail =
+    typeof thumbnail === "string" && /^https?:\/\//i.test(thumbnail.trim())
+      ? thumbnail.trim()
+      : undefined;
+
+  const first = Array.isArray(images) ? images[0] : null;
+  const slimImages =
+    first && (first.secureUrl || first.thumbnailUrl)
+      ? [
+          {
+            ...(first.secureUrl ? { secureUrl: first.secureUrl } : {}),
+            ...(first.thumbnailUrl ? { thumbnailUrl: first.thumbnailUrl } : {}),
+          },
+        ]
+      : undefined;
+
+  return {
+    ...rest,
+    ...(slimThumbnail ? { thumbnail: slimThumbnail } : {}),
+    ...(slimImages ? { images: slimImages } : {}),
+  };
+}
+
+/** Strip heavy base64 images from trip destinations to stay under Android's 2MB CursorWindow limit. */
+function slimTrip(trip) {
+  if (!trip || typeof trip !== "object") return trip;
+  const { destinations, bookings, thumbnail, ...rest } = trip;
+  const slimThumbnail =
+    typeof thumbnail === "string" && /^https?:\/\//i.test(thumbnail.trim())
+      ? thumbnail.trim()
+      : undefined;
+  const slimmedDestinations = Array.isArray(destinations)
+    ? destinations.map((d) => ({
+        ...d,
+        place: slimPlace(d.place),
+      }))
+    : [];
+  return {
+    ...rest,
+    ...(slimThumbnail ? { thumbnail: slimThumbnail } : {}),
+    destinations: slimmedDestinations,
+    destinationCount: slimmedDestinations.length,
+  };
+}
+
+const basePersister = createAsyncStoragePersister({
+  storage: safeAsyncStorage,
+  key: PERSIST_STORAGE_KEY,
+  throttleTime: 1000,
+});
+
+export const asyncStoragePersister = {
+  persistClient: async (persistedClient) => {
+    try {
+      if (persistedClient && persistedClient.clientState && Array.isArray(persistedClient.clientState.queries)) {
+        // Chỉ giữ query đã filter qua shouldPersistTripQuery (đã được dehydrateOptions xử lý)
+        // nhưng vẫn slim thêm để đảm bảo không có base64 lọt vào
+        const slimmedQueries = persistedClient.clientState.queries.map((q) => {
+          const root = q.queryKey?.[0];
+          if (root === tripsRootKey && q.state?.data) {
+            const data = q.state.data;
+            let slimmedData = data;
+            if (Array.isArray(data)) {
+              slimmedData = data.map(slimTrip);
+            } else if (data?.data && typeof data.data === "object" && !Array.isArray(data.data)) {
+              slimmedData = { ...data, data: slimTrip(data.data) };
+            } else if (data && typeof data === "object" && !Array.isArray(data)) {
+              slimmedData = slimTrip(data);
+            }
+            return {
+              ...q,
+              state: {
+                ...q.state,
+                data: slimmedData,
+              },
+            };
+          }
+          return q;
+        });
+
+        // Size guard: bỏ qua persist nếu payload quá lớn (> 1.5MB)
+        // để tránh SQLITE_FULL trên thiết bị
+        try {
+          const serialized = JSON.stringify(slimmedQueries);
+          if (serialized.length > 1_500_000) {
+            console.warn(
+              `[queryPersist] Cache quá lớn (${(serialized.length / 1024 / 1024).toFixed(1)}MB), bỏ qua persist.`
+            );
+            return;
+          }
+        } catch {
+          // stringify fail → bỏ qua
+          return;
+        }
+
+        return await basePersister.persistClient({
+          ...persistedClient,
+          clientState: {
+            ...persistedClient.clientState,
+            queries: slimmedQueries,
+          },
+        });
+      }
+      return await basePersister.persistClient(persistedClient);
+    } catch (err) {
+      console.warn("[queryPersist] Ghi cache thất bại (đĩa đầy hoặc lỗi):", err);
+    }
+  },
+  restoreClient: async () => {
+    try {
+      return await basePersister.restoreClient();
+    } catch (err) {
+      console.warn("[queryPersist] Đọc cache thất bại:", err);
+      return undefined;
+    }
+  },
+  removeClient: async () => {
+    try {
+      return await basePersister.removeClient();
+    } catch (err) {
+      console.warn("[queryPersist] Xóa cache thất bại:", err);
+    }
+  },
+};
+
+/**
+ * Chỉ persist các query thuộc domain trips (list + detail) và đã fetch thành công.
+ * Tránh persist các query đang pending hoặc error để ngăn chặn lỗi hydration crash.
+ */
+export function shouldPersistTripQuery(query) {
+  const root = query.queryKey?.[0];
+  return root === tripsRootKey && query.state.status === "success";
+}
+
+export const tripPersistOptions = {
+  persister: asyncStoragePersister,
+  maxAge: TRIP_OFFLINE_MAX_AGE_MS,
+  buster: REACT_QUERY_PERSIST_BUSTER,
+  dehydrateOptions: {
+    shouldDehydrateQuery: shouldPersistTripQuery,
+  },
+};

@@ -145,7 +145,7 @@ export const getById = async (req, res, next) => {
     const booking = await bookingService.getById(req.params.id);
     res.json({
       success: true,
-      data: booking,
+      data: { ...booking, serverTime: new Date().toISOString() },
       message: "Lấy chi tiết booking thành công",
     });
   } catch (error) {
@@ -176,6 +176,7 @@ export const cancel = async (req, res, next) => {
       req.params.id,
       req.body.cancelReason,
       req.user.userId,
+      "business",
     );
     res.json({
       success: true,
@@ -192,6 +193,7 @@ export const complete = async (req, res, next) => {
     const booking = await bookingService.complete(
       req.params.id,
       req.user.userId,
+      req.body.note,
     );
     res.json({
       success: true,

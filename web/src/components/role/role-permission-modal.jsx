@@ -35,6 +35,7 @@ import Lightbulb from "lucide-react/dist/esm/icons/lightbulb";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export function RolePermissionModal({
   open,
@@ -42,6 +43,7 @@ export function RolePermissionModal({
   role,
   onPermissionsUpdated,
 }) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [allPermissions, setAllPermissions] = useState({});
@@ -83,11 +85,11 @@ export function RolePermissionModal({
       }
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
-      toast.error("Không thể tải danh sách quyền");
+      toast.error(t("role.permissionModal.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [role?.id]);
+  }, [role?.id, t]);
 
   useEffect(() => {
     if (open && role) {
@@ -142,7 +144,7 @@ export function RolePermissionModal({
 
       await roleService.updateRolePermissions(role.id, permissionIds);
 
-      toast.success("Cập nhật quyền thành công");
+      toast.success(t("role.permissionModal.saveSuccess"));
       setInitialPermissions(new Set(selectedPermissions));
 
       if (onPermissionsUpdated) {
@@ -152,7 +154,7 @@ export function RolePermissionModal({
       onOpenChange(false);
     } catch (error) {
       console.error("Lỗi khi cập nhật quyền:", error);
-      toast.error(error.response?.data?.message || "Không thể cập nhật quyền");
+      toast.error(error.response?.data?.message || t("role.permissionModal.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -215,13 +217,10 @@ export function RolePermissionModal({
 
   const getSuggestionForRole = () => {
     const suggestions = {
-      admin:
-        "Vai trò Admin nên có quyền quản lý người dùng và duyệt nội dung, nhưng không nên thay đổi vai trò hoặc cấu hình hệ thống.",
-      business:
-        "Chủ doanh nghiệp chỉ nên quản lý địa điểm, dịch vụ và booking của chính mình.",
-      staff:
-        "Nhân viên hỗ trợ nên có quyền xem và xử lý báo cáo, ẩn đánh giá vi phạm.",
-      guest: "Khách không có quyền truy cập vào trang quản trị.",
+      admin: t("role.permissionModal.suggestionAdmin"),
+      business: t("role.permissionModal.suggestionBusiness"),
+      staff: t("role.permissionModal.suggestionStaff"),
+      guest: t("role.permissionModal.suggestionGuest"),
     };
     return suggestions[role?.name] || null;
   };
@@ -243,10 +242,10 @@ export function RolePermissionModal({
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-xl">
-            Quản lý quyền hạn - {role?.displayName}
+            {t("role.permissionModal.title")} - {role?.displayName}
           </DialogTitle>
           <DialogDescription>
-            {role?.description || "Cấu hình quyền hạn cho vai trò này"}
+            {role?.description || t("role.permissionModal.defaultDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -264,7 +263,7 @@ export function RolePermissionModal({
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Tìm quyền..."
+                    placeholder={t("role.permissionModal.searchPlaceholder")}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9"
@@ -272,10 +271,10 @@ export function RolePermissionModal({
                 </div>
                 <Select value={moduleFilter} onValueChange={setModuleFilter}>
                   <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Lọc theo module" />
+                    <SelectValue placeholder={t("role.permissionModal.filterByModule")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tất cả modules</SelectItem>
+                    <SelectItem value="all">{t("role.permissionModal.allModules")}</SelectItem>
                     {Object.keys(allPermissions).map((module) => (
                       <SelectItem key={module} value={module}>
                         {MODULE_DISPLAY_NAMES[module] || module}
@@ -288,7 +287,7 @@ export function RolePermissionModal({
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <p className="text-sm font-medium">
-                    Đã chọn: {stats.selected} / {stats.total} quyền
+                    {t("role.permissionModal.selectedCount", { selected: stats.selected, total: stats.total })}
                   </p>
                   <Progress
                     value={stats.percentage}
@@ -303,7 +302,7 @@ export function RolePermissionModal({
                     disabled={stats.selected === stats.total}
                   >
                     <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Chọn tất cả
+                    {t("role.permissionModal.selectAll")}
                   </Button>
                   <Button
                     variant="outline"
@@ -312,7 +311,7 @@ export function RolePermissionModal({
                     disabled={stats.selected === 0}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
-                    Bỏ chọn
+                    {t("role.permissionModal.deselectAll")}
                   </Button>
                 </div>
               </div>
@@ -329,7 +328,7 @@ export function RolePermissionModal({
               <div className="space-y-3 pb-4">
                 {Object.keys(filteredPermissions).length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    Không tìm thấy quyền nào
+                    {t("role.permissionModal.noPermissionsFound")}
                   </div>
                 ) : (
                   Object.entries(filteredPermissions).map(
@@ -362,7 +361,7 @@ export function RolePermissionModal({
                                   {MODULE_DISPLAY_NAMES[module] || module}
                                 </Label>
                                 <p className="text-xs text-muted-foreground">
-                                  {moduleSelected}/{moduleTotal} quyền
+                                  {t("role.permissionModal.modulePermissionCount", { selected: moduleSelected, total: moduleTotal })}
                                 </p>
                               </div>
                             </div>
@@ -402,15 +401,15 @@ export function RolePermissionModal({
 
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Hủy
+                {t("role.permissionModal.cancel")}
               </Button>
               <Button onClick={handleSave} disabled={!hasChanges || saving}>
                 {saving ? (
-                  <>Đang lưu...</>
+                  <>{t("role.permissionModal.saving")}</>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Lưu thay đổi
+                    {t("role.permissionModal.save")}
                   </>
                 )}
               </Button>

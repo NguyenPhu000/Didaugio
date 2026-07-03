@@ -1,4 +1,5 @@
 import prisma from "../../config/prismaClient.js";
+import { ROLES, canEditRolePermissions } from "../../config/constants.js";
 import {
   validateRoleId,
   validateRoleQuery,
@@ -7,6 +8,7 @@ import {
 } from "../../models/index.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
+import { invalidateRoleCache } from "../../utils/permissionCache.js";
 
 /**
  * Lấy danh sách tất cả vai trò
@@ -137,6 +139,29 @@ export const getRoleById = async (roleId) => {
     );
   }
 
+  // Nếu là Super Admin, tự động trả về toàn bộ quyền trong hệ thống
+  let permissionsToReturn = [];
+  if (role.id === 1) { // 1 = ROLES.SUPER_ADMIN
+    const allSystemPermissions = await prisma.permission.findMany({
+      orderBy: [{ module: "asc" }, { name: "asc" }],
+    });
+    permissionsToReturn = allSystemPermissions.map((p) => ({
+      id: p.id,
+      name: p.name,
+      displayName: p.displayName,
+      module: p.module,
+      description: p.description,
+    }));
+  } else {
+    permissionsToReturn = role.rolePermissions.map((rp) => ({
+      id: rp.permission.id,
+      name: rp.permission.name,
+      displayName: rp.permission.displayName,
+      module: rp.permission.module,
+      description: rp.permission.description,
+    }));
+  }
+
   // Transform data
   return {
     success: true,
@@ -147,14 +172,8 @@ export const getRoleById = async (roleId) => {
       description: role.description,
       isSystem: role.isSystem,
       createdAt: role.createdAt,
-      permissions: role.rolePermissions.map((rp) => ({
-        id: rp.permission.id,
-        name: rp.permission.name,
-        displayName: rp.permission.displayName,
-        module: rp.permission.module,
-        description: rp.permission.description,
-      })),
-      permissionCount: role.rolePermissions.length,
+      permissions: permissionsToReturn,
+      permissionCount: permissionsToReturn.length,
       userCount: role._count.users,
     },
   };
@@ -187,26 +206,49 @@ export const getRolePermissions = async (roleId) => {
     );
   }
 
-  // Lấy tất cả permissions của role
-  const rolePermissions = await prisma.rolePermission.findMany({
-    where: { roleId: validatedId },
-    include: {
-      permission: true,
-    },
-  });
+  let permissionsList = [];
 
-  // Group by module
-  const permissionsByModule = {};
-  rolePermissions.forEach((rp) => {
-    const module = rp.permission.module;
-    if (!permissionsByModule[module]) {
-      permissionsByModule[module] = [];
-    }
-    permissionsByModule[module].push({
+  // Nếu là Super Admin, tự động trả về toàn bộ quyền trong hệ thống
+  if (role.id === 1) { // 1 = ROLES.SUPER_ADMIN
+    const allSystemPermissions = await prisma.permission.findMany({
+      orderBy: [{ module: "asc" }, { name: "asc" }],
+    });
+    permissionsList = allSystemPermissions.map((p) => ({
+      id: p.id,
+      name: p.name,
+      displayName: p.displayName,
+      description: p.description,
+      module: p.module,
+    }));
+  } else {
+    // Lấy tất cả permissions của role
+    const rolePermissions = await prisma.rolePermission.findMany({
+      where: { roleId: validatedId },
+      include: {
+        permission: true,
+      },
+    });
+    permissionsList = rolePermissions.map((rp) => ({
       id: rp.permission.id,
       name: rp.permission.name,
       displayName: rp.permission.displayName,
       description: rp.permission.description,
+      module: rp.permission.module,
+    }));
+  }
+
+  // Group by module
+  const permissionsByModule = {};
+  permissionsList.forEach((p) => {
+    const module = p.module;
+    if (!permissionsByModule[module]) {
+      permissionsByModule[module] = [];
+    }
+    permissionsByModule[module].push({
+      id: p.id,
+      name: p.name,
+      displayName: p.displayName,
+      description: p.description,
     });
   });
 
@@ -215,7 +257,7 @@ export const getRolePermissions = async (roleId) => {
     data: {
       role,
       permissions: permissionsByModule,
-      totalPermissions: rolePermissions.length,
+      totalPermissions: permissionsList.length,
     },
   };
 };
@@ -226,7 +268,7 @@ export const getRolePermissions = async (roleId) => {
  * @param {object} permissionData - { permissionIds: [1, 2, 3] }
  * @returns {Promise<object>} Thông tin vai trò sau khi cập nhật
  */
-export const updateRolePermissions = async (roleId, permissionData) => {
+export const updateRolePermissions = async (roleId, permissionData, currentUser = null) => {
   // Validate inputs
   const validatedId = validateRoleId(roleId);
   const { permissionIds } = validateUpdateRolePermissions(permissionData);
@@ -248,6 +290,29 @@ export const updateRolePermissions = async (roleId, permissionData) => {
       404,
       ERROR_CODES.NOT_FOUND,
     );
+  }
+
+  // Super Admin role (id=1) is always protected — uses wildcard, no need to edit
+  if (role.id === 1) {
+    throw new ServiceError(
+      "Không thể thay đổi quyền của Super Admin (tự động có toàn quyền)",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
+  }
+
+  // Check hierarchy
+  const currentUserLevel = canEditRolePermissions(currentUser?.roleId, role.id) ? 1 : 999;
+  const targetRoleLevel = 2;
+
+  if (currentUser?.roleId !== ROLES.SUPER_ADMIN) {
+    if (currentUserLevel >= targetRoleLevel) {
+      throw new ServiceError(
+        "Bạn không có quyền thay đổi quyền của vai trò này",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
   }
 
   // Kiểm tra tất cả permission IDs có tồn tại không
@@ -299,6 +364,9 @@ export const updateRolePermissions = async (roleId, permissionData) => {
 
     return updatedRole;
   });
+
+  // Invalidate permission cache for all users with this role
+  invalidateRoleCache(validatedId);
 
   // Transform data
   return {
@@ -383,6 +451,7 @@ export const getRoleUsers = async (roleId, query = {}) => {
     select: {
       id: true,
       email: true,
+      roleId: true,
       status: true,
       emailVerified: true,
       lastLoginAt: true,
@@ -394,6 +463,11 @@ export const getRoleUsers = async (roleId, query = {}) => {
           avatar: true,
         },
       },
+      _count: {
+        select: {
+          userPermissions: true,
+        },
+      },
     },
   });
 
@@ -401,6 +475,7 @@ export const getRoleUsers = async (roleId, query = {}) => {
   const transformedUsers = users.map((user) => ({
     id: user.id,
     email: user.email,
+    roleId: user.roleId,
     fullName: user.profile?.fullName || null,
     phone: user.profile?.phone || null,
     avatar: user.profile?.avatar || null,
@@ -408,6 +483,7 @@ export const getRoleUsers = async (roleId, query = {}) => {
     emailVerified: user.emailVerified,
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
+    customPermissionCount: user._count?.userPermissions || 0,
   }));
 
   return {

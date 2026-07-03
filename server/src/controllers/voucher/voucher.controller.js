@@ -84,6 +84,22 @@ export const getUsageStats = async (req, res, next) => {
   }
 };
 
+export const getStats = async (req, res, next) => {
+  try {
+    const stats = await voucherService.getStats(
+      req.user.userId,
+      req.user.roleId,
+    );
+    res.json({
+      success: true,
+      data: stats,
+      message: "Lấy thống kê voucher thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const bulkDeactivate = async (req, res, next) => {
   try {
     const result = await voucherService.bulkDeactivate(

@@ -29,27 +29,6 @@ export const MAP_STYLES = {
     mapType: "standard",
     useNativeCleanStyle: true,
   },
-  CARTO_LIGHT: {
-    key: "carto_light",
-    label: MAP_TEXT.mapConfig.mapStyles.cartoLight,
-    urls: [],
-    mapType: "standard",
-    useNativeCleanStyle: true,
-  },
-  ADMIN: {
-    key: "admin",
-    label: MAP_TEXT.mapConfig.mapStyles.admin,
-    urls: [],
-    mapType: "standard",
-    useNativeCleanStyle: true,
-  },
-  SATELLITE: {
-    key: "satellite",
-    label: MAP_TEXT.mapConfig.mapStyles.satellite,
-    urls: [],
-    mapType: "satellite",
-    useNativeCleanStyle: false,
-  },
   HYBRID: {
     key: "hybrid",
     label: MAP_TEXT.mapConfig.mapStyles.hybrid,

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { MapProvider } from "../context/MapProvider";
 import { useMapContext } from "../hooks/useMapContext";
@@ -11,28 +12,34 @@ import DistrictLabels from "./DistrictLabels";
 import WardLabels from "./WardLabels";
 import RouteLayer from "./RouteLayer";
 
-const MapSkeleton = () => (
-  <div className="w-full h-full flex items-center justify-center bg-slate-50">
-    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-    <span className="ml-2 text-primary font-medium">Đang tải bản đồ...</span>
-  </div>
-);
+const MapSkeleton = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-slate-50">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <span className="ml-2 text-primary font-medium">{t("map.loading")}</span>
+    </div>
+  );
+};
 
-const MapError = ({ onRetry }) => (
-  <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 gap-3">
-    <AlertTriangle className="h-10 w-10 text-red-400" />
-    <p className="text-sm font-medium text-gray-600">
-      Không tải được dữ liệu bản đồ
-    </p>
-    <button
-      onClick={onRetry}
-      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
-    >
-      <RefreshCw className="h-4 w-4" />
-      Thử lại
-    </button>
-  </div>
-);
+const MapError = ({ onRetry }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 gap-3">
+      <AlertTriangle className="h-10 w-10 text-red-400" />
+      <p className="text-sm font-medium text-gray-600">
+        {t("map.loadError")}
+      </p>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
+      >
+        <RefreshCw className="h-4 w-4" />
+        {t("map.retry")}
+      </button>
+    </div>
+  );
+};
 
 const MapViewInner = ({
   places = [],

@@ -6,6 +6,8 @@ import { PAGINATION, BUSINESS_STATUS, ROLES, BOOKING_STATUS, PAYMENT_STATUS } fr
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import { serializeBusiness } from "./business.serializer.js";
 import { sanitizeText } from "../../utils/sanitizeText.js";
+import { decryptField, isEncrypted } from "../../utils/fieldEncryption.js";
+import { invalidateUserCache } from "../../utils/permissionCache.js";
 
 const defaultInclude = {
   owner: {
@@ -27,9 +29,6 @@ const adminListSelect = {
   bankAccount: true,
   bankOwner: true,
   idCardNumber: true,
-  idCardFront: true,
-  idCardBack: true,
-  businessLicense: true,
   contractSigned: true,
   commissionRate: true,
   status: true,
@@ -44,6 +43,16 @@ const adminListSelect = {
   createdAt: true,
   updatedAt: true,
   owner: defaultInclude.owner,
+  sensitiveDocuments: {
+    select: {
+      id: true,
+      type: true,
+      mimeType: true,
+      originalName: true,
+      fileSize: true,
+      createdAt: true,
+    },
+  },
   _count: { select: { places: true, services: true, vouchers: true } },
 };
 
@@ -73,6 +82,31 @@ const ensureSuspendedForReactivate = (business) => {
     error.statusCode = 422;
     throw error;
   }
+};
+
+/**
+ * Giải mã field nếu đã mã hóa, trả về giá trị plain text.
+ * Trả null nếu value null/undefined.
+ */
+const tryDecrypt = (value) => {
+  if (value == null) return null;
+  if (isEncrypted(value)) {
+    try {
+      return decryptField(value);
+    } catch {
+      return null;
+    }
+  }
+  return String(value);
+};
+
+/**
+ * Mask CCCD: giữ 4 ký tự cuối
+ */
+const maskIdCard = (value) => {
+  const plain = tryDecrypt(value);
+  if (!plain || plain.length < 4) return null;
+  return `${"*".repeat(plain.length - 4)}${plain.slice(-4)}`;
 };
 
 /** Gắn số đặt chỗ theo từng business (qua business_services) — không gồm số tiền/doanh thu. */
@@ -234,6 +268,16 @@ export const getById = async (id) => {
       include: {
         ...defaultInclude,
         _count: { select: { places: true, services: true, vouchers: true } },
+        sensitiveDocuments: {
+          select: {
+            id: true,
+            type: true,
+            mimeType: true,
+            originalName: true,
+            fileSize: true,
+            createdAt: true,
+          },
+        },
         places: {
           orderBy: [{ updatedAt: "desc" }],
           select: {
@@ -325,14 +369,13 @@ export const getById = async (id) => {
       ? Number(((completedCommission / completedFinal) * 100).toFixed(2))
       : 0;
 
+  const docTypes = new Set((business.sensitiveDocuments ?? []).map((d) => d.type));
+
   const complianceChecklist = {
     hasTaxCode: Boolean(business.taxCode),
-    hasIdCardFront: Boolean(business.idCardFront),
-    idCardFrontUrl: business.idCardFront || null,
-    hasIdCardBack: Boolean(business.idCardBack),
-    idCardBackUrl: business.idCardBack || null,
-    hasBusinessLicense: Boolean(business.businessLicense),
-    businessLicenseUrl: business.businessLicense || null,
+    hasIdCardFront: docTypes.has("id_card_front") || Boolean(business.idCardFront),
+    hasIdCardBack: docTypes.has("id_card_back") || Boolean(business.idCardBack),
+    hasBusinessLicense: docTypes.has("business_license") || Boolean(business.businessLicense),
     hasBankInfo: Boolean(
       business.bankName && business.bankAccount && business.bankOwner,
     ),
@@ -362,7 +405,7 @@ export const getById = async (id) => {
       ...business,
       _count: { ...business._count, bookings: bookingCount },
     },
-    { decryptSensitive: true },
+    { decryptSensitive: true, includeDocumentUrls: true },
   );
 
   return {
@@ -452,11 +495,25 @@ export const approve = async (id, data = {}, approvedBy) => {
     return updatedBusiness;
   });
 
-  eventEmitter.emit(EVENTS.BUSINESS.APPROVED, {
+  const approvedEventPayload = {
     businessId: business.id,
     approvedBy,
     ownerId: business.ownerId,
-  });
+    // Dữ liệu cho contract generation (background listener)
+    id: business.id,
+    businessName: business.businessName,
+    businessType: business.businessType,
+    taxCode: tryDecrypt(business.taxCode),
+    ownerName: business.owner?.profile?.fullName ?? null,
+    idCardNumberMasked: maskIdCard(business.idCardNumber),
+    commissionRate: business.commissionRate != null ? Number(business.commissionRate) : 10,
+    address: business.owner?.profile?.address ?? null,
+  };
+
+  eventEmitter.emit(EVENTS.BUSINESS.APPROVED, approvedEventPayload);
+
+  // Invalidate permissions cache to apply new business permissions instantly
+  invalidateUserCache(business.ownerId);
 
   return serializeBusiness(business);
 };

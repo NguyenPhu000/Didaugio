@@ -3,20 +3,25 @@ import {
   USER_STATUS,
   PAGINATION,
   ROLES,
-  ROLE_HIERARCHY,
+  canAssignRoleId,
+  canManageRoleId,
+  isSuperAdminRole,
 } from "../../config/constants.js";
 import { ERROR_MESSAGES, ERROR_CODES } from "../../config/messages.js";
 import {
   idSchema,
-  paginationSchema,
   createUserSchema,
   updateUserSchema,
+  userQuerySchema,
 } from "../../models/index.js";
 import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
+import { invalidateUserCache } from "../../utils/permissionCache.js";
+
+import { isOnline as checkOnlineStatus } from "../../utils/onlineManager.js";
 
 export const getAllUsers = async (query = {}) => {
-  const { page, limit } = paginationSchema.parse(query);
+  const { page, limit, search, roleId, status } = userQuerySchema.parse(query);
   const skip = (page - 1) * Math.min(limit, PAGINATION.MAX_LIMIT);
   const take = Math.min(limit, PAGINATION.MAX_LIMIT);
 
@@ -24,24 +29,24 @@ export const getAllUsers = async (query = {}) => {
     deletedAt: null,
   };
 
-  if (query.search && query.search.trim()) {
+  if (search) {
     where.OR = [
-      { email: { contains: query.search.trim(), mode: "insensitive" } },
-      { username: { contains: query.search.trim(), mode: "insensitive" } },
+      { email: { contains: search, mode: "insensitive" } },
+      { username: { contains: search, mode: "insensitive" } },
       {
         profile: {
-          fullName: { contains: query.search.trim(), mode: "insensitive" },
+          fullName: { contains: search, mode: "insensitive" },
         },
       },
     ];
   }
 
-  if (query.roleId && !isNaN(Number(query.roleId))) {
-    where.roleId = Number(query.roleId);
+  if (roleId) {
+    where.roleId = roleId;
   }
 
-  if (query.status && query.status.trim()) {
-    where.status = query.status.trim();
+  if (status) {
+    where.status = status;
   }
 
   const [users, total] = await Promise.all([
@@ -86,6 +91,7 @@ export const getAllUsers = async (query = {}) => {
     roleId: user.roleId,
     status: user.status,
     isActive: user.status === USER_STATUS.ACTIVE,
+    isOnline: checkOnlineStatus(user.id),
     emailVerified: user.emailVerified,
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
@@ -128,6 +134,19 @@ export const getUserById = async (id) => {
       failedLoginCount: true,
       createdAt: true,
       updatedAt: true,
+      profile: {
+        select: {
+          fullName: true,
+          nickname: true,
+          phone: true,
+          avatar: true,
+          gender: true,
+          address: true,
+          dateOfBirth: true,
+          provinceCode: true,
+          districtCode: true,
+        },
+      },
     },
   });
 
@@ -210,6 +229,7 @@ export const createUser = async (userData) => {
         password: hashedPassword,
         roleId,
         status: USER_STATUS.ACTIVE,
+        emailVerified: true,
       },
       select: {
         id: true,
@@ -225,7 +245,7 @@ export const createUser = async (userData) => {
       nickname,
       phone,
       gender,
-      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      dateOfBirth: dateOfBirth === null ? null : (dateOfBirth ? new Date(dateOfBirth) : undefined),
       address,
       provinceCode,
       districtCode,
@@ -252,11 +272,18 @@ export const createUser = async (userData) => {
 
 export const updateUser = async (id, updateData) => {
   const userId = idSchema.parse(id);
+  if (Object.prototype.hasOwnProperty.call(updateData, "roleId")) {
+    throw new ServiceError(
+      "Vui lòng dùng endpoint cập nhật vai trò chuyên dụng",
+      400,
+      "USE_ROLE_UPDATE_ENDPOINT",
+    );
+  }
   const validatedData = updateUserSchema.parse(updateData);
 
   const existingUser = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, deletedAt: true },
+    select: { id: true, email: true, deletedAt: true },
   });
 
   if (!existingUser || existingUser.deletedAt) {
@@ -280,6 +307,16 @@ export const updateUser = async (id, updateData) => {
     password,
     ...userData
   } = validatedData;
+
+  if (userData.email && userData.email !== existingUser.email) {
+    const existingEmail = await prisma.user.findUnique({
+      where: { email: userData.email },
+      select: { id: true },
+    });
+    if (existingEmail) {
+      throw new ServiceError(ERROR_MESSAGES.EXISTED, 400, ERROR_CODES.EXISTED);
+    }
+  }
 
   if (password) {
     const bcrypt = await import("bcrypt");
@@ -324,7 +361,7 @@ export const updateUser = async (id, updateData) => {
       nickname,
       phone,
       gender,
-      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      dateOfBirth: dateOfBirth === null ? null : (dateOfBirth ? new Date(dateOfBirth) : undefined),
       address,
       provinceCode,
       districtCode,
@@ -342,6 +379,13 @@ export const updateUser = async (id, updateData) => {
           userId,
           ...cleanProfileData,
         },
+      });
+    }
+
+    if (userData.status === USER_STATUS.INACTIVE || userData.status === USER_STATUS.BANNED) {
+      await tx.userSession.updateMany({
+        where: { userId, isActive: true },
+        data: { isActive: false },
       });
     }
 
@@ -373,6 +417,24 @@ export const deleteUser = async (id) => {
       400,
       ERROR_CODES.VALIDATION_ERROR,
     );
+  }
+
+  // Last Super Admin protection
+  const userWithRole = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { roleId: true },
+  });
+  if (userWithRole?.roleId === ROLES.SUPER_ADMIN) {
+    const superAdminCount = await prisma.user.count({
+      where: { roleId: ROLES.SUPER_ADMIN, deletedAt: null },
+    });
+    if (superAdminCount <= 1) {
+      throw new ServiceError(
+        "Không thể xóa Super Admin cuối cùng trong hệ thống",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
   }
 
   const deletedUser = await prisma.user.update({
@@ -431,14 +493,61 @@ export const updateUserRole = async (userId, newRoleId, currentUser) => {
     );
   }
 
+  // Last Super Admin protection — cannot demote the last super admin
+  if (targetUser.roleId === ROLES.SUPER_ADMIN && validRoleId !== ROLES.SUPER_ADMIN) {
+    const superAdminCount = await prisma.user.count({
+      where: { roleId: ROLES.SUPER_ADMIN, deletedAt: null },
+    });
+    if (superAdminCount <= 1) {
+      throw new ServiceError(
+        "Không thể thay đổi vai trò của Super Admin cuối cùng",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
+  }
+
   // Check hierarchy
-  const currentRole = ROLE_HIERARCHY[currentUser.roleId];
-  if (!currentRole.canManage.includes(validRoleId)) {
+  if (!currentUser?.roleId) {
     throw new ServiceError(
-      ERROR_MESSAGES.FORBIDDEN,
+      "Khong xac dinh duoc quyen cua nguoi thuc hien",
       403,
       ERROR_CODES.FORBIDDEN,
     );
+  }
+  
+  // Super Admin bypass: Super Admin can do anything except demote another Super Admin
+  if (isSuperAdminRole(currentUser.roleId)) {
+    if (isSuperAdminRole(targetUser.roleId) && targetUser.id !== currentUser.id) {
+      throw new ServiceError(
+        "Không thể chỉnh sửa vai trò của Super Admin khác",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
+    if (isSuperAdminRole(validRoleId) && targetUser.id !== currentUser.id) {
+      throw new ServiceError(
+        "Khong the gan them vai tro Super Admin tu man quan ly user",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
+  } else {
+    // Normal hierarchy check for Admin and below
+    if (!canManageRoleId(currentUser.roleId, targetUser.roleId)) {
+      throw new ServiceError(
+        "Bạn không có quyền chỉnh sửa người dùng này",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
+    if (!canAssignRoleId(currentUser.roleId, validRoleId)) {
+      throw new ServiceError(
+        "Bạn không có quyền gán vai trò này",
+        403,
+        ERROR_CODES.FORBIDDEN,
+      );
+    }
   }
 
   const updatedUser = await prisma.user.update({
@@ -467,6 +576,8 @@ export const updateUserRole = async (userId, newRoleId, currentUser) => {
       },
     },
   });
+
+  invalidateUserCache(validUserId);
 
   return updatedUser;
 };

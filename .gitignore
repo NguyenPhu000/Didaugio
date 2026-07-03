@@ -10,7 +10,7 @@ skills
 .env
 .agents/skills
 .vscode
-
+.github\workflows
 .agents
 .git_bk
 .agent
@@ -119,3 +119,7 @@ AGENTS.md
 CLAUDE.md
 agent-skills
 .codex
+skills-lock.json
+benchmarks
+.understand-anything
+D:/didaugio/.understand-anything

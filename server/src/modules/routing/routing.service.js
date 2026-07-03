@@ -9,6 +9,14 @@ class RoutingDomainService {
     return legacyRoutingService.calculateLegs(payload);
   }
 
+  async calculateTable(payload = {}) {
+    return legacyRoutingService.calculateTable(payload);
+  }
+
+  async calculateLegsOptimized(payload = {}) {
+    return legacyRoutingService.calculateLegsOptimized(payload);
+  }
+
   async getHealth() {
     return legacyRoutingService.getHealth();
   }

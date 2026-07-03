@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
   Plus,
   Search,
@@ -26,31 +26,33 @@ import {
   DialogTitle,
 } from "@/components/ui/Dialog";
 import { useToast } from "@/hooks/use-toast";
-import useTagStore from "@/stores/tagStore";
+import { useTags, useDeleteTag } from "@/hooks/queries/useTagQueries";
 import TagList from "@/components/tag/TagList";
 import TagFormDialog from "@/components/tag/TagFormDialog";
 import TimStatsCard from "@/components/admin/TimStatsCard";
+import { useTranslation } from "react-i18next";
 
 /**
- * TAG MANAGEMENT PAGE - T.I.M STYLE OVERHAUL (VIETNAMESE)
+ * TAG MANAGEMENT PAGE - T.I.M STYLE OVERHAUL
  */
 
-const TAG_TYPES = {
-  all: "Tất cả",
-  general: "Chung",
-  food: "Ẩm thực",
-  travel: "Du lịch",
-  service: "Dịch vụ",
-  activity: "Hoạt động",
-  ambience: "Không gian",
-  price: "Giá cả",
-  time: "Thời gian",
-  ai_signal: "AI Signal",
-};
-
 export default function TagManagementPage() {
-  const { tags, loading, fetchTags, deleteTag } = useTagStore();
+  const { t } = useTranslation();
+
+  const TAG_TYPES = {
+    all: t("tags.types.all"),
+    general: t("tags.types.general"),
+    food: t("tags.types.food"),
+    travel: t("tags.types.travel"),
+    service: t("tags.types.service"),
+    activity: t("tags.types.activity"),
+    ambience: t("tags.types.ambience"),
+    price: t("tags.types.price"),
+    time: t("tags.types.time"),
+    ai_signal: "AI Signal",
+  };
   const { toast } = useToast();
+  const deleteMutation = useDeleteTag();
 
   const [formOpen, setFormOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -59,20 +61,16 @@ export default function TagManagementPage() {
   const [filterType, setFilterType] = useState("all");
   const [sortBy, setSortBy] = useState("usageCount");
 
-  const loadTags = useCallback(() => {
-    const params = {};
-    if (filterType !== "all") params.tagType = filterType;
-    if (searchQuery) params.search = searchQuery;
-    params.sortBy = sortBy;
-    fetchTags(params);
-  }, [fetchTags, filterType, searchQuery, sortBy]);
+  // Build query params
+  const queryParams = {};
+  if (filterType !== "all") queryParams.tagType = filterType;
+  if (searchQuery) queryParams.search = searchQuery;
+  queryParams.sortBy = sortBy;
 
-  useEffect(() => {
-    loadTags();
-  }, [loadTags]);
+  const { data: tags = [], isLoading, refetch } = useTags(queryParams);
 
   const handleSearch = () => {
-    loadTags();
+    refetch();
   };
 
   const handleAdd = () => {
@@ -94,10 +92,10 @@ export default function TagManagementPage() {
     if (!selectedTag) return;
 
     try {
-      await deleteTag(selectedTag.id);
+      await deleteMutation.mutateAsync(selectedTag.id);
       toast({
-        title: "CẬP NHẬT HỆ THỐNG",
-        description: `Thẻ [${selectedTag.name}] đã được xóa thành công.`,
+        title: t("common.success"),
+        description: t("tags.messages.deleteSuccess", { name: selectedTag.name }),
         className: "bg-black text-white border border-primary font-mono",
       });
       setDeleteDialogOpen(false);
@@ -105,17 +103,17 @@ export default function TagManagementPage() {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "LỖI",
+        title: t("common.error"),
         description: error.response?.data?.message || error.message,
       });
     }
   };
 
   const handleRefresh = () => {
-    loadTags();
+    refetch();
     toast({
-      title: "ĐÃ LÀM MỚI",
-      description: "Dữ liệu đã được đồng bộ với máy chủ.",
+      title: t("common.refreshed"),
+      description: t("tags.messages.refreshed"),
     });
   };
 
@@ -131,12 +129,12 @@ export default function TagManagementPage() {
           <div className="flex items-center gap-6">
             <div className="accent-bar h-16"></div>
             <div>
-              <h1 className="tim-title">QUẢN LÝ THẻ</h1>
+              <h1 className="tim-title">{t("tags.title")}</h1>
               <div className="flex items-center gap-4 mt-2">
                 <span className="tim-system bg-black text-white px-2 py-1">
                   SYSTEM // TAGS
                 </span>
-                <p className="tim-meta">PHÂN LOẠI VÀ GẮN NHÃN</p>
+                <p className="tim-meta">{t("tags.subtitle")}</p>
               </div>
             </div>
           </div>
@@ -153,7 +151,7 @@ export default function TagManagementPage() {
               className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
             >
               <Plus className="mr-2 h-4 w-4" />
-              TẠO THẺ MỚI
+              {t("tags.createTag")}
             </Button>
           </div>
         </div>
@@ -161,27 +159,27 @@ export default function TagManagementPage() {
         {/* Thống kê nhanh */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <TimStatsCard
-            title="TỔNG THẺ"
+            title={t("tags.stats.total")}
             value={tags.length}
             icon={Layers}
             serial="TAG-001"
           />
           <TimStatsCard
-            title="ĐANG HOẠT ĐỘNG"
-            value={tags.filter((t) => t.isActive).length}
+            title={t("tags.stats.active")}
+            value={tags.filter((tag) => tag.isActive).length}
             icon={Activity}
             serial="TAG-002"
             textColor="text-emerald-600"
           />
           <TimStatsCard
-            title="TỔNG LƯỢT DÙNG"
-            value={tags.reduce((sum, t) => sum + (t.usageCount || 0), 0)}
+            title={t("tags.stats.totalUsage")}
+            value={tags.reduce((sum, tag) => sum + (tag.usageCount || 0), 0)}
             icon={BarChart3}
             serial="TAG-003"
           />
           <TimStatsCard
-            title="LOẠI THẺ (NHÓM)"
-            value={new Set(tags.map((t) => t.tagType)).size}
+            title={t("tags.stats.tagTypes")}
+            value={new Set(tags.map((tag) => tag.tagType)).size}
             icon={TagIcon}
             serial="TAG-004"
             color="bg-yellow-50"
@@ -196,7 +194,7 @@ export default function TagManagementPage() {
             </div>
             <input
               type="text"
-              placeholder="TÌM KIẾM DỮ LIỆU..."
+              placeholder={t("tags.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -206,7 +204,7 @@ export default function TagManagementPage() {
               onClick={handleSearch}
               className="h-10 rounded-none bg-primary text-black border border-black border-l-0 font-bold uppercase hover:bg-yellow-400"
             >
-              TÌM KIẾM
+              {t("common.search")}
             </Button>
           </div>
 
@@ -214,7 +212,7 @@ export default function TagManagementPage() {
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-[200px] rounded-none border-black font-mono text-xs uppercase h-10">
                 <Filter className="h-3 w-3 mr-2" />
-                <SelectValue placeholder="LỌC THEO LOẠI" />
+                <SelectValue placeholder={t("tags.filterByType")} />
               </SelectTrigger>
               <SelectContent className="rounded-none border-black">
                 {Object.entries(TAG_TYPES).map(([value, label]) => (
@@ -231,26 +229,26 @@ export default function TagManagementPage() {
 
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-[180px] rounded-none border-black font-mono text-xs uppercase h-10">
-                <SelectValue placeholder="SẮP XẾP" />
+                <SelectValue placeholder={t("tags.sortBy")} />
               </SelectTrigger>
               <SelectContent className="rounded-none border-black">
                 <SelectItem
                   value="usageCount"
                   className="font-mono text-xs uppercase focus:bg-primary focus:text-black"
                 >
-                  SỬ DỤNG NHIỀU
+                  {t("tags.sortOptions.mostUsed")}
                 </SelectItem>
                 <SelectItem
                   value="name"
                   className="font-mono text-xs uppercase focus:bg-primary focus:text-black"
                 >
-                  TÊN (A-Z)
+                  {t("tags.sortOptions.nameAZ")}
                 </SelectItem>
                 <SelectItem
                   value="newest"
                   className="font-mono text-xs uppercase focus:bg-primary focus:text-black"
                 >
-                  MỚI NHẤT
+                  {t("tags.sortOptions.newest")}
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -267,7 +265,7 @@ export default function TagManagementPage() {
             tags={tags}
             onEdit={handleEdit}
             onDelete={handleDeleteClick}
-            loading={loading}
+            loading={isLoading}
           />
         </div>
       </div>
@@ -287,17 +285,15 @@ export default function TagManagementPage() {
         <DialogContent className="rounded-none border border-black p-0 overflow-hidden">
           <DialogHeader className="p-6 bg-red-600 text-white">
             <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-              <Activity className="h-6 w-6" /> CẢNH BÁO: QUY TRÌNH XÓA
+              <Activity className="h-6 w-6" /> {t("tags.deleteDialog.title")}
             </DialogTitle>
             <DialogDescription className="text-red-100 font-mono text-xs mt-2 uppercase">
-              Thao tác này là vĩnh viễn và không thể hoàn tác. Xin xác nhận.
+              {t("tags.deleteDialog.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="p-6 bg-white">
             <p className="font-mono text-sm mb-4">
-              Bạn có chắc chắn muốn xóa thẻ{" "}
-              <span className="font-bold">[{selectedTag?.name}]</span> khỏi cơ
-              sở dữ liệu?
+              {t("tags.deleteDialog.message", { name: selectedTag?.name })}
             </p>
             <DialogFooter className="gap-2 sm:gap-0">
               <Button
@@ -305,14 +301,14 @@ export default function TagManagementPage() {
                 onClick={() => setDeleteDialogOpen(false)}
                 className="rounded-none border-black hover:bg-gray-100"
               >
-                Hủy bỏ
+                {t("common.cancel")}
               </Button>
               <Button
                 variant="destructive"
                 onClick={handleDeleteConfirm}
                 className="rounded-none bg-red-600 hover:bg-red-700 font-bold uppercase"
               >
-                Xác nhận xóa
+                {t("common.confirmDelete")}
               </Button>
             </DialogFooter>
           </div>

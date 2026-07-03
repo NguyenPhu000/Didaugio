@@ -6,7 +6,7 @@ export const getStats = async (req, res, next) => {
     res.json({
       success: true,
       data: stats,
-      message: "Lay thong ke thanh cong",
+      message: "Lấy thống kê thành công",
     });
   } catch (error) {
     next(error);
@@ -19,7 +19,7 @@ export const getTimeline = async (req, res, next) => {
     res.json({
       success: true,
       data: timeline,
-      message: "Lay timeline thanh cong",
+      message: "Lấy timeline thành công",
     });
   } catch (error) {
     next(error);
@@ -32,11 +32,24 @@ export const getHealth = async (req, res, next) => {
     res.json({
       success: true,
       data: health,
-      message: "Lay trang thai he thong thanh cong",
+      message: "Lấy trạng thái hệ thống thành công",
     });
   } catch (error) {
     next(error);
   }
 };
 
-export default { getStats, getTimeline, getHealth };
+export const getOnlineUsers = async (req, res, next) => {
+  try {
+    const data = await dashboardService.getOnlineUsersCount();
+    res.json({
+      success: true,
+      data,
+      message: "Lấy danh sách online thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export default { getStats, getTimeline, getHealth, getOnlineUsers };

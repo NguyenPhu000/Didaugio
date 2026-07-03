@@ -39,47 +39,87 @@ const sanitizeBankAccount = (value) => {
 
 export const serializeBusiness = (business, options = {}) => {
   if (!business) return null;
-  
-  const { decryptSensitive = false } = options;
-  const { bankAccount, bankOwner, ...rest } = business;
-  
+
+  const { decryptSensitive = false, includeDocumentUrls = false } = options;
+  // Destructure out sensitive fields and documents to prevent them from being leaked in ...rest
+  const { bankAccount, bankOwner, taxCode, idCardFront, idCardBack, businessLicense, sensitiveDocuments, ...rest } = business;
+
+  const getDecryptedValue = (encryptedValue) => {
+    if (encryptedValue === null || encryptedValue === undefined) return null;
+    if (isEncrypted(encryptedValue)) {
+      try {
+        return decryptField(encryptedValue);
+      } catch {
+        return null;
+      }
+    }
+    return encryptedValue;
+  };
+
   // Helper to get display value (decrypt if needed, then mask)
   const getDisplayValue = (encryptedValue, maskOptions) => {
     if (encryptedValue === null || encryptedValue === undefined) return null;
-    
+
     // If encrypted, try to decrypt first
     let plainValue = encryptedValue;
     if (isEncrypted(encryptedValue)) {
-      if (decryptSensitive) {
+      if (decryptSensitive || true) { // Allow internal masking even if decryptSensitive is false by decrypting internally
         try {
           plainValue = decryptField(encryptedValue);
         } catch {
           plainValue = null;
         }
       } else {
-        // Can't mask without decrypting, return indicator
         return "***ENCRYPTED***";
       }
     }
-    
+
     return maskMiddle(plainValue, maskOptions);
   };
-  
+
+  // Derive document presence flags from sensitiveDocuments relation (if included)
+  const docTypes = new Set((sensitiveDocuments ?? []).map((d) => d.type));
+
   const result = {
     ...rest,
     commissionRate:
       business.commissionRate != null ? Number(business.commissionRate) : null,
-    // Never expose raw encrypted values or full decrypted values
-    bankAccountNumber: null,
-    bankAccountOwner: null,
-    idCardNumber: null,
-    // Only expose masked versions
+    // Return raw plain text only if explicitly requested (authorized context)
+    bankAccountNumber: decryptSensitive ? getDecryptedValue(bankAccount) : null,
+    bankAccountOwner: decryptSensitive ? getDecryptedValue(bankOwner) : null,
+    idCardNumber: decryptSensitive ? getDecryptedValue(business.idCardNumber) : null,
+    taxCode: decryptSensitive ? getDecryptedValue(taxCode) : null,
+    
+    // Masked versions for public/standard displays
     idCardNumberMasked: getDisplayValue(business.idCardNumber, { keepStart: 0, keepEnd: 4 }),
     bankAccountNumberMasked: getDisplayValue(bankAccount, { keepStart: 0, keepEnd: 4 }),
     bankAccountOwnerMasked: getDisplayValue(bankOwner, { keepStart: 1, keepEnd: 0 }),
+    taxCodeMasked: getDisplayValue(taxCode, { keepStart: 0, keepEnd: 4 }),
+    
     // Include bankName (not sensitive)
     bankName: business.bankName || null,
+    // Document presence flags — boolean, no URLs exposed
+    hasIdCardFront: docTypes.has("id_card_front") || Boolean(idCardFront),
+    hasIdCardBack: docTypes.has("id_card_back") || Boolean(idCardBack),
+    hasBusinessLicense: docTypes.has("business_license") || Boolean(businessLicense),
   };
+
+  // Include document URLs only for authorized contexts (owner viewing own profile)
+  if (includeDocumentUrls) {
+    result.idCardFront = getDecryptedValue(idCardFront);
+    result.idCardBack = getDecryptedValue(idCardBack);
+    result.businessLicense = getDecryptedValue(businessLicense);
+    if (sensitiveDocuments) {
+      result.sensitiveDocuments = sensitiveDocuments.map((doc) => ({
+        id: doc.id,
+        type: doc.type,
+        mimeType: doc.mimeType,
+        originalName: doc.originalName,
+        fileSize: doc.fileSize,
+        createdAt: doc.createdAt,
+      }));
+    }
+  }
   
   if (result.owner) {
     result.owner = {

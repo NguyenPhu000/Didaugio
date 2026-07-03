@@ -10,3 +10,4 @@ export { default as districtService } from "./districtService";
 export { default as wardService } from "./wardService";
 export { default as categoryService } from "./categoryService";
 export { default as tagService } from "./tagService";
+export * as eventService from "./eventService";

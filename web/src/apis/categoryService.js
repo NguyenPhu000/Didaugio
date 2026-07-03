@@ -14,9 +14,9 @@ export const getAllCategories = async (params = {}) => {
 };
 
 // Get category tree
-export const getCategoryTree = async (parentId = null, maxLevel = 3) => {
+export const getCategoryTree = async (parentId = null, maxLevel = 3, includeInactive = false) => {
   const response = await api.get(`${BASE_URL}/tree`, {
-    params: { parentId, maxLevel },
+    params: { parentId, maxLevel, includeInactive },
   });
   return response.data;
 };

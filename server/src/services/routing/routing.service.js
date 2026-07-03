@@ -4,9 +4,12 @@ import logger from "../../config/logger.js";
 import CircuitBreaker from "../../utils/circuitBreaker.js";
 import ServiceError from "../../utils/serviceError.js";
 import {
+  encodePolyline6,
   simplifyGeoJsonLineString,
   simplifyPolyline6,
 } from "./polylineSimplifier.js";
+import { applyTrafficToResponse } from "./pseudoTraffic.js";
+import { calculateTable, calculateSequentialLegs } from "./tableApi.js";
 
 const DEFAULT_TIMEOUT_MS = Number(process.env.ROUTING_TIMEOUT_MS || 4500);
 const DEFAULT_TTL_SEC = Number(process.env.ROUTE_CACHE_TTL_SEC || 300);
@@ -110,6 +113,7 @@ class RoutingService {
         : points;
 
       let osrmResponse;
+      let usedOptions = options;
       try {
         osrmResponse = await this._callOsrm(effectivePoints, mode, options);
       } catch (firstError) {
@@ -118,19 +122,62 @@ class RoutingService {
         osrmResponse = await this._callOsrm(points, mode, options);
       }
 
+      // Retry logic: nếu bật avoid ferry mà OSRM trả NoRoute, thử lại không exclude.
+      const isFerryFailure =
+        options.exclude?.includes("ferry") &&
+        (!osrmResponse || osrmResponse.code === "NoRoute");
+      if (isFerryFailure) {
+        logger.info("[routing] Ferry avoidance failed, retrying without exclude", {
+          mode,
+        });
+        const retryOptions = { ...options, exclude: undefined };
+        try {
+          const retryResponse = await this._callOsrm(
+            snapToRoad ? effectivePoints : points,
+            mode,
+            retryOptions,
+          );
+          if (retryResponse && retryResponse.code === "Ok") {
+            osrmResponse = retryResponse;
+            usedOptions = retryOptions;
+            // Đánh dấu rằng tránh phà thất bại nhưng vẫn có đường đi thực tế.
+            const normalized = this._normalizeRouteResponse(
+              osrmResponse,
+              "osrm",
+              usedOptions,
+            );
+            normalized.ferryAvoidanceFailed = true;
+            const withTraffic = applyTrafficToResponse(normalized, new Date(), options?.weather);
+            withTraffic.ferryAvoidanceFailed = true;
+            this.cache.set(cacheKey, withTraffic);
+            if (CIRCUIT_BREAKER_ENABLED) {
+              this.circuitBreaker.recordSuccess();
+            }
+            this.metrics.consecutiveFailures = 0;
+            this.metrics.lastSuccessAt = new Date().toISOString();
+            return withTraffic;
+          }
+        } catch (retryErr) {
+          logger.warn("[routing] Ferry retry also failed", {
+            error: retryErr.message,
+          });
+        }
+      }
+
       const normalized = this._normalizeRouteResponse(
         osrmResponse,
         "osrm",
-        options,
+        usedOptions,
       );
+      const withTraffic = applyTrafficToResponse(normalized, new Date(), options?.weather);
 
-      this.cache.set(cacheKey, normalized);
+      this.cache.set(cacheKey, withTraffic);
       if (CIRCUIT_BREAKER_ENABLED) {
         this.circuitBreaker.recordSuccess();
       }
       this.metrics.consecutiveFailures = 0;
       this.metrics.lastSuccessAt = new Date().toISOString();
-      return normalized;
+      return withTraffic;
     } catch (error) {
       if (CIRCUIT_BREAKER_ENABLED) {
         this.circuitBreaker.recordFailure();
@@ -140,11 +187,68 @@ class RoutingService {
       this.metrics.lastFailureAt = new Date().toISOString();
       this.metrics.lastFailureMessage = error?.message || "OSRM failed";
 
-      logger.warn("[routing] OSRM failed, using fallback route", {
+      logger.warn("[routing] OSRM failed, trying fallback options or route", {
         error: this.metrics.lastFailureMessage,
         mode,
         circuit: this.circuitBreaker.snapshot(),
       });
+
+      // Tuân thủ kế hoạch: Thử lại không tránh phà khi bị lỗi NoRoute do sông ngòi
+      if (options.exclude && options.exclude.includes("ferry") &&
+          (error.message?.includes("NoRoute") || error.message?.includes("No segment") || error.message?.includes("HTTP 400"))) {
+        try {
+          logger.info("[routing] Ferry avoidance failed, retrying without ferry exclusion", { mode });
+
+          const retryOptions = { ...options };
+          if (typeof retryOptions.exclude === "string") {
+            retryOptions.exclude = retryOptions.exclude
+              .split(",")
+              .filter((x) => x !== "ferry")
+              .join(",");
+            if (!retryOptions.exclude) {
+              delete retryOptions.exclude;
+            }
+          } else if (Array.isArray(retryOptions.exclude)) {
+            retryOptions.exclude = retryOptions.exclude.filter((x) => x !== "ferry");
+            if (retryOptions.exclude.length === 0) {
+              delete retryOptions.exclude;
+            }
+          }
+
+          const effectivePoints = snapToRoad
+            ? await this._snapPoints(points, mode)
+            : points;
+
+          let osrmResponse;
+          try {
+            osrmResponse = await this._callOsrm(effectivePoints, mode, retryOptions);
+          } catch (retrySnapError) {
+            if (!snapToRoad) throw retrySnapError;
+            osrmResponse = await this._callOsrm(points, mode, retryOptions);
+          }
+
+          const normalized = this._normalizeRouteResponse(
+            osrmResponse,
+            "osrm",
+            retryOptions,
+          );
+          normalized.ferryAvoidanceFailed = true;
+
+          const withTraffic = applyTrafficToResponse(normalized, new Date(), options?.weather);
+          this.cache.set(cacheKey, withTraffic);
+
+          if (CIRCUIT_BREAKER_ENABLED) {
+            this.circuitBreaker.recordSuccess();
+          }
+          this.metrics.consecutiveFailures = 0;
+          this.metrics.lastSuccessAt = new Date().toISOString();
+          return withTraffic;
+        } catch (retryError) {
+          logger.warn("[routing] Retry without ferry exclusion also failed", {
+            error: retryError.message,
+          });
+        }
+      }
 
       const fallbackKey = this._buildCacheKey("fallback", points, mode, options);
       const cachedFallback = this.cache.get(fallbackKey);
@@ -154,6 +258,10 @@ class RoutingService {
       }
 
       const fallback = this._buildFallbackResponse(points, mode);
+      if (options.exclude && options.exclude.includes("ferry") && 
+          (error.message?.includes("NoRoute") || error.message?.includes("No segment"))) {
+        fallback.ferryAvoidanceFailed = true;
+      }
       this.cache.set(fallbackKey, fallback, FALLBACK_TTL_SEC);
       return fallback;
     } finally {
@@ -217,6 +325,59 @@ class RoutingService {
       totalDuration,
       legs,
     };
+  }
+
+  async calculateTable(payload = {}) {
+    const { waypoints = [], mode = "driving" } = payload;
+    if (!Array.isArray(waypoints) || waypoints.length < 2) {
+      throw new ServiceError(
+        "Cần tối thiểu 2 waypoint cho table calculation",
+        400,
+        "VALIDATION_ERROR",
+      );
+    }
+    this.metrics.totalRequests += 1;
+    try {
+      const result = await calculateTable(waypoints, mode);
+      if (CIRCUIT_BREAKER_ENABLED) this.circuitBreaker.recordSuccess();
+      return { code: "Ok", source: "osrm", ...result };
+    } catch (error) {
+      if (CIRCUIT_BREAKER_ENABLED) this.circuitBreaker.recordFailure();
+      this.metrics.osrmFailures += 1;
+      throw error;
+    }
+  }
+
+  async calculateLegsOptimized(payload = {}) {
+    const { waypoints = [], mode = "driving", options = {} } = payload;
+    if (!Array.isArray(waypoints) || waypoints.length < 2) {
+      throw new ServiceError(
+        "Cần tối thiểu 2 waypoint để tính legs",
+        400,
+        "VALIDATION_ERROR",
+      );
+    }
+    try {
+      const tableResult = await calculateSequentialLegs(waypoints, mode, options);
+      if (tableResult) {
+        return {
+          code: "Ok",
+          source: tableResult.source,
+          totalDistance: tableResult.totalDistance,
+          totalDuration: tableResult.totalDuration,
+          legs: tableResult.legs.map((leg) => ({
+            index: leg.index,
+            from: leg.from,
+            to: leg.to,
+            source: leg.source,
+            route: { distance: leg.distance, duration: leg.duration },
+          })),
+        };
+      }
+    } catch (error) {
+      logger.warn("[routing] Table API optimization failed", { error: error.message });
+    }
+    return this.calculateLegs(payload);
   }
 
   async getHealth() {
@@ -283,12 +444,16 @@ class RoutingService {
 
     const url = this._buildOsrmRouteUrl(profile, coords);
     const params = new URLSearchParams({
-      alternatives: String(options.alternatives ?? 3),
-      steps: String(options.steps ?? true),
+      alternatives: String(options.alternatives ?? 1),
+      steps: String(options.steps ?? false),
       overview: options.overview || "full",
       geometries: options.geometries || "polyline6",
-      annotations: "duration,distance",
+      annotations: options.annotations || "duration,distance",
     });
+
+    if (options.exclude) {
+      params.append("exclude", options.exclude);
+    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
@@ -305,6 +470,10 @@ class RoutingService {
 
       const data = await res.json();
       if (data.code !== "Ok") {
+        // Trả về data để caller xử lý retry (ví dụ: NoRoute khi tránh phà).
+        if (data.code === "NoRoute") {
+          return data;
+        }
         throw new Error(`OSRM ${data.code}: ${data.message || "Unknown"}`);
       }
 
@@ -322,11 +491,81 @@ class RoutingService {
     if (!Array.isArray(points) || points.length === 0) return [];
 
     const profile = this._mapModeToOsrm(mode);
-    const snapped = await Promise.all(
-      points.map((point) => this._snapPointToRoad(point, profile)),
-    );
 
-    return snapped;
+    // Check cache first for each point
+    const results = new Array(points.length);
+    const uncachedIndices = [];
+    const uncachedPoints = [];
+
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const cacheKey = `snap:${Number(p.lat).toFixed(6)},${Number(p.lng).toFixed(6)}`;
+      const cached = this.cache.get(cacheKey);
+      if (cached) {
+        results[i] = cached;
+      } else {
+        uncachedIndices.push(i);
+        uncachedPoints.push(p);
+      }
+    }
+
+    // Batch snap uncached points in a single OSRM request
+    if (uncachedPoints.length > 0) {
+      try {
+        const batchSnapped = await this._snapPointsBatch(uncachedPoints, profile);
+        for (let j = 0; j < uncachedIndices.length; j++) {
+          const idx = uncachedIndices[j];
+          const snapped = batchSnapped[j];
+          results[idx] = snapped;
+          // Cache snap result (TTL 10 min)
+          const cacheKey = `snap:${Number(points[idx].lat).toFixed(6)},${Number(points[idx].lng).toFixed(6)}`;
+          this.cache.set(cacheKey, snapped, 600);
+        }
+      } catch (err) {
+        // Fallback to individual snapping on batch failure
+        logger.warn("[snap-to-road] batch failed, falling back to individual", { error: err.message });
+        const individualResults = await Promise.all(
+          uncachedPoints.map((p) => this._snapPointToRoad(p, profile))
+        );
+        for (let j = 0; j < uncachedIndices.length; j++) {
+          results[uncachedIndices[j]] = individualResults[j];
+        }
+      }
+    }
+
+    return results;
+  }
+
+  async _snapPointsBatch(points, profile) {
+    const start = Date.now();
+    const coords = points.map((p) => `${p.lng},${p.lat}`).join(";");
+    const url = `${OSRM_URL.replace(/\/+$/, "")}/nearest/v1/${profile}/${coords}`;
+    const params = new URLSearchParams({ number: "1" });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+    try {
+      this.metrics.osrmNearestCalls += 1;
+      const res = await fetch(`${url}?${params.toString()}`, { signal: controller.signal });
+      if (!res.ok) throw new Error(`OSRM Nearest HTTP ${res.status}`);
+
+      const data = await res.json();
+      if (data?.code !== "Ok") throw new Error(`OSRM Nearest ${data.code}`);
+
+      const waypoints = data.waypoints || [];
+      return points.map((point, i) => {
+        const wp = waypoints[i];
+        if (!wp?.location) return point;
+        const snappedLng = Number(wp.location[0]);
+        const snappedLat = Number(wp.location[1]);
+        if (!Number.isFinite(snappedLat) || !Number.isFinite(snappedLng)) return point;
+        return { ...point, lat: snappedLat, lng: snappedLng };
+      });
+    } finally {
+      clearTimeout(timeoutId);
+      this._recordLatency("osrmNearestLatencyMs", Date.now() - start);
+    }
   }
 
   async _snapPointToRoad(point = {}, profile = "driving") {
@@ -334,8 +573,14 @@ class RoutingService {
     const lat = Number(point?.lat);
     const lng = Number(point?.lng);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      logger.warn("[snap-to-road] non-finite coordinates", { point });
       return point;
     }
+
+    // Check cache for individual snap
+    const snapCacheKey = `snap:${lat.toFixed(6)},${lng.toFixed(6)}`;
+    const cached = this.cache.get(snapCacheKey);
+    if (cached) return cached;
 
     const url = this._buildOsrmNearestUrl(profile, { lat, lng });
     const params = new URLSearchParams({ number: "1" });
@@ -349,25 +594,61 @@ class RoutingService {
         signal: controller.signal,
       });
 
-      if (!res.ok) return point;
+      if (!res.ok) {
+        logger.warn("[snap-to-road] HTTP error", {
+          status: res.status,
+          lat,
+          lng,
+          url: `${url}?${params.toString()}`,
+        });
+        return point;
+      }
 
       const data = await res.json();
-      if (data?.code !== "Ok") return point;
+      if (data?.code !== "Ok") {
+        logger.warn("[snap-to-road] OSRM returned non-Ok code", {
+          code: data?.code,
+          message: data?.message,
+          lat,
+          lng,
+        });
+        return point;
+      }
 
       const nearest = data?.waypoints?.[0];
       const snappedLng = Number(nearest?.location?.[0]);
       const snappedLat = Number(nearest?.location?.[1]);
 
       if (!Number.isFinite(snappedLat) || !Number.isFinite(snappedLng)) {
+        logger.warn("[snap-to-road] invalid snapped coordinates", {
+          nearest,
+          lat,
+          lng,
+        });
         return point;
       }
 
-      return {
-        ...point,
-        lat: snappedLat,
-        lng: snappedLng,
-      };
-    } catch {
+      const distance = this._haversineMeters(lat, lng, snappedLat, snappedLng);
+      if (distance > 100) {
+        logger.info("[snap-to-road] large snap distance", {
+          originalLat: lat,
+          originalLng: lng,
+          snappedLat,
+          snappedLng,
+          distance: Math.round(distance),
+        });
+      }
+
+      const snappedPoint = { ...point, lat: snappedLat, lng: snappedLng };
+      // Cache snap result (10 min TTL)
+      this.cache.set(snapCacheKey, snappedPoint, 600);
+      return snappedPoint;
+    } catch (err) {
+      logger.warn("[snap-to-road] request failed", {
+        error: err?.message,
+        lat,
+        lng,
+      });
       this.metrics.osrmFailures += 1;
       return point;
     } finally {
@@ -589,7 +870,7 @@ class RoutingService {
           distance: totalDistance,
           duration: totalDuration,
           durationInTraffic: totalDuration,
-          geometry: points.map((p) => [p.lng, p.lat]),
+          geometry: encodePolyline6(points),
           summary: "Fallback estimate",
           provider: "fallback",
           score: this._calculateGoogleLikeScore({
@@ -693,10 +974,16 @@ class RoutingService {
   }
 
   _buildCacheKey(prefix, points, mode, options) {
-    const rounded = points
-      .map((p) => `${Number(p.lat).toFixed(4)},${Number(p.lng).toFixed(4)}`)
+    const coords = points
+      .map((p) => `${Number(p.lat).toFixed(6)},${Number(p.lng).toFixed(6)}`)
       .join(";");
-    return `${prefix}:${mode}:${rounded}:${JSON.stringify(options || {})}`;
+    // Only include relevant options in cache key, skip empty/default values
+    const optParts = [];
+    if (options.exclude) optParts.push(`ex=${options.exclude}`);
+    if (options.alternatives != null && options.alternatives !== 1) optParts.push(`alt=${options.alternatives}`);
+    if (options.overview && options.overview !== "full") optParts.push(`ov=${options.overview}`);
+    const optStr = optParts.length > 0 ? `:${optParts.join(",")}` : "";
+    return `${prefix}:${mode}:${coords}${optStr}`;
   }
 
   _haversineMeters(lat1, lon1, lat2, lon2) {

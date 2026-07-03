@@ -25,6 +25,12 @@ export const userService = {
     return response;
   },
 
+  // Cap nhat role user qua endpoint phan quyen rieng
+  updateRole: async (id, roleId) => {
+    const response = await api.patch(`/users/${id}/role`, { roleId });
+    return response;
+  },
+
   // Xoa user
   delete: async (id) => {
     const response = await api.delete(`/users/${id}`);

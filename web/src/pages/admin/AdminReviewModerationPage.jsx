@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   AlertTriangle,
   Eye,
@@ -9,7 +10,10 @@ import {
   Search,
   ShieldAlert,
   Star,
+  Tag,
+  Download,
 } from "lucide-react";
+import { exportToCsv, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 import {
   getAdminReviewStats,
   getAdminReviews,
@@ -28,6 +32,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Doughnut, Bar } from "react-chartjs-2";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import "@/lib/chartSetup";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { cn } from "@/lib/utils";
 
@@ -77,36 +84,46 @@ const StarRating = ({ rating }) => (
   </div>
 );
 
-const StatCard = ({ title, value, icon: Icon, tone = "default" }) => (
-  <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-    <div className="flex items-center justify-between gap-3">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {title}
-        </p>
-        <p className="mt-2 text-3xl font-bold text-foreground">{value}</p>
-      </div>
-      <div
-        className={cn(
-          "flex h-11 w-11 items-center justify-center rounded-2xl",
-          tone === "danger"
-            ? "bg-red-50 text-red-600"
-            : tone === "warning"
-              ? "bg-amber-50 text-amber-600"
-              : "bg-primary/10 text-primary",
-        )}
-      >
-        <Icon className="h-5 w-5" />
-      </div>
-    </div>
-  </div>
-);
+const StatCard = ({ title, value, icon: Icon, tone = "default", subtitle }) => {
+  const toneMap = {
+    danger: { iconBg: "bg-rose-50 dark:bg-rose-950/30 text-rose-500" },
+    warning: { iconBg: "bg-amber-50 dark:bg-amber-950/30 text-amber-500" },
+    success: { iconBg: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500" },
+    default: { iconBg: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400" },
+  };
+  const config = toneMap[tone] || toneMap.default;
+
+  return (
+    <Card className="relative overflow-hidden">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1.5 min-w-0">
+            <p className="text-xs font-medium text-muted-foreground">{title}</p>
+            <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
+            {subtitle && (
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
+            )}
+          </div>
+          {Icon && (
+            <div className={cn("p-3 rounded-xl shrink-0", config.iconBg)}>
+              <Icon className="h-5 w-5" />
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const ReviewCard = ({
   review,
   note,
+  moderationReason,
+  replyReasons,
   actionLoading,
   onNoteChange,
+  onModerationReasonChange,
+  onReplyReasonChange,
   onModerateReview,
   onModerateReply,
 }) => {
@@ -138,6 +155,11 @@ const ReviewCard = ({
                 {mediaItems.length} ảnh
               </Badge>
             )}
+            {review.isSeeded && (
+              <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-800">
+                Seed
+              </Badge>
+            )}
             {review.isVerifiedPurchase && (
               <Badge
                 variant="outline"
@@ -153,6 +175,44 @@ const ReviewCard = ({
             {review.place?.business?.businessName || "Chưa gắn business"} ·{" "}
             {formatDate(review.createdAt)}
           </p>
+
+          {(review.moderationLogs?.length ?? 0) > 0 && (
+            <details className="rounded-xl bg-muted/40 px-3 py-2 text-xs">
+              <summary className="cursor-pointer font-medium text-muted-foreground">
+                Nhật ký moderation ({review.moderationLogs.length})
+              </summary>
+              <ul className="mt-2 space-y-2 text-muted-foreground">
+                {review.moderationLogs.map((log) => (
+                  <li key={log.id} className="border-l-2 border-primary/30 pl-2">
+                    <span className="text-foreground">
+                      {log.action === "REVIEW_STATUS"
+                        ? "Review"
+                        : log.action === "REPLY_STATUS"
+                          ? "Phản hồi"
+                          : log.action}
+                    </span>
+                    {log.fromStatus || log.toStatus ? (
+                      <>
+                        {": "}
+                        <span className="font-mono">
+                          {log.fromStatus ?? "—"} → {log.toStatus ?? "—"}
+                        </span>
+                      </>
+                    ) : null}
+                    {log.reason ? (
+                      <span className="mt-0.5 block italic text-foreground/80">
+                        Lý do: {log.reason}
+                      </span>
+                    ) : null}
+                    <span className="mt-0.5 block text-[10px] uppercase tracking-wide">
+                      {log.actor?.profile?.fullName || log.actor?.email || "Admin"} ·{" "}
+                      {formatDate(log.createdAt)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
 
           {review.title && (
             <p className="font-medium text-foreground">{review.title}</p>
@@ -211,6 +271,7 @@ const ReviewCard = ({
                             review.id,
                             reply.id,
                             reply.status === "hidden" ? "visible" : "hidden",
+                            replyReasons[reply.id] || "",
                           )
                         }
                       >
@@ -219,6 +280,15 @@ const ReviewCard = ({
                     </div>
                   </div>
                   <p className="mt-1 text-muted-foreground">{reply.content}</p>
+                  {reply.status === "visible" && (
+                    <Textarea
+                      value={replyReasons[reply.id] || ""}
+                      onChange={(e) => onReplyReasonChange(reply.id, e.target.value)}
+                      placeholder="Lý do khi ẩn phản hồi (bắt buộc)"
+                      rows={2}
+                      className="mt-2 text-xs"
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -231,6 +301,15 @@ const ReviewCard = ({
             onChange={(event) => onNoteChange(review.id, event.target.value)}
             placeholder="Note nội bộ cho moderation..."
             rows={3}
+            className="text-sm"
+          />
+          <Textarea
+            value={moderationReason}
+            onChange={(event) =>
+              onModerationReasonChange(review.id, event.target.value)
+            }
+            placeholder="Lý do can thiệp (bắt buộc khi Ẩn / Report)..."
+            rows={2}
             className="text-sm"
           />
           <div className="grid grid-cols-2 gap-2">
@@ -266,26 +345,40 @@ const ReviewCard = ({
 };
 
 const AdminReviewModerationPage = () => {
+  const { t } = useTranslation();
   const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("reported");
+  const [queue, setQueue] = useState("all");
+  const [sort, setSort] = useState("created_desc");
+  const [isSeededFilter, setIsSeededFilter] = useState("all");
   const [rating, setRating] = useState("all");
   const [hasMedia, setHasMedia] = useState("all");
   const [notesByReview, setNotesByReview] = useState({});
+  const [reasonsByReview, setReasonsByReview] = useState({});
+  const [replyReasons, setReplyReasons] = useState({});
   const [actionLoading, setActionLoading] = useState(null);
 
   const params = useMemo(
     () => ({
       search,
-      status,
+      status: queue === "needs_action" ? "all" : status,
       rating: rating !== "all" ? rating : undefined,
       hasMedia: hasMedia === "with-media" ? "true" : undefined,
+      queue,
+      sort,
+      isSeeded:
+        isSeededFilter === "seeded"
+          ? "true"
+          : isSeededFilter === "not-seeded"
+            ? "false"
+            : undefined,
       page: 1,
       limit: 50,
     }),
-    [hasMedia, rating, search, status],
+    [hasMedia, isSeededFilter, queue, rating, search, sort, status],
   );
 
   const loadReviews = useCallback(async () => {
@@ -298,6 +391,15 @@ const AdminReviewModerationPage = () => {
         (response.data || []).forEach((review) => {
           if (next[review.id] === undefined) {
             next[review.id] = review.adminNote || "";
+          }
+        });
+        return next;
+      });
+      setReasonsByReview((current) => {
+        const next = { ...current };
+        (response.data || []).forEach((review) => {
+          if (next[review.id] === undefined) {
+            next[review.id] = "";
           }
         });
         return next;
@@ -326,8 +428,22 @@ const AdminReviewModerationPage = () => {
     loadStats();
   }, [loadStats]);
 
+  useEffect(() => {
+    if (sort === "priority" && queue === "all") {
+      setQueue("needs_action");
+    }
+  }, [queue, sort]);
+
   const handleNoteChange = (reviewId, value) => {
     setNotesByReview((current) => ({ ...current, [reviewId]: value }));
+  };
+
+  const handleModerationReasonChange = (reviewId, value) => {
+    setReasonsByReview((current) => ({ ...current, [reviewId]: value }));
+  };
+
+  const handleReplyReasonChange = (replyId, value) => {
+    setReplyReasons((current) => ({ ...current, [replyId]: value }));
   };
 
   const handleModerateReview = async (reviewId, nextStatus) => {
@@ -336,6 +452,10 @@ const AdminReviewModerationPage = () => {
       await moderateAdminReview(reviewId, {
         status: nextStatus,
         adminNote: notesByReview[reviewId] || null,
+        moderationReason:
+          nextStatus === "hidden" || nextStatus === "reported"
+            ? reasonsByReview[reviewId] || null
+            : null,
       });
       toast.success("Đã cập nhật trạng thái đánh giá");
       await Promise.all([loadReviews(), loadStats()]);
@@ -346,11 +466,17 @@ const AdminReviewModerationPage = () => {
     }
   };
 
-  const handleModerateReply = async (reviewId, replyId, nextStatus) => {
+  const handleModerateReply = async (reviewId, replyId, nextStatus, reasonText) => {
     setActionLoading(`reply-${replyId}`);
     try {
-      await moderateAdminReviewReply(reviewId, replyId, { status: nextStatus });
+      await moderateAdminReviewReply(reviewId, replyId, {
+        status: nextStatus,
+        ...(nextStatus === "hidden" && {
+          moderationReason: reasonText?.trim() || null,
+        }),
+      });
       toast.success("Đã cập nhật phản hồi");
+      setReplyReasons((current) => ({ ...current, [replyId]: "" }));
       await loadReviews();
     } catch (error) {
       toast.error(error?.message || "Không thể moderation phản hồi");
@@ -359,85 +485,236 @@ const AdminReviewModerationPage = () => {
     }
   };
 
+  const handleExportCsv = () => {
+    if (!reviews || reviews.length === 0) {
+      toast.error("Không có dữ liệu để xuất");
+      return;
+    }
+
+    exportToCsv({
+      columns: [
+        { key: "id", label: "ID" },
+        { key: (row) => row.user?.profile?.fullName || row.user?.email?.split("@")[0] || "Ẩn danh", label: "Tác giả" },
+        { key: (row) => row.user?.email || "", label: "Email" },
+        { key: "rating", label: "Đánh giá" },
+        { key: "status", label: "Trạng thái" },
+        { key: "comment", label: "Nội dung" },
+        { key: (row) => row.place?.name || "", label: "Địa điểm" },
+        { key: (row) => row.adminNote || "", label: "Ghi chú admin" },
+        { key: (row) => row._count?.replies ?? 0, label: "Số phản hồi" },
+        { key: (row) => formatCsvDate(row.createdAt), label: "Thời gian" },
+      ],
+      data: reviews,
+      filename: slugifyFilename("danh_gia_moderation"),
+    });
+
+    toast.success(`Đã xuất ${reviews.length} bản ghi`);
+  };
+
   return (
     <div className="min-h-screen space-y-6 p-6 lg:p-8">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">
-            Moderation đánh giá
-          </h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold text-foreground">
+              {t("admin.reviewModeration.title")}
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            {t("admin.reviewModeration.subtitle")}
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Giám sát toàn bộ review, xử lý report, ẩn/khôi phục review và phản hồi.
-        </p>
+        <Button
+          onClick={handleExportCsv}
+          variant="outline"
+          className="gap-2 shrink-0"
+        >
+          <Download className="h-4 w-4" />
+          CSV
+        </Button>
       </div>
 
       {stats && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-          <StatCard title="Tổng review" value={stats.total} icon={Star} />
-          <StatCard
-            title="Bị report"
-            value={stats.reported}
-            icon={AlertTriangle}
-            tone="danger"
-          />
-          <StatCard
-            title="Chờ duyệt"
-            value={stats.pending}
-            icon={MessageSquare}
-            tone="warning"
-          />
-          <StatCard title="Đã ẩn" value={stats.hidden} icon={EyeOff} />
-          <StatCard title="Rating TB" value={stats.avgRating} icon={Star} />
+        <div className="space-y-6">
+          {/* Stats Cards Grid */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+            <StatCard title={t("admin.reviewModeration.totalReviews")} value={stats.total} icon={Star} subtitle="Tất cả đánh giá" />
+            <StatCard
+              title={t("admin.reviewModeration.reported")}
+              value={stats.reported}
+              icon={AlertTriangle}
+              tone="danger"
+              subtitle="Cần kiểm tra"
+            />
+            <StatCard
+              title={t("admin.reviewModeration.pending")}
+              value={stats.pending}
+              icon={MessageSquare}
+              tone="warning"
+              subtitle="Đang chờ duyệt"
+            />
+            <StatCard title={t("admin.reviewModeration.hidden")} value={stats.hidden} icon={EyeOff} tone="default" subtitle="Đã bị ẩn" />
+            <StatCard title={t("admin.reviewModeration.seedData")} value={stats.seeded ?? 0} icon={Tag} tone="default" subtitle="Dữ liệu mẫu" />
+            <StatCard title={t("admin.reviewModeration.avgRating")} value={stats.avgRating} icon={Star} tone="success" subtitle="Điểm trung bình" />
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-4 border-b">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Star className="h-4 w-4" /> Phân phối số sao đánh giá (Ước tính)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="h-64 pt-4">
+                <Bar
+                  data={{
+                    labels: ["5 Sao", "4 Sao", "3 Sao", "2 Sao", "1 Sao"],
+                    datasets: [
+                      {
+                        label: "Số lượng đánh giá",
+                        data: [
+                          Math.round(stats.total * (stats.avgRating >= 4.5 ? 0.6 : stats.avgRating >= 4.0 ? 0.45 : 0.3)),
+                          Math.round(stats.total * (stats.avgRating >= 4.5 ? 0.25 : stats.avgRating >= 4.0 ? 0.35 : 0.3)),
+                          Math.round(stats.total * 0.12),
+                          Math.round(stats.total * 0.05),
+                          Math.round(stats.total * 0.03),
+                        ],
+                        backgroundColor: "hsl(var(--primary))",
+                        borderRadius: 6,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                    },
+                    scales: {
+                      y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.05)" } },
+                      x: { grid: { display: false } },
+                    },
+                  }}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-4 border-b">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4" /> Cơ cấu trạng thái duyệt
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="h-64 pt-4 flex items-center justify-center">
+                <Doughnut
+                  data={{
+                    labels: ["Đang hiển thị", "Chờ duyệt", "Bị báo cáo", "Đã ẩn"],
+                    datasets: [
+                      {
+                        data: [
+                          Math.max(0, stats.total - stats.reported - stats.pending - stats.hidden),
+                          stats.pending || 0,
+                          stats.reported || 0,
+                          stats.hidden || 0,
+                        ],
+                        backgroundColor: ["#10b981", "#f59e0b", "#ef4444", "#6b7280"],
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        position: "bottom",
+                        labels: { usePointStyle: true, padding: 15 },
+                      },
+                    },
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
 
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
+          <div className="relative flex-1 w-full">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Tìm nội dung, địa điểm, người dùng, note..."
-              className="pl-9"
+              className="pl-9 w-full"
             />
           </div>
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="w-full lg:w-44">
-              <SelectValue placeholder="Trạng thái" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={rating} onValueChange={setRating}>
-            <SelectTrigger className="w-full lg:w-36">
-              <SelectValue placeholder="Số sao" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả sao</SelectItem>
-              {[5, 4, 3, 2, 1].map((value) => (
-                <SelectItem key={value} value={String(value)}>
-                  {value} sao
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={hasMedia} onValueChange={setHasMedia}>
-            <SelectTrigger className="w-full lg:w-40">
-              <SelectValue placeholder="Ảnh" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả ảnh</SelectItem>
-              <SelectItem value="with-media">Có ảnh</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-center gap-3 w-full lg:w-auto">
+            <Select value={queue} onValueChange={setQueue}>
+              <SelectTrigger className="w-full lg:w-48">
+                <SelectValue placeholder="Hàng đợi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả review</SelectItem>
+                <SelectItem value="needs_action">Cần xử lý (chờ/report)</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sort} onValueChange={setSort}>
+              <SelectTrigger className="w-full lg:w-48">
+                <SelectValue placeholder="Sắp xếp" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_desc">Mới nhất trước</SelectItem>
+                <SelectItem value="priority">Ưu tiên (report → chờ)</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={isSeededFilter} onValueChange={setIsSeededFilter}>
+              <SelectTrigger className="w-full lg:w-40">
+                <SelectValue placeholder="Nguồn" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Mọi nguồn</SelectItem>
+                <SelectItem value="seeded">Chỉ seed</SelectItem>
+                <SelectItem value="not-seeded">Không seed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={status} onValueChange={setStatus} disabled={queue === "needs_action"}>
+              <SelectTrigger className="w-full lg:w-44">
+                <SelectValue placeholder="Trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={rating} onValueChange={setRating}>
+              <SelectTrigger className="w-full lg:w-36">
+                <SelectValue placeholder="Số sao" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả sao</SelectItem>
+                {[5, 4, 3, 2, 1].map((value) => (
+                  <SelectItem key={value} value={String(value)}>
+                    {value} sao
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={hasMedia} onValueChange={setHasMedia}>
+              <SelectTrigger className="w-full lg:w-40">
+                <SelectValue placeholder="Ảnh" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả ảnh</SelectItem>
+                <SelectItem value="with-media">Có ảnh</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -463,8 +740,12 @@ const AdminReviewModerationPage = () => {
               key={review.id}
               review={review}
               note={notesByReview[review.id] || ""}
+              moderationReason={reasonsByReview[review.id] || ""}
+              replyReasons={replyReasons}
               actionLoading={actionLoading}
               onNoteChange={handleNoteChange}
+              onModerationReasonChange={handleModerationReasonChange}
+              onReplyReasonChange={handleReplyReasonChange}
               onModerateReview={handleModerateReview}
               onModerateReply={handleModerateReply}
             />

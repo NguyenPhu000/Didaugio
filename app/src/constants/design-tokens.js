@@ -227,6 +227,17 @@ export const TOKENS = {
     slow: 400,
     xslow: 600,
   },
+
+  spring: {
+    /** Quick press-feedback spring */
+    press: { damping: 14, stiffness: 180 },
+    /** Default entrance spring */
+    entrance: { damping: 18, stiffness: 160 },
+    /** Snappy pill / toggle spring */
+    snappy: { damping: 16, stiffness: 200 },
+    /** Gentle breathing / idle animation */
+    gentle: { damping: 12, stiffness: 120 },
+  },
 };
 
 export const GLASS_THEME = {

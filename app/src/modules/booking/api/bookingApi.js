@@ -16,14 +16,19 @@ export const getMyBookingQRApi = (bookingId) =>
 export const linkMyBookingToTripApi = (bookingId, tripId) =>
   client.post(ENDPOINTS.profile.bookingLinkTrip(bookingId), { tripId });
 
+export async function cancelBookingApi(bookingId, { cancelReason } = {}) {
+  const id = Number(bookingId);
+  if (!id || id <= 0) throw new Error("bookingId không hợp lệ");
+  return client.put(ENDPOINTS.profile.bookingCancel(id), { cancelReason });
+}
+
 export const createBookingApi = (data) => {
   const serviceId = Number(data?.serviceId);
   if (!Number.isInteger(serviceId) || serviceId <= 0) {
-    throw {
-      message: "Thiếu serviceId hợp lệ để tạo booking",
-      status: 400,
-      code: "VALIDATION_ERROR",
-    };
+    const err = new Error("Missing or invalid serviceId to create booking");
+    err.status = 400;
+    err.code = "VALIDATION_ERROR";
+    throw err;
   }
 
   const payload = {

@@ -7,24 +7,26 @@ import {
   Checkbox,
   Input,
 } from "@/components/ui";
+import { useTranslation } from "react-i18next";
 
 const LogsMonitoringCard = ({ value, onChange }) => {
+  const { t } = useTranslation();
   return (
     <Card className="rounded-none border-black bg-white">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-black uppercase tracking-wide">
-          7) Logs & Monitoring
+          {t("settings.logs.title")}
         </CardTitle>
         <CardDescription className="font-mono text-xs uppercase tracking-wider text-gray-500">
-          Audit logs, error logs và quyền truy cập logs
+          {t("settings.logs.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           {[
-            ["auditLogEnabled", "Audit log"],
-            ["errorLogEnabled", "Error log"],
-            ["allowLogAccess", "Log access"],
+            ["auditLogEnabled", t("settings.logs.auditLogEnabled")],
+            ["errorLogEnabled", t("settings.logs.errorLogEnabled")],
+            ["allowLogAccess", t("settings.logs.allowLogAccess")],
           ].map(([key, label]) => (
             <div
               key={key}
@@ -44,7 +46,7 @@ const LogsMonitoringCard = ({ value, onChange }) => {
           className="rounded-none border-black"
           value={value.retentionDays}
           onChange={(e) => onChange("retentionDays", e.target.value)}
-          placeholder="Retention days"
+          placeholder={t("settings.logs.retentionDays")}
         />
       </CardContent>
     </Card>

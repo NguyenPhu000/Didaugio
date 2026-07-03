@@ -24,7 +24,7 @@ import { DESIGN } from "./dashboardWidgetHelpers";
 
 const WELCOME_PATTERN_STYLE = {
   backgroundImage:
-    "radial-gradient(circle, rgba(15, 23, 42, 0.06) 1px, transparent 1px)",
+    "radial-gradient(circle, rgba(24, 24, 27, 0.05) 1px, transparent 1px)",
   backgroundSize: "20px 20px",
 };
 
@@ -46,7 +46,7 @@ const SPARKLINE_BAR_CLASS = {
   amber: "bg-amber-500/80",
   rose: "bg-rose-500/80",
   violet: "bg-violet-500/80",
-  primary: "bg-primary/80",
+  primary: "bg-zinc-400",
 };
 
 // ─── Status Config (Booking) ─────────────────────────────────────────────────
@@ -56,43 +56,43 @@ const BOOKING_STATUS_CONFIG = {
     label: "Chờ xác nhận",
     icon: Clock,
     className:
-      "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800",
+      "bg-amber-50 text-amber-700 border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800",
   },
   [BOOKING_STATUS.CONFIRMED]: {
     label: "Đã xác nhận",
     icon: CheckCircle,
     className:
-      "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800",
+      "bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800",
   },
   [BOOKING_STATUS.COMPLETED]: {
     label: "Hoàn thành",
     icon: Trophy,
     className:
-      "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800",
+      "bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800",
   },
   [BOOKING_STATUS.CANCELLED]: {
     label: "Đã hủy",
     icon: XCircle,
     className:
-      "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800",
+      "bg-zinc-100 text-zinc-600 border-zinc-200/60 dark:bg-zinc-800/50 dark:text-zinc-400 dark:border-zinc-700",
   },
   [BOOKING_STATUS.REJECTED]: {
     label: "Bị từ chối",
     icon: XCircle,
     className:
-      "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800",
+      "bg-rose-50 text-rose-700 border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800",
   },
   [BOOKING_STATUS.EXPIRED]: {
     label: "Hết hạn",
     icon: AlertCircle,
     className:
-      "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700",
+      "bg-orange-50 text-orange-700 border-orange-200/60 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800",
   },
   [BOOKING_STATUS.NO_SHOW]: {
     label: "Không đến",
     icon: UserX,
     className:
-      "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700",
+      "bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-800",
   },
 };
 
@@ -105,7 +105,7 @@ export const StatusBadge = ({ status, className }) => {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
+        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border",
         cfg.className,
         className,
       )}
@@ -117,6 +117,7 @@ export const StatusBadge = ({ status, className }) => {
 };
 
 // ─── WelcomeBanner ───────────────────────────────────────────────────────────
+// White-first, black-accent redesign — premium dashboard feel
 
 const WelcomeBannerBase = ({ name, role = "Chủ doanh nghiệp" }) => {
   const now = new Date();
@@ -130,15 +131,15 @@ const WelcomeBannerBase = ({ name, role = "Chủ doanh nghiệp" }) => {
     .join("");
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-r from-primary/10 via-background to-background px-6 py-6 shadow-sm">
+    <div className="relative overflow-hidden rounded-2xl border border-zinc-200/80 bg-white px-6 py-6 shadow-sm dark:bg-zinc-950 dark:border-zinc-800 dark:shadow-none">
       <div
-        className="pointer-events-none absolute inset-0 opacity-60"
+        className="pointer-events-none absolute inset-0 opacity-40"
         style={WELCOME_PATTERN_STYLE}
       />
-      <div className="pointer-events-none absolute -top-14 -right-12 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+      <div className="pointer-events-none absolute -top-14 -right-12 h-40 w-40 rounded-full bg-zinc-100 blur-2xl dark:bg-zinc-900" />
       <div className="relative z-10 flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
             {initials ? (
               <span className="text-sm font-semibold tracking-wide">
                 {initials}
@@ -148,29 +149,29 @@ const WelcomeBannerBase = ({ name, role = "Chủ doanh nghiệp" }) => {
             )}
           </div>
           <div className="min-w-0 space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-100">
               Chào mừng, {shortName}!
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
               {role} • Hôm nay là {dateStr}
             </p>
           </div>
         </div>
 
         <div className="hidden md:flex items-center gap-2">
-          <div className="rounded-xl border border-border/60 bg-card/80 px-3 py-2 text-right shadow-sm">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <div className="rounded-xl border border-zinc-200/80 bg-zinc-50 px-3 py-2 text-right shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <p className="text-[10px] uppercase tracking-wide text-zinc-400 dark:text-zinc-600">
               Vai trò
             </p>
-            <p className="text-xs font-semibold text-foreground truncate max-w-[130px]">
+            <p className="text-xs font-semibold text-zinc-700 truncate max-w-[130px] dark:text-zinc-300">
               {role}
             </p>
           </div>
-          <div className="rounded-xl border border-border/60 bg-card/80 px-3 py-2 text-right shadow-sm">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <div className="rounded-xl border border-zinc-200/80 bg-zinc-50 px-3 py-2 text-right shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <p className="text-[10px] uppercase tracking-wide text-zinc-400 dark:text-zinc-600">
               Ngày
             </p>
-            <p className="text-xs font-semibold text-foreground">{dateStr}</p>
+            <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{dateStr}</p>
           </div>
         </div>
       </div>
@@ -213,6 +214,7 @@ const MiniSparkline = memo(MiniSparklineBase);
 MiniSparkline.displayName = "MiniSparkline";
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
+// White-first redesign — zinc palette, premium feel
 
 export const StatCard = ({
   title,
@@ -229,8 +231,8 @@ export const StatCard = ({
 
   const trendValue = formatTrendValue(trend);
 
-  return (
-    <Card className={cn(DESIGN.card, DESIGN.cardHover, "group")}>
+  const cardContent = (
+    <>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
         <div className={DESIGN.iconBox(iconColor)}>
           <_Icon className="h-5 w-5" />
@@ -238,7 +240,7 @@ export const StatCard = ({
         {trendValue && (
           <Badge
             variant="secondary"
-            className="rounded-lg border border-border/60 bg-muted/70 text-xs font-semibold"
+            className="rounded-lg border border-zinc-200/60 bg-zinc-50 text-xs font-semibold text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800"
           >
             {trendValue}
           </Badge>
@@ -246,12 +248,12 @@ export const StatCard = ({
       </CardHeader>
       <CardContent className="p-5 pt-0">
         <div className="min-w-0 space-y-1">
-          <p className="truncate text-[32px] font-semibold leading-tight tracking-tighter text-foreground">
+          <p className="truncate text-[32px] font-semibold leading-tight tracking-tighter text-zinc-950 dark:text-zinc-100">
             {value}
           </p>
-          <p className="text-sm text-muted-foreground">{title}</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{title}</p>
           {description && (
-            <p className="text-xs text-muted-foreground/90 leading-relaxed">
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 leading-relaxed">
               {description}
             </p>
           )}
@@ -260,14 +262,27 @@ export const StatCard = ({
         <MiniSparkline data={miniChart} color={iconColor} />
 
         {href && (
-          <Link
-            to={href}
-            className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
-          >
+          <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-zinc-500 transition-colors group-hover:text-zinc-950 dark:text-zinc-400 dark:group-hover:text-zinc-100">
             Xem chi tiết <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          </span>
         )}
       </CardContent>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link to={href} className="block">
+        <Card className={cn(DESIGN.card, DESIGN.cardHover, "group dark:shadow-none")}>
+          {cardContent}
+        </Card>
+      </Link>
+    );
+  }
+
+  return (
+    <Card className={cn(DESIGN.card, "dark:shadow-none")}>
+      {cardContent}
     </Card>
   );
 };
@@ -280,12 +295,12 @@ const SectionCardBase = ({
   className,
   bodyClassName,
 }) => (
-  <Card className={cn(DESIGN.card, className)}>
+  <Card className={cn(DESIGN.card, className, "dark:shadow-none")}>
     {title && (
       <div className={DESIGN.sectionHeader}>
         <div className="flex items-center gap-2">
-          {TitleIcon && <TitleIcon className="h-4 w-4 text-muted-foreground" />}
-          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          {TitleIcon && <TitleIcon className="h-4 w-4 text-zinc-400 dark:text-zinc-500" />}
+          <h3 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">{title}</h3>
         </div>
         {action && <div className="flex items-center gap-2">{action}</div>}
       </div>
@@ -301,17 +316,17 @@ const PageHeaderBase = ({ title, subtitle, badge, action }) => (
   <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-2.5">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-100">
           {title}
         </h1>
         {badge !== undefined && badge !== null && (
-          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+          <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
             {badge}
           </span>
         )}
       </div>
       {subtitle && (
-        <p className="text-sm leading-relaxed text-muted-foreground">
+        <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
           {subtitle}
         </p>
       )}
@@ -325,10 +340,10 @@ PageHeader.displayName = "PageHeader";
 
 const EmptyStateBase = ({ icon: _Icon = AlertCircle, message, action }) => (
   <div className="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
-    <div className="rounded-2xl bg-muted p-5">
-      <_Icon className="h-9 w-9 text-muted-foreground" />
+    <div className="rounded-2xl bg-zinc-50 p-5 dark:bg-zinc-900">
+      <_Icon className="h-9 w-9 text-zinc-300 dark:text-zinc-600" />
     </div>
-    <p className="max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">
+    <p className="max-w-xs text-sm font-medium leading-relaxed text-zinc-500 dark:text-zinc-400">
       {message}
     </p>
     {action && <div className="mt-2">{action}</div>}
@@ -340,8 +355,8 @@ EmptyState.displayName = "EmptyState";
 
 const LoadingStateBase = ({ message = "Đang tải dữ liệu..." }) => (
   <div className="flex flex-col items-center justify-center gap-3 py-16">
-    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-    <p className="text-sm text-muted-foreground">{message}</p>
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-950 dark:border-zinc-800 dark:border-t-zinc-400" />
+    <p className="text-sm text-zinc-500 dark:text-zinc-400">{message}</p>
   </div>
 );
 
@@ -349,17 +364,17 @@ export const LoadingState = memo(LoadingStateBase);
 LoadingState.displayName = "LoadingState";
 
 const StatCardSkeletonBase = () => (
-  <Card className={DESIGN.card}>
+  <Card className={cn(DESIGN.card, "dark:shadow-none")}>
     <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
-      <Skeleton className="h-12 w-12 rounded-xl" />
-      <Skeleton className="h-6 w-16 rounded-lg" />
+      <Skeleton className="h-12 w-12 rounded-xl bg-zinc-100 dark:bg-zinc-900" />
+      <Skeleton className="h-6 w-16 rounded-lg bg-zinc-100 dark:bg-zinc-900" />
     </CardHeader>
     <CardContent className="space-y-2 p-5 pt-0">
-      <Skeleton className="h-8 w-28" />
-      <Skeleton className="h-4 w-24" />
+      <Skeleton className="h-8 w-28 bg-zinc-100 dark:bg-zinc-900" />
+      <Skeleton className="h-4 w-24 bg-zinc-100 dark:bg-zinc-900" />
       <div className="flex h-10 items-end gap-1 pt-1">
         {Array.from({ length: 8 }).map((_, idx) => (
-          <Skeleton key={idx} className="h-full w-2 rounded-full" />
+          <Skeleton key={idx} className="h-full w-2 rounded-full bg-zinc-100 dark:bg-zinc-900" />
         ))}
       </div>
     </CardContent>
@@ -370,15 +385,15 @@ export const StatCardSkeleton = memo(StatCardSkeletonBase);
 StatCardSkeleton.displayName = "StatCardSkeleton";
 
 export const SectionCardSkeleton = ({ rows = 4 }) => (
-  <Card className={DESIGN.card}>
+  <Card className={cn(DESIGN.card, "dark:shadow-none")}>
     <div className={DESIGN.sectionHeader}>
-      <Skeleton className="h-4 w-36" />
+      <Skeleton className="h-4 w-36 bg-zinc-100 dark:bg-zinc-900" />
     </div>
     <CardContent className="space-y-3 p-5">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="flex items-center justify-between">
-          <Skeleton className="h-4 w-1/3" />
-          <Skeleton className="h-4 w-1/4" />
+          <Skeleton className="h-4 w-1/3 bg-zinc-100 dark:bg-zinc-900" />
+          <Skeleton className="h-4 w-1/4 bg-zinc-100 dark:bg-zinc-900" />
         </div>
       ))}
     </CardContent>
@@ -386,9 +401,9 @@ export const SectionCardSkeleton = ({ rows = 4 }) => (
 );
 
 export const TableRowSkeleton = ({ cols = 4 }) => (
-  <div className="flex items-center gap-4 border-b border-border/50 px-5 py-4">
+  <div className="flex items-center gap-4 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
     {Array.from({ length: cols }).map((_, i) => (
-      <Skeleton key={i} className="h-4 flex-1" />
+      <Skeleton key={i} className="h-4 flex-1 bg-zinc-100 dark:bg-zinc-900" />
     ))}
   </div>
 );
@@ -409,8 +424,8 @@ export const PageNav = ({ page, totalPages, total, onPageChange }) => {
   return (
     <div className="flex items-center justify-between py-3 px-1">
       {total !== undefined && (
-        <p className="text-xs text-muted-foreground">
-          Trang <span className="font-semibold text-foreground">{page}</span> /{" "}
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          Trang <span className="font-semibold text-zinc-950 dark:text-zinc-100">{page}</span> /{" "}
           {totalPages}
           {total > 0 && <> · {total} kết quả</>}
         </p>
@@ -419,7 +434,7 @@ export const PageNav = ({ page, totalPages, total, onPageChange }) => {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 w-8 p-0"
+          className="h-8 w-8 p-0 border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page === 1}
         >
@@ -429,7 +444,7 @@ export const PageNav = ({ page, totalPages, total, onPageChange }) => {
           p === "..." ? (
             <span
               key={`e-${idx}`}
-              className="px-2 text-muted-foreground text-xs"
+              className="px-2 text-zinc-400 text-xs dark:text-zinc-600"
             >
               …
             </span>
@@ -438,7 +453,7 @@ export const PageNav = ({ page, totalPages, total, onPageChange }) => {
               key={p}
               variant={p === page ? "default" : "outline"}
               size="sm"
-              className="h-8 w-8 p-0 text-xs"
+              className="h-8 w-8 p-0 text-xs border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900 dark:bg-zinc-950 dark:text-zinc-100"
               onClick={() => onPageChange(p)}
             >
               {p}
@@ -448,7 +463,7 @@ export const PageNav = ({ page, totalPages, total, onPageChange }) => {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 w-8 p-0"
+          className="h-8 w-8 p-0 border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page === totalPages}
         >
@@ -466,12 +481,12 @@ export const StatusProgressRow = ({ label, count, total, colorClass }) => {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs">
-        <span className="font-medium text-foreground">{label}</span>
-        <span className="text-muted-foreground">
+        <span className="font-medium text-zinc-700 dark:text-zinc-300">{label}</span>
+        <span className="text-zinc-400 dark:text-zinc-500">
           {count} <span className="opacity-60">({pct.toFixed(0)}%)</span>
         </span>
       </div>
-      <div className="h-2 rounded-full bg-muted overflow-hidden">
+      <div className="h-2 rounded-full bg-zinc-100 overflow-hidden dark:bg-zinc-900">
         <div
           className={cn(
             "h-full rounded-full transition-all duration-700",

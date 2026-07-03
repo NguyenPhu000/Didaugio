@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
@@ -18,7 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/Dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import useTagStore from "@/stores/tagStore";
+import { useCreateTag, useUpdateTag } from "@/hooks/queries/useTagQueries";
 import { useToast } from "@/hooks/use-toast";
 import { TAG_TYPES, TAG_COLOR_PRESETS } from "@/constants/tagConstants";
 
@@ -28,9 +29,11 @@ import { TAG_TYPES, TAG_COLOR_PRESETS } from "@/constants/tagConstants";
  */
 
 export default function TagFormDialog({ open, onClose, tag }) {
-  const { createTag, updateTag, fetchTags } = useTagStore();
+  const { t } = useTranslation();
+  const createMutation = useCreateTag();
+  const updateMutation = useUpdateTag();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
+  const loading = createMutation.isPending || updateMutation.isPending;
 
   const [formData, setFormData] = useState({
     name: "",
@@ -66,12 +69,11 @@ export default function TagFormDialog({ open, onClose, tag }) {
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-    // Auto-generate slug from name
     if (field === "name" && !tag) {
       const slug = value
         .toLowerCase()
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[̀-ͯ]/g, "")
         .replace(/đ/g, "d")
         .replace(/[^a-z0-9\s-]/g, "")
         .trim()
@@ -82,32 +84,28 @@ export default function TagFormDialog({ open, onClose, tag }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
 
     try {
       if (tag) {
-        await updateTag(tag.id, formData);
+        await updateMutation.mutateAsync({ id: tag.id, data: formData });
         toast({
-          title: "Success",
-          description: "Tag updated successfully",
+          title: t("tags.success"),
+          description: t("tags.tagUpdated"),
         });
       } else {
-        await createTag(formData);
+        await createMutation.mutateAsync(formData);
         toast({
-          title: "Success",
-          description: "Tag created successfully",
+          title: t("tags.success"),
+          description: t("tags.tagCreated"),
         });
       }
-      await fetchTags();
       onClose();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t("tags.error"),
         description: error.response?.data?.message || error.message,
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -115,9 +113,9 @@ export default function TagFormDialog({ open, onClose, tag }) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>{tag ? "Edit Tag" : "Add Tag"}</DialogTitle>
+          <DialogTitle>{tag ? t("tags.editTag") : t("tags.addTag")}</DialogTitle>
           <DialogDescription>
-            {tag ? "Update tag information" : "Create a new tag"}
+            {tag ? t("tags.updateTagInfo") : t("tags.createNewTag")}
           </DialogDescription>
         </DialogHeader>
 
@@ -126,7 +124,7 @@ export default function TagFormDialog({ open, onClose, tag }) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">
-                Name <span className="text-destructive">*</span>
+                {t("tags.name")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="name"
@@ -138,7 +136,7 @@ export default function TagFormDialog({ open, onClose, tag }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="slug">
-                Slug <span className="text-destructive">*</span>
+                {t("tags.slug")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="slug"
@@ -153,19 +151,19 @@ export default function TagFormDialog({ open, onClose, tag }) {
           {/* Tag Type */}
           <div className="space-y-2">
             <Label htmlFor="tagType">
-              Tag Type <span className="text-destructive">*</span>
+              {t("tags.tagType")} <span className="text-destructive">*</span>
             </Label>
             <Select
               value={formData.tagType}
               onValueChange={(val) => handleChange("tagType", val)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select tag type" />
+                <SelectValue placeholder={t("tags.selectTagType")} />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(TAG_TYPES).map(([value, label]) => (
+                {Object.entries(TAG_TYPES).map(([value]) => (
                   <SelectItem key={value} value={value}>
-                    {label}
+                    {t(`tags.types.${value}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -174,7 +172,7 @@ export default function TagFormDialog({ open, onClose, tag }) {
 
           {/* Color */}
           <div className="space-y-2">
-            <Label htmlFor="color">Color</Label>
+            <Label htmlFor="color">{t("tags.color")}</Label>
             <div className="flex gap-2">
               <Input
                 id="color"
@@ -203,7 +201,7 @@ export default function TagFormDialog({ open, onClose, tag }) {
 
           {/* Icon (Optional) */}
           <div className="space-y-2">
-            <Label htmlFor="icon">Icon (Optional)</Label>
+            <Label htmlFor="icon">{t("tags.iconOptional")}</Label>
             <Input
               id="icon"
               value={formData.icon}
@@ -222,23 +220,22 @@ export default function TagFormDialog({ open, onClose, tag }) {
               />
               <div className="space-y-0.5">
                 <Label htmlFor="isActive" className="cursor-pointer">
-                  Active Status
+                  {t("tags.activeStatus")}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Inactive tags won't be shown in filters
+                  {t("tags.inactiveNote")}
                 </p>
               </div>
             </div>
           </div>
 
           <DialogFooter>
-            {/** Keep submit label explicit to satisfy lint readability rules. */}
             {(() => {
-              let submitLabel = "Create";
+              let submitLabel = t("tags.create");
               if (loading) {
-                submitLabel = "Saving...";
+                submitLabel = t("tags.saving");
               } else if (tag) {
-                submitLabel = "Update";
+                submitLabel = t("tags.update");
               }
 
               return (
@@ -249,7 +246,7 @@ export default function TagFormDialog({ open, onClose, tag }) {
                     onClick={onClose}
                     disabled={loading}
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
                   <Button type="submit" disabled={loading}>
                     {submitLabel}

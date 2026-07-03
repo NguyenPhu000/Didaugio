@@ -6,8 +6,58 @@ import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { requireActiveBusiness } from "../../middlewares/requireActiveBusiness.js";
 import { validateBody } from "../../middlewares/validateSchema.js";
 import { verifyQRSchema } from "../../models/index.js";
+import { getAvailableSlots } from "../../services/booking/bookingAvailability.service.js";
+import { ROLES } from "../../config/constants.js";
 
 const router = express.Router();
+
+// ─── Public availability check (no auth - for mobile app) ────────────────────
+
+/**
+ * GET /api/bookings/public/availability/:serviceId
+ * Public endpoint - no auth required.
+ * Returns available slots for a service on a given date.
+ * Used by mobile app to show real-time availability before booking.
+ */
+router.get(
+  "/availability/:serviceId",
+  async (req, res, next) => {
+    try {
+      const { serviceId } = req.params;
+      const { date } = req.query;
+
+      if (!date) {
+        return res.status(400).json({
+          success: false,
+          data: null,
+          message: "Thiếu tham số date (YYYY-MM-DD)",
+          errorCode: "MISSING_PARAMS",
+        });
+      }
+
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(date)) {
+        return res.status(400).json({
+          success: false,
+          data: null,
+          message: "Định dạng date không hợp lệ (YYYY-MM-DD)",
+          errorCode: "INVALID_PARAMS",
+        });
+      }
+
+      const result = await getAvailableSlots(parseInt(serviceId), date);
+      res.json({
+        success: true,
+        data: result,
+        message: "Lấy thông tin slot thành công",
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// ─── Authenticated booking operations ──────────────────────────────────────
 
 router.use(authenticate);
 router.use(requireActiveBusiness({ requireContractSigned: true }));

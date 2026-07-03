@@ -2,6 +2,7 @@ import Activity from "lucide-react/dist/esm/icons/activity";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import Archive from "lucide-react/dist/esm/icons/archive";
 import Layers from "lucide-react/dist/esm/icons/layers";
+import { useTranslation } from "react-i18next";
 
 const StatusRow = ({ icon: _Icon, value, label, pct, barColor, iconClass }) => (
   <div className="group flex items-center gap-4 p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors cursor-default">
@@ -35,13 +36,14 @@ const StatusRow = ({ icon: _Icon, value, label, pct, barColor, iconClass }) => (
 );
 
 const DashboardDataStatus = ({ stats }) => {
+  const { t } = useTranslation();
   const total = stats.total || 1;
 
   const items = [
     {
       icon: Activity,
       value: stats.approved,
-      label: "ĐÃ DUYỆT",
+      label: t("dashboard.dataStatus.approved"),
       pct: Math.round((stats.approved / total) * 100),
       barColor: "bg-emerald-500",
       iconClass:
@@ -50,7 +52,7 @@ const DashboardDataStatus = ({ stats }) => {
     {
       icon: AlertCircle,
       value: stats.pending,
-      label: "CHỜ DUYỆT",
+      label: t("dashboard.dataStatus.pending"),
       pct: Math.round((stats.pending / total) * 100),
       barColor: "bg-yellow-400",
       iconClass:
@@ -59,7 +61,7 @@ const DashboardDataStatus = ({ stats }) => {
     {
       icon: Archive,
       value: stats.rejected,
-      label: "ĐÃ HỦY",
+      label: t("dashboard.dataStatus.cancelled"),
       pct: Math.round((stats.rejected / total) * 100),
       barColor: "bg-red-500",
       iconClass:
@@ -73,7 +75,7 @@ const DashboardDataStatus = ({ stats }) => {
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-primary" />
           <h3 className="font-bold font-mono text-sm uppercase tracking-widest">
-            TRẠNG THÁI DỮ LIỆU
+            {t("dashboard.dataStatus.title")}
           </h3>
         </div>
         <div className="flex gap-1.5">
@@ -85,7 +87,7 @@ const DashboardDataStatus = ({ stats }) => {
 
       {/* Total */}
       <div className="px-4 py-3 border-b border-dashed border-gray-200 bg-gray-50">
-        <span className="tim-meta">TỔNG SỐ ĐỊA ĐIỂM</span>
+        <span className="tim-meta">{t("dashboard.dataStatus.totalPlaces")}</span>
         <span className="ml-3 font-black font-mono text-xl">{stats.total}</span>
       </div>
 
@@ -97,7 +99,7 @@ const DashboardDataStatus = ({ stats }) => {
 
       {stats.featured > 0 && (
         <div className="px-4 py-2.5 border-t border-dashed border-gray-200 bg-primary/5 flex items-center justify-between">
-          <span className="tim-meta">NỔI BẬT (FEATURED)</span>
+          <span className="tim-meta">{t("dashboard.dataStatus.featured")}</span>
           <span className="font-black font-mono text-sm text-primary">
             {stats.featured}
           </span>

@@ -1,14 +1,19 @@
 import { create } from "zustand";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import safeAsyncStorage from "../utils/safeAsyncStorage";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { PREFERENCES_DEFAULT } from "../constants/preferences";
+import i18n, { resolveLanguage } from "../i18n";
 
-const { persist, createJSONStorage } = require("zustand/middleware");
+const storageProvider = typeof window !== "undefined" && window.localStorage
+  ? window.localStorage
+  : safeAsyncStorage;
 
 export const useUIStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
+      isHydrated: false,
       themePreference: "auto",
-      language: "vi",
+      language: "device",
       profileSettings: {
         pushEnabled: true,
         syncEnabled: true,
@@ -19,11 +24,25 @@ export const useUIStore = create(
 
       setTheme: (theme) => set({ themePreference: theme }),
 
-      setLanguage: (language) =>
-        set({ language: language === "en" ? "en" : "vi" }),
+      setLanguage: (language) => {
+        const validLang = language === "en" || language === "vi" || language === "device"
+          ? language
+          : "device";
+        set({ language: validLang });
+        i18n.changeLanguage(resolveLanguage(validLang));
+      },
 
-      toggleLanguage: () =>
-        set((s) => ({ language: s.language === "en" ? "vi" : "en" })),
+      toggleLanguage: () => {
+        const current = get().language;
+        const next = current === "en" ? "vi" : "en";
+        set({ language: next });
+        i18n.changeLanguage(next);
+      },
+
+      /** Get the resolved language code (always "en" or "vi") */
+      getResolvedLanguage: () => {
+        return resolveLanguage(get().language);
+      },
 
       updateProfileSettings: (partial) =>
         set((s) => ({
@@ -49,7 +68,14 @@ export const useUIStore = create(
     }),
     {
       name: "ui-store",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => storageProvider),
+      onRehydrateStorage: (state) => {
+        return (state, error) => {
+          if (!error) {
+            state.isHydrated = true;
+          }
+        };
+      },
       partialize: (s) => ({
         themePreference: s.themePreference,
         language: s.language,

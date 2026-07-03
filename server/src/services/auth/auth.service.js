@@ -24,6 +24,7 @@ import * as passwordResetService from "../activity/passwordReset.service.js";
 import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
 import { OAuth2Client } from "google-auth-library";
+import { invalidateUserCache } from "../../utils/permissionCache.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -34,15 +35,23 @@ if (!JWT_SECRET) {
   );
 }
 const ACCESS_TOKEN_EXPIRES = process.env.ACCESS_TOKEN_EXPIRES || "15m";
-const REFRESH_TOKEN_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 13;
+
+const REFRESH_TOKEN_EXPIRES_DAYS = Number(process.env.REFRESH_TOKEN_EXPIRES_DAYS) || 7;
+const REFRESH_TOKEN_EXPIRES_MS = REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000;
+
+const REMEMBER_ME_EXPIRES_DAYS = Number(process.env.REMEMBER_ME_EXPIRES_DAYS) || 30;
+const REMEMBER_ME_REFRESH_EXPIRES_MS = REMEMBER_ME_EXPIRES_DAYS * 24 * 60 * 60 * 1000;
+
 const GOOGLE_ALLOWED_ISSUERS = new Set([
   "https://accounts.google.com",
   "accounts.google.com",
 ]);
 
 // Account lockout config
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+const MAX_FAILED_ATTEMPTS = Number(process.env.AUTH_MAX_FAILED_ATTEMPTS) || 5;
+const LOCKOUT_DURATION_MINUTES = Number(process.env.AUTH_LOCKOUT_DURATION_MINUTES) || 15;
+const LOCKOUT_DURATION = LOCKOUT_DURATION_MINUTES * 60 * 1000;
 const RESEND_VERIFICATION_GENERIC_MESSAGE =
   "Nếu email tồn tại và chưa xác thực, hệ thống đã gửi lại email xác thực.";
 
@@ -132,16 +141,15 @@ export const register = async (data) => {
     );
   }
 
-  // Hash password with increased cost factor (13 rounds ~ 2x slower than 12)
-  const hashedPassword = await bcrypt.hash(validated.password, 13);
+  const hashedPassword = await bcrypt.hash(validated.password, BCRYPT_ROUNDS);
 
-  // Create user - Default to BUSINESS role (3) for web registration
+  // Create user - Default to USER role (5) for mobile, BUSINESS role (3) when explicitly set by web
   const user = await prisma.user.create({
     data: {
       email: validated.email,
       username: validated.username,
       password: hashedPassword,
-      roleId: validated.roleId || 3, // Default: BUSINESS, not GUEST
+      roleId: validated.roleId || 5, // Default: USER (mobile). Web sends roleId=3 explicitly.
       status: USER_STATUS.ACTIVE, // Assuming active by default for now
       emailVerified: false,
       profile: {
@@ -178,6 +186,83 @@ export const register = async (data) => {
   return {
     user: userWithoutPassword,
     message: "Đăng ký thành công. Vui lòng xác thực email.",
+  };
+};
+
+/**
+ * Register a new business user on web.
+ * The account is created immediately so admins can see it, but it is not
+ * signed in until the owner verifies their email.
+ */
+export const registerBusiness = async (data, _clientInfo = {}) => {
+  const validated = registerSchema.parse(data);
+
+  // Check existing email
+  const existingUser = await prisma.user.findUnique({
+    where: { email: validated.email },
+  });
+
+  if (existingUser) {
+    throw new ServiceError(
+      "Email đã được sử dụng. Vui lòng đăng nhập hoặc sử dụng email khác.",
+      400,
+      "EXISTED",
+    );
+  }
+
+  // Check existing username
+  const existingUsername = await prisma.user.findUnique({
+    where: { username: validated.username },
+  });
+  if (existingUsername) {
+    throw new ServiceError(
+      "Username đã được sử dụng",
+      400,
+      "EXISTED",
+    );
+  }
+
+  const hashedPassword = await bcrypt.hash(validated.password, BCRYPT_ROUNDS);
+
+  // Create user with BUSINESS role, email needs verification
+  const user = await prisma.user.create({
+    data: {
+      email: validated.email,
+      username: validated.username,
+      password: hashedPassword,
+      roleId: ROLES.BUSINESS,
+      status: USER_STATUS.ACTIVE,
+      emailVerified: false, // Require email verification
+      profile: {
+        create: {
+          fullName: validated.fullName || null,
+        },
+      },
+    },
+    include: {
+      role: true,
+      profile: true,
+    },
+  });
+
+  // Send verification email
+  try {
+    await emailVerificationService.create({
+      userId: user.id,
+      email: user.email,
+      name: validated.fullName || user.email,
+    });
+  } catch (err) {
+    // Log but don't fail registration if email sending fails
+    console.warn(`[registerBusiness] Could not create verification email: ${err.message}`);
+  }
+
+  const { password, ...userWithoutPassword } = user;
+
+  return {
+    user: userWithoutPassword,
+    emailVerificationRequired: true,
+    message: "Đăng ký thành công! Vui lòng xác thực email để tiếp tục.",
   };
 };
 
@@ -273,7 +358,7 @@ export const login = async (data, clientInfo = {}) => {
   // Check status
   if (user.status === USER_STATUS.INACTIVE) {
     throw new ServiceError(
-      ERROR_MESSAGES.UNAUTHORIZED,
+      "Tài khoản chưa được kích hoạt. Vui lòng liên hệ quản trị viên hoặc đăng nhập bằng Google để kích hoạt.",
       403,
       "ACCOUNT_INACTIVE",
     );
@@ -311,6 +396,11 @@ export const login = async (data, clientInfo = {}) => {
 
   const refreshToken = generateRefreshToken();
 
+  // Use longer expiry when "Remember Me" is checked
+  const refreshExpiresMs = validated.rememberMe
+    ? REMEMBER_ME_REFRESH_EXPIRES_MS
+    : REFRESH_TOKEN_EXPIRES_MS;
+
   // Create session
   await prisma.userSession.create({
     data: {
@@ -319,7 +409,7 @@ export const login = async (data, clientInfo = {}) => {
       deviceId: validated.deviceId || clientInfo.deviceId || null,
       deviceName: validated.deviceName || clientInfo.deviceName || null,
       ipAddress: clientInfo.ipAddress || null,
-      expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRES_MS),
+      expiresAt: new Date(Date.now() + refreshExpiresMs),
     },
   });
 
@@ -356,7 +446,7 @@ export const refreshAccessToken = async (data) => {
     where: { refreshToken: hashedToken },
     include: {
       user: {
-        include: { role: true },
+        include: { role: true, profile: true },
       },
     },
   });
@@ -387,10 +477,20 @@ export const refreshAccessToken = async (data) => {
   }
 
   if (session.user.status !== USER_STATUS.ACTIVE) {
+    await prisma.userSession.delete({ where: { id: session.id } });
     throw new ServiceError(
       ERROR_MESSAGES.UNAUTHORIZED,
       403,
       "ACCOUNT_INACTIVE",
+    );
+  }
+
+  if (!session.user.emailVerified) {
+    await prisma.userSession.delete({ where: { id: session.id } });
+    throw new ServiceError(
+      "Email chưa được xác thực",
+      403,
+      "EMAIL_NOT_VERIFIED",
     );
   }
 
@@ -401,18 +501,33 @@ export const refreshAccessToken = async (data) => {
     roleName: session.user.role.name,
   });
 
+  const refreshToken = generateRefreshToken();
   await prisma.userSession.update({
     where: { id: session.id },
-    data: { lastUsedAt: new Date() },
+    data: {
+      refreshToken: hashToken(refreshToken),
+      lastUsedAt: new Date(),
+    },
   });
 
+  const permissions = await getUserPermissionNames(
+    session.user.id,
+    session.user.roleId,
+  );
+  const { password, ...userWithoutPassword } = session.user;
+
   return {
+    user: {
+      ...userWithoutPassword,
+      permissions,
+    },
     accessToken,
+    refreshToken,
     expiresIn: ACCESS_TOKEN_EXPIRES,
   };
 };
 
-export const logout = async (refreshToken) => {
+export const logout = async (refreshToken, userId = null) => {
   if (!refreshToken) {
     return { message: SUCCESS_MESSAGES.ACTION_SUCCESS };
   }
@@ -420,7 +535,10 @@ export const logout = async (refreshToken) => {
   const hashedToken = hashToken(refreshToken);
 
   await prisma.userSession.deleteMany({
-    where: { refreshToken: hashedToken },
+    where: {
+      refreshToken: hashedToken,
+      ...(userId ? { userId } : {}),
+    },
   });
 
   return { message: SUCCESS_MESSAGES.ACTION_SUCCESS };
@@ -488,7 +606,7 @@ export const changePassword = async (userId, data) => {
     );
   }
 
-  const hashedPassword = await bcrypt.hash(validated.newPassword, 13);
+  const hashedPassword = await bcrypt.hash(validated.newPassword, BCRYPT_ROUNDS);
 
   await prisma.user.update({
     where: { id: userId },
@@ -738,14 +856,13 @@ export const loginWithGoogle = async (
       fallback: "google_user",
     });
 
-    // Tạo tài khoản mới với role USER (5) — khách du lịch dùng mobile app
-    // ROLES.USER = 5: regular tourist, không phải STAFF nội bộ hay GUEST ẩn danh
+    // Tạo tài khoản mới
     user = await prisma.user.create({
       data: {
         email,
         username: generatedUsername,
-        password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 13),
-        roleId: ROLES.USER, // 5 — USER role: khách du lịch đã xác thực qua Google
+        password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), BCRYPT_ROUNDS),
+        roleId: ROLES.USER,
         status: USER_STATUS.ACTIVE,
         emailVerified: true, // Google đã xác thực rồi
         profile: {
@@ -761,7 +878,6 @@ export const loginWithGoogle = async (
     const shouldUpdateAvatar = picture && !user.profile?.avatar;
     const shouldVerifyEmail = !user.emailVerified;
     const shouldBackfillUsername = !user.username;
-
     const nextUsername = shouldBackfillUsername
       ? await generateUniqueUsername({
           prismaClient: prisma,
@@ -799,7 +915,7 @@ export const loginWithGoogle = async (
 
   if (user.status === USER_STATUS.INACTIVE) {
     throw new ServiceError(
-      "Tài khoản chưa được kích hoạt",
+      "Tài khoản chưa được kích hoạt hoặc đang bị khóa",
       403,
       "ACCOUNT_INACTIVE",
     );
@@ -842,6 +958,8 @@ export const loginWithGoogle = async (
 
   const permissions = await getUserPermissionNames(user.id, user.roleId);
   const { password, ...userWithoutPassword } = user;
+  const businessOnboardingRequired =
+    options.context === "web_business" && user.roleId === ROLES.USER;
 
   // Refresh user profile (may have been updated)
   const freshProfile = await prisma.userProfile.findUnique({
@@ -857,6 +975,7 @@ export const loginWithGoogle = async (
     accessToken,
     refreshToken,
     expiresIn: ACCESS_TOKEN_EXPIRES,
+    businessOnboardingRequired,
   };
 };
 
@@ -868,8 +987,83 @@ export const verifyAccessToken = (token) => {
   }
 };
 
+/**
+ * Upgrade user role from USER to BUSINESS
+ * Used when mobile users want to register a business on web
+ */
+export const upgradeToBusinessRole = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { role: true },
+  });
+
+  if (!user) {
+    throw new ServiceError("Người dùng không tồn tại", 404, "USER_NOT_FOUND");
+  }
+
+  // Check if already BUSINESS role
+  if (user.roleId === ROLES.BUSINESS) {
+    throw new ServiceError("Tài khoản đã là doanh nghiệp", 400, "ALREADY_BUSINESS");
+  }
+
+  // Only allow USER role to upgrade
+  if (user.roleId !== ROLES.USER) {
+    throw new ServiceError(
+      "Chỉ tài khoản người dùng thường mới có thể nâng cấp lên doanh nghiệp",
+      400,
+      "INVALID_ROLE",
+    );
+  }
+
+  if (!user.emailVerified) {
+    throw new ServiceError(
+      "Vui lòng xác thực email trước khi đăng ký doanh nghiệp",
+      403,
+      "EMAIL_NOT_VERIFIED",
+    );
+  }
+
+  if (user.status !== USER_STATUS.ACTIVE) {
+    throw new ServiceError(
+      "Tài khoản hiện không ở trạng thái hoạt động",
+      403,
+      "ACCOUNT_INACTIVE",
+    );
+  }
+
+  // Update role to BUSINESS
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { roleId: ROLES.BUSINESS },
+    include: { role: true, profile: true },
+  });
+
+  const { password, ...userWithoutPassword } = updatedUser;
+  const permissions = await getUserPermissionNames(updatedUser.id, updatedUser.roleId);
+  const accessToken = generateAccessToken({
+    userId: updatedUser.id,
+    email: updatedUser.email,
+    roleId: updatedUser.roleId,
+    roleName: updatedUser.role.name,
+  });
+
+  // Invalidate old permissions cache for user to get new business permissions
+  invalidateUserCache(userId);
+
+  return {
+    user: {
+      ...userWithoutPassword,
+      permissions,
+    },
+    accessToken,
+    expiresIn: ACCESS_TOKEN_EXPIRES,
+    message: "Nâng cấp thành công. Bạn có thể đăng ký doanh nghiệp ngay bây giờ.",
+  };
+};
+
 export default {
   register,
+  registerBusiness,
   login,
   refreshAccessToken,
   logout,
@@ -885,4 +1079,5 @@ export default {
   revokeSession,
   loginWithGoogle,
   verifyAccessToken,
+  upgradeToBusinessRole,
 };

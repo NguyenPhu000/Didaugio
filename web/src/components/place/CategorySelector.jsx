@@ -1,7 +1,7 @@
-import { useEffect, useState, memo, useCallback } from "react";
+import { useState, memo, useCallback } from "react";
 import { Loader2, Check, ChevronRight, Layers } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import useCategoryStore from "@/stores/categoryStore";
+import { useCategories } from "@/hooks/queries/useCategoryQueries";
 import { Label, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
  * Sharp borders, high contrast, grid-based layout
  */
 
-// Helper to get icon component from string name - Hoisted
 const getIconComponent = (iconName) => {
   if (!iconName) return null;
   const Icon = LucideIcons[iconName];
@@ -18,34 +17,19 @@ const getIconComponent = (iconName) => {
 };
 
 const CategorySelector = memo(({ value, onChange, error }) => {
-  const { categories, loading, fetchCategories } = useCategoryStore();
+  const { data: categories = [], isLoading } = useCategories();
   const [expandedCategories, setExpandedCategories] = useState(new Set());
 
-  useEffect(() => {
-    if (categories.length === 0) {
-      fetchCategories();
-    }
-  }, [categories.length, fetchCategories]);
-
   // Auto-expand parent of selected category
-  useEffect(() => {
-    if (value && categories.length > 0) {
-      const selected = categories.find((c) => c.id === value);
-      if (selected?.parentId) {
-        const id = requestAnimationFrame(() => {
-          setExpandedCategories(
-            (prev) => new Set([...prev, selected.parentId]),
-          );
-        });
-        return () => cancelAnimationFrame(id);
-      }
-    }
-  }, [value, categories]);
+  const selectedCategory = categories.find((c) => c.id === value);
+  if (selectedCategory?.parentId && !expandedCategories.has(selectedCategory.parentId)) {
+    setExpandedCategories((prev) => new Set([...prev, selectedCategory.parentId]));
+  }
 
   const rootCategories = categories.filter((c) => !c.parentId);
   const getChildren = useCallback(
     (parentId) => categories.filter((c) => c.parentId === parentId),
-    [categories],
+    [categories]
   );
 
   const toggleExpand = useCallback((categoryId) => {
@@ -62,16 +46,14 @@ const CategorySelector = memo(({ value, onChange, error }) => {
 
   const handleCategoryClick = useCallback(
     (category) => {
-      // Toggle expansion if has children
       const children = getChildren(category.id);
       if (children.length > 0) {
         toggleExpand(category.id);
       } else {
-        // Select if leaf node
         onChange(category.id);
       }
     },
-    [getChildren, toggleExpand, onChange],
+    [getChildren, toggleExpand, onChange]
   );
 
   const renderCategory = (category, isChild = false) => {
@@ -88,10 +70,9 @@ const CategorySelector = memo(({ value, onChange, error }) => {
         key={category.id}
         className={cn(
           "space-y-1 transition-all",
-          isChild && "ml-6 pl-4 border-l-2 border-dashed border-gray-300",
+          isChild && "ml-6 pl-4 border-l-2 border-dashed border-gray-300"
         )}
       >
-        {/* Category Card */}
         <div
           onClick={() => handleCategoryClick(category)}
           className={cn(
@@ -99,20 +80,18 @@ const CategorySelector = memo(({ value, onChange, error }) => {
             isSelected
               ? "border-black bg-black text-white"
               : "border-black bg-white hover:bg-gray-100",
-            // If it's a parent and expanded, give it a specific style
             hasChildren &&
               isExpanded &&
               !isSelected &&
-              "bg-gray-50 from-gray-50 to-white",
+              "bg-gray-50 from-gray-50 to-white"
           )}
         >
-          {/* Icon Box */}
           <div
             className={cn(
               "flex-shrink-0 w-8 h-8 flex items-center justify-center border transition-colors",
               isSelected
                 ? "bg-white text-black border-white"
-                : "bg-gray-100 text-gray-800 border-gray-300 group-hover:border-black group-hover:text-black",
+                : "bg-gray-100 text-gray-800 border-gray-300 group-hover:border-black group-hover:text-black"
             )}
           >
             {IconComponent ? (
@@ -124,23 +103,21 @@ const CategorySelector = memo(({ value, onChange, error }) => {
             )}
           </div>
 
-          {/* Content */}
           <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
             <h4
               className={cn(
                 "font-bold uppercase tracking-tight truncate text-sm font-mono leading-none mb-1",
-                isSelected ? "text-white" : "text-black",
+                isSelected ? "text-white" : "text-black"
               )}
             >
               {category.name}
             </h4>
-            {/* Metadata line */}
             <div className="flex items-center space-x-2">
               {!isChild && hasChildren && (
                 <span
                   className={cn(
                     "text-[10px] font-mono",
-                    isSelected ? "text-gray-300" : "text-gray-500",
+                    isSelected ? "text-gray-300" : "text-gray-500"
                   )}
                 >
                   [{children.length} MỤC CON]
@@ -154,19 +131,18 @@ const CategorySelector = memo(({ value, onChange, error }) => {
             </div>
           </div>
 
-          {/* Actions/Indicators */}
           <div className="flex items-center pl-2 border-l border-transparent">
             {hasChildren && (
               <div
                 className={cn(
                   "p-1 transition-transform duration-200",
-                  isExpanded && "rotate-90",
+                  isExpanded && "rotate-90"
                 )}
               >
                 <ChevronRight
                   className={cn(
                     "w-4 h-4",
-                    isSelected ? "text-white" : "text-black",
+                    isSelected ? "text-white" : "text-black"
                   )}
                 />
               </div>
@@ -178,7 +154,6 @@ const CategorySelector = memo(({ value, onChange, error }) => {
           </div>
         </div>
 
-        {/* Children Grid */}
         {isExpanded && hasChildren && (
           <div className="grid grid-cols-1 gap-2 pt-2 animate-in slide-in-from-top-2 duration-200">
             {children.map((child) => renderCategory(child, true))}
@@ -188,7 +163,7 @@ const CategorySelector = memo(({ value, onChange, error }) => {
     );
   };
 
-  if (loading && categories.length === 0) {
+  if (isLoading && categories.length === 0) {
     return (
       <Card className="p-8 flex flex-col items-center justify-center border border-black bg-gray-50 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         <Loader2 className="w-8 h-8 animate-spin text-black mb-4" />
@@ -214,7 +189,6 @@ const CategorySelector = memo(({ value, onChange, error }) => {
         )}
       </div>
 
-      {/* Scrollable Container */}
       <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar p-1">
         <div className="grid grid-cols-1 gap-3">
           {rootCategories.map((category) => renderCategory(category))}

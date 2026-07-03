@@ -1,5 +1,6 @@
 import prisma from "../../config/prismaClient.js";
 import { PAGINATION } from "../../config/constants.js";
+import * as notificationService from "../../services/notification/notification.service.js";
 
 const REVIEW_NOTIFICATION_ROLE_IDS = [1, 2, 4];
 const PENDING_REVIEW_LIMIT = 100;
@@ -237,6 +238,125 @@ export const markAllAsRead = async (req, res, next) => {
       success: true,
       message: `Đã đánh dấu ${result.count} thông báo đã đọc`,
       data: { updatedCount: result.count },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/notifications/announcements — Tạo thông báo hệ thống (admin)
+ */
+export const createAnnouncement = async (req, res, next) => {
+  try {
+    const userId = Number(req.user.userId);
+    const { title, body, imageUrl } = req.body;
+
+    if (!title || !body) {
+      return res.status(400).json({
+        success: false,
+        message: "Tiêu đề và nội dung không được để trống",
+      });
+    }
+
+    const announcement = await notificationService.createAnnouncement({
+      title,
+      body,
+      imageUrl: imageUrl || null,
+      createdBy: userId,
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: announcement,
+      message: "Đã gửi thông báo đến tất cả người dùng",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/notifications/announcements — Lấy danh sách thông báo hệ thống (admin)
+ */
+export const getAnnouncements = async (req, res, next) => {
+  try {
+    const { page, limit } = req.query;
+    const result = await notificationService.getAnnouncements({ page, limit });
+
+    return res.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+      message: "Lấy danh sách thông báo thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/notifications/announcements/:id — Cập nhật thông báo (admin)
+ */
+export const updateAnnouncement = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { title, body, imageUrl } = req.body;
+
+    const updated = await notificationService.updateAnnouncement(id, {
+      title,
+      body,
+      imageUrl,
+    });
+
+    return res.json({
+      success: true,
+      data: updated,
+      message: "Cập nhật thông báo thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * DELETE /api/notifications/announcements/:id — Xóa thông báo (admin)
+ */
+export const deleteAnnouncement = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    await notificationService.deleteAnnouncement(id);
+
+    return res.json({
+      success: true,
+      data: null,
+      message: "Xóa thông báo thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/notifications/test-push — Gửi test push đến thiết bị hiện tại
+ * Chỉ dùng trong development / testing.
+ */
+export const testPush = async (req, res, next) => {
+  try {
+    const userId = Number(req.user.userId);
+    const { title, body } = req.body;
+
+    await notificationService.notifyUser(
+      userId,
+      title || "🔔 Test Push Notification",
+      body || "Đây là thông báo test từ server. Nếu bạn thấy tức là push đã hoạt động!",
+      { type: "test" },
+      userId,
+    );
+
+    return res.json({
+      success: true,
+      message: "Đã gửi test push. Kiểm tra điện thoại của bạn.",
     });
   } catch (error) {
     next(error);

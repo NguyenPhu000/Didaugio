@@ -1,13 +1,9 @@
-import { memo } from "react";
-import {
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { memo, useCallback } from "react";
+import { Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
-import { MaterialIcons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import * as Haptics from "expo-haptics";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -16,15 +12,25 @@ import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation } from "../utils/exploreHelpers";
 
-function BentoTile({ place, large = false, onPress }) {
+function BentoTile({ place, large = false, onPress, defaultCategoryLabel, defaultExperienceLabel }) {
   const imageUri = resolvePlaceImageUri(place);
-  const category = place?.category?.name || "Ẩm thực";
+  const category = place?.category?.name || defaultCategoryLabel;
   const location = getPlaceLocation(place);
+
+  const handlePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress?.();
+  }, [onPress]);
 
   return (
     <Pressable
-      onPress={onPress}
-      style={[styles.tileBase, large ? styles.tileLarge : styles.tileSmall]}
+      onPress={handlePress}
+      style={({ pressed }) => [
+        { borderCurve: "continuous", opacity: pressed ? 0.92 : 1 },
+      ]}
+      className={`overflow-hidden rounded-[20px] relative ${
+        large ? "flex-[1.2]" : "flex-1"
+      }`}
     >
       {imageUri ? (
         <Image
@@ -32,46 +38,59 @@ function BentoTile({ place, large = false, onPress }) {
           contentFit="cover"
           transition={220}
           cachePolicy="memory-disk"
-          style={StyleSheet.absoluteFillObject}
+          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
         />
       ) : (
-        <View style={styles.placeholder}>
-          <MaterialIcons
+        <View
+          className="absolute inset-0 items-center justify-center"
+          style={{ backgroundColor: APPLE_THEME.surfaceMuted }}
+        >
+          <MaterialIconsRounded
             name="restaurant"
             size={large ? 34 : 26}
-            color="rgba(0,0,0,0.15)"
+            color={APPLE_THEME.textMuted}
           />
         </View>
       )}
 
-      {/* Cinematic overlay */}
       <View
         pointerEvents="none"
-        style={[
-          styles.overlayBase,
-          large ? styles.overlayLarge : styles.overlaySmall,
-        ]}
+        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+        className={large ? "bg-black/45" : "bg-black/30"}
       />
 
-      {/* Content */}
-      <View style={styles.contentWrap}>
+      <View className="absolute left-2.5 right-2.5 bottom-2.5">
         {!large ? (
-          <View style={styles.pillMini}>
-            <Text style={styles.pillMiniText} numberOfLines={1}>
+          <View
+            className="self-start px-2 h-5 rounded-full justify-center mb-1.5"
+            style={{ backgroundColor: "rgba(255,255,255,0.88)" }}
+          >
+            <Text
+              className="text-[10px] font-semibold tracking-[0.2px]"
+              style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.semibold }}
+              numberOfLines={1}
+            >
               {category}
             </Text>
           </View>
         ) : null}
 
         <Text
-          style={[styles.title, large ? styles.titleLarge : styles.titleSmall]}
+          className={`text-white tracking-[-0.3px] font-bold ${
+            large ? "text-[26px] leading-[30px]" : "text-[17px] leading-[21px]"
+          }`}
+          style={{ fontFamily: TOKENS.font.heading }}
           numberOfLines={2}
         >
-          {place?.name || "Trải nghiệm đặc sắc"}
+          {place?.name || defaultExperienceLabel}
         </Text>
 
         {large && location ? (
-          <Text style={styles.subtitle} numberOfLines={1}>
+          <Text
+            className="mt-0.5 text-[11px] font-medium"
+            style={{ color: "rgba(255,255,255,0.75)", fontFamily: TOKENS.font.medium }}
+            numberOfLines={1}
+          >
             {location}
           </Text>
         ) : null}
@@ -81,25 +100,56 @@ function BentoTile({ place, large = false, onPress }) {
 }
 
 function ExperienceBentoSectionInner({ places, onPressPlace }) {
+  const { t } = useTranslation();
+
   if (!Array.isArray(places) || places.length < 3) return null;
 
   const [hero, topRight, bottomRight] = places;
+  const defaultCategoryLabel = t("explore.card.defaultCategory");
+  const defaultExperienceLabel = t("explore.card.defaultExperience");
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>Ẩm thực nổi bật</Text>
+    <View
+      style={{ paddingHorizontal: TAB_SCREEN_PADDING }}
+      className="mt-7"
+    >
+      <View className="flex-row items-center gap-2.5 mb-3.5">
+        <View
+          className="w-1 h-6 rounded-full"
+          style={{ backgroundColor: APPLE_THEME.focusBlue }}
+        />
+        <Text
+          className="text-[22px] leading-7 tracking-[-0.5px] font-bold"
+          style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.heading }}
+        >
+          {t("explore.sections.culinary")}
+        </Text>
+      </View>
 
-      <View style={styles.glassShell}>
-        <View style={styles.grid}>
-          <BentoTile place={hero} large onPress={() => onPressPlace(hero)} />
+      <View
+        className="rounded-[28px] p-2.5 bg-white border-[0.5px]"
+        style={{ borderColor: APPLE_THEME.border, ...TOKENS.shadow.sm }}
+      >
+        <View className="flex-row gap-2 h-[300px]">
+          <BentoTile
+            place={hero}
+            large
+            defaultCategoryLabel={defaultCategoryLabel}
+            defaultExperienceLabel={defaultExperienceLabel}
+            onPress={() => onPressPlace(hero)}
+          />
 
-          <View style={styles.sideColumn}>
+          <View className="flex-1 gap-2">
             <BentoTile
               place={topRight}
+              defaultCategoryLabel={defaultCategoryLabel}
+              defaultExperienceLabel={defaultExperienceLabel}
               onPress={() => onPressPlace(topRight)}
             />
             <BentoTile
               place={bottomRight}
+              defaultCategoryLabel={defaultCategoryLabel}
+              defaultExperienceLabel={defaultExperienceLabel}
               onPress={() => onPressPlace(bottomRight)}
             />
           </View>
@@ -110,105 +160,3 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
 }
 
 export const ExperienceBentoSection = memo(ExperienceBentoSectionInner);
-
-const styles = StyleSheet.create({
-  container: {
-    marginTop: 28,
-    paddingHorizontal: TAB_SCREEN_PADDING,
-  },
-  heading: {
-    color: APPLE_THEME.text,
-    fontSize: 28,
-    lineHeight: 34,
-    letterSpacing: -0.8,
-    fontFamily: TOKENS.font.heading,
-    marginBottom: 14,
-  },
-  glassShell: {
-    borderRadius: 28,
-    padding: 10,
-    backgroundColor: APPLE_THEME.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APPLE_THEME.border,
-    ...Platform.select({
-      ios: TOKENS.shadow.sm,
-      android: { elevation: 2 },
-    }),
-  },
-  grid: {
-    flexDirection: "row",
-    gap: 8,
-    height: 300,
-  },
-  sideColumn: {
-    flex: 1,
-    gap: 8,
-  },
-  tileBase: {
-    overflow: "hidden",
-    borderRadius: 20,
-    backgroundColor: APPLE_THEME.surfaceMuted,
-    position: "relative",
-  },
-  tileLarge: {
-    flex: 1.2,
-  },
-  tileSmall: {
-    flex: 1,
-  },
-  placeholder: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_THEME.surfaceMuted,
-  },
-  overlayBase: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  overlayLarge: {
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  overlaySmall: {
-    backgroundColor: "rgba(0,0,0,0.30)",
-  },
-  contentWrap: {
-    position: "absolute",
-    left: 10,
-    right: 10,
-    bottom: 10,
-  },
-  pillMini: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    height: 20,
-    borderRadius: 999,
-    justifyContent: "center",
-    marginBottom: 5,
-    backgroundColor: "rgba(255,255,255,0.88)",
-  },
-  pillMiniText: {
-    color: APPLE_THEME.text,
-    fontSize: 10,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: 0.2,
-  },
-  title: {
-    color: "#FFFFFF",
-    letterSpacing: -0.3,
-    fontFamily: TOKENS.font.heading,
-  },
-  titleLarge: {
-    fontSize: 26,
-    lineHeight: 30,
-  },
-  titleSmall: {
-    fontSize: 17,
-    lineHeight: 21,
-  },
-  subtitle: {
-    marginTop: 3,
-    color: "rgba(255,255,255,0.76)",
-    fontSize: 11,
-    fontFamily: TOKENS.font.medium,
-  },
-});

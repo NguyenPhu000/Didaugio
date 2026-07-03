@@ -16,13 +16,29 @@ import {
   rescheduleBookingSchema,
   quickRejectSchema,
 } from "../../models/index.js";
+import { ROLES } from "../../config/constants.js";
 
 const router = express.Router();
 
 router.use(authenticate);
 
-// User creates booking request; business confirmation remains on guarded routes below.
-router.post("/", validateBody(createBookingSchema), controller.create);
+// User creates booking request; GUEST cannot create bookings
+router.post(
+  "/",
+  (req, res, next) => {
+    if (req.user?.roleId === ROLES.GUEST) {
+      return res.status(403).json({
+        success: false,
+        data: null,
+        message: "Vui long dang nhap de dat cho",
+        errorCode: "GUEST_NOT_ALLOWED",
+      });
+    }
+    next();
+  },
+  validateBody(createBookingSchema),
+  controller.create,
+);
 
 router.use(requireActiveBusiness({ requireContractSigned: true }));
 

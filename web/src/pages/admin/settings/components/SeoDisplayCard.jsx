@@ -8,18 +8,20 @@ import {
   Input,
 } from "@/components/ui";
 import { Textarea } from "@/components/ui/textarea";
+import { useTranslation } from "react-i18next";
 import SettingSelectField from "./SettingSelectField";
 import { ROBOTS_POLICY_OPTIONS } from "../settingsSelectOptions";
 
 const SeoDisplayCard = ({ value, onChange }) => {
+  const { t } = useTranslation();
   return (
     <Card className="rounded-none border-black bg-white xl:col-span-2">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-black uppercase tracking-wide">
-          9) SEO & Hiển thị
+          {t("settings.seo.title")}
         </CardTitle>
         <CardDescription className="font-mono text-xs uppercase tracking-wider text-gray-500">
-          Meta defaults, robots, sitemap và custom code header/footer
+          {t("settings.seo.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -38,14 +40,14 @@ const SeoDisplayCard = ({ value, onChange }) => {
         />
         <SettingSelectField
           id="settings-robots-policy"
-          label="Chính sách robots"
+          label={t("settings.seo.robotsPolicy")}
           value={value.robotsPolicy}
           onChange={(v) => onChange("robotsPolicy", v)}
           options={ROBOTS_POLICY_OPTIONS}
         />
         <div className="flex items-center justify-between border border-black px-3 py-2">
           <span className="font-mono text-[11px] uppercase">
-            Sitemap enabled
+            {t("settings.seo.sitemapEnabled")}
           </span>
           <Checkbox
             checked={!!value.sitemapEnabled}

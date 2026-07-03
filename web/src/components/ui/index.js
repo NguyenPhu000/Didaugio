@@ -59,3 +59,4 @@ export {
 } from "./select";
 export { Checkbox } from "./checkbox";
 export { Slider } from "./slider";
+export { Textarea } from "./textarea";

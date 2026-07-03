@@ -1,11 +1,11 @@
 import { MapPin, Star } from "lucide-react";
-import { PRICE_LABELS } from "@/modules/map";
+import { PRICE_LABELS, getPriceLabel } from "@/modules/map";
 
 const MapListView = ({ places, onPlaceClick }) => (
   <div className="flex-1 overflow-auto bg-gray-50 p-4">
     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
       {places.map((place) => {
-        const imgSrc = place.thumbnail || place.images?.[0]?.url;
+        const imgSrc = place.thumbnail || place.images?.[0]?.secureUrl || place.images?.[0]?.thumbnailUrl || place.images?.[0]?.imageData || place.images?.[0]?.url;
         const rating = Number(place.averageRating ?? place.ratingAvg ?? 0);
         const price = PRICE_LABELS[place.priceRange];
         return (
@@ -62,7 +62,7 @@ const MapListView = ({ places, onPlaceClick }) => (
                   <span
                     className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${price.cls}`}
                   >
-                    {price.label}
+                    {getPriceLabel(place.priceRange)}
                   </span>
                 )}
               </div>

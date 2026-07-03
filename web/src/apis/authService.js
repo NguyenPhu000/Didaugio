@@ -7,13 +7,20 @@ export const authService = {
     return response;
   },
 
+  // Đăng ký doanh nghiệp (kết hợp user + business)
+  registerBusiness: async (data) => {
+    const response = await api.post("/auth/register-business", data);
+    return response;
+  },
+
   // Đăng nhập
-  login: async (identifier, password, deviceInfo = {}) => {
+  login: async (identifier, password, { rememberMe = false, deviceInfo = {} } = {}) => {
     const normalizedIdentifier = String(identifier || "").trim();
     const isEmailIdentifier = /\S+@\S+\.\S+/.test(normalizedIdentifier);
 
     const payload = {
       password,
+      rememberMe,
       ...deviceInfo,
       ...(isEmailIdentifier
         ? { email: normalizedIdentifier.toLowerCase() }
@@ -106,11 +113,33 @@ export const authService = {
     return response;
   },
 
-  // Đăng nhập Google (exchange code)
-  googleLogin: async (code, redirectUri) => {
-    const response = await api.post("/auth/google/exchange", {
-      code,
-      redirectUri,
+  // Đăng nhập Google (id_token flow, khớp với server POST /api/auth/google)
+  googleLogin: async (idToken) => {
+    const response = await api.post("/auth/google", {
+      idToken,
+    });
+    return response;
+  },
+
+  // Đăng ký business bằng Google: tạo/login user Google, sau đó frontend dẫn qua onboarding business.
+  googleRegister: async (idToken) => {
+    const response = await api.post("/auth/google", {
+      idToken,
+      context: "web_business",
+    });
+    return response;
+  },
+
+  // Ping online status
+  ping: async () => {
+    const response = await api.post("/auth/ping");
+    return response;
+  },
+
+  // Nâng cấp USER lên BUSINESS role
+  upgradeToBusiness: async () => {
+    const response = await api.post("/auth/upgrade-to-business", null, {
+      skipPermissionToast: true,
     });
     return response;
   },

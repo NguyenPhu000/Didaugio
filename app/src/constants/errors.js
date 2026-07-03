@@ -1,12 +1,34 @@
+import i18n from "@/i18n";
+
+/**
+ * Returns translated error messages.
+ * Call getErrorMessages() inside components or event handlers,
+ * NOT at module top-level (i18n may not be initialized yet).
+ */
+export function getErrorMessages() {
+  return {
+    NETWORK: i18n.t("errors.network"),
+    SERVER: i18n.t("errors.server"),
+    UNAUTHORIZED: i18n.t("errors.unauthorized"),
+    NOT_FOUND: i18n.t("errors.notFound"),
+    VALIDATION: i18n.t("errors.validation"),
+    UNKNOWN: i18n.t("errors.unknown"),
+    AI_QUOTA: i18n.t("errors.aiQuota"),
+    AI_UNAVAILABLE: i18n.t("errors.aiUnavailable"),
+    LOCATION_DENIED: i18n.t("errors.locationDenied"),
+  };
+}
+
+/** @deprecated Use getErrorMessages() for i18n support */
 export const ERROR_MESSAGES = {
-  NETWORK: "Không có kết nối mạng. Vui lòng kiểm tra lại.",
-  SERVER: "Máy chủ đang gặp sự cố. Vui lòng thử lại sau.",
-  UNAUTHORIZED: "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.",
-  NOT_FOUND: "Không tìm thấy thông tin yêu cầu.",
-  VALIDATION: "Thông tin không hợp lệ. Vui lòng kiểm tra lại.",
-  UNKNOWN: "Đã có lỗi xảy ra. Vui lòng thử lại.",
+  NETWORK: "No network connection. Please check your connection.",
+  SERVER: "Server is experiencing issues. Please try again later.",
+  UNAUTHORIZED: "Session expired. Please log in again.",
+  NOT_FOUND: "Requested information not found.",
+  VALIDATION: "Invalid information. Please check and try again.",
+  UNKNOWN: "An error occurred. Please try again.",
   AI_QUOTA:
-    "AI đã chạm giới hạn quota. Vui lòng thử lại sau hoặc kiểm tra billing của Gemini API.",
-  AI_UNAVAILABLE: "Dịch vụ AI tạm thời không khả dụng.",
-  LOCATION_DENIED: "Cần quyền truy cập vị trí để sử dụng tính năng này.",
+    "AI has reached its quota limit. Please try again later.",
+  AI_UNAVAILABLE: "AI service is temporarily unavailable.",
+  LOCATION_DENIED: "Location permission is required to use this feature.",
 };

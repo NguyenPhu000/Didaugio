@@ -11,7 +11,7 @@ export const getAllUsers = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       data: result,
-      message: "Lay danh sach user thanh cong",
+      message: "Lấy danh sách user thành công",
     });
   } catch (error) {
     next(error);
@@ -29,7 +29,7 @@ export const getUserById = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       data: user,
-      message: "Lay thong tin user thanh cong",
+      message: "Lấy thông tin user thành công",
     });
   } catch (error) {
     next(error);
@@ -47,7 +47,7 @@ export const createUser = async (req, res, next) => {
     return res.status(201).json({
       success: true,
       data: newUser,
-      message: "Tao user thanh cong",
+      message: "Tạo user thành công",
     });
   } catch (error) {
     next(error);
@@ -65,7 +65,7 @@ export const updateUser = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       data: updatedUser,
-      message: "Cap nhat user thanh cong",
+      message: "Cập nhật user thành công",
     });
   } catch (error) {
     next(error);
@@ -83,7 +83,7 @@ export const deleteUser = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       data: deletedUser,
-      message: "Xoa user thanh cong",
+      message: "Xóa user thành công",
     });
   } catch (error) {
     next(error);

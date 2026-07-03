@@ -6,16 +6,18 @@ import {
   CardTitle,
   Input,
 } from "@/components/ui";
+import { useTranslation } from "react-i18next";
 
 const MapSettingsCard = ({ value, onChange }) => {
+  const { t } = useTranslation();
   return (
     <Card className="rounded-none border-black bg-white">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-black uppercase tracking-wide">
-          Map Default Center / Zoom
+          {t("settings.map.title")}
         </CardTitle>
         <CardDescription className="font-mono text-xs uppercase tracking-wider text-gray-500">
-          Tâm bản đồ và mức zoom mặc định cho toàn hệ thống
+          {t("settings.map.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

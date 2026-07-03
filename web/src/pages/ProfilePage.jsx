@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   User,
   Mail,
@@ -35,6 +36,7 @@ import {
   TabsList,
   TabsTrigger,
   Separator,
+  Checkbox,
 } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
 import { profileService } from "@/apis/profileService";
@@ -45,12 +47,57 @@ import { resolveMediaUrl } from "@/utils/mediaUrl";
 
 // const profileSchema = z.object({...}) // Removed
 
+const NOTIFICATION_GROUPS = [
+  {
+    title: "EMAIL",
+    key: "email",
+    toggles: [
+      ["bookingConfirmed", "profile.notifications.bookingConfirmed"],
+      ["bookingCancelled", "profile.notifications.bookingCancelled"],
+      ["bookingPending", "profile.notifications.bookingPending"],
+      ["newReview", "profile.notifications.newReview"],
+      ["paymentReceived", "profile.notifications.paymentReceived"],
+      ["systemAlerts", "profile.notifications.systemAlerts"],
+    ],
+  },
+  {
+    title: "PUSH",
+    key: "push",
+    toggles: [
+      ["bookingConfirmed", "profile.notifications.bookingConfirmed"],
+      ["bookingCancelled", "profile.notifications.bookingCancelled"],
+      ["newReview", "profile.notifications.newReview"],
+      ["systemAlerts", "profile.notifications.systemAlerts"],
+    ],
+  },
+];
+
+const DEFAULT_NOTIFICATIONS = {
+  email: {
+    bookingConfirmed: true,
+    bookingCancelled: true,
+    bookingPending: true,
+    newReview: true,
+    paymentReceived: true,
+    systemAlerts: true,
+  },
+  push: {
+    bookingConfirmed: true,
+    bookingCancelled: true,
+    newReview: false,
+    systemAlerts: false,
+  },
+};
+
 const ProfilePage = () => {
+  const { t } = useTranslation();
   const { setUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [profile, setProfile] = useState(null);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [notifSettings, setNotifSettings] = useState(DEFAULT_NOTIFICATIONS);
+  const [notifSaving, setNotifSaving] = useState(false);
 
   const {
     register,
@@ -81,9 +128,17 @@ const ProfilePage = () => {
             address: response.data.profile?.address || "",
             bio: response.data.profile?.bio || "",
           });
+          // Load notification settings
+          const stored = response.data.profile?.notificationSettings;
+          if (stored && typeof stored === "object" && Object.keys(stored).length > 0) {
+            setNotifSettings({
+              email: { ...DEFAULT_NOTIFICATIONS.email, ...stored.email },
+              push: { ...DEFAULT_NOTIFICATIONS.push, ...stored.push },
+            });
+          }
         }
       } catch {
-        toast.error("Khong the tai thong tin profile");
+        toast.error(t("profile.errors.loadFailed"));
       } finally {
         setIsFetching(false);
       }
@@ -113,13 +168,32 @@ const ProfilePage = () => {
       if (response.success) {
         setProfile(response.data);
         setUser(response.data);
-        toast.success("Cap nhat profile thanh cong!");
+        toast.success(t("profile.success.updated"));
         reset(data); // Reset isDirty
       }
     } catch (error) {
-      toast.error(error.message || "Cap nhat that bai");
+      toast.error(error.message || t("profile.errors.updateFailed"));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleNotifToggle = async (group, key, value) => {
+    const previous = notifSettings;
+    const updated = {
+      ...previous,
+      [group]: { ...previous[group], [key]: value },
+    };
+    setNotifSettings(updated);
+    setNotifSaving(true);
+    try {
+      await profileService.updateNotificationSettings(updated);
+      toast.success(t("profile.notificationSettings.saved"));
+    } catch (err) {
+      toast.error(err.message || t("profile.notificationSettings.saveFailed"));
+      setNotifSettings(previous);
+    } finally {
+      setNotifSaving(false);
     }
   };
 
@@ -144,7 +218,7 @@ const ProfilePage = () => {
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <div className="w-12 h-12 border-4 border-black border-t-[#F3E600] rounded-full animate-spin"></div>
         <span className="font-mono text-xs uppercase tracking-widest text-gray-500">
-          LOADING PROFILE DATA...
+          {t("profile.loading")}
         </span>
       </div>
     );
@@ -167,7 +241,7 @@ const ProfilePage = () => {
                 <span className="tim-system bg-black text-white px-2 py-1">
                   SYSTEM // USER PROFILE
                 </span>
-                <p className="tim-meta">QUẢN LÝ THÔNG TIN CÁ NHÂN</p>
+                <p className="tim-meta">{t("profile.subtitle")}</p>
               </div>
             </div>
           </div>
@@ -186,21 +260,21 @@ const ProfilePage = () => {
               className="flex items-center gap-2 rounded-none data-[state=active]:bg-[#F3E600] data-[state=active]:text-black font-bold uppercase text-xs px-6 h-10"
             >
               <User className="h-4 w-4" />
-              THÔNG TIN
+              {t("profile.tabs.info")}
             </TabsTrigger>
             <TabsTrigger
               value="security"
               className="flex items-center gap-2 rounded-none data-[state=active]:bg-[#F3E600] data-[state=active]:text-black font-bold uppercase text-xs px-6 h-10"
             >
               <Shield className="h-4 w-4" />
-              BẢO MẬT
+              {t("profile.tabs.security")}
             </TabsTrigger>
             <TabsTrigger
               value="notifications"
               className="flex items-center gap-2 rounded-none data-[state=active]:bg-[#F3E600] data-[state=active]:text-black font-bold uppercase text-xs px-6 h-10"
             >
               <Bell className="h-4 w-4" />
-              THÔNG BÁO
+              {t("profile.tabs.notifications")}
             </TabsTrigger>
           </TabsList>
 
@@ -230,7 +304,7 @@ const ProfilePage = () => {
                   </div>
                   <button
                     className="absolute -bottom-2 -right-2 p-2 bg-black border-2 border-white text-[#F3E600] hover:bg-[#F3E600] hover:text-black transition-all"
-                    onClick={() => toast("Chức năng đang phát triển")}
+                    onClick={() => toast(t("common.featureInDevelopment"))}
                   >
                     <Camera className="h-4 w-4" />
                   </button>
@@ -265,7 +339,7 @@ const ProfilePage = () => {
                       BASIC INFORMATION
                     </h3>
                     <p className="text-xs text-gray-400 uppercase font-mono">
-                      CẬP NHẬT THÔNG TIN CÁ NHÂN
+                      {t("profile.form.basicInfoDesc")}
                     </p>
                   </div>
                 </div>
@@ -280,11 +354,11 @@ const ProfilePage = () => {
                         className="flex items-center gap-2 tim-meta"
                       >
                         <User className="h-4 w-4" />
-                        HỌ VÀ TÊN
+                        {t("profile.fields.fullName")}
                       </Label>
                       <Input
                         id="fullName"
-                        placeholder="NHẬP HỌ VÀ TÊN"
+                        placeholder={t("profile.placeholders.fullName")}
                         className="rounded-none border-2 border-black h-11 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
                         {...register("fullName")}
                       />
@@ -314,7 +388,7 @@ const ProfilePage = () => {
                         <Lock className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
                       </div>
                       <p className="text-xs text-gray-500 uppercase font-mono">
-                        EMAIL KHÔNG THỂ THAY ĐỔI
+                        {t("profile.emailCannotChange")}
                       </p>
                     </div>
 
@@ -325,7 +399,7 @@ const ProfilePage = () => {
                         className="flex items-center gap-2 tim-meta"
                       >
                         <Phone className="h-4 w-4" />
-                        SỐ ĐIỆN THOẠI
+                        {t("profile.fields.phone")}
                       </Label>
                       <Input
                         id="phone"
@@ -347,7 +421,7 @@ const ProfilePage = () => {
                         className="flex items-center gap-2 tim-meta"
                       >
                         <Calendar className="h-4 w-4" />
-                        NGÀY SINH
+                        {t("profile.fields.birthday")}
                       </Label>
                       <Input
                         id="dateOfBirth"
@@ -360,17 +434,17 @@ const ProfilePage = () => {
                     {/* Gender */}
                     <div className="space-y-2">
                       <Label htmlFor="gender" className="tim-meta">
-                        GIỚI TÍNH
+                        {t("profile.fields.gender")}
                       </Label>
                       <select
                         id="gender"
                         className="flex h-11 w-full rounded-none border-2 border-black bg-white px-3 py-2 font-mono text-sm uppercase focus:outline-none focus:border-[#F3E600] disabled:cursor-not-allowed disabled:opacity-50"
                         {...register("gender")}
                       >
-                        <option value="">CHỌN GIỚI TÍNH</option>
-                        <option value="male">NAM</option>
-                        <option value="female">NỮ</option>
-                        <option value="other">KHÁC</option>
+                        <option value="">{t("profile.placeholders.selectGender")}</option>
+                        <option value="male">{t("profile.gender.male")}</option>
+                        <option value="female">{t("profile.gender.female")}</option>
+                        <option value="other">{t("profile.gender.other")}</option>
                       </select>
                     </div>
 
@@ -381,11 +455,11 @@ const ProfilePage = () => {
                         className="flex items-center gap-2 tim-meta"
                       >
                         <MapPin className="h-4 w-4" />
-                        ĐỊA CHỈ
+                        {t("profile.fields.address")}
                       </Label>
                       <Input
                         id="address"
-                        placeholder="NHẬP ĐỊA CHỈ"
+                        placeholder={t("profile.placeholders.address")}
                         className="rounded-none border-2 border-black h-11 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
                         {...register("address")}
                       />
@@ -404,13 +478,13 @@ const ProfilePage = () => {
                       className="flex items-center gap-2 tim-meta"
                     >
                       <FileText className="h-4 w-4" />
-                      GIỚI THIỆU BẢN THÂN
+                      {t("profile.fields.bio")}
                     </Label>
                     <textarea
                       id="bio"
                       rows={4}
                       className="flex w-full rounded-none border-2 border-black bg-white px-4 py-3 text-sm font-mono uppercase placeholder:text-gray-400 focus:outline-none focus:border-[#F3E600] disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                      placeholder="VIẾT VÀI DÒNG VỀ BẢN THÂN..."
+                      placeholder={t("profile.placeholders.bio")}
                       {...register("bio")}
                     />
                     {errors.bio && (
@@ -428,7 +502,7 @@ const ProfilePage = () => {
                       disabled={!isDirty}
                       className="rounded-none border-2 border-black h-11 px-6 hover:bg-gray-100 uppercase font-black text-xs"
                     >
-                      HỦY
+                      {t("common.cancel")}
                     </Button>
                     <Button
                       type="submit"
@@ -437,7 +511,7 @@ const ProfilePage = () => {
                       className="rounded-none border-2 border-black bg-[#F3E600] text-black hover:bg-black hover:text-[#F3E600] h-11 px-8 uppercase font-black text-xs transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
                     >
                       <Save className="mr-2 h-4 w-4" />
-                      LƯU THAY ĐỔI
+                      {t("profile.form.saveChanges")}
                     </Button>
                   </div>
                 </form>
@@ -455,10 +529,10 @@ const ProfilePage = () => {
                   <div>
                     <h3 className="tim-meta text-white mb-1 flex items-center gap-2">
                       <KeyRound className="h-4 w-4" />
-                      CHANGE PASSWORD
+                      {t("profile.security.changePassword")}
                     </h3>
                     <p className="text-xs text-gray-400 uppercase font-mono">
-                      THAY ĐỔI MẬT KHẨU BẢO VỆ TÀI KHOẢN
+                      {t("profile.security.changePasswordDesc")}
                     </p>
                   </div>
                 </div>
@@ -468,11 +542,10 @@ const ProfilePage = () => {
                   <AlertCircle className="h-6 w-6 text-black mt-0.5 shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-black uppercase mb-2">
-                      BẢO MẬT TÀI KHOẢN
+                      {t("profile.security.accountSecurity")}
                     </p>
                     <p className="text-xs text-gray-600 uppercase font-mono leading-relaxed">
-                      MẬT KHẨU MẠNH BAO GỒM CHỮ HOA, CHỮ THƯỜNG, SỐ VÀ KÝ TỰ ĐẶC
-                      BIỆT. NÊN ĐỔI MẬT KHẨU ĐỊNH KỲ ĐỂ TĂNG CƯỜNG BẢO MẬT.
+                      {t("profile.security.passwordTips")}
                     </p>
                   </div>
                 </div>
@@ -481,7 +554,7 @@ const ProfilePage = () => {
                   className="rounded-none border-2 border-black bg-black text-[#F3E600] hover:bg-[#F3E600] hover:text-black h-11 px-8 uppercase font-black text-xs transition-all"
                 >
                   <KeyRound className="mr-2 h-4 w-4" />
-                  ĐỔI MẬT KHẨU
+                  {t("profile.security.changePasswordBtn")}
                 </Button>
               </div>
             </div>
@@ -494,10 +567,10 @@ const ProfilePage = () => {
                   <div>
                     <h3 className="tim-meta text-white mb-1 flex items-center gap-2">
                       <Activity className="h-4 w-4" />
-                      LOGIN SESSIONS
+                      {t("profile.security.loginSessions")}
                     </h3>
                     <p className="text-xs text-gray-400 uppercase font-mono">
-                      QUẢN LÝ CÁC THIẾT BỊ ĐĂNG NHẬP
+                      {t("profile.security.loginSessionsDesc")}
                     </p>
                   </div>
                 </div>
@@ -505,39 +578,64 @@ const ProfilePage = () => {
               <div className="p-6">
                 <Button
                   variant="outline"
-                  onClick={() => toast("Chức năng đang phát triển")}
+                  onClick={() => toast(t("common.featureInDevelopment"))}
                   className="rounded-none border-2 border-black h-11 px-6 hover:bg-gray-100 uppercase font-black text-xs"
                 >
-                  XEM TẤT CẢ PHIÊN
+                  {t("profile.security.viewAllSessions")}
                 </Button>
               </div>
             </div>
           </TabsContent>
 
-          {/* Notifications Tab - T.I.M Style */}
+          {/* Notifications Tab */}
           <TabsContent value="notifications" className="space-y-6">
             <div className="bg-white border-2 border-black shadow-sm">
               <div className="bg-black text-white p-4 border-b-2 border-black">
-                <div className="flex items-center gap-3">
-                  <div className="w-1 h-8 bg-[#F3E600]"></div>
-                  <div>
-                    <h3 className="tim-meta text-white mb-1 flex items-center gap-2">
-                      <Bell className="h-4 w-4" />
-                      NOTIFICATION SETTINGS
-                    </h3>
-                    <p className="text-xs text-gray-400 uppercase font-mono">
-                      TÙY CHỈNH CÁCH BẠN NHẬN THÔNG BÁO
-                    </p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1 h-8 bg-[#F3E600]"></div>
+                    <div>
+                      <h3 className="tim-meta text-white mb-1 flex items-center gap-2">
+                        <Bell className="h-4 w-4" />
+                        {t("profile.notificationSettings.title")}
+                      </h3>
+                      <p className="text-xs text-gray-400 uppercase font-mono">
+                        {t("profile.notificationSettings.desc")}
+                      </p>
+                    </div>
                   </div>
+                  {notifSaving && (
+                    <Loader2 className="h-4 w-4 text-[#F3E600] animate-spin" />
+                  )}
                 </div>
               </div>
-              <div className="p-6">
-                <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-gray-300">
-                  <Bell className="h-16 w-16 text-gray-300 mb-4" />
-                  <p className="font-mono text-xs text-gray-400 uppercase tracking-wider">
-                    CHỨC NĂNG ĐANG ĐƯỢC PHÁT TRIỂN...
-                  </p>
-                </div>
+              <div className="p-6 space-y-6">
+                {NOTIFICATION_GROUPS.map((group) => (
+                  <div key={group.key}>
+                    <h4 className="font-mono text-xs font-bold uppercase tracking-wider mb-3 text-gray-600">
+                      {group.title}
+                    </h4>
+                    <div className="space-y-2">
+                      {group.toggles.map(([key, labelKey]) => (
+                        <div
+                          key={key}
+                          className="flex items-center justify-between border border-black px-3 py-2"
+                        >
+                          <span className="font-mono text-[11px] uppercase">
+                            {t(labelKey)}
+                          </span>
+                          <Checkbox
+                            checked={!!notifSettings[group.key]?.[key]}
+                            onCheckedChange={(c) =>
+                              handleNotifToggle(group.key, key, c === true)
+                            }
+                            className="rounded-none border-black data-[state=checked]:bg-black data-[state=checked]:text-white"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </TabsContent>

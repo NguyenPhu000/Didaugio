@@ -1,11 +1,24 @@
 import * as districtService from "../../services/district/district.service.js";
 import { ERROR_CODES } from "../../config/messages.js";
+import { setPublicListCache } from "../../utils/httpCacheHeaders.js";
+import {
+  get as cacheGet,
+  set as cacheSet,
+  TTL,
+} from "../../services/cache/cache.service.js";
 
 /**
  * GET /api/districts - Lấy danh sách quận/huyện
  */
 export const getDistricts = async (req, res, next) => {
   try {
+    const cacheKey = "districts:list";
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      setPublicListCache(res, req);
+      return res.json(cached);
+    }
+
     const { isActive, search } = req.query;
 
     const districts = await districtService.getAllDistricts({
@@ -13,12 +26,15 @@ export const getDistricts = async (req, res, next) => {
       search,
     });
 
-    res.json({
+    const body = {
       success: true,
       data: districts,
       total: districts.length,
       message: "Lấy danh sách quận/huyện thành công",
-    });
+    };
+    cacheSet(cacheKey, body, TTL.STATIC);
+    setPublicListCache(res, req);
+    res.json(body);
   } catch (error) {
     next(error);
   }
@@ -86,6 +102,13 @@ export const getDistrictByCode = async (req, res, next) => {
 export const getWardsByDistrict = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const cacheKey = `districts:wards:${id}`;
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      setPublicListCache(res, req);
+      return res.json(cached);
+    }
+
     const { isActive, search, wardType } = req.query;
 
     const wards = await districtService.getWardsByDistrict(parseInt(id), {
@@ -94,12 +117,15 @@ export const getWardsByDistrict = async (req, res, next) => {
       wardType,
     });
 
-    res.json({
+    const body = {
       success: true,
       data: wards,
       total: wards.length,
       message: "Lấy danh sách phường/xã theo quận/huyện thành công",
-    });
+    };
+    cacheSet(cacheKey, body, TTL.STATIC);
+    setPublicListCache(res, req);
+    res.json(body);
   } catch (error) {
     next(error);
   }

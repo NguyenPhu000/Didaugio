@@ -3,12 +3,16 @@ import {
   View,
   Text,
   ActivityIndicator,
-  StyleSheet,
   useWindowDimensions,
+  FlatList,
+  StyleSheet,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
+import { Sparkles } from "lucide-react-native";
+import { cn } from "../../lib/cn";
 import { TOKENS } from "../../constants/design-tokens";
-import { PlacePreviewCard } from "../composed/PlacePreviewCard";
+import { HorizontalPlaceCard } from "../composed/HorizontalPlaceCard";
 
 export function AIBubble({
   role = "assistant",
@@ -18,8 +22,8 @@ export function AIBubble({
   places = [],
 }) {
   const isUser = role === "user";
+  const { t } = useTranslation();
   const router = useRouter();
-  const { width, height } = useWindowDimensions();
   const [dismissedPlaceIds, setDismissedPlaceIds] = useState([]);
 
   const suggestedPlaces = !isUser && Array.isArray(places) ? places : [];
@@ -36,7 +40,6 @@ export function AIBubble({
     [suggestedPlaces, dismissedPlaceIdSet],
   );
   const hasSuggestionCards = !isTyping && visibleSuggestedPlaces.length > 0;
-  const isCompactCard = width <= 360 || height <= 700;
   const suggestionResetKey = useMemo(
     () =>
       suggestedPlaces
@@ -58,114 +61,92 @@ export function AIBubble({
     [router],
   );
 
-  const handleDismissPlaceCard = useCallback((placeId) => {
-    const normalizedId = Number(placeId);
-    if (!normalizedId) return;
-    setDismissedPlaceIds((prev) =>
-      prev.includes(normalizedId) ? prev : [...prev, normalizedId],
-    );
-  }, []);
-
   return (
     <View
-      style={[
-        styles.wrap,
-        isUser ? styles.wrapUser : styles.wrapAssistant,
-        !isUser && hasSuggestionCards && styles.wrapAssistantWithCards,
-      ]}
+      className={cn(
+        "flex-row items-end gap-2.5 mb-3 max-w-[88%]",
+        isUser ? "self-end flex-row-reverse" : "self-start",
+        !isUser && hasSuggestionCards && "w-full max-w-full",
+      )}
     >
-      <View
-        style={[
-          styles.bubble,
-          isUser ? styles.bubbleUser : styles.bubbleAssistant,
-          style,
-        ]}
-      >
-        {isTyping ? (
-          <View style={styles.typingRow}>
-            <ActivityIndicator size="small" color={TOKENS.color.primary[600]} />
-            <Text style={styles.typingText}>em Nhi đang trả lời...</Text>
-          </View>
-        ) : (
-          <Text
-            style={[
-              styles.bubbleText,
-              { color: isUser ? "#FFFFFF" : TOKENS.color.neutral[900] },
-            ]}
-          >
-            {content}
-          </Text>
-        )}
-      </View>
-
-      {hasSuggestionCards ? (
-        <View style={styles.suggestionList}>
-          {visibleSuggestedPlaces.map((place, index) => {
-            const placeId = Number(place?.id);
-
-            return (
-              <PlacePreviewCard
-                key={placeId || `${place?.name || "place"}-${index}`}
-                place={place}
-                compact={isCompactCard}
-                onClose={() => handleDismissPlaceCard(placeId)}
-                onViewDetail={handleOpenPlace}
-              />
-            );
-          })}
+      {/* Avatar tròn nhỏ cho Trợ lý AI (Nhi) */}
+      {!isUser && (
+        <View 
+          className="w-8 h-8 rounded-full items-center justify-center border border-zinc-100 shadow-sm z-[2] bg-zinc-50"
+        >
+          <Sparkles size={14} color="#10B981" />
         </View>
-      ) : null}
+      )}
+
+      <View className={cn("flex-1", !isUser && hasSuggestionCards && "w-full")}>
+        {!isUser && (
+          <View className="flex-row items-center gap-1 mb-1 ml-1">
+            <Text className="text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
+              Nhi (AI)
+            </Text>
+          </View>
+        )}
+
+        <View
+          className={cn(
+            "rounded-[20px] px-4 py-3",
+            isUser
+              ? "rounded-br-sm bg-zinc-100" // Bong bóng chat user màu xám nhẹ
+              : "rounded-bl-sm bg-white border border-zinc-200/80",
+          )}
+          style={
+            !isUser
+              ? {
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.02,
+                  shadowRadius: 3,
+                  elevation: 1,
+                }
+              : style
+          }
+        >
+          {isTyping ? (
+            <View className="flex-row items-center gap-2 py-0.5">
+              <ActivityIndicator size="small" color="#10B981" />
+              <Text className="text-zinc-400 text-[12.5px] font-medium" style={{ fontFamily: TOKENS.font.body }}>
+                {t("ai.typing") || "Đang suy nghĩ..."}
+              </Text>
+            </View>
+          ) : (
+            <Text
+              className="text-[14.5px] leading-[22px]"
+              style={{ 
+                color: isUser ? "#18181B" : "#27272A", 
+                fontFamily: TOKENS.font.body 
+              }}
+            >
+              {content}
+            </Text>
+          )}
+        </View>
+
+        {/* Carousel địa điểm nằm ngoài bong bóng chat để dễ cuộn ngang */}
+        {hasSuggestionCards ? (
+          <View className="mt-2.5 w-full">
+            <FlatList
+              data={visibleSuggestedPlaces}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item, index) => String(item?.id || index)}
+              renderItem={({ item }) => (
+                <HorizontalPlaceCard
+                  place={item}
+                  onPressDetail={() => handleOpenPlace(item)}
+                />
+              )}
+              contentContainerStyle={{ paddingLeft: 4, paddingRight: 16 }}
+            />
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    maxWidth: "86%",
-    marginBottom: 8,
-  },
-  wrapUser: {
-    alignSelf: "flex-end",
-  },
-  wrapAssistant: {
-    alignSelf: "flex-start",
-  },
-  wrapAssistantWithCards: {
-    width: "100%",
-    maxWidth: "100%",
-  },
-  bubble: {
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  bubbleUser: {
-    borderBottomRightRadius: 8,
-    backgroundColor: TOKENS.color.primary[600],
-  },
-  bubbleAssistant: {
-    borderBottomLeftRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.98)",
-    borderWidth: 1,
-    borderColor: TOKENS.color.border.light,
-    ...TOKENS.shadow.sm,
-  },
-  bubbleText: {
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  typingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 4,
-  },
-  typingText: {
-    color: TOKENS.color.neutral[500],
-    fontSize: 13,
-  },
-  suggestionList: {
-    marginTop: 8,
-    gap: 10,
-  },
-});
+export default AIBubble;

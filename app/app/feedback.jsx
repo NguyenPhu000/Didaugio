@@ -11,17 +11,11 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useFeedback } from "../src/modules/feedback/hooks/useFeedback";
 import { cn } from "../src/lib/cn";
-
-const REPORT_TYPES = [
-  { value: "suggestion", label: "Góp ý cải thiện", icon: "lightbulb" },
-  { value: "bug_report", label: "Báo lỗi ứng dụng", icon: "bug-report" },
-  { value: "place_error", label: "Sai thông tin địa điểm", icon: "place" },
-  { value: "other", label: "Khác", icon: "help-outline" },
-];
+import { useTranslation } from "react-i18next";
 
 const TypeChip = ({ option, active, onPress }) => (
   <Pressable
@@ -31,7 +25,7 @@ const TypeChip = ({ option, active, onPress }) => (
       active ? "bg-primary border-primary" : "bg-white border-gray-200",
     )}
   >
-    <MaterialIcons
+    <MaterialIconsRounded
       name={option.icon}
       size={15}
       color={active ? "#fff" : "#6b7280"}
@@ -48,9 +42,17 @@ const TypeChip = ({ option, active, onPress }) => (
 );
 
 export default function FeedbackScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const contentRef = useRef(null);
+
+  const REPORT_TYPES = [
+    { value: "suggestion", label: t("feedback.typeSuggestion"), icon: "lightbulb" },
+    { value: "bug_report", label: t("feedback.typeBugReport"), icon: "bug-report" },
+    { value: "place_error", label: t("feedback.typePlaceError"), icon: "place" },
+    { value: "other", label: t("feedback.typeOther"), icon: "help-outline" },
+  ];
 
   const {
     reportType,
@@ -71,8 +73,8 @@ export default function FeedbackScreen() {
   useEffect(() => {
     if (isSuccess) {
       Alert.alert(
-        "Cảm ơn bạn! 🎉",
-        "Góp ý của bạn đã được ghi nhận. Chúng tôi sẽ xem xét sớm nhất có thể.",
+        t("feedback.thankYou"),
+        t("feedback.thankYouMessage"),
         [
           {
             text: "OK",
@@ -88,7 +90,7 @@ export default function FeedbackScreen() {
 
   useEffect(() => {
     if (isError) {
-      Alert.alert("Gửi thất bại", error?.message || "Vui lòng thử lại sau.");
+      Alert.alert(t("feedback.submitFailed"), error?.message || t("feedback.submitErrorMessage"));
     }
   }, [isError]);
 
@@ -109,17 +111,17 @@ export default function FeedbackScreen() {
           onPress={() => router.back()}
           className="w-9 h-9 items-center justify-center rounded-xl bg-surface active:bg-gray-100"
         >
-          <MaterialIcons name="arrow-back" size={22} color="#111618" />
+          <MaterialIconsRounded name="arrow-back" size={22} color="#111618" />
         </Pressable>
         <View className="flex-1">
           <Text
             className="text-[18px] font-bold text-ink"
             style={{ letterSpacing: -0.3 }}
           >
-            Góp ý & Hỗ trợ
+            {t("feedback.title")}
           </Text>
           <Text className="text-[12px] text-ink-secondary">
-            Ý kiến của bạn giúp chúng tôi cải thiện
+            {t("feedback.subtitle")}
           </Text>
         </View>
       </View>
@@ -145,14 +147,14 @@ export default function FeedbackScreen() {
               className="w-12 h-12 rounded-2xl items-center justify-center"
               style={{ backgroundColor: "#0077b8" }}
             >
-              <MaterialIcons name="feedback" size={26} color="#fff" />
+              <MaterialIconsRounded name="feedback" size={26} color="#fff" />
             </View>
             <View className="flex-1">
               <Text className="text-[14px] font-bold text-ink">
-                Chúng tôi lắng nghe bạn
+                {t("feedback.weListen")}
               </Text>
               <Text className="text-[12px] text-ink-secondary mt-0.5 leading-[18px]">
-                Góp ý giúp Đi Đâu Giờ? ngày càng tốt hơn cho cộng đồng Cần Thơ
+                {t("feedback.description")}
               </Text>
             </View>
           </View>
@@ -160,7 +162,7 @@ export default function FeedbackScreen() {
           {/* ── Category ── */}
           <View className="px-4 mt-5">
             <Text className="text-[13px] font-bold text-ink mb-3">
-              Loại góp ý <Text className="text-red-500">*</Text>
+              {t("feedback.typeLabel")} <Text className="text-red-500">*</Text>
             </Text>
             <View className="flex-row flex-wrap">
               {REPORT_TYPES.map((opt) => (
@@ -177,7 +179,7 @@ export default function FeedbackScreen() {
           {/* ── Title input ── */}
           <View className="px-4 mt-5">
             <Text className="text-[13px] font-bold text-ink mb-2">
-              Tiêu đề <Text className="text-red-500">*</Text>
+              {t("feedback.titleLabel")} <Text className="text-red-500">*</Text>
             </Text>
             <View
               className="bg-white rounded-2xl px-4 py-1 border border-gray-200"
@@ -192,7 +194,7 @@ export default function FeedbackScreen() {
               <TextInput
                 value={title}
                 onChangeText={setTitle}
-                placeholder="Mô tả ngắn gọn vấn đề..."
+                placeholder={t("feedback.titlePlaceholder")}
                 placeholderTextColor="#9ca3af"
                 className="text-[14px] text-ink py-3"
                 returnKeyType="next"
@@ -201,14 +203,14 @@ export default function FeedbackScreen() {
               />
             </View>
             <Text className="text-[11px] text-ink-secondary mt-1 ml-1">
-              {title.length}/120 ký tự
+              {title.length}/120 {t("feedback.chars")}
             </Text>
           </View>
 
           {/* ── Content input ── */}
           <View className="px-4 mt-5">
             <Text className="text-[13px] font-bold text-ink mb-2">
-              Nội dung chi tiết <Text className="text-red-500">*</Text>
+              {t("feedback.contentLabel")} <Text className="text-red-500">*</Text>
             </Text>
             <View
               className="bg-white rounded-2xl px-4 border border-gray-200"
@@ -224,7 +226,7 @@ export default function FeedbackScreen() {
                 ref={contentRef}
                 value={content}
                 onChangeText={setContent}
-                placeholder="Mô tả chi tiết góp ý, lỗi gặp phải hoặc đề xuất của bạn..."
+                placeholder={t("feedback.contentPlaceholder")}
                 placeholderTextColor="#9ca3af"
                 className="text-[14px] text-ink py-3"
                 multiline
@@ -234,14 +236,14 @@ export default function FeedbackScreen() {
               />
             </View>
             <Text className="text-[11px] text-ink-secondary mt-1 ml-1">
-              {content.length} ký tự
+              {content.length} {t("feedback.chars")}
             </Text>
           </View>
 
           {/* ── Help links ── */}
           <View className="px-4 mt-6">
             <Text className="text-[13px] font-bold text-ink mb-3">
-              Câu hỏi thường gặp
+              {t("feedback.faq")}
             </Text>
             <View
               className="bg-white rounded-2xl overflow-hidden"
@@ -254,17 +256,17 @@ export default function FeedbackScreen() {
               }}
             >
               {[
-                { icon: "map", label: "Cách thêm/chỉnh thông tin địa điểm" },
-                { icon: "star", label: "Hướng dẫn đánh giá địa điểm" },
-                { icon: "security", label: "Chính sách bảo mật & điều khoản" },
+                { icon: "map", label: t("feedback.addPlace") },
+                { icon: "star", label: t("feedback.reviewGuide") },
+                { icon: "security", label: t("feedback.privacyTerms") },
               ].map((item, idx, arr) => (
                 <View key={item.label}>
                   <Pressable className="flex-row items-center px-4 py-3.5 gap-3 active:bg-gray-50">
-                    <MaterialIcons name={item.icon} size={18} color="#0077b8" />
+                    <MaterialIconsRounded name={item.icon} size={18} color="#0077b8" />
                     <Text className="flex-1 text-[13px] font-medium text-ink">
                       {item.label}
                     </Text>
-                    <MaterialIcons
+                    <MaterialIconsRounded
                       name="chevron-right"
                       size={18}
                       color="#9ca3af"
@@ -314,7 +316,7 @@ export default function FeedbackScreen() {
             {isLoading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <MaterialIcons
+              <MaterialIconsRounded
                 name="send"
                 size={18}
                 color={canSubmit ? "#fff" : "#9ca3af"}
@@ -326,7 +328,7 @@ export default function FeedbackScreen() {
                 canSubmit && !isLoading ? "text-white" : "text-gray-400",
               )}
             >
-              {isLoading ? "Đang gửi..." : "Gửi góp ý"}
+              {isLoading ? t("feedback.submitting") : t("feedback.submit")}
             </Text>
           </Pressable>
         </View>

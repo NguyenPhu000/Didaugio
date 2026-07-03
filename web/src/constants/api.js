@@ -3,7 +3,13 @@ import { API_BASE_URL } from "./constants";
 import { useAuthStore } from "@/stores/authStore";
 import { AUTH_ROUTES } from "./routes";
 import { API_TIMEOUT } from "./timing";
-import { applyBusinessApiErrorUx } from "@/utils/businessApiErrorUx";
+import {
+  BUSINESS_GATE_ERROR_CODES,
+  applyBusinessApiErrorUx,
+} from "@/utils/businessApiErrorUx";
+import { toast } from "sonner";
+
+axios.defaults.headers.common["ngrok-skip-browser-warning"] = "true";
 
 /**
  * Instance axios dùng chung. Trên response lỗi, có thể truyền:
@@ -19,13 +25,12 @@ const api = axios.create({
 const PUBLIC_AUTH_PATHS = new Set([
   "/auth/login",
   "/auth/register",
+  "/auth/register-business",
   "/auth/forgot-password",
   "/auth/reset-password",
   "/auth/verify-email",
   "/auth/resend-verification-public",
   "/auth/google",
-  "/auth/google/exchange",
-  "/auth/google/exchange-result",
 ]);
 
 const normalizeRequestPath = (requestUrl) => {
@@ -155,13 +160,25 @@ api.interceptors.response.use(
         );
 
         if (refreshResponse.data.success) {
-          const newAccessToken = refreshResponse.data.data.accessToken;
+          const {
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken,
+            user: refreshedUser,
+          } = refreshResponse.data.data || {};
 
           if (useAuthStore.getState().isLoggingOut) {
             throw new Error("Logout in progress");
           }
 
-          useAuthStore.getState().setAccessToken(newAccessToken);
+          if (!newAccessToken) {
+            throw new Error("Missing refreshed token");
+          }
+
+          useAuthStore.getState().setSession({
+            user: refreshedUser,
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken || refreshToken,
+          });
           processQueue(null, newAccessToken);
           originalRequest.headers = originalRequest.headers || {};
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
@@ -190,6 +207,39 @@ api.interceptors.response.use(
       !isLogoutInProgress
     ) {
       clearAuthAndRedirect();
+    }
+
+    // Handle 403 Forbidden — permissions may have been revoked mid-session
+    if (response?.status === 403 && !isPublicRequest && hasAccessToken) {
+      const errorCode = response?.data?.errorCode;
+
+      // If the 403 is from a permission/auth endpoint itself, force logout to avoid infinite loops
+      const isPermissionEndpoint =
+        normalizeRequestPath(requestUrl).includes("/permissions") ||
+        errorCode === "FORBIDDEN_USER" ||
+        errorCode === "FORBIDDEN_SYSTEM_ROLE";
+
+      if (isPermissionEndpoint) {
+        clearAuthAndRedirect();
+        return Promise.reject(error);
+      }
+
+      const isDomainGateError = [
+        ...BUSINESS_GATE_ERROR_CODES,
+        "EMAIL_NOT_VERIFIED",
+        "ACCOUNT_INACTIVE",
+      ].includes(errorCode);
+
+      if (
+        !isDomainGateError &&
+        !originalRequest?.skipPermissionToast &&
+        !originalRequest?._403Shown
+      ) {
+        originalRequest._403Shown = true;
+        toast.error(
+          "Quyền truy cập của bạn đã thay đổi, vui lòng tải lại trang.",
+        );
+      }
     }
 
     if (response?.status === 400 && response?.data?.errors) {

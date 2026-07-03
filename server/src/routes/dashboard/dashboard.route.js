@@ -1,12 +1,15 @@
 import express from "express";
 import { authenticate } from "../../middlewares/authMiddleware.js";
-import { blockGuestFromAdmin } from "../../middlewares/blockGuestFromAdmin.js";
+import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import dashboardController from "../../controllers/dashboard/dashboard.controller.js";
 
 const router = express.Router();
 
-router.get("/stats", authenticate, blockGuestFromAdmin, dashboardController.getStats);
-router.get("/timeline", authenticate, blockGuestFromAdmin, dashboardController.getTimeline);
-router.get("/health", authenticate, blockGuestFromAdmin, dashboardController.getHealth);
+router.use(authenticate);
+
+router.get("/stats", hasPermission("system.view_analytics"), dashboardController.getStats);
+router.get("/timeline", hasPermission("system.view_analytics"), dashboardController.getTimeline);
+router.get("/health", hasPermission("system.view_analytics"), dashboardController.getHealth);
+router.get("/online-users", hasPermission("system.view_analytics"), dashboardController.getOnlineUsers);
 
 export default router;

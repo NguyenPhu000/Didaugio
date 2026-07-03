@@ -2,6 +2,7 @@ import axios from "axios";
 import { API_BASE_URL, REQUEST_TIMEOUT } from "../constants/api";
 import { useAuthStore } from "../stores/authStore";
 import { ENDPOINTS } from "./endpoints";
+import i18n from "@/i18n";
 
 const client = axios.create({
   baseURL: API_BASE_URL,
@@ -9,6 +10,7 @@ const client = axios.create({
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
+    "ngrok-skip-browser-warning": "true",
   },
 });
 
@@ -58,7 +60,7 @@ const enqueueRequestWhileRefreshing = () =>
   new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
       reject({
-        message: "Hết thời gian chờ làm mới phiên. Vui lòng đăng nhập lại.",
+        message: i18n.t("client.refreshTimeout"),
         status: 401,
         code: "REFRESH_TIMEOUT",
       });
@@ -87,12 +89,29 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+// Retry logic cho GET requests trên mobile network
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1000;
+
 client.interceptors.response.use(
   (response) => response.data,
   async (error) => {
     const originalRequest = error.config;
     if (!originalRequest) {
       return Promise.reject(buildError(error));
+    }
+
+    // Retry cho GET requests bị network error hoặc 5xx
+    const retryCount = originalRequest._retryCount || 0;
+    const shouldRetry =
+      originalRequest.method === "get" &&
+      retryCount < MAX_RETRIES &&
+      (!error.response || error.response.status >= 500);
+
+    if (shouldRetry) {
+      originalRequest._retryCount = retryCount + 1;
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * retryCount));
+      return client(originalRequest);
     }
 
     const requestUrl = originalRequest?.url || "";
@@ -120,7 +139,7 @@ client.interceptors.response.use(
           .then((newToken) => {
             if (!newToken) {
               return Promise.reject({
-                message: "Phiên đăng nhập không còn hợp lệ.",
+                message: i18n.t("client.invalidSession"),
                 status: 401,
                 code: "INVALID_REFRESH_RESPONSE",
               });
@@ -177,7 +196,7 @@ client.interceptors.response.use(
 
 function buildError(error) {
   const message =
-    error?.response?.data?.message || "Đã có lỗi xảy ra. Vui lòng thử lại.";
+    error?.response?.data?.message || i18n.t("errors.unknown");
   return {
     message,
     status: error?.response?.status,

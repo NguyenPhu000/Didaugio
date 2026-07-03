@@ -1,12 +1,17 @@
 import { useEffect, useMemo } from "react";
-import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Label } from "@/components/ui/Label";
 import { cn } from "@/lib/utils";
 
 const DOCUMENT_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
-const DOCUMENT_IMAGE_ACCEPT = "image/png,image/jpeg,image/jpg,image/webp";
+const IMAGE_ACCEPT = "image/png,image/jpeg,image/jpg,image/webp";
+const IMAGE_AND_PDF_ACCEPT = "image/png,image/jpeg,image/jpg,image/webp,application/pdf";
 
 const isImageFile = (file) => file?.type?.startsWith("image/");
+const isPdfFile = (file) => file?.type === "application/pdf";
+const isAllowedFile = (file, allowPdf) =>
+  isImageFile(file) || (allowPdf && isPdfFile(file));
 
 const formatImageSize = (bytes) => {
   if (!bytes && bytes !== 0) return "0 MB";
@@ -24,10 +29,14 @@ const DocumentImageUploadField = ({
   disabled = false,
   previewClassName,
   maxFileSize = DOCUMENT_IMAGE_MAX_BYTES,
+  acceptPdf = false,
   error,
 }) => {
+  const { t } = useTranslation();
+  const accept = acceptPdf ? IMAGE_AND_PDF_ACCEPT : IMAGE_ACCEPT;
   const files = useMemo(() => (Array.isArray(value) ? value : []), [value]);
   const selectedFile = files[0] ?? null;
+  const isPdf = selectedFile && isPdfFile(selectedFile);
   const localPreviewUrl = useMemo(() => {
     if (!selectedFile || !isImageFile(selectedFile)) {
       return null;
@@ -54,7 +63,7 @@ const DocumentImageUploadField = ({
 
       <input
         type="file"
-        accept={DOCUMENT_IMAGE_ACCEPT}
+        accept={accept}
         disabled={disabled}
         className={cn(
           "block w-full rounded-md border border-input bg-background text-sm",
@@ -67,13 +76,13 @@ const DocumentImageUploadField = ({
 
           if (!pickedFile) return;
 
-          if (!isImageFile(pickedFile)) {
-            toast.error("Chỉ hỗ trợ ảnh PNG/JPG/JPEG/WEBP");
+          if (!isAllowedFile(pickedFile, acceptPdf)) {
+            toast.error(acceptPdf ? t("common.invalidFileFormat") : t("common.invalidImageFormat"));
             return;
           }
 
           if (maxFileSize && pickedFile.size > maxFileSize) {
-            toast.error("Ảnh vượt quá 10MB, vui lòng chọn ảnh nhỏ hơn");
+            toast.error(t("common.fileTooLarge"));
             return;
           }
 
@@ -89,7 +98,14 @@ const DocumentImageUploadField = ({
           previewClassName,
         )}
       >
-        {activePreview ? (
+        {isPdf ? (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center">
+            <svg className="h-12 w-12 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+            </svg>
+            <p className="text-xs text-muted-foreground font-medium">PDF</p>
+          </div>
+        ) : activePreview ? (
           <img
             src={activePreview}
             alt={previewAlt}

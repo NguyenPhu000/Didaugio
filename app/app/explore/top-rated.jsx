@@ -1,9 +1,11 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useExplore } from "../../src/modules/explore/hooks/useExplore";
 import { ExploreListScaffold } from "../../src/modules/explore/components/ExploreListScaffold";
 import { ExplorePlaceList } from "../../src/modules/explore/components/ExplorePlaceList";
 
 export default function ExploreTopRatedScreen() {
+  const { t } = useTranslation();
   const { data, isLoading, refetch } = useExplore({ categoryId: null });
 
   const places = useMemo(() => {
@@ -20,15 +22,15 @@ export default function ExploreTopRatedScreen() {
 
   return (
     <ExploreListScaffold
-      title="Top đánh giá"
-      subtitle="Những điểm đến được đánh giá cao nhất."
+      title={t("exploreTopRated.title")}
+      subtitle={t("exploreTopRated.subtitle")}
       rightAction={null}
     >
       <ExplorePlaceList
         data={places}
         loading={isLoading}
-        emptyTitle="Chưa có dữ liệu đánh giá"
-        emptyCopy="Hãy quay lại sau khi có thêm đánh giá từ cộng đồng."
+        emptyTitle={t("exploreTopRated.noData")}
+        emptyCopy={t("exploreTopRated.noDataDesc")}
         onEndReached={refetch}
       />
     </ExploreListScaffold>

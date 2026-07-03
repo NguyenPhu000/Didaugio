@@ -1,12 +1,15 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { Source, Layer, Marker, Popup } from "../adapters";
 import { useMapContext } from "../hooks/useMapContext";
 import {
   getCategoryConfig,
+  getCategoryLabel,
   CATEGORY_CONFIG,
   DEFAULT_CATEGORY,
   PRICE_LABELS,
+  getPriceLabel,
 } from "../config/placeMapConfig";
 import {
   MapPin,
@@ -149,11 +152,13 @@ const Stars = ({ value = 0 }) => {
 };
 
 const PlacePopup = ({ place, onClose }) => {
-  const { color, bg, label } = getCategoryConfig(place.categoryId);
+  const { t } = useTranslation();
+  const { color, bg } = getCategoryConfig(place.categoryId);
+  const categoryLabel = getCategoryLabel(place.categoryId);
   const { selectPlace } = useMapContext();
   const price = PRICE_LABELS[place.priceRange];
   const rating = Number(place.averageRating ?? place.ratingAvg ?? 0);
-  const imgSrc = place.thumbnail || place.images?.[0]?.url;
+  const imgSrc = place.thumbnail || place.images?.[0]?.secureUrl || place.images?.[0]?.thumbnailUrl || place.images?.[0]?.imageData || place.images?.[0]?.url;
 
   return (
     <div
@@ -174,7 +179,7 @@ const PlacePopup = ({ place, onClose }) => {
           <div className="w-full h-full flex flex-col items-center justify-center gap-2">
             <MapPin className="h-12 w-12 opacity-20" style={{ color }} />
             <span className="text-xs font-medium opacity-30" style={{ color }}>
-              Chưa có ảnh
+              {t("map.markers.noImage")}
             </span>
           </div>
         )}
@@ -183,11 +188,11 @@ const PlacePopup = ({ place, onClose }) => {
           className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold text-white uppercase tracking-wide shadow-sm"
           style={{ backgroundColor: color }}
         >
-          {place.category?.name || label}
+          {place.category?.name || categoryLabel}
         </span>
         {place.isFeatured && (
           <span className="absolute top-2.5 right-9 flex items-center gap-1 bg-amber-400 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm">
-            <Star className="h-2.5 w-2.5 fill-white" /> NỔI BẬT
+            <Star className="h-2.5 w-2.5 fill-white" /> {t("map.markers.featured")}
           </span>
         )}
         <button
@@ -227,12 +232,12 @@ const PlacePopup = ({ place, onClose }) => {
                 backgroundColor: `${price.color}11`,
               }}
             >
-              {price.label}
+              {getPriceLabel(place.priceRange)}
             </span>
           )}
           {place.isVerified && (
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border border-sky-200 text-sky-600 bg-sky-50">
-              Đã xác thực
+              {t("map.markers.verified")}
             </span>
           )}
           {place.district?.name && (
@@ -261,7 +266,7 @@ const PlacePopup = ({ place, onClose }) => {
                 className="flex items-center gap-1.5 text-[11px] text-blue-500 hover:text-blue-700 transition-colors font-medium ml-auto"
               >
                 <Globe className="h-3.5 w-3.5" />
-                Website
+                {t("map.markers.website")}
               </a>
             )}
           </div>
@@ -276,7 +281,7 @@ const PlacePopup = ({ place, onClose }) => {
             className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-gray-900 hover:bg-gray-700 text-white text-[12px] font-bold transition-colors"
           >
             <ExternalLink className="h-3.5 w-3.5" />
-            Xem chi tiết
+            {t("map.markers.viewDetails")}
           </button>
         )}
       </div>
@@ -296,7 +301,9 @@ const RoutingPicker = ({
   onSetOrigin,
   onSetDestination,
 }) => {
-  const { color, label } = getCategoryConfig(place.categoryId);
+  const { t } = useTranslation();
+  const { color } = getCategoryConfig(place.categoryId);
+  const categoryLabel = getCategoryLabel(place.categoryId);
 
   // Clamp so the card doesn't overflow the viewport
   const cardW = 248;
@@ -329,7 +336,7 @@ const RoutingPicker = ({
               </p>
             )}
             <p className="mt-0.5 text-[10px] font-semibold" style={{ color }}>
-              {place.category?.name || label}
+              {place.category?.name || categoryLabel}
             </p>
           </div>
         </div>
@@ -338,7 +345,7 @@ const RoutingPicker = ({
       {/* Route action buttons */}
       <div className="p-3 flex flex-col gap-2">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider text-center">
-          Chọn vai trò cho địa điểm này
+          {t("map.markers.chooseRole")}
         </p>
         <button
           onClick={(e) => {
@@ -352,9 +359,9 @@ const RoutingPicker = ({
           </div>
           <div>
             <p className="text-[13px] font-bold text-green-800">
-              Điểm xuất phát
+              {t("map.markers.origin")}
             </p>
-            <p className="text-[10px] text-green-600">Bắt đầu từ đây</p>
+            <p className="text-[10px] text-green-600">{t("map.markers.startFromHere")}</p>
           </div>
         </button>
         <button
@@ -368,8 +375,8 @@ const RoutingPicker = ({
             <Flag className="w-4 h-4 text-white fill-white" />
           </div>
           <div>
-            <p className="text-[13px] font-bold text-red-800">Điểm đến</p>
-            <p className="text-[10px] text-red-600">Kết thúc tại đây</p>
+            <p className="text-[13px] font-bold text-red-800">{t("map.markers.destination")}</p>
+            <p className="text-[10px] text-red-600">{t("map.markers.endHere")}</p>
           </div>
         </button>
       </div>
@@ -390,7 +397,7 @@ const RoutingPicker = ({
 
 const PlacePin = ({ place, isActive, onClick }) => {
   const { color } = getCategoryConfig(place.categoryId);
-  const imgSrc = place.thumbnail || place.images?.[0]?.url;
+  const imgSrc = place.thumbnail || place.images?.[0]?.secureUrl || place.images?.[0]?.thumbnailUrl || place.images?.[0]?.imageData || place.images?.[0]?.url;
   let pinStateClass = "border-2 border-white group-hover:border-blue-400";
   if (isActive) {
     pinStateClass = "border-[3px] border-blue-500 ring-2 ring-blue-300";

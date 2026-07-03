@@ -1,16 +1,7 @@
 import prisma from "../../config/prismaClient.js";
 import { ERROR_CODES } from "../../config/messages.js";
-import { PRIMARY_GEMINI_MODEL } from "../../config/geminiClient.js";
-import { mapGeminiError } from "../../lib/geminiErrorHandler.js";
-import {
-  generateFallbackItinerary,
-  generateItinerary,
-} from "../ai/gemini.service.js";
-import routingService from "../routing/routing.service.js";
 import ServiceError from "../../utils/serviceError.js";
-
-const isRoutingEnabled =
-  String(process.env.ROUTING_ENABLED ?? "true") !== "false";
+import tripService, { TRIP_PLACE_SELECT } from "../trip/trip.service.js";
 
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
@@ -274,6 +265,8 @@ export const getHomeData = async (query = {}) => {
           select: {
             id: true,
             imageData: true,
+            secureUrl: true,
+            thumbnailUrl: true,
             isCover: true,
           },
         },
@@ -342,7 +335,7 @@ export const searchPlaces = async (query = {}) => {
         images: {
           take: 1,
           orderBy: [{ isCover: "desc" }, { order: "asc" }],
-          select: { id: true, imageData: true, isCover: true },
+          select: { id: true, imageData: true, secureUrl: true, thumbnailUrl: true, isCover: true },
         },
       },
     }),
@@ -381,6 +374,8 @@ export const getPlaceDetail = async (placeId, userId = null) => {
         select: {
           id: true,
           imageData: true,
+          secureUrl: true,
+          thumbnailUrl: true,
           caption: true,
           isCover: true,
         },
@@ -687,6 +682,7 @@ export const getMyProfileSummary = async (userId) => {
           favorites: true,
           trips: true,
           bookings: true,
+          reviews: true,
         },
       },
     },
@@ -715,6 +711,10 @@ export const getMySavedPlaces = async (userId, query = {}) => {
     userId,
     place: approvedPlaceWhere,
   };
+
+  if (query.collectionName) {
+    where.collectionName = String(query.collectionName).trim();
+  }
 
   const [items, total] = await Promise.all([
     prisma.favorite.findMany({
@@ -746,6 +746,8 @@ export const getMySavedPlaces = async (userId, query = {}) => {
               select: {
                 id: true,
                 imageData: true,
+                secureUrl: true,
+                thumbnailUrl: true,
                 isCover: true,
               },
             },
@@ -767,7 +769,8 @@ export const getMySavedPlaces = async (userId, query = {}) => {
   };
 };
 
-export const savePlace = async (userId, placeId, note = null) => {
+/** `collectionNameInput` chỉ bỏ qua khi thực sự không truyền (undefined); không dùng default `null` để tránh gọi 3 đối số vẫn bị coi là “đổi collection”. */
+export const savePlace = async (userId, placeId, note = null, collectionNameInput) => {
   const place = await prisma.place.findFirst({
     where: {
       id: placeId,
@@ -782,6 +785,14 @@ export const savePlace = async (userId, placeId, note = null) => {
     throw error;
   }
 
+  const shouldUpdateCollection = collectionNameInput !== undefined;
+  const collectionName =
+    shouldUpdateCollection &&
+    typeof collectionNameInput === "string" &&
+    collectionNameInput.trim()
+      ? collectionNameInput.trim().slice(0, 80)
+      : null;
+
   const favorite = await prisma.favorite.upsert({
     where: {
       userId_placeId: {
@@ -793,9 +804,11 @@ export const savePlace = async (userId, placeId, note = null) => {
       userId,
       placeId,
       note,
+      ...(shouldUpdateCollection && { collectionName }),
     },
     update: {
       note,
+      ...(shouldUpdateCollection && { collectionName }),
     },
   });
 
@@ -813,568 +826,82 @@ export const unsavePlace = async (userId, placeId) => {
   return { success: true };
 };
 
-export const getMyTrips = async (userId, query = {}) => {
-  const { page, limit, skip } = parsePagination(query);
-
-  const where = { userId };
-
-  const [items, total] = await Promise.all([
-    prisma.trip.findMany({
-      where,
-      orderBy: [{ updatedAt: "desc" }],
-      skip,
-      take: limit,
-      include: {
-        destinations: {
-          orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-          take: 6,
-          include: {
-            place: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-                thumbnail: true,
-                district: {
-                  select: { id: true, name: true, code: true },
-                },
-                ward: {
-                  select: { id: true, name: true, wardType: true },
-                },
-              },
-            },
-          },
-        },
-      },
-    }),
-    prisma.trip.count({ where }),
-  ]);
-
-  return {
-    data: items,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
+export const getMySavedCollections = async (userId) => {
+  const groups = await prisma.favorite.groupBy({
+    by: ["collectionName"],
+    where: {
+      userId,
+      collectionName: { not: null },
+      place: approvedPlaceWhere,
     },
-  };
-};
-
-const MAX_TRIP_SUGGESTED_PLACES = 12;
-
-const normalizeItineraryDays = (days) => {
-  const safeDays = Array.isArray(days) ? days : [];
-
-  return safeDays
-    .map((day, dayIndex) => {
-      const dayNumber = Math.max(toInt(day?.dayNumber, dayIndex + 1), 1);
-      const safeDestinations = Array.isArray(day?.destinations)
-        ? day.destinations
-        : [];
-
-      const destinations = safeDestinations
-        .map((dest, destIndex) => {
-          const placeId = toInt(dest?.placeId);
-          if (!placeId) return null;
-
-          const durationMinutes = toInt(dest?.durationMinutes, null);
-          const estimatedCost = Number(dest?.estimatedCost);
-
-          return {
-            placeId,
-            order: Math.max(toInt(dest?.order, destIndex + 1), 1),
-            startTime: dest?.startTime ?? null,
-            endTime: dest?.endTime ?? null,
-            durationMinutes:
-              Number.isFinite(durationMinutes) && durationMinutes > 0
-                ? durationMinutes
-                : null,
-            note: dest?.note ?? null,
-            transportToNext: dest?.transportToNext ?? null,
-            estimatedCost:
-              Number.isFinite(estimatedCost) && estimatedCost >= 0
-                ? Math.round(estimatedCost)
-                : null,
-          };
-        })
-        .filter(Boolean);
-
-      return {
-        dayNumber,
-        theme:
-          typeof day?.theme === "string" && day.theme.trim()
-            ? day.theme.trim()
-            : `Ngày ${dayNumber}`,
-        destinations,
-      };
-    })
-    .filter((day) => day.destinations.length > 0);
-};
-
-const normalizeItinerary = (itinerary, fallbackTotalDays = 1) => {
-  const safeFallbackDays = Math.max(toInt(fallbackTotalDays, 1), 1);
-  const days = normalizeItineraryDays(itinerary?.days);
-  const parsedTotalDays = Math.max(
-    toInt(itinerary?.totalDays, safeFallbackDays),
-    1,
-  );
-  const totalDays = Math.max(parsedTotalDays, days.length || 1);
-  const estimatedCost = Number(itinerary?.estimatedCost);
-
-  return {
-    title:
-      typeof itinerary?.title === "string" && itinerary.title.trim()
-        ? itinerary.title.trim()
-        : `Lịch trình ${totalDays} ngày ở Cần Thơ`,
-    description:
-      typeof itinerary?.description === "string" && itinerary.description.trim()
-        ? itinerary.description.trim()
-        : null,
-    totalDays,
-    estimatedCost:
-      Number.isFinite(estimatedCost) && estimatedCost >= 0
-        ? Math.round(estimatedCost)
-        : null,
-    days,
-  };
-};
-
-const buildSuggestedPlaces = (days, placeById) => {
-  const orderedIds = [];
-  const seen = new Set();
-
-  for (const day of days) {
-    const safeDestinations = Array.isArray(day?.destinations)
-      ? day.destinations
-      : [];
-    for (const dest of safeDestinations) {
-      const placeId = toInt(dest?.placeId);
-      if (!placeId || seen.has(placeId) || !placeById.has(placeId)) continue;
-      seen.add(placeId);
-      orderedIds.push(placeId);
-      if (orderedIds.length >= MAX_TRIP_SUGGESTED_PLACES) break;
-    }
-    if (orderedIds.length >= MAX_TRIP_SUGGESTED_PLACES) break;
-  }
-
-  if (orderedIds.length === 0) {
-    for (const place of placeById.values()) {
-      if (seen.has(place.id)) continue;
-      seen.add(place.id);
-      orderedIds.push(place.id);
-      if (orderedIds.length >= MAX_TRIP_SUGGESTED_PLACES) break;
-    }
-  }
-
-  return orderedIds.map((id) => placeById.get(id)).filter(Boolean);
-};
-
-const buildTripDestinations = ({
-  tripId,
-  days,
-  allowedPlaceIds,
-  selectedPlaceIdSet,
-}) => {
-  const destinations = [];
-
-  const safeDays = Array.isArray(days) ? days : [];
-  for (const day of safeDays) {
-    const dayNumber = Math.max(toInt(day?.dayNumber, 1), 1);
-    const safeDestinations = Array.isArray(day?.destinations)
-      ? day.destinations
-      : [];
-
-    for (let index = 0; index < safeDestinations.length; index += 1) {
-      const dest = safeDestinations[index];
-      const placeId = toInt(dest?.placeId);
-      if (!placeId || !allowedPlaceIds.has(placeId)) continue;
-      if (selectedPlaceIdSet?.size && !selectedPlaceIdSet.has(placeId))
-        continue;
-
-      destinations.push({
-        tripId,
-        placeId,
-        dayNumber,
-        order: Math.max(toInt(dest?.order, index + 1), 1),
-        startTime: dest?.startTime ?? null,
-        endTime: dest?.endTime ?? null,
-        durationMinutes: toInt(dest?.durationMinutes, null),
-        note: dest?.note ?? null,
-        transportToNext: dest?.transportToNext ?? null,
-        distanceToNext: Number.isFinite(Number(dest?.distanceToNext))
-          ? Number(dest.distanceToNext)
-          : null,
-        estimatedCost: Number.isFinite(Number(dest?.estimatedCost))
-          ? Math.round(Number(dest.estimatedCost))
-          : null,
-        status: "planned",
-      });
-    }
-  }
-
-  return destinations;
-};
-
-const toKm2 = (meters) => {
-  const value = Number(meters);
-  if (!Number.isFinite(value) || value < 0) return null;
-  return Number((value / 1000).toFixed(2));
-};
-
-const enrichItineraryWithRouting = async ({
-  itinerary,
-  placeById,
-  selectedPlaceIdSet,
-}) => {
-  const clonedItinerary = {
-    ...itinerary,
-    days: (itinerary?.days || []).map((day) => ({
-      ...day,
-      destinations: (day?.destinations || []).map((dest) => ({ ...dest })),
-    })),
-  };
-
-  let totalDistanceMeters = 0;
-  let totalDurationSeconds = 0;
-  const legSummaries = [];
-
-  for (const day of clonedItinerary.days) {
-    const dayDestinations = (day?.destinations || []).filter((dest) => {
-      const placeId = toInt(dest?.placeId);
-      if (!placeId || !placeById.has(placeId)) return false;
-      if (selectedPlaceIdSet?.size && !selectedPlaceIdSet.has(placeId)) {
-        return false;
-      }
-      return true;
-    });
-
-    for (let i = 0; i < dayDestinations.length; i += 1) {
-      dayDestinations[i].distanceToNext = null;
-    }
-
-    for (let i = 0; i < dayDestinations.length - 1; i += 1) {
-      const fromDest = dayDestinations[i];
-      const toDest = dayDestinations[i + 1];
-      const fromPlace = placeById.get(toInt(fromDest.placeId));
-      const toPlace = placeById.get(toInt(toDest.placeId));
-      if (!fromPlace || !toPlace) continue;
-
-      const routeResult = await routingService.calculate({
-        origin: {
-          lat: Number(fromPlace.latitude),
-          lng: Number(fromPlace.longitude),
-          name: fromPlace.name,
-        },
-        destination: {
-          lat: Number(toPlace.latitude),
-          lng: Number(toPlace.longitude),
-          name: toPlace.name,
-        },
-        mode: "motorcycle",
-        options: { alternatives: 0, steps: false },
-      });
-
-      const route = routeResult?.routes?.[0];
-      if (!route) continue;
-
-      totalDistanceMeters += Number(route.distance || 0);
-      totalDurationSeconds += Number(route.duration || 0);
-      fromDest.distanceToNext = toKm2(route.distance);
-
-      legSummaries.push({
-        dayNumber: day.dayNumber,
-        fromPlaceId: fromPlace.id,
-        toPlaceId: toPlace.id,
-        distance: Number(route.distance || 0),
-        duration: Number(route.duration || 0),
-        source: routeResult?.source || "osrm",
-      });
-    }
-  }
-
-  return {
-    itinerary: clonedItinerary,
-    tripRoutingSummary: {
-      totalDistance: totalDistanceMeters,
-      totalDistanceKm: toKm2(totalDistanceMeters),
-      totalDuration: totalDurationSeconds,
-      legs: legSummaries,
-    },
-  };
-};
-
-const buildFallbackDestinationsFromSelection = ({
-  tripId,
-  selectedPlaceIds,
-  totalDays,
-}) => {
-  const safeIds = Array.isArray(selectedPlaceIds) ? selectedPlaceIds : [];
-  const safeTotalDays = Math.max(toInt(totalDays, 1), 1);
-  const ordersByDay = new Map();
-
-  return safeIds.map((placeId, index) => {
-    const dayNumber = (index % safeTotalDays) + 1;
-    const nextOrder = (ordersByDay.get(dayNumber) ?? 0) + 1;
-    ordersByDay.set(dayNumber, nextOrder);
-
-    return {
-      tripId,
-      placeId,
-      dayNumber,
-      order: nextOrder,
-      startTime: null,
-      endTime: null,
-      durationMinutes: null,
-      note: "Địa điểm được chọn trước khi chốt lịch trình",
-      transportToNext: null,
-      estimatedCost: null,
-      status: "planned",
-    };
-  });
-};
-
-export const generateAndSaveTrip = async (userId, preferences = {}) => {
-  const {
-    totalDays = 1,
-    travelStyle,
-    groupSize = 1,
-    budget,
-    categoryId,
-    notes,
-    previewOnly = false,
-    selectedPlaceIds = [],
-    itineraryDraft = null,
-  } = preferences;
-
-  const where = { ...approvedPlaceWhere };
-  if (categoryId) where.categoryId = toInt(categoryId);
-
-  const places = await prisma.place.findMany({
-    where,
-    orderBy: [{ ratingAvg: "desc" }, { viewCount: "desc" }],
-    take: 50,
-    include: {
-      category: { select: { id: true, name: true, slug: true } },
-      district: { select: { id: true, name: true, code: true } },
-      ward: { select: { id: true, name: true, wardType: true } },
-      openingHours: {
-        orderBy: [{ dayOfWeek: "asc" }],
-        select: {
-          dayOfWeek: true,
-          openTime: true,
-          closeTime: true,
-          isClosed: true,
-        },
-      },
-      _count: {
-        select: {
-          reviews: true,
-        },
-      },
-      images: {
-        take: 1,
-        orderBy: [{ isCover: "desc" }],
-        select: { imageData: true },
-      },
-    },
+    _count: { id: true },
+    orderBy: { collectionName: "asc" },
   });
 
-  if (places.length === 0) {
-    const error = new Error("Khong co dia diem nao phu hop voi yeu cau");
-    error.statusCode = 404;
+  return groups
+    .filter((item) => String(item.collectionName || "").trim())
+    .map((item) => ({
+      name: item.collectionName,
+      count: item._count.id,
+    }));
+};
+
+export const renameMySavedCollection = async (userId, fromName, toName) => {
+  const from = String(fromName || "").trim();
+  const to = String(toName || "").trim().slice(0, 80);
+
+  if (!from || !to) {
+    const error = new Error("Tên bộ sưu tập không hợp lệ");
+    error.statusCode = 400;
     throw error;
   }
 
-  const placeById = new Map(places.map((place) => [place.id, place]));
-  const placeIdSet = new Set(placeById.keys());
-
-  let rawItinerary =
-    itineraryDraft && typeof itineraryDraft === "object"
-      ? itineraryDraft
-      : null;
-
-  if (!rawItinerary) {
-    const startTime = Date.now();
-    let geminiResult;
-    let isSuccessful = true;
-    let errorMessage = null;
-
-    try {
-      geminiResult = await generateItinerary(preferences, places);
-    } catch (err) {
-      const mappedGemini = mapGeminiError(err);
-      const mappedCode = mappedGemini?.body?.errorCode;
-      const allowFallback =
-        mappedCode === "QUOTA_EXCEEDED" || mappedCode === "AI_UNAVAILABLE";
-
-      if (allowFallback) {
-        geminiResult = {
-          parsed: generateFallbackItinerary(preferences, places),
-          raw: null,
-          tokensUsed: null,
-          responseTimeMs: Date.now() - startTime,
-        };
-        isSuccessful = false;
-        errorMessage = `${mappedCode}: ${mappedGemini?.body?.message || err?.message}`;
-      } else {
-        isSuccessful = false;
-        errorMessage = err?.message;
-        throw err;
-      }
-    } finally {
-      await prisma.aiPromptHistory
-        .create({
-          data: {
-            userId,
-            promptType: "trip_itinerary",
-            promptText: JSON.stringify(preferences),
-            contextData: {
-              placesCount: places.length,
-              travelStyle,
-              totalDays,
-              previewOnly: !!previewOnly,
-            },
-            responseText: geminiResult?.raw ?? null,
-            responseParsed: geminiResult?.parsed ?? null,
-            modelUsed: geminiResult?.raw
-              ? PRIMARY_GEMINI_MODEL
-              : "fallback-local",
-            tokensUsed: geminiResult?.tokensUsed ?? null,
-            responseTimeMs: Date.now() - startTime,
-            isSuccessful,
-            errorMessage,
-          },
-        })
-        .catch(() => {});
-    }
-
-    rawItinerary = geminiResult?.parsed ?? null;
-  }
-
-  let itinerary = normalizeItinerary(rawItinerary, totalDays);
-  if (itinerary.days.length === 0) {
-    itinerary = normalizeItinerary(
-      generateFallbackItinerary(preferences, places),
-      totalDays,
-    );
-  }
-
-  const suggestedPlaces = buildSuggestedPlaces(itinerary.days, placeById);
-  const suggestedPlaceIds = suggestedPlaces.map((place) => place.id);
-  const normalizedSelectedPlaceIds = Array.isArray(selectedPlaceIds)
-    ? selectedPlaceIds
-        .map((id) => toInt(id))
-        .filter((id) => id && placeIdSet.has(id))
-    : [];
-
-  const effectiveSelectedPlaceIds =
-    normalizedSelectedPlaceIds.length > 0
-      ? normalizedSelectedPlaceIds
-      : suggestedPlaceIds;
-
-  const selectedPlaceIdSet =
-    effectiveSelectedPlaceIds.length > 0
-      ? new Set(effectiveSelectedPlaceIds)
-      : null;
-
-  const { itinerary: enrichedItinerary, tripRoutingSummary } = isRoutingEnabled
-    ? await enrichItineraryWithRouting({
-        itinerary,
-        placeById,
-        selectedPlaceIdSet,
-      })
-    : {
-        itinerary,
-        tripRoutingSummary: {
-          totalDistance: 0,
-          totalDistanceKm: null,
-          totalDuration: 0,
-          legs: [],
-        },
-      };
-  itinerary = enrichedItinerary;
-
-  if (previewOnly) {
-    return {
-      previewOnly: true,
-      itinerary,
-      suggestedPlaces,
-      selectedPlaceIds: effectiveSelectedPlaceIds,
-      tripRoutingSummary,
-    };
-  }
-
-  const trip = await prisma.$transaction(async (tx) => {
-    const created = await tx.trip.create({
-      data: {
-        userId,
-        title: itinerary.title,
-        description: itinerary.description ?? null,
-        totalDays: itinerary.totalDays,
-        totalDistance: tripRoutingSummary?.totalDistanceKm ?? null,
-        estimatedCost: itinerary.estimatedCost ?? null,
-        travelStyle: travelStyle ?? null,
-        groupSize: Math.max(toInt(groupSize, 1), 1),
-        isAiGenerated: true,
-        aiPrompt: JSON.stringify(preferences),
-        status: "draft",
-      },
-    });
-
-    let allDestinations = buildTripDestinations({
-      tripId: created.id,
-      days: itinerary.days,
-      allowedPlaceIds: placeIdSet,
-      selectedPlaceIdSet,
-    });
-
-    if (allDestinations.length === 0 && effectiveSelectedPlaceIds.length > 0) {
-      allDestinations = buildFallbackDestinationsFromSelection({
-        tripId: created.id,
-        selectedPlaceIds: effectiveSelectedPlaceIds,
-        totalDays: itinerary.totalDays,
-      });
-    }
-
-    if (allDestinations.length > 0) {
-      await tx.tripDestination.createMany({ data: allDestinations });
-    }
-
-    return tx.trip.findUnique({
-      where: { id: created.id },
-      include: {
-        destinations: {
-          orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-          include: {
-            place: {
-              select: {
-                id: true,
-                name: true,
-                address: true,
-                latitude: true,
-                longitude: true,
-                category: { select: { id: true, name: true } },
-                district: { select: { id: true, name: true, code: true } },
-                ward: { select: { id: true, name: true, wardType: true } },
-                images: {
-                  take: 1,
-                  orderBy: [{ isCover: "desc" }],
-                  select: { imageData: true },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+  const result = await prisma.favorite.updateMany({
+    where: { userId, collectionName: from },
+    data: { collectionName: to },
   });
 
-  return {
-    ...trip,
-    tripRoutingSummary,
-  };
+  return { name: to, updatedCount: result.count };
 };
+
+export const deleteMySavedCollection = async (userId, name) => {
+  const collectionName = String(name || "").trim();
+  if (!collectionName) {
+    const error = new Error("Tên bộ sưu tập không hợp lệ");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const result = await prisma.favorite.updateMany({
+    where: { userId, collectionName },
+    data: { collectionName: null },
+  });
+
+  return { name: collectionName, updatedCount: result.count };
+};
+
+// Trip functions are re-exported from ../trip/trip.service.js
+export const {
+  saveTrip,
+  unsaveTrip,
+  getMySavedTrips,
+  getMyTrips,
+  generateAndSaveTrip,
+  createTrip,
+  getTripDetail,
+  updateTrip,
+  deleteTrip,
+  addDestination,
+  removeDestination,
+  reorderDestinations,
+  updateDestination,
+  moveDestination,
+  createTripShare,
+  getTripShares,
+  accessTripShare,
+  deleteTripShare,
+} = tripService;
+
 
 export const submitFeedback = async ({
   userId = null,
@@ -1409,155 +936,6 @@ export const submitFeedback = async ({
   return feedback;
 };
 
-const TRIP_PLACE_SELECT = {
-  id: true,
-  name: true,
-  address: true,
-  latitude: true,
-  longitude: true,
-  thumbnail: true,
-  ratingAvg: true,
-  category: { select: { id: true, name: true } },
-  district: { select: { id: true, name: true, code: true } },
-  ward: { select: { id: true, name: true, wardType: true } },
-};
-
-export const createTrip = async (userId, data) => {
-  const {
-    title,
-    description,
-    startDate,
-    endDate,
-    totalDays,
-    travelStyle,
-    groupSize,
-  } = data;
-  return prisma.trip.create({
-    data: {
-      userId,
-      title,
-      description,
-      startDate: startDate ? new Date(startDate) : null,
-      endDate: endDate ? new Date(endDate) : null,
-      totalDays: toInt(totalDays, 1),
-      travelStyle,
-      groupSize: toInt(groupSize, 1),
-      status: "draft",
-    },
-    include: {
-      destinations: {
-        include: { place: { select: TRIP_PLACE_SELECT } },
-      },
-    },
-  });
-};
-
-export const getTripDetail = async (id, userId) => {
-  return prisma.trip.findFirst({
-    where: { id, userId },
-    include: {
-      destinations: {
-        orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-        include: { place: { select: TRIP_PLACE_SELECT } },
-      },
-    },
-  });
-};
-
-export const updateTrip = async (id, userId, data) => {
-  const trip = await prisma.trip.findFirst({ where: { id, userId } });
-  if (!trip) {
-    const err = new Error("Không tìm thấy chuyến đi");
-    err.statusCode = 404;
-    throw err;
-  }
-  const {
-    title,
-    description,
-    startDate,
-    endDate,
-    totalDays,
-    travelStyle,
-    groupSize,
-    status,
-  } = data;
-  return prisma.trip.update({
-    where: { id },
-    data: {
-      ...(title !== undefined && { title }),
-      ...(description !== undefined && { description }),
-      ...(startDate !== undefined && {
-        startDate: startDate ? new Date(startDate) : null,
-      }),
-      ...(endDate !== undefined && {
-        endDate: endDate ? new Date(endDate) : null,
-      }),
-      ...(totalDays !== undefined && { totalDays: toInt(totalDays, 1) }),
-      ...(travelStyle !== undefined && { travelStyle }),
-      ...(groupSize !== undefined && { groupSize: toInt(groupSize, 1) }),
-      ...(status !== undefined && { status }),
-    },
-    include: {
-      destinations: {
-        orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-        include: { place: { select: TRIP_PLACE_SELECT } },
-      },
-    },
-  });
-};
-
-export const deleteTrip = async (id, userId) => {
-  const trip = await prisma.trip.findFirst({ where: { id, userId } });
-  if (!trip) {
-    const err = new Error("Không tìm thấy chuyến đi");
-    err.statusCode = 404;
-    throw err;
-  }
-  await prisma.trip.delete({ where: { id } });
-};
-
-export const addDestination = async (
-  tripId,
-  userId,
-  { placeId, dayNumber, order, note },
-) => {
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
-  if (!trip) {
-    const err = new Error("Không tìm thấy chuyến đi");
-    err.statusCode = 404;
-    throw err;
-  }
-  return prisma.tripDestination.create({
-    data: {
-      tripId,
-      placeId: toInt(placeId),
-      dayNumber: toInt(dayNumber, 1),
-      order: toInt(order, 0),
-      note,
-      status: "planned",
-    },
-    include: { place: { select: TRIP_PLACE_SELECT } },
-  });
-};
-
-export const removeDestination = async (tripId, destId, userId) => {
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
-  if (!trip) {
-    const err = new Error("Không tìm thấy chuyến đi");
-    err.statusCode = 404;
-    throw err;
-  }
-  const dest = await prisma.tripDestination.findFirst({
-    where: { id: destId, tripId },
-  });
-  if (!dest) {
-    const err = new Error("Không tìm thấy địa điểm trong lịch trình");
-    err.statusCode = 404;
-    throw err;
-  }
-  await prisma.tripDestination.delete({ where: { id: destId } });
-};
-
 export default {
   getHomeData,
   searchPlaces,
@@ -1569,6 +947,12 @@ export default {
   getMySavedPlaces,
   savePlace,
   unsavePlace,
+  getMySavedCollections,
+  renameMySavedCollection,
+  deleteMySavedCollection,
+  saveTrip,
+  unsaveTrip,
+  getMySavedTrips,
   getMyTrips,
   generateAndSaveTrip,
   createTrip,
@@ -1577,5 +961,12 @@ export default {
   deleteTrip,
   addDestination,
   removeDestination,
+  reorderDestinations,
+  updateDestination,
+  moveDestination,
+  createTripShare,
+  getTripShares,
+  accessTripShare,
+  deleteTripShare,
   submitFeedback,
 };

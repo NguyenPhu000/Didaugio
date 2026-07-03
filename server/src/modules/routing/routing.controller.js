@@ -27,6 +27,19 @@ export const calculateRouteLegs = async (req, res, next) => {
   }
 };
 
+export const calculateTable = async (req, res, next) => {
+  try {
+    const data = await routingService.calculateTable(req.body || {});
+    res.json({
+      success: true,
+      data,
+      message: ROUTING_MESSAGES.tableSuccess,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getRoutingHealth = async (req, res, next) => {
   try {
     const data = await routingService.getHealth();

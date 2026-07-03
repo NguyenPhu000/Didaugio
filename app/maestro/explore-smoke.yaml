@@ -1,0 +1,9 @@
+# Maestro — smoke Explore (Android). Cài CLI: https://maestro.mobile.dev/
+# Chạy từ `app/`: npm run maestro:explore  (cần `maestro` trên PATH hoặc npx maestro@latest)
+# Yêu cầu: bản build dev `vn.didaugio.app` trên emulator/thiết bị; Metro `npm start` nếu cần.
+
+appId: vn.didaugio.app
+---
+- launchApp
+- tapOn: "Kham pha"
+- assertVisible: "Bạn muốn khám phá gì hôm nay?"

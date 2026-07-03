@@ -1,3 +1,7 @@
+import { TRIP_QUERY_KEYS } from "./trip-query-keys";
+
+export { TRIP_QUERY_KEYS };
+
 export const QUERY_KEYS = {
   places: {
     all: () => ["places"],
@@ -23,15 +27,22 @@ export const QUERY_KEYS = {
     profile: () => ["user", "profile"],
     summary: () => ["user", "summary"],
     trips: () => ["user", "trips"],
-    savedPlaces: () => ["user", "saved-places"],
+    savedPlaces: () => ["saved-places"],
+    savedCollections: () => ["saved-collections"],
   },
   trips: {
-    all: () => ["trips"],
-    list: () => ["trips", "list"],
-    detail: (id) => ["trips", "detail", id],
+    all: TRIP_QUERY_KEYS.all,
+    list: TRIP_QUERY_KEYS.list,
+    detail: TRIP_QUERY_KEYS.detail,
+    shares: (tripId) =>
+      tripId === undefined ? ["trips", "shares"] : TRIP_QUERY_KEYS.shares(tripId),
   },
   notifications: {
     all: () => ["notifications"],
     list: (filters) => ["notifications", "list", filters],
+  },
+  payments: {
+    detail: (id) => ["payments", "detail", id],
+    byBooking: (bookingId) => ["payments", "booking", bookingId],
   },
 };

@@ -9,6 +9,9 @@ import {
   updateProfile,
   getMyPlaces,
   signContract,
+  downloadContract,
+  decryptProfile,
+  sendContractOtp,
 } from "../../controllers/business/businessProfile.controller.js";
 import {
   getAll,
@@ -40,13 +43,28 @@ import {
   signBusinessContractSchema,
   getBusinessesQuerySchema,
 } from "../../models/index.js";
+import { ROLES } from "../../config/constants.js";
 
 const router = express.Router();
 
 router.use(authenticate);
 
+// Block GUEST from all business routes
+router.use((req, res, next) => {
+  if (req.user?.roleId === ROLES.GUEST) {
+    return res.status(403).json({
+      success: false,
+      data: null,
+      message: "Tai khoan Guest khong the truy cap chuc nang doanh nghiep",
+      errorCode: "GUEST_NOT_ALLOWED",
+    });
+  }
+  next();
+});
+
 // ========== Profile (Business Owner) ==========
 router.get("/profile", getProfile);
+router.post("/profile/decrypt", decryptProfile);
 
 router.post(
   "/register",
@@ -81,9 +99,13 @@ router.get("/dashboard", requireActiveBusiness(), getDashboard);
 // ========== My Places (Business Owner - for service creation) ==========
 router.get("/places", requireActiveBusiness(), getMyPlaces);
 
+router.post(
+  "/profile/contract-otp",
+  sendContractOtp
+);
+
 router.put(
   "/profile/contract-sign",
-  requireActiveBusiness(),
   validateBody(signBusinessContractSchema),
   auditLog({
     action: "SIGN_CONTRACT",
@@ -92,6 +114,9 @@ router.put(
   }),
   signContract,
 );
+
+// Download contract PDF (business owner or admin)
+router.get("/:id/contract", downloadContract);
 
 // ========== Admin (business.view, business.approve) ==========
 router.get(

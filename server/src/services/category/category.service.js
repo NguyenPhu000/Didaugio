@@ -58,15 +58,18 @@ export const getAllCategories = async (filters = {}) => {
 export const getCategoryTree = async (
   parentId = null,
   maxLevel = MAX_CATEGORY_LEVEL,
+  includeInactive = false,
 ) => {
   const buildTree = async (parent = null, currentLevel = 1) => {
     if (currentLevel > maxLevel) return [];
 
+    const where = { parentId: parent };
+    if (!includeInactive) {
+      where.isActive = true;
+    }
+
     const categories = await prisma.category.findMany({
-      where: {
-        parentId: parent,
-        isActive: true,
-      },
+      where,
       include: {
         _count: {
           select: { children: true, places: true },

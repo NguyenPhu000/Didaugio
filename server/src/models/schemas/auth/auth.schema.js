@@ -1,117 +1,119 @@
 import { z } from "zod";
 
 // Password must contain: uppercase, lowercase, digit, and special character
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+const PASSWORD_REGEX =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 
 export const loginSchema = z
   .object({
     email: z
       .string()
-      .email("Email khong hop le")
+      .email("Email không hợp lệ")
       .toLowerCase()
       .trim()
       .optional(),
 
     username: z
       .string()
-      .min(3, "Username phai co it nhat 3 ky tu")
-      .max(30, "Username toi da 30 ky tu")
+      .min(3, "Username phải có ít nhất 3 ký tự")
+      .max(30, "Username tối đa 30 ký tự")
       .trim()
       .optional(),
 
     password: z
-      .string({ required_error: "Mat khau khong duoc de trong" })
-      .min(1, "Mat khau khong duoc de trong")
-      .max(128, "Mat khau qua dai"),
+      .string({ required_error: "Mật khẩu không được để trống" })
+      .min(1, "Mật khẩu không được để trống")
+      .max(128, "Mật khẩu quá dài"),
 
     deviceId: z.string().optional(),
     deviceName: z.string().optional(),
+    rememberMe: z.boolean().optional().default(false),
   })
   .refine((data) => data.email || data.username, {
-    message: "Vui long nhap email hoac username",
+    message: "Vui lòng nhập email hoặc username",
     path: ["email"],
   });
 
 export const registerSchema = z
   .object({
     email: z
-      .string({ required_error: "Email khong duoc de trong" })
-      .min(1, "Email khong duoc de trong")
-      .email("Email khong hop le")
+      .string({ required_error: "Email không được để trống" })
+      .min(1, "Email không được để trống")
+      .email("Email không hợp lệ")
       .toLowerCase()
       .trim(),
 
     username: z
-      .string({ required_error: "Username khong duoc de trong" })
-      .min(3, "Username phai co it nhat 3 ky tu")
+      .string({ required_error: "Username không được để trống" })
+      .min(3, "Username phải có ít nhất 3 ký tự")
       .max(30, "Username toi da 30 ky tu")
       .trim()
       .regex(
         USERNAME_REGEX,
-        "Username chi duoc chua chu cai, so va dau gach duoi",
+        "Username chỉ được chứa chữ cái, số và dấu gạch dưới",
       ),
 
     password: z
-      .string({ required_error: "Mat khau khong duoc de trong" })
-      .min(8, "Mat khau phai co it nhat 8 ky tu")
-      .max(100, "Mat khau qua dai")
+      .string({ required_error: "Mật khẩu không được để trống" })
+      .min(8, "Mật khẩu phải có ít nhất 8 ký tự")
+      .max(100, "Mật khẩu quá dài")
       .regex(
         PASSWORD_REGEX,
-        "Mat khau phai co it nhat: 1 chu hoa, 1 chu thuong, 1 so va 1 ky tu dac biet (!@#$%^&*...)",
+        "Mật khẩu phải có ít nhất: 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (!@#$%^&*...)",
       ),
 
     confirmPassword: z
-      .string({ required_error: "Xac nhan mat khau khong duoc de trong" })
-      .min(1, "Xac nhan mat khau khong duoc de trong"),
+      .string({ required_error: "Xác nhận mật khẩu không được để trống" })
+      .min(1, "Xác nhận mật khẩu không được để trống"),
 
     fullName: z
       .string()
-      .min(2, "Ho ten phai co it nhat 2 ky tu")
-      .max(100, "Ho ten qua dai")
+      .min(2, "Họ tên phải có ít nhất 2 ký tự")
+      .max(100, "Họ tên quá dài")
       .optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Mat khau xac nhan khong khop",
+    message: "Mật khẩu xác nhận không khớp",
     path: ["confirmPassword"],
   });
 
 export const changePasswordSchema = z
   .object({
     currentPassword: z
-      .string({ required_error: "Mat khau hien tai khong duoc de trong" })
-      .min(1, "Mat khau hien tai khong duoc de trong")
-      .max(128, "Mat khau qua dai"),
+      .string({ required_error: "Mật khẩu hiện tại không được để trống" })
+      .min(1, "Mật khẩu hiện tại không được để trống")
+      .max(128, "Mật khẩu quá dài"),
 
     newPassword: z
-      .string({ required_error: "Mat khau moi khong duoc de trong" })
-      .min(8, "Mat khau moi phai co it nhat 8 ky tu")
-      .max(100, "Mat khau qua dai")
+      .string({ required_error: "Mật khẩu mới không được để trống" })
+      .min(8, "Mật khẩu mới phải có ít nhất 8 ký tự")
+      .max(100, "Mật khẩu quá dài")
       .regex(
         PASSWORD_REGEX,
-        "Mat khau phai co it nhat: 1 chu hoa, 1 chu thuong, 1 so va 1 ky tu dac biet (!@#$%^&*...)",
+        "Mật khẩu phải có ít nhất: 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (!@#$%^&*...)",
       ),
 
     confirmPassword: z
-      .string({ required_error: "Xac nhan mat khau khong duoc de trong" })
-      .min(1, "Xac nhan mat khau khong duoc de trong"),
+      .string({ required_error: "Xác nhận mật khẩu không được để trống" })
+      .min(1, "Xác nhận mật khẩu không được để trống"),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Mat khau xac nhan khong khop",
+    message: "Mật khẩu xác nhận không khớp",
     path: ["confirmPassword"],
   });
 
 export const refreshTokenSchema = z.object({
   refreshToken: z
-    .string({ required_error: "Refresh token khong duoc de trong" })
-    .min(1, "Refresh token khong duoc de trong"),
+    .string({ required_error: "Refresh token không được để trống" })
+    .min(1, "Refresh token không được để trống"),
 });
 
 export const forgotPasswordSchema = z.object({
   email: z
-    .string({ required_error: "Email khong duoc de trong" })
-    .min(1, "Email khong duoc de trong")
-    .email("Email khong hop le")
+    .string({ required_error: "Email không được để trống" })
+    .min(1, "Email không được để trống")
+    .email("Email không hợp lệ")
     .toLowerCase()
     .trim(),
 });
@@ -119,77 +121,78 @@ export const forgotPasswordSchema = z.object({
 export const resetPasswordSchema = z
   .object({
     token: z
-      .string({ required_error: "Token khong duoc de trong" })
-      .min(1, "Token khong duoc de trong"),
+      .string({ required_error: "Token không được để trống" })
+      .min(1, "Token không được để trống"),
 
     newPassword: z
-      .string({ required_error: "Mat khau moi khong duoc de trong" })
-      .min(8, "Mat khau moi phai co it nhat 8 ky tu")
-      .max(100, "Mat khau qua dai")
+      .string({ required_error: "Mật khẩu mới không được để trống" })
+      .min(8, "Mật khẩu mới phải có ít nhất 8 ký tự")
+      .max(100, "Mật khẩu quá dài")
       .regex(
         PASSWORD_REGEX,
-        "Mat khau phai co it nhat: 1 chu hoa, 1 chu thuong, 1 so va 1 ky tu dac biet (!@#$%^&*...)",
+        "Mật khẩu phải có ít nhất: 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (!@#$%^&*...)",
       ),
 
     confirmPassword: z
-      .string({ required_error: "Xac nhan mat khau khong duoc de trong" })
-      .min(1, "Xac nhan mat khau khong duoc de trong"),
+      .string({ required_error: "Xác nhận mật khẩu không được để trống" })
+      .min(1, "Xác nhận mật khẩu không được để trống"),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Mat khau xac nhan khong khop",
+    message: "Mật khẩu xác nhận không khớp",
     path: ["confirmPassword"],
   });
 
 export const verifyEmailSchema = z.object({
   token: z
-    .string({ required_error: "Token khong duoc de trong" })
-    .min(1, "Token khong duoc de trong"),
+    .string({ required_error: "Token không được để trống" })
+    .min(1, "Token không được để trống"),
 });
 
 export const resendVerificationPublicSchema = z.object({
   email: z
-    .string({ required_error: "Email khong duoc de trong" })
-    .min(1, "Email khong duoc de trong")
-    .email("Email khong hop le")
+    .string({ required_error: "Email không được để trống" })
+    .min(1, "Email không được để trống")
+    .email("Email không hợp lệ")
     .toLowerCase()
     .trim(),
 });
 
 export const loginGoogleSchema = z.object({
   idToken: z
-    .string({ required_error: "idToken khong duoc de trong" })
-    .min(1, "idToken khong duoc de trong"),
+    .string({ required_error: "idToken không được để trống" })
+    .min(1, "idToken không được để trống"),
+  context: z.enum(["web_business"]).optional(),
 });
 
 export const logoutSchema = z.object({
   refreshToken: z
-    .string({ required_error: "Refresh token khong duoc de trong" })
-    .min(1, "Refresh token khong duoc de trong"),
+    .string({ required_error: "Refresh token không được để trống" })
+    .min(1, "Refresh token không được để trống"),
 });
 
 export const revokeSessionParamSchema = z.object({
   sessionId: z.coerce
     .number()
     .int()
-    .positive("sessionId phai la so nguyen duong"),
+    .positive("sessionId phải là số nguyên dương"),
 });
 
 export const updateProfileSchema = z.object({
   username: z
     .string()
-    .min(3, "Username phai co it nhat 3 ky tu")
-    .max(30, "Username toi da 30 ky tu")
+    .min(3, "Username phải có ít nhất 3 ký tự")
+    .max(30, "Username tối đa 30 ký tự")
     .trim()
     .regex(
       USERNAME_REGEX,
-      "Username chi duoc chua chu cai, so va dau gach duoi",
+      "Username chỉ được chứa chữ cái, số và dấu gạch dưới",
     )
     .optional(),
   fullName: z.string().min(2).max(100).optional(),
   nickname: z
     .string()
-    .min(2, "Nickname phai co it nhat 2 ky tu")
-    .max(50, "Nickname toi da 50 ky tu")
+    .min(2, "Nickname phải có ít nhất 2 ký tự")
+    .max(50, "Nickname tối đa 50 ký tự")
     .optional()
     .nullable(),
   phone: z.string().max(20).optional(),

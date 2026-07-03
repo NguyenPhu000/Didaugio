@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ROLE_ICONS, ROLE_GRADIENTS } from "@/constants/roleConstants";
+import { useTranslation } from "react-i18next";
 
 // Map Lucide icons to role names
 const LUCIDE_ICON_MAP = {
@@ -29,6 +30,7 @@ const LUCIDE_ICON_MAP = {
 };
 
 export function RoleCard({ role, onManagePermissions, totalPermissions = 72 }) {
+  const { t } = useTranslation();
   const Icon = LUCIDE_ICON_MAP[role.id] || User;
   const gradient = ROLE_GRADIENTS[role.id] || ROLE_GRADIENTS[5];
   const permissionPercentage =
@@ -50,13 +52,13 @@ export function RoleCard({ role, onManagePermissions, totalPermissions = 72 }) {
             <div>
               <CardTitle className="text-lg">{role.displayName}</CardTitle>
               <CardDescription className="text-sm mt-1">
-                {role.description || "Không có mô tả"}
+                {role.description || t("role.card.noDescription")}
               </CardDescription>
             </div>
           </div>
           {role.isSystem && (
             <Badge variant="outline" className="text-xs">
-              Hệ thống
+              {t("role.card.system")}
             </Badge>
           )}
         </div>
@@ -65,7 +67,7 @@ export function RoleCard({ role, onManagePermissions, totalPermissions = 72 }) {
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Quyền hạn</span>
+            <span className="text-muted-foreground">{t("role.card.permissions")}</span>
             <span className="font-medium">
               {role.permissionCount || 0}/{totalPermissions}
             </span>
@@ -75,11 +77,11 @@ export function RoleCard({ role, onManagePermissions, totalPermissions = 72 }) {
 
         <div className="grid grid-cols-2 gap-3 pt-2">
           <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">Người dùng</span>
+            <span className="text-xs text-muted-foreground">{t("role.card.users")}</span>
             <span className="text-lg font-semibold">{role.userCount || 0}</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">Tỷ lệ quyền</span>
+            <span className="text-xs text-muted-foreground">{t("role.card.permissionRatio")}</span>
             <span className="text-lg font-semibold">
               {permissionPercentage.toFixed(0)}%
             </span>
@@ -93,12 +95,12 @@ export function RoleCard({ role, onManagePermissions, totalPermissions = 72 }) {
           disabled={role.name === "guest"}
         >
           <Settings className="h-4 w-4 mr-2" />
-          Quản lý quyền
+          {t("role.card.managePermissions")}
         </Button>
 
         {role.isSystem && (
           <p className="text-xs text-center text-muted-foreground pt-1">
-            Vai trò hệ thống - Không thể xóa
+            {t("role.card.systemRoleNote")}
           </p>
         )}
       </CardContent>

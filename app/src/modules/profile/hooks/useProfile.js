@@ -3,12 +3,13 @@ import {
   getMyProfileApi,
   updateMyAvatarApi,
   updateMyProfileApi,
+  updateNotificationSettingsApi,
 } from "../api/profileApi";
 
 const PROFILE_QUERY_KEY = ["my-profile"];
 
 const normalizeProfileSummary = (res) => {
-  const payload = res?.data || res;
+  const payload = res?.data?.data || res?.data || res;
   if (!payload) return null;
 
   const nestedProfile = payload?.profile || {};
@@ -46,6 +47,17 @@ export function useUpdateAvatar() {
 
   return useMutation({
     mutationFn: updateMyAvatarApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
+    },
+  });
+}
+
+export function useUpdateNotificationSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateNotificationSettingsApi,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
     },

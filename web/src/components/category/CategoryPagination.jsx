@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useTranslation } from "react-i18next";
 
 /**
  * CATEGORY PAGINATION
@@ -11,6 +12,8 @@ export default function CategoryPagination({
   totalItems,
   onPageChange,
 }) {
+  const { t } = useTranslation();
+
   if (totalPages <= 1) return null;
 
   const getPageNumbers = () => {
@@ -52,15 +55,11 @@ export default function CategoryPagination({
   return (
     <div className="flex items-center justify-between py-4 px-2">
       <div className="text-sm text-muted-foreground">
-        Hiển thị{" "}
-        <span className="font-medium">
-          {Math.min((currentPage - 1) * 12 + 1, totalItems)}
-        </span>{" "}
-        -{" "}
-        <span className="font-medium">
-          {Math.min(currentPage * 12, totalItems)}
-        </span>{" "}
-        trong tổng số <span className="font-medium">{totalItems}</span> danh mục
+        {t("category.pagination.showing", {
+          from: Math.min((currentPage - 1) * 12 + 1, totalItems),
+          to: Math.min(currentPage * 12, totalItems),
+          total: totalItems,
+        })}
       </div>
 
       <div className="flex items-center gap-1">
@@ -72,7 +71,7 @@ export default function CategoryPagination({
           disabled={currentPage === 1}
         >
           <ChevronLeft className="h-4 w-4" />
-          Trước
+          {t("category.pagination.previous")}
         </Button>
 
         {/* Page Numbers */}
@@ -104,7 +103,7 @@ export default function CategoryPagination({
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
         >
-          Tiếp
+          {t("category.pagination.next")}
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>

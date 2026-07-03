@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   calculateRouteApi,
-  calculateRouteLegsApi,
 } from "../../../api/routingApi";
 import { mapRoutingResponse } from "./routeMapping";
 
@@ -33,13 +32,16 @@ const isValidPoint = (point) =>
 /**
  * Hook tính route 2 điểm — dùng trong MapScreen / directions flow.
  *
- * @param {{ origin, destination, mode?, enabled? }} options
+ * @param {{ origin, destination, mode?, options?, enabled?, navMode?, rerouteKey? }} params
  */
 export function useMapRouting({
   origin,
   destination,
   mode = "driving",
+  options = {},
   enabled = true,
+  navMode = "preview",
+  rerouteKey = 0,
 } = {}) {
   const normalizedOrigin = useMemo(() => normalizePoint(origin), [origin]);
   const normalizedDestination = useMemo(
@@ -53,8 +55,11 @@ export function useMapRouting({
     isValidPoint(normalizedDestination);
 
   const queryKey = useMemo(
-    () => ["route", normalizedOrigin, normalizedDestination, mode],
-    [normalizedDestination, normalizedOrigin, mode],
+    () =>
+      navMode === "navigation"
+        ? ["route", "navigation", rerouteKey, normalizedDestination, mode, options]
+        : ["route", "preview", normalizedOrigin, normalizedDestination, mode, options],
+    [navMode, normalizedDestination, normalizedOrigin, rerouteKey, mode, options],
   );
 
   const query = useQuery({
@@ -71,6 +76,7 @@ export function useMapRouting({
           geometries: "polyline6",
           snapToRoad: true,
           simplifyGeometry: true,
+          ...options,
         },
       }),
     enabled: isReady,
@@ -86,6 +92,7 @@ export function useMapRouting({
     routes: query.data?.routes ?? [],
     source: query.data?.source ?? null,
     isFallback: query.data?.isFallback ?? false,
+    ferryAvoidanceFailed: query.data?.ferryAvoidanceFailed ?? false,
     distanceM: query.data?.distanceM ?? null,
     durationS: query.data?.durationS ?? null,
     isLoading: query.isLoading,
@@ -96,54 +103,3 @@ export function useMapRouting({
   };
 }
 
-/**
- * Hook tính legs giữa nhiều waypoints — dùng trong Trip Detail / AI Planner.
- *
- * @param {{ waypoints, mode?, enabled? }} options
- */
-export function useRoutingLegs({
-  waypoints = [],
-  mode = "driving",
-  enabled = true,
-} = {}) {
-  const normalizedWaypoints = useMemo(
-    () => waypoints.map(normalizePoint).filter(isValidPoint),
-    [waypoints],
-  );
-
-  const isReady = enabled && normalizedWaypoints.length >= 2;
-
-  const queryKey = useMemo(
-    () => ["route-legs", normalizedWaypoints, mode],
-    [normalizedWaypoints, mode],
-  );
-
-  const query = useQuery({
-    queryKey,
-    queryFn: () =>
-      calculateRouteLegsApi({
-        waypoints: normalizedWaypoints,
-        mode,
-        options: {
-          simplifyGeometry: true,
-        },
-      }),
-    enabled: isReady,
-    staleTime: STALE_TIME,
-    gcTime: STALE_TIME * 2,
-    retry: 1,
-    select: (response) => response?.data ?? null,
-  });
-
-  return {
-    legsData: query.data,
-    totalDistance: query.data?.totalDistance ?? null,
-    totalDuration: query.data?.totalDuration ?? null,
-    legs: query.data?.legs ?? [],
-    isLoading: query.isLoading,
-    isFetching: query.isFetching,
-    isError: query.isError,
-    error: query.error,
-    refetch: query.refetch,
-  };
-}
