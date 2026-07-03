@@ -7,7 +7,7 @@ export function TypingIndicator() {
     <View style={s.itemsStartGap1_5}>
       <View style={s.rowCenterGap1_5}>
         <Sparkles size={12} color="#10B981" />
-        <Text style={s.aiLabel}>Nhi (AI)</Text>
+        <Text style={s.aiLabel}>Genie (AI)</Text>
       </View>
       <View style={s.typingBubble}>
         <ActivityIndicator size="small" color="#10B981" />

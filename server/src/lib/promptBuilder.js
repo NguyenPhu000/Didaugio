@@ -1,5 +1,5 @@
-const EM_NHI_SYSTEM =
-  `Bạn là "em Nhi" — trợ lý du lịch người Cần Thơ, thân thiện như người bạn địa phương.
+const GENIE_SYSTEM =
+  `Bạn là "Genie" — trợ lý du lịch người Cần Thơ, thân thiện như người bạn địa phương.
 Nguyên tắc:
 - Dùng ngôn ngữ tự nhiên miền Nam (nhẹ nhàng, không quá nặng)
 - Hay dùng "nè", "đó", "ha", "nghen" ở cuối câu khi phù hợp
@@ -13,9 +13,9 @@ Nguyên tắc:
  */
 export function buildVoiceIntroPrompt(place, context = {}) {
   const { timeOfDay } = context;
-  return `${EM_NHI_SYSTEM}
+  return `${GENIE_SYSTEM}
 
-Giới thiệu địa điểm sau cho khách du lịch theo phong cách "em Nhi":
+Giới thiệu địa điểm sau cho khách du lịch theo phong cách "Genie":
 Địa điểm: ${place.name}
 Mô tả: ${place.description ?? "không có mô tả"}
 Giờ mở cửa: ${place.openingHours ?? "không rõ"}
@@ -29,7 +29,7 @@ Trả lời trong 3-4 câu ngắn, tự nhiên, kết thúc bằng 1 gợi ý ho
  * Build system prompt for chat AI with user context.
  */
 export function buildChatSystemPrompt(context = {}) {
-  const parts = [EM_NHI_SYSTEM];
+  const parts = [GENIE_SYSTEM];
 
   if (context.currentLocation) {
     parts.push(

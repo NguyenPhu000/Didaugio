@@ -1,4 +1,5 @@
 import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
+import { parseAiJsonObject } from "./aiJsonParser.js";
 
 function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371; // Earth's radius in km
@@ -51,7 +52,7 @@ export async function generateHybridPlan(coords, preferences, places) {
       : "Chưa cập nhật",
   }));
 
-  const systemPrompt = `Bạn là "Nhi" — trợ lý du lịch của ứng dụng "iPoint Genie".
+  const systemPrompt = `Bạn là "Genie" — trợ lý du lịch của ứng dụng "iPoint Genie".
 Nhiệm vụ: sắp xếp lịch trình du lịch trong ngày thông minh, tối ưu tuyến đường, và ước lượng chi phí dựa trên danh sách địa điểm có thật từ cơ sở dữ liệu.
 
 QUY TẮC BẮT BUỘC:
@@ -84,7 +85,7 @@ SCHEMA JSON:
     {
       "timeSlot": "string (một trong: Sáng sớm, Sáng, Trưa, Chiều, Chiều tối, Tối)",
       "placeId": number (ID khớp đúng từ danh sách đầu vào),
-      "reason": "Giải thích ngắn gọn, tự nhiên, tiếng Việt miền Nam, xưng Nhi, không emoji"
+      "reason": "Giải thích ngắn gọn, tự nhiên, tiếng Việt miền Nam, xưng Genie, không emoji"
     }
   ]
 }`;
@@ -112,13 +113,9 @@ Hãy chọn 3-4 địa điểm phù hợp nhất, sắp xếp tuyến đường 
 
   const rawText = completion.choices[0]?.message?.content || "";
 
-  // 1. Rào chắn kỹ thuật: Regex lọc sạch markdown block của LLM
-  const jsonMatch = rawText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
-  const cleanJson = jsonMatch ? jsonMatch[0] : rawText;
-
   let planData;
   try {
-    planData = JSON.parse(cleanJson);
+    planData = parseAiJsonObject(rawText);
   } catch (err) {
     console.error("[Groq JSON Parsing Failed] Raw Text:", rawText);
     throw new Error("Không thể parse dữ liệu lịch trình từ AI.");

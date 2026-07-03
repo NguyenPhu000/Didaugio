@@ -45,7 +45,6 @@ import { SearchOverlay } from "../../src/modules/explore/components/SearchOverla
 import { ExploreModernHeader } from "../../src/modules/explore/components/ExploreModernHeader";
 import { CategoryPills } from "../../src/modules/explore/components/CategoryPills";
 import { useEvents } from "../../src/modules/explore/hooks/useEvents";
-import { EventBannerCarousel } from "../../src/modules/explore/components/EventBannerCarousel";
 import { EventSection } from "../../src/modules/explore/components/EventSection";
 
 import { useExploreCms } from "../../src/modules/explore/hooks/useExploreCms";
@@ -54,7 +53,6 @@ import { SampleTripSection } from "../../src/modules/explore/components/SampleTr
 import { AnnouncementBanner } from "../../src/modules/explore/components/AnnouncementBanner";
 
 import { BlurCarousel } from "../../src/components/reacticx/blur-carousel";
-import { Accordion, AccordionThemes } from "../../src/components/reacticx/accordion";
 
 import { Image } from "expo-image";
 import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../src/lib/media-url";
@@ -66,15 +64,6 @@ const FOOD_HINTS = ["ẩm thực", "food", "restaurant", "ăn", "quán", "bánh"
 );
 
 const FLOATING_TAB_CLEARANCE = TAB_BAR_HEIGHT + 84;
-const TAB_SCREEN_PADDING = 16;
-
-const EXPLORE_ACCORDION_THEME = {
-  backgroundColor: "transparent",
-  borderColor: "rgba(0,0,0,0.06)",
-  headlineColor: APPLE_THEME.text,
-  subtitleColor: APPLE_THEME.textMuted,
-  iconColor: APPLE_THEME.textMuted,
-};
 
 export default function ExploreScreen() {
   const { t } = useTranslation();
@@ -179,7 +168,7 @@ export default function ExploreScreen() {
         message: isCurrentlySaved ? t("explore.toast.unsaveFailed") : t("explore.toast.saveFailed"),
       });
     }
-  }, [isLoggedIn, savedPlaceIds, saveMutation, unsaveMutation, router]);
+  }, [isLoggedIn, savedPlaceIds, saveMutation, unsaveMutation, router, t]);
 
   const allPlaces = useMemo(
     () => exploreData?.pages.flatMap((page) => page?.data || []) ?? [],
@@ -199,7 +188,7 @@ export default function ExploreScreen() {
           icon: getCategoryIcon(category.name),
         })),
     ];
-  }, [categories]);
+  }, [categories, t]);
 
   const selectedCategoryName = useMemo(() => {
     if (selectedCategory == null) return null;

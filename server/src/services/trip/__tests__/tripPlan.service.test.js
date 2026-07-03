@@ -139,6 +139,58 @@ test("linkBookingToTrip rejects booking outside trip range by default", async ()
   );
 });
 
+test("linkBookingToTrip allows admin access by roleId when role name changes", async () => {
+  const tx = makeTx({
+    booking: {
+      findUnique: async () => ({
+        id: 99,
+        bookingCode: "BK001",
+        userId: 8,
+        useDate: new Date("2026-07-03T00:00:00.000Z"),
+        useTime: "09:00",
+        endTimeStr: "10:00",
+        status: "confirmed",
+        paymentStatus: "paid",
+        service: { id: 3, placeId: 42, businessId: 5 },
+        tripLink: null,
+      }),
+    },
+    tripPlan: {
+      findUnique: async () => ({
+        id: 11,
+        userId: 8,
+        startDate: new Date("2026-07-02T00:00:00.000Z"),
+        endDate: new Date("2026-07-04T00:00:00.000Z"),
+        totalDays: 3,
+        stops: [],
+      }),
+      update: async ({ data, include }) => ({
+        id: 11,
+        userId: 8,
+        ...data,
+        stops: include?.stops ? [] : undefined,
+      }),
+    },
+    user: {
+      findUnique: async () => ({
+        id: 99,
+        roleId: 2,
+        role: { name: "ops-manager" },
+      }),
+    },
+  });
+  const service = makeTripPlanService(makePrisma(tx));
+
+  const result = await service.linkBookingToTrip({
+    bookingId: 99,
+    tripId: 11,
+    actorUserId: 99,
+  });
+
+  assert.equal(result.tripId, 11);
+  assert.equal(result.linkStatus, "linked");
+});
+
 test("reorderDestinations writes temporary sequences then final sequences and queues route rebuild", async () => {
   const tx = makeTx({
     tripStop: {

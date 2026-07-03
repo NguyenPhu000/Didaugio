@@ -15,11 +15,6 @@ import Animated, {
   SlideInDown,
   SlideOutDown,
 } from "react-native-reanimated";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../constants/design-tokens";
 
 export function NoteEditorModal({
   visible,

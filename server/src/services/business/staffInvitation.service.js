@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import prisma from "../../config/prismaClient.js";
-import { ROLES, USER_STATUS } from "../../config/constants.js";
+import { BCRYPT_SALT_ROUNDS, ROLES, USER_STATUS } from "../../config/constants.js";
 import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
 import { sendStaffInvitationEmail } from "../communication/mailer.service.js";
@@ -267,7 +267,7 @@ export const acceptInvitation = async (token, staffData) => {
     }
   }
 
-  const hashedPassword = await bcrypt.hash(password, 13);
+  const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
   const username = await generateUniqueUsername({
     prismaClient: prisma,
     email: invitation.email || `staff_${Date.now()}`,

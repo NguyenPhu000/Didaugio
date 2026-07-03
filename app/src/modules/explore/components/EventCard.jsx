@@ -1,7 +1,6 @@
 import { memo, useCallback, useState } from "react";
 import { Dimensions, Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
-import { BlurView } from "expo-blur";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {

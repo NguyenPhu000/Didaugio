@@ -20,7 +20,7 @@ import { FlipCard } from "../src/components/reacticx/flip-card";
 import { ParallaxCarousel } from "../src/components/reacticx/parallax-carousel";
 
 const demoCards = [
-  { id: "ai", title: "Nhi AI", tone: "#2563EB", body: "Chat, voice, itinerary" },
+  { id: "ai", title: "Genie AI", tone: "#2563EB", body: "Chat, voice, itinerary" },
   { id: "trip", title: "Trip", tone: "#10B981", body: "Preview, route, places" },
   { id: "business", title: "Business", tone: "#F97316", body: "Plan, payment, places" },
 ];
@@ -90,7 +90,7 @@ export default function ReacticxShowcase() {
               Voice assistant highlight
             </Text>
             <Text style={{ color: "#CBD5E1", marginTop: 5, fontFamily: TOKENS.font.body }}>
-              Used on the Nhi AI avatar now.
+              Used on the Genie AI avatar now.
             </Text>
           </View>
         </Glow>

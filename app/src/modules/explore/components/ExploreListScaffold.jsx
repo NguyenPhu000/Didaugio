@@ -1,10 +1,9 @@
 import { memo } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { TOKENS } from "../../../constants/design-tokens";
 
 function ExploreListScaffoldInner({ title, subtitle, children, rightAction }) {
   const router = useRouter();

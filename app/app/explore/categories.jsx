@@ -1,7 +1,6 @@
 import { memo, useMemo } from "react";
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   Text,

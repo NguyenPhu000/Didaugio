@@ -3,10 +3,9 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { cn } from "@/lib/cn";
 import { StatusBadge } from "./StatusBadge";
 import { formatBookingDateTime, formatPrice } from "../../utils/tripHelpers";
-import s, { T, ALPHA, STYLES } from "../../utils/tripDetailTokens";
+import { T, ALPHA, STYLES } from "../../utils/tripDetailTokens";
 
 export const BudgetTab = memo(function BudgetTab({
   bookings,

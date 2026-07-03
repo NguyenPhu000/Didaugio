@@ -1,5 +1,6 @@
 import prisma from "../config/prismaClient.js";
 import logger from "../config/logger.js";
+import { DOMAIN_JOB_STATUS, DOMAIN_JOB_TYPES } from "../config/constants.js";
 import routingService from "../services/routing/routing.service.js";
 
 const DEFAULT_INTERVAL_MS = Number(process.env.DOMAIN_JOB_INTERVAL_MS || 15000);
@@ -89,13 +90,13 @@ const rebuildRouteMetrics = async (job) => {
 };
 
 const handlers = {
-  RebuildRouteMetrics: rebuildRouteMetrics,
+  [DOMAIN_JOB_TYPES.REBUILD_ROUTE_METRICS]: rebuildRouteMetrics,
 };
 
 export const processPendingDomainJobs = async (batchSize = DEFAULT_BATCH_SIZE) => {
   const jobs = await prisma.domainJob.findMany({
     where: {
-      status: "pending",
+      status: DOMAIN_JOB_STATUS.PENDING,
       runAfter: { lte: new Date() },
     },
     orderBy: { createdAt: "asc" },
@@ -106,10 +107,10 @@ export const processPendingDomainJobs = async (batchSize = DEFAULT_BATCH_SIZE) =
     const claimed = await prisma.domainJob.updateMany({
       where: {
         id: job.id,
-        status: "pending",
+        status: DOMAIN_JOB_STATUS.PENDING,
       },
       data: {
-        status: "processing",
+        status: DOMAIN_JOB_STATUS.PROCESSING,
         attempts: { increment: 1 },
       },
     });
@@ -125,7 +126,7 @@ export const processPendingDomainJobs = async (batchSize = DEFAULT_BATCH_SIZE) =
       await handler(job);
       await prisma.domainJob.update({
         where: { id: job.id },
-        data: { status: "done" },
+        data: { status: DOMAIN_JOB_STATUS.DONE },
       });
     } catch (error) {
       const attempts = Number(job.attempts || 0) + 1;
@@ -133,7 +134,9 @@ export const processPendingDomainJobs = async (batchSize = DEFAULT_BATCH_SIZE) =
       await prisma.domainJob.update({
         where: { id: job.id },
         data: {
-          status: shouldRetry ? "pending" : "failed",
+          status: shouldRetry
+            ? DOMAIN_JOB_STATUS.PENDING
+            : DOMAIN_JOB_STATUS.FAILED,
           runAfter: new Date(Date.now() + Math.min(60000, attempts * 10000)),
           payload: {
             ...(job.payload || {}),

@@ -114,12 +114,12 @@ export default function SepayQrScreen() {
 
   useEffect(() => {
     if (!bookingId || isExpired) return;
-    startPolling(transactionRef, paymentId, bookingId, {
+    startPolling(paymentId, bookingId, {
       intervalMs: QR_POLL_INTERVAL_MS,
       maxPolls: QR_MAX_POLLS,
     });
     return () => stopPolling();
-  }, [bookingId, paymentId, transactionRef, isExpired, startPolling, stopPolling]);
+  }, [bookingId, paymentId, isExpired, startPolling, stopPolling]);
 
   useEffect(() => {
     if (isExpired) return;

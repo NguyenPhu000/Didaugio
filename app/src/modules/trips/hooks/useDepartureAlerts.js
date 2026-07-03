@@ -96,7 +96,7 @@ export function useDepartureAlerts({
     return () => {
       cancelled = true;
     };
-  }, [enabled, currentDestination, nextDestination, dayDateMap, activeTrip?.id]);
+  }, [enabled, currentDestination, nextDestination, dayDateMap, activeTrip?.id, t]);
 
   // Dọn dẹp thông báo đã lên lịch khi hook unmount / tắt active mode.
   useEffect(() => {

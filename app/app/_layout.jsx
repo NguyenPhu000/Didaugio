@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { View, Alert, AppState } from "react-native";
 import safeAsyncStorage from "../src/utils/safeAsyncStorage";
 import { Stack, useRouter, useSegments, usePathname } from "expo-router";
-import { PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY } from "../src/modules/booking/hooks/usePayment";
+import { PENDING_PAYMENT_BOOKING_KEY } from "../src/modules/booking/hooks/usePayment";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -12,12 +12,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
-
-// Tat strict mode canh bao doc/ghi shared value truc tiep trong render cycle vi mot so thu vien ben thu ba (nhu bottom-sheet, draggable-flatlist) chua cap nhat tuong thich.
-configureReanimatedLogger({
-  level: ReanimatedLogLevel.warn,
-  strict: false,
-});
 import {
   useFonts,
   BeVietnamPro_400Regular,
@@ -42,6 +36,12 @@ import { useOfflineSync } from "../src/modules/trips/hooks/useTripsOffline";
 import { useAlertStore } from "../src/stores/alertStore";
 import { GlobalAlert } from "../src/components/composed/GlobalAlert";
 
+// Tat strict mode canh bao doc/ghi shared value truc tiep trong render cycle vi mot so thu vien ben thu ba (nhu bottom-sheet, draggable-flatlist) chua cap nhat tuong thich.
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false,
+});
+
 SplashScreen.preventAutoHideAsync();
 
 function PaymentRecoveryListener() {
@@ -54,19 +54,16 @@ function PaymentRecoveryListener() {
       if (isProcessingRef.current) return;
 
       try {
-        const pendingRef = await safeAsyncStorage.getItem(PENDING_PAYMENT_REF_KEY);
         const pendingBookingId = await safeAsyncStorage.getItem(PENDING_PAYMENT_BOOKING_KEY);
 
         // Validate: non-empty and valid bookingId (positive integer string)
         if (
-          pendingRef &&
-          pendingRef.length > 0 &&
           pendingBookingId &&
           /^\d+$/.test(pendingBookingId) &&
           Number(pendingBookingId) > 0
         ) {
           isProcessingRef.current = true;
-          await safeAsyncStorage.multiRemove([PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY]);
+          await safeAsyncStorage.removeItem(PENDING_PAYMENT_BOOKING_KEY);
           router.replace(
             `/payment/result?status=pending_verify&bookingId=${pendingBookingId}`
           );

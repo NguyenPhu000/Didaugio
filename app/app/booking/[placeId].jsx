@@ -12,7 +12,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useAuthStore } from "../../src/stores/authStore";
-import i18n from "@/i18n";
 import { getI18nLocale } from "../../src/utils/dateFormat";
 import {
   usePlaceServices,
@@ -173,7 +172,7 @@ export default function BookingScreen() {
   const currentUser = useAuthStore((s) => s.user);
   const isLoggedIn = Boolean(accessToken) && !isGuest;
 
-  const STEP_LABELS = [t("booking.steps.service"), t("booking.steps.confirm"), t("booking.steps.submit")];
+
   const WEEKDAY_LABELS = [t("common.weekdays.mon"), t("common.weekdays.tue"), t("common.weekdays.wed"), t("common.weekdays.thu"), t("common.weekdays.fri"), t("common.weekdays.sat"), t("common.weekdays.sun")];
   const TIME_GROUPS = TIME_GROUP_KEYS.map((key) => ({ key, label: t(`booking.timeGroups.${key}`) }));
 
@@ -300,7 +299,7 @@ export default function BookingScreen() {
       setSelectedTime(next.value);
       setActiveTimeGroup(resolveTimeGroup(next.value));
     }
-  }, [selectedDate, selectedTime, nowTs, availabilityData, selectedService]);
+  }, [selectedDate, selectedTime, nowTs, availabilityData, selectedService, isSlotAvailable]);
 
   useEffect(() => {
     if (tripLinkMode !== "create") return;
@@ -331,7 +330,7 @@ export default function BookingScreen() {
       t("booking.alerts.slotUnavailable.message"),
       [{ text: t("booking.alerts.slotUnavailable.ok") }],
     );
-  }, [step, isSelectedTimeAvailable, selectedDate, selectedTime]);
+  }, [step, isSelectedTimeAvailable, selectedDate, selectedTime, t]);
 
   const depositInfo = useMemo(() => {
     if (!selectedService?.requireDeposit || totalPrice == null) return null;

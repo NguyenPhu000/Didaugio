@@ -21,7 +21,6 @@ import { useProfile, useUpdateNotificationSettings } from "../../src/modules/pro
 import { useNotifications } from "../../src/modules/notifications/hooks/useNotifications";
 import { TOKENS } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "../(tabs)/_layout";
-import { TAB_SCREEN_PADDING, TAB_THEME } from "../(tabs)/tabTheme";
 import { useTranslation } from "react-i18next";
 
 const ACCENT_BLUE = "#3478F6";
@@ -251,7 +250,7 @@ export default function SettingsScreen() {
   const handleSoonFeature = useCallback((title) => {
     setToastMessage(t("settings.comingSoon", { feature: title }));
     setToastVisible(true);
-  }, []);
+  }, [t]);
 
   const handleToggleTheme = useCallback(
     (enabled) => setTheme(enabled ? "dark" : "light"),
@@ -291,7 +290,7 @@ export default function SettingsScreen() {
         }
       }
     },
-    [isLoggedIn, profile, updateProfileSettings, updateNotifSettingsMutation]
+    [isLoggedIn, profile, updateProfileSettings, updateNotifSettingsMutation, t]
   );
 
   const handleToggleSync = useCallback(
@@ -338,14 +337,14 @@ export default function SettingsScreen() {
         },
       ]
     );
-  }, []);
+  }, [t]);
 
   const handleOpenPrivacy = useCallback(() => {
     // Demo mở link (bạn có thể thay bằng link thật của app)
     Linking.openURL("https://yourapp.com/privacy").catch(() =>
       handleSoonFeature(t("settings.privacyPolicy"))
     );
-  }, [handleSoonFeature]);
+  }, [handleSoonFeature, t]);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>

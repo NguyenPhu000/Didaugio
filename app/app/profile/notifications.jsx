@@ -17,7 +17,7 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from "../../src/modules/notifications/hooks/useNotifications";
-import { TOKENS } from "../../src/constants/design-tokens";
+
 import { TAB_BAR_HEIGHT } from "../(tabs)/_layout";
 import { cn } from "../../src/lib/cn";
 import { useTranslation } from "react-i18next";
@@ -350,13 +350,11 @@ function LoadingState() {
 
 /* ─── Main Screen ───────────────────────────────────── */
 export default function NotificationsScreen() {
-  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("unread");
   const [allItems, setAllItems] = useState([]);
   const [localUnreadCount, setLocalUnreadCount] = useState(0);
-  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
@@ -438,7 +436,6 @@ export default function NotificationsScreen() {
   const handleLoadMore = useCallback(() => {
     if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
-    setPage((prev) => prev + 1);
     // TODO: call next page API when endpoint supports pagination
     setIsLoadingMore(false);
   }, [isLoadingMore, hasMore]);

@@ -15,7 +15,7 @@ export default function ExploreCategoryDetailScreen() {
   const categoryName = useMemo(() => {
     if (!categoryId) return t("exploreCategory.all");
     return categories.find((c) => Number(c.id) === categoryId)?.name || t("exploreCategory.category");
-  }, [categories, categoryId]);
+  }, [categories, categoryId, t]);
 
   const {
     data,

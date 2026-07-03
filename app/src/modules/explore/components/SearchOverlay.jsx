@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   LayoutAnimation,
@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   UIManager,
@@ -21,9 +20,7 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
 } from "../../../constants/design-tokens";
-import { cn } from "@/lib/cn";
 import { useExplore, useCategories } from "../hooks/useExplore";
 import { useBoundaryData } from "../../map/hooks/useBoundaryData";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
@@ -38,14 +35,6 @@ const LAYOUT_ANIM = {
   create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
   update: { type: LayoutAnimation.Types.easeInEaseOut },
   delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-};
-
-const CHIP_SHADOW = {
-  shadowColor: "#0F172A",
-  shadowOffset: { width: 0, height: 3 },
-  shadowOpacity: 0.06,
-  shadowRadius: 8,
-  elevation: 2,
 };
 const SEARCH_DEBOUNCE_MS = 300;
 const RATING_FILTERS = [

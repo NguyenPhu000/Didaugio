@@ -18,7 +18,6 @@ import {
 } from "../../src/lib/media-url";
 import {
   getPlaceLocation,
-  formatRatingLabel,
 } from "../../src/modules/explore/utils/exploreHelpers";
 
 const GRID_GAP = 16;

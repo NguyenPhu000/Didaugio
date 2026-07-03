@@ -42,7 +42,7 @@ function MoveDestinationModal({
       setEndTime(dest.endTime || "");
       setNote(dest.note || "");
     }
-  }, [visible, dest?.id]);
+  }, [visible, dest]);
 
   const days = useMemo(() => (trip ? buildDayList(trip) : []), [trip]);
 
@@ -57,7 +57,7 @@ function MoveDestinationModal({
 
     if (dayChanged) {
       onMove({
-        destId: dest.id,
+        destId: dest.stopId ?? dest.id,
         newDayNumber: selectedDay,
         newOrder: 0,
         startTime: startTime || null,

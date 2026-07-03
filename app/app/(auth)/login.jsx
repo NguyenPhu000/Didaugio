@@ -203,7 +203,10 @@ export default function LoginScreen() {
               <Pressable
                 onPress={handleLogin}
                 disabled={isLoading}
-                style={({ pressed }) => pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }}
+                style={({ pressed }) => [
+                  pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+                  isLoading && { opacity: 0.6 }
+                ]}
               >
                 <LinearGradient
                   colors={["#007AFF", "#0056B3"]}
@@ -233,15 +236,19 @@ export default function LoginScreen() {
               <Pressable
                 onPress={loginWithGoogle}
                 disabled={isGoogleLoading}
-                className="flex-row items-center justify-center h-[52px] rounded-[14px] bg-white border border-[#DADCE0] gap-3 active:opacity-90 active:scale-[0.98]"
-                style={Platform.OS === "ios" ? {
-                  shadowColor: "#000000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.08,
-                  shadowRadius: 4,
-                } : {
-                  elevation: 2,
-                }}
+                className="flex-row items-center justify-center h-[52px] rounded-[14px] bg-white border border-[#DADCE0] gap-3"
+                style={({ pressed }) => [
+                  Platform.OS === "ios" ? {
+                    shadowColor: "#000000",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.08,
+                    shadowRadius: 4,
+                  } : {
+                    elevation: 2,
+                  },
+                  pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+                  isGoogleLoading && { opacity: 0.6 }
+                ]}
               >
                 {isGoogleLoading ? (
                   <ActivityIndicator color="#1C1C1E" size="small" />

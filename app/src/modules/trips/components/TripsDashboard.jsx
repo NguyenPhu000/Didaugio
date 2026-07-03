@@ -46,10 +46,17 @@ export function TripsDashboard({
   const [imgSrc, setImgSrc] = useState({ uri: heroCoverUri });
 
   useEffect(() => {
-    setImgSrc({ uri: heroCoverUri });
-  }, [heroCoverUri]);
+    setImgSrc((current) => {
+      if (current?.uri === heroCoverUri) return current;
+      return { uri: heroCoverUri };
+    });
+  }, [heroCoverUri, heroTrip?.id]);
 
   const timelineLabel = heroTrip ? getTimelineLabel(heroTrip) : null;
+  const heroDaysUntil = useMemo(
+    () => getDaysUntil(heroTrip?.startDate),
+    [heroTrip?.startDate],
+  );
 
   return (
     <Box className="px-6 pt-2 pb-6">
@@ -128,24 +135,20 @@ export function TripsDashboard({
               </Box>
             </Box>
 
-            {(() => {
-              const daysUntil = getDaysUntil(heroTrip?.startDate);
-              if (daysUntil === null || daysUntil > 30) return null;
-              return (
-                <Box className="self-start">
-                  <Box className="flex-row items-center gap-1.5 bg-white/90 rounded-full px-3 py-[5px]">
-                    <MaterialIconsRounded name="schedule" size={14} color="#1D1D1F" />
-                    <Text className="text-ink text-[12px] font-semibold">
-                      {daysUntil === 0
-                        ? t("tripDashboard.startToday")
-                        : daysUntil === 1
-                          ? t("tripDashboard.startTomorrow")
-                          : t("tripDashboard.daysUntil", { count: daysUntil })}
-                    </Text>
-                  </Box>
+            {heroDaysUntil !== null && heroDaysUntil <= 30 ? (
+              <Box className="self-start">
+                <Box className="flex-row items-center gap-1.5 bg-white/90 rounded-full px-3 py-[5px]">
+                  <MaterialIconsRounded name="schedule" size={14} color="#1D1D1F" />
+                  <Text className="text-ink text-[12px] font-semibold">
+                    {heroDaysUntil === 0
+                      ? t("tripDashboard.startToday")
+                      : heroDaysUntil === 1
+                        ? t("tripDashboard.startTomorrow")
+                        : t("tripDashboard.daysUntil", { count: heroDaysUntil })}
+                  </Text>
                 </Box>
-              );
-            })()}
+              </Box>
+            ) : null}
           </Box>
         </Pressable>
       ) : (

@@ -4,13 +4,15 @@ import {
   updateTripApi,
   addDestinationApi,
   removeDestinationApi,
-  reorderDestinationsApi,
+  reorderTripStopsApi,
   updateDestinationApi,
-  moveDestinationApi,
+  moveTripStopApi,
 } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 import { TRIP_OFFLINE_GC_MS } from "../../../constants/trip-offline-cache";
 import { getTripCacheDestinations, mapTripCacheValue } from "../utils/tripCache";
+
+const getDestinationClientId = (dest) => dest?.stopId ?? dest?.id;
 
 export function useTripDetail(id) {
   return useQuery({
@@ -27,16 +29,7 @@ export function useUpdateTrip(id) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data) => updateTripApi(id, data),
-    onSuccess: (response) => {
-      const updated = response?.data;
-      if (updated?.id != null) {
-        queryClient.setQueryData(QUERY_KEYS.trips.list(), (old) => {
-          if (!Array.isArray(old)) return old;
-          return old.map((t) =>
-            String(t.id) === String(updated.id) ? { ...t, ...updated } : t,
-          );
-        });
-      }
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.detail(id) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
     },
@@ -112,7 +105,14 @@ export function useRemoveDestination(tripId) {
 export function useReorderDestinations(tripId) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ dayNumber, orderedIds }) => reorderDestinationsApi(tripId, { dayNumber, orderedIds }),
+    mutationFn: ({ dayNumber, orderedIds }) => {
+      const updates = orderedIds.map((stopId, index) => ({
+        stopId,
+        dayNumber,
+        sequence: index + 1,
+      }));
+      return reorderTripStopsApi(tripId, updates);
+    },
     onMutate: async ({ dayNumber, orderedIds }) => {
       const queryKey = QUERY_KEYS.trips.detail(tripId);
       await queryClient.cancelQueries({ queryKey });
@@ -123,7 +123,7 @@ export function useReorderDestinations(tripId) {
           const dayDests = destinations.filter((d) => d.dayNumber === dayNumber);
           const otherDests = destinations.filter((d) => d.dayNumber !== dayNumber);
           const reordered = orderedIds
-            .map((id) => dayDests.find((d) => String(d.id) === String(id)))
+            .map((id) => dayDests.find((d) => String(getDestinationClientId(d)) === String(id)))
             .filter(Boolean);
           return { ...trip, destinations: [...otherDests, ...reordered] };
         });
@@ -185,7 +185,14 @@ export function useUpdateDestination(tripId) {
 export function useMoveDestination(tripId) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ destId, newDayNumber, newOrder }) => moveDestinationApi(tripId, destId, { newDayNumber, newOrder }),
+    mutationFn: ({ destId, newDayNumber, newOrder, startTime, endTime, note }) =>
+      moveTripStopApi(tripId, destId, {
+        newDayNumber,
+        newOrder,
+        startTime,
+        endTime,
+        note,
+      }),
     onMutate: async ({ destId, newDayNumber, newOrder }) => {
       const queryKey = QUERY_KEYS.trips.detail(tripId);
       await queryClient.cancelQueries({ queryKey });
@@ -193,9 +200,9 @@ export function useMoveDestination(tripId) {
       queryClient.setQueryData(queryKey, (old) => {
         return mapTripCacheValue(old, (trip) => {
           const destinations = getTripCacheDestinations(trip);
-          const dest = destinations.find((d) => String(d.id) === String(destId));
+          const dest = destinations.find((d) => String(getDestinationClientId(d)) === String(destId));
           if (!dest) return trip;
-          const filtered = destinations.filter((d) => String(d.id) !== String(destId));
+          const filtered = destinations.filter((d) => String(getDestinationClientId(d)) !== String(destId));
           const moved = { ...dest, dayNumber: newDayNumber, order: newOrder };
           return { ...trip, destinations: [...filtered, moved] };
         });

@@ -1,9 +1,10 @@
 import crypto from "node:crypto";
+import { appConfig } from "../../config/app.config.js";
 
 const VNPAY_URL = process.env.VNPAY_URL || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
 const VNPAY_TMN_CODE = process.env.VNPAY_TMN_CODE || "";
 const VNPAY_HASH_SECRET = process.env.VNPAY_HASH_SECRET || "";
-const VNPAY_RETURN_URL = process.env.VNPAY_RETURN_URL || "http://localhost:8081/api/payments/vnpay-return";
+const VNPAY_RETURN_URL = appConfig.vnpayReturnUrl;
 
 /**
  * Sort object keys alphabetically (A-Z) and build a query-string-like key=value& string.

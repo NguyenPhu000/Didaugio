@@ -19,7 +19,6 @@ const CANVAS = "#FFFFFF";
 const PARCHMENT = "#F5F5F7";
 const PRIMARY = "#0066CC";
 const MUTED = "rgba(0,0,0,0.48)";
-const BORDER_SOFT = "rgba(0,0,0,0.06)";
 
 /* ── Helpers ── */
 

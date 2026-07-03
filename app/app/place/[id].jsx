@@ -356,7 +356,7 @@ export default function PlaceDetailScreen() {
           message: t("place.detail.toast.saved"),
         });
       }
-    } catch (error) {
+    } catch (_error) {
       // Revert lại trạng thái nếu gọi API lỗi
       setIsSavedLocal(currentStatus);
       addToast({
@@ -493,13 +493,6 @@ export default function PlaceDetailScreen() {
   const priceRangeLabel = useMemo(() => formatPriceRange(place, t), [place, t]);
   const addressLine = useMemo(() => getAddressLine(place), [place]);
   const creatorName = useMemo(() => getCreatorName(place, t), [place, t]);
-  const ownerName = useMemo(
-    () =>
-      place?.business?.businessName ||
-      place?.createdByUser?.profile?.fullName ||
-      creatorName,
-    [place?.business?.businessName, place?.createdByUser?.profile?.fullName, creatorName],
-  );
   const websiteUrl = useMemo(() => toExternalUrl(place?.website), [place?.website]);
   const facebookUrl = useMemo(() => toExternalUrl(place?.facebook), [place?.facebook]);
   const hasContactInfo = Boolean(

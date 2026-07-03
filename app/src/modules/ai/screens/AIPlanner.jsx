@@ -22,13 +22,13 @@ import { MaterialIconsRounded } from "../../../components/primitives/MaterialIco
 import { LinearGradient } from "expo-linear-gradient";
 import { useAIPlanner } from "../hooks/useAIPlanner";
 import { useGroqChat } from "../hooks/useGroqChat";
-import { useNhiVoice } from "../hooks/useNhiVoice";
+import { useGenieVoice } from "../hooks/useGenieVoice";
 import { VoiceWaveIndicator } from "../components/VoiceWaveIndicator";
 import {
-  NHI_INTENT_TYPES,
-  buildNhiSuggestionGroups,
-  detectNhiIntent,
-} from "../lib/nhiAssistantExperience";
+  GENIE_INTENT_TYPES,
+  buildGenieSuggestionGroups,
+  detectGenieIntent,
+} from "../lib/genieAssistantExperience";
 import { TOKENS } from "../../../constants/design-tokens";
 import { PlacePreviewCard } from "../../../components/composed/PlacePreviewCard";
 import { TAB_BAR_HEIGHT } from "../../../../app/(tabs)/_layout";
@@ -38,7 +38,7 @@ import { Glow } from "../../../components/reacticx/glow";
 const ACCENT = "#3478F6";
 const SUGGESTION_COLORS = ["#0EA5E9", "#F97316", "#10B981", "#8B5CF6"];
 
-function NhiAvatar({ size = 40 }) {
+function GenieAvatar({ size = 40 }) {
   return (
     <Glow
       size={Math.max(2, size * 0.08)}
@@ -235,7 +235,7 @@ export function AIPlanner() {
     stopRecordingAndTranscribe,
     speakText,
     stopSpeaking,
-  } = useNhiVoice();
+  } = useGenieVoice();
   const lastVoiceTranscriptVersionRef = useRef(0);
 
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -266,7 +266,7 @@ export function AIPlanner() {
     const hour = new Date().getHours();
     const timeOfDay =
       hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
-    return buildNhiSuggestionGroups({
+    return buildGenieSuggestionGroups({
       hasSavedPlaces: false,
       timeOfDay,
     });
@@ -320,10 +320,10 @@ export function AIPlanner() {
       if (!message || isLoading) return;
       setInputText("");
 
-      const intent = detectNhiIntent(message);
+      const intent = detectGenieIntent(message);
       const shouldSpeakReply = options.inputMode === "voice";
 
-      if (intent === NHI_INTENT_TYPES.ITINERARY) {
+      if (intent === GENIE_INTENT_TYPES.ITINERARY) {
         await sendMessage(message);
         if (shouldSpeakReply) {
           speakText(t("aiPlanner.voiceItineraryQueued"));
@@ -444,7 +444,7 @@ export function AIPlanner() {
         >
           {!isUser ? (
             <View className="ml-1 flex-row items-center gap-1.5">
-              <NhiAvatar size={18} />
+              <GenieAvatar size={18} />
               <Text
                 className="text-[10px] uppercase tracking-[0.8px] text-zinc-500"
                 style={{ fontFamily: TOKENS.font.semibold }}
@@ -668,7 +668,7 @@ export function AIPlanner() {
         />
         <View className="flex-row items-center justify-between">
           <View className="min-w-0 flex-1 flex-row items-center gap-3">
-            <NhiAvatar size={46} />
+            <GenieAvatar size={46} />
             <View className="min-w-0 flex-1">
               <Text
                 className="text-[16px] leading-5 text-slate-950"

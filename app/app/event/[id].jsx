@@ -3,11 +3,9 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  FlatList,
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -28,7 +26,6 @@ import {
   useCreateMoment,
 } from "../../src/modules/explore/hooks/useEvents";
 import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../src/constants/design-tokens";
 import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../src/lib/media-url";
@@ -87,7 +84,7 @@ export default function EventDetailScreen() {
   }, [id]);
 
   // Tính số lượng chặng đã check-in
-  const destinations = event?.trip?.destinations || [];
+  const destinations = useMemo(() => event?.trip?.destinations || [], [event?.trip?.destinations]);
   const totalDestinations = destinations.length;
   const checkedInCount = useMemo(() => {
     let count = 0;
@@ -152,7 +149,7 @@ export default function EventDetailScreen() {
         }
       ]
     );
-  }, [id, user, router, joinEventMutation, refetch]);
+  }, [id, user, router, joinEventMutation, refetch, t]);
 
   // Xử lý check-in chụp ảnh tại chặng
   const handleCheckInChặng = useCallback(async (dest) => {
@@ -226,7 +223,7 @@ export default function EventDetailScreen() {
     } finally {
       setUploadingChặngId(null);
     }
-  }, [id, event, createMomentMutation, refetch, refetchMoments]);
+  }, [id, event, createMomentMutation, refetch, refetchMoments, t]);
 
   if (isLoading) {
     return (
@@ -682,4 +679,3 @@ export default function EventDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({});

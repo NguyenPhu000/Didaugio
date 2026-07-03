@@ -1,7 +1,6 @@
 import { memo, useCallback, useState, useMemo } from "react";
 import { FlatList, Pressable, Text, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
-import { BlurView } from "expo-blur";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated, {
@@ -11,7 +10,6 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
 } from "../../../constants/design-tokens";
 import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../../lib/media-url";

@@ -1,8 +1,37 @@
 import prisma from "../../config/prismaClient.js";
+import {
+  BOOKING_STATUS,
+  BOOKING_TRIP_LINK_STATUS,
+  DOMAIN_JOB_TYPES,
+  PAYMENT_STATUS,
+  TRIP_BOOKING_ATTACH_MODE,
+  TRIP_DATE_RANGE_MODE,
+  TRIP_PLAN_SOURCE,
+  TRIP_PLAN_STATUS,
+  TRIP_STOP_FULFILLMENT_STATUS,
+  isAdminOrSuperAdminRole,
+} from "../../config/constants.js";
 import ServiceError from "../../utils/serviceError.js";
 
 const TEMP_SEQUENCE_BASE = 100000;
-const ADMIN_ROLE_NAMES = new Set(["admin", "superadmin", "super_admin"]);
+
+const TRIP_PLAN_PLACE_SELECT = {
+  id: true,
+  name: true,
+  address: true,
+  latitude: true,
+  longitude: true,
+  thumbnail: true,
+  images: {
+    take: 1,
+    orderBy: [{ isCover: "desc" }, { order: "asc" }],
+    select: { secureUrl: true, thumbnailUrl: true, imageData: true },
+  },
+  ratingAvg: true,
+  category: { select: { id: true, name: true } },
+  district: { select: { id: true, name: true, code: true } },
+  ward: { select: { id: true, name: true, wardType: true } },
+};
 
 const serviceError = (message, statusCode, errorCode) =>
   new ServiceError(message, statusCode, errorCode);
@@ -16,12 +45,19 @@ export const diffDaysInclusive = (startDate, targetDate) => {
 };
 
 const deriveStopFulfillmentStatus = (booking) => {
-  if (booking.status === "cancelled") return "cancelled";
-  if (booking.status === "completed") return "visited";
-  if (booking.status === "confirmed" || booking.paymentStatus === "paid") {
-    return "scheduled";
+  if (booking.status === BOOKING_STATUS.CANCELLED) {
+    return TRIP_STOP_FULFILLMENT_STATUS.CANCELLED;
   }
-  return "pending";
+  if (booking.status === BOOKING_STATUS.COMPLETED) {
+    return TRIP_STOP_FULFILLMENT_STATUS.VISITED;
+  }
+  if (
+    booking.status === BOOKING_STATUS.CONFIRMED ||
+    booking.paymentStatus === PAYMENT_STATUS.PAID
+  ) {
+    return TRIP_STOP_FULFILLMENT_STATUS.SCHEDULED;
+  }
+  return TRIP_STOP_FULFILLMENT_STATUS.PENDING;
 };
 
 const buildDateRangeUpdate = (trip, bookingUseDate) => {
@@ -39,8 +75,77 @@ const buildDateRangeUpdate = (trip, bookingUseDate) => {
 };
 
 const canManageTrip = (trip, actorUserId, actor) => {
-  const roleName = actor?.role?.name?.toLowerCase?.();
-  return trip.userId === actorUserId || ADMIN_ROLE_NAMES.has(roleName);
+  return (
+    trip.userId === actorUserId || isAdminOrSuperAdminRole(actor?.roleId)
+  );
+};
+
+const toLegacyDestination = (stop) => {
+  const legacyDestinationId = stop.metadata?.legacyDestinationId ?? null;
+  return {
+    id: legacyDestinationId ?? stop.id,
+    stopId: stop.id,
+    tripId: stop.tripId,
+    placeId: stop.placeId,
+    dayNumber: stop.dayNumber,
+    order: stop.sequence,
+    sequence: stop.sequence,
+    startTime: stop.arrivalTime,
+    endTime: stop.departureTime,
+    durationMinutes: stop.durationMinutes,
+    note: stop.note,
+    transportToNext: stop.transportToNext,
+    distanceToNext:
+      stop.routeDistanceM == null
+        ? null
+        : Number((Number(stop.routeDistanceM) / 1000).toFixed(2)),
+    estimatedCost: stop.estimatedCost,
+    status: stop.fulfillmentStatus,
+    visitedAt: stop.fulfilledAt,
+    place: stop.place,
+    metadata: stop.metadata,
+  };
+};
+
+const normalizeTripPlanDetail = (tripPlan, { legacyTrip = null, isSaved = false } = {}) => ({
+  id: legacyTrip?.id ?? tripPlan.id,
+  tripPlanId: tripPlan.id,
+  userId: tripPlan.userId,
+  title: tripPlan.title,
+  description: tripPlan.description,
+  thumbnail: legacyTrip?.thumbnail ?? tripPlan.coverImage,
+  coverImage: tripPlan.coverImage,
+  startDate: tripPlan.startDate,
+  endDate: tripPlan.endDate,
+  totalDays: tripPlan.totalDays,
+  totalDistance: legacyTrip?.totalDistance ?? null,
+  totalDistanceM: tripPlan.totalDistanceM,
+  estimatedCost: tripPlan.estimatedCost,
+  travelStyle: legacyTrip?.travelStyle ?? null,
+  groupSize: legacyTrip?.groupSize ?? 1,
+  isAiGenerated: legacyTrip?.isAiGenerated ?? tripPlan.source === TRIP_PLAN_SOURCE.AI_GENERATED,
+  aiPrompt: legacyTrip?.aiPrompt ?? null,
+  status: tripPlan.status,
+  isPublic: legacyTrip?.isPublic ?? false,
+  viewCount: legacyTrip?.viewCount ?? 0,
+  cloneCount: legacyTrip?.cloneCount ?? 0,
+  source: tripPlan.source,
+  metadata: tripPlan.metadata,
+  createdAt: tripPlan.createdAt,
+  updatedAt: tripPlan.updatedAt,
+  destinations: (tripPlan.stops || []).map(toLegacyDestination),
+  stops: tripPlan.stops || [],
+  isSaved,
+});
+
+const findStopByClientId = (stops, clientId) => {
+  const id = Number(clientId);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  return (
+    stops.find((stop) => Number(stop.id) === id) ||
+    stops.find((stop) => Number(stop.metadata?.legacyDestinationId) === id) ||
+    null
+  );
 };
 
 const getNextStopSequence = async (tx, { tripId, dayNumber }) => {
@@ -56,7 +161,7 @@ const getNextStopSequence = async (tx, { tripId, dayNumber }) => {
 const enqueueRouteRebuildTx = async (tx, { tripId, actorUserId, reason }) => {
   await tx.domainJob.create({
     data: {
-      type: "RebuildRouteMetrics",
+      type: DOMAIN_JOB_TYPES.REBUILD_ROUTE_METRICS,
       aggregate: "TripPlan",
       aggregateId: tripId,
       payload: {
@@ -69,12 +174,201 @@ const enqueueRouteRebuildTx = async (tx, { tripId, actorUserId, reason }) => {
 };
 
 export const makeTripPlanService = (prismaClient = prisma) => {
+  const getTripPlanWithStops = (tx, tripPlanId) =>
+    tx.tripPlan.findUnique({
+      where: { id: tripPlanId },
+      include: {
+        stops: {
+          orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
+          include: { place: { select: TRIP_PLAN_PLACE_SELECT } },
+        },
+      },
+    });
+
+  const createShadowTripPlan = async (tx, legacyTrip) => {
+    const startDate = legacyTrip.startDate || new Date();
+    const endDate = legacyTrip.endDate || startDate;
+    const plan = await tx.tripPlan.create({
+      data: {
+        userId: legacyTrip.userId,
+        title: legacyTrip.title,
+        description: legacyTrip.description,
+        coverImage: legacyTrip.thumbnail,
+        startDate,
+        endDate,
+        totalDays: legacyTrip.totalDays || 1,
+        status: legacyTrip.status === TRIP_PLAN_STATUS.COMPLETED
+          ? TRIP_PLAN_STATUS.COMPLETED
+          : TRIP_PLAN_STATUS.PLANNED,
+        source: legacyTrip.isAiGenerated
+          ? TRIP_PLAN_SOURCE.AI_GENERATED
+          : TRIP_PLAN_SOURCE.IMPORTED,
+        estimatedCost: legacyTrip.estimatedCost,
+        totalDistanceM:
+          legacyTrip.totalDistance == null
+            ? null
+            : Math.round(Number(legacyTrip.totalDistance) * 1000),
+        metadata: {
+          legacyTripId: legacyTrip.id,
+          createdFor: "mobile_contract_compat",
+        },
+      },
+    });
+
+    if (legacyTrip.destinations?.length) {
+      // Normalize sequence trong trường hợp legacy data có cặp (dayNumber, order) trùng nhau
+      const seenKeys = new Map();
+      const stopsData = legacyTrip.destinations.map((dest) => {
+        const dayNum = dest.dayNumber ?? 1;
+        const rawSeq = dest.order ?? 0;
+        const key = `${dayNum}`;
+        const usedSeqs = seenKeys.get(key) ?? new Set();
+        let seq = rawSeq;
+        while (usedSeqs.has(seq)) seq += 1;
+        usedSeqs.add(seq);
+        seenKeys.set(key, usedSeqs);
+        return {
+          tripId: plan.id,
+          placeId: dest.placeId,
+          dayNumber: dayNum,
+          sequence: seq,
+          note: dest.note,
+          arrivalTime: dest.startTime,
+          departureTime: dest.endTime,
+          durationMinutes: dest.durationMinutes,
+          estimatedCost: dest.estimatedCost,
+          transportToNext: dest.transportToNext,
+          routeDistanceM:
+            dest.distanceToNext == null
+              ? null
+              : Math.round(Number(dest.distanceToNext) * 1000),
+          fulfillmentStatus:
+            dest.status === "visited"
+              ? TRIP_STOP_FULFILLMENT_STATUS.VISITED
+              : TRIP_STOP_FULFILLMENT_STATUS.PENDING,
+          fulfilledAt: dest.visitedAt,
+          metadata: { legacyDestinationId: dest.id },
+        };
+      });
+
+      await tx.tripStop.createMany({ data: stopsData, skipDuplicates: true });
+    }
+
+    return getTripPlanWithStops(tx, plan.id);
+  };
+
+  const resolveTripPlan = async (tx, { tripId, actorUserId, includeStops = false }) => {
+    let tripPlan = await tx.tripPlan.findFirst({
+      where: { id: tripId, userId: actorUserId },
+      ...(includeStops
+        ? {
+            include: {
+              stops: {
+                orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
+                include: { place: { select: TRIP_PLAN_PLACE_SELECT } },
+              },
+            },
+          }
+        : {}),
+    });
+
+    if (tripPlan) {
+      return { tripPlan, legacyTrip: null };
+    }
+
+    tripPlan = await tx.tripPlan.findFirst({
+      where: {
+        userId: actorUserId,
+        metadata: { path: ["legacyTripId"], equals: tripId },
+      },
+      ...(includeStops
+        ? {
+            include: {
+              stops: {
+                orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
+                include: { place: { select: TRIP_PLAN_PLACE_SELECT } },
+              },
+            },
+          }
+        : {}),
+    });
+
+    const legacyTrip = await tx.trip.findFirst({
+      where: { id: tripId, userId: actorUserId },
+      include: {
+        destinations: {
+          orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+          include: { place: { select: TRIP_PLAN_PLACE_SELECT } },
+        },
+      },
+    });
+
+    if (tripPlan) {
+      return {
+        tripPlan: includeStops ? tripPlan : await getTripPlanWithStops(tx, tripPlan.id),
+        legacyTrip,
+      };
+    }
+
+    if (!legacyTrip) {
+      return { tripPlan: null, legacyTrip: null };
+    }
+
+    try {
+      return {
+        tripPlan: await createShadowTripPlan(tx, legacyTrip),
+        legacyTrip,
+      };
+    } catch (err) {
+      // Race condition: một transaction đồng thời đã tạo shadow plan trước.
+      // Bắt P2002 (unique_constraint) và fallback fetch plan đã được tạo.
+      if (err?.code === "P2002") {
+        const existingPlan = await tx.tripPlan.findFirst({
+          where: {
+            userId: actorUserId,
+            metadata: { path: ["legacyTripId"], equals: tripId },
+          },
+          include: {
+            stops: {
+              orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
+              include: { place: { select: TRIP_PLAN_PLACE_SELECT } },
+            },
+          },
+        });
+        return { tripPlan: existingPlan, legacyTrip };
+      }
+      throw err;
+    }
+  };
+
+  const getTripDetail = async ({ tripId, actorUserId }) =>
+    prismaClient.$transaction(async (tx) => {
+      const { tripPlan, legacyTrip } = await resolveTripPlan(tx, {
+        tripId,
+        actorUserId,
+        includeStops: true,
+      });
+
+      if (!tripPlan) return null;
+
+      const saved = legacyTrip
+        ? await tx.savedTrip.findUnique({
+            where: { userId_tripId: { userId: actorUserId, tripId: legacyTrip.id } },
+          })
+        : null;
+
+      return normalizeTripPlanDetail(tripPlan, {
+        legacyTrip,
+        isSaved: !!saved,
+      });
+    });
+
   const linkBookingToTrip = async ({
     bookingId,
     tripId,
     actorUserId,
-    attachMode = "create_stop_if_missing",
-    dateRangeMode = "reject_outside_range",
+    attachMode = TRIP_BOOKING_ATTACH_MODE.CREATE_STOP_IF_MISSING,
+    dateRangeMode = TRIP_DATE_RANGE_MODE.REJECT_OUTSIDE_RANGE,
   }) =>
     prismaClient.$transaction(async (tx) => {
       const booking = await tx.booking.findUnique({
@@ -111,6 +405,7 @@ export const makeTripPlanService = (prismaClient = prisma) => {
         where: { id: actorUserId },
         select: {
           id: true,
+          roleId: true,
           role: { select: { name: true } },
         },
       });
@@ -144,7 +439,10 @@ export const makeTripPlanService = (prismaClient = prisma) => {
       const isOutsideRange =
         computedDayNumber < 1 || computedDayNumber > trip.totalDays;
 
-      if (isOutsideRange && dateRangeMode === "reject_outside_range") {
+      if (
+        isOutsideRange &&
+        dateRangeMode === TRIP_DATE_RANGE_MODE.REJECT_OUTSIDE_RANGE
+      ) {
         throw serviceError(
           "Ngày sử dụng booking nằm ngoài thời gian của chuyến đi",
           400,
@@ -152,7 +450,10 @@ export const makeTripPlanService = (prismaClient = prisma) => {
         );
       }
 
-      if (isOutsideRange && dateRangeMode === "expand_trip_range") {
+      if (
+        isOutsideRange &&
+        dateRangeMode === TRIP_DATE_RANGE_MODE.EXPAND_TRIP_RANGE
+      ) {
         const rangeUpdate = buildDateRangeUpdate(trip, booking.useDate);
         effectiveTrip = await tx.tripPlan.update({
           where: { id: trip.id },
@@ -189,7 +490,10 @@ export const makeTripPlanService = (prismaClient = prisma) => {
         }
       }
 
-      if (!matchedStop && attachMode === "create_stop_if_missing") {
+      if (
+        !matchedStop &&
+        attachMode === TRIP_BOOKING_ATTACH_MODE.CREATE_STOP_IF_MISSING
+      ) {
         const nextSequence = await getNextStopSequence(tx, {
           tripId: effectiveTrip.id,
           dayNumber: computedDayNumber,
@@ -227,7 +531,7 @@ export const makeTripPlanService = (prismaClient = prisma) => {
           tripId: effectiveTrip.id,
           stopId: matchedStop?.id ?? null,
           linkedById: actorUserId,
-          status: "linked",
+          status: BOOKING_TRIP_LINK_STATUS.LINKED,
           metadata: {
             linkedFrom: "manual_or_business_rule",
             bookingStatus: booking.status,
@@ -238,7 +542,7 @@ export const makeTripPlanService = (prismaClient = prisma) => {
           tripId: effectiveTrip.id,
           stopId: matchedStop?.id ?? null,
           linkedById: actorUserId,
-          status: "linked",
+          status: BOOKING_TRIP_LINK_STATUS.LINKED,
           unlinkedAt: null,
           metadata: {
             relinkedAt: new Date().toISOString(),
@@ -297,6 +601,7 @@ export const makeTripPlanService = (prismaClient = prisma) => {
         where: { id: actorUserId },
         select: {
           id: true,
+          roleId: true,
           role: { select: { name: true } },
         },
       });
@@ -371,14 +676,273 @@ export const makeTripPlanService = (prismaClient = prisma) => {
       };
     });
 
+  const reorderClientDestinations = async ({
+    tripId,
+    actorUserId,
+    dayNumber,
+    orderedIds,
+  }) => {
+    const { tripPlan } = await prismaClient.$transaction((tx) =>
+      resolveTripPlan(tx, { tripId, actorUserId, includeStops: true }),
+    );
+
+    if (!tripPlan) {
+      throw serviceError("Khong tim thay chuyen di", 404, "TRIP_NOT_FOUND");
+    }
+
+    const dayStops = tripPlan.stops.filter(
+      (stop) => Number(stop.dayNumber) === Number(dayNumber),
+    );
+    const updates = orderedIds.map((id, index) => {
+      const stop = findStopByClientId(dayStops, id);
+      if (!stop) {
+        throw serviceError(
+          "Mot hoac nhieu diem dung khong thuoc chuyen di nay",
+          400,
+          "TRIP_STOP_MISMATCH",
+        );
+      }
+      return {
+        stopId: stop.id,
+        dayNumber: Number(dayNumber),
+        sequence: index + 1,
+      };
+    });
+
+    await reorderDestinations({
+      tripId: tripPlan.id,
+      actorUserId,
+      updates,
+    });
+
+    const refreshed = await getTripDetail({ tripId, actorUserId });
+    return refreshed?.destinations?.filter(
+      (dest) => Number(dest.dayNumber) === Number(dayNumber),
+    ) || [];
+  };
+
+  const moveClientDestination = async ({
+    tripId,
+    actorUserId,
+    destinationId,
+    newDayNumber,
+    newOrder = 0,
+    startTime,
+    endTime,
+    note,
+  }) => {
+    const { tripPlan } = await prismaClient.$transaction((tx) =>
+      resolveTripPlan(tx, { tripId, actorUserId, includeStops: true }),
+    );
+
+    if (!tripPlan) {
+      throw serviceError("Khong tim thay chuyen di", 404, "TRIP_NOT_FOUND");
+    }
+
+    const stop = findStopByClientId(tripPlan.stops, destinationId);
+    if (!stop) {
+      throw serviceError("Khong tim thay dia diem", 404, "TRIP_STOP_NOT_FOUND");
+    }
+
+    const targetDayNumber = Number(newDayNumber);
+    const targetIndex = Math.max(Number(newOrder) || 0, 0);
+    const targetDayStops = tripPlan.stops
+      .filter(
+        (item) =>
+          Number(item.dayNumber) === targetDayNumber &&
+          Number(item.id) !== Number(stop.id),
+      )
+      .sort((a, b) => a.sequence - b.sequence);
+    targetDayStops.splice(Math.min(targetIndex, targetDayStops.length), 0, stop);
+
+    await reorderDestinations({
+      tripId: tripPlan.id,
+      actorUserId,
+      updates: targetDayStops.map((item, index) => ({
+        stopId: item.id,
+        dayNumber: targetDayNumber,
+        sequence: index + 1,
+      })),
+    });
+
+    const data = {};
+    if (startTime !== undefined) data.arrivalTime = startTime;
+    if (endTime !== undefined) data.departureTime = endTime;
+    if (note !== undefined) data.note = note;
+    if (Object.keys(data).length > 0) {
+      await prismaClient.tripStop.update({
+        where: { id: stop.id },
+        data,
+      });
+    }
+
+    const refreshed = await getTripDetail({ tripId, actorUserId });
+    return refreshed?.destinations?.find(
+      (dest) => Number(dest.stopId) === Number(stop.id),
+    ) || null;
+  };
+
+  const removeClientDestination = async ({ tripId, actorUserId, destinationId }) => {
+    const { tripPlan } = await prismaClient.$transaction((tx) =>
+      resolveTripPlan(tx, { tripId, actorUserId, includeStops: true }),
+    );
+
+    if (!tripPlan) {
+      throw serviceError("Không tìm thấy chuyến đi", 404, "TRIP_NOT_FOUND");
+    }
+
+    const stop = findStopByClientId(tripPlan.stops, destinationId);
+    if (!stop) {
+      throw serviceError("Không tìm thấy địa điểm", 404, "TRIP_STOP_NOT_FOUND");
+    }
+
+    await prismaClient.$transaction(async (tx) => {
+      await tx.bookingTripLink.deleteMany({
+        where: { stopId: stop.id },
+      });
+
+      await tx.tripStop.delete({
+        where: { id: stop.id },
+      });
+
+      const remainingDayStops = tripPlan.stops
+        .filter(
+          (item) =>
+            Number(item.dayNumber) === Number(stop.dayNumber) &&
+            Number(item.id) !== Number(stop.id),
+        )
+        .sort((a, b) => a.sequence - b.sequence);
+
+      for (let index = 0; index < remainingDayStops.length; index += 1) {
+        await tx.tripStop.update({
+          where: { id: remainingDayStops[index].id },
+          data: { sequence: index + 1 },
+        });
+      }
+
+      await enqueueRouteRebuildTx(tx, {
+        tripId: tripPlan.id,
+        actorUserId,
+        reason: "trip_stop_removed",
+      });
+    });
+
+    return true;
+  };
+
+  const updateClientDestination = async ({ tripId, actorUserId, destinationId, data }) => {
+    const { tripPlan } = await prismaClient.$transaction((tx) =>
+      resolveTripPlan(tx, { tripId, actorUserId, includeStops: true }),
+    );
+
+    if (!tripPlan) {
+      throw serviceError("Không tìm thấy chuyến đi", 404, "TRIP_NOT_FOUND");
+    }
+
+    const stop = findStopByClientId(tripPlan.stops, destinationId);
+    if (!stop) {
+      throw serviceError("Không tìm thấy địa điểm", 404, "TRIP_STOP_NOT_FOUND");
+    }
+
+    const updateData = {};
+    if (data.startTime !== undefined) updateData.arrivalTime = data.startTime;
+    if (data.endTime !== undefined) updateData.departureTime = data.endTime;
+    if (data.durationMinutes !== undefined) updateData.durationMinutes = parseInt(data.durationMinutes, 10);
+    if (data.note !== undefined) updateData.note = data.note;
+    if (data.transportToNext !== undefined) updateData.transportToNext = data.transportToNext;
+    if (data.distanceToNext !== undefined) {
+      updateData.routeDistanceM = data.distanceToNext !== null ? Math.round(Number(data.distanceToNext) * 1000) : null;
+    }
+
+    const updatedStop = await prismaClient.tripStop.update({
+      where: { id: stop.id },
+      data: updateData,
+      include: { place: { select: TRIP_PLAN_PLACE_SELECT } },
+    });
+
+    await prismaClient.$transaction(async (tx) => {
+      await enqueueRouteRebuildTx(tx, {
+        tripId: tripPlan.id,
+        actorUserId,
+        reason: "trip_stop_updated",
+      });
+    });
+
+    return toLegacyDestination(updatedStop);
+  };
+
+  const addClientDestination = async (tripId, actorUserId, {
+    placeId,
+    dayNumber = 1,
+    order = 0,
+    note,
+    startTime,
+    endTime,
+    transportToNext,
+    distanceToNext,
+  }) => {
+    const { tripPlan } = await prismaClient.$transaction((tx) =>
+      resolveTripPlan(tx, { tripId, actorUserId, includeStops: true }),
+    );
+
+    if (!tripPlan) {
+      throw serviceError("Không tìm thấy chuyến đi", 404, "TRIP_NOT_FOUND");
+    }
+
+    const targetDayNumber = Number(dayNumber);
+    const nextSequence = await getNextStopSequence(prismaClient, {
+      tripId: tripPlan.id,
+      dayNumber: targetDayNumber,
+    });
+
+    const createdStop = await prismaClient.tripStop.create({
+      data: {
+        tripId: tripPlan.id,
+        placeId: Number(placeId),
+        dayNumber: targetDayNumber,
+        sequence: nextSequence,
+        arrivalTime: startTime ?? null,
+        departureTime: endTime ?? null,
+        durationMinutes: 60,
+        note: note ?? null,
+        transportToNext: transportToNext ?? null,
+        routeDistanceM: distanceToNext !== undefined && distanceToNext !== null ? Math.round(Number(distanceToNext) * 1000) : null,
+        fulfillmentStatus: TRIP_STOP_FULFILLMENT_STATUS.PENDING,
+      },
+      include: { place: { select: TRIP_PLAN_PLACE_SELECT } },
+    });
+
+    await prismaClient.$transaction(async (tx) => {
+      await enqueueRouteRebuildTx(tx, {
+        tripId: tripPlan.id,
+        actorUserId,
+        reason: "trip_stop_added",
+      });
+    });
+
+    return toLegacyDestination(createdStop);
+  };
+
   return {
+    getTripDetail,
     linkBookingToTrip,
     reorderDestinations,
+    reorderClientDestinations,
+    moveClientDestination,
+    removeClientDestination,
+    updateClientDestination,
+    addClientDestination,
   };
 };
 
 export const tripPlanService = makeTripPlanService();
+export const getTripDetail = tripPlanService.getTripDetail;
 export const linkBookingToTrip = tripPlanService.linkBookingToTrip;
 export const reorderDestinations = tripPlanService.reorderDestinations;
+export const reorderClientDestinations = tripPlanService.reorderClientDestinations;
+export const moveClientDestination = tripPlanService.moveClientDestination;
+export const removeClientDestination = tripPlanService.removeClientDestination;
+export const updateClientDestination = tripPlanService.updateClientDestination;
+export const addClientDestination = tripPlanService.addClientDestination;
 
 export default tripPlanService;

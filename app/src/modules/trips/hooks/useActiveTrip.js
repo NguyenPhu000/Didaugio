@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { useQuery } from "@tanstack/react-query";
-import { getTripDetailApi } from "../api/tripsApi";
+import {
+  getTripDetailApi,
+  syncTripSessionApi,
+  endTripSessionApi,
+} from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 
 const ACTIVE_TRIP_KEY = "ACTIVE_TRIP_ID";
@@ -133,17 +137,38 @@ export function useActiveTrip() {
     setActiveTripIdState(String(tripId));
     setVisitedIds([]);
     setIsPaused(false);
+
+    try {
+      await syncTripSessionApi(tripId, { status: "active", visitedIds: [] });
+    } catch {
+      // Allow offline fallback
+    }
   }, []);
 
   const markArrived = useCallback(
     async (destId) => {
       if (!activeTripId || destId == null) return;
+      let nextVisitedIds = [];
       setVisitedIds((prev) => {
-        if (prev.includes(destId)) return prev;
+        if (prev.includes(destId)) {
+          nextVisitedIds = prev;
+          return prev;
+        }
         const next = [...prev, destId];
+        nextVisitedIds = next;
         void setVisitedDestinations(activeTripId, next);
         return next;
       });
+
+      try {
+        await syncTripSessionApi(activeTripId, {
+          status: "active",
+          currentStopId: destId,
+          visitedIds: nextVisitedIds,
+        });
+      } catch {
+        // Allow offline fallback
+      }
     },
     [activeTripId],
   );
@@ -152,17 +177,35 @@ export function useActiveTrip() {
     if (!activeTripId) return;
     await safeAsyncStorage.setItem(pausedKey(activeTripId), "true");
     setIsPaused(true);
-  }, [activeTripId]);
+
+    try {
+      await syncTripSessionApi(activeTripId, { status: "paused", visitedIds });
+    } catch {
+      // Allow offline fallback
+    }
+  }, [activeTripId, visitedIds]);
 
   const resumeActiveTrip = useCallback(async () => {
     if (!activeTripId) return;
     await safeAsyncStorage.removeItem(pausedKey(activeTripId));
     setIsPaused(false);
-  }, [activeTripId]);
+
+    try {
+      await syncTripSessionApi(activeTripId, { status: "active", visitedIds });
+    } catch {
+      // Allow offline fallback
+    }
+  }, [activeTripId, visitedIds]);
 
   const exitActiveTrip = useCallback(async () => {
-    if (activeTripId) {
-      await safeAsyncStorage.removeItem(pausedKey(activeTripId));
+    const tripIdToExit = activeTripId;
+    if (tripIdToExit) {
+      await safeAsyncStorage.removeItem(pausedKey(tripIdToExit));
+      try {
+        await endTripSessionApi(tripIdToExit, { status: "completed" });
+      } catch {
+        // Allow offline fallback
+      }
     }
     await clearActiveTripId();
     setActiveTripIdState(null);

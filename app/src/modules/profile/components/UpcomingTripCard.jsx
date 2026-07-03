@@ -1,8 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { TOKENS } from "../../../constants/design-tokens";
 
 import { resolveMediaUrl, resolvePlaceImageUri } from "../../../lib/media-url";
 

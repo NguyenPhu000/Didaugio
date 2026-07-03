@@ -7,7 +7,6 @@ import { Pressable, Text, View } from "react-native";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import i18n from "@/i18n";
 
-const PRIMARY = "#0077b8";
 
 export class ErrorBoundary extends Component {
   constructor(props) {

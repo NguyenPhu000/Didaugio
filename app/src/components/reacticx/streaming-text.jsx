@@ -24,6 +24,7 @@ function FadeChar({ char, delay }) {
       delay,
       withTiming(0, { duration: FADE_DURATION, easing: Easing.out(Easing.ease) })
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [delay]);
 
   const animatedStyle = useAnimatedStyle(() => ({

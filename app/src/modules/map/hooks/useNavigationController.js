@@ -232,23 +232,54 @@ export function useNavigationController({
     [fetchRouteFromServer],
   );
 
+  const getFallbackRoute = useCallback((origin) => {
+    const dest = destinationRef.current;
+    if (!origin || !dest) return null;
+    const distanceVal = getDistanceM(origin.latitude, origin.longitude, dest.lat, dest.lng);
+    return {
+      coordinates: [
+        { latitude: origin.latitude, longitude: origin.longitude },
+        { latitude: dest.lat, longitude: dest.lng },
+      ],
+      distance: distanceVal,
+      duration: Math.round(distanceVal / 11),
+      legs: [
+        {
+          distance: { value: distanceVal },
+          duration: { value: Math.round(distanceVal / 11) },
+          steps: [],
+        },
+      ],
+      source: "fallback",
+    };
+  }, []);
+
   const confirmReroute = useCallback(
     (location) => {
       const existingPromise = shadowPromiseRef.current;
       const routePromise = existingPromise || fetchRouteFromServer(location);
 
       routePromise
-        .then(applyRoute)
+        .then((mappedRoute) => {
+          if (mappedRoute) {
+            applyRoute(mappedRoute);
+          } else {
+            const fallback = getFallbackRoute(location);
+            if (fallback) applyRoute(fallback);
+          }
+        })
         .catch((error) => {
           if (isAbortError(error)) return;
-          if (!existingPromise) return;
           fetchRouteFromServer(location)
             .then(applyRoute)
-            .catch(() => {});
+            .catch(() => {
+              const fallback = getFallbackRoute(location);
+              if (fallback) applyRoute(fallback);
+            });
         })
         .catch(() => {});
     },
-    [applyRoute, fetchRouteFromServer],
+    [applyRoute, fetchRouteFromServer, getFallbackRoute],
   );
 
   const cancelShadowReroute = useCallback(() => {

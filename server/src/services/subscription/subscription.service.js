@@ -1,6 +1,6 @@
 import prisma from "../../config/prismaClient.js";
 import logger from "../../config/logger.js";
-import { PAGINATION } from "../../config/constants.js";
+import { PAGINATION, PAYMENT_METHODS } from "../../config/constants.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
 import { buildQrUrl } from "../payment/sepay.service.js";
@@ -79,7 +79,7 @@ async function createInvoiceWithQr(subscription, amount, billingCycle, notes, re
       amount,
       currency: "VND",
       status: "pending",
-      paymentMethod: "sepay_qr",
+      paymentMethod: PAYMENT_METHODS.SEPAY_QR,
       transactionRef,
       qrUrl,
       dueDate,
@@ -571,7 +571,7 @@ export async function upgrade(businessId, targetPlanId) {
       amount: chargeAmount,
       currency: "VND",
       status: "pending",
-      paymentMethod: "sepay_qr",
+      paymentMethod: PAYMENT_METHODS.SEPAY_QR,
       transactionRef,
       qrUrl,
       dueDate,

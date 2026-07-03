@@ -76,7 +76,7 @@ export function useLogin() {
         // Show helpful message for inactive accounts
         if (err?.code === "ACCOUNT_INACTIVE") {
           setError(
-            err?.message || "Tài khoản chưa được kích hoạt. Vui lòng đăng nhập bằng Google để kích hoạt.",
+            err?.message || i18n.t("authValidation.accountInactive"),
           );
           return false;
         }

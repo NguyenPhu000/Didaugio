@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -20,7 +19,6 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../../src/stores/authStore";
 import { TOKENS } from "../../src/constants/design-tokens";
-import { TAB_SCREEN_PADDING } from "../(tabs)/tabTheme";
 import {
   useProfile,
   useUpdateAvatar,
@@ -273,7 +271,7 @@ export default function EditProfileScreen() {
       const compressed = await compressAvatarToDataUrl(selectedUri);
       setAvatarPreview(compressed.dataUrl);
       setPendingAvatarDataUrl(compressed.dataUrl);
-    } catch (error) {
+    } catch (_error) {
       Alert.alert(
         t("editProfile.errors.processImage"),
         t("editProfile.errors.tryAgain"),
@@ -363,7 +361,7 @@ export default function EditProfileScreen() {
 
       Alert.alert(t("editProfile.success.title"), t("editProfile.success.message"));
       router.back();
-    } catch (error) {
+    } catch (_error) {
       Alert.alert(
         t("editProfile.errors.updateFailed"),
         t("editProfile.errors.tryAgainLater"),

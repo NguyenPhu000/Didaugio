@@ -8,7 +8,6 @@ import {
 } from "@gorhom/bottom-sheet";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { cn } from "../../lib/cn";
-import { TOKENS } from "../../constants/design-tokens";
 
 const ACCENT_BLUE = "#3478F6";
 

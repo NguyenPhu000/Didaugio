@@ -1,8 +1,9 @@
 import fetch from "node-fetch";
 import NodeCache from "node-cache";
+import { appConfig } from "../../config/app.config.js";
 import logger from "../../config/logger.js";
 
-const OSRM_URL = process.env.OSRM_URL || "http://localhost:5000";
+const OSRM_URL = appConfig.osrmUrl;
 const TABLE_TIMEOUT_MS = Number(process.env.ROUTING_TABLE_TIMEOUT_MS || 8000);
 const MAX_TABLE_POINTS = 100;
 const TABLE_CACHE_TTL = Number(process.env.TABLE_CACHE_TTL_SEC || 120);

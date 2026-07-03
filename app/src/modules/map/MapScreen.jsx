@@ -5,10 +5,10 @@ import {
   Pressable,
   StatusBar,
   Text,
-  TextInput,
   View,
   LayoutAnimation,
   useWindowDimensions,
+  Alert,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import * as Location from "expo-location";
@@ -17,10 +17,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { Marker } from "react-native-maps";
-import * as ImagePicker from "expo-image-picker";
-import * as ImageManipulator from "expo-image-manipulator";
 import { Image } from "expo-image";
-import { Alert } from "react-native";
 import { usePingEvent, useEventDetail, useCreateMoment } from "../explore/hooks/useEvents";
 import { MaterialIconsRounded } from "../../components/primitives/MaterialIconsRounded";
 import { useHomeData } from "./hooks/useHomeData";
@@ -29,6 +26,8 @@ import { useBoundaryData } from "./hooks/useBoundaryData";
 import { useFilterState } from "./hooks/useFilterState";
 import { useMapLocationTracker } from "./hooks/useMapLocationTracker";
 import { useNavigationController } from "./hooks/useNavigationController";
+import { SearchOverlay } from "./components/SearchOverlay";
+import { CheckInButton } from "./components/CheckInButton";
 import MapView from "./components/MapView";
 import RoutePolyline from "./components/RoutePolyline";
 import SnapLine from "./components/SnapLine";
@@ -127,24 +126,6 @@ const MAP_CANVAS_STYLE = {
   height: "100%",
 };
 const ARRIVING_SOON_RADIUS_M = 150;
-
-const GlassPanel = ({ style, children, intensity = 40 }) => (
-  <BlurView
-    intensity={intensity}
-    tint="dark"
-    style={[
-      {
-        backgroundColor: MAP_UI_THEME.backgroundSoft,
-        borderWidth: 1,
-        borderColor: MAP_UI_THEME.border,
-        overflow: "hidden",
-      },
-      style,
-    ]}
-  >
-    {children}
-  </BlurView>
-);
 
 function buildLocalDateTime(ymd, hhmm) {
   if (!ymd || !hhmm) return null;
@@ -343,21 +324,6 @@ export default function MapScreen() {
     [allPlaces, searchText, activeCategoryId, activeArea, quickFilters],
   );
 
-  const currentUserNickname = useMemo(() => {
-    const nickname =
-      authUser?.profile?.nickname || authUser?.nickname || authUser?.username;
-    if (typeof nickname === "string" && nickname.trim()) {
-      return nickname.trim();
-    }
-
-    const fullName = authUser?.profile?.fullName || authUser?.fullName;
-    if (typeof fullName === "string" && fullName.trim()) {
-      return fullName.trim();
-    }
-
-    return null;
-  }, [authUser]);
-
   const handleActiveLocationUpdate = useCallback((location) => {
     navigationTickHandlerRef.current?.(location);
   }, []);
@@ -540,86 +506,12 @@ export default function MapScreen() {
   }, [
     isActiveTripMode,
     activeEventId,
+    activeTripLocation,
     activeTripLocation?.latitude,
     activeTripLocation?.longitude,
     activeNextDestination?.placeId,
     activeTrip.isPaused,
   ]);
-
-  // 4. Giả lập 3 đốm Neon nhấp nháy xung quanh đích chặng
-  const neonSpots = useMemo(() => {
-    if (!isActiveTripMode || !activeTargetPoint) return [];
-    const baseLat = activeTargetPoint.lat;
-    const baseLng = activeTargetPoint.lng;
-    return [
-      { id: "neon-1", latitude: baseLat + 0.0004, longitude: baseLng - 0.0003, color: "#38BDF8" },
-      { id: "neon-2", latitude: baseLat - 0.0003, longitude: baseLng + 0.0005, color: "#34C759" },
-      { id: "neon-3", latitude: baseLat + 0.0002, longitude: baseLng + 0.0004, color: "#FF2D55" },
-    ];
-  }, [isActiveTripMode, activeTargetPoint?.lat, activeTargetPoint?.lng]);
-
-  // 5. Chụp ảnh check-in nén 0.6 và gửi lên API moments khi bấm ĐĂNG KHOẢNH KHẮC
-  const handleCameraCheckIn = useCallback(async () => {
-    if (!activeEventId || !activeNextDestination) return;
-
-    const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
-    if (cameraStatus.status !== "granted") {
-      Alert.alert(t("mapScreen.accessRequired"), t("mapScreen.cameraRequired"));
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
-
-    if (result.canceled || !result.assets?.[0]?.uri) return;
-
-    setIsMomentUploading(true);
-
-    try {
-      // Nén & crop 1:1
-      const manipulated = await ImageManipulator.manipulateAsync(
-        result.assets[0].uri,
-        [{ resize: { width: 400, height: 400 } }],
-        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
-      );
-
-      const response = await fetch(manipulated.uri);
-      const blob = await response.blob();
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onloadend = async () => {
-        const base64data = reader.result;
-
-        try {
-          await createMomentMutation.mutateAsync({
-            id: activeEventId,
-            payload: {
-              placeId: activeNextDestination.placeId,
-              imageUrl: base64data,
-            },
-          });
-
-          // Lưu AsyncStorage đánh dấu hoàn thành chặng đi này
-          const key = `didaugio:event:${activeEventId}:checkedin:${activeNextDestination.placeId}`;
-          await safeAsyncStorage.setItem(key, "true");
-
-          Alert.alert(t("mapScreen.checkinSuccess"), t("mapScreen.checkinSuccessDesc"));
-        } catch (err) {
-          Alert.alert(t("mapScreen.checkinFailed"), err?.message || t("mapScreen.checkinFailedDesc"));
-        } finally {
-          setIsMomentUploading(false);
-        }
-      };
-    } catch (err) {
-      console.error(err);
-      Alert.alert(t("mapScreen.imageError"), t("mapScreen.imageErrorDesc"));
-      setIsMomentUploading(false);
-    }
-  }, [activeEventId, activeNextDestination]);
 
   // Bật auto-follow + bay camera về vị trí hiện tại khi vào chế độ.
   useEffect(() => {
@@ -641,8 +533,7 @@ export default function MapScreen() {
   }, [
     isActiveTripMode,
     activeTrip.isPaused,
-    activeTripLocation?.latitude,
-    activeTripLocation?.longitude,
+    activeTripLocation,
   ]);
 
   // Mode cho active trip: lấy từ transportToNext của chặng hiện tại.
@@ -919,6 +810,7 @@ export default function MapScreen() {
     isActiveTripMode,
     isVoiceMuted,
     navigationController.distanceToNextTurn,
+    t,
   ]);
 
   // Nhắc nhở di chuyển thông minh trước 10 phút.
@@ -966,7 +858,7 @@ export default function MapScreen() {
       };
     }
     return null;
-  }, [isActiveTripMode, activeTrip.isPaused, currentDestination, activeNextDestination, dayDateMap]);
+  }, [isActiveTripMode, activeTrip.isPaused, currentDestination, activeNextDestination, dayDateMap, t]);
 
   // Phát hiện sắp đến nơi (< 150m) → mở bottom banner không chặn bản đồ.
   useEffect(() => {
@@ -1187,6 +1079,7 @@ export default function MapScreen() {
     isActiveLastDestination,
     activeTrip.activeTripId,
     activeTripDetail,
+    t,
     updateActiveTripMutation,
   ]);
 
@@ -1204,7 +1097,7 @@ export default function MapScreen() {
       lng: currentLocation.longitude,
       name: MAP_TEXT.common.currentLocationName,
     };
-  }, [currentLocation?.latitude, currentLocation?.longitude]);
+  }, [currentLocation]);
 
   const routeDestinationFromSelectedPlace = useMemo(() => {
     if (
@@ -1447,7 +1340,7 @@ export default function MapScreen() {
     if (matchedPlace) {
       setSelectedPlace(matchedPlace);
     }
-  }, [params, mapPlaces, router]);
+  }, [activeTrip, params, mapPlaces, router]);
 
   return (
     <View
@@ -1721,45 +1614,6 @@ export default function MapScreen() {
               to={navigationController.snappedPoint}
             />
           ) : null}
-
-          {isActiveTripMode && neonSpots.length > 0
-            ? neonSpots.map((spot) => (
-                <Marker
-                  key={spot.id}
-                  coordinate={{ latitude: spot.latitude, longitude: spot.longitude }}
-                  anchor={{ x: 0.5, y: 0.5 }}
-                  tracksViewChanges={false}
-                >
-                  <View style={{ alignItems: "center", justifyContent: "center" }}>
-                    <View
-                      style={{
-                        backgroundColor: spot.color,
-                        opacity: 0.25,
-                        width: 20,
-                        height: 20,
-                        borderRadius: 10,
-                        position: "absolute",
-                      }}
-                    />
-                    <View
-                      style={{
-                        backgroundColor: spot.color,
-                        borderColor: "#FFFFFF",
-                        borderWidth: 1,
-                        width: 10,
-                        height: 10,
-                        borderRadius: 5,
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 2,
-                        elevation: 3,
-                      }}
-                    />
-                  </View>
-                </Marker>
-              ))
-            : null}
 
           {isActiveTripMode &&
           navigationController.isGpsLost &&
@@ -2246,156 +2100,16 @@ export default function MapScreen() {
         pointerEvents="box-none"
       >
         {!isTripPreviewMode && !isActiveTripMode ? (
-          <View
-            className="flex-row items-center px-4 gap-3"
-            pointerEvents="auto"
-          >
-            {/* Search bar — full width glass pill */}
-            <Pressable
-              onPress={searchOpen ? undefined : openSearch}
-              style={{ flex: 1 }}
-            >
-              <BlurView
-                tint="light"
-                intensity={80}
-                style={{
-                  borderRadius: 24,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  overflow: "hidden",
-                  height: 44,
-                  backgroundColor: "rgba(255, 255, 255, 0.88)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255, 255, 255, 0.5)",
-                }}
-              >
-                <View
-                  style={{
-                    width: 44,
-                    height: 44,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <MaterialIconsRounded
-                    name="search"
-                    size={20}
-                    color={
-                      searchOpen
-                        ? TOKENS.color.primary[500]
-                        : TOKENS.color.neutral[500]
-                    }
-                  />
-                </View>
-
-                {searchOpen ? (
-                  <>
-                    <TextInput
-                      ref={searchInputRef}
-                      value={searchText}
-                      onChangeText={setSearchText}
-                      placeholder={MAP_TEXT.search.placeholder}
-                      placeholderTextColor={TOKENS.color.neutral[400]}
-                      style={{
-                        flex: 1,
-                        height: 44,
-                        fontSize: 14,
-                        color: TOKENS.color.neutral[900],
-                        fontFamily: TOKENS.font.medium,
-                      }}
-                      returnKeyType="search"
-                      onSubmitEditing={() => Keyboard.dismiss()}
-                      autoCorrect={false}
-                    />
-                    {searchText.length > 0 ? (
-                      <Pressable
-                        onPress={() => setSearchText("")}
-                        hitSlop={8}
-                        style={{
-                          width: 36,
-                          height: 44,
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <MaterialIconsRounded
-                          name="close"
-                          size={18}
-                          color={TOKENS.color.neutral[400]}
-                        />
-                      </Pressable>
-                    ) : null}
-                    <Pressable
-                      onPress={closeSearch}
-                      hitSlop={8}
-                      style={{
-                        paddingRight: 14,
-                        paddingLeft: 4,
-                        height: 44,
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: TOKENS.color.neutral[500],
-                          fontSize: 13,
-                          fontFamily: TOKENS.font.medium,
-                        }}
-                      >
-                        {MAP_TEXT.search.cancel}
-                      </Text>
-                    </Pressable>
-                  </>
-                ) : (
-                  <Text
-                    style={{
-                      flex: 1,
-                      color: TOKENS.color.neutral[400],
-                      fontSize: 14,
-                      fontFamily: TOKENS.font.medium,
-                      paddingRight: 14,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {MAP_TEXT.search.placeholder}
-                  </Text>
-                )}
-              </BlurView>
-            </Pressable>
-
-            {/* Profile avatar */}
-            {!searchOpen ? (
-              <Pressable
-                onPress={() => router.push("/(tabs)/profile")}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "rgba(255, 255, 255, 0.88)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255, 255, 255, 0.5)",
-                  overflow: "hidden",
-                }}
-              >
-                {currentUserAvatarUri ? (
-                  <Image
-                    source={{ uri: currentUserAvatarUri }}
-                    style={{ width: 44, height: 44 }}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <MaterialIconsRounded
-                    name="person"
-                    size={22}
-                    color={TOKENS.color.neutral[600]}
-                  />
-                )}
-              </Pressable>
-            ) : null}
-          </View>
+          <SearchOverlay
+            searchOpen={searchOpen}
+            searchText={searchText}
+            setSearchText={setSearchText}
+            openSearch={openSearch}
+            closeSearch={closeSearch}
+            searchInputRef={searchInputRef}
+            currentUserAvatarUri={currentUserAvatarUri}
+            onAvatarPress={() => router.push("/(tabs)/profile")}
+          />
         ) : null}
 
         {!isTripPreviewMode && !isActiveTripMode ? (
@@ -2408,44 +2122,18 @@ export default function MapScreen() {
           />
         ) : null}
 
-{/* Phương tiện active trip tự động lấy từ transportToNext */}
-
-        {isActiveTripMode && !activeTrip.isPaused && activeEventId && activeDistanceToTarget <= 50 ? (
-          <Pressable
-            onPress={handleCameraCheckIn}
-            disabled={isMomentUploading}
-            style={{
-              position: "absolute",
-              right: 14,
-              bottom: FLOATING_TAB_CLEARANCE + 180,
-              zIndex: 99,
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: "#34C759",
-                borderColor: "#FFFFFF",
-                borderWidth: 1.5,
-                borderRadius: 24,
-                width: 48,
-                height: 48,
-                alignItems: "center",
-                justifyContent: "center",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 6,
-                elevation: 6,
-              }}
-            >
-              {isMomentUploading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <MaterialIconsRounded name="photo-camera" size={22} color="#FFFFFF" />
-              )}
-            </View>
-          </Pressable>
-        ) : null}
+        <CheckInButton
+          activeEventId={activeEventId}
+          activeNextDestination={activeNextDestination}
+          activeDistanceToTarget={activeDistanceToTarget}
+          isActiveTripMode={isActiveTripMode}
+          isTripPaused={activeTrip.isPaused}
+          createMomentMutation={createMomentMutation}
+          isMomentUploading={isMomentUploading}
+          setIsMomentUploading={setIsMomentUploading}
+          t={t}
+          bottomOffset={FLOATING_TAB_CLEARANCE + 180}
+        />
 
         {/* Floating action buttons — vertical stack */}
         <View

@@ -2,6 +2,8 @@ import * as paymentService from "../../services/payment/payment.service.js";
 import * as vnpayService from "../../services/payment/vnpay.service.js";
 import * as sepayService from "../../services/payment/sepay.service.js";
 import * as cashflowService from "../../services/payment/cashflow.service.js";
+import { appConfig } from "../../config/app.config.js";
+import { PAYMENT_METHODS } from "../../config/constants.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import { rejectRefundSchema } from "../../models/schemas/payment/payment.schema.js";
 
@@ -239,11 +241,11 @@ export async function sepayCheckoutForm(req, res, next) {
       roleId: 1, // admin-level to bypass ownership check for form rendering
     });
 
-    if (!payment || payment.paymentMethod !== "SEPAY") {
+    if (!payment || payment.paymentMethod !== PAYMENT_METHODS.SEPAY) {
       return res.status(404).send("Payment not found");
     }
 
-    const serverBase = process.env.API_BASE_URL || `http://localhost:8081`;
+    const serverBase = appConfig.apiBaseUrl;
     const clientType = req.query.clientType || "mobile";
     const successUrl = `${serverBase}/api/payments/sepay-return?clientType=${clientType}&bookingId=${payment.bookingId}&paymentId=${payment.id}`;
     const errorUrl = `${successUrl}&status=error`;

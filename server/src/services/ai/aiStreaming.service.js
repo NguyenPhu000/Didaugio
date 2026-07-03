@@ -47,7 +47,7 @@ export async function streamPlaceSummary(prompt, res) {
 /**
  * Stream a chat response via SSE.
  * @param {Array<{role: string, content: string}>} messages
- * @param {string} system  - System instruction for em Nhi persona
+ * @param {string} system  - System instruction for Genie persona
  * @param {import('express').Response} res
  */
 export async function streamChat(messages, system, res) {

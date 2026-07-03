@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useUIStore } from "../stores/uiStore";
-import { resolveLanguage } from "../i18n";
-import i18n from "../i18n";
+import i18n, { resolveLanguage } from "../i18n";
+
 
 /**
  * Syncs the persisted language preference from uiStore with i18next.

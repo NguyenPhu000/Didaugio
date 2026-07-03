@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { formatDate, formatDistance } from "../../utils/tripHelpers";
 import { cn } from "@/lib/cn";
-import s, { T, STYLES } from "../../utils/tripDetailTokens";
+import { T, STYLES } from "../../utils/tripDetailTokens";
 
 export const TripHeader = memo(function TripHeader({
   trip,

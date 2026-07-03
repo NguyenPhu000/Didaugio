@@ -3,6 +3,7 @@ import {
   USER_STATUS,
   PAGINATION,
   ROLES,
+  BCRYPT_SALT_ROUNDS,
   canAssignRoleId,
   canManageRoleId,
   isSuperAdminRole,
@@ -219,7 +220,7 @@ export const createUser = async (userData) => {
       });
 
   const bcrypt = await import("bcrypt");
-  const hashedPassword = await bcrypt.hash(password, 13);
+  const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
   const newUser = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
@@ -320,7 +321,7 @@ export const updateUser = async (id, updateData) => {
 
   if (password) {
     const bcrypt = await import("bcrypt");
-    userData.password = await bcrypt.hash(password, 13);
+    userData.password = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
   }
 
   // Handle username update

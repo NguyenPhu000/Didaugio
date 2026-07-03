@@ -10,7 +10,7 @@ import { useExplore } from "../../src/modules/explore/hooks/useExplore";
 import { useExploreLocation } from "../../src/modules/explore/hooks/useExploreLocation";
 import { ExploreListScaffold } from "../../src/modules/explore/components/ExploreListScaffold";
 import { ExplorePlaceList } from "../../src/modules/explore/components/ExplorePlaceList";
-import { distanceMeters, formatDistance } from "../../src/modules/explore/utils/geo";
+import { distanceMeters } from "../../src/modules/explore/utils/geo";
 
 
 export default function ExploreNearbyScreen() {

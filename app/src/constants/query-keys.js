@@ -40,6 +40,7 @@ export const QUERY_KEYS = {
   notifications: {
     all: () => ["notifications"],
     list: (filters) => ["notifications", "list", filters],
+    unreadCount: () => ["notifications", "unread-count"],
   },
   payments: {
     detail: (id) => ["payments", "detail", id],

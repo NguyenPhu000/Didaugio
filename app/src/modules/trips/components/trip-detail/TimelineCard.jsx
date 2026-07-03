@@ -8,7 +8,6 @@ import { ScaleDecorator } from "react-native-draggable-flatlist";
 import { TRIP_STATUS_META } from "../../utils/tripTheme";
 import { formatPrice, formatDestinationTimeLabel, formatDuration } from "../../utils/tripHelpers";
 import { T, ALPHA } from "../../utils/tripDetailTokens";
-import { cn } from "@/lib/cn";
 import { StatusBadge } from "./StatusBadge";
 
 import { resolvePlaceImageUri } from "../../../../lib/media-url";

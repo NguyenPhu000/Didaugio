@@ -6,7 +6,7 @@ import React, {
   Children,
   useCallback,
 } from "react";
-import { View, StyleSheet, Modal, TouchableOpacity } from "react-native";
+import { StyleSheet, Modal, TouchableOpacity } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,

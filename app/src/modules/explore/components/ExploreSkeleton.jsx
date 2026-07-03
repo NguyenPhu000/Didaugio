@@ -1,7 +1,6 @@
 import { memo } from "react";
-import { Dimensions, StyleSheet, View } from "react-native";
+import { Dimensions, View } from "react-native";
 import { Skeleton } from "../../../components/ui/Skeleton.jsx";
-import { TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 
 const SCREEN_W = Dimensions.get("window").width;

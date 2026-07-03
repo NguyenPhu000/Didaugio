@@ -337,23 +337,29 @@ export async function generateItinerary(preferences, places) {
   try {
     parsed = JSON.parse(rawText);
   } catch {
-    const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/) || rawText.match(/(\{[\s\S]*\})/);
-    if (jsonMatch?.[1]) {
-      try {
-        parsed = JSON.parse(jsonMatch[1].trim());
-      } catch {
+    try {
+      const repaired = repairTruncatedJson(rawText);
+      parsed = JSON.parse(repaired);
+    } catch {
+      const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/) || rawText.match(/(\{[\s\S]*\})/);
+      if (jsonMatch?.[1]) {
+        try {
+          const repairedInner = repairTruncatedJson(jsonMatch[1].trim());
+          parsed = JSON.parse(repairedInner);
+        } catch {
+          throw new ServiceError(
+            "AI trả về JSON không hợp lệ và không thể tự phục hồi",
+            502,
+            ERROR_CODES.VALIDATION_ERROR,
+          );
+        }
+      } else {
         throw new ServiceError(
-          "AI trả về JSON không hợp lệ",
+          "AI trả về JSON không hợp lệ và không tìm thấy cấu trúc JSON phù hợp",
           502,
           ERROR_CODES.VALIDATION_ERROR,
         );
       }
-    } else {
-      throw new ServiceError(
-        "AI trả về JSON không hợp lệ",
-        502,
-        ERROR_CODES.VALIDATION_ERROR,
-      );
     }
   }
 
@@ -412,4 +418,52 @@ export async function generateItinerary(preferences, places) {
   }
 
   return { parsed, raw: rawText, tokensUsed, responseTimeMs };
+}
+
+function repairTruncatedJson(jsonStr) {
+  let str = jsonStr.trim();
+  str = str.replace(/^```json\s*/i, "").replace(/```$/, "");
+  
+  const stack = [];
+  let inString = false;
+  let escaped = false;
+  
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    
+    if (char === '{' || char === '[') {
+      stack.push(char);
+    } else if (char === '}') {
+      if (stack[stack.length - 1] === '{') stack.pop();
+    } else if (char === ']') {
+      if (stack[stack.length - 1] === '[') stack.pop();
+    }
+  }
+  
+  if (inString) {
+    str += '"';
+  }
+  
+  str = str.replace(/,\s*$/, "");
+  
+  while (stack.length > 0) {
+    const last = stack.pop();
+    if (last === '{') str += '}';
+    else if (last === '[') str += ']';
+  }
+  
+  return str;
 }

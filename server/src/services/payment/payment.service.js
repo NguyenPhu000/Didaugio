@@ -1,7 +1,12 @@
 import crypto from "node:crypto";
 import prisma from "../../config/prismaClient.js";
 import logger from "../../config/logger.js";
-import { PAYMENT_STATUS, BOOKING_STATUS } from "../../config/constants.js";
+import {
+  PAYMENT_METHODS,
+  PAYMENT_STATUS,
+  BOOKING_STATUS,
+} from "../../config/constants.js";
+import { appConfig } from "../../config/app.config.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
 import * as vnpayService from "./vnpay.service.js";
@@ -95,9 +100,9 @@ export async function createCheckout({
 
   const normalizedMethod = paymentMethod.toUpperCase();
   if (
-    normalizedMethod !== "VNPAY" &&
-    normalizedMethod !== "MOMO" &&
-    normalizedMethod !== "SEPAY"
+    normalizedMethod !== PAYMENT_METHODS.VNPAY &&
+    normalizedMethod !== PAYMENT_METHODS.MOMO &&
+    normalizedMethod !== PAYMENT_METHODS.SEPAY
   ) {
     throw new ServiceError(
       "Phương thức thanh toán không hỗ trợ",
@@ -152,11 +157,11 @@ export async function createCheckout({
 
   // Build the return URL: server endpoint that handles redirect logic.
   // For mobile, the server will forward to the app deep link.
-  const serverBase = process.env.API_BASE_URL || `http://localhost:8081`;
+  const serverBase = appConfig.apiBaseUrl;
   const returnPath =
-    normalizedMethod === "VNPAY"
+    normalizedMethod === PAYMENT_METHODS.VNPAY
       ? "vnpay-return"
-      : normalizedMethod === "MOMO"
+      : normalizedMethod === PAYMENT_METHODS.MOMO
         ? "momo-return"
         : "sepay-return";
   const returnUrl = `${serverBase}/api/payments/${returnPath}?clientType=${clientType}&bookingId=${booking.id}&paymentId=${payment.id}`;
@@ -166,7 +171,7 @@ export async function createCheckout({
   let sepayFields = null;
   let qrInfo = null;
   try {
-    if (normalizedMethod === "VNPAY") {
+    if (normalizedMethod === PAYMENT_METHODS.VNPAY) {
       paymentUrl = vnpayService.createPaymentUrl({
         amount,
         transactionRef,
@@ -174,7 +179,7 @@ export async function createCheckout({
         ipAddress: ipAddress || "127.0.0.1",
         returnUrl,
       });
-    } else if (normalizedMethod === "SEPAY") {
+    } else if (normalizedMethod === PAYMENT_METHODS.SEPAY) {
       // QR chuyển khoản trực tiếp (không dùng gateway redirect).
       // Nội dung CK = transactionRef → webhook bank match theo field này.
       const bankInfo = sepayService.getBankInfo();
@@ -402,7 +407,7 @@ export async function processVNPayIPN(query) {
         businessId: booking.businessId,
         businessOwnerId: booking.service?.business?.ownerId,
         source: "payment_gateway",
-        paymentMethod: "VNPAY",
+        paymentMethod: PAYMENT_METHODS.VNPAY,
       });
 
       return vnpayService.buildIpnResponse("00", "Confirm success");
@@ -593,7 +598,7 @@ export async function processMoMoIPN(body) {
         businessId: booking.businessId,
         businessOwnerId: booking.service?.business?.ownerId,
         source: "payment_gateway",
-        paymentMethod: "MOMO",
+        paymentMethod: PAYMENT_METHODS.MOMO,
       });
 
       return momoService.buildIpnResponse(0, "Confirm success");
@@ -783,7 +788,7 @@ export async function processSePayIPN(body) {
         businessId: booking.businessId,
         businessOwnerId: booking.service?.business?.ownerId,
         source: "payment_gateway",
-        paymentMethod: "SEPAY",
+        paymentMethod: PAYMENT_METHODS.SEPAY,
       });
 
       return sepayService.buildIpnSuccess();
@@ -1027,7 +1032,7 @@ export async function processSePayBankWebhook(body, headers = {}, rawBody = null
         businessId: booking.businessId,
         businessOwnerId: booking.service?.business?.ownerId,
         source: "sepay_bank_webhook",
-        paymentMethod: "SEPAY",
+        paymentMethod: PAYMENT_METHODS.SEPAY,
       });
 
       return sepayService.buildIpnSuccess();

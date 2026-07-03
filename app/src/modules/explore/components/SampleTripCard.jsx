@@ -8,10 +8,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../constants/design-tokens";
+import { TOKENS } from "../../../constants/design-tokens";
 import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../../lib/media-url";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);

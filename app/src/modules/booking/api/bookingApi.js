@@ -13,8 +13,15 @@ export const getMyBookingDetailApi = (bookingId) =>
 export const getMyBookingQRApi = (bookingId) =>
   client.get(ENDPOINTS.profile.bookingQr(bookingId));
 
-export const linkMyBookingToTripApi = (bookingId, tripId) =>
-  client.post(ENDPOINTS.profile.bookingLinkTrip(bookingId), { tripId });
+export const linkBookingToTripApi = (
+  bookingId,
+  tripId,
+  data = {},
+) =>
+  client.post(
+    ENDPOINTS.profile.linkBookingToTrip(tripId, bookingId),
+    data,
+  );
 
 export async function cancelBookingApi(bookingId, { cancelReason } = {}) {
   const id = Number(bookingId);

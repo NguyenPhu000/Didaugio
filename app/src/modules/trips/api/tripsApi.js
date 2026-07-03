@@ -22,20 +22,14 @@ export const addDestinationApi = (tripId, data) =>
 export const removeDestinationApi = (tripId, destId) =>
   client.delete(ENDPOINTS.profile.removeDestination(tripId, destId));
 
-export const reorderDestinationsApi = (tripId, data) =>
-  client.patch(ENDPOINTS.profile.reorderDestinations(tripId), data);
-
-export const linkBookingToTripApi = (tripId, bookingId, data = {}) =>
-  client.post(ENDPOINTS.profile.linkBookingToTrip(tripId, bookingId), data);
-
 export const reorderTripStopsApi = (tripId, updates) =>
   client.patch(ENDPOINTS.profile.reorderTripStops(tripId), { updates });
 
 export const updateDestinationApi = (tripId, destId, data) =>
   client.patch(ENDPOINTS.profile.updateDestination(tripId, destId), data);
 
-export const moveDestinationApi = (tripId, destId, data) =>
-  client.patch(ENDPOINTS.profile.moveDestination(tripId, destId), data);
+export const moveTripStopApi = (tripId, stopId, data) =>
+  client.patch(ENDPOINTS.profile.moveTripStop(tripId, stopId), data);
 
 export const saveTripApi = (tripId) =>
   client.post(ENDPOINTS.profile.savedTripById(tripId));
@@ -45,8 +39,6 @@ export const unsaveTripApi = (tripId) =>
 
 export const getSavedTripsApi = () =>
   client.get(ENDPOINTS.profile.savedTrips);
-
-// ─── Trip Share ──────────────────────────────────────────────────────────────
 
 export const createTripShareApi = (tripId, data) =>
   client.post(ENDPOINTS.profile.tripShare(tripId), data);
@@ -60,7 +52,14 @@ export const deleteTripShareApi = (tripId, shareId) =>
 export const accessTripShareApi = (shareCode, data) =>
   client.post(ENDPOINTS.profile.accessTripShare(shareCode), data);
 
-// ─── Trip Duplicate ──────────────────────────────────────────────────────────
-
 export const duplicateTripApi = (tripId) =>
   client.post(ENDPOINTS.profile.duplicateTrip(tripId));
+
+export const syncTripSessionApi = (tripId, data) =>
+  client.post(ENDPOINTS.profile.tripSession(tripId), data);
+
+export const getTripSessionApi = (tripId) =>
+  client.get(ENDPOINTS.profile.tripSession(tripId));
+
+export const endTripSessionApi = (tripId, data) =>
+  client.delete(ENDPOINTS.profile.tripSession(tripId), { data });
