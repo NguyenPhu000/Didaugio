@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
@@ -256,7 +256,7 @@ export default function BookingScreen() {
     return candidate.getTime() >= today.getTime();
   };
 
-  const isSlotAvailable = (dateValue, timeValue) => {
+  const isSlotAvailable = useCallback((dateValue, timeValue) => {
     const slot = new Date(`${dateValue}T${timeValue}:00`);
     if (Number.isNaN(slot.getTime())) return false;
     if (slot.getTime() <= nowTs + 5 * 60 * 1000) return false;
@@ -282,7 +282,7 @@ export default function BookingScreen() {
     }
 
     return true;
-  };
+  }, [availabilityData, nowTs, selectedService]);
 
   const createdTripDefaultTitle = useMemo(() => {
     const placeLabel = place?.name ? ` - ${place.name}` : "";

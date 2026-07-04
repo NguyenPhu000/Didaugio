@@ -14,7 +14,6 @@ import * as Location from "expo-location";
 import { Sparkles, ArrowLeft, Trash2 } from "lucide-react-native";
 import {
   useSharedValue,
-  useAnimatedStyle,
   withRepeat,
   withSequence,
   withTiming,
