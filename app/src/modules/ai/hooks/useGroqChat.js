@@ -4,7 +4,7 @@ import { useAIContextStore } from "../../../stores/aiContextStore";
 import { useAIPlannerStore } from "../../../stores/aiPlannerStore";
 import { buildApiPayload } from "../lib/conversationMemory";
 import { mapAIError } from "../lib/mapAIError";
-import { normalizeNhiResponse } from "../lib/nhiAssistantExperience";
+import { normalizeGenieResponse } from "../lib/genieAssistantExperience";
 import { ENDPOINTS } from "../../../api/endpoints";
 import apiClient from "../../../api/client";
 import { AI_REQUEST_TIMEOUT } from "../../../constants/api";
@@ -195,7 +195,7 @@ export function useGroqChat() {
             },
           );
 
-          const normalized = normalizeNhiResponse(response);
+          const normalized = normalizeGenieResponse(response);
           const reply = normalized.reply || extractReply(response) || t("aiChat.noReplyContent");
           const relatedPlaces = normalizePlaces(normalized.suggestedPlaces);
 

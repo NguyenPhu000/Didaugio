@@ -1,5 +1,5 @@
 import prisma from "../../config/prismaClient.js";
-import { ROLES, USER_STATUS } from "../../config/constants.js";
+import { BCRYPT_SALT_ROUNDS, ROLES, USER_STATUS } from "../../config/constants.js";
 import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
 import { assertBusinessLimit } from "../subscription/subscriptionEntitlement.service.js";
@@ -119,7 +119,7 @@ export const createStaff = async (businessId, data) => {
   });
 
   const bcrypt = await import("bcrypt");
-  const hashedPassword = await bcrypt.hash(password, 13);
+  const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
   const user = await prisma.$transaction(async (tx) => {
     const newUser = await tx.user.create({
@@ -216,7 +216,7 @@ export const resetStaffPassword = async (businessId, staffId, newPassword) => {
   }
 
   const bcrypt = await import("bcrypt");
-  const hashedPassword = await bcrypt.hash(newPassword, 13);
+  const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 
   await prisma.user.update({
     where: { id: staffId },

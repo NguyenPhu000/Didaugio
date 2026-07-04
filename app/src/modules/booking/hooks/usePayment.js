@@ -1,17 +1,29 @@
 import { useCallback, useEffect, useRef } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { router } from "expo-router";
+import { QUERY_KEYS } from "../../../constants/query-keys";
 import {
   checkoutApi,
   getPaymentStatusApi,
   getPaymentByBookingApi,
 } from "../api/paymentApi";
 
-export const PENDING_PAYMENT_REF_KEY = "pendingPaymentRef";
 export const PENDING_PAYMENT_BOOKING_KEY = "pendingPaymentBookingId";
 
-const MAX_POLLS = 5;
+export const PAYMENT_STATUS = Object.freeze({
+  PAID: "paid",
+  FAILED: "failed",
+  FULLY_REFUNDED: "fully_refunded",
+  UNPAID: "unpaid",
+});
+
+export const BOOKING_STATUS = Object.freeze({
+  EXPIRED: "expired",
+  CANCELLED: "cancelled",
+});
+
+const DEFAULT_MAX_POLLS = 60;
 const POLL_INTERVAL_MS = 2000;
 
 export function useCheckout() {
@@ -21,6 +33,7 @@ export function useCheckout() {
 }
 
 export function usePollPaymentStatus() {
+  const queryClient = useQueryClient();
   const intervalRef = useRef(null);
   const pollCountRef = useRef(0);
   const isActiveRef = useRef(false);
@@ -36,7 +49,6 @@ export function usePollPaymentStatus() {
   const clearPendingKeys = useCallback(async () => {
     try {
       await safeAsyncStorage.multiRemove([
-        PENDING_PAYMENT_REF_KEY,
         PENDING_PAYMENT_BOOKING_KEY,
       ]);
     } catch {
@@ -44,8 +56,28 @@ export function usePollPaymentStatus() {
     }
   }, []);
 
+  const invalidatePaymentState = useCallback(
+    (bookingId, paymentId) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all() });
+      if (bookingId) {
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.bookings.detail(Number(bookingId)),
+        });
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.payments.byBooking(Number(bookingId)),
+        });
+      }
+      if (paymentId) {
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.payments.detail(Number(paymentId)),
+        });
+      }
+    },
+    [queryClient],
+  );
+
   const startPolling = useCallback(
-    async (transactionRef, paymentId, bookingId, options = {}) => {
+    async (paymentId, bookingId, options = {}) => {
       if (!bookingId) {
         console.warn("[usePayment] startPolling called without bookingId");
         return;
@@ -57,15 +89,14 @@ export function usePollPaymentStatus() {
       }
 
       // Cho phép tùy biến (vd: QR chuyển khoản cần poll lâu ~15 phút)
-      const maxPolls = options.maxPolls ?? MAX_POLLS;
+      const maxPolls = options.maxPolls ?? DEFAULT_MAX_POLLS;
       const intervalMs = options.intervalMs ?? POLL_INTERVAL_MS;
 
       pollCountRef.current = 0;
       isActiveRef.current = true;
 
-      // Save to safeAsyncStorage for app-resume recovery
+      // Save booking id for app-resume recovery.
       try {
-        await safeAsyncStorage.setItem(PENDING_PAYMENT_REF_KEY, transactionRef || "");
         await safeAsyncStorage.setItem(PENDING_PAYMENT_BOOKING_KEY, String(bookingId));
       } catch (err) {
         console.warn("[usePayment] safeAsyncStorage write failed:", err);
@@ -84,6 +115,7 @@ export function usePollPaymentStatus() {
 
         if (pollCountRef.current > maxPolls) {
           stopPolling();
+          invalidatePaymentState(bookingId, paymentId);
           await clearPendingKeys();
           router.replace(
             `/payment/result?status=pending_verify&bookingId=${bookingId}`
@@ -105,8 +137,9 @@ export function usePollPaymentStatus() {
 
           const status = payment?.status;
 
-          if (status === "paid") {
+          if (status === PAYMENT_STATUS.PAID) {
             stopPolling();
+            invalidatePaymentState(bookingId, paymentId);
             await clearPendingKeys();
             router.replace(
               `/payment/result?status=success&bookingId=${bookingId}`
@@ -114,8 +147,12 @@ export function usePollPaymentStatus() {
             return;
           }
 
-          if (status === "failed" || status === "fully_refunded") {
+          if (
+            status === PAYMENT_STATUS.FAILED ||
+            status === PAYMENT_STATUS.FULLY_REFUNDED
+          ) {
             stopPolling();
+            invalidatePaymentState(bookingId, paymentId);
             await clearPendingKeys();
             router.replace(
               `/payment/result?status=failed&bookingId=${bookingId}`
@@ -125,7 +162,7 @@ export function usePollPaymentStatus() {
 
           if (
             pollCountRef.current >= maxPolls &&
-            (status === "unpaid" || !status)
+            (status === PAYMENT_STATUS.UNPAID || !status)
           ) {
             // Check if booking was expired/cancelled by scheduler
             let reason = "";
@@ -134,8 +171,8 @@ export function usePollPaymentStatus() {
               const bookingData = bookingRes?.data ?? bookingRes;
               const bookingStatus = bookingData?.booking?.status;
               if (
-                bookingStatus === "expired" ||
-                bookingStatus === "cancelled"
+                bookingStatus === BOOKING_STATUS.EXPIRED ||
+                bookingStatus === BOOKING_STATUS.CANCELLED
               ) {
                 reason = "&reason=expired";
               }
@@ -143,6 +180,7 @@ export function usePollPaymentStatus() {
               // Ignore booking check error
             }
             stopPolling();
+            invalidatePaymentState(bookingId, paymentId);
             await clearPendingKeys();
             router.replace(
               `/payment/result?status=pending_verify&bookingId=${bookingId}${reason}`
@@ -152,6 +190,7 @@ export function usePollPaymentStatus() {
           console.warn("[usePayment] Poll error:", err);
           if (pollCountRef.current >= maxPolls) {
             stopPolling();
+            invalidatePaymentState(bookingId, paymentId);
             await clearPendingKeys();
             router.replace(
               `/payment/result?status=pending_verify&bookingId=${bookingId}`
@@ -160,7 +199,7 @@ export function usePollPaymentStatus() {
         }
       }, intervalMs);
     },
-    [stopPolling, clearPendingKeys]
+    [stopPolling, clearPendingKeys, invalidatePaymentState]
   );
 
   // Cleanup on unmount

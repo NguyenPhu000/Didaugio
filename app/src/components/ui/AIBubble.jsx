@@ -3,9 +3,7 @@ import {
   View,
   Text,
   ActivityIndicator,
-  useWindowDimensions,
   FlatList,
-  StyleSheet,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -26,7 +24,10 @@ export function AIBubble({
   const router = useRouter();
   const [dismissedPlaceIds, setDismissedPlaceIds] = useState([]);
 
-  const suggestedPlaces = !isUser && Array.isArray(places) ? places : [];
+  const suggestedPlaces = useMemo(
+    () => (!isUser && Array.isArray(places) ? places : []),
+    [isUser, places]
+  );
   const dismissedPlaceIdSet = useMemo(
     () => new Set(dismissedPlaceIds),
     [dismissedPlaceIds],
@@ -69,7 +70,7 @@ export function AIBubble({
         !isUser && hasSuggestionCards && "w-full max-w-full",
       )}
     >
-      {/* Avatar tròn nhỏ cho Trợ lý AI (Nhi) */}
+      {/* Avatar tròn nhỏ cho Trợ lý AI (Genie) */}
       {!isUser && (
         <View 
           className="w-8 h-8 rounded-full items-center justify-center border border-zinc-100 shadow-sm z-[2] bg-zinc-50"
@@ -82,7 +83,7 @@ export function AIBubble({
         {!isUser && (
           <View className="flex-row items-center gap-1 mb-1 ml-1">
             <Text className="text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
-              Nhi (AI)
+              Genie (AI)
             </Text>
           </View>
         )}

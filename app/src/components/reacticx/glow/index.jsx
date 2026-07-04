@@ -1,5 +1,5 @@
 import React, { useEffect, useState, memo } from "react";
-import { View, StyleSheet } from "react-native";
+import { View } from "react-native";
 import Svg, {
   Defs,
   LinearGradient,

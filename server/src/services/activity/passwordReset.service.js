@@ -1,5 +1,6 @@
 import prisma from "../../config/prismaClient.js";
 import crypto from "crypto";
+import { BCRYPT_SALT_ROUNDS } from "../../config/constants.js";
 import { sendPasswordResetEmail } from "../communication/mailer.service.js";
 
 /**
@@ -174,7 +175,7 @@ export const reset = async (rawToken, newPassword) => {
 
   // Hash new password with increased cost factor
   const bcrypt = await import("bcrypt");
-  const hashedPassword = await bcrypt.hash(newPassword, 13);
+  const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 
   // Update password, revoke all sessions, and mark token as used
   await prisma.$transaction([

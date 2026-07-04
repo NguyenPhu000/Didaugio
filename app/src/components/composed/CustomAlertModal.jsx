@@ -59,6 +59,7 @@ const CustomAlertModal = memo(function CustomAlertModal({
       scale.value = 0.9;
       opacity.value = 0;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   const animatedStyle = useAnimatedStyle(() => ({

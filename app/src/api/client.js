@@ -24,7 +24,7 @@ client.interceptors.request.use((config) => {
 
 let isRefreshing = false;
 let failedQueue = [];
-const REFRESH_QUEUE_TIMEOUT_MS = 12000;
+const REFRESH_QUEUE_TIMEOUT_MS = 25000;
 
 const PUBLIC_AUTH_PATHS = new Set([
   ENDPOINTS.auth.login,

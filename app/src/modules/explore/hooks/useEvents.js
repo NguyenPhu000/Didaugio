@@ -8,6 +8,7 @@ import {
   getMomentsApi,
   deleteMomentApi,
 } from "../../../api/event";
+import { TRIP_QUERY_KEYS } from "../../../constants/query-keys";
 
 export function useEvents(params = {}) {
   return useQuery({
@@ -45,9 +46,7 @@ export function useJoinEvent() {
     onSuccess: (data, id) => {
       queryClient.invalidateQueries({ queryKey: ["event-detail", id] });
       queryClient.invalidateQueries({ queryKey: ["events"] });
-      // Invalidate trips list in profile
-      queryClient.invalidateQueries({ queryKey: ["profile-trips"] });
-      queryClient.invalidateQueries({ queryKey: ["trips"] });
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.lists() });
     },
   });
 }

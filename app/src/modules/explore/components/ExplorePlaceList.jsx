@@ -1,9 +1,7 @@
 import { memo, useCallback } from "react";
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -11,7 +9,6 @@ import { FlashList } from "@shopify/flash-list";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { TOKENS } from "../../../constants/design-tokens";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation, formatRatingLabel } from "../utils/exploreHelpers";
 

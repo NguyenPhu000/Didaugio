@@ -43,7 +43,7 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
       setNote(dest?.note || "");
       setTransportToNext(dest?.transportToNext || null);
     }
-  }, [visible, dest?.id]);
+  }, [visible, dest]);
 
   const calculatedDuration = calcDurationMinutes(startTime, endTime);
   const durationLabel = formatDuration(calculatedDuration);
@@ -74,7 +74,7 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
         transportToNext: isLast ? null : transportToNext,
       },
     });
-  }, [dest?.id, startTime, endTime, calculatedDuration, note, transportToNext, onSave, isLoading, isLast]);
+  }, [dest?.id, startTime, endTime, calculatedDuration, note, transportToNext, onSave, isLoading, isLast, t]);
 
   if (!visible) return null;
 

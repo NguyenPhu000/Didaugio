@@ -12,7 +12,7 @@ export function MessageBubble({ message, onViewPlace, interactivePlan, onRemoveP
       {!isUser && (
         <View style={s.rowCenterGap1_5}>
           <Sparkles size={12} color="#10B981" />
-          <Text style={s.aiLabel}>Nhi (AI)</Text>
+          <Text style={s.aiLabel}>Genie (AI)</Text>
         </View>
       )}
 

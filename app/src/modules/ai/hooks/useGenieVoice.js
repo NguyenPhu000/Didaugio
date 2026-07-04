@@ -26,7 +26,7 @@ const VOICE_RECORDING_OPTIONS = {
   bitRate: 64000,
 };
 
-export function useNhiVoice() {
+export function useGenieVoice() {
   const [status, setStatus] = useState(VOICE_STATUS.IDLE);
   const [transcript, setTranscript] = useState("");
   const [transcriptVersion, setTranscriptVersion] = useState(0);
@@ -51,7 +51,7 @@ export function useNhiVoice() {
       const form = new FormData();
       form.append("audio", {
         uri: audioFile.uri,
-        name: audioFile.name || "nhi-voice.m4a",
+        name: audioFile.name || "genie-voice.m4a",
         type: audioFile.type || "audio/m4a",
       });
       form.append("language", audioFile.language || "vi");
@@ -126,7 +126,7 @@ export function useNhiVoice() {
     try {
       return await transcribeAudio({
         uri,
-        name: uri.split("/").pop() || "nhi-voice.m4a",
+        name: uri.split("/").pop() || "genie-voice.m4a",
         type: uri.endsWith(".webm") ? "audio/webm" : "audio/m4a",
         language: "vi",
       });

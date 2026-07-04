@@ -1,6 +1,7 @@
 import userRoutes from "./user/user.route.js";
 import authRoutes from "./auth/auth.route.js";
 import profileRoutes from "./profile/profile.route.js";
+import tripRoutes from "./trip/trip.route.js";
 import auditLogRoutes from "./activity/auditLog.route.js";
 import emailVerificationRoutes from "./activity/emailVerification.route.js";
 import passwordResetRoutes from "./activity/passwordReset.route.js";
@@ -95,6 +96,7 @@ export const registerApiRoutes = (app) => {
 
   app.use("/api/auth", authRoutes);
   app.use("/api/dashboard", dashboardRoutes);
+  app.use("/api/profile", tripRoutes);
   app.use("/api/profile", profileRoutes);
   app.use("/api/audit-logs", auditLogRoutes);
   app.use("/api/email-verifications", emailVerificationRoutes);

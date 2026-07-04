@@ -1,5 +1,6 @@
 import fetch from "node-fetch";
 import NodeCache from "node-cache";
+import { appConfig } from "../../config/app.config.js";
 import logger from "../../config/logger.js";
 import CircuitBreaker from "../../utils/circuitBreaker.js";
 import ServiceError from "../../utils/serviceError.js";
@@ -14,7 +15,7 @@ import { calculateTable, calculateSequentialLegs } from "./tableApi.js";
 const DEFAULT_TIMEOUT_MS = Number(process.env.ROUTING_TIMEOUT_MS || 4500);
 const DEFAULT_TTL_SEC = Number(process.env.ROUTE_CACHE_TTL_SEC || 300);
 const FALLBACK_TTL_SEC = Number(process.env.ROUTE_FALLBACK_CACHE_TTL_SEC || 45);
-const OSRM_URL = process.env.OSRM_URL || "http://localhost:5000";
+const OSRM_URL = appConfig.osrmUrl;
 const CIRCUIT_FAILURE_THRESHOLD = Number(
   process.env.OSRM_CIRCUIT_FAILURE_THRESHOLD || 5,
 );

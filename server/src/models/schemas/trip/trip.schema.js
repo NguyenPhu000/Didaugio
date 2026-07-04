@@ -103,6 +103,17 @@ export const updateDestinationSchema = z.object({
 export const moveDestinationSchema = z.object({
   newDayNumber: z.coerce.number().int().min(1).max(365),
   newOrder: z.coerce.number().int().min(0).default(0),
+  startTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Giờ bắt đầu không hợp lệ")
+    .optional()
+    .nullable(),
+  endTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Giờ kết thúc không hợp lệ")
+    .optional()
+    .nullable(),
+  note: z.string().max(500).optional().nullable(),
 });
 
 export const reorderDestinationsSchema = z.object({

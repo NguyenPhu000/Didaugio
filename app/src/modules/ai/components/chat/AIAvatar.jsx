@@ -22,6 +22,7 @@ export function AIAvatar() {
       -1,
       true
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const breatheStyle = useAnimatedStyle(() => ({

@@ -5,7 +5,7 @@ import {
   getMyBookingsApi,
   getMyBookingDetailApi,
   getMyBookingQRApi,
-  linkMyBookingToTripApi,
+  linkBookingToTripApi,
   cancelBookingApi,
 } from "../api/bookingApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
@@ -87,8 +87,8 @@ export function useLinkBookingToTrip() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ bookingId, tripId }) =>
-      linkMyBookingToTripApi(bookingId, tripId),
+    mutationFn: ({ bookingId, tripId, ...data }) =>
+      linkBookingToTripApi(bookingId, tripId, data),
     onSuccess: (_, variables) => {
       const id = Number(variables?.bookingId);
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all() });

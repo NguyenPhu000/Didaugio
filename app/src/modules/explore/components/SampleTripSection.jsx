@@ -1,9 +1,6 @@
 import { memo, useCallback } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../constants/design-tokens";
+import { TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { SampleTripCard, SAMPLE_TRIP_CARD_W } from "./SampleTripCard";
 

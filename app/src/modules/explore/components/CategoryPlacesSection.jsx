@@ -4,7 +4,6 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
 import { Image } from "expo-image";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
@@ -20,7 +19,6 @@ import {
 } from "../../../lib/media-url";
 import {
   getPlaceLocation,
-  formatRatingLabel,
   getCategoryIcon,
 } from "../utils/exploreHelpers";
 

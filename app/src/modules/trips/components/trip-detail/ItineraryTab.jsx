@@ -22,6 +22,8 @@ import InlineAddPlaceModal from "./InlineAddPlaceModal";
 import { T, ALPHA } from "../../utils/tripDetailTokens";
 import CustomAlertModal from "../../../../components/composed/CustomAlertModal";
 
+const getDestinationClientId = (dest) => dest?.stopId ?? dest?.id;
+
 function ItineraryTab({
   trip,
   bookings,
@@ -176,7 +178,7 @@ function ItineraryTab({
   // Drag end handler
   const handleDragEnd = useCallback(
     ({ data }) => {
-      const orderedIds = data.map((d) => d.id);
+      const orderedIds = data.map(getDestinationClientId);
       reorderMutation.mutate(
         { dayNumber: selectedDay, orderedIds },
         {
@@ -189,7 +191,7 @@ function ItineraryTab({
         }
       );
     },
-    [selectedDay, reorderMutation, showAlert],
+    [selectedDay, reorderMutation, showAlert, t],
   );
 
   // Remove handler
@@ -215,7 +217,7 @@ function ItineraryTab({
         onCancel: () => {},
       });
     },
-    [removeMutation, showAlert],
+    [removeMutation, showAlert, t],
   );
 
   const handleMoveRequest = useCallback((dest) => {
@@ -229,13 +231,14 @@ function ItineraryTab({
   const handleMove = useCallback(
     async ({ destId, newDayNumber, newOrder, startTime, endTime, note }) => {
       try {
-        await moveMutation.mutateAsync({ destId, newDayNumber, newOrder });
-        if (startTime !== undefined || endTime !== undefined || note !== undefined) {
-          await updateMutation.mutateAsync({
-            destId,
-            data: { startTime, endTime, note },
-          });
-        }
+        await moveMutation.mutateAsync({
+          destId,
+          newDayNumber,
+          newOrder,
+          startTime,
+          endTime,
+          note,
+        });
         setMovingDest(null);
         setSelectedDay(newDayNumber);
       } catch (error) {
@@ -245,7 +248,7 @@ function ItineraryTab({
         });
       }
     },
-    [moveMutation, updateMutation, showAlert],
+    [moveMutation, showAlert, t],
   );
 
   const handleMoveModalSave = useCallback(
@@ -263,7 +266,7 @@ function ItineraryTab({
         },
       );
     },
-    [updateMutation, showAlert],
+    [updateMutation, showAlert, t],
   );
 
   const handleEditRequest = useCallback((dest) => {
@@ -296,9 +299,9 @@ function ItineraryTab({
                 if (bDate) return 1;
                 return a.order - b.order;
               });
-              const orderedIds = sorted.map((d) => d.id);
+              const orderedIds = sorted.map(getDestinationClientId);
               const orderChanged = orderedIds.some((id, i) => {
-                const dest = dayDests.find((d) => d.id === id);
+                const dest = dayDests.find((d) => getDestinationClientId(d) === id);
                 return dest && dest.order !== i;
               });
               if (orderChanged) {
@@ -315,7 +318,7 @@ function ItineraryTab({
         },
       );
     },
-    [updateMutation, destinations, selectedDay, reorderMutation, showAlert],
+    [updateMutation, destinations, selectedDay, reorderMutation, showAlert, t],
   );
 
   // Render item for DraggableFlatList

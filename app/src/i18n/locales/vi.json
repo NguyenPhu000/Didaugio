@@ -120,9 +120,9 @@
     "travelStyleTitle": "Bạn thích du lịch kiểu gì? 🌴",
     "travelStyleSubtitle": "Chọn những phong cách bạn yêu thích (có thể chọn nhiều)",
     "groupTitle": "Đi du lịch với ai? 👥",
-    "groupSubtitle": "Giúp em Nhi gợi ý phù hợp hơn",
+    "groupSubtitle": "Giúp Genie gợi ý phù hợp hơn",
     "budgetTitle": "Ngân sách của bạn? 💰",
-    "budgetSubtitle": "Để em Nhi gợi ý phù hợp túi tiền",
+    "budgetSubtitle": "Để Genie gợi ý phù hợp túi tiền",
     "next": "Tiếp theo",
     "start": "Bắt đầu khám phá!",
     "skip": "Bỏ qua"
@@ -1201,7 +1201,7 @@
     "fallbackName": "Khu vực"
   },
   "ai": {
-    "typing": "em Nhi đang gõ...",
+    "typing": "Genie đang gõ...",
     "suggestions": {
       "restaurants": "Quán ăn ngon ở Cần Thơ",
       "hotels": "Khách sạn gần đây",
@@ -1378,7 +1378,7 @@
     "delete": "Xóa",
     "cancel": "Hủy",
     "close": "Đóng",
-    "travelAssistant": "Trợ lý du lịch Nhi",
+    "travelAssistant": "Trợ lý du lịch Genie",
     "readyToHelp": "Sẵn sàng trợ giúp",
     "planTravel": "Lên kế hoạch du lịch",
     "intro": "Mình có thể giúp bạn tìm địa điểm ăn uống, vui chơi và sắp xếp lịch trình Cần Thơ tự động!",
@@ -1397,22 +1397,22 @@
     "processing": "Đang xử lý...",
     "inputPlaceholder": "Mô tả kế hoạch bạn muốn...",
     "voiceListening": "Đang nghe. Chạm mic lần nữa để gửi.",
-    "voiceTranscribing": "Nhi đang chuyển giọng nói thành chữ...",
-    "voiceSpeaking": "Nhi đang nói...",
+    "voiceTranscribing": "Genie đang chuyển giọng nói thành chữ...",
+    "voiceSpeaking": "Genie đang nói...",
     "voiceError": "Chưa dùng được giọng nói lúc này.",
     "voicePermissionDenied": "Bạn cần cấp quyền micro để trò chuyện bằng giọng nói.",
     "voiceEmptyRecording": "Chưa ghi được giọng nói. Thử nói gần micro hơn một chút.",
-    "voiceTranscriptLabel": "Nhi nghe được",
-    "voiceItineraryQueued": "Nhi đã chuẩn bị bản nháp lịch trình. Bạn xem lại các địa điểm rồi chọn nơi muốn giữ nhé.",
+    "voiceTranscriptLabel": "Genie nghe được",
+    "voiceItineraryQueued": "Genie đã chuẩn bị bản nháp lịch trình. Bạn xem lại các địa điểm rồi chọn nơi muốn giữ nhé.",
     "voiceWave": {
       "idle": "Chạm để nói",
-      "idleHint": "Hỏi Nhi bằng giọng nói",
+      "idleHint": "Hỏi Genie bằng giọng nói",
       "listening": "Đang nghe",
       "listeningHint": "Chạm lần nữa để gửi",
       "transcribing": "Đang ghi lại",
-      "speaking": "Nhi đang nói",
+      "speaking": "Genie đang nói",
       "speakingHint": "Chạm loa để dừng",
-      "thinking": "Nhi đang nghĩ"
+      "thinking": "Genie đang nghĩ"
     },
     "suggestionGroups": {
       "saved": {
@@ -1452,29 +1452,29 @@
       "suggestion4": "Đi chơi gia đình 1 ngày",
       "suggestion5": "Cà phê view đẹp gần trung tâm"
     },
-    "chatThinking": "Nhi đang suy nghĩ...",
-    "loadingStep0": "Nhi đang quét các địa điểm quanh bạn...",
-    "loadingStep1": "Nhi đang tính toán tuyến đường tối ưu...",
-    "loadingStep2": "Nhi đang lập bảng dự toán chi phí...",
-    "loadingWait": "Chờ Nhi một chút xíu nữa nghen...",
+    "chatThinking": "Genie đang suy nghĩ...",
+    "loadingStep0": "Genie đang quét các địa điểm quanh bạn...",
+    "loadingStep1": "Genie đang tính toán tuyến đường tối ưu...",
+    "loadingStep2": "Genie đang lập bảng dự toán chi phí...",
+    "loadingWait": "Chờ Genie một chút xíu nữa nghen...",
     "chatErrorFallback": "Đã xảy ra lỗi, bạn thử lại nhé.",
-    "botLabel": "Nhi (AI)",
+    "botLabel": "Genie (AI)",
     "tripReady": "Lịch trình **{{title}}** đã sẵn sàng!",
     "destinationCount": "{{count}} địa điểm",
     "estimatedCost": "Chi phí ~{{cost}} đ",
     "selectingCountShort": "Đang chọn: {{count}} địa điểm.",
-    "previewMessage": "Em Nhi đã lên khung lịch trình {{totalDays}} ngày và gợi ý {{suggestedCount}} địa điểm.",
+    "previewMessage": "Em Genie đã lên khung lịch trình {{totalDays}} ngày và gợi ý {{suggestedCount}} địa điểm.",
     "previewInstruction": "Bạn chọn địa điểm phía dưới rồi bấm **Chốt & tạo chuyến đi**."
   },
   "chatPanel": {
     "confirmDelete": "Xóa lịch sử chat?",
-    "confirmDeleteDesc": "Toàn bộ hội thoại với em Nhi sẽ bị xóa trên thiết bị này.",
+    "confirmDeleteDesc": "Toàn bộ hội thoại với Genie sẽ bị xóa trên thiết bị này.",
     "cancel": "Hủy",
     "delete": "Xóa",
     "deleteHistory": "Xóa lịch sử",
-    "greeting": "Chào, mình là em Nhi",
+    "greeting": "Chào, mình là Genie",
     "intro": "Mình có thể giúp bạn tìm địa điểm, gợi ý quán ăn, hoặc lên lịch trình du lịch Cần Thơ.",
-    "inputPlaceholder": "Hỏi em Nhi điều gì đó...",
+    "inputPlaceholder": "Hỏi Genie điều gì đó...",
     "noTrips": "Chưa có chuyến đi",
     "noTripsDesc": "Bạn cần tạo một chuyến đi trước để thêm địa điểm này vào lịch trình.",
     "close": "Đóng",
@@ -1486,10 +1486,10 @@
     "selectTripPrompt": "Bạn muốn thêm \"{{name}}\" vào chuyến đi nào?"
   },
   "aiChat": {
-    "rateLimit": "Nhi đang trả lời quá nhiều bạn rồi, bạn đợi một chút rồi thử lại nghen.",
+    "rateLimit": "Genie đang trả lời quá nhiều bạn rồi, bạn đợi một chút rồi thử lại nghen.",
     "serviceOverloaded": "Dịch vụ AI tạm thời quá tải. Bạn thử lại sau vài phút ha.",
     "invalidItineraryData": "Không nhận được dữ liệu lịch trình hợp lệ.",
-    "itineraryReady": "Nhi đã thiết kế xong lịch trình di chuyển tối ưu và dự toán ngân sách cho bạn rồi nè! Bạn xem qua thử ha:",
+    "itineraryReady": "Genie đã thiết kế xong lịch trình di chuyển tối ưu và dự toán ngân sách cho bạn rồi nè! Bạn xem qua thử ha:",
     "noReplyContent": "Mình chưa nhận được nội dung phản hồi, bạn thử lại giúp mình nhé.",
     "memorySummary": "[Tóm tắt {{count}} tin nhắn trước: cuộc trò chuyện đang tiếp diễn]"
   },
@@ -1564,7 +1564,8 @@
     "googleMissingConfig": "Thiếu EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID trong app/.env.",
     "googleMissingOwner": "Thiếu EXPO_PUBLIC_EXPO_OWNER hoặc EXPO_PUBLIC_EXPO_SLUG trong app/.env.",
     "googleNotReady": "Google OAuth chưa sẵn sàng. Vui lòng thử lại sau vài giây.",
-    "apiPointingToExpo": "API đăng nhập đang trỏ vào Expo/Metro thay vì backend. Kiểm tra lại EXPO_PUBLIC_API_URL và cổng chạy app/server."
+    "apiPointingToExpo": "API đăng nhập đang trỏ vào Expo/Metro thay vì backend. Kiểm tra lại EXPO_PUBLIC_API_URL và cổng chạy app/server.",
+    "accountInactive": "Tài khoản chưa được kích hoạt. Vui lòng đăng nhập bằng Google để kích hoạt."
   },
   "tripHelpers": {
     "all": "Tất cả",

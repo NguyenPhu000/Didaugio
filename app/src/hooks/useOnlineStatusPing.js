@@ -16,7 +16,7 @@ export const useOnlineStatusPing = () => {
     const sendPing = async () => {
       try {
         await client.post(ENDPOINTS.auth.ping);
-      } catch (err) {
+      } catch (_err) {
         // Silent error to prevent console clutter
       }
     };

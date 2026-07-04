@@ -45,15 +45,15 @@ test("builds fast Vietnamese transcription request defaults", () => {
   assert.equal(request.model, "whisper-large-v3-turbo");
   assert.equal(request.language, "vi");
   assert.equal(request.response_format, "json");
-  assert.match(request.prompt, /Nhi/);
+  assert.match(request.prompt, /Genie/);
 });
 
 test("builds speech request using Groq Orpheus defaults", () => {
-  const input = validateSpeechInput("Xin chào, Nhi nghe bạn nè.");
+  const input = validateSpeechInput("Xin chào, Genie nghe bạn nè.");
   const request = buildGroqSpeechRequest({ input });
 
   assert.equal(request.model, "canopylabs/orpheus-v1-english");
   assert.equal(request.voice, "hannah");
   assert.equal(request.response_format, "wav");
-  assert.equal(request.input, "Xin chào, Nhi nghe bạn nè.");
+  assert.equal(request.input, "Xin chào, Genie nghe bạn nè.");
 });

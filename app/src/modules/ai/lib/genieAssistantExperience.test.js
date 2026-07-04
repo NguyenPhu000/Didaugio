@@ -1,35 +1,35 @@
 import { describe, expect, test } from "vitest";
 import {
-  NHI_INTENT_TYPES,
-  buildNhiSuggestionGroups,
-  detectNhiIntent,
-  normalizeNhiResponse,
-} from "./nhiAssistantExperience";
+  GENIE_INTENT_TYPES,
+  buildGenieSuggestionGroups,
+  detectGenieIntent,
+  normalizeGenieResponse,
+} from "./genieAssistantExperience";
 
-describe("nhi assistant experience helpers", () => {
+describe("genie assistant experience helpers", () => {
   test("routes itinerary requests away from regular chat", () => {
-    expect(detectNhiIntent("Lên lịch trình 1 ngày ở Cần Thơ")).toBe(
-      NHI_INTENT_TYPES.ITINERARY,
+    expect(detectGenieIntent("Lên lịch trình 1 ngày ở Cần Thơ")).toBe(
+      GENIE_INTENT_TYPES.ITINERARY,
     );
   });
 
   test("routes short create-plan commands to itinerary preview", () => {
-    expect(detectNhiIntent("tạo plan 1 ngày quanh đây")).toBe(
-      NHI_INTENT_TYPES.ITINERARY,
+    expect(detectGenieIntent("tạo plan 1 ngày quanh đây")).toBe(
+      GENIE_INTENT_TYPES.ITINERARY,
     );
-    expect(detectNhiIntent("tạo kế hoạch đi chơi cuối tuần")).toBe(
-      NHI_INTENT_TYPES.ITINERARY,
+    expect(detectGenieIntent("tạo kế hoạch đi chơi cuối tuần")).toBe(
+      GENIE_INTENT_TYPES.ITINERARY,
     );
   });
 
   test("detects place discovery intent for nearby food prompts", () => {
-    expect(detectNhiIntent("Gợi ý quán ăn gần đây")).toBe(
-      NHI_INTENT_TYPES.PLACE_DISCOVERY,
+    expect(detectGenieIntent("Gợi ý quán ăn gần đây")).toBe(
+      GENIE_INTENT_TYPES.PLACE_DISCOVERY,
     );
   });
 
   test("builds contextual suggestion groups and prioritizes saved places", () => {
-    const groups = buildNhiSuggestionGroups({
+    const groups = buildGenieSuggestionGroups({
       hasSavedPlaces: true,
       timeOfDay: "evening",
     });
@@ -41,7 +41,7 @@ describe("nhi assistant experience helpers", () => {
   });
 
   test("normalizes server response into stable UI sections", () => {
-    const normalized = normalizeNhiResponse({
+    const normalized = normalizeGenieResponse({
       data: {
         reply: "Quán này hợp đi tối nay.",
         relatedPlaces: [{ id: 1, name: "Bến Ninh Kiều" }],

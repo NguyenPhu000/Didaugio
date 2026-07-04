@@ -20,7 +20,7 @@ export function ChatInputBar({
       <View style={s.inputRow}>
         <TextInput
           ref={inputRef}
-          placeholder="Hỏi Nhi điều gì đó..."
+          placeholder="Hỏi Genie điều gì đó..."
           placeholderTextColor="#8E8E93"
           value={inputText}
           onChangeText={setInputText}

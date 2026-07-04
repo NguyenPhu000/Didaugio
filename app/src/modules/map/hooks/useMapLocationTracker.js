@@ -87,6 +87,8 @@ export function useMapLocationTracker({
 
   // Compass heading watcher — updates heading continuously
   useEffect(() => {
+    if (!watchEnabled) return undefined;
+
     let subscriber = null;
     let active = true;
 
@@ -95,7 +97,7 @@ export function useMapLocationTracker({
         const { status } = await Location.getForegroundPermissionsAsync();
         if (!active || status !== "granted") return;
 
-        subscriber = await Location.watchHeadingAsync((headingData) => {
+        const sub = await Location.watchHeadingAsync((headingData) => {
           if (!active) return;
           const raw =
             headingData.trueHeading >= 0
@@ -134,6 +136,12 @@ export function useMapLocationTracker({
             };
           });
         });
+
+        if (!active) {
+          sub?.remove?.();
+          return;
+        }
+        subscriber = sub;
       } catch {
         // Compass not available on some devices — silent fallback.
       }
@@ -145,7 +153,7 @@ export function useMapLocationTracker({
       active = false;
       subscriber?.remove?.();
     };
-  }, [currentLocationSharedValue]);
+  }, [currentLocationSharedValue, watchEnabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -202,7 +210,7 @@ export function useMapLocationTracker({
         }
         if (!active || permission.status !== "granted") return;
 
-        subscriber = await Location.watchPositionAsync(
+        const sub = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
             distanceInterval: distanceInterval,
@@ -218,6 +226,12 @@ export function useMapLocationTracker({
             });
           },
         );
+
+        if (!active) {
+          sub?.remove?.();
+          return;
+        }
+        subscriber = sub;
       } catch {
         // Keep silent: location tracking still works with manual locate updates.
       }

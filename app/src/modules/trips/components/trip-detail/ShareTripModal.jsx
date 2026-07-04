@@ -19,11 +19,6 @@ function ShareLinkRow({ share, onDelete, isDeleting }) {
   const { t } = useTranslation();
   const fullUrl = `didau://shared-trip/${share.shareCode}`;
 
-  const handleCopy = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Clipboard API is async, handle gracefully
-  }, []);
-
   return (
     <View className="bg-black/[0.03] rounded-2xl p-3.5 mb-2">
       <View className="flex-row items-center justify-between mb-2">

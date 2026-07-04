@@ -1,6 +1,6 @@
 import { INTENT_TYPES, detectAllIntents } from "./intentDetector";
 
-export const NHI_INTENT_TYPES = Object.freeze({
+export const GENIE_INTENT_TYPES = Object.freeze({
   ITINERARY: "itinerary",
   PLACE_DISCOVERY: "place_discovery",
   VOICE: "voice",
@@ -67,9 +67,9 @@ const BASE_GROUPS = [
   },
 ];
 
-export function detectNhiIntent(text) {
+export function detectGenieIntent(text) {
   const intents = detectAllIntents(text);
-  if (intents.includes(INTENT_TYPES.SCHEDULE)) return NHI_INTENT_TYPES.ITINERARY;
+  if (intents.includes(INTENT_TYPES.SCHEDULE)) return GENIE_INTENT_TYPES.ITINERARY;
   if (
     intents.some((intent) =>
       [INTENT_TYPES.EAT, INTENT_TYPES.NEARBY, INTENT_TYPES.REVIEW].includes(
@@ -77,13 +77,13 @@ export function detectNhiIntent(text) {
       ),
     )
   ) {
-    return NHI_INTENT_TYPES.PLACE_DISCOVERY;
+    return GENIE_INTENT_TYPES.PLACE_DISCOVERY;
   }
-  if (intents.includes(INTENT_TYPES.VOICE)) return NHI_INTENT_TYPES.VOICE;
-  return NHI_INTENT_TYPES.CHAT;
+  if (intents.includes(INTENT_TYPES.VOICE)) return GENIE_INTENT_TYPES.VOICE;
+  return GENIE_INTENT_TYPES.CHAT;
 }
 
-export function buildNhiSuggestionGroups({
+export function buildGenieSuggestionGroups({
   hasSavedPlaces = false,
   timeOfDay = "",
 } = {}) {
@@ -119,7 +119,7 @@ export function buildNhiSuggestionGroups({
   return groups;
 }
 
-export function normalizeNhiResponse(response = {}) {
+export function normalizeGenieResponse(response = {}) {
   const data = response?.data?.data || response?.data || response || {};
   const reply =
     typeof data.reply === "string" && data.reply.trim()

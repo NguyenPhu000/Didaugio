@@ -1,4 +1,5 @@
 import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
+import { parseAiJsonObject } from "./aiJsonParser.js";
 
 class AINavigationService {
   async getNavigationAdvice(payload = {}) {
@@ -158,17 +159,8 @@ Quy tac bat buoc:
   }
 
   _tryParseJson(text = "") {
-    const trimmed = text.trim();
-    if (!trimmed) return null;
-
-    const jsonOnly = trimmed
-      .replace(/^```json/i, "")
-      .replace(/^```/i, "")
-      .replace(/```$/, "")
-      .trim();
-
     try {
-      return JSON.parse(jsonOnly);
+      return parseAiJsonObject(text);
     } catch {
       return null;
     }

@@ -7,10 +7,7 @@ import {
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../../lib/cn";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../../src/constants/design-tokens";
+import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../../../src/constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 
 export function LoadingState() {

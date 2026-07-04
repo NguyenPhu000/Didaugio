@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
@@ -48,6 +48,7 @@ function getProjectId() {
  */
 async function registerForPushNotifications() {
   if (!Notifications) return null;
+  if (Constants?.isDevice === false) return null;
 
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
@@ -70,8 +71,12 @@ async function registerForPushNotifications() {
   if (finalStatus !== "granted") return null;
 
   const projectId = getProjectId();
-  const token = await Notifications.getExpoPushTokenAsync({ projectId });
-  return token.data;
+  try {
+    const token = await Notifications.getExpoPushTokenAsync({ projectId });
+    return token.data;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -115,16 +120,16 @@ export function NotificationProvider({ children }) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const setBadgeCount = async (count) => {
+  const setBadgeCount = useCallback(async (count) => {
     if (!Notifications) return;
     try {
       await Notifications.setBadgeCountAsync(count);
     } catch {
       // Badge không khả dụng trên một số Android launcher
     }
-  };
+  }, []);
 
-  const clearBadge = () => setBadgeCount(0);
+  const clearBadge = useCallback(() => setBadgeCount(0), [setBadgeCount]);
 
   // ─── Deep-link: navigate khi user tap notification ───
   useEffect(() => {
@@ -179,6 +184,9 @@ export function NotificationProvider({ children }) {
         queryClient.invalidateQueries({
           queryKey: QUERY_KEYS.notifications.all(),
         });
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.notifications.unreadCount(),
+        });
       },
     );
 
@@ -189,6 +197,9 @@ export function NotificationProvider({ children }) {
     const handleAnnouncement = () => {
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.notifications.all(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.notifications.unreadCount(),
       });
     };
 
@@ -255,7 +266,7 @@ export function NotificationProvider({ children }) {
     if (!accessToken) {
       clearBadge();
     }
-  }, [accessToken]);
+  }, [accessToken, clearBadge]);
 
   const contextValue = { setBadgeCount, clearBadge };
 

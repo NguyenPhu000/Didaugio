@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { Sparkles, ArrowLeft, Trash2 } from "lucide-react-native";
-import Animated, {
+import {
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -22,18 +22,17 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient";
 
 import { useGroqChat } from "../../src/modules/ai/hooks/useGroqChat";
-import { useNhiVoice } from "../../src/modules/ai/hooks/useNhiVoice";
+import { useGenieVoice } from "../../src/modules/ai/hooks/useGenieVoice";
 import { useAIContextStore } from "../../src/stores/aiContextStore";
 import { TOKENS } from "../../src/constants/design-tokens";
 
 // Components đã chia nhỏ
-import { AIAvatar } from "../../src/modules/ai/components/chat/AIAvatar";
 import { MessageBubble } from "../../src/modules/ai/components/chat/MessageBubble";
-import { TypingIndicator, QuickSuggestions } from "../../src/modules/ai/components/chat/TypingIndicator";
+import { QuickSuggestions } from "../../src/modules/ai/components/chat/TypingIndicator";
 import { ChatInputBar } from "../../src/modules/ai/components/chat/ChatInputBar";
 
 // Reacticx
-import Glow from "../../src/components/reacticx/glow";
+import { Glow } from "../../src/components/reacticx/glow";
 import { StreamingText } from "../../src/components/reacticx/streaming-text";
 
 // Utils
@@ -60,7 +59,7 @@ export default function GroqChatScreen() {
     status: voiceStatus,
     startRecording,
     stopRecordingAndTranscribe,
-  } = useNhiVoice();
+  } = useGenieVoice();
 
   const isRecording = voiceStatus === "listening";
   const isTranscribing = voiceStatus === "transcribing";
@@ -79,12 +78,7 @@ export default function GroqChatScreen() {
       -1,
       true
     );
-  }, []);
-
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: onlinePulse.value }],
-    opacity: onlinePulse.value === 1 ? 1 : 0.55,
-  }));
+  }, [onlinePulse]);
 
   // Cập nhật local state khi tin nhắn mới chứa hybridPlan
   useEffect(() => {
@@ -249,7 +243,7 @@ export default function GroqChatScreen() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [setCurrentCity, updateLocation]);
 
   const handleSend = useCallback(
     async (text) => {
@@ -331,7 +325,7 @@ export default function GroqChatScreen() {
           </Glow>
           
           <View>
-            <Text style={s.headerTitle}>Nhi (AI)</Text>
+            <Text style={s.headerTitle}>Genie (AI)</Text>
             <View style={s.statusRow}>
               <View style={s.pulseContainer}>
                 <Glow style="pulse" speed={1.2} intensity={0.6} colors={["#10B981", "#34D399"]}>
@@ -391,7 +385,7 @@ export default function GroqChatScreen() {
               </LinearGradient>
             </Glow>
 
-            <Text style={s.heroTitle}>Chào bạn, mình là Nhi!</Text>
+            <Text style={s.heroTitle}>Chào bạn, mình là Genie!</Text>
             <Text style={s.heroSubtitle}>
               Mình là trợ lý du lịch ảo của bạn. Bạn muốn đi đâu bây giờ? Hãy để iPoint Genie lên lịch trình hoặc gợi ý điểm ăn chơi Cần Thơ nghen.
             </Text>
@@ -420,7 +414,7 @@ export default function GroqChatScreen() {
           <View style={{ alignItems: "flex-start", gap: 6 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 4 }}>
               <Sparkles size={12} color="#10B981" />
-              <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase", fontFamily: TOKENS.font.semibold }}>Nhi (AI)</Text>
+              <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase", fontFamily: TOKENS.font.semibold }}>Genie (AI)</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20, backgroundColor: "#2C2C2E", borderTopLeftRadius: 4 }}>
               <StreamingText text="Đang suy nghĩ..." style={{ color: "#FFFFFF", fontSize: 13, fontFamily: TOKENS.font.medium }} />

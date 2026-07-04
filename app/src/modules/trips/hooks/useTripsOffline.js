@@ -130,7 +130,7 @@ export function useTripsCached(enabled = true) {
       setIsOffline(!state.isConnected);
 
       if (wasOffline && state.isConnected) {
-        queryClient.invalidateQueries({ queryKey: ["trips"] });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
       }
     };
 

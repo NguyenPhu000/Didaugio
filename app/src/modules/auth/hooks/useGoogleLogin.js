@@ -172,7 +172,7 @@ export function useGoogleLogin() {
     return () => {
       subscription.remove();
     };
-  }, [finalizeGoogleSession, isExpoGo]);
+  }, [finalizeGoogleSession, isExpoGo, clearCallbackTimeout]);
 
   useEffect(() => {
     const completeGoogleLogin = async () => {

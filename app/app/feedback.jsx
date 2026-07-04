@@ -86,13 +86,13 @@ export default function FeedbackScreen() {
         ],
       );
     }
-  }, [isSuccess]);
+  }, [isSuccess, reset, router, t]);
 
   useEffect(() => {
     if (isError) {
       Alert.alert(t("feedback.submitFailed"), error?.message || t("feedback.submitErrorMessage"));
     }
-  }, [isError]);
+  }, [isError, error, t]);
 
   return (
     <View className="flex-1 bg-surface" style={{ paddingTop: insets.top }}>

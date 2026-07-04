@@ -5,6 +5,8 @@ export const USER_STATUS = {
   PENDING: "pending",
 };
 
+export const BCRYPT_SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS || 13);
+
 export const ROLES = {
   SUPER_ADMIN: 1,
   ADMIN: 2,
@@ -149,6 +151,75 @@ export const PAYMENT_STATUS = {
   PAID: "paid",
   PARTIALLY_REFUNDED: "partially_refunded",
   FULLY_REFUNDED: "fully_refunded",
+};
+
+export const PAYMENT_METHODS = {
+  SEPAY_QR: "sepay_qr",
+  VNPAY: "VNPAY",
+  MOMO: "MOMO",
+  SEPAY: "SEPAY",
+  MANUAL: "manual",
+};
+
+export const TRIP_PLAN_STATUS = {
+  DRAFT: "draft",
+  PLANNED: "planned",
+  ACTIVE: "active",
+  PAUSED: "paused",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+  ARCHIVED: "archived",
+};
+
+export const TRIP_PLAN_SOURCE = {
+  MANUAL: "manual",
+  AI_GENERATED: "ai_generated",
+  IMPORTED: "imported",
+  CLONED: "cloned",
+  BOOKING_SEEDED: "booking_seeded",
+};
+
+export const TRIP_STOP_FULFILLMENT_STATUS = {
+  PENDING: "pending",
+  SCHEDULED: "scheduled",
+  CHECKED_IN: "checked_in",
+  VISITED: "visited",
+  SKIPPED: "skipped",
+  CANCELLED: "cancelled",
+};
+
+export const TRIP_EXECUTION_SESSION_STATUS = {
+  ACTIVE: "active",
+  PAUSED: "paused",
+  STOPPED: "stopped",
+  COMPLETED: "completed",
+  ABANDONED: "abandoned",
+};
+
+export const BOOKING_TRIP_LINK_STATUS = {
+  LINKED: "linked",
+  DETACHED: "detached",
+  CANCELLED: "cancelled",
+};
+
+export const TRIP_BOOKING_ATTACH_MODE = {
+  CREATE_STOP_IF_MISSING: "create_stop_if_missing",
+};
+
+export const TRIP_DATE_RANGE_MODE = {
+  REJECT_OUTSIDE_RANGE: "reject_outside_range",
+  EXPAND_TRIP_RANGE: "expand_trip_range",
+};
+
+export const DOMAIN_JOB_STATUS = {
+  PENDING: "pending",
+  PROCESSING: "processing",
+  DONE: "done",
+  FAILED: "failed",
+};
+
+export const DOMAIN_JOB_TYPES = {
+  REBUILD_ROUTE_METRICS: "RebuildRouteMetrics",
 };
 
 export const BUSINESS_STATUS = {

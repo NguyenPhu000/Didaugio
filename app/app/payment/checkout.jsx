@@ -14,11 +14,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import safeAsyncStorage from "../../src/utils/safeAsyncStorage";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { useCheckout, usePollPaymentStatus, PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY } from "@/modules/booking/hooks/usePayment";
+import { useCheckout, usePollPaymentStatus, PENDING_PAYMENT_BOOKING_KEY } from "@/modules/booking/hooks/usePayment";
 import { getMyBookingDetailApi } from "@/modules/booking/api/bookingApi";
 import { OrderSummary } from "@/modules/booking/components/OrderSummary";
 import { PaymentMethodSelector } from "@/modules/booking/components/PaymentMethodSelector";
-import { getI18nLocale, formatPriceLocale, formatBookingDate } from "../../src/utils/dateFormat";
 
 const BOOKING_THEME = {
   background: "#F5F5F7",
@@ -35,18 +34,12 @@ const BOOKING_THEME = {
 const PAYMENT_EXPIRY_MINUTES = 15;
 const PAYMENT_EXPIRY_MS = PAYMENT_EXPIRY_MINUTES * 60 * 1000;
 
-const getLocale = () => getI18nLocale();
-
 const formatCountdown = (seconds) => {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 };
 
-const formatPrice = (price) => {
-  if (price == null) return "—";
-  return formatPriceLocale(price);
-};
 
 export default function PaymentCheckoutScreen() {
   const { bookingId } = useLocalSearchParams();
@@ -113,9 +106,9 @@ export default function PaymentCheckoutScreen() {
   useEffect(() => {
     const handleAppState = (nextState) => {
       if (nextState === "active" && momoPaymentRef.current) {
-        const { transactionRef, paymentId, bookingId: bid } = momoPaymentRef.current;
+        const { paymentId, bookingId: bid } = momoPaymentRef.current;
         momoPaymentRef.current = null;
-        startPolling(transactionRef, paymentId, bid);
+        startPolling(paymentId, bid);
       }
     };
     const sub = AppState.addEventListener("change", handleAppState);
@@ -142,7 +135,6 @@ export default function PaymentCheckoutScreen() {
 
       // Save BEFORE opening browser/app or navigating (may freeze JS)
       try {
-        await safeAsyncStorage.setItem(PENDING_PAYMENT_REF_KEY, transactionRef || "");
         await safeAsyncStorage.setItem(PENDING_PAYMENT_BOOKING_KEY, String(bookingId));
       } catch (storageErr) {
         console.warn("[checkout] safeAsyncStorage write failed:", storageErr);
@@ -186,7 +178,7 @@ export default function PaymentCheckoutScreen() {
       if (selectedMethod === "MOMO" && deeplink) {
         const canOpen = await Linking.canOpenURL(deeplink);
         if (canOpen) {
-          momoPaymentRef.current = { transactionRef, paymentId, bookingId };
+          momoPaymentRef.current = { paymentId, bookingId };
           await Linking.openURL(deeplink);
           // Polling will start when app resumes (see AppState listener)
           return;
@@ -204,19 +196,19 @@ export default function PaymentCheckoutScreen() {
       if (browserResult.type === "cancel" || browserResult.type === "dismiss") {
         setIsProcessing(false);
         try {
-          await safeAsyncStorage.multiRemove([PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY]);
+          await safeAsyncStorage.removeItem(PENDING_PAYMENT_BOOKING_KEY);
         } catch {
           // Ignore
         }
         return;
       }
 
-      startPolling(transactionRef, paymentId, bookingId);
+      startPolling(paymentId, bookingId);
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || "Thanh toán thất bại";
       Alert.alert("Lỗi thanh toán", msg);
       try {
-        await safeAsyncStorage.multiRemove([PENDING_PAYMENT_REF_KEY, PENDING_PAYMENT_BOOKING_KEY]);
+        await safeAsyncStorage.removeItem(PENDING_PAYMENT_BOOKING_KEY);
       } catch {
         // Ignore
       }

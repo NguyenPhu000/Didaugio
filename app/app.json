@@ -6,6 +6,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.jpg",
+    "splash": {
+      "image": "./assets/splash.jpg",
+      "resizeMode": "contain",
+      "backgroundColor": "#a7f3d0"
+    },
     "assetBundlePatterns": ["**/*"],
     "plugins": [
       "expo-router",
@@ -14,7 +20,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "iPoint Genie cần micro để bạn trò chuyện bằng giọng nói với Nhi.",
+          "microphonePermission": "iPoint Genie cần micro để bạn trò chuyện bằng giọng nói với Genie.",
           "recordAudioAndroid": true
         }
       ],
@@ -28,7 +34,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0077b8",
+          "backgroundColor": "#a7f3d0",
           "resizeMode": "contain"
         }
       ],
@@ -51,7 +57,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0077b8"
+        "foregroundImage": "./assets/icon.jpg",
+        "backgroundColor": "#a7f3d0"
       },
       "package": "vn.didaugio.app",
       "softwareKeyboardLayoutMode": "resize",
@@ -74,8 +81,8 @@
     },
     "androidStatusBar": {
       "translucent": false,
-      "backgroundColor": "#0077b8",
-      "barStyle": "light-content"
+      "backgroundColor": "#a7f3d0",
+      "barStyle": "dark-content"
     },
     "ios": {
       "bundleIdentifier": "vn.didaugio.app",
@@ -91,7 +98,7 @@
         "NSLocationWhenInUseUsageDescription": "iPoint Genie cần vị trí để hiển thị địa điểm gần bạn.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "iPoint Genie cần vị trí chạy nền để dẫn đường và nhắc nhở di chuyển trong hành trình của bạn.",
         "NSLocationAlwaysUsageDescription": "iPoint Genie cần vị trí chạy nền để dẫn đường.",
-        "NSMicrophoneUsageDescription": "iPoint Genie cần micro để bạn trò chuyện bằng giọng nói với Nhi.",
+        "NSMicrophoneUsageDescription": "iPoint Genie cần micro để bạn trò chuyện bằng giọng nói với Genie.",
         "NSPhotoLibraryUsageDescription": "iPoint Genie cần truy cập thư viện ảnh để bạn tải lên ảnh đại diện và bài viết.",
         "NSCameraUsageDescription": "iPoint Genie cần truy cập máy ảnh để bạn chụp hình trực tiếp."
       }

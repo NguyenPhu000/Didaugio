@@ -1,15 +1,9 @@
 import { memo } from "react";
-import {
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../../constants/design-tokens";
+import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../../constants/design-tokens";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import {
   getPlaceLocation,

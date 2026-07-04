@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -47,16 +47,6 @@ function getAvatarUri(profile, storedUser) {
       storedUser?.profile?.avatar ||
       storedUser?.avatar ||
       null,
-  );
-}
-
-function getLocation(profile, storedUser, t) {
-  return (
-    profile?.address ||
-    profile?.profile?.address ||
-    storedUser?.profile?.address ||
-    storedUser?.address ||
-    t("profile.noAddress")
   );
 }
 
@@ -505,7 +495,15 @@ function LoggedInProfileScreen({ insets, storedUser }) {
     return () => {
       isMounted = false;
     };
-  }, [profile?.address, profile?.provinceCode, profile?.districtCode]);
+  }, [
+    profile?.address,
+    profile?.profile?.address,
+    profile?.provinceCode,
+    profile?.profile?.provinceCode,
+    profile?.districtCode,
+    profile?.profile?.districtCode,
+    t,
+  ]);
 
   const upcomingTrip =
     trips.find((t) => t?.status !== "completed" && t?.status !== "cancelled") ||

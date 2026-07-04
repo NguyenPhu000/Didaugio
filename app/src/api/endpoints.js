@@ -41,12 +41,12 @@ export const ENDPOINTS = {
     addDestination: (tripId) => `/profile/trips/${tripId}/destinations`,
     removeDestination: (tripId, destId) =>
       `/profile/trips/${tripId}/destinations/${destId}`,
-    reorderDestinations: (tripId) => `/profile/trips/${tripId}/destinations/reorder`,
     linkBookingToTrip: (tripId, bookingId) =>
       `/profile/trips/${tripId}/bookings/${bookingId}/link`,
     reorderTripStops: (tripId) => `/profile/trips/${tripId}/stops/reorder`,
+    moveTripStop: (tripId, stopId) => `/profile/trips/${tripId}/stops/${stopId}/move`,
+    tripSession: (tripId) => `/profile/trips/${tripId}/session`,
     updateDestination: (tripId, destId) => `/profile/trips/${tripId}/destinations/${destId}`,
-    moveDestination: (tripId, destId) => `/profile/trips/${tripId}/destinations/${destId}/move`,
     tripShare: (id) => `/profile/trips/${id}/share`,
     tripShareById: (tripId, shareId) => `/profile/trips/${tripId}/share/${shareId}`,
     accessTripShare: (shareCode) => `/profile/shared-trip/${shareCode}`,
@@ -54,7 +54,6 @@ export const ENDPOINTS = {
     bookings: "/profile/bookings",
     bookingDetail: (id) => `/profile/bookings/${id}`,
     bookingQr: (id) => `/profile/bookings/${id}/qr`,
-    bookingLinkTrip: (id) => `/profile/bookings/${id}/link-trip`,
     bookingCancel: (id) => `/profile/bookings/${id}/cancel`,
     pushToken: "/profile/push-token",
     notifications: "/profile/notifications",

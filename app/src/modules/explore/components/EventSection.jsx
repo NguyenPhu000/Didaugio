@@ -1,10 +1,7 @@
 import { memo, useCallback } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../constants/design-tokens";
+import { TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { EventCard, EVENT_CARD_W } from "./EventCard";
 

@@ -32,12 +32,6 @@ const CarouselItem = ({
       (index + 1) * itemWidth,
     ];
 
-    const scale = interpolate(
-      scrollX.value,
-      inputRange,
-      [0.85, 1, 0.85],
-      Extrapolation.CLAMP,
-    );
 
     const opacity = interpolate(
       scrollX.value,

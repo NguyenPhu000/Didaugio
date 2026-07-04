@@ -40,7 +40,7 @@ const ChevronIcon = ({ isOpen }) => {
 
   React.useEffect(() => {
     rotation.value = withTiming(isOpen ? 1 : 0, { duration: 200 });
-  }, [isOpen]);
+  }, [isOpen, rotation]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -73,7 +73,7 @@ const CrossIcon = ({ isOpen }) => {
       bottomLineTranslate.value = withTiming(0, { duration: 200 });
       middleLineOpacity.value = withTiming(1, { duration: 200 });
     }
-  }, [isOpen]);
+  }, [isOpen, topLineTranslate, bottomLineTranslate, middleLineOpacity]);
 
   const topLineStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: topLineTranslate.value }],
@@ -209,7 +209,7 @@ const AccordionItem = ({
     if (pop) {
       scale.value = withTiming(isOpen ? popScale : 1, { duration: 200 });
     }
-  }, [isOpen, pop]);
+  }, [isOpen, pop, scale, popScale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -243,7 +243,7 @@ const AccordionTrigger = ({ children }) => {
     blurIntensity.value = withTiming(isOpen ? 20 : 40, {
       duration: 100,
     });
-  }, [isOpen]);
+  }, [isOpen, blurIntensity]);
 
   return (
     <Pressable
@@ -294,7 +294,7 @@ const AccordionContent = ({ children }) => {
         opacity.value = withTiming(0, { duration: 200 });
       }
     }
-  }, [isOpen, measured, contentHeight]);
+  }, [isOpen, measured, contentHeight, height, opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     height: height.value,
@@ -306,7 +306,7 @@ const AccordionContent = ({ children }) => {
     blurIntensity.value = withTiming(isOpen ? 0 : 20, {
       duration: 200,
     });
-  }, [isOpen]);
+  }, [isOpen, blurIntensity]);
 
   const animatedBlurProps = useAnimatedProps(() => ({
     intensity: blurIntensity.value,

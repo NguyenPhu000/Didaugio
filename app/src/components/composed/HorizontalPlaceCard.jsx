@@ -5,7 +5,7 @@ import { Star, MapPin } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { resolvePlaceImageUri, getCategoryIcon } from "../../lib/media-url";
-import { TOKENS, CATEGORY_COLORS } from "../../constants/design-tokens";
+import { CATEGORY_COLORS } from "../../constants/design-tokens";
 
 const formatCompactPrice = (value) => {
   const parsed = Number(value);
