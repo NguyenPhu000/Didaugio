@@ -153,16 +153,6 @@ function getSystemTags(place) {
   return [];
 }
 
-function getCreatorName(place, t) {
-  return (
-    place?.createdByUser?.profile?.fullName ||
-    place?.createdByUser?.fullName ||
-    place?.createdByUser?.email ||
-    place?.business?.businessName ||
-    t("place.detail.system")
-  );
-}
-
 const PRICE_RANGE_I18N_KEYS = {
   FREE: "place.priceRange.free",
   BUDGET: "place.priceRange.budget",
@@ -492,7 +482,6 @@ export default function PlaceDetailScreen() {
   const priceLine = useMemo(() => formatPriceLine(place), [place]);
   const priceRangeLabel = useMemo(() => formatPriceRange(place, t), [place, t]);
   const addressLine = useMemo(() => getAddressLine(place), [place]);
-  const creatorName = useMemo(() => getCreatorName(place, t), [place, t]);
   const websiteUrl = useMemo(() => toExternalUrl(place?.website), [place?.website]);
   const facebookUrl = useMemo(() => toExternalUrl(place?.facebook), [place?.facebook]);
   const hasContactInfo = Boolean(

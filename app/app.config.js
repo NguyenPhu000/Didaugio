@@ -13,8 +13,8 @@ function deriveIosUrlScheme(iosClientId) {
   return `com.googleusercontent.apps.${prefix}`;
 }
 
-module.exports = () => {
-  const expoConfig = appJson.expo || {};
+module.exports = ({ config }) => {
+  const expoConfig = config || appJson.expo || {};
   const plugins = Array.isArray(expoConfig.plugins)
     ? [...expoConfig.plugins]
     : [];
