@@ -65,8 +65,8 @@ export const CHART_THEME = {
 };
 
 export const APP_META = {
-  NAME: "Di Dau Gio",
-  FULL_NAME: "DI DAU GIO?",
+  NAME: "iPoint Genie",
+  FULL_NAME: "iPoint Genie",
   ADMIN_SUBTITLE: "ADMIN TERMINAL",
   HEADER_BADGE: "ADM-CORE",
   COPYRIGHT: `© ${new Date().getFullYear()} CAN THO SMART TOURISM`,

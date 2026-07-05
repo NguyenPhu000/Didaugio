@@ -9,6 +9,7 @@ export const CheckInButton = ({
   activeEventId,
   activeNextDestination,
   activeDistanceToTarget,
+  currentLocation,
   isActiveTripMode,
   isTripPaused,
   createMomentMutation,
@@ -58,6 +59,8 @@ export const CheckInButton = ({
             payload: {
               placeId: activeNextDestination.placeId,
               imageUrl: base64data,
+              latitude: currentLocation?.latitude,
+              longitude: currentLocation?.longitude,
             },
           });
 

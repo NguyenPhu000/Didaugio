@@ -1,9 +1,9 @@
-# Maestro — smoke Explore (Android). Cài CLI: https://maestro.mobile.dev/
-# Chạy từ `app/`: npm run maestro:explore  (cần `maestro` trên PATH hoặc npx maestro@latest)
-# Yêu cầu: bản build dev `vn.didaugio.app` trên emulator/thiết bị; Metro `npm start` nếu cần.
+# Maestro - smoke Explore (Android). Cai CLI: https://maestro.mobile.dev/
+# Chay tu `app/`: npm run maestro:explore (can `maestro` tren PATH hoac npx maestro@latest)
+# Yeu cau: ban build dev `vn.ipointgenie.app` tren emulator/thiet bi; Metro `npm start` neu can.
 
-appId: vn.didaugio.app
+appId: vn.ipointgenie.app
 ---
 - launchApp
 - tapOn: "Kham pha"
-- assertVisible: "Bạn muốn khám phá gì hôm nay?"
+- assertVisible: "Ban muon kham pha gi hom nay?"

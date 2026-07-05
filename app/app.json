@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "iPoint Genie",
-    "slug": "didaugio-app",
+    "slug": "iPointGenie-app",
     "scheme": "didaugio",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -61,7 +61,7 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#a7f3d0"
       },
-      "package": "vn.didaugio.app",
+      "package": "vn.ipointgenie.app",
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -81,7 +81,7 @@
       "barStyle": "dark-content"
     },
     "ios": {
-      "bundleIdentifier": "vn.didaugio.app",
+      "bundleIdentifier": "vn.ipointgenie.app",
       "supportsTablet": false,
       "infoPlist": {
         "LSApplicationQueriesSchemes": ["momo"],

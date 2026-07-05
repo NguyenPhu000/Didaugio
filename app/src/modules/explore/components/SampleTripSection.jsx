@@ -1,5 +1,5 @@
 import { memo, useCallback } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { SampleTripCard, SAMPLE_TRIP_CARD_W } from "./SampleTripCard";
@@ -21,46 +21,31 @@ function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
       const handlePress = () => onPressTrip?.(item);
       return <SampleTripCard trip={item} onPress={handlePress} />;
     },
-    [onPressTrip]
+    [onPressTrip],
   );
 
-  // Empty state — ẩn toàn bộ section kể cả header
   if (!sampleTrips?.length) return null;
 
   return (
-    <View className="mt-[26px]">
-      {/* Header */}
-      <View
-        style={{ paddingHorizontal: TAB_SCREEN_PADDING }}
-        className="flex-row justify-between items-center mb-3.5"
-      >
-        <View>
-          <Text
-            className="text-ink text-[22px] leading-7 tracking-[-0.5px] font-bold"
-            style={{ fontFamily: TOKENS.font.heading }}
-          >
-            Lich trinh mau
-          </Text>
-          <Text
-            className="text-black/48 text-[12px] mt-0.5"
-            style={{ fontFamily: TOKENS.font.medium }}
-          >
-            Kham pha {sampleTrips.length} chuyen di duoc de xuat
+    <View style={styles.section}>
+      <View style={styles.header}>
+        <View style={styles.titleBlock}>
+          <View style={styles.eyebrowRow}>
+            <View style={styles.eyebrowDot} />
+            <Text style={styles.eyebrow}>DÀNH CHO BẠN</Text>
+          </View>
+          <Text style={styles.title}>Chuyến đi mẫu</Text>
+          <Text style={styles.subtitle}>
+            Clone hành trình đẹp từ cộng đồng
           </Text>
         </View>
         {onPressViewAll ? (
-          <Pressable onPress={onPressViewAll} hitSlop={8}>
-            <Text
-              className="text-primary text-[13px] font-semibold px-3.5 h-8 rounded-full bg-primary/[0.08] overflow-hidden text-center"
-              style={{ fontFamily: TOKENS.font.semibold, lineHeight: 32 }}
-            >
-              Xem tat ca
-            </Text>
+          <Pressable onPress={onPressViewAll} hitSlop={8} style={styles.viewAll}>
+            <Text style={styles.viewAllText}>Xem tất cả</Text>
           </Pressable>
         ) : null}
       </View>
 
-      {/* Horizontal list */}
       <FlatList
         data={sampleTrips}
         renderItem={renderItem}
@@ -70,13 +55,75 @@ function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
         snapToInterval={ITEM_LENGTH}
         decelerationRate="fast"
         getItemLayout={getItemLayout}
-        contentContainerStyle={{
-          paddingHorizontal: Math.max(0, TAB_SCREEN_PADDING - 4),
-          gap: 12,
-        }}
+        contentContainerStyle={styles.listContent}
       />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  section: {
+    marginTop: 28,
+  },
+  header: {
+    paddingHorizontal: TAB_SCREEN_PADDING,
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 14,
+  },
+  titleBlock: {
+    flex: 1,
+  },
+  eyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 3,
+  },
+  eyebrowDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#007BFF",
+  },
+  eyebrow: {
+    color: "rgba(24,24,25,0.42)",
+    fontSize: 10,
+    fontFamily: TOKENS.font.bold,
+    letterSpacing: 1.2,
+  },
+  title: {
+    color: "#181819",
+    fontSize: 23,
+    lineHeight: 28,
+    fontFamily: TOKENS.font.heading,
+    letterSpacing: -0.6,
+  },
+  subtitle: {
+    color: "rgba(24,24,25,0.48)",
+    fontSize: 12,
+    fontFamily: TOKENS.font.medium,
+    marginTop: 1,
+  },
+  viewAll: {
+    height: 32,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,123,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewAllText: {
+    color: "#007BFF",
+    fontSize: 13,
+    fontFamily: TOKENS.font.semibold,
+  },
+  listContent: {
+    paddingHorizontal: Math.max(0, TAB_SCREEN_PADDING - 4),
+    gap: 12,
+  },
+});
 
 export const SampleTripSection = memo(SampleTripSectionInner);

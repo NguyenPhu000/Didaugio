@@ -2126,6 +2126,7 @@ export default function MapScreen() {
           activeEventId={activeEventId}
           activeNextDestination={activeNextDestination}
           activeDistanceToTarget={activeDistanceToTarget}
+          currentLocation={activeTripLocation}
           isActiveTripMode={isActiveTripMode}
           isTripPaused={activeTrip.isPaused}
           createMomentMutation={createMomentMutation}

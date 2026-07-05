@@ -1,4 +1,4 @@
-package vn.didaugio.app
+package vn.ipointgenie.app
 
 import android.app.Application
 import android.content.res.Configuration

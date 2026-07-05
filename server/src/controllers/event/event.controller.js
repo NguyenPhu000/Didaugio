@@ -100,6 +100,7 @@ export const joinEvent = async (req, res, next) => {
     return res.json({
       success: true,
       data: result.clonedTrip,
+      clonedTrip: result.clonedTrip,
       message: result.message || "Tham gia sự kiện và tạo lịch trình thành công",
     });
   } catch (error) {
@@ -112,8 +113,11 @@ export const pingEvent = async (req, res, next) => {
   try {
     const eventId = parseInt(req.params.id, 10);
     const userId = getUserId(req);
-    const { placeId } = req.body;
-    const session = await eventService.pingEvent(eventId, placeId, userId);
+    const { placeId, latitude, longitude } = req.body;
+    const session = await eventService.pingEvent(eventId, placeId, userId, {
+      latitude,
+      longitude,
+    });
     return res.json({
       success: true,
       data: session,

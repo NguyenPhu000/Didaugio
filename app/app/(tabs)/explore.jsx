@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   StyleSheet,
   Text,
   View,
@@ -46,6 +47,7 @@ import { ExploreModernHeader } from "../../src/modules/explore/components/Explor
 import { CategoryPills } from "../../src/modules/explore/components/CategoryPills";
 import { useEvents } from "../../src/modules/explore/hooks/useEvents";
 import { EventSection } from "../../src/modules/explore/components/EventSection";
+import { FeaturedEventCampaignCard } from "../../src/modules/explore/components/FeaturedEventCampaignCard";
 
 import { useExploreCms } from "../../src/modules/explore/hooks/useExploreCms";
 import { CmsBannerCarousel } from "../../src/modules/explore/components/CmsBannerCarousel";
@@ -53,9 +55,6 @@ import { SampleTripSection } from "../../src/modules/explore/components/SampleTr
 import { AnnouncementBanner } from "../../src/modules/explore/components/AnnouncementBanner";
 
 import { BlurCarousel } from "../../src/components/reacticx/blur-carousel";
-
-import { Image } from "expo-image";
-import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../src/lib/media-url";
 
 import { useSavePlace, useUnsavePlace, useSavedPlaces } from "../../src/modules/saved/hooks/useSaved";
 
@@ -278,6 +277,30 @@ export default function ExploreScreen() {
     if (trip?.id) router.push({ pathname: "/trip/[id]", params: { id: trip.id } });
   }, [router]);
 
+  const handlePressBanner = useCallback((banner) => {
+    const linkType = banner?.linkType;
+    const linkValue = banner?.linkValue;
+    if (!linkType || linkType === "none" || !linkValue) return;
+
+    if (linkType === "place") {
+      router.push({ pathname: "/place/[id]", params: { id: linkValue } });
+      return;
+    }
+    if (linkType === "event") {
+      router.push({ pathname: "/event/[id]", params: { id: linkValue } });
+      return;
+    }
+    if (linkType === "trip") {
+      router.push({ pathname: "/trip/[id]", params: { id: linkValue } });
+      return;
+    }
+    if (linkType === "url") {
+      Linking.openURL(String(linkValue)).catch(() => {
+        useUIStore.getState().addToast({ type: "error", message: t("common.operationFailed") });
+      });
+    }
+  }, [router, t]);
+
   const isInitialLoading = isLoading || isLoadingEvents || isLoadingCms;
   const showEmpty = allPlaces.length === 0 && !isInitialLoading;
 
@@ -285,53 +308,15 @@ export default function ExploreScreen() {
 
   const renderEventBanner = useCallback(
     ({ item: event }) => {
-      const rawImage = event?.thumbnail || event?.imageUrl;
-      const imageUri = rawImage ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 800) : null;
       return (
-        <Pressable
-          haptic="light"
-          onPress={() => handlePressEvent(event)}
-          style={{ width: "100%", height: 170, borderRadius: 20, overflow: "hidden", backgroundColor: APPLE_THEME.surfaceMuted }}
-        >
-          {imageUri ? (
-            <Image source={{ uri: imageUri }} contentFit="cover" transition={250} cachePolicy="memory-disk" style={StyleSheet.absoluteFillObject} />
-          ) : (
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#064e3b" }}>
-              <MaterialIconsRounded name="celebration" size={48} color="rgba(255,255,255,0.3)" />
-            </View>
-          )}
-          <View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.1)" }} pointerEvents="none" />
-          <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "70%", backgroundColor: "rgba(0,0,0,0.55)" }} pointerEvents="none" />
-          <View style={{ position: "absolute", top: 14, left: 14, flexDirection: "row", alignItems: "center", gap: 8, zIndex: 2 }}>
-            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: "#DC2626", flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <MaterialIconsRounded name="campaign" size={12} color="#FFFFFF" />
-              <Text style={{ color: "#FFF", fontSize: 10, fontFamily: TOKENS.font.bold, letterSpacing: 1.5 }}>{t("explore.event.featuredBadge")}</Text>
-            </View>
-          </View>
-          <View style={{ position: "absolute", bottom: 16, left: 16, right: 16, zIndex: 2, gap: 6 }}>
-            <Text style={{ color: "#FFF", fontSize: 18, lineHeight: 22, fontFamily: TOKENS.font.heading, letterSpacing: -0.4 }} numberOfLines={2}>{event?.title}</Text>
-            {event?.description ? (
-              <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontFamily: TOKENS.font.medium }} numberOfLines={1}>{event.description}</Text>
-            ) : null}
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <MaterialIconsRounded name="people" size={13} color="rgba(255,255,255,0.8)" />
-                  <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 11, fontFamily: TOKENS.font.semibold }}>
-                    {t("explore.event.participants", { count: event?._count?.participants || event?.participantCount || 0 })}
-                  </Text>
-                </View>
-              </View>
-              <View style={{ paddingHorizontal: 14, height: 28, borderRadius: 999, backgroundColor: "#FFF", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                <Text style={{ color: "#000", fontSize: 11, fontFamily: TOKENS.font.bold }}>{t("explore.event.viewNow")}</Text>
-                <MaterialIconsRounded name="arrow-forward" size={12} color="#000" />
-              </View>
-            </View>
-          </View>
-        </Pressable>
+        <FeaturedEventCampaignCard
+          event={event}
+          width="100%"
+          onPress={handlePressEvent}
+        />
       );
     },
-    [handlePressEvent, t],
+    [handlePressEvent],
   );
 
   const emptyOpacity = useSharedValue(0);
@@ -376,7 +361,9 @@ export default function ExploreScreen() {
 
           <AnnouncementBanner announcement={announcement} />
 
-          {selectedCategory === null ? <CmsBannerCarousel banners={banners} /> : null}
+          {selectedCategory === null ? (
+            <CmsBannerCarousel banners={banners} onPressBanner={handlePressBanner} />
+          ) : null}
 
           {selectedCategory === null && featuredEvents.length > 0 ? (
             <View style={{ marginTop: 12, marginBottom: 4 }}>

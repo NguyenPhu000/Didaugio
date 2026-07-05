@@ -1,4 +1,4 @@
-package vn.didaugio.app
+package vn.ipointgenie.app
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

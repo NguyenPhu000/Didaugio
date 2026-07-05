@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -6,6 +6,7 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -13,30 +14,57 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
+import * as Location from "expo-location";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import safeAsyncStorage from "../../src/utils/safeAsyncStorage";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "../../src/stores/authStore";
 import {
+  useCreateMoment,
   useEventDetail,
   useEventMoments,
   useJoinEvent,
-  useCreateMoment,
 } from "../../src/modules/explore/hooks/useEvents";
-import {
-  TOKENS,
-} from "../../src/constants/design-tokens";
-import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../src/lib/media-url";
-import { useTranslation } from "react-i18next";
-import i18n from "@/i18n";
+import { TOKENS } from "../../src/constants/design-tokens";
+import { getOptimizedCloudinaryUrl, resolveMediaUrl, resolvePlaceImageUri } from "../../src/lib/media-url";
 import { formatFullDate, formatFullDateNoWeekday } from "../../src/utils/dateFormat";
+import { distanceMeters } from "../../src/modules/map/utils/distance";
 
 const SCREEN_W = Dimensions.get("window").width;
+const CHECK_IN_RADIUS_M = 75;
+
+const getMomentList = (value) => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.data)) return value.data;
+  return [];
+};
+
+const getDestinationPlaceId = (destination) =>
+  Number(destination?.placeId ?? destination?.place?.id);
+
+const getDestinationDistance = (destination, location) => {
+  const place = destination?.place;
+  if (!place || !location) return null;
+  const lat = Number(place.latitude);
+  const lng = Number(place.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return distanceMeters(location.latitude, location.longitude, lat, lng);
+};
+
+async function imageUriToBase64(uri) {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Cannot read image"));
+    reader.readAsDataURL(blob);
+  });
+}
 
 export default function EventDetailScreen() {
-  const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -47,120 +75,103 @@ export default function EventDetailScreen() {
   const joinEventMutation = useJoinEvent();
   const createMomentMutation = useCreateMoment();
 
-  const [activeTab, setActiveTab] = useState("info"); // info | moments
-  const [personalCheckedIn, setPersonalCheckedIn] = useState({});
-  const [uploadingChặngId, setUploadingChặngId] = useState(null);
+  const [activeTab, setActiveTab] = useState("route");
+  const [uploadingPlaceId, setUploadingPlaceId] = useState(null);
   const [selectedMoment, setSelectedMoment] = useState(null);
+  const [lastLocation, setLastLocation] = useState(null);
+  const [optimisticChecked, setOptimisticChecked] = useState({});
 
-  // Moments list
-  const moments = useMemo(() => {
-    return momentsData?.data || momentsData || [];
-  }, [momentsData]);
+  const moments = useMemo(() => getMomentList(momentsData), [momentsData]);
+  const destinations = useMemo(
+    () => (Array.isArray(event?.trip?.destinations) ? event.trip.destinations : []),
+    [event?.trip?.destinations],
+  );
 
-  // Load progress từ safeAsyncStorage
-  useEffect(() => {
-    const loadProgress = async () => {
-      try {
-        if (!id) return;
-        const keys = await safeAsyncStorage.getAllKeys();
-        const eventPrefix = `didaugio:event:${id}:checkedin:`;
-        const eventKeys = keys.filter(key => key.startsWith(eventPrefix));
-        if (eventKeys.length === 0) {
-          setPersonalCheckedIn({});
-          return;
-        }
-        const pairs = await safeAsyncStorage.multiGet(eventKeys);
-        const progress = {};
-        pairs.forEach(([key, val]) => {
-          const placeId = key.replace(eventPrefix, "");
-          progress[placeId] = val === "true";
-        });
-        setPersonalCheckedIn(progress);
-      } catch (err) {
-        console.error("Lỗi đọc tiến trình chặng:", err);
-      }
-    };
-    loadProgress();
-  }, [id]);
+  const serverCheckedIds = useMemo(
+    () => new Set((event?.myCheckedInPlaceIds || []).map((placeId) => Number(placeId))),
+    [event?.myCheckedInPlaceIds],
+  );
 
-  // Tính số lượng chặng đã check-in
-  const destinations = useMemo(() => event?.trip?.destinations || [], [event?.trip?.destinations]);
-  const totalDestinations = destinations.length;
-  const checkedInCount = useMemo(() => {
-    let count = 0;
-    destinations.forEach(dest => {
-      if (personalCheckedIn[dest.placeId]) {
-        count++;
-      }
-    });
-    return count;
-  }, [destinations, personalCheckedIn]);
+  const checkedInCount = event?.checkInSummary?.checkedInCount ?? serverCheckedIds.size;
+  const totalDestinations = event?.checkInSummary?.totalDestinations ?? destinations.length;
+  const progressPercent = totalDestinations > 0
+    ? Math.round((checkedInCount / totalDestinations) * 100)
+    : 0;
 
-  const progressPercent = totalDestinations > 0 ? (checkedInCount / totalDestinations) : 0;
+  const eventImageUri = useMemo(() => {
+    const raw = event?.thumbnail || event?.imageUrl;
+    return raw ? getOptimizedCloudinaryUrl(resolveMediaUrl(raw), 1000) : null;
+  }, [event?.imageUrl, event?.thumbnail]);
 
-  // Xử lý Tham gia Sự kiện
   const handleJoinEvent = useCallback(async () => {
     if (!user) {
-      Alert.alert(t("event.loginRequired"), t("event.loginRequiredMessage"), [
-        { text: t("common.cancel"), style: "cancel" },
-        { text: t("common.login"), onPress: () => router.push("/(auth)/login") },
+      Alert.alert("Cần đăng nhập", "Đăng nhập để tham gia sự kiện và nhận bản sao chuyến đi.", [
+        { text: "Để sau", style: "cancel" },
+        { text: "Đăng nhập", onPress: () => router.push("/(auth)/login") },
       ]);
       return;
     }
 
-    Alert.alert(
-      t("event.joinEvent"),
-      t("event.joinEventMessage"),
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("common.confirm"),
-          onPress: async () => {
-            try {
-              const res = await joinEventMutation.mutateAsync(id);
-              // Best-effort: lưu mapping event→trip, không crash nếu storage đầy
-              if (res?.clonedTrip?.id) {
-                try {
-                  await safeAsyncStorage.setItem(
-                    `didaugio:active_event_trip:${res.clonedTrip.id}`,
-                    String(id)
-                  );
-                } catch (storageErr) {
-                  console.warn("Không thể lưu mapping event trip:", storageErr?.message);
-                }
-              }
-              Alert.alert(t("event.success"), t("event.successMessage"), [
-                {
-                  text: t("event.goToTrips"),
-                  onPress: () => {
-                    // Navigate to trips tab
-                    router.replace("/(tabs)/trips");
-                  }
-                },
-                {
-                  text: t("event.stay"),
-                  onPress: () => refetch()
-                }
-              ]);
-            } catch (err) {
-              Alert.alert(t("event.error"), err?.message || t("event.joinErrorMessage"));
-            }
-          }
-        }
-      ]
-    );
-  }, [id, user, router, joinEventMutation, refetch, t]);
+    try {
+      const response = await joinEventMutation.mutateAsync(id);
+      const clonedTrip = response?.clonedTrip || response?.data || null;
+      if (clonedTrip?.id) {
+        await safeAsyncStorage.setItem(
+          `didaugio:active_event_trip:${clonedTrip.id}`,
+          String(id),
+        );
+      }
+      await refetch();
+      Alert.alert("Đã tham gia", "Chuyến đi mẫu đã được clone về tài khoản của bạn.", [
+        { text: "Xem chuyến đi", onPress: () => router.replace("/(tabs)/trips") },
+        { text: "Ở lại", style: "cancel" },
+      ]);
+    } catch (error) {
+      Alert.alert("Không thể tham gia", error?.message || "Vui lòng thử lại.");
+    }
+  }, [id, joinEventMutation, refetch, router, user]);
 
-  // Xử lý check-in chụp ảnh tại chặng
-  const handleCheckInChặng = useCallback(async (dest) => {
+  const getCurrentLocation = useCallback(async () => {
+    const permission = await Location.requestForegroundPermissionsAsync();
+    if (permission.status !== "granted") {
+      Alert.alert("Cần quyền vị trí", "Bật vị trí để xác nhận bạn đang ở gần điểm check-in.");
+      return null;
+    }
+
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+    const coords = {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+    setLastLocation(coords);
+    return coords;
+  }, []);
+
+  const handleCheckInDestination = useCallback(async (destination) => {
+    const placeId = getDestinationPlaceId(destination);
     if (!event?.isJoined) {
-      Alert.alert(t("event.notJoined"), t("event.notJoinedMessage"));
+      Alert.alert("Chưa tham gia", "Bạn cần tham gia sự kiện trước khi check-in.");
+      return;
+    }
+    if (!placeId) return;
+
+    const location = await getCurrentLocation();
+    if (!location) return;
+
+    const distance = getDestinationDistance(destination, location);
+    if (distance !== null && distance > CHECK_IN_RADIUS_M) {
+      Alert.alert(
+        "Chưa đủ gần điểm",
+        `Bạn đang cách điểm này khoảng ${Math.round(distance)}m. Check-in mở khi trong bán kính ${CHECK_IN_RADIUS_M}m.`,
+      );
       return;
     }
 
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(t("event.cameraPermission"), t("event.cameraPermissionMessage"));
+    const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+    if (cameraPermission.status !== "granted") {
+      Alert.alert("Cần quyền camera", "Bật camera để chụp khoảnh khắc check-in.");
       return;
     }
 
@@ -170,365 +181,197 @@ export default function EventDetailScreen() {
       aspect: [1, 1],
       quality: 1,
     });
-
     if (result.canceled || !result.assets?.[0]?.uri) return;
 
-    const uri = result.assets[0].uri;
-    setUploadingChặngId(dest.id);
-
+    setUploadingPlaceId(placeId);
     try {
-      // Nén ảnh về 400x400 JPEG (~30KB)
       const manipulated = await ImageManipulator.manipulateAsync(
-        uri,
+        result.assets[0].uri,
         [{ resize: { width: 400, height: 400 } }],
-        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG },
       );
-
-      // Đọc ảnh thành base64 qua Promise wrapper
-      const response = await fetch(manipulated.uri);
-      const blob = await response.blob();
-      const base64data = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = () => reject(new Error("Cannot read image"));
-        reader.readAsDataURL(blob);
-      });
-
-      // Upload ảnh lên server
+      const imageUrl = await imageUriToBase64(manipulated.uri);
       await createMomentMutation.mutateAsync({
-        id: id,
+        id,
         payload: {
-          placeId: dest.placeId,
-          imageUrl: base64data,
-        }
+          placeId,
+          imageUrl,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        },
       });
 
-      // Cập nhật UI ngay — không phụ thuộc safeAsyncStorage
-      setPersonalCheckedIn(prev => ({ ...prev, [dest.placeId]: true }));
-
-      // Lưu trạng thái check-in cục bộ — best-effort
-      try {
-        const key = `didaugio:event:${id}:checkedin:${dest.placeId}`;
-        await safeAsyncStorage.setItem(key, "true");
-      } catch (storageErr) {
-        console.warn("Không thể lưu trạng thái check-in cục bộ:", storageErr?.message);
-      }
-
-      Alert.alert(t("event.success"), t("event.checkinSuccess"));
-      refetchMoments();
-      refetch();
-    } catch (err) {
-      console.error("Check-in error:", err);
-      Alert.alert(t("event.error"), err?.message || t("event.checkinError"));
+      setOptimisticChecked((prev) => ({ ...prev, [placeId]: true }));
+      await safeAsyncStorage.setItem(`didaugio:event:${id}:checkedin:${placeId}`, "true");
+      await Promise.all([refetch(), refetchMoments()]);
+      Alert.alert("Check-in thành công", "Khoảnh khắc đã được thêm vào tường sự kiện.");
+    } catch (error) {
+      Alert.alert("Check-in thất bại", error?.message || "Vui lòng thử lại.");
     } finally {
-      setUploadingChặngId(null);
+      setUploadingPlaceId(null);
     }
-  }, [id, event, createMomentMutation, refetch, refetchMoments, t]);
+  }, [createMomentMutation, event?.isJoined, getCurrentLocation, id, refetch, refetchMoments]);
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#F4F7FB]">
-        <ActivityIndicator size="large" color="#0071E3" />
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#0F8A7A" />
       </View>
     );
   }
 
   if (!event) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#F4F7FB] px-6">
-        <Text className="text-[#1D1D1F] text-[18px] font-semibold text-center mb-4">
-          {t("event.notFound")}
-        </Text>
-        <Pressable onPress={() => router.back()} className="h-10 px-6 rounded-full bg-[#1D1D1F] items-center justify-center">
-          <Text className="text-white font-semibold">{t("event.goBack")}</Text>
+      <View style={styles.centered}>
+        <Text style={styles.emptyTitle}>Không tìm thấy sự kiện</Text>
+        <Pressable onPress={() => router.back()} style={styles.darkButton}>
+          <Text style={styles.darkButtonText}>Quay lại</Text>
         </Pressable>
       </View>
     );
   }
 
-  const rawImage = event.thumbnail || event.imageUrl;
-  const imageUri = rawImage ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 800) : null;
-
   return (
-    <View className="flex-1 bg-[#F4F7FB]">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
-        {/* Banner Image */}
-        <View className="w-full h-[280px] relative bg-[#EDEDF2]">
-          {imageUri ? (
-            <Image source={{ uri: imageUri }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
-          ) : (
-            <View className="w-full h-full bg-gradient-to-br from-emerald-900 via-teal-800 to-cyan-900 items-center justify-center">
-              <MaterialIconsRounded name="celebration" size={56} color="rgba(255,255,255,0.3)" />
-            </View>
-          )}
-          <View className="absolute inset-0 bg-black/20" />
+    <View style={styles.screen}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 104 }}
+      >
+        <View style={styles.hero}>
+          {eventImageUri ? (
+            <Image source={{ uri: eventImageUri }} contentFit="cover" style={StyleSheet.absoluteFillObject} />
+          ) : null}
           <LinearGradient
-            colors={["rgba(0,0,0,0.6)", "transparent"]}
-            start={{ x: 0, y: 1 }}
-            end={{ x: 0, y: 0 }}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "40%" }}
+            colors={["rgba(3,7,18,0.2)", "rgba(3,7,18,0.62)", "#062D2A"]}
+            locations={[0, 0.46, 1]}
+            style={StyleSheet.absoluteFillObject}
           />
 
-          {/* Floated Header Buttons */}
-          <View 
-            style={{ top: Math.max(12, insets.top) }} 
-            className="absolute left-4 right-4 flex-row justify-between items-center z-[5]"
-          >
-            <Pressable 
-              onPress={() => router.back()}
-              className="w-10 h-10 rounded-full items-center justify-center bg-black/40 overflow-hidden"
-            >
-              <BlurView intensity={30} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+          <View style={[styles.heroTop, { paddingTop: Math.max(insets.top, 16) }]}>
+            <Pressable onPress={() => router.back()} style={styles.glassIcon}>
               <MaterialIconsRounded name="arrow-back" size={22} color="#FFFFFF" />
             </Pressable>
-
-            {event.totalActiveCompanionCount > 0 ? (
-              <View className="px-3 py-1.5 rounded-full bg-[#34C759] border border-white/20 flex-row items-center gap-1.5 shadow-sm">
-                <View className="w-2 h-2 rounded-full bg-white" />
-                <Text className="text-white text-[11px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>
-                  {event.totalActiveCompanionCount} {t("event.online")}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
-
-        {/* Event Title Block */}
-        <View className="bg-white px-5 py-5 rounded-b-[32px] shadow-sm mb-4 border-b border-black/5">
-          <View className="flex-row items-center gap-2 mb-2">
-            <View className="px-2.5 py-0.5 rounded-full bg-[#0071E3]/10">
-              <Text className="text-[#0071E3] text-[11px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>
-                {t("event.communityEvent")}
+            <View style={styles.livePill}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>
+                {event.totalActiveCompanionCount || 0} đang đi
               </Text>
             </View>
-            <Text className="text-black/40 text-[12px] font-medium" style={{ fontFamily: TOKENS.font.medium }}>
-              {t("event.location")}
+          </View>
+
+          <View style={styles.heroCopy}>
+            <Text style={styles.heroEyebrow}>COMMUNITY TRIP</Text>
+            <Text style={styles.heroTitle}>{event.title}</Text>
+            <Text style={styles.heroMeta}>
+              {formatFullDate(event.startDate)} - {formatFullDateNoWeekday(event.endDate)}
             </Text>
-          </View>
-
-          <Text className="text-[#1D1D1F] text-[24px] leading-8 font-bold tracking-tight mb-3" style={{ fontFamily: TOKENS.font.heading }}>
-            {event.title}
-          </Text>
-
-          {/* Quick Stats Grid */}
-          <View className="flex-row items-center gap-4 py-3 border-y border-black/[0.06] mb-4">
-            <View className="flex-1 flex-row items-center gap-2">
-              <View className="w-8 h-8 rounded-full bg-blue-50 items-center justify-center">
-                <MaterialIconsRounded name="people" size={16} color="#0071E3" />
-              </View>
-              <View>
-                <Text className="text-black/40 text-[10px] font-bold uppercase" style={{ fontFamily: TOKENS.font.bold }}>{t("event.participants")}</Text>
-                <Text className="text-[#1D1D1F] text-[13px] font-bold" style={{ fontFamily: TOKENS.font.semibold }}>
-                  {event._count?.participants || event.participantCount || 0} {t("event.people")}
-                </Text>
-              </View>
-            </View>
-
-            <View className="flex-1 flex-row items-center gap-2">
-              <View className="w-8 h-8 rounded-full bg-green-50 items-center justify-center">
-                <MaterialIconsRounded name="photo-camera" size={16} color="#34C759" />
-              </View>
-              <View>
-                <Text className="text-black/40 text-[10px] font-bold uppercase" style={{ fontFamily: TOKENS.font.bold }}>{t("event.checkins")}</Text>
-                <Text className="text-[#1D1D1F] text-[13px] font-bold" style={{ fontFamily: TOKENS.font.semibold }}>
-                  {event.totalCheckIns || 0} {t("event.times")}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Date & Time info */}
-          <View className="gap-2.5">
-            <View className="flex-row items-center gap-3">
-              <MaterialIconsRounded name="calendar-today" size={18} color="#8E8E93" />
-              <View>
-                <Text className="text-[#1D1D1F] text-[13px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
-                  {formatFullDate(event.startDate)}
-                </Text>
-                <Text className="text-black/40 text-[11px] font-medium" style={{ fontFamily: TOKENS.font.medium }}>
-                  {t("event.to")} {formatFullDateNoWeekday(event.endDate)}
-                </Text>
-              </View>
-            </View>
-
-            {event.description ? (
-              <View className="mt-2.5">
-                <Text className="text-[#1D1D1F]/70 text-[13px] leading-[20px] font-medium" style={{ fontFamily: TOKENS.font.body }}>
-                  {event.description}
-                </Text>
-              </View>
-            ) : null}
           </View>
         </View>
 
-        {/* Tab Buttons */}
-        <View className="flex-row px-4 mb-4 gap-2">
-          <Pressable
-            onPress={() => setActiveTab("info")}
-            className={`flex-1 py-2.5 rounded-full items-center justify-center border ${
-              activeTab === "info" ? "bg-white border-[#0071E3]/20 shadow-sm" : "bg-black/[0.03] border-transparent"
-            }`}
-          >
-            <Text 
-              className={`text-[13px] font-bold ${activeTab === "info" ? "text-[#0071E3]" : "text-black/60"}`}
-              style={{ fontFamily: TOKENS.font.semibold }}
-            >
-              {t("event.itinerary")}
+        <View style={styles.content}>
+          <View style={styles.campaignCard}>
+            <Text style={styles.sectionLabel}>Tiến độ cộng đồng</Text>
+            <View style={styles.statsRow}>
+              <StatTile icon="people" label="Tham gia" value={String(event._count?.participants || event.participantCount || 0)} />
+              <StatTile icon="photo-camera" label="Check-in" value={String(event.totalCheckIns || 0)} />
+              <StatTile icon="route" label="Chặng" value={String(destinations.length)} />
+            </View>
+
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressTitle}>Hành trình của bạn</Text>
+              <Text style={styles.progressValue}>{checkedInCount}/{totalDestinations} chặng</Text>
+            </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
+            </View>
+            <Text style={styles.progressHint}>
+              {event.isJoined
+                ? "Đến gần từng điểm, chụp ảnh 1:1 để hoàn tất check-in."
+                : "Tham gia để clone chuyến đi mẫu và mở check-in theo vị trí."}
             </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setActiveTab("moments")}
-            className={`flex-1 py-2.5 rounded-full items-center justify-center border ${
-              activeTab === "moments" ? "bg-white border-[#0071E3]/20 shadow-sm" : "bg-black/[0.03] border-transparent"
-            }`}
-          >
-            <Text 
-              className={`text-[13px] font-bold ${activeTab === "moments" ? "text-[#0071E3]" : "text-black/60"}`}
-              style={{ fontFamily: TOKENS.font.semibold }}
-            >
-              {t("event.momentsCheckin")} ({moments.length})
-            </Text>
-          </Pressable>
-        </View>
+          </View>
 
-        {/* TAB 1: INFO & TIMELINE */}
-        {activeTab === "info" ? (
-          <View className="px-4 gap-4">
-            {/* Viễn cảnh 2: Tiến trình cá nhân */}
-            {event.isJoined ? (
-              <View className="bg-white p-4 rounded-2xl shadow-sm border border-black/5">
-                <View className="flex-row justify-between items-center mb-2">
-                  <Text className="text-[#1D1D1F] text-[15px] font-bold" style={{ fontFamily: TOKENS.font.heading }}>
-                    {t("event.personalProgress")}
-                  </Text>
-                  <Text className="text-[#0071E3] text-[13px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>
-                    {checkedInCount}/{totalDestinations} {t("event.leg")}
-                  </Text>
-                </View>
+          {event.broadcastNotice ? (
+            <View style={styles.noticeCard}>
+              <MaterialIconsRounded name="campaign" size={18} color="#B45309" />
+              <Text style={styles.noticeText}>{event.broadcastNotice}</Text>
+            </View>
+          ) : null}
 
-                {/* Progress bar */}
-                <View className="w-full h-2 rounded-full bg-black/5 overflow-hidden mb-2">
-                  <View 
-                    style={{ width: `${progressPercent * 100}%` }} 
-                    className="h-full rounded-full bg-[#34C759]" 
-                  />
-                </View>
+          {event.description ? (
+            <Text style={styles.description}>{event.description}</Text>
+          ) : null}
 
-                <Text className="text-black/50 text-[11px] font-medium" style={{ fontFamily: TOKENS.font.body }}>
-                  {progressPercent === 1 
-                    ? t("event.allCheckedIn")
-                    : t("event.checkinHint")}
-                </Text>
-              </View>
-            ) : null}
+          <View style={styles.tabs}>
+            <TabButton active={activeTab === "route"} label="Lịch trình" onPress={() => setActiveTab("route")} />
+            <TabButton active={activeTab === "moments"} label={`Khoảnh khắc (${moments.length})`} onPress={() => setActiveTab("moments")} />
+          </View>
 
-            {/* Timeline Destinations */}
-            <View className="bg-white p-4 rounded-2xl shadow-sm border border-black/5">
-              <Text className="text-[#1D1D1F] text-[16px] font-bold mb-4" style={{ fontFamily: TOKENS.font.heading }}>
-                {t("event.routeDetail")}
-              </Text>
-
+          {activeTab === "route" ? (
+            <View style={styles.routeCard}>
               {destinations.length === 0 ? (
-                <Text className="text-black/40 text-[13px] text-center py-4">{t("event.noLegs")}</Text>
+                <Text style={styles.emptyText}>Sự kiện chưa gắn chuyến đi mẫu.</Text>
               ) : (
-                destinations.map((dest, index) => {
-                  const place = dest.place;
-                  const isCheckedIn = personalCheckedIn[dest.placeId];
-                  const isUploading = uploadingChặngId === dest.id;
+                destinations.map((destination, index) => {
+                  const placeId = getDestinationPlaceId(destination);
+                  const isChecked = Boolean(destination.checkedInByMe || optimisticChecked[placeId] || serverCheckedIds.has(placeId));
+                  const distance = getDestinationDistance(destination, lastLocation);
+                  const placeImage = resolvePlaceImageUri(destination.place);
+                  const isUploading = uploadingPlaceId === placeId;
 
                   return (
-                    <View key={dest.id} className="flex-row gap-3 pb-6 relative">
-                      {/* Timeline Line */}
-                      {index < destinations.length - 1 ? (
-                        <View className="absolute left-[15px] top-[30px] bottom-0 w-[2px] bg-black/[0.08]" />
-                      ) : null}
-
-                      {/* Timeline Icon Node */}
-                      <View className="z-[2]">
-                        {isCheckedIn ? (
-                          <View className="w-8 h-8 rounded-full bg-[#34C759] items-center justify-center border border-white">
-                            <MaterialIconsRounded name="check" size={16} color="#FFFFFF" />
-                          </View>
-                        ) : (
-                          <View className="w-8 h-8 rounded-full bg-[#0071E3]/10 items-center justify-center border border-white">
-                            <Text className="text-[#0071E3] text-[12px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>
-                              {index + 1}
-                            </Text>
-                          </View>
-                        )}
+                    <View key={destination.id || `${placeId}-${index}`} style={styles.stopRow}>
+                      <View style={styles.stopRail}>
+                        <View style={[styles.stopNode, isChecked && styles.stopNodeDone]}>
+                          {isChecked ? (
+                            <MaterialIconsRounded name="check" size={15} color="#FFFFFF" />
+                          ) : (
+                            <Text style={styles.stopNodeText}>{index + 1}</Text>
+                          )}
+                        </View>
+                        {index < destinations.length - 1 ? <View style={styles.stopLine} /> : null}
                       </View>
 
-                      {/* Timeline Content */}
-                      <View className="flex-1 bg-black/[0.02] p-3.5 rounded-2xl border border-black/[0.04]">
-                        <View className="flex-row justify-between items-start gap-1">
-                          <Text className="text-[#1D1D1F] text-[14px] font-bold flex-1" style={{ fontFamily: TOKENS.font.heading }}>
-                            {place?.name}
-                          </Text>
-
-                          {/* Companion Count (Neon indicator) */}
-                          {dest.activeCompanionCount > 0 ? (
-                            <View className="flex-row items-center gap-1 bg-[#34C759]/10 px-2 py-0.5 rounded-full">
-                              <View className="w-1.5 h-1.5 rounded-full bg-[#34C759]" />
-                              <Text className="text-[#34C759] text-[9px] font-bold uppercase" style={{ fontFamily: TOKENS.font.bold }}>
-                                {t("event.onlineCount", { count: dest.activeCompanionCount })}
-                              </Text>
-                            </View>
-                          ) : null}
+                      <View style={styles.stopCard}>
+                        <View style={styles.stopHead}>
+                          <View style={styles.stopImage}>
+                            {placeImage ? (
+                              <Image source={{ uri: getOptimizedCloudinaryUrl(placeImage, 180) }} contentFit="cover" style={StyleSheet.absoluteFillObject} />
+                            ) : (
+                              <MaterialIconsRounded name="place" size={20} color="#0F8A7A" />
+                            )}
+                          </View>
+                          <View style={styles.stopInfo}>
+                            <Text style={styles.stopTitle}>{destination.place?.name || "Điểm dừng"}</Text>
+                            <Text style={styles.stopMeta}>
+                              Ngày {destination.dayNumber || 1}
+                              {destination.startTime ? ` · ${destination.startTime}` : ""}
+                              {distance !== null ? ` · ${Math.round(distance)}m` : ""}
+                            </Text>
+                          </View>
                         </View>
 
-                        {dest.startTime ? (
-                          <Text className="text-black/40 text-[11px] font-bold mt-1 uppercase" style={{ fontFamily: TOKENS.font.bold }}>
-                            {t("event.estimated")}: {dest.startTime} {dest.endTime ? ` - ${dest.endTime}` : ""}
-                          </Text>
-                        ) : null}
-
-                        {dest.note ? (
-                          <Text className="text-black/60 text-[12px] mt-1.5 italic" style={{ fontFamily: TOKENS.font.body }}>
-                            📝 {dest.note}
-                          </Text>
-                        ) : null}
-
-                        {/* Actions on Destination */}
-                        <View className="flex-row items-center gap-2 mt-3 pt-3 border-t border-black/[0.04]">
-                          {/* View Detail button */}
+                        <View style={styles.stopActions}>
                           <Pressable
-                            onPress={() => router.push({ pathname: "/place/[id]", params: { id: dest.placeId } })}
-                            className="h-8 px-3 rounded-full bg-white border border-black/10 items-center justify-center flex-row gap-1"
+                            onPress={() => router.push({ pathname: "/place/[id]", params: { id: placeId } })}
+                            style={styles.secondaryAction}
                           >
-                            <MaterialIconsRounded name="explore" size={12} color="#1D1D1F" />
-                            <Text className="text-[#1D1D1F] text-[11px] font-bold" style={{ fontFamily: TOKENS.font.semibold }}>
-                              {t("event.pointDetail")}
-                            </Text>
+                            <Text style={styles.secondaryActionText}>Chi tiết điểm</Text>
                           </Pressable>
-
-                          {/* Check-in Camera Button (Only when event is joined) */}
-                          {event.isJoined ? (
-                            <Pressable
-                              onPress={() => handleCheckInChặng(dest)}
-                              disabled={isUploading}
-                              className={`h-8 px-3 rounded-full items-center justify-center flex-row gap-1 ${
-                                isCheckedIn ? "bg-[#34C759]/10 border border-[#34C759]/25" : "bg-[#0071E3] shadow-sm"
-                              }`}
-                            >
-                              {isUploading ? (
-                                <ActivityIndicator size="small" color={isCheckedIn ? "#34C759" : "#FFFFFF"} />
-                              ) : (
-                                <>
-                                  <MaterialIconsRounded 
-                                    name="photo-camera" 
-                                    size={12} 
-                                    color={isCheckedIn ? "#34C759" : "#FFFFFF"} 
-                                  />
-                                  <Text 
-                                    className={`text-[11px] font-bold ${isCheckedIn ? "text-[#34C759]" : "text-white"}`} 
-                                    style={{ fontFamily: TOKENS.font.semibold }}
-                                  >
-                                    {isCheckedIn ? t("event.checkedIn") : t("event.takePhoto")}
-                                  </Text>
-                                </>
-                              )}
-                            </Pressable>
-                          ) : null}
+                          <Pressable
+                            onPress={() => handleCheckInDestination(destination)}
+                            disabled={isUploading}
+                            style={[styles.checkInAction, isChecked && styles.checkInActionDone]}
+                          >
+                            {isUploading ? (
+                              <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                              <>
+                                <MaterialIconsRounded name={isChecked ? "task-alt" : "photo-camera"} size={14} color="#FFFFFF" />
+                                <Text style={styles.checkInActionText}>{isChecked ? "Đã check-in" : "Check-in"}</Text>
+                              </>
+                            )}
+                          </Pressable>
                         </View>
                       </View>
                     </View>
@@ -536,141 +379,68 @@ export default function EventDetailScreen() {
                 })
               )}
             </View>
-          </View>
-        ) : (
-          /* TAB 2: MOMENTS CHECK-IN GRID (VIỄN CẢNH 1) */
-          <View className="px-4">
-            <View className="bg-white p-4 rounded-2xl shadow-sm border border-black/5">
-              <View className="flex-row items-center gap-1.5 mb-3">
-                <Text className="text-[#1D1D1F] text-[16px] font-bold" style={{ fontFamily: TOKENS.font.heading }}>
-                  {t("event.momentsWall")}
-                </Text>
-                <View className="px-2 py-0.5 rounded-full bg-black/5">
-                  <Text className="text-black/50 text-[10px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>{t("event.anonymous1v1")}</Text>
-                </View>
-              </View>
-
-              <Text className="text-black/45 text-[12px] leading-[18px] mb-4" style={{ fontFamily: TOKENS.font.body }}>
-                {t("event.momentsDescription")}
-              </Text>
-
+          ) : (
+            <View style={styles.momentWall}>
               {moments.length === 0 ? (
-                <View className="items-center py-10 gap-2">
-                  <View className="w-12 h-12 rounded-full bg-black/[0.03] items-center justify-center mb-1">
-                    <MaterialIconsRounded name="photo-library" size={24} color="#8E8E93" />
-                  </View>
-                  <Text className="text-[#1D1D1F] text-[14px] font-semibold" style={{ fontFamily: TOKENS.font.semibold }}>
-                    {t("event.noMoments")}
-                  </Text>
-                  <Text className="text-black/40 text-[11px] text-center px-4" style={{ fontFamily: TOKENS.font.body }}>
-                    {t("event.noMomentsMessage")}
-                  </Text>
+                <View style={styles.emptyMoments}>
+                  <MaterialIconsRounded name="photo-library" size={28} color="rgba(15,35,32,0.35)" />
+                  <Text style={styles.emptyTitle}>Chưa có khoảnh khắc</Text>
+                  <Text style={styles.emptyText}>Người tham gia đầu tiên check-in sẽ mở tường ảnh cộng đồng.</Text>
                 </View>
               ) : (
-                <View className="flex-row flex-wrap gap-2">
+                <View style={styles.momentGrid}>
                   {moments.map((moment) => {
-                    const momentUri = getOptimizedCloudinaryUrl(resolveMediaUrl(moment.imageUrl), 300);
+                    const momentUri = getOptimizedCloudinaryUrl(resolveMediaUrl(moment.imageUrl), 360);
                     return (
-                      <Pressable
-                        key={moment.id}
-                        onPress={() => setSelectedMoment(moment)}
-                        className="rounded-xl overflow-hidden bg-black/5 border border-black/5"
-                        style={{ width: (SCREEN_W - 32 - 32 - 16) / 3, height: (SCREEN_W - 32 - 32 - 16) / 3 }}
-                      >
-                        <Image source={{ uri: momentUri }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
+                      <Pressable key={moment.id} onPress={() => setSelectedMoment(moment)} style={styles.momentThumb}>
+                        <Image source={{ uri: momentUri }} contentFit="cover" style={StyleSheet.absoluteFillObject} />
                       </Pressable>
                     );
                   })}
                 </View>
               )}
             </View>
-          </View>
-        )}
+          )}
+        </View>
       </ScrollView>
 
-      {/* Floating Join Button */}
-      {!event.isJoined ? (
-        <View 
-          style={{ paddingBottom: Math.max(16, insets.bottom + 8) }}
-          className="absolute bottom-0 left-0 right-0 px-4 pt-3 bg-white/95 border-t border-black/5 shadow-lg flex-row gap-3 z-[6]"
-        >
-          <Pressable
-            onPress={handleJoinEvent}
-            disabled={joinEventMutation.isPending}
-            className="flex-1 h-12 rounded-full bg-[#0071E3] items-center justify-center shadow-md flex-row gap-2"
-          >
+      <BlurView intensity={56} tint="light" style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 8, 16) }]}>
+        {event.isJoined ? (
+          <View style={styles.joinedButton}>
+            <MaterialIconsRounded name="check-circle" size={18} color="#0F8A7A" />
+            <Text style={styles.joinedButtonText}>Đang tham gia sự kiện</Text>
+          </View>
+        ) : (
+          <Pressable onPress={handleJoinEvent} disabled={joinEventMutation.isPending} style={styles.joinButton}>
             {joinEventMutation.isPending ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
               <>
                 <MaterialIconsRounded name="luggage" size={18} color="#FFFFFF" />
-                <Text className="text-white text-[15px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>
-                  {t("event.joinJourney")}
-                </Text>
+                <Text style={styles.joinButtonText}>Tham gia & clone chuyến đi</Text>
               </>
             )}
           </Pressable>
-        </View>
-      ) : (
-        <View 
-          style={{ paddingBottom: Math.max(16, insets.bottom + 8) }}
-          className="absolute bottom-0 left-0 right-0 px-4 pt-3 bg-white/95 border-t border-black/5 shadow-lg flex-row gap-3 z-[6]"
-        >
-          <View className="flex-1 h-12 rounded-full bg-[#34C759]/10 border border-[#34C759]/20 items-center justify-center flex-row gap-2">
-            <MaterialIconsRounded name="check-circle" size={18} color="#34C759" />
-            <Text className="text-[#34C759] text-[14px] font-bold" style={{ fontFamily: TOKENS.font.bold }}>
-              {t("event.alreadyJoining")}
-            </Text>
-          </View>
-        </View>
-      )}
+        )}
+      </BlurView>
 
-      {/* Moment Preview Modal */}
-      <Modal
-        visible={!!selectedMoment}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedMoment(null)}
-      >
-        <Pressable 
-          onPress={() => setSelectedMoment(null)}
-          className="flex-1 bg-black/90 items-center justify-center px-4"
-        >
-          <View className="w-full bg-white rounded-3xl overflow-hidden shadow-xl" onStartShouldSetResponder={() => true}>
-            <View className="p-4 flex-row justify-between items-center border-b border-black/[0.05]">
-              <View className="flex-row items-center gap-1.5">
-                <View className="w-6 h-6 rounded-full bg-black/5 items-center justify-center">
-                  <MaterialIconsRounded name="person" size={14} color="#8E8E93" />
-                </View>
-                <Text className="text-[#1D1D1F] text-[13px] font-bold" style={{ fontFamily: TOKENS.font.semibold }}>
-                  {t("event.anonymousCompanion")}
-                </Text>
-              </View>
-              <Pressable 
-                onPress={() => setSelectedMoment(null)}
-                className="w-7 h-7 rounded-full bg-black/5 items-center justify-center"
-              >
-                <MaterialIconsRounded name="close" size={16} color="#8E8E93" />
+      <Modal visible={!!selectedMoment} transparent animationType="fade" onRequestClose={() => setSelectedMoment(null)}>
+        <Pressable onPress={() => setSelectedMoment(null)} style={styles.modalBackdrop}>
+          <View style={styles.momentModal} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Khoảnh khắc ẩn danh</Text>
+              <Pressable onPress={() => setSelectedMoment(null)} style={styles.modalClose}>
+                <MaterialIconsRounded name="close" size={18} color="#0F2320" />
               </Pressable>
             </View>
-
-            <View className="w-full aspect-square bg-[#EDEDF2]">
+            <View style={styles.modalImage}>
               {selectedMoment?.imageUrl ? (
-                <Image 
-                  source={{ uri: getOptimizedCloudinaryUrl(resolveMediaUrl(selectedMoment.imageUrl), 600) }} 
-                  contentFit="cover" 
-                  style={{ width: "100%", height: "100%" }} 
+                <Image
+                  source={{ uri: getOptimizedCloudinaryUrl(resolveMediaUrl(selectedMoment.imageUrl), 800) }}
+                  contentFit="cover"
+                  style={StyleSheet.absoluteFillObject}
                 />
               ) : null}
-            </View>
-
-            <View className="p-4 bg-black/[0.02] gap-1">
-              <Text className="text-black/40 text-[10px] font-bold uppercase" style={{ fontFamily: TOKENS.font.bold }}>
-                {t("event.checkinTime")}
-              </Text>
-              <Text className="text-[#1D1D1F] text-[13px] font-semibold" style={{ fontFamily: TOKENS.font.medium }}>
-                {selectedMoment?.createdAt ? new Date(selectedMoment.createdAt).toLocaleString(i18n.language === "vi" ? "vi-VN" : "en-US") : ""}
-              </Text>
             </View>
           </View>
         </Pressable>
@@ -679,3 +449,477 @@ export default function EventDetailScreen() {
   );
 }
 
+function StatTile({ icon, label, value }) {
+  return (
+    <View style={styles.statTile}>
+      <MaterialIconsRounded name={icon} size={16} color="#0F8A7A" />
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function TabButton({ active, label, onPress }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.tabButton, active && styles.tabButtonActive]}>
+      <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#F2F6F1",
+  },
+  centered: {
+    flex: 1,
+    backgroundColor: "#F2F6F1",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    gap: 14,
+  },
+  hero: {
+    height: 360,
+    backgroundColor: "#062D2A",
+  },
+  heroTop: {
+    position: "absolute",
+    top: 0,
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    zIndex: 5,
+  },
+  glassIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(0,0,0,0.36)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.26)",
+  },
+  livePill: {
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.26)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#6EE7B7",
+  },
+  liveText: {
+    color: "#FFFFFF",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 11,
+  },
+  heroCopy: {
+    position: "absolute",
+    left: 22,
+    right: 22,
+    bottom: 30,
+  },
+  heroEyebrow: {
+    color: "#A7F3D0",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 11,
+    letterSpacing: 1.6,
+  },
+  heroTitle: {
+    color: "#FFFFFF",
+    fontFamily: TOKENS.font.heading,
+    fontSize: 32,
+    lineHeight: 38,
+    letterSpacing: -1,
+    marginTop: 8,
+  },
+  heroMeta: {
+    color: "rgba(255,255,255,0.74)",
+    fontFamily: TOKENS.font.semibold,
+    fontSize: 13,
+    marginTop: 10,
+  },
+  content: {
+    padding: 16,
+    marginTop: -18,
+    gap: 14,
+  },
+  campaignCard: {
+    borderRadius: 28,
+    padding: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(15,35,32,0.08)",
+    shadowColor: "#0F2320",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 5,
+  },
+  sectionLabel: {
+    color: "rgba(15,35,32,0.42)",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12,
+  },
+  statTile: {
+    flex: 1,
+    minHeight: 78,
+    borderRadius: 18,
+    backgroundColor: "#F3FAF6",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+  statValue: {
+    color: "#0F2320",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 18,
+  },
+  statLabel: {
+    color: "rgba(15,35,32,0.48)",
+    fontFamily: TOKENS.font.semibold,
+    fontSize: 11,
+  },
+  progressHeader: {
+    marginTop: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  progressTitle: {
+    color: "#0F2320",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 15,
+  },
+  progressValue: {
+    color: "#0F8A7A",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 13,
+  },
+  progressTrack: {
+    height: 9,
+    borderRadius: 999,
+    backgroundColor: "rgba(15,35,32,0.08)",
+    overflow: "hidden",
+    marginTop: 10,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: "#0F8A7A",
+  },
+  progressHint: {
+    color: "rgba(15,35,32,0.56)",
+    fontFamily: TOKENS.font.medium,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 10,
+  },
+  noticeCard: {
+    borderRadius: 18,
+    padding: 14,
+    backgroundColor: "#FFF7ED",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(180,83,9,0.18)",
+    flexDirection: "row",
+    gap: 10,
+  },
+  noticeText: {
+    flex: 1,
+    color: "#92400E",
+    fontFamily: TOKENS.font.semibold,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  description: {
+    color: "rgba(15,35,32,0.66)",
+    fontFamily: TOKENS.font.medium,
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  tabs: {
+    flexDirection: "row",
+    padding: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(15,35,32,0.06)",
+  },
+  tabButton: {
+    flex: 1,
+    height: 40,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabButtonActive: {
+    backgroundColor: "#FFFFFF",
+  },
+  tabText: {
+    color: "rgba(15,35,32,0.52)",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 13,
+  },
+  tabTextActive: {
+    color: "#0F8A7A",
+  },
+  routeCard: {
+    borderRadius: 26,
+    backgroundColor: "#FFFFFF",
+    padding: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(15,35,32,0.08)",
+  },
+  stopRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  stopRail: {
+    width: 30,
+    alignItems: "center",
+  },
+  stopNode: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#E7F6EF",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  stopNodeDone: {
+    backgroundColor: "#0F8A7A",
+  },
+  stopNodeText: {
+    color: "#0F8A7A",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 12,
+  },
+  stopLine: {
+    flex: 1,
+    width: 2,
+    backgroundColor: "rgba(15,35,32,0.08)",
+  },
+  stopCard: {
+    flex: 1,
+    marginBottom: 14,
+    borderRadius: 22,
+    backgroundColor: "#F8FBF7",
+    padding: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(15,35,32,0.06)",
+  },
+  stopHead: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  stopImage: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    overflow: "hidden",
+    backgroundColor: "#E7F6EF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stopInfo: {
+    flex: 1,
+  },
+  stopTitle: {
+    color: "#0F2320",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 15,
+    lineHeight: 19,
+  },
+  stopMeta: {
+    color: "rgba(15,35,32,0.48)",
+    fontFamily: TOKENS.font.semibold,
+    fontSize: 11,
+    marginTop: 5,
+  },
+  stopActions: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 12,
+  },
+  secondaryAction: {
+    flex: 1,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(15,35,32,0.12)",
+  },
+  secondaryActionText: {
+    color: "#0F2320",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 12,
+  },
+  checkInAction: {
+    flex: 1,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0F8A7A",
+    flexDirection: "row",
+    gap: 6,
+  },
+  checkInActionDone: {
+    backgroundColor: "#10B981",
+  },
+  checkInActionText: {
+    color: "#FFFFFF",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 12,
+  },
+  momentWall: {
+    borderRadius: 26,
+    backgroundColor: "#FFFFFF",
+    padding: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(15,35,32,0.08)",
+  },
+  momentGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  momentThumb: {
+    width: (SCREEN_W - 32 - 28 - 16) / 3,
+    height: (SCREEN_W - 32 - 28 - 16) / 3,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#E7F6EF",
+  },
+  emptyMoments: {
+    minHeight: 180,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 20,
+  },
+  emptyTitle: {
+    color: "#0F2320",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 16,
+    textAlign: "center",
+  },
+  emptyText: {
+    color: "rgba(15,35,32,0.48)",
+    fontFamily: TOKENS.font.medium,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: "center",
+  },
+  bottomBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(15,35,32,0.08)",
+  },
+  joinButton: {
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#0F8A7A",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  joinButtonText: {
+    color: "#FFFFFF",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 15,
+  },
+  joinedButton: {
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#E7F6EF",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(15,138,122,0.22)",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  joinedButtonText: {
+    color: "#0F8A7A",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 14,
+  },
+  darkButton: {
+    height: 42,
+    paddingHorizontal: 20,
+    borderRadius: 21,
+    backgroundColor: "#0F2320",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  darkButtonText: {
+    color: "#FFFFFF",
+    fontFamily: TOKENS.font.bold,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.88)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 18,
+  },
+  momentModal: {
+    width: "100%",
+    borderRadius: 28,
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
+  },
+  modalHeader: {
+    height: 54,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  modalTitle: {
+    color: "#0F2320",
+    fontFamily: TOKENS.font.bold,
+    fontSize: 14,
+  },
+  modalClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(15,35,32,0.06)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalImage: {
+    width: "100%",
+    aspectRatio: 1,
+    backgroundColor: "#E7F6EF",
+  },
+});

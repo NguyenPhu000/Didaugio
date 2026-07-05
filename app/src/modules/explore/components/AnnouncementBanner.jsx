@@ -1,20 +1,61 @@
-import { memo, useCallback, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { memo, useCallback, useMemo, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
-  useAnimatedStyle,
-  withTiming,
-  useSharedValue,
   runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { formatDayMonthNumeric } from "@/utils/dateFormat";
+
+const TONE = {
+  info: {
+    icon: "campaign",
+    bg: "#EFF6FF",
+    border: "rgba(0,123,255,0.18)",
+    iconBg: "rgba(0,123,255,0.12)",
+    accent: "#007BFF",
+    label: "THÔNG BÁO",
+  },
+  warning: {
+    icon: "warning-amber",
+    bg: "#FFF7ED",
+    border: "rgba(245,158,11,0.24)",
+    iconBg: "rgba(245,158,11,0.14)",
+    accent: "#D97706",
+    label: "LƯU Ý",
+  },
+  success: {
+    icon: "check-circle",
+    bg: "#ECFDF5",
+    border: "rgba(16,185,129,0.22)",
+    iconBg: "rgba(16,185,129,0.14)",
+    accent: "#059669",
+    label: "CẬP NHẬT",
+  },
+  error: {
+    icon: "priority-high",
+    bg: "#FEF2F2",
+    border: "rgba(239,68,68,0.22)",
+    iconBg: "rgba(239,68,68,0.14)",
+    accent: "#DC2626",
+    label: "KHẨN",
+  },
+};
 
 function AnnouncementBannerInner({ announcement }) {
   const [dismissed, setDismissed] = useState(false);
   const opacity = useSharedValue(1);
   const translateY = useSharedValue(0);
+
+  const tone = useMemo(
+    () => TONE[announcement?.type] || TONE.info,
+    [announcement?.type],
+  );
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -23,75 +64,111 @@ function AnnouncementBannerInner({ announcement }) {
 
   const handleDismiss = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    opacity.value = withTiming(0, { duration: 250 });
-    translateY.value = withTiming(-8, { duration: 250 }, () => {
+    opacity.value = withTiming(0, { duration: 220 });
+    translateY.value = withTiming(-8, { duration: 220 }, () => {
       runOnJS(setDismissed)(true);
     });
   }, [opacity, translateY]);
 
-  // Ẩn hoàn toàn nếu không có thông báo
   if (!announcement || dismissed) return null;
 
-  // Format ngày tháng gọn
   const dateText = announcement.sentAt
     ? formatDayMonthNumeric(announcement.sentAt)
     : null;
 
   return (
-    <Animated.View style={[animatedStyle, { paddingHorizontal: TAB_SCREEN_PADDING }]} className="mt-3">
-      <View className="rounded-[16px] overflow-hidden border border-[#0071E3]/20 bg-[#0071E3]/[0.06] px-4 py-3 flex-row items-start gap-3">
-        {/* Icon */}
-        <View className="w-8 h-8 rounded-full bg-[#0071E3]/15 items-center justify-center mt-0.5 shrink-0">
-          <Text className="text-[15px]">!</Text>
+    <Animated.View style={[animatedStyle, styles.outer]}>
+      <View style={[styles.card, { backgroundColor: tone.bg, borderColor: tone.border }]}>
+        <View style={[styles.iconWrap, { backgroundColor: tone.iconBg }]}>
+          <MaterialIconsRounded name={tone.icon} size={18} color={tone.accent} />
         </View>
 
-        {/* Nội dung */}
-        <View className="flex-1">
-          <View className="flex-row items-center gap-2 mb-0.5">
-            <Text
-              className="text-[#0071E3] text-[12px] font-bold tracking-wider"
-              style={{ fontFamily: TOKENS.font.bold }}
-            >
-              THONG BAO HE THONG
-            </Text>
-            {dateText ? (
-              <Text
-                className="text-black/40 text-[10px]"
-                style={{ fontFamily: TOKENS.font.medium }}
-              >
-                {dateText}
-              </Text>
-            ) : null}
+        <View style={styles.content}>
+          <View style={styles.metaRow}>
+            <Text style={[styles.label, { color: tone.accent }]}>{tone.label}</Text>
+            {dateText ? <Text style={styles.date}>{dateText}</Text> : null}
           </View>
-          <Text
-            className="text-[#1D1D1F] text-[13px] font-semibold leading-[18px]"
-            style={{ fontFamily: TOKENS.font.semibold }}
-            numberOfLines={1}
-          >
+          <Text style={styles.title} numberOfLines={1}>
             {announcement.title}
           </Text>
           {announcement.body ? (
-            <Text
-              className="text-black/56 text-[12px] mt-0.5 leading-[17px]"
-              style={{ fontFamily: TOKENS.font.medium }}
-              numberOfLines={2}
-            >
+            <Text style={styles.body} numberOfLines={2}>
               {announcement.body}
             </Text>
           ) : null}
         </View>
 
-        {/* Nút dismiss */}
-        <Pressable
-          onPress={handleDismiss}
-          hitSlop={12}
-          className="w-6 h-6 rounded-full bg-black/[0.06] items-center justify-center shrink-0 mt-0.5"
-        >
-          <Text className="text-black/40 text-[14px] leading-[14px]">×</Text>
+        <Pressable onPress={handleDismiss} hitSlop={12} style={styles.closeBtn}>
+          <MaterialIconsRounded name="close" size={15} color="rgba(24,24,25,0.48)" />
         </Pressable>
       </View>
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  outer: {
+    paddingHorizontal: TAB_SCREEN_PADDING,
+    marginTop: 12,
+  },
+  card: {
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  content: {
+    flex: 1,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 2,
+  },
+  label: {
+    fontSize: 10,
+    fontFamily: TOKENS.font.bold,
+    letterSpacing: 1,
+  },
+  date: {
+    color: "rgba(24,24,25,0.42)",
+    fontSize: 10,
+    fontFamily: TOKENS.font.medium,
+  },
+  title: {
+    color: "#181819",
+    fontSize: 14,
+    lineHeight: 18,
+    fontFamily: TOKENS.font.semibold,
+    letterSpacing: -0.15,
+  },
+  body: {
+    color: "rgba(24,24,25,0.58)",
+    fontSize: 12,
+    lineHeight: 17,
+    fontFamily: TOKENS.font.medium,
+    marginTop: 2,
+  },
+  closeBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(24,24,25,0.05)",
+  },
+});
 
 export const AnnouncementBanner = memo(AnnouncementBannerInner);

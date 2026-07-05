@@ -28,14 +28,6 @@ import {
   Upload,
   X,
   Compass,
-  ChevronDown,
-  Car,
-  Bike,
-  Footprints,
-  Navigation,
-  Route,
-  ChevronRight,
-  ArrowRight,
 } from "lucide-react";
 import {
   Dialog,
@@ -68,6 +60,10 @@ import * as placeService from "@/apis/placeService";
 import * as categoryService from "@/apis/categoryService";
 import * as districtService from "@/apis/districtService";
 import { useAuthStore } from "@/stores/authStore";
+import {
+  TripContentCard as SampleTripContentCard,
+  TripEditModal as SampleTripEditModal,
+} from "./cms/sample-trips";
 
 // ─── Image Compression ───────────────────────────────────────────────────────
 
@@ -333,103 +329,6 @@ const EventContentCard = ({ item, onEdit, onToggle, onDelete }) => {
           </div>
         </CardContent>
       </div>
-    </Card>
-  );
-};
-
-// ─── Trip Card (Beautiful) ─────────────────────────────────────────────────────
-
-const TripContentCard = ({ item, onEdit, onManageDestinations, onDelete }) => {
-  const { t } = useTranslation();
-  const startDate = item.startDate ? new Date(item.startDate) : null;
-  const endDate = item.endDate ? new Date(item.endDate) : null;
-
-  return (
-    <Card className="group hover:shadow-lg transition-all duration-200 overflow-hidden">
-      <CardContent className="p-4 flex items-start gap-4">
-        {/* Icon */}
-        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-100 to-indigo-200 flex items-center justify-center shrink-0">
-          <Compass className="h-8 w-8 text-purple-600" />
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h3 className="font-semibold text-base truncate group-hover:text-purple-600 transition-colors">
-                {item.title}
-              </h3>
-              {item.description && (
-                <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                  {item.description}
-                </p>
-              )}
-            </div>
-            {/* Actions */}
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => onEdit(item)}
-                title={t("common.edit")}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-purple-600 hover:text-purple-700"
-                onClick={() => onManageDestinations(item)}
-                title={t("admin.cms.itineraryDetails")}
-              >
-                <Link className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive"
-                onClick={() => onDelete(item)}
-                title={t("common.delete")}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-muted-foreground">
-            {startDate && (
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5" />
-                {startDate.toLocaleDateString("vi-VN")}
-                {endDate && ` - ${endDate.toLocaleDateString("vi-VN")}`}
-              </span>
-            )}
-            {item.totalDays && (
-              <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-medium">
-                {item.totalDays} {t("admin.cms.totalDays")}
-              </span>
-            )}
-            {item.travelStyle && (
-              <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-wider">
-                {item.travelStyle}
-              </Badge>
-            )}
-            {item.groupSize && (
-              <span className="flex items-center gap-1">
-                <Users className="h-3.5 w-3.5" />
-                {t("admin.cms.style")}: {item.groupSize}
-              </span>
-            )}
-            {item.cloneCount !== undefined && (
-              <span className="flex items-center gap-1 text-emerald-600">
-                <RefreshCw className="h-3.5 w-3.5" />
-                {item.cloneCount}
-              </span>
-            )}
-          </div>
-        </div>
-      </CardContent>
     </Card>
   );
 };
@@ -1100,13 +999,385 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
       </DialogContent>
 
       {/* Inline Trip Create Modal */}
-      <TripEditModal
+      <SampleTripEditModal
         open={inlineTripModal}
         onClose={() => setInlineTripModal(false)}
         item={null}
         onSave={handleInlineTripSave}
         loading={inlineTripSaving}
       />
+    </Dialog>
+  );
+};
+
+const toDateInputValue = (value) => {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
+};
+
+const getGenericInitialForm = (item) => ({
+  title: item?.title || "",
+  subtitle: item?.subtitle || "",
+  description: item?.description || item?.body || item?.message || "",
+  image: item?.image || item?.imageUrl || item?.imageData || item?.thumbnail || "",
+  link: item?.link || item?.linkValue || "",
+  linkType: item?.linkType || (item?.link || item?.linkValue ? "url" : "none"),
+  position: item?.position || "home",
+  order: item?.order ?? item?.priority ?? 0,
+  type: item?.type || "info",
+  active: item?.active ?? item?.isActive ?? true,
+  startDate: toDateInputValue(item?.startDate),
+  endDate: toDateInputValue(item?.endDate),
+});
+
+const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
+  if (!open) return null;
+
+  return (
+    <EditModalContent
+      key={`${type?.id || "content"}-${item?.id || "new"}`}
+      open={open}
+      onClose={onClose}
+      item={item}
+      onSave={onSave}
+      type={type}
+      loading={loading}
+    />
+  );
+};
+
+const EditModalContent = ({ open, onClose, item, onSave, type, loading }) => {
+  const { t } = useTranslation();
+  const Icon = type?.icon || FileText;
+  const isEdit = !!item?.id;
+  const isBanner = type?.id === "banners";
+  const isAnnouncement = type?.id === "announcements";
+  const isPage = type?.id === "pages";
+  const isFeatured = type?.id === "featured";
+  const [form, setForm] = useState(() => getGenericInitialForm(item));
+
+  const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const handleImageChange = async (e) => {
+    if (typeof e === "string") {
+      setField("image", e);
+      return;
+    }
+
+    const file = e.target?.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(t("common.operationFailed"));
+      return;
+    }
+
+    try {
+      toast.loading(t("admin.cms.imageCompressing"), { id: "generic-compress" });
+      const compressed = await compressBannerImage(file);
+      toast.dismiss("generic-compress");
+      setField("image", compressed);
+      toast.success(t("common.savedSuccessfully"));
+    } catch (err) {
+      toast.dismiss("generic-compress");
+      toast.error(t("admin.cms.imageProcessError"));
+    }
+  };
+
+  const handleSave = () => {
+    if (!form.title.trim()) {
+      toast.error(t("admin.cms.titleRequired", "Vui lòng nhập tiêu đề"));
+      return;
+    }
+
+    if (isAnnouncement && !form.description.trim()) {
+      toast.error("Vui lòng nhập nội dung thông báo");
+      return;
+    }
+
+    if (isBanner && form.startDate && form.endDate && new Date(form.startDate) > new Date(form.endDate)) {
+      toast.error(t("admin.cms.endDate"));
+      return;
+    }
+
+    onSave({
+      ...form,
+      title: form.title.trim(),
+      subtitle: form.subtitle.trim(),
+      description: form.description.trim(),
+      order: Number(form.order) || 0,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-xl flex items-center gap-2">
+            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-white", type?.color || "bg-primary")}>
+              <Icon className="h-4 w-4" />
+            </div>
+            {isEdit ? t("common.edit") : t("common.create")} {type?.label || t("admin.cms.createContent")}
+          </DialogTitle>
+          <DialogDescription>
+            {isBanner
+              ? "Cấu hình banner hiển thị trong app và thời gian hoạt động."
+              : isAnnouncement
+                ? "Tạo hoặc cập nhật thông báo gửi tới người dùng."
+                : "Quản lý thông tin nội dung hiển thị trong CMS."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-5 py-1">
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              {t("admin.cms.basicInfo")}
+            </h3>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="generic-title">
+                {t("common.title", "Tiêu đề")} <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="generic-title"
+                value={form.title}
+                onChange={(e) => setField("title", e.target.value)}
+                placeholder="Nhập tiêu đề..."
+                className="text-base"
+              />
+            </div>
+
+            {!isBanner && !isAnnouncement && (
+              <div className="space-y-1.5">
+                <Label htmlFor="generic-subtitle">Mô tả ngắn</Label>
+                <Input
+                  id="generic-subtitle"
+                  value={form.subtitle}
+                  onChange={(e) => setField("subtitle", e.target.value)}
+                  placeholder="Nhập mô tả ngắn..."
+                />
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="generic-description">
+                {isAnnouncement ? "Nội dung thông báo" : t("common.description", "Mô tả")}
+                {isAnnouncement && <span className="text-destructive"> *</span>}
+              </Label>
+              <Textarea
+                id="generic-description"
+                value={form.description}
+                onChange={(e) => setField("description", e.target.value)}
+                placeholder={isAnnouncement ? "Nhập nội dung thông báo..." : "Nhập mô tả..."}
+                className="min-h-[100px] resize-none"
+                maxLength={2000}
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {form.description.length}/2000
+              </p>
+            </div>
+
+            <ImageUploadArea
+              value={form.image}
+              onChange={handleImageChange}
+              label={isAnnouncement ? "Ảnh thông báo" : isBanner ? "Ảnh banner" : "Ảnh đại diện"}
+              hint="Hỗ trợ JPG, PNG, WebP. Ảnh sẽ được nén trước khi lưu."
+            />
+          </div>
+
+          <div className="border-t" />
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              {isBanner ? "Hiển thị và điều hướng" : "Trạng thái"}
+            </h3>
+
+            {isBanner && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Vị trí hiển thị</Label>
+                    <Select value={form.position} onValueChange={(value) => setField("position", value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="home">Trang chủ</SelectItem>
+                        <SelectItem value="explore">Khám phá</SelectItem>
+                        <SelectItem value="top">Đầu trang</SelectItem>
+                        <SelectItem value="bottom">Cuối trang</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Loại liên kết</Label>
+                    <Select value={form.linkType} onValueChange={(value) => setField("linkType", value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Không có</SelectItem>
+                        <SelectItem value="url">URL</SelectItem>
+                        <SelectItem value="place">Địa điểm</SelectItem>
+                        <SelectItem value="event">Sự kiện</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {form.linkType !== "none" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="generic-link">Giá trị liên kết</Label>
+                    <Input
+                      id="generic-link"
+                      value={form.link}
+                      onChange={(e) => setField("link", e.target.value)}
+                      placeholder="Nhập URL, ID địa điểm hoặc ID sự kiện..."
+                    />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="generic-order">Thứ tự ưu tiên</Label>
+                    <Input
+                      id="generic-order"
+                      type="number"
+                      min="0"
+                      value={form.order}
+                      onChange={(e) => setField("order", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="generic-start">Ngày bắt đầu</Label>
+                    <Input
+                      id="generic-start"
+                      type="date"
+                      value={form.startDate}
+                      onChange={(e) => setField("startDate", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="generic-end">Ngày kết thúc</Label>
+                    <Input
+                      id="generic-end"
+                      type="date"
+                      min={form.startDate}
+                      value={form.endDate}
+                      onChange={(e) => setField("endDate", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {isAnnouncement && (
+              <div className="space-y-1.5">
+                <Label>Loại thông báo</Label>
+                <Select value={form.type} onValueChange={(value) => setField("type", value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="info">Thông tin</SelectItem>
+                    <SelectItem value="success">Thành công</SelectItem>
+                    <SelectItem value="warning">Cảnh báo</SelectItem>
+                    <SelectItem value="error">Khẩn cấp</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {(isFeatured || isPage) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="generic-order-simple">Thứ tự</Label>
+                  <Input
+                    id="generic-order-simple"
+                    type="number"
+                    min="0"
+                    value={form.order}
+                    onChange={(e) => setField("order", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="generic-link-simple">Liên kết</Label>
+                  <Input
+                    id="generic-link-simple"
+                    value={form.link}
+                    onChange={(e) => setField("link", e.target.value)}
+                    placeholder="/slug hoặc URL..."
+                  />
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setField("active", !form.active)}
+              className={cn(
+                "w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-left",
+                form.active
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-border bg-muted/30 text-muted-foreground"
+              )}
+            >
+              {form.active ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
+              <span className="font-medium">
+                {form.active ? "Đang hiển thị" : "Đang ẩn"}
+              </span>
+              <span className="ml-auto text-xs">
+                {form.active ? "Người dùng có thể nhìn thấy" : "Tạm tắt hiển thị"}
+              </span>
+            </button>
+          </div>
+
+          {form.title && (
+            <>
+              <div className="border-t" />
+              <div className="rounded-xl border bg-card overflow-hidden">
+                <div className="flex">
+                  <div className="w-28 bg-muted shrink-0 flex items-center justify-center">
+                    {form.image ? (
+                      <img src={form.image} alt="" className="w-full h-full min-h-24 object-cover" />
+                    ) : (
+                      <Icon className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="p-4 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold truncate">{form.title}</h4>
+                      <StatusBadge active={form.active} />
+                    </div>
+                    {(form.subtitle || form.description) && (
+                      <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                        {form.subtitle || form.description}
+                      </p>
+                    )}
+                    {isBanner && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {form.position} / {form.linkType}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <DialogFooter className="gap-2 pt-4 border-t">
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            {t("common.cancel")}
+          </Button>
+          <Button onClick={handleSave} disabled={loading} className="min-w-[100px]">
+            {loading && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+            {isEdit ? t("admin.cms.saveChanges") : t("admin.cms.createContent")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   );
 };
@@ -1305,1189 +1576,6 @@ const QuickPlaceCreateModal = ({ open, onClose, onSuccess }) => {
   );
 };
 
-// ─── Trip Edit Modal ──────────────────────────────────────────────────────────
-
-const TripEditModal = ({ open, onClose, item, onSave, loading }) => {
-  const { t } = useTranslation();
-  const isEdit = !!item?.id;
-
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    startDate: "",
-    endDate: "",
-    totalDays: 1,
-    travelStyle: "cultural",
-    groupSize: 1,
-  });
-
-  const [places, setPlaces] = useState([]);
-  const [selectedPlaceIds, setSelectedPlaceIds] = useState([]);
-  const [quickPlaceOpen, setQuickPlaceOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setSelectedPlaceIds([]);
-    if (item) {
-      setForm({
-        title: item.title || "",
-        description: item.description || "",
-        startDate: item.startDate ? item.startDate.split("T")[0] : "",
-        endDate: item.endDate ? item.endDate.split("T")[0] : "",
-        totalDays: item.totalDays || 1,
-        travelStyle: item.travelStyle || "cultural",
-        groupSize: item.groupSize || 1,
-      });
-    } else {
-      setForm({
-        title: "",
-        description: "",
-        startDate: "",
-        endDate: "",
-        totalDays: 1,
-        travelStyle: "cultural",
-        groupSize: 1,
-      });
-    }
-
-    const fetchPlaces = async () => {
-      try {
-        const res = await placeService.getAllPlaces({ limit: 100 });
-        setPlaces(res.data || []);
-      } catch (err) {
-        console.error("Lỗi lấy danh sách địa điểm:", err);
-      }
-    };
-    fetchPlaces();
-  }, [open, item]);
-
-  const handleSave = () => {
-    if (!form.title.trim()) {
-      toast.error(t("admin.cms.tripName") + " " + t("common.required"));
-      return;
-    }
-    if (form.startDate && form.endDate && form.endDate < form.startDate) {
-      toast.error(t("admin.cms.endDateError") || "End date cannot be before start date");
-      return;
-    }
-    const payload = {
-      ...form,
-      totalDays: parseInt(form.totalDays, 10) || 1,
-      groupSize: parseInt(form.groupSize, 10) || 1,
-      startDate: form.startDate || null,
-      endDate: form.endDate || null,
-      ...(!isEdit && { placeIds: selectedPlaceIds }),
-    };
-    onSave(payload);
-  };
-
-  const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
-
-  return (
-    <>
-      <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-              <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                <Compass className="h-4 w-4 text-purple-600" />
-              </div>
-              {isEdit ? t("admin.cms.editSampleTrip") : t("admin.cms.createSampleTrip")}
-            </DialogTitle>
-            <DialogDescription>
-              {t("admin.cms.tripDialogTitle")}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>{t("admin.cms.tripNameLabel")}</Label>
-              <Input
-                value={form.title}
-                onChange={(e) => setField("title", e.target.value)}
-                placeholder={t("admin.cms.tripNamePlaceholder")}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>{t("admin.cms.tripDescLabel")}</Label>
-              <Textarea
-                value={form.description}
-                onChange={(e) => setField("description", e.target.value)}
-                placeholder={t("admin.cms.tripDescPlaceholder")}
-                className="min-h-[80px]"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>{t("admin.cms.expectedStartDate")}</Label>
-                <Input
-                  type="date"
-                  value={form.startDate}
-                  onChange={(e) => setField("startDate", e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("admin.cms.expectedEndDate")}</Label>
-                <Input
-                  type="date"
-                  value={form.endDate}
-                  onChange={(e) => setField("endDate", e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <Label>{t("admin.cms.totalDays")}</Label>
-                <Input
-                  type="number"
-                  value={form.totalDays}
-                  onChange={(e) => setField("totalDays", e.target.value)}
-                  min={1}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("admin.cms.groupSizeLabel")}</Label>
-                <Input
-                  type="number"
-                  value={form.groupSize}
-                  onChange={(e) => setField("groupSize", e.target.value)}
-                  min={1}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("admin.cms.styleLabel")}</Label>
-                <Select
-                  value={form.travelStyle}
-                  onValueChange={(val) => setField("travelStyle", val)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cultural">{t("admin.cms.cultural")}</SelectItem>
-                    <SelectItem value="nature">{t("admin.cms.nature")}</SelectItem>
-                    <SelectItem value="foodie">{t("admin.cms.culinary")}</SelectItem>
-                    <SelectItem value="adventure">{t("admin.cms.exploration")}</SelectItem>
-                    <SelectItem value="relaxation">{t("admin.cms.resort")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {!isEdit && (
-              <div className="space-y-1.5 border-t pt-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold text-slate-700">{t("admin.cms.selectPlacesDay1")}</Label>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0 text-xs text-emerald-600 font-semibold"
-                    onClick={() => setQuickPlaceOpen(true)}
-                  >
-                    {t("admin.cms.quickCreatePlaceLink")}
-                  </Button>
-                </div>
-                <div className="border rounded-lg p-2 max-h-[140px] overflow-y-auto space-y-1.5 bg-slate-50/50">
-                  {places.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">{t("admin.cms.noPlacesAvailable")}</p>
-                  ) : (
-                    places.map((place) => {
-                      const isChecked = selectedPlaceIds.includes(place.id);
-                      return (
-                        <label key={place.id} className="flex items-center gap-2 text-xs cursor-pointer p-1 rounded hover:bg-slate-100">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {
-                              setSelectedPlaceIds(prev =>
-                                isChecked ? prev.filter(id => id !== place.id) : [...prev, place.id]
-                              );
-                            }}
-                            className="rounded text-purple-600 focus:ring-purple-500"
-                          />
-                          <span className="font-medium">{place.name}</span>
-                          <span className="text-[10px] text-muted-foreground truncate">- {place.address}</span>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="gap-2 border-t pt-4 mt-2">
-            <Button variant="outline" onClick={onClose} disabled={loading}>
-              {t("common.cancel")}
-            </Button>
-            <Button onClick={handleSave} disabled={loading} className="bg-purple-600 hover:bg-purple-700 text-white font-medium">
-              {loading && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-              {isEdit ? t("admin.cms.saveChanges") : t("admin.cms.createItinerary")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <QuickPlaceCreateModal
-        open={quickPlaceOpen}
-        onClose={() => setQuickPlaceOpen(false)}
-        onSuccess={(newPlace) => {
-          setPlaces((prev) => [newPlace, ...prev]);
-          setSelectedPlaceIds((prev) => [...prev, newPlace.id]);
-        }}
-      />
-    </>
-  );
-};
-
-// ─── OSRM Routing Utility ────────────────────────────────────────────────────
-
-const OSRM_BASE = "https://router.project-osrm.org/route/v1/driving";
-
-function formatDistance(meters) {
-  if (meters < 1000) return `${Math.round(meters)} m`;
-  return `${(meters / 1000).toFixed(1)} km`;
-}
-
-function formatDuration(seconds) {
-  const m = Math.round(seconds / 60);
-  if (m < 60) return `${m} min`;
-  const h = Math.floor(m / 60);
-  const rem = m % 60;
-  return rem ? `${h} hr ${rem} min` : `${h} hr`;
-}
-
-async function calculateLegDistance(fromPlace, toPlace) {
-  if (!fromPlace?.latitude || !fromPlace?.longitude || !toPlace?.latitude || !toPlace?.longitude) {
-    return null;
-  }
-  try {
-    const url =
-      `${OSRM_BASE}/${fromPlace.longitude},${fromPlace.latitude};${toPlace.longitude},${toPlace.latitude}` +
-      `?overview=false&steps=false`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.code !== "Ok" || !data.routes?.length) return null;
-    const r = data.routes[0];
-    return {
-      distance: r.distance,
-      duration: r.duration,
-      distanceLabel: formatDistance(r.distance),
-      durationLabel: formatDuration(r.duration),
-    };
-  } catch {
-    return null;
-  }
-}
-
-// ─── Transport Modes ─────────────────────────────────────────────────────────
-
-const getTransportModes = (t) => [
-  { value: t("admin.cms.motorbike"), icon: Bike, color: "text-orange-600", bg: "bg-orange-50" },
-  { value: t("admin.cms.car"), icon: Car, color: "text-blue-600", bg: "bg-blue-50" },
-  { value: t("admin.cms.walking"), icon: Footprints, color: "text-green-600", bg: "bg-green-50" },
-  { value: t("admin.cms.bicycle"), icon: Bike, color: "text-teal-600", bg: "bg-teal-50" },
-  { value: t("admin.cms.boat"), icon: Navigation, color: "text-cyan-600", bg: "bg-cyan-50" },
-  { value: t("admin.cms.bus"), icon: Car, color: "text-indigo-600", bg: "bg-indigo-50" },
-];
-
-// ─── Searchable Place Picker ─────────────────────────────────────────────────
-
-const SearchablePlacePicker = ({ places, value, onChange, onCreateQuick }) => {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-
-  const selectedPlace = places.find((p) => String(p.id) === String(value));
-
-  // Lấy danh sách categories từ places
-  const categories = useMemo(() => {
-    const map = new Map();
-    places.forEach((p) => {
-      if (p.category) {
-        map.set(p.category.id, p.category);
-      }
-    });
-    return Array.from(map.values());
-  }, [places]);
-
-  // Lọc places theo search + category
-  const filteredPlaces = useMemo(() => {
-    return places.filter((p) => {
-      const matchSearch =
-        !search ||
-        p.name?.toLowerCase().includes(search.toLowerCase()) ||
-        p.address?.toLowerCase().includes(search.toLowerCase());
-      const matchCategory =
-        categoryFilter === "all" || String(p.category?.id) === categoryFilter;
-      return matchSearch && matchCategory;
-    });
-  }, [places, search, categoryFilter]);
-
-  // Nhóm places theo category
-  const groupedPlaces = useMemo(() => {
-    const groups = new Map();
-    filteredPlaces.forEach((p) => {
-      const catName = p.category?.name || t("common.other") || "Other";
-      const catId = p.category?.id || "other";
-      if (!groups.has(catId)) {
-        groups.set(catId, { name: catName, items: [] });
-      }
-      groups.get(catId).items.push(p);
-    });
-    return Array.from(groups.values());
-  }, [filteredPlaces]);
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full h-10 px-3 rounded-lg border border-input bg-white text-sm flex items-center justify-between hover:border-purple-300 transition-colors"
-      >
-        {selectedPlace ? (
-          <div className="flex items-center gap-2 min-w-0">
-            <MapPin className="h-3.5 w-3.5 text-purple-500 shrink-0" />
-            <span className="font-medium truncate">{selectedPlace.name}</span>
-            {selectedPlace.category && (
-              <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
-                {selectedPlace.category.name}
-              </span>
-            )}
-          </div>
-        ) : (
-          <span className="text-muted-foreground">{t("admin.cms.selectPlace")}</span>
-        )}
-        <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-      </button>
-
-      {open && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-xl border shadow-lg overflow-hidden">
-          {/* Search + Filter */}
-          <div className="p-2 border-b space-y-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t("admin.cms.searchPlaces")}
-                className="h-8 pl-8 text-xs"
-                autoFocus
-              />
-            </div>
-            <div className="flex gap-1 overflow-x-auto pb-1">
-              <button
-                type="button"
-                onClick={() => setCategoryFilter("all")}
-                className={`px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap transition-colors ${
-                  categoryFilter === "all"
-                    ? "bg-purple-600 text-white"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
-                {t("admin.cms.allPlaces", { count: places.length })}
-              </button>
-              {categories.map((cat) => {
-                const count = places.filter((p) => p.category?.id === cat.id).length;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setCategoryFilter(String(cat.id))}
-                    className={`px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap transition-colors ${
-                      categoryFilter === String(cat.id)
-                        ? "bg-purple-600 text-white"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    }`}
-                  >
-                    {cat.name} ({count})
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Places List */}
-          <div className="max-h-[240px] overflow-y-auto">
-            {groupedPlaces.length === 0 ? (
-              <div className="p-4 text-center text-xs text-muted-foreground">
-                {t("admin.cms.noPlacesFound")}
-              </div>
-            ) : (
-              groupedPlaces.map((group) => (
-                <div key={group.name}>
-                  <div className="px-3 py-1.5 bg-muted/50 text-[10px] font-bold text-muted-foreground uppercase tracking-wider sticky top-0">
-                    {group.name}
-                  </div>
-                  {group.items.map((place) => (
-                    <button
-                      key={place.id}
-                      type="button"
-                      onClick={() => {
-                        onChange(String(place.id));
-                        setOpen(false);
-                        setSearch("");
-                        setCategoryFilter("all");
-                      }}
-                      className={`w-full px-3 py-2 text-left hover:bg-purple-50 transition-colors flex items-center gap-2 ${
-                        String(value) === String(place.id) ? "bg-purple-50" : ""
-                      }`}
-                    >
-                      <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium truncate">{place.name}</p>
-                        {place.address && (
-                          <p className="text-[10px] text-muted-foreground truncate">{place.address}</p>
-                        )}
-                      </div>
-                      {String(value) === String(place.id) && (
-                        <CheckCircle className="h-3.5 w-3.5 text-purple-600 shrink-0" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Quick create */}
-          {onCreateQuick && (
-            <div className="p-2 border-t">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                onClick={() => {
-                  setOpen(false);
-                  onCreateQuick();
-                }}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                {t("admin.cms.createNewPlace")}
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ─── Trip Destinations Modal ──────────────────────────────────────────────────
-
-const TripDestinationsModal = ({ open, onClose, tripItem }) => {
-  const { t } = useTranslation();
-  const [trip, setTrip] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [places, setPlaces] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [activeDay, setActiveDay] = useState(1);
-  const [destActionLoading, setDestActionLoading] = useState(false);
-  const [quickPlaceOpen, setQuickPlaceOpen] = useState(false);
-  const [routeInfoMap, setRouteInfoMap] = useState({});
-
-  const TRANSPORT_MODES = useMemo(() => getTransportModes(t), [t]);
-
-  // Form thêm chặng đi mới
-  const [newDest, setNewDest] = useState({
-    placeId: "",
-    startTime: "",
-    endTime: "",
-    note: "",
-    transportToNext: t("admin.cms.motorbike"),
-  });
-
-  const fetchTripDetail = useCallback(async () => {
-    if (!tripItem?.id) return;
-    setLoading(true);
-    try {
-      const res = await eventService.getTripDetail(tripItem.id);
-      setTrip(res.data);
-    } catch (err) {
-      console.error("Lỗi lấy chi tiết chuyến đi:", err);
-      toast.error(t("admin.cms.cannotLoadItinerary"));
-    } finally {
-      setLoading(false);
-    }
-  }, [tripItem]);
-
-  useEffect(() => {
-    if (!open || !tripItem?.id) return;
-    fetchTripDetail();
-
-    const fetchPlacesAndCategories = async () => {
-      try {
-        const [placesRes, catsRes] = await Promise.all([
-          placeService.getAllPlaces({ limit: 200 }),
-          categoryService.getAllCategories(),
-        ]);
-        setPlaces(placesRes.data || []);
-        setCategories(catsRes || []);
-      } catch (err) {
-        console.error("Lỗi lấy danh sách địa điểm/danh mục:", err);
-      }
-    };
-    fetchPlacesAndCategories();
-    setActiveDay(1);
-    setRouteInfoMap({});
-  }, [open, tripItem, fetchTripDetail]);
-
-  // Lọc các chặng đi của ngày hiện tại (derived state - phải đặt trước useEffect sử dụng)
-  const currentDayDestinations = useMemo(() => {
-    if (!trip?.destinations) return [];
-    const filtered = trip.destinations.filter((d) => d.dayNumber === activeDay);
-    filtered.sort((a, b) => {
-      if (a.startTime && b.startTime) {
-        return a.startTime.localeCompare(b.startTime);
-      }
-      return (a.order || 0) - (b.order || 0);
-    });
-    return filtered;
-  }, [trip?.destinations, activeDay]);
-
-  // Tự động tính khoảng cách khi destinations thay đổi
-  useEffect(() => {
-    if (!currentDayDestinations || currentDayDestinations.length < 2) return;
-
-    const calculateRoutes = async () => {
-      const newRouteInfo = { ...routeInfoMap };
-      for (let i = 0; i < currentDayDestinations.length - 1; i++) {
-        const from = currentDayDestinations[i];
-        const to = currentDayDestinations[i + 1];
-        const key = `${from.id}-${to.id}`;
-        if (newRouteInfo[key]) continue;
-
-        const info = await calculateLegDistance(from.place, to.place);
-        if (info) {
-          newRouteInfo[key] = info;
-        }
-      }
-      setRouteInfoMap(newRouteInfo);
-    };
-    calculateRoutes();
-  }, [currentDayDestinations?.length]);
-
-  const handleAddDestination = async () => {
-    if (!newDest.placeId) {
-      toast.error(t("admin.cms.poi") + " " + t("common.required"));
-      return;
-    }
-    setDestActionLoading(true);
-    try {
-      const payload = {
-        placeId: parseInt(newDest.placeId, 10),
-        dayNumber: activeDay,
-        startTime: newDest.startTime || null,
-        endTime: newDest.endTime || null,
-        note: newDest.note || null,
-        transportToNext: newDest.transportToNext || null,
-      };
-      await eventService.addDestination(trip.id, payload);
-      toast.success(t("common.createdSuccessfully"));
-      setNewDest((prev) => ({
-        ...prev,
-        startTime: "",
-        endTime: "",
-        note: "",
-        transportToNext: t("admin.cms.motorbike"),
-      }));
-      fetchTripDetail();
-    } catch (err) {
-      console.error("Lỗi thêm địa điểm:", err);
-      const msg = err.response?.data?.message || err.message;
-      toast.error(msg || t("common.operationFailed"));
-    } finally {
-      setDestActionLoading(false);
-    }
-  };
-
-  const handleDeleteDestination = async (destId) => {
-    if (!window.confirm(t("admin.cms.confirmDeleteDestination"))) return;
-    setDestActionLoading(true);
-    try {
-      await eventService.removeDestination(trip.id, destId);
-      toast.success(t("common.deletedSuccessfully"));
-      fetchTripDetail();
-    } catch (err) {
-      console.error("Lỗi xóa địa điểm:", err);
-      toast.error(t("admin.cms.cannotDeleteDestination"));
-    } finally {
-      setDestActionLoading(false);
-    }
-  };
-
-  if (!open) return null;
-
-  const totalDays = trip?.totalDays || 1;
-
-  return (
-    <>
-      <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-            <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-              <Compass className="h-4 w-4 text-purple-600" />
-            </div>
-            <span>{t("admin.cms.itineraryDetailTitle", { title: trip?.title })}</span>
-          </DialogTitle>
-          <DialogDescription>
-            {t("admin.cms.itineraryDetailDesc")}
-          </DialogDescription>
-        </DialogHeader>
-
-        {loading ? (
-          <div className="py-12 flex justify-center items-center">
-            <RefreshCw className="h-8 w-8 text-purple-600 animate-spin" />
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Bộ chọn Ngày */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b">
-              {Array.from({ length: totalDays }).map((_, idx) => {
-                const day = idx + 1;
-                return (
-                  <Button
-                    key={day}
-                    variant={activeDay === day ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setActiveDay(day)}
-                    className={activeDay === day ? "bg-purple-600 hover:bg-purple-700 text-white" : ""}
-                  >
-                    {t("admin.cms.day", { n: day })}
-                  </Button>
-                );
-              })}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-              {/* Cột trái: Timeline lịch trình của ngày */}
-              <div className="md:col-span-3 space-y-4">
-                <h3 className="font-semibold text-sm text-slate-700 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-purple-600" />
-                  {t("admin.cms.itineraryDay", { n: activeDay, count: currentDayDestinations.length })}
-                </h3>
-
-                {currentDayDestinations.length === 0 ? (
-                  <div className="border border-dashed rounded-xl p-8 text-center text-muted-foreground bg-slate-50/50">
-                    <Compass className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                    {t("admin.cms.noDestinationsDay")}
-                    <p className="text-xs mt-1">{t("admin.cms.useFormToAdd")}</p>
-                  </div>
-                ) : (
-                  <div className="relative pl-6 border-l border-purple-100 space-y-0 py-2 ml-2">
-                    {currentDayDestinations.map((dest, idx) => {
-                      const isLast = idx === currentDayDestinations.length - 1;
-                      const nextDest = !isLast ? currentDayDestinations[idx + 1] : null;
-                      const routeKey = nextDest ? `${dest.id}-${nextDest.id}` : null;
-                      const routeInfo = routeKey ? routeInfoMap[routeKey] : null;
-                      const transportMode = TRANSPORT_MODES.find((m) => m.value === dest.transportToNext);
-                      const TransportIcon = transportMode?.icon || Car;
-
-                      return (
-                        <div key={dest.id}>
-                          {/* Destination Card */}
-                          <div className="relative group/item">
-                            <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 border-purple-600 bg-white group-hover/item:bg-purple-600 transition-colors" />
-
-                            <div className="bg-card p-3.5 rounded-lg border shadow-sm group-hover/item:border-purple-200 transition-all flex justify-between items-start gap-3">
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
-                                    {dest.startTime || "00:00"}{dest.endTime ? ` - ${dest.endTime}` : ""}
-                                  </span>
-                                  <h4 className="font-semibold text-sm truncate">{dest.place?.name || t("admin.cms.defaultPlaceName")}</h4>
-                                  {dest.place?.category && (
-                                    <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                                      {dest.place.category.name}
-                                    </span>
-                                  )}
-                                </div>
-
-                                {dest.place?.address && (
-                                  <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                                    <MapPin className="h-3 w-3" />
-                                    {dest.place.address}
-                                  </p>
-                                )}
-
-                                {dest.note && (
-                                  <p className="text-xs text-muted-foreground mt-1.5 bg-slate-50 p-1.5 rounded border border-slate-100">
-                                    {dest.note}
-                                  </p>
-                                )}
-
-                                {dest.transportToNext && (
-                                  <div className={`text-[11px] font-medium mt-1.5 flex items-center gap-1.5 ${transportMode?.color || "text-indigo-600"}`}>
-                                    <TransportIcon className="h-3.5 w-3.5" />
-                                    <span>{t("admin.cms.transportLabel", { mode: dest.transportToNext })}</span>
-                                    {routeInfo && (
-                                      <span className="text-muted-foreground">
-                                        ({routeInfo.distanceLabel} · {routeInfo.durationLabel})
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={destActionLoading}
-                                className="h-7 w-7 text-destructive hover:bg-destructive/5 shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity"
-                                onClick={() => handleDeleteDestination(dest.id)}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-
-                          {/* Connector line with route info */}
-                          {!isLast && (
-                            <div className="relative pl-0 py-2">
-                              <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-purple-100" />
-                              <div className="ml-4 flex items-center gap-2">
-                                {routeInfo ? (
-                                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-purple-50/50 px-2 py-1 rounded-full border border-purple-100">
-                                    <Route className="h-3 w-3 text-purple-400" />
-                                    <span>{routeInfo.distanceLabel}</span>
-                                    <span>·</span>
-                                    <span>{routeInfo.durationLabel}</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50">
-                                    <ArrowRight className="h-3 w-3" />
-                                    <span>{t("admin.cms.calculatingDistance")}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Cột phải: Form thêm nhanh */}
-              <div className="md:col-span-2">
-                <Card className="border-purple-100 bg-purple-50/10 sticky top-0">
-                  <CardHeader className="p-4 border-b">
-                    <CardTitle className="text-sm font-semibold text-purple-700 flex items-center gap-2">
-                      <Plus className="h-4 w-4" /> {t("admin.cms.addDestination")}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 space-y-3">
-                    {/* Place Picker - searchable + categorized */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">{t("admin.cms.poi")} *</Label>
-                      <SearchablePlacePicker
-                        places={places}
-                        value={newDest.placeId}
-                        onChange={(val) => setNewDest((p) => ({ ...p, placeId: val }))}
-                        onCreateQuick={() => setQuickPlaceOpen(true)}
-                      />
-                    </div>
-
-                    {/* Time inputs */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">{t("admin.cms.arrivalTime")}</Label>
-                        <Input
-                          type="time"
-                          value={newDest.startTime}
-                          onChange={(e) => setNewDest((p) => ({ ...p, startTime: e.target.value }))}
-                          className="h-9 text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">{t("admin.cms.departureTime")}</Label>
-                        <Input
-                          type="time"
-                          value={newDest.endTime}
-                          onChange={(e) => setNewDest((p) => ({ ...p, endTime: e.target.value }))}
-                          className="h-9 text-xs"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Transport mode selection */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">{t("admin.cms.nextTransport")}</Label>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {TRANSPORT_MODES.map((mode) => {
-                          const Icon = mode.icon;
-                          const isSelected = newDest.transportToNext === mode.value;
-                          return (
-                            <button
-                              key={mode.value}
-                              type="button"
-                              onClick={() => setNewDest((p) => ({ ...p, transportToNext: mode.value }))}
-                              className={`flex flex-col items-center gap-1 p-2 rounded-lg border text-[10px] font-medium transition-all ${
-                                isSelected
-                                  ? `${mode.bg} ${mode.color} border-current shadow-sm`
-                                  : "bg-white border-border text-muted-foreground hover:bg-muted/50"
-                              }`}
-                            >
-                              <Icon className="h-4 w-4" />
-                              {mode.value}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Note */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">{t("admin.cms.activityNotes")}</Label>
-                      <Input
-                        value={newDest.note}
-                        onChange={(e) => setNewDest((p) => ({ ...p, note: e.target.value }))}
-                        placeholder={t("admin.cms.activityNotes") + "..."}
-                        className="h-9 text-xs"
-                      />
-                    </div>
-
-                    {/* Route preview hint */}
-                    {newDest.placeId && currentDayDestinations.length > 0 && (
-                      <div className="text-[10px] text-purple-600 bg-purple-50 p-2 rounded-lg flex items-center gap-1.5">
-                        <Route className="h-3 w-3" />
-                        {t("admin.cms.distanceAutoCalc")}
-                      </div>
-                    )}
-
-                    <Button
-                      onClick={handleAddDestination}
-                      disabled={destActionLoading || !newDest.placeId}
-                      className="w-full h-9 text-xs bg-purple-600 hover:bg-purple-700 text-white mt-2"
-                    >
-                      {destActionLoading && <RefreshCw className="h-3 w-3 mr-2 animate-spin" />}
-                      {t("admin.cms.addToItinerary")}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <DialogFooter className="border-t pt-4">
-          <Button variant="outline" onClick={onClose}>
-            {t("admin.cms.close")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
-    <QuickPlaceCreateModal
-      open={quickPlaceOpen}
-      onClose={() => setQuickPlaceOpen(false)}
-      onSuccess={(newPlace) => {
-        setPlaces((prev) => [newPlace, ...prev]);
-        setNewDest((prev) => ({ ...prev, placeId: String(newPlace.id) }));
-      }}
-    />
-  </>
-  );
-};
-
-// ─── Generic Edit Modal ────────────────────────────────────────────────────────
-
-const EditModal = ({ open, onClose, item, onSave, type, loading }) => {
-  const { t } = useTranslation();
-  const uniqueFileId = `generic-file-upload-${type?.id}`;
-
-  const [form, setForm] = useState({
-    title: "",
-    subtitle: "",
-    description: "",
-    link: "",
-    order: 1,
-    active: true,
-    image: "",
-    startDate: "",
-    endDate: "",
-    location: "Cần Thơ",
-    maxParticipants: "",
-    broadcastNotice: "",
-    status: "active",
-  });
-
-  useEffect(() => {
-    if (open) {
-      if (item) {
-        // Map API fields → form fields (banner + announcement)
-        const mapped = {
-          ...item,
-          description: item.description || item.body || "",
-          image: item.image || item.imageUrl || "",
-          link: item.link || item.linkValue || "",
-          order: item.order ?? item.priority ?? 1,
-          active: item.active ?? item.isActive ?? true,
-        };
-        setForm(mapped);
-      } else {
-        setForm({
-          title: "",
-          subtitle: "",
-          description: "",
-          link: "",
-          order: 1,
-          active: true,
-          image: "",
-          startDate: "",
-          endDate: "",
-          location: "Cần Thơ",
-          maxParticipants: "",
-          broadcastNotice: "",
-          status: "active",
-        });
-      }
-    }
-  }, [open, item]);
-
-  const handleSave = () => {
-    if (!form.title.trim()) {
-      toast.error(t("admin.cms.titleLabel").replace(" *", ""));
-      return;
-    }
-    onSave(form);
-  };
-
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error(t("common.operationFailed"));
-        return;
-      }
-      try {
-        const compressedBase64 = await compressBannerImage(file);
-        setForm((prev) => ({ ...prev, image: compressedBase64 }));
-      } catch (err) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setForm((prev) => ({ ...prev, image: reader.result }));
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {item ? t("admin.cms.editContent") : t("common.create")} {type?.label}
-          </DialogTitle>
-          <DialogDescription>
-            {t("admin.cms.editContentDesc")}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label>{t("admin.cms.titleLabel")}</Label>
-            <Input
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder={t("admin.cms.titlePlaceholder")}
-            />
-          </div>
-
-          {type?.id !== "pages" && (
-            <div className="space-y-1.5">
-              <Label>{t("admin.cms.subtitleLabel")}</Label>
-              <Input
-                value={form.subtitle || ""}
-                onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
-                placeholder={t("admin.cms.subtitlePlaceholder")}
-              />
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <Label>{t("admin.cms.descriptionLabel")}</Label>
-            <Textarea
-              value={form.description || ""}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder={t("admin.cms.descriptionPlaceholder")}
-              className="min-h-[100px]"
-            />
-          </div>
-
-          {type?.id !== "pages" && (
-            <>
-              <div className="space-y-1.5">
-                <Label>{t("admin.cms.linkLabel")}</Label>
-                <Input
-                  value={form.link || ""}
-                  onChange={(e) => setForm({ ...form, link: e.target.value })}
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>{t("admin.cms.orderLabel")}</Label>
-                  <Input
-                    type="number"
-                    value={form.order || 1}
-                    onChange={(e) =>
-                      setForm({ ...form, order: parseInt(e.target.value) || 1 })
-                    }
-                    min={1}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>{t("admin.cms.statusLabel")}</Label>
-                  <div className="flex items-center gap-2 h-10">
-                    <span className="text-sm text-muted-foreground">
-                      {form.active ? t("admin.cms.active") : t("admin.cms.hidden")}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, active: !form.active })}
-                      className="ml-auto"
-                    >
-                      {form.active ? (
-                        <ToggleRight className="h-6 w-6 text-emerald-600" />
-                      ) : (
-                        <ToggleLeft className="h-6 w-6 text-muted-foreground" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {type?.id === "banners" && (
-                <div className="space-y-1.5">
-                  <Label>{t("admin.cms.imageLabel", { condition: item?.image ? t("admin.cms.imageUploadToChange") : "*" })}</Label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors relative bg-muted/20">
-                    {form.image ? (
-                      <div className="relative group">
-                        <img
-                          src={form.image}
-                          alt="Preview"
-                          className="mx-auto max-h-40 rounded-lg object-contain"
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <Label
-                            htmlFor={uniqueFileId}
-                            className="h-8 px-3 rounded-lg bg-white hover:bg-slate-50 text-slate-800 text-xs font-medium flex items-center justify-center cursor-pointer transition-colors"
-                          >
-                            {t("common.edit")}
-                          </Label>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="h-8 text-xs"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setForm((prev) => ({ ...prev, image: "" }));
-                            }}
-                          >
-                            {t("common.delete")}
-                          </Button>
-                        </div>
-                        <input
-                          id={uniqueFileId}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                      </div>
-                    ) : (
-                      <label htmlFor={uniqueFileId} className="cursor-pointer block">
-                        <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          {t("common.upload")}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {t("admin.cms.imageMaxSize")}
-                        </p>
-                        <input
-                          id={uniqueFileId}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {type?.id === "announcements" && (
-            <div className="space-y-1.5">
-              <Label>{t("admin.cms.notificationTypeLabel")}</Label>
-              <Select
-                value={form.type || "info"}
-                onValueChange={(value) => setForm({ ...form, type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="info">{t("admin.cms.infoType")}</SelectItem>
-                  <SelectItem value="warning">{t("admin.cms.warningType")}</SelectItem>
-                  <SelectItem value="promo">{t("admin.cms.promoType")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {type?.id === "pages" && (
-            <>
-              <div className="space-y-1.5">
-                <Label>{t("admin.cms.slugLabel")}</Label>
-                <Input
-                  value={form.slug || ""}
-                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                  placeholder={t("admin.cms.slugPlaceholder")}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("admin.cms.contentLabel")}</Label>
-                <Textarea
-                  value={form.content || ""}
-                  onChange={(e) => setForm({ ...form, content: e.target.value })}
-                  placeholder={t("admin.cms.contentPlaceholder")}
-                  className="min-h-[200px]"
-                />
-              </div>
-            </>
-          )}
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose}>
-            {t("common.cancel")}
-          </Button>
-          <Button onClick={handleSave} disabled={loading}>
-            {loading && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-            {t("admin.cms.saveBtn")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
 const getMockData = (t) => ({
   banners: [
     {
@@ -2597,7 +1685,6 @@ const CMSContentPage = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("events");
   const [editModal, setEditModal] = useState({ open: false, item: null });
-  const [destModal, setDestModal] = useState({ open: false, item: null });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(false);
@@ -2730,6 +1817,10 @@ const CMSContentPage = () => {
     setEditModal({ open: true, item });
   };
 
+  const handleTripDetail = (item) => {
+    setEditModal({ open: true, item: { ...item, __mode: "detail" } });
+  };
+
   const handleToggle = async (item) => {
     if (activeTab === "events") {
       setIsLoading(true);
@@ -2821,14 +1912,31 @@ const CMSContentPage = () => {
         setEditModal({ open: false, item: null });
         setTimeout(() => fetchItems(), 500);
       } else if (activeTab === "trips") {
+        const { draftDestinations = [], ...tripForm } = form;
         if (editModal.item?.id) {
-          const res = await eventService.updateTrip(editModal.item.id, form);
+          const res = await eventService.updateTrip(editModal.item.id, tripForm);
           setItems((prev) =>
             prev.map((i) => (i.id === editModal.item.id ? res.data : i))
           );
           toast.success(t("common.updatedSuccessfully"));
         } else {
-          const res = await eventService.createTrip(form);
+          const res = await eventService.createTrip(tripForm);
+          const createdTrip = res.data;
+
+          if (createdTrip?.id && draftDestinations.length > 0) {
+            for (const [index, destination] of draftDestinations.entries()) {
+              await eventService.addDestination(createdTrip.id, {
+                placeId: parseInt(destination.placeId, 10),
+                dayNumber: parseInt(destination.dayNumber, 10) || 1,
+                order: destination.order || index + 1,
+                startTime: destination.startTime || null,
+                endTime: destination.endTime || null,
+                note: destination.note || null,
+                transportToNext: destination.transportToNext || null,
+              });
+            }
+          }
+
           setItems((prev) => [res.data, ...prev]);
           toast.success(t("common.createdSuccessfully"));
         }
@@ -3379,11 +2487,11 @@ const CMSContentPage = () => {
                   onDelete={handleDelete}
                 />
               ) : activeTab === "trips" ? (
-                <TripContentCard
+                <SampleTripContentCard
                   key={item.id}
                   item={item}
                   onEdit={handleEdit}
-                  onManageDestinations={(trip) => setDestModal({ open: true, item: trip })}
+                  onManageDestinations={handleTripDetail}
                   onDelete={handleDelete}
                 />
               ) : (
@@ -3413,7 +2521,7 @@ const CMSContentPage = () => {
 
       {/* Trip Modal */}
       {activeTab === "trips" && (
-        <TripEditModal
+        <SampleTripEditModal
           open={editModal.open}
           onClose={() => setEditModal({ open: false, item: null })}
           item={editModal.item}
@@ -3421,13 +2529,6 @@ const CMSContentPage = () => {
           loading={isLoading}
         />
       )}
-
-      {/* Trip Destinations Modal */}
-      <TripDestinationsModal
-        open={destModal.open}
-        onClose={() => setDestModal({ open: false, item: null })}
-        tripItem={destModal.item}
-      />
 
       {/* Generic Modal */}
       {activeTab !== "events" && activeTab !== "trips" && (
