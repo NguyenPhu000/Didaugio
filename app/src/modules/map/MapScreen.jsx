@@ -9,6 +9,7 @@ import {
   LayoutAnimation,
   useWindowDimensions,
   Alert,
+  Linking,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import * as Location from "expo-location";
@@ -127,6 +128,17 @@ const MAP_CANVAS_STYLE = {
 };
 const ARRIVING_SOON_RADIUS_M = 150;
 
+const showLocationPermissionAlert = () => {
+  Alert.alert(
+    "Yeu cau quyen truy cap vi tri",
+    "Vui long cap quyen vi tri trong Cai dat de ung dung co the dan duong thoi gian thuc.",
+    [
+      { text: "Huy", style: "cancel" },
+      { text: "Mo Cai dat", onPress: () => Linking.openSettings() },
+    ],
+  );
+};
+
 function buildLocalDateTime(ymd, hhmm) {
   if (!ymd || !hhmm) return null;
   const [year, month, day] = String(ymd).split("-").map(Number);
@@ -153,7 +165,7 @@ export default function MapScreen() {
   const lastAppliedFocusRef = useRef(null);
   const lastNavigationEventRef = useRef({ signature: null, timestamp: 0 });
   const navigationTickHandlerRef = useRef(null);
-  const pingMutationRef = useRef(pingEventMutation);
+  const pingMutationRef = useRef(null);
 
   const [mapStyle, setMapStyle] = useState(DEFAULT_MAP_STYLE);
   const [layerModalVisible, setLayerModalVisible] = useState(false);
@@ -443,9 +455,20 @@ export default function MapScreen() {
     (async () => {
       try {
         const fg = await Location.requestForegroundPermissionsAsync();
-        if (cancelled || fg.status !== "granted") return;
-        await Location.requestBackgroundPermissionsAsync();
+        if (cancelled) return;
+        if (fg.status !== "granted") {
+          showLocationPermissionAlert();
+          return;
+        }
+
+        const bg = await Location.requestBackgroundPermissionsAsync();
+        if (!cancelled && bg.status !== "granted") {
+          showLocationPermissionAlert();
+        }
       } catch {
+        if (!cancelled) {
+          showLocationPermissionAlert();
+        }
         // Bỏ qua lỗi xin quyền — chế độ foreground vẫn hoạt động.
       }
     })();

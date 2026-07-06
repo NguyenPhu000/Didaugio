@@ -1,12 +1,23 @@
-import { createContext, useCallback, useContext, useEffect, useRef } from "react";
-import { Platform } from "react-native";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Dimensions,
+  PanResponder,
+  Platform,
+  Pressable,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import apiClient from "../api/client";
 import { ENDPOINTS } from "../api/endpoints";
-import { useAuthStore } from "../stores/authStore";
 import { QUERY_KEYS } from "../constants/query-keys";
-import { useQueryClient } from "@tanstack/react-query";
+import { useAuthStore } from "../stores/authStore";
 
 const isExpoGo =
   Constants?.executionEnvironment === "storeClient" ||
@@ -17,7 +28,7 @@ if (!isExpoGo) {
   try {
     Notifications = require("expo-notifications");
   } catch {
-    // expo-notifications chưa install — push notification sẽ bị disable
+    // Push is optional in Expo Go and unsupported runtimes.
   }
 }
 
@@ -32,9 +43,9 @@ if (Notifications) {
   });
 }
 
-/**
- * Lấy projectId từ app config.
- */
+const BANNER_DURATION_MS = 4800;
+const MAX_BANNER_QUEUE = 3;
+
 function getProjectId() {
   return (
     Constants?.expoConfig?.extra?.eas?.projectId ??
@@ -43,9 +54,6 @@ function getProjectId() {
   );
 }
 
-/**
- * Đăng ký push notification và trả về Expo push token.
- */
 async function registerForPushNotifications() {
   if (!Notifications) return null;
   if (Constants?.isDevice === false) return null;
@@ -70,18 +78,16 @@ async function registerForPushNotifications() {
 
   if (finalStatus !== "granted") return null;
 
-  const projectId = getProjectId();
   try {
-    const token = await Notifications.getExpoPushTokenAsync({ projectId });
+    const token = await Notifications.getExpoPushTokenAsync({
+      projectId: getProjectId(),
+    });
     return token.data;
   } catch {
     return null;
   }
 }
 
-/**
- * Resolve notification data thành route để navigate.
- */
 function resolveNotificationRoute(data) {
   if (!data) return null;
   const type = String(data.type || "");
@@ -93,76 +99,251 @@ function resolveNotificationRoute(data) {
     return `/place/${data.placeId}`;
   }
   if (data.businessId) {
-    return `/(tabs)`;
+    return "/(tabs)";
   }
   return null;
 }
 
-/* ─── Context ──────────────────────────────────────── */
+function getNotificationData(raw) {
+  const content = raw?.request?.content || raw?.notification?.request?.content || raw || {};
+  return content.data || raw?.metadata || raw?.data || {};
+}
+
+function normalizeIncomingNotification(raw) {
+  const content = raw?.request?.content || raw?.notification?.request?.content || raw || {};
+  const data = getNotificationData(raw);
+  const id =
+    raw?.id ||
+    raw?.notificationId ||
+    raw?.request?.identifier ||
+    data?.notificationId ||
+    data?.id ||
+    `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  return {
+    id: String(id),
+    title: content.title || raw?.title || "Thông báo mới",
+    body: content.body || content.message || raw?.body || raw?.message || "",
+    data,
+    recipientId: raw?.id || data?.recipientId || null,
+  };
+}
+
+function ForegroundNotificationBanner({ notification, onPress, onDismiss }) {
+  const translate = useRef(new Animated.ValueXY({ x: 0, y: -80 })).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const screenWidth = Dimensions.get("window").width;
+
+  const dismiss = useCallback(
+    (toValue = { x: 0, y: -100 }) => {
+      Animated.parallel([
+        Animated.timing(translate, {
+          toValue,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 160,
+          useNativeDriver: true,
+        }),
+      ]).start(onDismiss);
+    },
+    [onDismiss, opacity, translate],
+  );
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) =>
+        Math.abs(gesture.dx) > 10 || Math.abs(gesture.dy) > 8,
+      onPanResponderMove: Animated.event(
+        [null, { dx: translate.x, dy: translate.y }],
+        { useNativeDriver: false },
+      ),
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dy < -28) {
+          dismiss({ x: 0, y: -110 });
+          return;
+        }
+        if (Math.abs(gesture.dx) > 52) {
+          dismiss({ x: gesture.dx > 0 ? screenWidth : -screenWidth, y: 0 });
+          return;
+        }
+        Animated.spring(translate, {
+          toValue: { x: 0, y: 0 },
+          useNativeDriver: true,
+        }).start();
+      },
+    }),
+  ).current;
+
+  useEffect(() => {
+    translate.setValue({ x: 0, y: -80 });
+    opacity.setValue(0);
+
+    Animated.parallel([
+      Animated.spring(translate, {
+        toValue: { x: 0, y: 0 },
+        damping: 18,
+        stiffness: 220,
+        mass: 0.8,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 140,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    const timeout = setTimeout(() => dismiss(), BANNER_DURATION_MS);
+    return () => clearTimeout(timeout);
+  }, [dismiss, notification?.id, opacity, translate]);
+
+  if (!notification) return null;
+
+  return (
+    <Animated.View
+      pointerEvents="box-none"
+      style={[
+        styles.bannerHost,
+        { opacity, transform: translate.getTranslateTransform() },
+      ]}
+      {...panResponder.panHandlers}
+    >
+      <Pressable
+        accessibilityRole="button"
+        onPress={onPress}
+        style={styles.banner}
+      >
+        <View style={styles.bannerIcon}>
+          <Ionicons name="notifications" size={19} color="#0F172A" />
+        </View>
+        <View style={styles.bannerText}>
+          <Text style={styles.bannerTitle} numberOfLines={1}>
+            {notification.title}
+          </Text>
+          {!!notification.body && (
+            <Text style={styles.bannerBody} numberOfLines={2}>
+              {notification.body}
+            </Text>
+          )}
+        </View>
+        <Ionicons name="chevron-forward" size={18} color="#64748B" />
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 const NotificationContext = createContext(null);
 
-/**
- * Hook để truy cập notification utilities từ bất kỳ component nào.
- * Trả về { setBadgeCount, clearBadge }.
- */
 export function useNotificationActions() {
-  return useContext(NotificationContext) ?? { setBadgeCount: () => {}, clearBadge: () => {} };
+  return useContext(NotificationContext) ?? {
+    setBadgeCount: () => {},
+    clearBadge: () => {},
+  };
 }
-
-/* ─── Provider ─────────────────────────────────────── */
 
 export function NotificationProvider({ children }) {
   const accessToken = useAuthStore((s) => s.accessToken);
   const userId = useAuthStore((s) => s.user?.id || null);
   const isHydrated = useAuthStore((s) => s.isHydrated);
   const lastSyncedRef = useRef({ userId: null, pushToken: null });
+  const seenBannerIdsRef = useRef([]);
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [activeBanner, setActiveBanner] = useState(null);
+  const [bannerQueue, setBannerQueue] = useState([]);
 
   const setBadgeCount = useCallback(async (count) => {
     if (!Notifications) return;
     try {
       await Notifications.setBadgeCountAsync(count);
     } catch {
-      // Badge không khả dụng trên một số Android launcher
+      // Badge support varies by Android launcher.
     }
   }, []);
 
   const clearBadge = useCallback(() => setBadgeCount(0), [setBadgeCount]);
 
-  // ─── Deep-link: navigate khi user tap notification ───
+  const invalidateNotificationQueries = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.notifications.all(),
+    });
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.notifications.unreadCount(),
+    });
+  }, [queryClient]);
+
+  const enqueueBanner = useCallback((rawNotification) => {
+    const notification = normalizeIncomingNotification(rawNotification);
+    if (!notification.title && !notification.body) return;
+    if (seenBannerIdsRef.current.includes(notification.id)) return;
+
+    seenBannerIdsRef.current = [
+      notification.id,
+      ...seenBannerIdsRef.current,
+    ].slice(0, 20);
+
+    setBannerQueue((prev) =>
+      [...prev, notification]
+        .filter(
+          (item, index, items) =>
+            items.findIndex((candidate) => candidate.id === item.id) === index,
+        )
+        .slice(-MAX_BANNER_QUEUE),
+    );
+  }, []);
+
+  const dismissBanner = useCallback(() => {
+    setActiveBanner(null);
+  }, []);
+
+  const handleBannerPress = useCallback(() => {
+    if (!activeBanner) return;
+
+    if (activeBanner.recipientId) {
+      apiClient
+        .put(ENDPOINTS.notifications.markRead(activeBanner.recipientId))
+        .catch(() => {});
+    }
+    invalidateNotificationQueries();
+
+    const route = resolveNotificationRoute(activeBanner.data);
+    dismissBanner();
+    if (route) router.push(route);
+  }, [activeBanner, dismissBanner, invalidateNotificationQueries, router]);
+
+  useEffect(() => {
+    if (activeBanner || bannerQueue.length === 0) return;
+    const [next, ...rest] = bannerQueue;
+    setActiveBanner(next);
+    setBannerQueue(rest);
+  }, [activeBanner, bannerQueue]);
+
   useEffect(() => {
     if (!Notifications) return;
 
-    // Cold-start: app bị kill, user tap notification → app mở ra
-    // getLastNotificationResponse() trả về notification response cuối cùng
     const handleColdStart = async () => {
       try {
         const response = await Notifications.getLastNotificationResponseAsync();
-        if (response) {
-          const data = response?.notification?.request?.content?.data;
-          const route = resolveNotificationRoute(data);
-          if (route) {
-            // Delay nhẹ để router sẵn sàng
-            setTimeout(() => router.push(route), 500);
-          }
+        const data = response?.notification?.request?.content?.data;
+        const route = resolveNotificationRoute(data);
+        if (route) {
+          setTimeout(() => router.push(route), 500);
         }
       } catch {
-        // Bỏ qua lỗi
+        // Non-critical: route will still work for warm responses.
       }
     };
 
     void handleColdStart();
 
-    // Warm-start: app đang chạy (foreground/background), user tap notification
     const responseSubscription =
       Notifications.addNotificationResponseReceivedListener((response) => {
         const data = response?.notification?.request?.content?.data;
         const route = resolveNotificationRoute(data);
-        if (route) {
-          router.push(route);
-        }
+        if (route) router.push(route);
       });
 
     return () => {
@@ -170,59 +351,50 @@ export function NotificationProvider({ children }) {
     };
   }, [router]);
 
-  // ─── Foreground listener: log + invalidate query ───
   useEffect(() => {
-    if (!Notifications) return;
-
-    const receivedSubscription = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        console.log(
-          "[Push] Received:",
-          notification.request.content.title,
-        );
-        // Invalidate notification queries để UI cập nhật
-        queryClient.invalidateQueries({
-          queryKey: QUERY_KEYS.notifications.all(),
-        });
-        queryClient.invalidateQueries({
-          queryKey: QUERY_KEYS.notifications.unreadCount(),
-        });
-      },
-    );
-
-    // Listen cho announcement event qua Socket.IO (nếu có socket)
-    // Announcement cũng đến dưới dạng push notification nên query invalidation
-    // ở trên sẽ tự động bắt được. Tuy nhiên nếu app đang foreground thì
-    // push không hiện — cần invalidate query để UI cập nhật.
-    const handleAnnouncement = () => {
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.notifications.all(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.notifications.unreadCount(),
-      });
+    const handleSocketNotification = (notification) => {
+      invalidateNotificationQueries();
+      enqueueBanner(notification);
     };
 
-    // Nếu Socket.IO được sử dụng, listen announcement event
+    const handleAnnouncement = (announcement) => {
+      invalidateNotificationQueries();
+      enqueueBanner(announcement);
+    };
+
+    let pushCleanup = () => {};
+    if (Notifications) {
+      const receivedSubscription = Notifications.addNotificationReceivedListener(
+        (notification) => {
+          invalidateNotificationQueries();
+          enqueueBanner(notification);
+        },
+      );
+      pushCleanup = () => receivedSubscription.remove();
+    }
+
     let socketCleanup = () => {};
     try {
       const { getSocket } = require("../utils/socket");
       const socket = getSocket();
       if (socket) {
+        socket.on("notification", handleSocketNotification);
         socket.on("announcement", handleAnnouncement);
-        socketCleanup = () => socket.off("announcement", handleAnnouncement);
+        socketCleanup = () => {
+          socket.off("notification", handleSocketNotification);
+          socket.off("announcement", handleAnnouncement);
+        };
       }
     } catch {
-      // Socket module không khả dụng — bỏ qua
+      // Socket is optional for screens that mount before realtime is ready.
     }
 
     return () => {
-      receivedSubscription.remove();
+      pushCleanup();
       socketCleanup();
     };
-  }, [queryClient]);
+  }, [enqueueBanner, invalidateNotificationQueries]);
 
-  // ─── Sync push token lên server ───
   useEffect(() => {
     if (!Notifications || !isHydrated) return;
 
@@ -250,7 +422,7 @@ export function NotificationProvider({ children }) {
           lastSyncedRef.current = { userId, pushToken };
         }
       } catch {
-        // Notification sync errors are intentionally non-blocking for auth flow.
+        // Notification sync is non-blocking for auth flow.
       }
     };
 
@@ -261,18 +433,71 @@ export function NotificationProvider({ children }) {
     };
   }, [accessToken, isHydrated, userId]);
 
-  // ─── Clear badge khi user logout ───
   useEffect(() => {
     if (!accessToken) {
       clearBadge();
     }
   }, [accessToken, clearBadge]);
 
-  const contextValue = { setBadgeCount, clearBadge };
-
   return (
-    <NotificationContext.Provider value={contextValue}>
+    <NotificationContext.Provider value={{ setBadgeCount, clearBadge }}>
       {children}
+      <ForegroundNotificationBanner
+        notification={activeBanner}
+        onPress={handleBannerPress}
+        onDismiss={dismissBanner}
+      />
     </NotificationContext.Provider>
   );
 }
+
+const styles = StyleSheet.create({
+  bannerHost: {
+    position: "absolute",
+    top: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 10 : 54,
+    left: 12,
+    right: 12,
+    zIndex: 9999,
+    elevation: 9999,
+  },
+  banner: {
+    minHeight: 70,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    backgroundColor: "rgba(255,255,255,0.98)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(15,23,42,0.12)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.14,
+    shadowRadius: 22,
+    elevation: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  bannerIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#E0F2FE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bannerText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  bannerTitle: {
+    color: "#0F172A",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  bannerBody: {
+    marginTop: 2,
+    color: "#475569",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+});

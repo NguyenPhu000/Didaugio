@@ -6,14 +6,15 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production && \
-    npm cache clean --force
+RUN npm ci
 
 # Copy application source
 COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate --schema=prisma/schema.prisma
+# Generate Prisma client and prune devDependencies
+RUN npx prisma generate --schema=prisma/schema.prisma && \
+    npm prune --production && \
+    npm cache clean --force
 
 # Runtime stage
 FROM node:20-alpine
@@ -48,4 +49,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start application
-CMD ["node", "--loader", "babel-node", "src/server.js"]
+CMD ["node", "src/server.js"]

@@ -115,7 +115,7 @@ const EarningsPage = memo(function EarningsPage() {
       note: "",
     });
     setStep(1);
-  }, []);
+  }, [setForm, setStep]);
 
   const handleOpenDialog = useCallback(() => {
     resetForm();
@@ -131,7 +131,7 @@ const EarningsPage = memo(function EarningsPage() {
     const available = earnings.availableBalance || 0;
     const amount = Math.floor((available * percentage) / 100);
     setForm((f) => ({ ...f, amount: String(amount) }));
-  }, [earnings.availableBalance]);
+  }, [earnings.availableBalance, setForm]);
 
   const handleNext = () => {
     if (step === 1) {

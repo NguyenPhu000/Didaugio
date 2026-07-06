@@ -23,6 +23,7 @@ export const createBookingSchema = z.object({
   guestName: z.string().min(2).max(100).optional(),
   guestPhone: z.string().min(8).max(20).optional(),
   guestEmail: z.string().email().optional(),
+  idempotencyKey: z.string().trim().min(1).max(128).optional(),
   tripId: z.coerce.number().int().positive().optional(),
   voucherId: z.coerce.number().int().positive().optional(),
   note: z.string().max(500).optional().nullable(),

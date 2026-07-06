@@ -3,6 +3,7 @@ import express from "express";
 import { createServer } from "http";
 import cors from "cors";
 import helmet from "helmet";
+import compression from "compression";
 import dotenv from "dotenv";
 import errorHandler from "./middlewares/errorHandler.js";
 import logger from "./config/logger.js";
@@ -94,6 +95,7 @@ const isOriginAllowed = (origin) => {
 };
 
 app.disable("x-powered-by");
+app.use(compression());
 
 const shouldCaptureRawBody = (req) => {
   const requestUrl = req.originalUrl || req.url || "";

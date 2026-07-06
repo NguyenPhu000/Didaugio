@@ -49,6 +49,7 @@ import ContractSignModal from "@/components/business/ContractSignModal";
 import ContractPdfViewer from "@/components/business/ContractPdfViewer";
 import DocumentUploadCard from "@/components/business/DocumentUploadCard";
 import DocumentImageUploadField from "@/components/business/DocumentImageUploadField";
+import { DOCUMENT_SAMPLE_IMAGES } from "@/components/business/documentImageConstants";
 
 
 // ─── Validation Schema ────────────────────────────────────────────────────────
@@ -353,6 +354,14 @@ const BusinessProfilePage = () => {
       documentFiles.idCardBack.length > 0 ||
       documentFiles.businessLicense.length > 0,
     [documentFiles],
+  );
+  const existingDocumentPreviews = useMemo(
+    () => ({
+      businessLicense: business?.businessLicense || null,
+      idCardFront: business?.idCardFront || null,
+      idCardBack: business?.idCardBack || null,
+    }),
+    [business?.businessLicense, business?.idCardFront, business?.idCardBack],
   );
 
 

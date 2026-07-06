@@ -26,7 +26,7 @@ export default defineConfig({
     port: 5173,
   },
   build: {
-    sourcemap: true,
+    sourcemap: process.env.VITE_SOURCEMAP === "true",
     rollupOptions: {
       output: {
         manualChunks: {

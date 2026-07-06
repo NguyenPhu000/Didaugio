@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 
 /**
  * Centralized geolocation hook for the web application.
@@ -59,7 +59,10 @@ const useGeolocation = ({
     setErrorCode(err.code);
   }, []);
 
-  const geoOptions = { enableHighAccuracy: true, timeout, maximumAge };
+  const geoOptions = useMemo(
+    () => ({ enableHighAccuracy: true, timeout, maximumAge }),
+    [timeout, maximumAge],
+  );
 
   const locateNow = useCallback(() => {
     if (!navigator.geolocation) {
@@ -77,7 +80,7 @@ const useGeolocation = ({
       handleError,
       geoOptions,
     );
-  }, [handleSuccess, handleError, timeout, maximumAge]);
+  }, [handleSuccess, handleError, geoOptions]);
 
   // Auto-watch mode
   useEffect(() => {
@@ -96,7 +99,7 @@ const useGeolocation = ({
     );
 
     return clearWatch;
-  }, [watch, handleSuccess, handleError, clearWatch, timeout, maximumAge]);
+  }, [watch, handleSuccess, handleError, clearWatch, geoOptions]);
 
   // Cleanup on unmount
   useEffect(() => {

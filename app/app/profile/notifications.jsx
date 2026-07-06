@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
-  TouchableOpacity,
+  Pressable,
   RefreshControl,
   Text,
   View,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -118,7 +118,7 @@ const resolveRoute = (item) => {
     return "/(tabs)";
   }
   if ((type.includes("place") || meta.placeId) && meta.placeId) {
-    return "/(tabs)";
+    return `/place/${meta.placeId}`;
   }
   return "/(tabs)";
 };
@@ -128,8 +128,7 @@ function ScreenHeader({ unreadCount, onBack, onMarkAll }) {
   const { t } = useTranslation();
   return (
     <View className="flex-row items-center px-4 py-[14px] bg-[#F5F5F7]">
-      <TouchableOpacity
-        activeOpacity={0.7}
+      <Pressable
         onPress={onBack}
         className="w-9 h-9 rounded-full bg-white items-center justify-center"
         style={{
@@ -141,7 +140,7 @@ function ScreenHeader({ unreadCount, onBack, onMarkAll }) {
         }}
       >
         <MaterialIconsRounded name="arrow-back" size={24} color="#1D1D1F" />
-      </TouchableOpacity>
+      </Pressable>
 
       <View className="flex-1 items-center">
         <Text className="text-[18px] font-bold text-[#1D1D1F] tracking-[-0.3px]">
@@ -155,15 +154,14 @@ function ScreenHeader({ unreadCount, onBack, onMarkAll }) {
       </View>
 
       {unreadCount > 0 ? (
-        <TouchableOpacity
-          activeOpacity={0.7}
+        <Pressable
           onPress={onMarkAll}
           className="px-3 py-[7px] rounded-[14px] bg-[#0071E3] min-w-[36px] items-center"
         >
           <Text className="text-[13px] font-semibold text-white tracking-[-0.1px]">
             {t("notifications.markAllRead")}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       ) : (
         <View className="w-[70px]" />
       )}
@@ -175,8 +173,7 @@ function TabBar({ active, onChange, unreadCount }) {
   const { t } = useTranslation();
   return (
     <View className="flex-row px-4 pb-3 gap-2 bg-[#F5F5F7]">
-      <TouchableOpacity
-        activeOpacity={0.7}
+      <Pressable
         onPress={() => onChange("unread")}
         className={cn(
           "flex-row items-center px-4 py-2 rounded-[20px] gap-[6px]",
@@ -203,10 +200,9 @@ function TabBar({ active, onChange, unreadCount }) {
             </Text>
           </View>
         )}
-      </TouchableOpacity>
+      </Pressable>
 
-      <TouchableOpacity
-        activeOpacity={0.7}
+      <Pressable
         onPress={() => onChange("all")}
         className={cn(
           "flex-row items-center px-4 py-2 rounded-[20px] gap-[6px]",
@@ -221,12 +217,12 @@ function TabBar({ active, onChange, unreadCount }) {
         >
           {t("notifications.filterAll")}
         </Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
 
-const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function NotificationCard({ item, onPress, index }) {
   const { t } = useTranslation();
@@ -236,10 +232,9 @@ function NotificationCard({ item, onPress, index }) {
   const relTime = formatRelativeTime(item.createdAt, t);
 
   return (
-    <AnimatedTouchable
+    <AnimatedPressable
       entering={FadeInDown.delay(index * 40).springify()}
       layout={Layout.springify()}
-      activeOpacity={0.7}
       onPress={onPress}
       className={cn(
         "flex-row items-center bg-white rounded-[14px] p-[14px] gap-[13px] mb-2",
@@ -301,7 +296,7 @@ function NotificationCard({ item, onPress, index }) {
         color="#D1D1D6"
         style={{ marginLeft: 2 }}
       />
-    </AnimatedTouchable>
+    </AnimatedPressable>
   );
 }
 
@@ -472,10 +467,11 @@ export default function NotificationsScreen() {
       ) : items.length === 0 ? (
         <EmptyState tab={activeTab} />
       ) : (
-        <FlatList
+        <FlashList
           data={items}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
+          estimatedItemSize={96}
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingTop: 12,
