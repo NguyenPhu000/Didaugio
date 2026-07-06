@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, FlatList } from "react-native";
 import { Sparkles } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { HorizontalPlaceCard } from "../../../../components/composed/HorizontalPlaceCard";
 import { InteractiveTimeline } from "./InteractiveTimeline";
 import { TOKENS } from "../../../../constants/design-tokens";
@@ -16,11 +17,24 @@ export function MessageBubble({ message, onViewPlace, interactivePlan, onRemoveP
         </View>
       )}
 
-      <View style={[s.bubbleBase, isUser ? s.userBubble : s.aiBubble]}>
-        <Text style={[s.bubbleText, isUser ? s.textZinc900 : s.textZinc800]} selectable>
-          {message.text ?? message.content}
-        </Text>
-      </View>
+      {isUser ? (
+        <LinearGradient
+          colors={["#2563EB", "#1D4ED8", "#4338CA"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[s.bubbleBase, s.userBubble]}
+        >
+          <Text style={[s.bubbleText, s.textZinc900]} selectable>
+            {message.text ?? message.content}
+          </Text>
+        </LinearGradient>
+      ) : (
+        <View style={[s.bubbleBase, s.aiBubble]}>
+          <Text style={[s.bubbleText, s.textZinc800]} selectable>
+            {message.text ?? message.content}
+          </Text>
+        </View>
+      )}
 
       {/* Render Carousel địa điểm nếu có gợi ý địa điểm thông thường */}
       {!isUser && message.suggestedPlaces?.length > 0 && (
@@ -70,7 +84,7 @@ const s = StyleSheet.create({
     marginLeft: 4,
   },
   aiLabel: {
-    color: "rgba(255,255,255,0.4)",
+    color: "#64748B",
     fontSize: 10,
     letterSpacing: 0.8,
     textTransform: "uppercase",
@@ -83,12 +97,14 @@ const s = StyleSheet.create({
     borderRadius: 20,
   },
   userBubble: {
-    backgroundColor: "#0A84FF",
     borderTopRightRadius: 4,
   },
   aiBubble: {
-    backgroundColor: "#2C2C2E",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     borderTopLeftRadius: 4,
+    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
   },
   bubbleText: {
     fontSize: 14.5,
@@ -99,7 +115,7 @@ const s = StyleSheet.create({
     color: "#FFFFFF",
   },
   textZinc800: {
-    color: "#FFFFFF",
+    color: "#1F2937",
   },
   carouselWrapper: {
     width: "100%",

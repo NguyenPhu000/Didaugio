@@ -73,8 +73,11 @@ function FloatingBottomTabBar() {
   const { t } = useTranslation();
 
   const currentKey = useMemo(() => resolveTabKey(pathname), [pathname]);
+  const hideForImmersiveRoute = currentKey === "ai";
 
   const bottom = Math.max(insets.bottom, 8) + EXTRA_FLOAT_LIFT;
+
+  if (hideForImmersiveRoute) return null;
 
   return (
     <View pointerEvents="box-none" style={styles.wrap}>

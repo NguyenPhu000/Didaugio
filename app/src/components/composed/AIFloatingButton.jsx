@@ -12,6 +12,7 @@ import { AIEntryButton } from "./AIEntryButton";
 const HIDE_PATHS = new Set([
   "/(tabs)/ai",
   "/ai",
+  "/ai/chat",
   "/(auth)/login",
   "/login",
   "/(auth)/register",

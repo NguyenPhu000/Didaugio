@@ -23,7 +23,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useAIPlanner } from "../hooks/useAIPlanner";
 import { useGroqChat } from "../hooks/useGroqChat";
 import { useGenieVoice } from "../hooks/useGenieVoice";
-import { VoiceWaveIndicator } from "../components/VoiceWaveIndicator";
 import {
   GENIE_INTENT_TYPES,
   buildGenieSuggestionGroups,
@@ -31,12 +30,12 @@ import {
 } from "../lib/genieAssistantExperience";
 import { TOKENS } from "../../../constants/design-tokens";
 import { PlacePreviewCard } from "../../../components/composed/PlacePreviewCard";
-import { TAB_BAR_HEIGHT } from "../../../../app/(tabs)/_layout";
 import CustomAlertModal from "../../../components/composed/CustomAlertModal";
 import { Glow } from "../../../components/reacticx/glow";
 
 const ACCENT = "#3478F6";
 const SUGGESTION_COLORS = ["#0EA5E9", "#F97316", "#10B981", "#8B5CF6"];
+const VOICE_BAR_FACTORS = [0.35, 0.72, 1, 0.6, 0.42];
 
 function GenieAvatar({ size = 40 }) {
   return (
@@ -95,6 +94,85 @@ function GenieAvatar({ size = 40 }) {
   );
 }
 
+function GenieVoicePanel({
+  active,
+  intensity,
+  label,
+  sublabel,
+  compact = false,
+  loading = false,
+}) {
+  const level = active ? Math.max(0.24, Math.min(1, intensity || 0.48)) : 0.22;
+  const size = compact ? 52 : 72;
+  const barMax = compact ? 22 : 30;
+  const barMin = compact ? 7 : 9;
+
+  return (
+    <View
+      className={`w-full overflow-hidden rounded-[28px] border border-slate-100 bg-white ${compact ? "p-3" : "p-4"}`}
+      style={{ boxShadow: "0 14px 36px rgba(15, 23, 42, 0.08)" }}
+    >
+      <LinearGradient
+        colors={["rgba(37,99,235,0.10)", "rgba(219,39,119,0.08)", "rgba(255,255,255,0)"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      <View className="flex-row items-center gap-3">
+        <GenieAvatar size={size} />
+        <View className="min-w-0 flex-1">
+          <Text
+            className={`${compact ? "text-[13px]" : "text-[17px]"} text-slate-950`}
+            style={{ fontFamily: TOKENS.font.semibold }}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+          {sublabel ? (
+            <Text
+              className="mt-1 text-[12px] leading-4 text-slate-500"
+              style={{ fontFamily: TOKENS.font.body }}
+              numberOfLines={compact ? 1 : 2}
+            >
+              {sublabel}
+            </Text>
+          ) : null}
+
+          <View className="mt-3 flex-row items-end gap-1.5">
+            {VOICE_BAR_FACTORS.map((factor, index) => {
+              const height = barMin + barMax * Math.min(1, level * factor);
+              return (
+                <View
+                  key={`voice-bar-${index}`}
+                  className="w-1.5 rounded-full"
+                  style={{
+                    height,
+                    backgroundColor: active ? "#2563EB" : "#CBD5E1",
+                    opacity: active ? 0.72 + factor * 0.22 : 0.7,
+                  }}
+                />
+              );
+            })}
+          </View>
+        </View>
+
+        <View className={`items-center justify-center rounded-full ${active ? "bg-blue-600" : "bg-slate-100"} ${compact ? "h-10 w-10" : "h-12 w-12"}`}>
+          {loading ? (
+            <ActivityIndicator size="small" color={active ? "#FFFFFF" : ACCENT} />
+          ) : (
+            <MaterialIconsRounded
+              name={active ? "graphic-eq" : "mic"}
+              size={compact ? 19 : 22}
+              color={active ? "#FFFFFF" : "#64748B"}
+            />
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
   scrollView: {
     flex: 1,
@@ -147,7 +225,7 @@ export function AIPlanner() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
 
-  const paddingAnim = useSharedValue(Math.max(insets.bottom, 12) + TAB_BAR_HEIGHT);
+  const paddingAnim = useSharedValue(Math.max(insets.bottom, 12) + 10);
 
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -158,7 +236,7 @@ export function AIPlanner() {
     });
     const hideSub = Keyboard.addListener(hideEvent, (e) => {
       const duration = e.duration || 250;
-      paddingAnim.value = withTiming(Math.max(insets.bottom, 12) + TAB_BAR_HEIGHT, { duration, easing: Easing.out(Easing.ease) });
+      paddingAnim.value = withTiming(Math.max(insets.bottom, 12) + 10, { duration, easing: Easing.out(Easing.ease) });
     });
     return () => {
       showSub.remove();
@@ -363,6 +441,10 @@ export function AIPlanner() {
     [router],
   );
 
+  const handleGoHome = useCallback(() => {
+    router.replace("/(tabs)/map");
+  }, [router]);
+
   const handleTogglePlace = useCallback(
     (place) => {
       togglePlaceSelection(place?.id);
@@ -468,21 +550,34 @@ export function AIPlanner() {
             </View>
           ) : null}
 
-          <View
-            className={`max-w-[85%] px-4 py-3.5 ${
-              isUser
-                ? "rounded-[20px] rounded-tr-sm bg-slate-900"
-                : "rounded-[20px] rounded-tl-sm border border-slate-200 bg-white"
-            }`}
-            style={!isUser ? { boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)" } : null}
-          >
-            <Text
-              className={`text-[14.5px] leading-[22px] ${isUser ? "text-white" : "text-zinc-800"}`}
-              style={{ fontFamily: isUser ? TOKENS.font.medium : TOKENS.font.body }}
+          {isUser ? (
+            <LinearGradient
+              colors={["#2563EB", "#1D4ED8", "#4338CA"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ borderRadius: 20, borderTopRightRadius: 4 }}
+              className="max-w-[85%] px-4 py-3.5"
             >
-              {message.text ?? message.content}
-            </Text>
-          </View>
+              <Text
+                className="text-[14.5px] leading-[22px] text-white"
+                style={{ fontFamily: TOKENS.font.medium }}
+              >
+                {message.text ?? message.content}
+              </Text>
+            </LinearGradient>
+          ) : (
+            <View
+              className="max-w-[85%] rounded-[20px] rounded-tl-sm border border-slate-100 bg-white/90 px-4 py-3.5"
+              style={{ boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)" }}
+            >
+              <Text
+                className="text-[14.5px] leading-[22px] text-zinc-800"
+                style={{ fontFamily: TOKENS.font.body }}
+              >
+                {message.text ?? message.content}
+              </Text>
+            </View>
+          )}
 
           {!isUser && message.source === "chat" && (message.suggestedPlaces?.length ?? 0) > 0 ? (
             <View className="mt-2 w-full gap-2">
@@ -504,10 +599,11 @@ export function AIPlanner() {
                 <Pressable
                   key={reply}
                   onPress={() => handleSend(reply)}
-                  className="rounded-full border border-sky-200 bg-sky-50 px-3 py-2"
+                  className="rounded-full border border-slate-200 bg-white px-3.5 py-2"
+                  style={{ boxShadow: "0 6px 16px rgba(15, 23, 42, 0.04)" }}
                 >
                   <Text
-                    className="text-xs text-sky-800"
+                    className="text-xs text-slate-700"
                     style={{ fontFamily: TOKENS.font.semibold }}
                   >
                     {reply}
@@ -690,16 +786,28 @@ export function AIPlanner() {
             </View>
           </View>
 
+          <View className="ml-3 flex-row items-center gap-2">
+            <Pressable
+              onPress={handleGoHome}
+              className="h-10 w-10 items-center justify-center rounded-full border border-slate-100 bg-white/90"
+              style={{ boxShadow: "0 6px 18px rgba(15, 23, 42, 0.05)" }}
+              accessibilityRole="button"
+              accessibilityLabel="Về trang chủ"
+            >
+              <MaterialIconsRounded name="home" size={21} color="#475569" />
+            </Pressable>
+
           {hasPlannerHistory && (
             <Pressable
               onPress={handleClearPlannerHistory}
               disabled={isLoading}
-              className={`ml-3 h-10 w-10 items-center justify-center rounded-full border border-slate-100 ${isLoading ? "opacity-40" : "bg-white/90"}`}
+              className={`h-10 w-10 items-center justify-center rounded-full border border-slate-100 ${isLoading ? "opacity-40" : "bg-white/90"}`}
               style={{ boxShadow: "0 6px 18px rgba(15, 23, 42, 0.05)" }}
             >
               <MaterialIconsRounded name="delete-sweep" size={21} color="#475569" />
             </Pressable>
           )}
+          </View>
         </View>
       </View>
 
@@ -724,14 +832,14 @@ export function AIPlanner() {
             <Pressable
               onPress={handleVoicePress}
               disabled={isLoading}
-              className="mb-6"
+              className="mb-6 w-full"
             >
-              <VoiceWaveIndicator
+              <GenieVoicePanel
                 active={isVoiceActive || isLoading}
                 intensity={voiceLevel}
                 label={getVoiceWaveLabel()}
                 sublabel={getVoiceWaveSublabel()}
-                size={236}
+                loading={isLoading}
               />
             </Pressable>
             <Text
@@ -788,28 +896,33 @@ export function AIPlanner() {
             </View>
           </View>
         }
-        ListHeaderComponent={
-          isVoiceActive ? (
-            <View className="items-center justify-center py-4">
-              <VoiceWaveIndicator
-                active
-                intensity={voiceLevel}
-                label={getVoiceWaveLabel()}
-                sublabel={getVoiceWaveSublabel()}
-                size={188}
-                compact
-              />
-              <Text
-                className="mt-3 overflow-hidden rounded-full bg-sky-100 px-4 py-2 text-xs text-sky-900"
-                style={{ fontFamily: TOKENS.font.medium }}
-              >
-                {getVoiceStatusText()}
-              </Text>
-            </View>
-          ) : null
-        }
         ListFooterComponent={
           <View className="gap-2 mt-2">
+            {isVoiceActive ? (
+              <View className="items-center justify-center">
+                <Pressable
+                  onPress={handleVoicePress}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  <GenieVoicePanel
+                    active
+                    intensity={voiceLevel}
+                    label={getVoiceWaveLabel()}
+                    sublabel={getVoiceWaveSublabel()}
+                    compact
+                    loading={isLoading}
+                  />
+                </Pressable>
+                <Text
+                  className="mt-2 overflow-hidden rounded-full bg-sky-100 px-4 py-2 text-xs text-sky-900"
+                  style={{ fontFamily: TOKENS.font.medium }}
+                >
+                  {getVoiceStatusText()}
+                </Text>
+              </View>
+            ) : null}
+
             {isLoading ? (
               <View
                 className="flex-row items-center self-start rounded-2xl rounded-tl-sm border border-slate-100 bg-white px-4 py-3"
@@ -878,10 +991,10 @@ export function AIPlanner() {
         style={[
           animatedInputBarStyle,
         ]}
-        className="w-full bg-transparent px-4"
+        className="w-full bg-transparent px-3"
       >
         <View
-          className="mb-2 flex-row items-end gap-2.5 rounded-[30px] border border-slate-200 bg-white px-3 py-2"
+          className="mb-1 flex-row items-end gap-2 rounded-[28px] border border-slate-200 bg-white px-3 py-2"
           style={{ boxShadow: "0 10px 30px rgba(15, 23, 42, 0.10)" }}
         >
           <TextInput
@@ -913,18 +1026,31 @@ export function AIPlanner() {
           <Pressable
             onPress={() => handleSend()}
             disabled={!canSend}
-            className={`h-9 w-9 items-center justify-center rounded-full ${
-              canSend ? "bg-slate-950" : "bg-slate-100"
-            }`}
+            style={{ overflow: "hidden" }}
+            className="h-9 w-9 items-center justify-center rounded-full"
           >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+            {canSend ? (
+              <LinearGradient
+                colors={["#2563EB", "#7C3AED"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+                className="items-center justify-center"
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <MaterialIconsRounded name="arrow-upward" size={18} color="#FFFFFF" />
+                )}
+              </LinearGradient>
             ) : (
-              <MaterialIconsRounded
-                name="arrow-upward"
-                size={18}
-                color={canSend ? "#FFFFFF" : "#94A3B8"}
-              />
+              <View className="h-full w-full items-center justify-center bg-slate-100">
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <MaterialIconsRounded name="arrow-upward" size={18} color="#94A3B8" />
+                )}
+              </View>
             )}
           </Pressable>
         </View>
