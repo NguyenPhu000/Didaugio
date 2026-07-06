@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useWindowDimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -38,37 +38,39 @@ export function AIFloatingButton({ router, pathname }) {
   const initialX = screenWidth - 18 - buttonSize;
   const initialY = screenHeight - (insets.bottom + 148) - buttonSize;
 
-  const panGesture = Gesture.Pan()
-    .activeOffsetX([-10, 10])
-    .activeOffsetY([-10, 10])
-    .onStart(() => {
-      startX.value = translateX.value;
-      startY.value = translateY.value;
-      scale.value = withSpring(1.08);
-    })
-    .onUpdate((event) => {
-      translateX.value = startX.value + event.translationX;
-      translateY.value = startY.value + event.translationY;
-    })
-    .onEnd(() => {
-      scale.value = withSpring(1);
+  const panGesture = useMemo(() => {
+    return Gesture.Pan()
+      .activeOffsetX([-10, 10])
+      .activeOffsetY([-10, 10])
+      .onStart(() => {
+        startX.value = translateX.value;
+        startY.value = translateY.value;
+        scale.value = withSpring(1.08);
+      })
+      .onUpdate((event) => {
+        translateX.value = startX.value + event.translationX;
+        translateY.value = startY.value + event.translationY;
+      })
+      .onEnd(() => {
+        scale.value = withSpring(1);
 
-      const currentAbsoluteX = initialX + translateX.value;
-      const snapToLeftX = margin - initialX;
-      const snapToRightX = screenWidth - margin - buttonSize - initialX;
+        const currentAbsoluteX = initialX + translateX.value;
+        const snapToLeftX = margin - initialX;
+        const snapToRightX = screenWidth - margin - buttonSize - initialX;
 
-      const midPoint = screenWidth / 2;
-      const snapX = currentAbsoluteX < midPoint ? snapToLeftX : snapToRightX;
+        const midPoint = screenWidth / 2;
+        const snapX = currentAbsoluteX < midPoint ? snapToLeftX : snapToRightX;
 
-      const currentAbsoluteY = initialY + translateY.value;
-      const snapY = Math.min(
-        Math.max(currentAbsoluteY, insets.top + margin),
-        screenHeight - insets.bottom - 90 - buttonSize
-      ) - initialY;
+        const currentAbsoluteY = initialY + translateY.value;
+        const snapY = Math.min(
+          Math.max(currentAbsoluteY, insets.top + margin),
+          screenHeight - insets.bottom - 90 - buttonSize
+        ) - initialY;
 
-      translateX.value = withSpring(snapX, { damping: 15, stiffness: 120 });
-      translateY.value = withSpring(snapY, { damping: 15, stiffness: 120 });
-    });
+        translateX.value = withSpring(snapX, { damping: 15, stiffness: 120 });
+        translateY.value = withSpring(snapY, { damping: 15, stiffness: 120 });
+      });
+  }, [screenWidth, screenHeight, insets, initialX, initialY, translateX, translateY, startX, startY, scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [

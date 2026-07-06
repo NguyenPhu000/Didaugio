@@ -153,7 +153,9 @@ export function useTripsCached(enabled = true) {
     gcTime: TRIP_OFFLINE_GC_MS,
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    refetchOnMount: "always",
+    refetchOnMount: false,
+    refetchOnReconnect: true,
+    placeholderData: (previousData) => previousData,
   });
 
   // Load cached data when offline

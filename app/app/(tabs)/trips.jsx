@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { View, RefreshControl } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import VerticalFlowCarousel from "../../src/components/reacticx/vertical-flow-carousel";
@@ -49,14 +49,6 @@ export default function TripsScreen() {
   const trips = useMemo(
     () => (Array.isArray(tripsRaw) ? tripsRaw : []),
     [tripsRaw],
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      if (isLoggedIn) {
-        refetch();
-      }
-    }, [isLoggedIn, refetch]),
   );
 
   const filteredTrips = useMemo(() => {

@@ -14,6 +14,12 @@ const CACHE_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 
 const getCacheKey = (key) => `${CACHE_VERSION}:${key}`;
 
+const selectCachedList = (data) => {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+  return [];
+};
+
 /**
  * Lưu data vào safeAsyncStorage với metadata
  */
@@ -129,7 +135,7 @@ export function useSavedPlacesCached(enabled = true) {
     enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
-    select: (data) => (Array.isArray(data) ? data : []),
+    select: selectCachedList,
   });
 
   // Initial load from cache (for instant UI)
@@ -192,7 +198,7 @@ export function useSavedCollectionsCached(enabled = true) {
     enabled,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
-    select: (data) => (Array.isArray(data) ? data : []),
+    select: selectCachedList,
   });
 
   return {
